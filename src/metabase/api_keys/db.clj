@@ -3,26 +3,30 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [java-time.api :as t]
-   [malli.util :as mut]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn unscoped-api-key-count
-  "The number of ApiKeys without a scope."
-  []
-  (t2/count :model/ApiKey :scope nil))
+(def ^:private admin-listed
+  "The ApiKeys an admin lists and manages through the API keys endpoints: unscoped keys and `:workspace-manager` keys.
+  SCIM keys are managed by the SCIM endpoints."
+  [:or [:= :scope nil] [:= :scope "workspace-manager"]])
 
-(mu/defn unscoped-api-keys
-  "The ApiKeys without a scope, most recently used first (nulls last — a key never used sorts after
-  every key that has been)."
+(mu/defn admin-listed-api-key-count
+  "The number of ApiKeys without a scope or with the `:workspace-manager` scope."
   []
-  (t2/select :model/ApiKey :scope nil
-             {:order-by [[:last_used_at (case (mdb/db-type)
+  (t2/count :model/ApiKey {:where admin-listed}))
+
+(mu/defn admin-listed-api-keys
+  "The ApiKeys without a scope or with the `:workspace-manager` scope, most recently used first (nulls last — a key
+  never used sorts after every key that has been)."
+  []
+  (t2/select :model/ApiKey
+             {:where    admin-listed
+              :order-by [[:last_used_at (case (mdb/db-type)
                                           ;; NULLS LAST isn't valid MySQL syntax, but MySQL already sorts
                                           ;; NULLs last on DESC by default (it treats NULL as the lowest value).
                                           (:postgres :h2) :desc-nulls-last
@@ -33,26 +37,15 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/ApiKey :id [:auto/param id]))
 
-(def ^:private ApiKeyWithGroupId
-  "An ApiKey instance possibly carrying the `::api-keys/group-id` the before-update hook consumes."
-  (mut/merge ::api-keys.schema/api-key
-             [:map
-              [:metabase.api-keys.core/group-id {:optional true} [:maybe ms/PositiveInt]]]))
-
-(mu/defn save-api-key!
-  "Save the changes made to the ApiKey instance `api-key` and return it."
-  [api-key :- ApiKeyWithGroupId]
-  (t2/save! api-key))
-
 (mu/defn api-key-exists?
   "Whether an ApiKey with `id` exists."
   [id :- ms/PositiveInt]
   (t2/exists? :model/ApiKey :id id))
 
-(mu/defn delete-api-key!
-  "Delete the ApiKey with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/ApiKey :id id))
+(mu/defn api-key-ids-with-scope :- [:sequential ms/PositiveInt]
+  "The ids of the ApiKeys with `scope`."
+  [scope :- ::api-keys.schema/scope]
+  (vec (t2/select-pks-vec :model/ApiKey :scope scope)))
 
 (mu/defn api-key-groups
   "The group name, group id, and api key id of the PermissionsGroups of the ApiKeys with `api-key-ids`."
@@ -65,21 +58,15 @@
                       :api_key [:= :api_key.user_id :pgm.user_id]]
              :where  [:in :api_key.id api-key-ids]}))
 
-(mu/defn rename-api-key-user!
-  "Set the first name (and clear the last name) of the api-key User with `user-id`."
-  [user-id    :- ::lib.schema.id/user
-   first-name :- :string]
-  (t2/update! :model/User :id user-id, :type :api-key, {:first_name first-name, :last_name ""}))
-
 (mu/defn user-type
   "The `:type` of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :type :model/User :id user-id))
 
-(mu/defn deactivate-api-key-user!
-  "Deactivate the api-key User with `user-id` (nil for keys without a user, e.g. SCIM keys, which updates nothing)."
-  [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/update! :model/User user-id, :type :api-key, {:is_active false}))
+(mu/defn user-types :- [:map-of ::lib.schema.id/user :keyword]
+  "The map from id to `:type` of the Users with `user-ids`."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
+  (into {} (map (juxt :id :type)) (t2/select [:model/User :id :type] :id [:in user-ids])))
 
 (mu/defn api-key-prefix-exists?
   "Whether an ApiKey with `prefix` exists."
@@ -91,21 +78,15 @@
   [key-name :- :string]
   (t2/exists? :model/ApiKey :name key-name))
 
-(mu/defn insert-user!
-  "Insert the User `row` and return its id."
-  [row :- ::users.schema/user.update]
-  (t2/insert-returning-pk! :model/User row))
+(mu/defn insert-api-key-usage-logs!
+  "Insert the ApiKeyUsageLog `rows` as one batch."
+  [rows :- [:sequential ::api-keys.schema/api-key-usage-log.create]]
+  (t2/insert! :model/ApiKeyUsageLog rows))
 
-(mu/defn insert-api-key!
-  "Insert the ApiKey `row` and return the inserted instance."
-  [row :- ::api-keys.schema/api-key.create]
-  (t2/insert-returning-instance! :model/ApiKey row))
-
-(mu/defn update-api-key!
-  "Apply `changes` to the ApiKey with `id`."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::api-keys.schema/api-key.update [:key :key_prefix :updated_by_id])]
-  (t2/update! :model/ApiKey :id id changes))
+(mu/defn api-key-usage-log-ids-occurred-before :- [:sequential ms/PositiveInt]
+  "The ids of the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`."
+  [cutoff :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (vec (t2/select-pks-vec :model/ApiKeyUsageLog {:where [:< :occurred_at [:auto/param cutoff]]})))
 
 (defn lock-available-key-ids
   "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside
@@ -129,8 +110,8 @@
   UPDATE — and, by extension, every unrelated key batched alongside it — until that writer's
   transaction commits.
 
-  A plain UPDATE rather than [[update-api-key!]] on purpose: the model's `before-update` hook hydrates
-  the key and publishes an `:event/api-key-update` audit event, which a usage stamp must not do.
+  A plain UPDATE rather than [[update-api-key!]] on purpose: a write through the model
+  publishes `:event/api-key-update`, which the audit log records, and a usage stamp must not do that.
   Mirrors [[metabase.query-processor.db/update-cards-last-used-at!]]'s bulk `CASE`/`GREATEST` pattern
   for the same reason: many keys land in one batch, and this is one UPDATE for all of them rather than
   one per key."

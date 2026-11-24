@@ -10,6 +10,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.features :as features]
+   [metabase.metabot.self.schema :as self.schema]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
@@ -26,6 +28,7 @@
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.json-schema :as mu.json-schema]
    [toucan2.core :as t2]))
 
 (deftest all-tools-test
@@ -39,6 +42,20 @@
             (is (string? name))
             (is (string? description))
             (is (some? args))))))))
+
+(deftest ^:synchronized tool-parameters-have-no-one-of-or-all-of-test
+  (testing "OpenAI rejects a tool whose parameters contain `oneOf` (GPT-6.2 even outside strict mode) or `allOf`"
+    ;; every feature on, so feature-gated parameters are published too
+    (mt/with-dynamic-fn-redefs [features/feature-available? (constantly true)]
+      (let [tool-vars (distinct (conj (mapcat :tools (vals @@#'profiles/*profiles)) #'agent-tools/load-skill-tool))
+            ;; a schema is free of both when dropping them from every subschema changes nothing
+            free?     (fn [schema] (= schema (mu.json-schema/postwalk-schemas #(dissoc % :oneOf :allOf) schema)))]
+        (is (= []
+               ;; one tool at a time, since tools in different profiles may share a name
+               (for [tool-var tool-vars
+                     entry    (vals (agent-tools/->entries [tool-var] (atom {}) nil :nlq))
+                     :when    (not (free? (:parameters (self.schema/tool-function entry))))]
+                 tool-var)))))))
 
 (deftest entries-carry-title-fn-test
   (testing "a tool's title function reaches the entry the adapters read"
@@ -259,20 +276,29 @@
                              {:chart?   @chart-created?
                               :shown?   (boolean (seq (:data-parts result)))
                               :query-id (get-in result [:structured-output :query-id])
+                              :chart-id (get-in result [:structured-output :chart-id])
+                              :add-it?  (boolean (re-find #"pass `chart_id` `c-1` to `write_dashboard`"
+                                                          (:output result)))
                               :run-it?  (boolean (re-find #"call `run_query` with `query_id` `q-1`"
                                                           (:output result)))
                               :unsaved? (str/includes? (:output result) instructions/not-saved-instruction)
                               :link?    (boolean (re-find #"\(metabase://query/q-1\)" (:output result)))}))))
           readable   #{"construct_notebook_query" "run_query"}]
       (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
-        (testing "with run_query offered, the query is built and the user is shown nothing"
-          (is (= {:chart? false, :shown? false, :query-id "q-1", :run-it? true, :unsaved? true, :link? true}
+        (testing "with run_query offered, the user is shown nothing, but the query still gets a chart for a dashboard"
+          (is (= {:chart? true, :shown? false, :query-id "q-1", :chart-id "c-1", :add-it? false, :run-it? true
+                  :unsaved? true, :link? true}
                  (construct! own readable {:show_chart false}))))
+        (testing "with write_dashboard offered too, a hidden query's chart_id is named for it"
+          (is (=? {:shown? false, :chart-id "c-1", :add-it? true}
+                  (construct! own (conj readable "write_dashboard") {:show_chart false}))))
         (testing "with run_query offered and the argument left out, the chart is shown and points at run_query"
-          (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? true, :unsaved? true, :link? false}
+          (is (= {:chart? true, :shown? true, :query-id "q-1", :chart-id "c-1", :add-it? false, :run-it? true
+                  :unsaved? true, :link? false}
                  (construct! own readable {}))))
         (testing "without run_query the chart is shown whatever the argument says"
-          (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false, :unsaved? true, :link? false}
+          (is (= {:chart? true, :shown? true, :query-id "q-1", :chart-id "c-1", :add-it? false, :run-it? false
+                  :unsaved? true, :link? false}
                  (construct! own #{"construct_notebook_query"} {:show_chart false}))))
         (testing "in a conversation others can read, which run_query refuses, the chart is shown"
           (is (=? {:chart? true, :shown? true}

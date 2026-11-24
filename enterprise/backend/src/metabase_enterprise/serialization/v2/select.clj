@@ -116,10 +116,16 @@
    (when (and skip-archived (archived-column? model)) [:not :archived])
    (where model opts)])
 
+(defmethod where :model/SegmentTest [_ opts]
+  ;; The tests of the Segments that an export with the same options takes. `:ids` names segment tests, not Segments.
+  [:in :segment_id ^:allow-subquery {:select [:id]
+                                     :from   [:segment]
+                                     :where  (where-clause :model/Segment (dissoc opts :ids))}])
+
 (defn select-rows
   "A reducible of the realized rows of `model` an export of `opts` takes, in stable export order: the ones with the
   primary keys `:ids` when given, the ones [[where]] picks for the `:collection-set`, `:table-ids` or `:card-ids`
-  given, and unarchived ones with `:skip-archived`."
+  given, and unarchived ones with `:skip-archived`. SegmentTests follow the Segments the same options pick."
   [model opts]
   (if (= model :model/Setting)
     (setting/exportable-settings)

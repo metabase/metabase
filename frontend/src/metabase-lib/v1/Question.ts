@@ -396,7 +396,7 @@ class Question {
   }
 
   dashboard(): CardDashboardInfo | null {
-    return this._card.dashboard;
+    return this._card.dashboard ?? null;
   }
 
   dashboardId(): DashboardId | null {
@@ -572,7 +572,7 @@ class Question {
         return true;
       }
 
-      return !Lib.areLegacyQueriesEqual(
+      return !Lib.areQueriesEqual(
         this.datasetQuery(),
         originalQuestion.datasetQuery(),
       );
@@ -597,7 +597,7 @@ class Question {
   }
 
   isQueryDirtyComparedTo(originalQuestion: Question) {
-    return !Lib.areLegacyQueriesEqual(
+    return !Lib.areQueriesEqual(
       this.datasetQuery(),
       originalQuestion.datasetQuery(),
     );

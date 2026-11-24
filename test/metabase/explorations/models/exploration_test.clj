@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.test-util :as events.tu]
+   [metabase.explorations.models.exploration :as exploration]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -55,16 +57,16 @@
                                          :collection_id (:id (collection/user->personal-collection (:id owner)))}]
       (testing "owner can read and write"
         (mt/with-current-user (:id owner)
-          (is (true? (mi/can-read?  :model/Exploration (:id e))))
-          (is (true? (mi/can-write? :model/Exploration (:id e))))))
+          (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+          (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))))
       (testing "other user cannot read or write"
         (mt/with-current-user (:id other)
-          (is (false? (mi/can-read?  :model/Exploration (:id e))))
-          (is (false? (mi/can-write? :model/Exploration (:id e))))))
+          (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+          (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))))
       (testing "superuser can read and write"
         (mt/with-test-user :crowberto
-          (is (true? (mi/can-read?  :model/Exploration (:id e))))
-          (is (true? (mi/can-write? :model/Exploration (:id e)))))))))
+          (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+          (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write)))))))))
 
 (deftest exploration-thread-perms-delegate-to-exploration-test
   (mt/with-temp [:model/User owner {}
@@ -74,9 +76,9 @@
                                        :collection_id (:id (collection/user->personal-collection (:id owner)))}
                  :model/ExplorationThread t {:exploration_id (:id e)}]
     (mt/with-current-user (:id owner)
-      (is (true? (mi/can-read? :model/ExplorationThread (:id t)))))
+      (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationThread :id (:id t)) :can_read)))))
     (mt/with-current-user (:id other)
-      (is (false? (mi/can-read? :model/ExplorationThread (:id t)))))))
+      (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationThread :id (:id t)) :can_read)))))))
 
 (deftest exploration-in-shared-collection-uses-collection-perms-test
   (testing "When an exploration lives in a shared collection, can-read?/can-write? use that collection's perms."
@@ -101,24 +103,24 @@
       (mt/with-non-admin-groups-no-collection-perms (:id coll)
         (testing "user with no collection perms cannot read"
           (mt/with-test-user :rasta
-            (is (false? (mi/can-read?  :model/Exploration (:id e))))
-            (is (false? (mi/can-write? :model/Exploration (:id e))))
-            (is (false? (mi/can-read?  :model/ExplorationThread (:id t))))
-            (is (false? (mi/can-read?  :model/ExplorationQuery (:id q))))))
+            (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+            (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))
+            (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationThread :id (:id t)) :can_read))))
+            (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationQuery :id (:id q)) :can_read))))))
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
         (testing "user with collection-read can read but not write"
           (mt/with-test-user :rasta
-            (is (true?  (mi/can-read?  :model/Exploration (:id e))))
-            (is (false? (mi/can-write? :model/Exploration (:id e))))
-            (is (true?  (mi/can-read?  :model/ExplorationThread (:id t))))
-            (is (true?  (mi/can-read?  :model/ExplorationQuery (:id q))))))
+            (is (true?  (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+            (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))
+            (is (true?  (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationThread :id (:id t)) :can_read))))
+            (is (true?  (mi/can-read? (t2/hydrate (t2/select-one :model/ExplorationQuery :id (:id q)) :can_read))))))
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
         (testing "user with collection-write can read and write"
           (mt/with-test-user :rasta
-            (is (true? (mi/can-read?  :model/Exploration (:id e))))
-            (is (true? (mi/can-write? :model/Exploration (:id e))))
-            (is (true? (mi/can-write? :model/ExplorationThread (:id t))))
-            (is (true? (mi/can-write? :model/ExplorationQuery (:id q))))))))))
+            (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+            (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))
+            (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/ExplorationThread :id (:id t)) :can_write))))
+            (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/ExplorationQuery :id (:id q)) :can_write))))))))))
 
 (deftest exploration-in-root-collection-uses-root-perms-test
   (testing "collection_id=NULL → root collection perms apply."
@@ -129,18 +131,18 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (testing "no root perms → cannot read"
           (mt/with-test-user :rasta
-            (is (false? (mi/can-read?  :model/Exploration (:id e))))))
+            (is (false? (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))))
         (mt/with-temp [:model/PermissionsGroup       g {}
                        :model/PermissionsGroupMembership _ {:group_id (:id g) :user_id (mt/user->id :rasta)}]
           (perms/grant-permissions! (:id g) "/collection/root/read/")
           (testing "root-read granted → can read but not write"
             (mt/with-test-user :rasta
-              (is (true?  (mi/can-read?  :model/Exploration (:id e))))
-              (is (false? (mi/can-write? :model/Exploration (:id e))))))
+              (is (true?  (mi/can-read? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_read))))
+              (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write))))))
           (perms/grant-permissions! (:id g) "/collection/root/")
           (testing "root-write granted → can write"
             (mt/with-test-user :rasta
-              (is (true? (mi/can-write? :model/Exploration (:id e)))))))))))
+              (is (true? (mi/can-write? (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :can_write)))))))))))
 
 (deftest exploration-query-json-transforms-test
   ;; ExplorationBlock's :metrics/:dimensions JSON roundtrip is covered by
@@ -168,7 +170,7 @@
   ;; The wiring assertions run unconditionally so this test can never silently pass
   ;; with zero assertions; only the index round-trip below is gated on engine support.
   (testing "the exploration search-model is wired up"
-    (is (= :model/Exploration (:model (search.spec/spec "exploration"))))
+    (is (= :model/Exploration (:model (search.spec/search-model-spec "exploration"))))
     (is (contains? search.config/all-models "exploration")))
   (testing "an exploration is indexed and returned from the default search"
     (when (search/supports-index?)
@@ -199,3 +201,80 @@
     (let [hydrated (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :threads)]
       (is (= 2 (count (:threads hydrated))))
       (is (= [0 1] (mapv :position (:threads hydrated)))))))
+
+(deftest create-explorations-with-different-columns-test
+  (mt/with-model-cleanup [:model/Exploration]
+    (let [creator-id   (mt/user->id :rasta)
+          explorations (exploration/create-explorations! [{:name "Plain" :creator_id creator-id}
+                                                          {:name "Archived" :creator_id creator-id :archived true}])]
+      (is (= ["Plain" "Archived"] (map :name explorations)))
+      (is (= [false true] (map #(t2/select-one-fn :archived :model/Exploration :id (:id %)) explorations))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection {live :id}  {}
+                 :model/Collection {other :id} {}]
+    (mt/with-model-cleanup [:model/Document :model/Exploration]
+      (let [user-id (mt/user->id :rasta)
+            rows    (fn [n] (mapv (fn [_] {:name (mt/random-name) :creator_id user-id :collection_id live}) (range n)))
+            fresh!  (fn [n]
+                      (let [ids (mapv :id (exploration/create-explorations! (rows n)))]
+                        (doseq [id ids]
+                          (t2/insert! :model/Document (assoc (mt/with-temp-defaults :model/Document) :exploration_id id :collection_id live)))
+                        ids))
+            update! (fn [prepare changes n]
+                      (let [ids (fresh! n)]
+                        (prepare (take-nth 2 ids))
+                        (events.tu/statement-count! #(exploration/update-explorations! (mapv (fn [id] (assoc changes :id id)) ids)))))
+            counted (fn [f]
+                      (f 1)
+                      (is (= (f 2) (f 6))))]
+        (testing "creating explorations"
+          (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration/create-explorations! rows))))))
+        (testing "updating columns, some already holding the new value"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :description "Same"}) ids)))
+                            {:description "Same"})))
+        (testing "archiving explorations and their summary documents, some already archived"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
+                            {:archived true})))
+        (testing "restoring explorations and their summary documents, some already live"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
+                            {:archived false})))
+        (testing "moving explorations, some already in the Collection"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :collection_id other}) ids)))
+                            {:collection_id other})))
+        (testing "deleting explorations"
+          (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(exploration/delete-explorations! ids))))))))))
+
+(deftest archived-directly-follows-collection-through-plain-update-test
+  (testing "a plain t2/update! of archived derives archived_directly in the statement from the Collection"
+    (mt/with-temp [:model/Collection {live :id}     {}
+                   :model/Collection {archived :id} {:archived true}
+                   :model/Exploration {a :id} {:collection_id live}
+                   :model/Exploration {b :id} {:collection_id archived}]
+      (t2/update! :model/Exploration :id [:in [a b]] {:archived true})
+      (is (= [true false] (mapv #(t2/select-one-fn :archived_directly :model/Exploration :id %) [a b])))
+      (t2/update! :model/Exploration :id [:in [a b]] {:archived false})
+      (is (= [false false] (mapv #(t2/select-one-fn :archived_directly :model/Exploration :id %) [a b]))))))
+
+(deftest unarchived-exploration-in-archived-collection-is-refused-test
+  (mt/with-temp [:model/Collection {archived-id :id} {:archived true}
+                 :model/Collection {live-id :id}     {}
+                 :model/Exploration {id :id}         {:collection_id live-id}]
+    (let [creator-id (mt/user->id :rasta)
+          stored     #(t2/select-one-fn :collection_id :model/Exploration :id id)]
+      (testing "creating one unarchived in an archived Collection throws a 400 and writes nothing"
+        (let [before (t2/count :model/Exploration)]
+          (is (= 400 (try (exploration/create-explorations! [{:name "Refused" :creator_id creator-id :collection_id archived-id}])
+                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
+          (is (= before (t2/count :model/Exploration)))))
+      (testing "moving one into an archived Collection throws a 400 and leaves it where it is"
+        (is (= 400 (try (exploration/update-explorations! [{:id id :collection_id archived-id}])
+                        (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
+        (is (= live-id (stored))))
+      (testing "an archived Exploration may go into an archived Collection"
+        (exploration/update-explorations! [{:id id :archived true :collection_id archived-id}])
+        (is (= archived-id (stored)))))))

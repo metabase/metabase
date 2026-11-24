@@ -7,7 +7,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.response :as api.response]
@@ -16,8 +15,10 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api :as api.dashboard]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
@@ -31,10 +32,11 @@
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.public-sharing.test-util :as public-sharing.test-util]
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -43,13 +45,16 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [methodical.core :as methodical]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]))
@@ -68,7 +73,7 @@
                            :COLUMN_4 [{:sourceId "not-a-card" :originalName "x" :name "COLUMN_4"}]
                            :COLUMN_5 [{:sourceId "card:abc" :originalName "invalid" :name "COLUMN_5"}]
                            :COLUMN_6 [{:name "No source ID"}]}
-          result (#'api.dashboard/update-colvalmap-setting col->val-source id->new-card)]
+          result (#'dashboards.write/update-colvalmap-setting col->val-source id->new-card)]
       (testing "should update valid card IDs that exist in the map"
         (is (= "card:456" (-> result :COLUMN_1 first :sourceId)))
         (is (= "card:987" (-> result :COLUMN_2 first :sourceId))))
@@ -151,7 +156,7 @@
   [mp from-table-key target-field-id]
   (let [query (lib/query mp (lib.metadata/table mp (mt/id from-table-key)))
         col   (m/find-first #(= (:id %) target-field-id) (lib/filterable-columns query))]
-    (lib.convert/->legacy-MBQL (lib/ref col))))
+    (lib.convert/->legacy-MBQL-ref (lib/ref col))))
 
 (defn do-with-simple-dashboard-with-tabs
   [f]
@@ -217,6 +222,12 @@
            (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
                                                                    :parameters "abc"})))))
 
+(deftest update-dashboard-refuses-invalid-parameters-test
+  (testing "PUT /api/dashboard/:id refuses parameters of the wrong shape"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:parameters []}]
+      (is (=? {:errors {:parameters some?}}
+              (mt/user-http-request :crowberto :put 400 (str "dashboard/" dashboard-id) {:parameters [{:id 100}]}))))))
+
 (deftest create-dashboard-test
   (testing "POST /api/dashboard"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -280,7 +291,7 @@
                                               :collection_id     (:id (collection/user->personal-collection (mt/user->id :crowberto)))
                                               :creator_id        (mt/user->id :crowberto)}]
     (testing "should include creator info and last edited info"
-      (revision/push-revision!
+      (revisions.tu/push-revision!
        {:entity       :model/Dashboard
         :id           crowberto-dash-id
         :user-id      (mt/user->id :crowberto)
@@ -534,9 +545,7 @@
                      :model/Revision            _                  {:user_id  user-id
                                                                     :model    "Dashboard"
                                                                     :model_id dashboard-id
-                                                                    :object   (revision/serialize-instance dashboard
-                                                                                                           dashboard-id
-                                                                                                           dashboard)}]
+                                                                    :object   (revision/snapshot :model/Dashboard dashboard)}]
         (with-dashboards-in-readable-collection! [dashboard-id]
           (api.card-test/with-cards-in-readable-collection! [card-id]
             (is (=? {:name                       "Test Dashboard"
@@ -678,7 +687,7 @@
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                      :collection_authority_level)))
             (let [collection-id (:collection_id (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))]
-              (t2/update! :model/Collection :id collection-id {:authority_level "official"}))
+              (collection/update-collections! [{:id collection-id :authority_level "official"}] nil))
             (is (= "official"
                    (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                        :collection_authority_level)))))))))
@@ -1517,27 +1526,28 @@
 
 (deftest copy-dashboard-with-dashboard-questions
   (testing "`is_deep_copy=true` works for dashboards regardless of whether they have dashboard questions"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                   :model/Card {card-id :id} {:collection_id coll-id
-                                              :dashboard_id dash-id
-                                              :database_id (mt/id)
-                                              :dataset_query (mt/$ids
-                                                               {:database (mt/id)
-                                                                :type     :query
-                                                                :query    {:source-table $$orders
-                                                                           :aggregation  [[:avg $orders.total]]
-                                                                           :breakout     [!month.orders.created_at]}})}
-                   :model/DashboardCard _ {:dashboard_id dash-id
-                                           :card_id card-id}]
-      (let [response (mt/user-http-request :rasta :post 200
-                                           (format "dashboard/%d/copy" dash-id)
-                                           {:is_deep_copy true})]
-        (is (some? (:id response)))
-        (is (not= dash-id (:id response)))
-        (let [copied-cards (t2/select :model/Card :dashboard_id (:id response))]
-          (is (= 1 (count copied-cards)))
-          (is (not= card-id (:id (first copied-cards)))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id coll-id}
+                       :model/Card {card-id :id} {:collection_id coll-id
+                                                  :dashboard_id dash-id
+                                                  :database_id (mt/id)
+                                                  :dataset_query (mt/$ids
+                                                                   {:database (mt/id)
+                                                                    :type     :query
+                                                                    :query    {:source-table $$orders
+                                                                               :aggregation  [[:avg $orders.total]]
+                                                                               :breakout     [!month.orders.created_at]}})}
+                       :model/DashboardCard _ {:dashboard_id dash-id
+                                               :card_id card-id}]
+          (let [response (mt/user-http-request :rasta :post 200
+                                               (format "dashboard/%d/copy" dash-id)
+                                               {:is_deep_copy true})]
+            (is (some? (:id response)))
+            (is (not= dash-id (:id response)))
+            (let [copied-cards (t2/select :model/Card :dashboard_id (:id response))]
+              (is (= 1 (count copied-cards)))
+              (is (not= card-id (:id (first copied-cards)))))))))))
 
 (deftest copy-dashboard-with-dashboard-questions-2
   (testing "`is_deep_copy=false` errors for dashboards containing dashboard questions"
@@ -1554,42 +1564,44 @@
 
 (deftest copy-dashboard-with-dashboard-questions-3
   (testing "`is_deep_copy=false` works for a dashboard without any dashboard questions"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                   :model/Card {card-id :id} {:collection_id coll-id}
-                   :model/DashboardCard _ {:dashboard_id dash-id
-                                           :card_id card-id}]
-      (let [response (mt/user-http-request :rasta :post 200
-                                           (format "dashboard/%d/copy" dash-id)
-                                           {:is_deep_copy false})]
-        (is (some? (:id response)))
-        (is (not= dash-id (:id response)))
-        (is (zero? (t2/count :model/Card :dashboard_id (:id response))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id coll-id}
+                       :model/Card {card-id :id} {:collection_id coll-id}
+                       :model/DashboardCard _ {:dashboard_id dash-id
+                                               :card_id card-id}]
+          (let [response (mt/user-http-request :rasta :post 200
+                                               (format "dashboard/%d/copy" dash-id)
+                                               {:is_deep_copy false})]
+            (is (some? (:id response)))
+            (is (not= dash-id (:id response)))
+            (is (zero? (t2/count :model/Card :dashboard_id (:id response))))))))))
 
 (deftest copy-dashboard-with-dashboard-questions-4
   (testing "`is_deep_copy=false` works for a dashboard with archived dashboard questions"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                   :model/Card {card-id :id} {:collection_id coll-id
-                                              :dashboard_id dash-id
-                                              :database_id (mt/id)
-                                              :archived true
-                                              :dataset_query (mt/$ids
-                                                               {:database (mt/id)
-                                                                :type     :query
-                                                                :query    {:source-table $$orders
-                                                                           :aggregation  [[:avg $orders.total]]
-                                                                           :breakout     [!month.orders.created_at]}})}
-                   :model/DashboardCard _ {:dashboard_id dash-id
-                                           :card_id card-id}]
-      (let [response (mt/user-http-request :rasta :post 200
-                                           (format "dashboard/%d/copy" dash-id)
-                                           {:is_deep_copy false})]
-        (is (some? (:id response)))
-        (is (not= dash-id (:id response)))
-        ;; Verify no cards were copied
-        (is (zero? (t2/count :model/Card :dashboard_id (:id response))))
-        (is (zero? (t2/count :model/DashboardCard :dashboard_id (:id response))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id coll-id}
+                       :model/Card {card-id :id} {:collection_id coll-id
+                                                  :dashboard_id dash-id
+                                                  :database_id (mt/id)
+                                                  :archived true
+                                                  :dataset_query (mt/$ids
+                                                                   {:database (mt/id)
+                                                                    :type     :query
+                                                                    :query    {:source-table $$orders
+                                                                               :aggregation  [[:avg $orders.total]]
+                                                                               :breakout     [!month.orders.created_at]}})}
+                       :model/DashboardCard _ {:dashboard_id dash-id
+                                               :card_id card-id}]
+          (let [response (mt/user-http-request :rasta :post 200
+                                               (format "dashboard/%d/copy" dash-id)
+                                               {:is_deep_copy false})]
+            (is (some? (:id response)))
+            (is (not= dash-id (:id response)))
+            ;; Verify no cards were copied
+            (is (zero? (t2/count :model/Card :dashboard_id (:id response))))
+            (is (zero? (t2/count :model/DashboardCard :dashboard_id (:id response))))))))))
 
 (deftest copy-dashboard-test-2
   (mt/with-model-cleanup [:model/Dashboard]
@@ -1701,151 +1713,153 @@
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset test-data
       (testing "When there are cards the user lacks write perms for"
-        (mt/with-temp [:model/Collection source-coll {:name "Source collection"}
-                       :model/Collection no-read-coll {:name "Crowberto lacks write coll"}
-                       :model/Collection dest-coll   {:name "Destination collection"}
-                       :model/Dashboard  dashboard {:name          "Dashboard to be Copied"
-                                                    :description   "A description"
-                                                    :collection_id (u/the-id source-coll)
-                                                    :creator_id    (mt/user->id :rasta)}
-                       :model/Card       total-card  {:name "Total orders per month"
-                                                      :collection_id (u/the-id no-read-coll)
-                                                      :display :line
-                                                      :visualization_settings
-                                                      {:graph.dimensions ["CREATED_AT"]
-                                                       :graph.metrics ["sum"]}
+        (mt/with-model-cleanup [:model/Collection]
+          (let [source-coll (first (collection/create-collections! [{:location "/" :name "Source collection"}]))
+                no-read-coll (first (collection/create-collections! [{:location "/" :name "Crowberto lacks write coll"}]))
+                dest-coll (first (collection/create-collections! [{:location "/" :name "Destination collection"}]))]
+            (mt/with-temp [:model/Dashboard  dashboard {:name          "Dashboard to be Copied"
+                                                        :description   "A description"
+                                                        :collection_id (u/the-id source-coll)
+                                                        :creator_id    (mt/user->id :rasta)}
+                           :model/Card       total-card  {:name "Total orders per month"
+                                                          :collection_id (u/the-id no-read-coll)
+                                                          :display :line
+                                                          :visualization_settings
+                                                          {:graph.dimensions ["CREATED_AT"]
+                                                           :graph.metrics ["sum"]}
+                                                          :dataset_query
+                                                          (mt/$ids
+                                                            {:database (mt/id)
+                                                             :type     :query
+                                                             :query    {:source-table $$orders
+                                                                        :aggregation  [[:sum $orders.total]]
+                                                                        :breakout     [!month.orders.created_at]}})}
+                           :model/Card      avg-card  {:name "Average orders per month"
+                                                       :collection_id (u/the-id source-coll)
+                                                       :display :line
+                                                       :visualization_settings
+                                                       {:graph.dimensions ["CREATED_AT"]
+                                                        :graph.metrics ["sum"]}
+                                                       :dataset_query
+                                                       (mt/$ids
+                                                         {:database (mt/id)
+                                                          :type     :query
+                                                          :query    {:source-table $$orders
+                                                                     :aggregation  [[:avg $orders.total]]
+                                                                     :breakout     [!month.orders.created_at]}})}
+                           :model/Card          card {:name "A card"
+                                                      :collection_id (u/the-id source-coll)
                                                       :dataset_query
                                                       (mt/$ids
                                                         {:database (mt/id)
-                                                         :type     :query
-                                                         :query    {:source-table $$orders
-                                                                    :aggregation  [[:sum $orders.total]]
-                                                                    :breakout     [!month.orders.created_at]}})}
-                       :model/Card      avg-card  {:name "Average orders per month"
-                                                   :collection_id (u/the-id source-coll)
-                                                   :display :line
-                                                   :visualization_settings
-                                                   {:graph.dimensions ["CREATED_AT"]
-                                                    :graph.metrics ["sum"]}
-                                                   :dataset_query
-                                                   (mt/$ids
-                                                     {:database (mt/id)
-                                                      :type     :query
-                                                      :query    {:source-table $$orders
-                                                                 :aggregation  [[:avg $orders.total]]
-                                                                 :breakout     [!month.orders.created_at]}})}
-                       :model/Card          card {:name "A card"
-                                                  :collection_id (u/the-id source-coll)
-                                                  :dataset_query
-                                                  (mt/$ids
-                                                    {:database (mt/id)
-                                                     :type :query
-                                                     :query {:source-table $$orders
-                                                             :limit 4}})}
-                       :model/DashboardCard dashcard {:dashboard_id (u/the-id dashboard)
-                                                      :card_id    (u/the-id total-card)
-                                                      :size_x 6, :size_y 6}
-                       :model/DashboardCard _        {:dashboard_id (u/the-id dashboard)
-                                                      :card_id    (u/the-id card)
-                                                      :size_x 6, :size_y 6}
-                       :model/DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
-                                                     :card_id (u/the-id avg-card)
-                                                     :position 0}]
-          (mt/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/DashboardCardSeries]
-            (perms/revoke-collection-permissions! (perms-group/all-users) no-read-coll)
-            (let [resp (mt/user-http-request :rasta :post 200
-                                             (format "dashboard/%d/copy" (:id dashboard))
-                                             {:name        "New dashboard"
-                                              :description "A new description"
-                                              :is_deep_copy true
-                                              :collection_id (u/the-id dest-coll)})]
-              (is (= (:collection_id resp) (u/the-id dest-coll))
-                  "Dashboard should go into the destination collection")
-              (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
-                    copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))]
-                (testing "Copies only one of the questions on the dashboard"
-                  (is (= 1 (count copied-cards))))
-                (testing "Copies one of the dashboard cards"
-                  (is (= 1 (count copied-db-cards))))
-                (testing "Should copy cards"
-                  (is (= #{"A card"}
-                         (into #{} (map :name) copied-cards))
-                      "Should preserve the titles of the original cards"))
-                (testing "Should not create dashboardcardseries because the base card lacks permissions"
-                  (is (empty? (t2/select :model/DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
-                (testing "Response includes uncopied cards"
-                  ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
-                  ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
-                  ;; you lack permissions for are also not copied, but you can see the whole card.
-                  (is (= 2 (->> resp :uncopied count))))))))))))
+                                                         :type :query
+                                                         :query {:source-table $$orders
+                                                                 :limit 4}})}
+                           :model/DashboardCard dashcard {:dashboard_id (u/the-id dashboard)
+                                                          :card_id    (u/the-id total-card)
+                                                          :size_x 6, :size_y 6}
+                           :model/DashboardCard _        {:dashboard_id (u/the-id dashboard)
+                                                          :card_id    (u/the-id card)
+                                                          :size_x 6, :size_y 6}
+                           :model/DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
+                                                         :card_id (u/the-id avg-card)
+                                                         :position 0}]
+              (mt/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/DashboardCardSeries]
+                (perms/revoke-collection-permissions! (perms-group/all-users) no-read-coll)
+                (let [resp (mt/user-http-request :rasta :post 200
+                                                 (format "dashboard/%d/copy" (:id dashboard))
+                                                 {:name        "New dashboard"
+                                                  :description "A new description"
+                                                  :is_deep_copy true
+                                                  :collection_id (u/the-id dest-coll)})]
+                  (is (= (:collection_id resp) (u/the-id dest-coll))
+                      "Dashboard should go into the destination collection")
+                  (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
+                        copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))]
+                    (testing "Copies only one of the questions on the dashboard"
+                      (is (= 1 (count copied-cards))))
+                    (testing "Copies one of the dashboard cards"
+                      (is (= 1 (count copied-db-cards))))
+                    (testing "Should copy cards"
+                      (is (= #{"A card"}
+                             (into #{} (map :name) copied-cards))
+                          "Should preserve the titles of the original cards"))
+                    (testing "Should not create dashboardcardseries because the base card lacks permissions"
+                      (is (empty? (t2/select :model/DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
+                    (testing "Response includes uncopied cards"
+                      ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
+                      ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
+                      ;; you lack permissions for are also not copied, but you can see the whole card.
+                      (is (= 2 (->> resp :uncopied count))))))))))))))
 
 (deftest copy-dashboard-test-5
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset test-data
       (testing "When source and destination are the same"
-        (mt/with-temp [:model/Collection source-coll {:name "Source collection"}
-                       :model/Dashboard  dashboard {:name          "Dashboard to be Copied"
-                                                    :description   "A description"
-                                                    :collection_id (u/the-id source-coll)
-                                                    :creator_id    (mt/user->id :rasta)}
-                       :model/Card       total-card  {:name "Total orders per month"
+        (mt/with-model-cleanup [:model/Collection]
+          (let [source-coll (first (collection/create-collections! [{:location "/" :name "Source collection"}]))]
+            (mt/with-temp [:model/Dashboard  dashboard {:name          "Dashboard to be Copied"
+                                                        :description   "A description"
+                                                        :collection_id (u/the-id source-coll)
+                                                        :creator_id    (mt/user->id :rasta)}
+                           :model/Card       total-card  {:name "Total orders per month"
+                                                          :collection_id (u/the-id source-coll)
+                                                          :display :line
+                                                          :visualization_settings
+                                                          {:graph.dimensions ["CREATED_AT"]
+                                                           :graph.metrics ["sum"]}
+                                                          :dataset_query
+                                                          (mt/$ids
+                                                            {:database (mt/id)
+                                                             :type     :query
+                                                             :query    {:source-table $$orders
+                                                                        :aggregation  [[:sum $orders.total]]
+                                                                        :breakout     [!month.orders.created_at]}})}
+                           :model/Card      avg-card  {:name "Average orders per month"
+                                                       :collection_id (u/the-id source-coll)
+                                                       :display :line
+                                                       :visualization_settings
+                                                       {:graph.dimensions ["CREATED_AT"]
+                                                        :graph.metrics ["sum"]}
+                                                       :dataset_query
+                                                       (mt/$ids
+                                                         {:database (mt/id)
+                                                          :type     :query
+                                                          :query    {:source-table $$orders
+                                                                     :aggregation  [[:avg $orders.total]]
+                                                                     :breakout     [!month.orders.created_at]}})}
+                           :model/Card          card {:name "A card"
                                                       :collection_id (u/the-id source-coll)
-                                                      :display :line
-                                                      :visualization_settings
-                                                      {:graph.dimensions ["CREATED_AT"]
-                                                       :graph.metrics ["sum"]}
                                                       :dataset_query
                                                       (mt/$ids
                                                         {:database (mt/id)
-                                                         :type     :query
-                                                         :query    {:source-table $$orders
-                                                                    :aggregation  [[:sum $orders.total]]
-                                                                    :breakout     [!month.orders.created_at]}})}
-                       :model/Card      avg-card  {:name "Average orders per month"
-                                                   :collection_id (u/the-id source-coll)
-                                                   :display :line
-                                                   :visualization_settings
-                                                   {:graph.dimensions ["CREATED_AT"]
-                                                    :graph.metrics ["sum"]}
-                                                   :dataset_query
-                                                   (mt/$ids
-                                                     {:database (mt/id)
-                                                      :type     :query
-                                                      :query    {:source-table $$orders
-                                                                 :aggregation  [[:avg $orders.total]]
-                                                                 :breakout     [!month.orders.created_at]}})}
-                       :model/Card          card {:name "A card"
-                                                  :collection_id (u/the-id source-coll)
-                                                  :dataset_query
-                                                  (mt/$ids
-                                                    {:database (mt/id)
-                                                     :type :query
-                                                     :query {:source-table $$orders
-                                                             :limit 4}})}
-                       :model/DashboardCard dashcard {:dashboard_id (u/the-id dashboard)
-                                                      :card_id    (u/the-id total-card)
-                                                      :size_x 6, :size_y 6}
-                       :model/DashboardCard _        {:dashboard_id (u/the-id dashboard)
-                                                      :card_id    (u/the-id card)
-                                                      :size_x 6, :size_y 6}
-                       :model/DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
-                                                     :card_id (u/the-id avg-card)
-                                                     :position 0}]
-          (mt/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/DashboardCardSeries]
-            (let [_resp (mt/user-http-request :rasta :post 200
-                                              (format "dashboard/%d/copy" (:id dashboard))
-                                              {:name        "New dashboard"
-                                               :description "A new description"
-                                               :is_deep_copy true
-                                               :collection_id (u/the-id source-coll)})
-                  cards-in-coll (t2/select 'Card :collection_id (u/the-id source-coll))]
-              ;; original 3 plust 3 duplicates
-              (is (= 6 (count cards-in-coll)) "Not all cards were copied")
-              (is (= (into #{} (comp (map :name)
-                                     (mapcat (fn [n] [n (str n " - Duplicate")])))
-                           [total-card avg-card card])
-                     (set (map :name cards-in-coll)))
-                  "Cards should have \"- Duplicate\" appended"))))))))
+                                                         :type :query
+                                                         :query {:source-table $$orders
+                                                                 :limit 4}})}
+                           :model/DashboardCard dashcard {:dashboard_id (u/the-id dashboard)
+                                                          :card_id    (u/the-id total-card)
+                                                          :size_x 6, :size_y 6}
+                           :model/DashboardCard _        {:dashboard_id (u/the-id dashboard)
+                                                          :card_id    (u/the-id card)
+                                                          :size_x 6, :size_y 6}
+                           :model/DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
+                                                         :card_id (u/the-id avg-card)
+                                                         :position 0}]
+              (mt/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/DashboardCardSeries]
+                (let [_resp (mt/user-http-request :rasta :post 200
+                                                  (format "dashboard/%d/copy" (:id dashboard))
+                                                  {:name        "New dashboard"
+                                                   :description "A new description"
+                                                   :is_deep_copy true
+                                                   :collection_id (u/the-id source-coll)})
+                      cards-in-coll (t2/select 'Card :collection_id (u/the-id source-coll))]
+                  ;; original 3 plust 3 duplicates
+                  (is (= 6 (count cards-in-coll)) "Not all cards were copied")
+                  (is (= (into #{} (comp (map :name)
+                                         (mapcat (fn [n] [n (str n " - Duplicate")])))
+                               [total-card avg-card card])
+                         (set (map :name cards-in-coll)))
+                      "Cards should have \"- Duplicate\" appended"))))))))))
 
 (defn- dashcards-by-position
   "Returns dashcards for a dashboard ordered by their position instead of creation like [[dashboard/dashcards]] does."
@@ -1886,11 +1900,9 @@
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
   *readable-card-ids* #{})
 
-(defmethod mi/can-read? ::dispatches-on-dynamic
-  ([fake-model]
-   (contains? *readable-card-ids* (:id fake-model)))
-  ([_fake-model id]
-   (contains? *readable-card-ids* id)))
+(methodical/defmethod t2/simple-hydrate [::dispatches-on-dynamic :can_read]
+  [_model k fake-model]
+  (vary-meta fake-model assoc k (boolean (contains? *readable-card-ids* (:id fake-model)))))
 
 (defn- card-model
   "Return a card \"model\" that reports as a `::dispatches-on-dynamic` model type, and checking `mi/can-write?` checks
@@ -1911,7 +1923,7 @@
         (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
                 :reference {}
                 :discard []}
-               (#'api.dashboard/cards-to-copy true dashcards))))))
+               (#'dashboards.write/cards-to-copy true dashcards))))))
   (testing "Identifies cards which cannot be copied"
     (testing "If they are in a series"
       (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
@@ -1920,7 +1932,7 @@
           (is (= {:copy {1 {:id 1} 3 {:id 3}}
                   :reference {}
                   :discard [{:id 2}]}
-                 (#'api.dashboard/cards-to-copy true dashcards))))))
+                 (#'dashboards.write/cards-to-copy true dashcards))))))
     (testing "When the base of a series lacks permissions"
       (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                        {:id 13, :card_id 3 :card (card-model {:id 3})}]]
@@ -1928,7 +1940,7 @@
           (is (= {:copy {3 {:id 3}}
                   :reference {}
                   :discard [{:id 1} {:id 2}]}
-                 (#'api.dashboard/cards-to-copy true dashcards)))))))
+                 (#'dashboards.write/cards-to-copy true dashcards)))))))
   (testing "Identifies cards to be referenced"
     (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                      {:id 13, :card_id 3 :card (card-model {:id 3})}]]
@@ -1938,7 +1950,7 @@
                             3 {:id 3}}
                 :copy {}
                 :discard []}
-               (#'api.dashboard/cards-to-copy false dashcards))))))
+               (#'dashboards.write/cards-to-copy false dashcards))))))
   (testing "Identifies cards that cannot be referenced"
     (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                      {:id 13, :card_id 3 :card (card-model {:id 3})}]]
@@ -1947,54 +1959,54 @@
                             3 {:id 3}}
                 :copy {}
                 :discard [{:id 2}]}
-               (#'api.dashboard/cards-to-copy false dashcards)))))))
+               (#'dashboards.write/cards-to-copy false dashcards)))))))
 
 (deftest update-cards-for-copy-test
   (testing "Returns the original dashcards for referenced dashcards"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
                      {:card_id 3 :card {:id 3}}]]
       (is (= dashcards
-             (api.dashboard/update-cards-for-copy dashcards
-                                                  nil
-                                                  {1 {:id 1}
-                                                   2 {:id 2}
-                                                   3 {:id 3}}
-                                                  nil))))
+             (dashboards.write/update-cards-for-copy dashcards
+                                                     nil
+                                                     {1 {:id 1}
+                                                      2 {:id 2}
+                                                      3 {:id 3}}
+                                                     nil))))
     (testing "with tab-ids updated if dashboard has tab"
       (is (= [{:card_id 1 :card {:id 1} :dashboard_tab_id 10}
               {:card_id 3 :card {:id 3} :dashboard_tab_id 20}]
-             (api.dashboard/update-cards-for-copy [{:card_id 1 :card {:id 1} :dashboard_tab_id 1}
-                                                   {:card_id 3 :card {:id 3} :dashboard_tab_id 2}]
-                                                  nil
-                                                  {1 {:id 1}
-                                                   2 {:id 2}
-                                                   3 {:id 3}}
-                                                  {1 10
-                                                   2 20}))))))
+             (dashboards.write/update-cards-for-copy [{:card_id 1 :card {:id 1} :dashboard_tab_id 1}
+                                                      {:card_id 3 :card {:id 3} :dashboard_tab_id 2}]
+                                                     nil
+                                                     {1 {:id 1}
+                                                      2 {:id 2}
+                                                      3 {:id 3}}
+                                                     {1 10
+                                                      2 20}))))))
 
 (deftest update-cards-for-copy-test-2
   (testing "When copy style is deep"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
       (testing "Can omit series cards"
         (is (= [{:card_id 5 :card {:id 5} :series [{:id 6}]}]
-               (api.dashboard/update-cards-for-copy dashcards
-                                                    {1 {:id 5}
-                                                     2 {:id 6}}
-                                                    nil
-                                                    nil)))))
+               (dashboards.write/update-cards-for-copy dashcards
+                                                       {1 {:id 5}
+                                                        2 {:id 6}}
+                                                       nil
+                                                       nil)))))
     (testing "Can omit whole card with series if not copied"
       (let [dashcards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
                        {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
         (is (= [{:card_id 7 :card {:id 7} :series [{:id 8} {:id 9}]}]
-               (api.dashboard/update-cards-for-copy dashcards
-                                                    {1 {:id 7}
-                                                     2 {:id 8}
-                                                     3 {:id 9}
-                                                     ;; not copying id 4 which is the base of the following two
-                                                     5 {:id 10}
-                                                     6 {:id 11}}
-                                                    nil
-                                                    nil)))))
+               (dashboards.write/update-cards-for-copy dashcards
+                                                       {1 {:id 7}
+                                                        2 {:id 8}
+                                                        3 {:id 9}
+                                                        ;; not copying id 4 which is the base of the following two
+                                                        5 {:id 10}
+                                                        6 {:id 11}}
+                                                       nil
+                                                       nil)))))
     (testing "Updates parameter mappings to new card ids"
       (let [dashcards [{:card_id            1
                         :card               {:id 1}
@@ -2008,10 +2020,10 @@
                                        :card_id      2
                                        :target       [:dimension
                                                       [:field 63 nil]]}]}]
-               (api.dashboard/update-cards-for-copy dashcards
-                                                    {1 {:id 2}}
-                                                    nil
-                                                    nil)))))
+               (dashboards.write/update-cards-for-copy dashcards
+                                                       {1 {:id 2}}
+                                                       nil
+                                                       nil)))))
     (testing "Does not think action cards are text cards"
       (let [dashcards [{:card_id 1 :card {:id 1}}
                        {:visualization_settings {:virtual_card {:display "text"}
@@ -2020,20 +2032,20 @@
                                                  :text         "keep me!"}}
                        {:action_id 123}]]
         (is (= (butlast dashcards)
-               (api.dashboard/update-cards-for-copy dashcards
-                                                    {1 {:id 1}}
-                                                    nil
-                                                    nil)))))
+               (dashboards.write/update-cards-for-copy dashcards
+                                                       {1 {:id 1}}
+                                                       nil
+                                                       nil)))))
     (testing "Copies iframe cards"
       (let [dashcards [{:card_id 1 :card {:id 1}}
                        {:visualization_settings
                         {:virtual_card {:display "iframe"}
                          :iframe "<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" />"}}]]
         (is (= dashcards
-               (api.dashboard/update-cards-for-copy dashcards
-                                                    {1 {:id 1}}
-                                                    nil
-                                                    nil)))))))
+               (dashboards.write/update-cards-for-copy dashcards
+                                                       {1 {:id 1}}
+                                                       nil
+                                                       nil)))))))
 
 (deftest copy-dashboard-cards-test
   (testing "POST /api/dashboard/:id/copy"
@@ -2152,7 +2164,7 @@
        (let [dashcard-info     (select-keys dashboard-card [:id :size_x :size_y :row :col :parameter_mappings])
              new-mappings      [{:parameter_id "_CATEGORY_ID_"
                                  :target       [:dimension [:field (mt/id :venues :price) nil]]}]
-             new-dashcard-info (assoc dashcard-info :size_x 1000)]
+             new-dashcard-info (assoc dashcard-info :size_x 20)]
          (f {:dashboard-id           dashboard-id
              :card-id                card-id
              :original-mappings      mappings
@@ -2496,6 +2508,26 @@
                                :dashcards []})
         (is (= 0 (count (snowplow-test/pop-event-data-and-user-id!))))))))
 
+(deftest update-dashcards-track-question-added-snowplow-test
+  (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                 :model/Card      {card-id :id}      {}]
+    (with-dashboards-in-writeable-collection! [dashboard-id]
+      (api.card-test/with-cards-in-readable-collection! [card-id]
+        (snowplow-test/with-fake-snowplow-collector
+          (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
+                                {:dashcards [{:id     -1
+                                              :card_id card-id
+                                              :row    0
+                                              :col    0
+                                              :size_x 4
+                                              :size_y 4}]
+                                 :tabs      []})
+          (is (some #{{:data    {"dashboard_id" dashboard-id
+                                 "question_id"  card-id
+                                 "event"        "question_added_to_dashboard"}
+                       :user-id (str (mt/user->id :rasta))}}
+                    (snowplow-test/pop-event-data-and-user-id!))))))))
+
 ;;; -------------------------------------- Create dashcards tests ---------------------------------------
 
 (deftest simple-creation-with-no-additional-series-test
@@ -2785,6 +2817,27 @@
                 :updated_at                 true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))))))
 
+(deftest update-cards-empty-card-title-test
+  (testing "PUT /api/dashboard/:id keeps an empty card.title, so a cleared title stays cleared (metabase#12013, metabase#36788)"
+    (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                   :model/Card          {card-id :id}      {:name "Orders"}
+                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (move-cards-to-dashboard-collection! dashboard-id [card-id])
+        (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
+                              {:dashcards [{:id                     dashcard-id
+                                            :size_x                 4
+                                            :size_y                 4
+                                            :col                    0
+                                            :row                    0
+                                            :visualization_settings {:card.title ""}}]
+                               :tabs      []})
+        (is (= {:card.title ""}
+               (-> (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))
+                   :dashcards
+                   first
+                   :visualization_settings)))))))
+
 (deftest update-cards-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
@@ -2965,6 +3018,107 @@
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/public_link" Integer/MAX_VALUE)))))))
 
+(deftest share-dashboard-on-routed-database-test
+  (when config/ee-available?
+    (testing "POST /api/dashboard/:id/public_link"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-premium-features #{:database-routing}
+          (testing "a Dashboard with a Card on a routed database that does not allow anonymous access cannot be shared"
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard     dashboard  {}
+                           :model/Card          card       {}
+                           :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                     (mt/user-http-request :crowberto :post 400
+                                           (format "dashboard/%d/public_link" (u/the-id dashboard)))))
+              (is (not (t2/exists? :model/Dashboard :id (u/the-id dashboard), :public_uuid [:not= nil])))))
+          (testing "a Dashboard whose Cards live elsewhere but whose filter draws its value list from the routed
+                 database refuses: it reaches that database through something it renders, not through its own Cards"
+            (mt/with-temp [:model/DatabaseRouter _            {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Database       other        {}
+                           :model/Card           value-source {}
+                           :model/Card           main         {:database_id (u/the-id other)}
+                           :model/Dashboard      dashboard
+                           {:parameters [(public-sharing.test-util/card-value-source-parameter
+                                          (u/the-id value-source))]}
+                           :model/DashboardCard  _            {:dashboard_id (u/the-id dashboard)
+                                                               :card_id      (u/the-id main)}]
+              (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                     (mt/user-http-request :crowberto :post 400
+                                           (format "dashboard/%d/public_link" (u/the-id dashboard)))))
+              (is (not (t2/exists? :model/Dashboard :id (u/the-id dashboard), :public_uuid [:not= nil])))))
+          (testing "a Card reaching the routed database only as a series on one of its DashboardCards refuses too"
+            (mt/with-temp [:model/DatabaseRouter      _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Database            other     {}
+                           :model/Dashboard           dashboard {}
+                           :model/Card                main      {:database_id (u/the-id other)}
+                           :model/DashboardCard       dashcard  {:dashboard_id (u/the-id dashboard)
+                                                                 :card_id      (u/the-id main)}
+                           :model/Card                series    {}
+                           :model/DashboardCardSeries _         {:dashboardcard_id (u/the-id dashcard)
+                                                                 :card_id          (u/the-id series)}]
+              (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                     (mt/user-http-request :crowberto :post 400
+                                           (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+          (testing "the permission check runs before the refusal, so a non-admin is refused generically and the
+                 explanation naming the database reaches only a viewer who could act on it"
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard      dashboard {}
+                           :model/Card           card      {}
+                           :model/DashboardCard  _         {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403
+                                           (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+          (testing "an already-shared Dashboard still returns its existing link, so a dead one stays deletable"
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard     dashboard  (shared-dashboard)
+                           :model/Card          card       {}
+                           :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (= (:public_uuid dashboard)
+                     (:uuid (mt/user-http-request :crowberto :post 200
+                                                  (format "dashboard/%d/public_link" (u/the-id dashboard))))))))
+          (testing "once an admin allows anonymous access it can"
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id              (mt/id)
+                                                            :user_attribute           "db_name"
+                                                            :anonymous_access_granted true}
+                           :model/Dashboard     dashboard  {}
+                           :model/Card          card       {}
+                           :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+          (testing "a Dashboard whose only Card on the routed database is archived renders nothing anonymously -- the
+                 public dashcard route 404s on it -- so it can"
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard      dashboard {}
+                           :model/Card           card      {:archived true}
+                           :model/DashboardCard  _         {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+          (testing "an empty Dashboard on a routed database queries nothing, so it can"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard     dashboard {}]
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "dashboard/%d/public_link" (u/the-id dashboard))))))))
+        (testing "without the database-routing feature it is still refused: the router refuses anonymous queries either way"
+          (mt/with-premium-features #{}
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard     dashboard  {}
+                           :model/Card          card       {}
+                           :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                     (mt/user-http-request :crowberto :post 400
+                                           (format "dashboard/%d/public_link" (u/the-id dashboard)))))
+              (is (not (t2/exists? :model/Dashboard :id (u/the-id dashboard), :public_uuid [:not= nil]))))))))))
+
 (deftest delete-public-link-test
   (testing "DELETE /api/dashboard/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -3022,11 +3176,7 @@
   tests that return byte arrays (such as things that work with query hashes), since identical arrays are not
   considered equal."
   [x]
-  (walk/postwalk (fn [form]
-                   (if (instance? (Class/forName "[B") form)
-                     (codec/base64-encode form)
-                     form))
-                 x))
+  (match/replace-all x #'bytes? (codec/base64-encode &match)))
 
 (defn- fake-query [x]
   (lib/native-query (lib.tu/mock-metadata-provider {:database (assoc meta/database :id 55001)})
@@ -3277,7 +3427,7 @@
     (mt/with-full-data-perms-for-all-users!
       (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
         ;; make sure we have a clean start
-        (field-values/clear-field-values-for-field! (mt/id :categories :name))
+        (field-values/delete-field-values! (field-values/ids-of-fields [(mt/id :categories :name)]))
         (testing "Show me names of categories"
           (is (= {:values          [["African"] ["American"] ["Artisan"]]
                   :has_more_values false}
@@ -3428,8 +3578,7 @@
                                    :dataset_query (mt/mbql-query products)}
        :model/Card          card2 {:database_id   (mt/id)
                                    :table_id      (mt/id :venues)
-                                   :dataset_query (-> (lib/query mp (lib.metadata/card mp (:id model)))
-                                                      lib.convert/->legacy-MBQL)}
+                                   :dataset_query (lib/query mp (lib.metadata/card mp (:id model)))}
        :model/DashboardCard dashcard {:card_id            (:id card)
                                       :dashboard_id       (:id dashboard)
                                       :parameter_mappings [{:parameter_id "_CATEGORY_"
@@ -3439,7 +3588,7 @@
                                      :dashboardcard_id (:id dashcard)
                                      :position 0}]
       ;; make sure we have a clean start
-      (field-values/clear-field-values-for-field! (mt/id :categories :name))
+      (field-values/delete-field-values! (field-values/ids-of-fields [(mt/id :categories :name)]))
       (testing "Can get field values for parameters tied to series #58328"
         (is (= {:values          [["Doohickey"] ["Gadget"] ["Gizmo"]]
                 :has_more_values false}
@@ -3977,8 +4126,7 @@
         uuid-dogs
         (mt/with-temp
           [:model/Card          card      {:dataset_query (let [mp (mt/metadata-provider)]
-                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :dogs)))
-                                                                (lib.convert/->legacy-MBQL)))}
+                                                            (lib/query mp (lib.metadata/table mp (mt/id :dogs))))}
            :model/Dashboard     dashboard {:parameters [{:name      "Text"
                                                          :slug      "text"
                                                          :id        "_text_"
@@ -5030,6 +5178,20 @@
       :email-body-pattern        "href="
       :match-email-body-pattern? false})))
 
+(deftest update-response-leaves-out-archived-subscriptions-test
+  (testing "a REST save that archives a subscription doesn't return what the archive reports"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard {dash-id :id}  {:parameters [{:id   "gone"
+                                                                    :name "Gone"
+                                                                    :slug "gone"
+                                                                    :type "category"}]}
+                     :model/Pulse     {pulse-id :id} {:dashboard_id dash-id
+                                                      :creator_id   (mt/user->id :rasta)
+                                                      :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
+        (let [response (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:parameters []})]
+          (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
+          (is (not-any? #(re-find #"archived.subscriptions" (name %)) (keys response))))))))
+
 (deftest run-mbql5-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
     (testing "Should be able to run a query for a DashCard with an MBQL 5 query (#39024)"
@@ -5072,23 +5234,26 @@
   (let [can-restore? (fn [dash-id user]
                        (:can_restore (mt/user-http-request user :get 200 (str "dashboard/" dash-id))))]
     (testing "I can restore a simply trashed dashboard"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "A"}
-                     :model/Dashboard {dash-id :id} {:name          "My Dashboard"
-                                                     :collection_id coll-id}]
-        (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
-        (is (true? (can-restore? dash-id :rasta)))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [{coll-id :id} (first (collection/create-collections! [{:location "/" :name "A"}]))]
+          (mt/with-temp [:model/Dashboard {dash-id :id} {:name          "My Dashboard"
+                                                         :collection_id coll-id}]
+            (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
+            (is (true? (can-restore? dash-id :rasta)))))))
     (testing "I can't restore a trashed dashboard if the coll it was from was trashed"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "A"}
-                     :model/Dashboard {dash-id :id} {:name          "My Dashboard"
-                                                     :collection_id coll-id}]
-        (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
-        (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
-        (is (false? (can-restore? dash-id :rasta)))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [{coll-id :id} (first (collection/create-collections! [{:location "/" :name "A"}]))]
+          (mt/with-temp [:model/Dashboard {dash-id :id} {:name          "My Dashboard"
+                                                         :collection_id coll-id}]
+            (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
+            (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+            (is (false? (can-restore? dash-id :rasta)))))))
     (testing "I can't restore a trashed dashboard if it isn't archived in the first place"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "A"}
-                     :model/Dashboard {dash-id :id} {:name          "My Dashboard"
-                                                     :collection_id coll-id}]
-        (is (false? (can-restore? dash-id :crowberto)))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [{coll-id :id} (first (collection/create-collections! [{:location "/" :name "A"}]))]
+          (mt/with-temp [:model/Dashboard {dash-id :id} {:name          "My Dashboard"
+                                                         :collection_id coll-id}]
+            (is (false? (can-restore? dash-id :crowberto)))))))))
 
 (deftest dependent-metadata-test
   (mt/with-temp
@@ -5137,12 +5302,12 @@
                                                      :card_id card-id-1
                                                      :visualization_settings {:column_settings
                                                                               {"[\"name\",\"ID\"]" ;; FE reference that must be json formatted
-                                                                               {:click_behavior {:type :link
+                                                                               {:click_behavior {:type "link"
                                                                                                  :linkType "dashboard"
                                                                                                  :targetId link-dash}}}}}
      :model/DashboardCard       _                   {:dashboard_id dashboard-id,
                                                      :card_id card-id-2
-                                                     :visualization_settings {:click_behavior {:type :link
+                                                     :visualization_settings {:click_behavior {:type "link"
                                                                                                :linkType "question"
                                                                                                :targetId link-card}}}
      :model/Card                {series-id-1 :id}   {:name "Series Card 1"
@@ -5179,7 +5344,7 @@
 (deftest dashboard-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
-      [:model/Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)}
+      [:model/Card          {card-id-1 :id}    (mt/card-with-metadata {:dataset_query (mt/mbql-query products)})
        :model/Card          {card-id-2 :id}    {:dataset_query {:type     :query
                                                                 :database (mt/id)
                                                                 :query    {:source-table (str "card__" card-id-1)}}}
@@ -5235,13 +5400,11 @@
 
 (deftest dashboard-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
-    (let [original-can-read? mi/can-read?]
-      (mt/with-temp [:model/Dashboard dash {}]
-        (with-redefs [mi/can-read? (fn [& args]
-                                     (if (= :model/Table (apply mi/dispatch-on-model args))
-                                       false
-                                       (apply original-can-read? args)))]
-          (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash))))))))))
+    (mt/with-temp [:model/Dashboard dash {}]
+      (mt/with-dynamic-fn-redefs [mi/can-read? (fn [instance]
+                                                 (and (not (t2/instance-of? :model/Table instance))
+                                                      (:can_read (meta instance))))]
+        (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash)))))))))
 
 (deftest dashboard-field-params-field-names-test
   (mt/with-temp
@@ -5625,82 +5788,91 @@
                      :data
                      #(map (fn [card] (select-keys card [:id])) %)))))))
 
-(deftest ^:parallel dashboard-items-is-the-same-as-collection-items
-  (mt/with-temp [:model/Collection {coll-id :id} {}
-                 :model/Dashboard {dash-id :id} {}
-                 :model/Card _ {:collection_id coll-id}
-                 :model/Card {dq-id :id} {:dashboard_id dash-id}
-                 :model/DashboardCard _ {:card_id dq-id :dashboard_id dash-id}]
-    (is (= (set (keys (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))
-           (set (keys (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))
-    (is (= (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))
-           (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))))))))
+(deftest dashboard-items-is-the-same-as-collection-items
+  (mt/with-model-cleanup [:model/Collection]
+    (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Card _ {:collection_id coll-id}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id}
+                     :model/DashboardCard _ {:card_id dq-id :dashboard_id dash-id}]
+        (is (= (set (keys (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))
+               (set (keys (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))
+        (is (= (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))
+               (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))))))))))
 
 (deftest dashboard-update-preserves-unchanged-parameter-cards-test
   (testing "PUT /api/dashboard/:id preserves parameter cards when parameters are unchanged"
     (mt/with-temp [:model/Card {source-card-id :id} {:database_id   (mt/id)
                                                      :table_id      (mt/id :categories)
-                                                     :dataset_query (mt/mbql-query categories {:limit 5})}
-                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
-                                                                      :slug                 "category"
-                                                                      :id                   "_CATEGORY_"
-                                                                      :type                 "category"
-                                                                      :values_source_type   "card"
-                                                                      :values_source_config {:card_id source-card-id}}]}]
-      (with-dashboards-in-writeable-collection! [dashboard-id]
-        (testing "Initial parameter cards are created"
-          (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
-                             :parameterized_object_id dashboard-id))))
-        (testing "Dashboard update with unchanged parameters preserves parameter cards"
-          (let [original-param-cards (t2/select :model/ParameterCard
-                                                :parameterized_object_type "dashboard"
-                                                :parameterized_object_id dashboard-id)]
-            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                  {:name "Updated Dashboard Name"
-                                   :description "New description"})
-            (let [updated-param-cards (t2/select :model/ParameterCard
-                                                 :parameterized_object_type "dashboard"
-                                                 :parameterized_object_id dashboard-id)]
-              (is (= (count original-param-cards) (count updated-param-cards)))
-              (is (= (set (map :id original-param-cards))
-                     (set (map :id updated-param-cards)))))))))))
+                                                     :dataset_query (mt/mbql-query categories {:limit 5})}]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [{dashboard-id :id} (first (dashboard/create-dashboards!
+                                         [{:name (mt/random-name)
+                                           :creator_id (mt/user->id :rasta)
+                                           :parameters [{:name                 "Category"
+                                                         :slug                 "category"
+                                                         :id                   "_CATEGORY_"
+                                                         :type                 :category
+                                                         :values_source_type   :card
+                                                         :values_source_config {:card_id source-card-id}}]}]))]
+          (with-dashboards-in-writeable-collection! [dashboard-id]
+            (testing "Initial parameter cards are created"
+              (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                                 :parameterized_object_id dashboard-id))))
+            (testing "Dashboard update with unchanged parameters preserves parameter cards"
+              (let [original-param-cards (t2/select :model/ParameterCard
+                                                    :parameterized_object_type "dashboard"
+                                                    :parameterized_object_id dashboard-id)]
+                (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                      {:name "Updated Dashboard Name"
+                                       :description "New description"})
+                (let [updated-param-cards (t2/select :model/ParameterCard
+                                                     :parameterized_object_type "dashboard"
+                                                     :parameterized_object_id dashboard-id)]
+                  (is (= (count original-param-cards) (count updated-param-cards)))
+                  (is (= (set (map :id original-param-cards))
+                         (set (map :id updated-param-cards)))))))))))))
 
 (deftest dashboard-update-with-same-parameters-preserves-parameter-cards-test
   (testing "PUT /api/dashboard/:id preserves parameter cards when parameters list is identical"
     (mt/with-temp [:model/Card {source-card-id :id} {:database_id   (mt/id)
                                                      :table_id      (mt/id :categories)
-                                                     :dataset_query (mt/mbql-query categories {:limit 5})}
-                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
-                                                                      :slug                 "category"
-                                                                      :id                   "_CATEGORY_"
-                                                                      :type                 "category"
-                                                                      :values_source_type   "card"
-                                                                      :values_source_config {:card_id source-card-id}}
-                                                                     {:name                 "Static List"
-                                                                      :slug                 "static_list"
-                                                                      :id                   "_STATIC_"
-                                                                      :type                 "category"
-                                                                      :values_source_type   "static-list"
-                                                                      :values_source_config {:values ["A" "B" "C"]}}]}]
-      (with-dashboards-in-writeable-collection! [dashboard-id]
-        (move-cards-to-dashboard-collection! dashboard-id [source-card-id])
-        (testing "Initial parameter cards are created for card-sourced parameters only"
-          (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
-                             :parameterized_object_id dashboard-id))))
-        (testing "Dashboard update with identical parameters preserves parameter cards"
-          (let [original-param-cards (t2/select :model/ParameterCard
-                                                :parameterized_object_type "dashboard"
-                                                :parameterized_object_id dashboard-id)
-                original-parameters (:parameters (t2/select-one :model/Dashboard :id dashboard-id))]
-            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                  {:parameters original-parameters
-                                   :description "Updated description"})
-            (let [updated-param-cards (t2/select :model/ParameterCard
-                                                 :parameterized_object_type "dashboard"
-                                                 :parameterized_object_id dashboard-id)]
-              (is (= (count original-param-cards) (count updated-param-cards)))
-              (is (= (set (map :id original-param-cards))
-                     (set (map :id updated-param-cards)))))))))))
+                                                     :dataset_query (mt/mbql-query categories {:limit 5})}]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [{dashboard-id :id} (first (dashboard/create-dashboards!
+                                         [{:name (mt/random-name)
+                                           :creator_id (mt/user->id :rasta)
+                                           :parameters [{:name                 "Category"
+                                                         :slug                 "category"
+                                                         :id                   "_CATEGORY_"
+                                                         :type                 :category
+                                                         :values_source_type   :card
+                                                         :values_source_config {:card_id source-card-id}}
+                                                        {:name                 "Static List"
+                                                         :slug                 "static_list"
+                                                         :id                   "_STATIC_"
+                                                         :type                 :category
+                                                         :values_source_type   :static-list
+                                                         :values_source_config {:values ["A" "B" "C"]}}]}]))]
+          (with-dashboards-in-writeable-collection! [dashboard-id]
+            (move-cards-to-dashboard-collection! dashboard-id [source-card-id])
+            (testing "Initial parameter cards are created for card-sourced parameters only"
+              (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                                 :parameterized_object_id dashboard-id))))
+            (testing "Dashboard update with identical parameters preserves parameter cards"
+              (let [original-param-cards (t2/select :model/ParameterCard
+                                                    :parameterized_object_type "dashboard"
+                                                    :parameterized_object_id dashboard-id)
+                    original-parameters (:parameters (t2/select-one :model/Dashboard :id dashboard-id))]
+                (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                      {:parameters original-parameters
+                                       :description "Updated description"})
+                (let [updated-param-cards (t2/select :model/ParameterCard
+                                                     :parameterized_object_type "dashboard"
+                                                     :parameterized_object_id dashboard-id)]
+                  (is (= (count original-param-cards) (count updated-param-cards)))
+                  (is (= (set (map :id original-param-cards))
+                         (set (map :id updated-param-cards)))))))))))))
 
 (deftest dashboard-update-preserves-widget-shape-parameter-keys-test
   (testing "PUT /api/dashboard/:id round-trips the parameter keys that decide how the widget renders"
@@ -5729,75 +5901,83 @@
                                                        :dataset_query (mt/mbql-query categories {:limit 5})}
                    :model/Card {source-card-id-2 :id} {:database_id   (mt/id)
                                                        :table_id      (mt/id :venues)
-                                                       :dataset_query (mt/mbql-query venues {:limit 5})}
-                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
-                                                                      :slug                 "category"
-                                                                      :id                   "_CATEGORY_"
-                                                                      :type                 "category"
-                                                                      :values_source_type   "card"
-                                                                      :values_source_config {:card_id source-card-id-1}}
-                                                                     {:name                 "Venue"
-                                                                      :slug                 "venue"
-                                                                      :id                   "_VENUE_"
-                                                                      :type                 "category"
-                                                                      :values_source_type   "card"
-                                                                      :values_source_config {:card_id source-card-id-1}}]}]
-      (with-dashboards-in-writeable-collection! [dashboard-id]
-        (move-cards-to-dashboard-collection! dashboard-id [source-card-id-1 source-card-id-2])
-        (testing "Initial parameter cards are created"
-          (is (= 2 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
-                             :parameterized_object_id dashboard-id))))
-        (testing "Update with one parameter unchanged, one parameter changed"
-          (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                {:parameters [{:name                 "Category"
-                                               :slug                 "category"
-                                               :id                   "_CATEGORY_"
-                                               :type                 "category"
-                                               :values_source_type   "card"
-                                               :values_source_config {:card_id source-card-id-1}}
-                                              {:name                 "Venue"
-                                               :slug                 "venue"
-                                               :id                   "_VENUE_"
-                                               :type                 "category"
-                                               :values_source_type   "card"
-                                               :values_source_config {:card_id source-card-id-2}}]})
-          (let [param-cards (t2/select :model/ParameterCard
-                                       :parameterized_object_type "dashboard"
-                                       :parameterized_object_id dashboard-id)]
-            (is (= 2 (count param-cards)))
-            (is (= #{source-card-id-1 source-card-id-2}
-                   (set (map :card_id param-cards))))))))))
+                                                       :dataset_query (mt/mbql-query venues {:limit 5})}]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [{dashboard-id :id} (first (dashboard/create-dashboards!
+                                         [{:name (mt/random-name)
+                                           :creator_id (mt/user->id :rasta)
+                                           :parameters [{:name                 "Category"
+                                                         :slug                 "category"
+                                                         :id                   "_CATEGORY_"
+                                                         :type                 :category
+                                                         :values_source_type   :card
+                                                         :values_source_config {:card_id source-card-id-1}}
+                                                        {:name                 "Venue"
+                                                         :slug                 "venue"
+                                                         :id                   "_VENUE_"
+                                                         :type                 :category
+                                                         :values_source_type   :card
+                                                         :values_source_config {:card_id source-card-id-1}}]}]))]
+          (with-dashboards-in-writeable-collection! [dashboard-id]
+            (move-cards-to-dashboard-collection! dashboard-id [source-card-id-1 source-card-id-2])
+            (testing "Initial parameter cards are created"
+              (is (= 2 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                                 :parameterized_object_id dashboard-id))))
+            (testing "Update with one parameter unchanged, one parameter changed"
+              (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                    {:parameters [{:name                 "Category"
+                                                   :slug                 "category"
+                                                   :id                   "_CATEGORY_"
+                                                   :type                 "category"
+                                                   :values_source_type   "card"
+                                                   :values_source_config {:card_id source-card-id-1}}
+                                                  {:name                 "Venue"
+                                                   :slug                 "venue"
+                                                   :id                   "_VENUE_"
+                                                   :type                 "category"
+                                                   :values_source_type   "card"
+                                                   :values_source_config {:card_id source-card-id-2}}]})
+              (let [param-cards (t2/select :model/ParameterCard
+                                           :parameterized_object_type "dashboard"
+                                           :parameterized_object_id dashboard-id)]
+                (is (= 2 (count param-cards)))
+                (is (= #{source-card-id-1 source-card-id-2}
+                       (set (map :card_id param-cards))))))))))))
 
 (deftest dashboard-update-no-parameters-field-preserves-parameter-cards-test
   (testing "PUT /api/dashboard/:id preserves parameter cards when parameters field is not included in update"
     (mt/with-temp [:model/Card {source-card-id :id} {:database_id   (mt/id)
                                                      :table_id      (mt/id :categories)
-                                                     :dataset_query (mt/mbql-query categories {:limit 5})}
-                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
-                                                                      :slug                 "category"
-                                                                      :id                   "_CATEGORY_"
-                                                                      :type                 "category"
-                                                                      :values_source_type   "card"
-                                                                      :values_source_config {:card_id source-card-id}}]}]
-      (with-dashboards-in-writeable-collection! [dashboard-id]
-        (testing "Initial parameter cards are created"
-          (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
-                             :parameterized_object_id dashboard-id))))
-        (testing "Dashboard update without parameters field preserves parameter cards"
-          (let [original-param-cards (t2/select :model/ParameterCard
-                                                :parameterized_object_type "dashboard"
-                                                :parameterized_object_id dashboard-id)]
-            ;; Update dashboard without including parameters field
-            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                  {:name "Updated Name"
-                                   :description "Updated description"
-                                   :cache_ttl 3600})
-            (let [updated-param-cards (t2/select :model/ParameterCard
-                                                 :parameterized_object_type "dashboard"
-                                                 :parameterized_object_id dashboard-id)]
-              (is (= (count original-param-cards) (count updated-param-cards)))
-              (is (= (set (map :id original-param-cards))
-                     (set (map :id updated-param-cards)))))))))))
+                                                     :dataset_query (mt/mbql-query categories {:limit 5})}]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [{dashboard-id :id} (first (dashboard/create-dashboards!
+                                         [{:name (mt/random-name)
+                                           :creator_id (mt/user->id :rasta)
+                                           :parameters [{:name                 "Category"
+                                                         :slug                 "category"
+                                                         :id                   "_CATEGORY_"
+                                                         :type                 :category
+                                                         :values_source_type   :card
+                                                         :values_source_config {:card_id source-card-id}}]}]))]
+          (with-dashboards-in-writeable-collection! [dashboard-id]
+            (testing "Initial parameter cards are created"
+              (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                                 :parameterized_object_id dashboard-id))))
+            (testing "Dashboard update without parameters field preserves parameter cards"
+              (let [original-param-cards (t2/select :model/ParameterCard
+                                                    :parameterized_object_type "dashboard"
+                                                    :parameterized_object_id dashboard-id)]
+                ;; Update dashboard without including parameters field
+                (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                      {:name "Updated Name"
+                                       :description "Updated description"
+                                       :cache_ttl 3600})
+                (let [updated-param-cards (t2/select :model/ParameterCard
+                                                     :parameterized_object_type "dashboard"
+                                                     :parameterized_object_id dashboard-id)]
+                  (is (= (count original-param-cards) (count updated-param-cards)))
+                  (is (= (set (map :id original-param-cards))
+                         (set (map :id updated-param-cards)))))))))))))
 
 (deftest ^:parallel previous-stage-test
   (testing "binding parameters to different stages is handled correctly"
@@ -5820,7 +6000,7 @@
                      (lib/filter (lib/>= quantity 100))
                      (lib/aggregate (lib/avg subtotal))
                      (lib/breakout category))]
-      (mt/with-temp [:model/Card          card      {:dataset_query (lib/->legacy-MBQL query)}
+      (mt/with-temp [:model/Card          card      {:dataset_query query}
                      :model/Dashboard     dashboard {:parameters [{:name      "Category"
                                                                    :slug      "category"
                                                                    :id        "_CATEGORY_"
@@ -5923,6 +6103,57 @@
                 (testing "Database should contain nil embedding_type"
                   (is (= nil
                          (t2/select-one-fn :embedding_type :model/Dashboard :id (u/the-id dashboard)))))))))))))
+
+(def ^:private change-permission-cases
+  "Who may change the collection, the embedding and the public sharing of a Dashboard, by the permissions the user has
+  on the Dashboard's collection and on the collection it moves to, with the status each request answers."
+  [{:user :crowberto, :source nil,        :target nil,        :move 200, :embed 200, :share 200, :unshare 204}
+   {:user :rasta,     :source :readwrite, :target nil,        :move 403, :embed 403, :share 403, :unshare 403}
+   {:user :rasta,     :source :readwrite, :target :readwrite, :move 200, :embed 403, :share 403, :unshare 403}
+   {:user :rasta,     :source :read,      :target :readwrite, :move 403, :embed 403, :share 403, :unshare 403}
+   {:user :rasta,     :source nil,        :target nil,        :move 403, :embed 403, :share 403, :unshare 403}])
+
+(defn- grant-collection-permissions! [collection permission]
+  (case permission
+    :read      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+    :readwrite (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    nil))
+
+(deftest change-collection-embedding-and-public-sharing-permissions-test
+  (testing "Moving, embedding and sharing a Dashboard ask the user for the permissions of the change"
+    (mt/with-temporary-setting-values [enable-public-sharing true
+                                       enable-embedding-modular true]
+      (doseq [{:keys [user source target], :as expected} change-permission-cases]
+        (testing (pr-str (select-keys expected [:user :source :target]))
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp [:model/Collection source-collection {}
+                           :model/Collection target-collection {}
+                           :model/Dashboard dashboard-a {:collection_id (u/the-id source-collection)}
+                           :model/Dashboard dashboard-b {:collection_id (u/the-id source-collection)}
+                           :model/Dashboard dashboard-c {:collection_id (u/the-id source-collection)
+                                                         :public_uuid   (str (random-uuid))}]
+              (grant-collection-permissions! source-collection source)
+              (grant-collection-permissions! target-collection target)
+              (testing "move to another collection"
+                (mt/user-http-request user :put (:move expected) (str "dashboard/" (u/the-id dashboard-a))
+                                      {:collection_id (u/the-id target-collection)})
+                (is (= (u/the-id (if (= 200 (:move expected)) target-collection source-collection))
+                       (t2/select-one-fn :collection_id :model/Dashboard :id (u/the-id dashboard-a)))))
+              (testing "turn on embedding"
+                (mt/user-http-request user :put (:embed expected) (str "dashboard/" (u/the-id dashboard-b))
+                                      {:enable_embedding true})
+                (is (= (= 200 (:embed expected))
+                       (t2/select-one-fn :enable_embedding :model/Dashboard :id (u/the-id dashboard-b)))))
+              (testing "create the public link"
+                (mt/user-http-request user :post (:share expected)
+                                      (format "dashboard/%d/public_link" (u/the-id dashboard-b)))
+                (is (= (= 200 (:share expected))
+                       (some? (t2/select-one-fn :public_uuid :model/Dashboard :id (u/the-id dashboard-b))))))
+              (testing "delete the public link"
+                (mt/user-http-request user :delete (:unshare expected)
+                                      (format "dashboard/%d/public_link" (u/the-id dashboard-c)))
+                (is (= (not= 204 (:unshare expected))
+                       (some? (t2/select-one-fn :public_uuid :model/Dashboard :id (u/the-id dashboard-c)))))))))))))
 
 (deftest save-dashboard-test
   (let [response (mt/user-http-request :crowberto :post 200 "dashboard/save" {:auto_apply_filters true,
@@ -6093,8 +6324,8 @@
 (deftest remove-one-parameter-mapping-across-multiple-dashcards-test
   (testing "PUT /api/dashboard/:id selectively removes one parameter_id's mappings from multiple dashcards while preserving another"
     (let [mp         (mt/metadata-provider)
-          p1-target  [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :name))))]
-          p2-target  [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :price))))]]
+          p1-target  [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :name))))]
+          p2-target  [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :price))))]]
       (mt/with-temp [:model/Dashboard {dash-id :id} {:parameters [{:id "p1" :type :string/= :name "P1" :slug "p1"}
                                                                   {:id "p2" :type :string/= :name "P2" :slug "p2"}]}
                      :model/Card c1 {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
@@ -6195,7 +6426,7 @@
                                     :values_source_type "card"
                                     :values_source_config
                                     {:card_id     source-id
-                                     :value_field (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :orders :id))))}}]}]
+                                     :value_field (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :orders :id))))}}]}]
         (let [values (:values (mt/user-http-request :rasta :get 200 (format "dashboard/%d/params/_NUM_/values" id)))]
           (is (seq values))
           (is (every? #(= 1 (count %)) values)))
@@ -6243,13 +6474,13 @@
           orig-category-field-id (mt/id :products :category)
           mp-orig                (lib.metadata.jvm/application-database-metadata-provider orig-db-id)
           card-a-query           (lib/query mp-orig (lib.metadata/table mp-orig (mt/id :products)))
-          card-a-target          [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp-orig orig-category-field-id)))]]
+          card-a-target          [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp-orig orig-category-field-id)))]]
       (mt/with-temp-copy-of-db
         (let [other-db-id              (mt/id)
               other-category-field-id  (mt/id :products :category)
               mp-other                 (lib.metadata.jvm/application-database-metadata-provider other-db-id)
               card-b-query             (lib/query mp-other (lib.metadata/table mp-other (mt/id :products)))
-              card-b-target            [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp-other other-category-field-id)))]]
+              card-b-target            [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp-other other-category-field-id)))]]
           (mt/with-temp
             [:model/Dashboard dashboard {:parameters [{:name "Category" :slug "category" :id "_CAT_" :type "category"}]}
              :model/Card card-a {:database_id orig-db-id :dataset_query card-a-query}
@@ -6269,15 +6500,15 @@
                      :model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :people)))}
                      :model/DashboardCard {} {:dashboard_id dashboard-id :card_id card-id
                                               :parameter_mappings [{:parameter_id "_CITY_" :card_id card-id
-                                                                    :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :people :city))))]}]}]
+                                                                    :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :people :city))))]}]}]
         (is (=? {:values [["Flagstaff"]]}
                 (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "_CITY_" "Flag"))))))))
 
 (deftest chain-filter-search-unions-values-across-multiple-mapped-fields-test
   (testing "GET /api/dashboard/:id/params/:param-key/search/:query unions results across every mapped field, even with disjoint value domains"
     (let [mp             (mt/metadata-provider)
-          people-target  [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :people :name))))]
-          products-target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :products :category))))]]
+          people-target  [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :people :name))))]
+          products-target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :products :category))))]]
       (mt/with-temp [:model/Dashboard dashboard {:parameters [{:id "abc" :type :string/= :name "abc" :slug "abc"}]}
                      :model/Card people-card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :people)))}
                      :model/Card products-card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
@@ -6302,7 +6533,7 @@
                                                     :parameter_mappings [{:parameter_id "p" :card_id (:id card)
                                                                           :target [:dimension [:template-tag "cat"]]}]}]
         (mt/user-http-request :rasta :put 200 (str "card/" (:id card))
-                              {:dataset_query (lib/->legacy-MBQL (lib/native-query mp "select 1"))})
+                              {:dataset_query (lib/native-query mp "select 1")})
         (is (= [[1]] (mt/rows (mt/user-http-request :rasta :post 202
                                                     (format "dashboard/%d/dashcard/%d/card/%d/query" (:id dashboard) (:id dashcard) (:id card))
                                                     {:parameters [{:id "p" :type :string/= :value ["Gadget"]}]}))))))))
@@ -6314,7 +6545,7 @@
                      :model/Card card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
                      :model/DashboardCard dashcard {:dashboard_id (:id dashboard) :card_id (:id card)
                                                     :parameter_mappings [{:parameter_id "p" :card_id (:id card)
-                                                                          :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :orders :total))))]}]}]
+                                                                          :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :orders :total))))]}]}]
         (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id dashboard)) {:parameters []})
         (is (seq (t2/select-one-fn :parameter_mappings :model/DashboardCard :id (:id dashcard)))
             "backend does not clean up dashcard parameter_mappings that reference a removed parameter_id")))))
@@ -6545,9 +6776,9 @@
                      :model/DashboardCard {dc-id :id}
                      {:dashboard_id dash-id :card_id c1-id
                       :parameter_mappings [{:parameter_id "abc"
-                                            :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]
+                                            :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]
         (let [stale [{:parameter_id "abc"
-                      :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]]
+                      :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]]
           (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dash-id)
                                 {:dashcards [{:id dc-id :card_id c2-id :parameter_mappings stale :row 0 :col 0 :size_x 4 :size_y 4}] :tabs []})
           (is (= stale (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dc-id))))))))
@@ -6560,7 +6791,7 @@
                      :model/DashboardCard {dc-id :id}
                      {:dashboard_id dash-id :card_id card-id
                       :parameter_mappings [{:parameter_id "cat" :card_id card-id
-                                            :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]
+                                            :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]
         (let [orig (select-keys (t2/select-one :model/DashboardCard :id dc-id) [:id :card_id :row :col :size_x :size_y :parameter_mappings])
               resp (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dash-id)
                                          {:dashcards [orig (-> orig (dissoc :id) (assoc :id -1 :row 10))] :tabs []})]
@@ -6576,7 +6807,7 @@
                                          {:tabs [{:id tab-id :name "Tab 1"} {:id -1 :name "Tab 1 - Duplicate"}]
                                           :dashcards [{:id -1 :dashboard_tab_id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4
                                                        :parameter_mappings [{:parameter_id "cat" :card_id card-id
-                                                                             :target [:dimension (lib.convert/->legacy-MBQL (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]})]
+                                                                             :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref (lib.metadata/field mp (mt/id :venues :category_id))))]}]}]})]
           (is (seq (-> resp :dashcards first :parameter_mappings))))))))
 
 (deftest visualizer-dashcard-series-and-settings-round-trip-test
@@ -6647,8 +6878,8 @@
   (testing "dashboard/public/embed persistence for two parameter_mappings on the same field, disambiguated by :temporal-unit (#46536, #46776)"
     (let [mp         (mt/metadata-provider)
           created-at (lib.metadata/field mp (mt/id :orders :created_at))
-          year-ref   (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :year)))
-          month-ref  (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :month)))
+          year-ref   (lib.convert/->legacy-MBQL-ref (lib/ref (lib/with-temporal-bucket created-at :year)))
+          month-ref  (lib.convert/->legacy-MBQL-ref (lib/ref (lib/with-temporal-bucket created-at :month)))
           query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                          (lib/aggregate (lib/count))
                          (lib/breakout (lib/with-temporal-bucket created-at :year))
@@ -6803,3 +7034,39 @@
                   (is (=? {:message #"(?i).*No destination parameter found.*"}
                           (mt/user-http-request :crowberto :post 400 execute-path
                                                 {:parameters {"id" 1 "name" "Store" "old_name" "Shop"}}))))))))))))
+
+(deftest copy-dashboard-records-one-revision-and-one-audit-row-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Card {card-id :id} {:name "C1" :dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard {dashboard-id :id} {:name "Original"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id}]
+      (mt/with-model-cleanup [:model/Dashboard :model/Card]
+        (doseq [deep? [false true]]
+          (testing (str (if deep? "deep" "shallow") " copy")
+            (let [audit-before (or (t2/select-one-fn :id :model/AuditLog {:order-by [[:id :desc]]}) 0)
+                  copy-id      (:id (mt/user-http-request :crowberto :post 200 (str "dashboard/" dashboard-id "/copy")
+                                                          {:name (str "Copy " deep?) :is_deep_copy deep?}))
+                  topics       (map :topic (t2/select :model/AuditLog :id [:> audit-before] {:order-by [[:id :asc]]}))]
+              (is (=? [{:is_creation true :object {:cards [{}]}}]
+                      (t2/select :model/Revision :model "Dashboard" :model_id copy-id)))
+              (is (= 1 (count (filter #{:dashboard-create} topics))))
+              (is (empty? (filter #{:dashboard-add-cards} topics))))))))))
+
+(deftest replace-dashcards-statement-count-test
+  (testing "PUT /api/dashboard/:id replacing its dashcards takes as many statements for many new dashcards as for few"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+      (mt/with-model-cleanup [:model/Card :model/DashboardCard]
+        (let [replace! (fn [n]
+                         (let [card-ids (mapv (fn [i]
+                                                (t2/insert-returning-pk! :model/Card
+                                                                         (merge (mt/with-temp-defaults :model/Card)
+                                                                                {:name (str "replacing " i)})))
+                                              (range n))]
+                           (t2/with-call-count [call-count]
+                             (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id)
+                                                   {:dashcards (map-indexed (fn [k card-id]
+                                                                              {:id (- (inc k)) :card_id card-id :row k :col 0 :size_x 4 :size_y 4})
+                                                                            card-ids)})
+                             (call-count))))]
+          (replace! 1)
+          (is (= (replace! 2) (replace! 6))))))))

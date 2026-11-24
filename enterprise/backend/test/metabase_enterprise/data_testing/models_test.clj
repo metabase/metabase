@@ -4,9 +4,14 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
+   [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
+   [metabase.transforms.models.transform :as transform]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime ZoneOffset)))
@@ -202,7 +207,7 @@
                                                               :inputs       []
                                                               :expectations []}]
         (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
-          (t2/delete! :model/Transform :id transform-id))
+          (transform/delete-transforms! [transform-id]))
         (testing "the rows are gone"
           (is (false? (t2/exists? :model/TransformTest :id test-id)))
           (is (false? (t2/exists? :model/TransformTest :id other-id))))
@@ -210,7 +215,7 @@
           (is (= #{test-id other-id}
                  (into #{}
                        (comp (filter (comp #{:event/transform-test-delete} first))
-                             (map (comp :id :object second)))
+                             (mapcat (fn [[_topic event]] (map (comp :id :previous-object) (:changes event)))))
                        @published))))))))
 
 ;;; --------------------------------------------- Run tracking ---------------------------------------------
@@ -278,9 +283,9 @@
                                                          :last_heartbeat (minutes-ago 10)}]
     (let [reaped    (atom nil)
           published (atom [])]
-      (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
-                                                          (swap! published conj [topic (-> event :object :id)])
-                                                          event)]
+      (with-redefs [events/publish-event! (fn [topic event]
+                                            (swap! published conj [topic (-> event :object :id)])
+                                            event)]
         (testing "a sweep over a stale run of a type this version does not know does not throw"
           (is (nil? (caught #(reset! reaped (data-testing.run-tracking/reap-orphaned-runs! 5)))))))
       (testing "the stale transform run is timed out, returned, and its timeout event published"
@@ -296,7 +301,7 @@
   (mt/with-temp [:model/Transform     {transform-id :id} {}
                  :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :transform transform-test-id)]
-      (t2/delete! :model/TransformTest :id transform-test-id)
+      (data-testing.models/delete-transform-tests! [transform-test-id])
       (is (nil? (t2/select-one-fn :test_id :model/DataTestRun :id run-id)))
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
@@ -312,7 +317,7 @@
   (mt/with-temp [:model/Transform   {transform-id :id} {}
                  :model/TransformTest {test-id :id} {:transform_id transform-id}
                  :model/DataTestRun {card-run :id} {:test_type :card, :test_id test-id}]
-    (t2/delete! :model/TransformTest :id test-id)
+    (data-testing.models/delete-transform-tests! [test-id])
     (is (= test-id (t2/select-one-fn :test_id :model/DataTestRun :id card-run)))))
 
 (deftest deleting-run-initiator-preserves-run-test
@@ -324,3 +329,104 @@
       (is (nil? (t2/select-one-fn :initiated_by :model/DataTestRun :id run-id)))
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Transform {transform-id :id} {}]
+    (let [created (atom [])
+          create! (fn [n]
+                    (events.tu/statement-count! (fn [] (swap! created into
+                                                              (map :id (data-testing.models/create-transform-tests!
+                                                                        (vec (repeat n (valid-row transform-id [])))))))))]
+      (try
+        (testing "creating transform tests"
+          (create! 1)
+          (is (= (create! 2) (create! 6))))
+        (testing "updating transform tests"
+          (let [[warm-up & ids] @created
+                update!         (fn [ids]
+                                  (events.tu/statement-count!
+                                   (fn [] (data-testing.models/update-transform-tests! (mapv (fn [row-id] (assoc {:description "same"} :id row-id)) ids)))))]
+            (update! [warm-up])
+            (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids)))))))
+        (testing "deleting a transform deletes its tests in a fixed number of statements"
+          (let [delete! (fn [n]
+                          (data-testing.models/create-transform-tests! (vec (repeat n (valid-row transform-id []))))
+                          (events.tu/statement-count! (fn [] (data-testing.models/delete-transform-tests-for-transforms! [transform-id]))))]
+            (delete! 1)
+            (is (= (delete! 2) (delete! 6)))))
+        (finally
+          (t2/delete! :model/TransformTest :transform_id transform-id))))))
+
+(deftest mixed-state-saved-test-write-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Transform {t1 :id} {}
+                 :model/Transform {t2 :id} {}
+                 :model/Transform {t3 :id} {}
+                 :model/Transform {t4 :id} {}
+                 :model/Transform {t5 :id} {}
+                 :model/Transform {t6 :id} {}]
+    (let [subjects [t1 t2 t3 t4 t5 t6]]
+      (testing "creating, updating and deleting the tests of several transforms"
+        (let [make!   (fn [n]
+                        (mapv :id (data-testing.models/create-transform-tests!
+                                   (vec (map-indexed (fn [i transform-id]
+                                                       (cond-> (valid-row transform-id [])
+                                                         (even? i) (assoc :description "same")))
+                                                     (take n subjects))))))
+              counted (fn [n]
+                        (let [create (events.tu/statement-count!
+                                      #(data-testing.models/create-transform-tests! (mapv (fn [s] (valid-row s [])) (take n subjects))))
+                              ids    (make! n)
+                              update (events.tu/statement-count!
+                                      #(data-testing.models/update-transform-tests! (mapv (fn [row-id] (assoc {:description "same"} :id row-id)) ids)))
+                              delete (events.tu/statement-count!
+                                      #(data-testing.models/delete-transform-tests-for-transforms! (vec (take n subjects))))]
+                          [create update delete]))]
+          (counted 1)
+          (let [[create-2 update-2 delete-2] (counted 2)
+                [create-6 update-6 delete-6] (counted 6)]
+            (is (= [create-2 delete-2] [create-6 delete-6]))
+            (is (= update-2 update-6))))))))
+
+(deftest card-and-segment-test-write-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Card    {c1 :id} {}
+                 :model/Card    {c2 :id} {}
+                 :model/Card    {c3 :id} {}
+                 :model/Card    {c4 :id} {}
+                 :model/Card    {c5 :id} {}
+                 :model/Card    {c6 :id} {}
+                 :model/Segment {s1 :id} {}
+                 :model/Segment {s2 :id} {}
+                 :model/Segment {s3 :id} {}
+                 :model/Segment {s4 :id} {}
+                 :model/Segment {s5 :id} {}
+                 :model/Segment {s6 :id} {}]
+    (let [row-of  (fn [subject-key id i]
+                    (cond-> {subject-key id :creator_id (mt/user->id :rasta) :name "a test" :inputs [] :expectations []}
+                      (even? i) (assoc :description "same")))
+          measure (fn [subject-key subjects create! update! delete! delete-subjects!]
+                    (fn [n]
+                      (let [rows   #(vec (map-indexed (fn [i id] (row-of subject-key id i)) (take n subjects)))
+                            create (events.tu/statement-count! #(create! (rows)))
+                            ids    (mapv :id (create! (rows)))
+                            update (events.tu/statement-count! #(update! (mapv (fn [row-id] {:id row-id :description "same"}) ids)))
+                            delete (events.tu/statement-count! #(delete! ids))
+                            _      (create! (rows))
+                            by-subject (events.tu/statement-count! #(delete-subjects! (vec (take n subjects))))]
+                        [create update delete by-subject])))
+          cards    (measure :card_id [c1 c2 c3 c4 c5 c6]
+                            data-testing.models.card-test/create-card-tests!
+                            data-testing.models.card-test/update-card-tests!
+                            data-testing.models.card-test/delete-card-tests!
+                            data-testing.models.card-test/delete-card-tests-for-cards!)
+          segments (measure :segment_id [s1 s2 s3 s4 s5 s6]
+                            data-testing.models.segment-test/create-segment-tests!
+                            data-testing.models.segment-test/update-segment-tests!
+                            data-testing.models.segment-test/delete-segment-tests!
+                            data-testing.models.segment-test/delete-segment-tests-for-segments!)]
+      (doseq [[test-name measured] [["card tests" cards] ["segment tests" segments]]]
+        (testing test-name
+          (measured 1)
+          (let [[create-2 update-2 delete-2 by-subject-2] (measured 2)
+                [create-6 update-6 delete-6 by-subject-6] (measured 6)]
+            (is (= [create-2 delete-2 by-subject-2] [create-6 delete-6 by-subject-6]))
+            (is (= update-2 update-6))))))))

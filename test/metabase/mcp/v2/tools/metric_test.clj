@@ -154,6 +154,15 @@
                                                      :definition (count-definition)}))
                             "Invalid arguments")))))
 
+(deftest ^:parallel blank-name-test
+  (testing "a whitespace-only name is refused on create and update by the argument schema"
+    (is (str/starts-with? (tool-error (call-tool! :crowberto write-scope "metric_write"
+                                                  {:method "create" :name "   " :definition (count-definition)}))
+                          "Invalid arguments"))
+    (is (str/starts-with? (tool-error (call-tool! :crowberto write-scope "metric_write"
+                                                  {:method "update" :id 13371337 :name "   "}))
+                          "Invalid arguments"))))
+
 (deftest ^:parallel create-required-args-test
   (testing "GHY-4146: `name` is enforced at create with a teaching error naming it"
     (is (= "\"name\" is required when method is \"create\"."
@@ -226,7 +235,7 @@
           (is (= 1 (count (get-in (t2/select-one-fn :dataset_query :model/Card :id (:id created))
                                   [:stages 0 :breakout])))))
         (testing "round-2 review: swapping the definition refreshes result_metadata rather than
-                  leaving it stale — `queries/update-card!` writes through Card's `before-update`
+                  leaving it stale — `queries.card/update-cards!` writes through Card's `before-update`
                   hook, which recomputes result_metadata whenever `dataset_query` changes"
           (let [before-metadata (t2/select-one-fn :result_metadata :model/Card :id (:id created))
                 _ (tool-result (call-tool! :crowberto write-scope "metric_write"
@@ -530,7 +539,7 @@
 
 (deftest create-runs-the-permission-stack-test
   (testing "GHY-4146: `check-allowed-to-create-card!` is what stops a caller saving a metric into a collection
-            they cannot curate, or over a query they cannot run. `create-card!` performs no check of its own,
+            they cannot curate, or over a query they cannot run. `create-cards!` performs no check of its own,
             so deleting that line would let both through — and every other create test here runs as an admin,
             for whom the checks are vacuous."
     (mt/with-model-cleanup [:model/Card]

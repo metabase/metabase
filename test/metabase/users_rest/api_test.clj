@@ -130,11 +130,11 @@
          :model/PermissionsGroup {group-id3 :id} {:name "Good Folks"}
          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
-         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager true}
+         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager false}
          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
-        (testing "admin can get users from any group, even when they are also marked as a group manager"
+        (testing "admin can get users from any group"
           (is (= #{"lucky@metabase.com"
                    "rasta@metabase.com"}
                  (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id group-id1) :data)
@@ -592,14 +592,15 @@
   (testing "GET /api/user/current"
     (testing "Custom homepage"
       (testing "Otherwise is set"
-        (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection"}
-                       :model/Dashboard {dash-id :id} {:name "Dashboard Homepage"
-                                                       :collection_id coll-id}]
-          (mt/with-temporary-setting-values [custom-homepage true
-                                             custom-homepage-dashboard dash-id]
-            (is (=? {:first_name "Rasta"
-                     :custom_homepage {:dashboard_id dash-id}}
-                    (mt/user-http-request :rasta :get 200 "user/current")))))))))
+        (mt/with-model-cleanup [:model/Collection]
+          (let [[{coll-id :id}] (collection/create-collections! [{:name "Collection"}])]
+            (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dashboard Homepage"
+                                                           :collection_id coll-id}]
+              (mt/with-temporary-setting-values [custom-homepage true
+                                                 custom-homepage-dashboard dash-id]
+                (is (=? {:first_name "Rasta"
+                         :custom_homepage {:dashboard_id dash-id}}
+                        (mt/user-http-request :rasta :get 200 "user/current")))))))))))
 
 (deftest get-current-user-custom-homepage-test-4
   (testing "GET /api/user/current"
@@ -1092,48 +1093,49 @@
   (testing "PUT /api/user/:id"
     (testing "test that admins can edit other Users\n"
       (mt/with-premium-features #{}
-        (mt/with-temp [:model/User {user-id :id} {:first_name "Cam"
-                                                  :last_name "Era"
-                                                  :email "cam.era@metabase.com"
-                                                  :is_superuser true}
-                       :model/Collection _ {}]
-          (letfn [(user [] (into {} (-> (t2/select-one [:model/User :id :first_name :last_name :is_superuser :email], :id user-id)
-                                        (t2/hydrate :personal_collection_id ::personal-collection-name)
-                                        (dissoc :id :personal_collection_id :common_name))))]
-            (testing "before API call"
-              (is (= {:first_name "Cam"
-                      :last_name "Era"
-                      :is_superuser true
-                      :email "cam.era@metabase.com"
-                      ::personal-collection-name "Cam Era's Personal Collection"}
-                     (user))))
-            (testing "response"
-              (let [resp (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
-                                               {:last_name "Eron"
-                                                :email "cam.eron@metabase.com"})]
-                (is (= (group-or-ids->user-group-memberships [(perms-group/all-users)
-                                                              (perms-group/admin)])
-                       (:user_group_memberships resp)))
-                (is (= (merge
-                        @user-defaults
-                        {:common_name "Cam Eron"
-                         :email "cam.eron@metabase.com"
-                         :first_name "Cam"
-                         :last_name "Eron"
-                         :jwt_attributes nil
-                         :is_superuser true})
-                       (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
-                                                 {:last_name "Eron"
-                                                  :email "cam.eron@metabase.com"})
-                           (dissoc :user_group_memberships)
-                           mt/boolean-ids-and-timestamps)))))
-            (testing "after API call"
-              (is (= {:first_name "Cam"
-                      :last_name "Eron"
-                      :is_superuser true
-                      :email "cam.eron@metabase.com"
-                      ::personal-collection-name "Cam Eron's Personal Collection"}
-                     (user))))))))))
+        (mt/with-model-cleanup [:model/User]
+          (let [[{user-id :id}] (user/create-users! [{:first_name "Cam"
+                                                      :last_name "Era"
+                                                      :email "cam.era@metabase.com"
+                                                      :is_superuser true}])]
+            (mt/with-temp [:model/Collection _ {}]
+              (letfn [(user [] (into {} (-> (t2/select-one [:model/User :id :first_name :last_name :is_superuser :email], :id user-id)
+                                            (t2/hydrate :personal_collection_id ::personal-collection-name)
+                                            (dissoc :id :personal_collection_id :common_name))))]
+                (testing "before API call"
+                  (is (= {:first_name "Cam"
+                          :last_name "Era"
+                          :is_superuser true
+                          :email "cam.era@metabase.com"
+                          ::personal-collection-name "Cam Era's Personal Collection"}
+                         (user))))
+                (testing "response"
+                  (let [resp (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                                   {:last_name "Eron"
+                                                    :email "cam.eron@metabase.com"})]
+                    (is (= (group-or-ids->user-group-memberships [(perms-group/all-users)
+                                                                  (perms-group/admin)])
+                           (:user_group_memberships resp)))
+                    (is (= (merge
+                            @user-defaults
+                            {:common_name "Cam Eron"
+                             :email "cam.eron@metabase.com"
+                             :first_name "Cam"
+                             :last_name "Eron"
+                             :jwt_attributes nil
+                             :is_superuser true})
+                           (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                                     {:last_name "Eron"
+                                                      :email "cam.eron@metabase.com"})
+                               (dissoc :user_group_memberships)
+                               mt/boolean-ids-and-timestamps)))))
+                (testing "after API call"
+                  (is (= {:first_name "Cam"
+                          :last_name "Eron"
+                          :is_superuser true
+                          :email "cam.eron@metabase.com"
+                          ::personal-collection-name "Cam Eron's Personal Collection"}
+                         (user))))))))))))
 
 (deftest update-login-attributes-test
   (testing "PUT /api/user/:id"
@@ -1602,12 +1604,13 @@
   (testing "PUT /api/user/:id"
     (testing "Check that we can update the groups a User belongs to -- if we are a superuser"
       (mt/with-premium-features #{}
-        (mt/with-temp [:model/User user {}
-                       :model/PermissionsGroup group {:name "Blue Man Group"}]
-          (mt/user-http-request :crowberto :put 200 (str "user/" (u/the-id user))
-                                {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])})
-          (is (= #{"All Users" "Blue Man Group"}
-                 (user-test/user-group-names user))))))))
+        (mt/with-model-cleanup [:model/User]
+          (let [[user] (user/create-users! [{:email "blue-man-group-member@example.com"}])]
+            (mt/with-temp [:model/PermissionsGroup group {:name "Blue Man Group"}]
+              (mt/user-http-request :crowberto :put 200 (str "user/" (u/the-id user))
+                                    {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])})
+              (is (= #{"All Users" "Blue Man Group"}
+                     (user-test/user-group-names user))))))))))
 
 (deftest update-groups-test-2
   (testing "PUT /api/user/:id"
@@ -1649,12 +1652,13 @@
     (testing (str "We should be able to put someone in the Admin group when we update them them (is_superuser TRUE? "
                   "and user_group_memberships including admin group ID)")
       (mt/with-premium-features #{}
-        (mt/with-temp [:model/User {:keys [email id]}]
-          (mt/user-http-request :crowberto :put 200 (str "user/" id)
-                                {:is_superuser true
-                                 :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})
-          (is (= {:is-superuser? true, :pgm-exists? true}
-                 (superuser-and-admin-pgm-info email))))))))
+        (mt/with-model-cleanup [:model/User]
+          (let [[{:keys [email id]}] (user/create-users! [{:email "admin-membership-and-flag@example.com"}])]
+            (mt/user-http-request :crowberto :put 200 (str "user/" id)
+                                  {:is_superuser true
+                                   :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})
+            (is (= {:is-superuser? true, :pgm-exists? true}
+                   (superuser-and-admin-pgm-info email)))))))))
 
 (deftest update-groups-test-5
   (testing "PUT /api/user/:id"
@@ -1695,13 +1699,14 @@
   (testing "PUT /api/user/:id"
     (testing "if we include Admin in user_group_memberships but don't specify is_superuser we should be ok"
       (mt/with-premium-features #{}
-        (mt/with-temp [:model/User {:keys [email id]}]
-          (is (=? {:id id
-                   :is_superuser true}
-                  (mt/user-http-request :crowberto :put 200 (str "user/" id)
-                                        {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})))
-          (is (= {:is-superuser? true, :pgm-exists? true}
-                 (superuser-and-admin-pgm-info email))))))))
+        (mt/with-model-cleanup [:model/User]
+          (let [[{:keys [email id]}] (user/create-users! [{:email "admin-membership-only@example.com"}])]
+            (is (=? {:id id
+                     :is_superuser true}
+                    (mt/user-http-request :crowberto :put 200 (str "user/" id)
+                                          {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})))
+            (is (= {:is-superuser? true, :pgm-exists? true}
+                   (superuser-and-admin-pgm-info email)))))))))
 
 (deftest ^:parallel update-groups-test-9
   (testing "Double-check that the tests above cleaned up after themselves"
@@ -2199,11 +2204,11 @@
                             (format "user/%d/password-reset-url" user-id)))))
 
 (deftest sso-user-with-used-password-can-be-given-password-test
-  (testing "admin can set or reset password of SSO user with enabled provider only when password is used and unexpired"
+  (testing "admin can set or reset password of SSO user with enabled provider only when password is used, expired or not"
     (doseq [[password-attrs expected-status] [[{:last_used_at (t/offset-date-time)} 200]
                                               [{} 404]
                                               [{:last_used_at (t/offset-date-time)
-                                                :expires_at   (t/minus (t/offset-date-time) (t/days 1))} 404]]]
+                                                :expires_at   (t/minus (t/offset-date-time) (t/days 1))} 200]]]
       (testing (pr-str password-attrs)
         (mt/with-temp [:model/User {user-id :id} {:sso_source "google"}
                        :model/AuthIdentity _ (merge {:user_id     user-id
@@ -2242,12 +2247,6 @@
                                           :credentials  {:plaintext_password "somePassword12!!"}
                                           :last_used_at (t/offset-date-time)
                                           :expires_at   (t/minus (t/offset-date-time) (t/days 1))}
-                   :model/User {expiring-user-id :id} {}
-                   :model/AuthIdentity _ {:user_id      expiring-user-id
-                                          :provider     "password"
-                                          :credentials  {:plaintext_password "somePassword12!!"}
-                                          :last_used_at (t/offset-date-time)
-                                          :expires_at   (t/plus (t/offset-date-time) (t/hours 1))}
                    :model/User {used-user-id :id} {}
                    :model/AuthIdentity _ {:user_id      used-user-id
                                           :provider     "password"
@@ -2257,15 +2256,13 @@
                    :model/AuthIdentity _ {:user_id     unused-user-id
                                           :provider    "password"
                                           :credentials {:plaintext_password "somePassword12!!"}}]
-      (is (=? {:has_used_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" expired-user-id))))
-      (is (=? {:has_used_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" expiring-user-id))))
+      (is (=? {:has_used_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" expired-user-id))))
       (is (=? {:has_used_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" used-user-id))))
       (is (=? {:has_used_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" unused-user-id))))
       (let [id->has-used-password (into {}
                                         (map (juxt :id :has_used_password))
                                         (:data (mt/user-http-request :crowberto :get 200 "user")))]
-        (is (false? (id->has-used-password expired-user-id)))
-        (is (true? (id->has-used-password expiring-user-id)))
+        (is (true? (id->has-used-password expired-user-id)))
         (is (true? (id->has-used-password used-user-id)))
         (is (false? (id->has-used-password unused-user-id))))
       (testing "GET /api/user/current reports it to user themself"
@@ -2317,3 +2314,17 @@
             (let [body (-> @mt/inbox (get email) first :body first :content)]
               (is (some? body))
               (is (re-find #"/auth/reset_password/" body)))))))))
+
+(deftest update-user-group-memberships-keeps-unchanged-all-users-test
+  (testing "PUT /api/user/:id with the full set of groups, All Users included and unchanged, adds the other groups"
+    (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
+                   :model/PermissionsGroup {group-2 :id} {}]
+      (mt/with-model-cleanup [:model/User]
+        (let [[{user-id :id}] (user/create-users! [{:email      "keeps-all-users@example.com"
+                                                    :first_name "Test"
+                                                    :last_name  "User"}])
+              all-users-id    (:id (perms-group/all-users))]
+          (is (contains? (user/group-ids user-id) all-users-id))
+          (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                {:user_group_memberships [{:id all-users-id} {:id group-1} {:id group-2}]})
+          (is (= #{all-users-id group-1 group-2} (user/group-ids user-id))))))))

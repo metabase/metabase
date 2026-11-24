@@ -15,6 +15,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.test-util :as api.test-util]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -37,6 +38,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -338,7 +340,7 @@
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native)
-        (is (false? (mt/with-test-user :rasta (mi/can-read? card))))
+        (is (false? (mt/with-test-user :rasta (mi/can-read? (t2/hydrate card :can_read)))))
         (testing "source-table card__N"
           (is (mt/user-http-request :rasta :post 403 "dataset/native"
                                     {:database (mt/id)
@@ -1201,7 +1203,7 @@
   (testing "A source Card brings the same metadata as its query, plus the Card itself"
     (let [mp    (mt/metadata-provider)
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+      (mt/with-temp [:model/Card {card-id :id} (mt/card-with-metadata {:dataset_query query})]
         (let [query-metadata (fn [query]
                                (-> (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
                                                          (dissoc query :lib/metadata))
@@ -1236,10 +1238,12 @@
 (deftest dataset-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
-      [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
-                                                    :type     :query
-                                                    :query    {:source-table (str "card__" card-id-1)}}}]
+      [:model/Card {card-id-1 :id} (mt/card-with-metadata {:dataset_query (mt/mbql-query products)})
+       :model/Card {card-id-2 :id} (mt/card-with-metadata
+                                    {:table_id      (mt/id :products)
+                                     :dataset_query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (str "card__" card-id-1)}}})]
       (letfn [(query-metadata [expected-status card-id]
                 (-> (mt/user-http-request :crowberto :post expected-status
                                           "dataset/query_metadata"
@@ -1278,8 +1282,8 @@
     (mt/with-premium-features #{}
       (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
         (t2/with-transaction [_conn nil {:rollback-only true}]
-          (mt/with-temp [:model/User       {user-id :id} {:email "oss-db-access-test@example.com"}
-                         :model/Collection collection {}]
+          (let [[{user-id :id}] (user/create-users! [{:email "oss-db-access-test@example.com"}])
+                [collection]  (collection/create-collections! [{:name "Published Tables"}])]
             ;; Publish the venues table into this collection
             (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]

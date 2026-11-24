@@ -93,6 +93,7 @@
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
@@ -198,14 +199,16 @@
   > **Code health:** Legacy. This has many legitimate uses (as of March 2024), but we should aim to reduce the places
   where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MBQL 5."
   [query-map]
-  (-> (lib.convert/->legacy-MBQL query-map)
+  ;; existing usage -- do not use going forward
+  (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query-map)
       fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export xray-cell-query
   "Returns the filter of the last stage of `a-query` as a legacy clause in vanilla JSON form, the cell query of an automatic
   dashboard URL, or nil when the stage has no filter."
   [a-query]
-  (some-> (lib.convert/->legacy-MBQL a-query)
+  ;; existing usage -- do not use going forward
+  (some-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL a-query)
           (get-in [:query :filter])
           fix-namespaced-values
           (clj->js :keyword-fn u/qualified-name)))
@@ -771,102 +774,64 @@
 ;; # Comparing queries
 ;; There are a few places in the FE where we need to compare two queries, typically to check whether the current
 ;; question has been changed and needs to be saved.
+;;
+;; Both queries are compared as MBQL 5 with [[lib.equality/=]]. A legacy query is converted to MBQL 5 first.
 
-;; **This currently only works for legacy queries in JSON form.** At some point MBQL 5 queries will become the source of
-;; truth, and the format used on the wire. At that point, we'll want a similar comparison for MBQL 5 queries.
+(defn- fields-sort-key
+  "Sort key for a clause in `:fields`. Two clauses that are [[lib.equality/=]] have the same key, so the key leaves out
+  what [[lib.equality/=]] ignores: `:lib/uuid`, and the type keys a `:field` ref may leave out."
+  [[tag opts & args]]
+  (hash [tag
+         args
+         (into {}
+               (remove (fn [[k _v]]
+                         (or (qualified-keyword? k)
+                             (#{:base-type :effective-type} k))))
+               opts)]))
 
-;; TODO: These equality checks only seem to clean and check the last stages - does that really suffice?
+(defn- prep-last-stage-for-equals
+  "The order of `:fields` does not matter, but duplicates have to match up, so sort the clauses rather than comparing
+  them as a set. A stage without `:fields` returns the Fields in `field-ids`."
+  [stage field-ids]
+  (let [fields (or (:fields stage)
+                   (for [id field-ids]
+                     [:field {} id]))]
+    (cond-> stage
+      (and (= (:lib/type stage) :mbql.stage/mbql)
+           (seq fields))
+      (assoc :fields (vec (sort-by fields-sort-key fields))))))
 
-(defn- prep-query-for-equals-legacy [a-query field-ids]
-  (-> a-query
-      ;; If `:native` exists, but it doesn't have `:template-tags`, add it.
-      (m/update-existing :native #(merge {:template-tags {}} %))
-      (m/update-existing :query (fn [inner-query]
-                                  (let [fields (or (:fields inner-query)
-                                                   (for [id field-ids]
-                                                     [:field id nil]))]
-                                    (-> inner-query
-                                        ;; We ignore the order of the fields in the lists, but need to make sure any
-                                        ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
-                                        (assoc :fields (frequencies fields))
-                                        ;; Remove the randomized idents, which are of course not going to match. These
-                                        ;; are deprecated and should no longer be populated
-                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
-      ;; Ignore :info since it contains the randomized :card-entity-id. (This is no longer populated either.)
-      (dissoc :info)))
+(defn- prep-stage-for-equals
+  "A native stage without `:template-tags` is the same as one with no template tags."
+  [stage]
+  (cond-> stage
+    (= (:lib/type stage) :mbql.stage/native) (update :template-tags #(or % {}))))
 
-;;; TODO (Cam 10/8/25) -- we're currently converting MBQL 5 to legacy to do the equality check (icky). It would be
-;;; better to convert both to 5 and use [[metabase.lib.equality/=]]... but that's a task for another day.
-(defn- prep-query-for-equals-mbql5
-  [a-query field-ids]
-  (-> a-query
-      lib.core/->legacy-MBQL
-      (prep-query-for-equals-legacy field-ids)))
-
+;; TODO: Only the `:fields` of the last stage are compared without regard to order - does that really suffice?
 (defn- prep-query-for-equals [a-query field-ids]
   (when-let [normalized-query (some-> a-query normalize-to-clj)]
-    (let [f (if (= (lib.core/normalized-mbql-version normalized-query) :mbql-version/mbql5)
-              prep-query-for-equals-mbql5
-              prep-query-for-equals-legacy)]
-      (f normalized-query field-ids))))
-
-(defn- compare-field-refs
-  [[key1 id1 opts1]
-   [key2 id2 opts2]]
-  ;; A mismatch of `:base-type` or `:effective-type` when both x and y have values for it is a failure.
-  ;; If either ref does not have the `:base-type` or `:effective-type` set, that key is ignored.
-  (letfn [(clean-opts [o1 o2]
-            (not-empty
-             (cond-> o1
-               (not (:base-type o2))      (dissoc :base-type)
-               (not (:effective-type o2)) (dissoc :effective-type))))]
-    (if (map? id1)
-      (= [key1 (clean-opts id1 id2) opts1]
-         [key2 (clean-opts id2 id1) opts2])
-      (= [key1 id1 (clean-opts opts1 opts2)]
-         [key2 id2 (clean-opts opts2 opts1)]))))
-
-(defn- query=* [x y]
-  (cond
-    (and (vector? x)
-         (vector? y)
-         (= (first x) (first y) :field))
-    (compare-field-refs x y)
-
-    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't have to match.
-    (and (map? x) (map? y))
-    (let [x (dissoc x :lib/uuid)
-          y (dissoc y :lib/uuid)]
-      (and (= (set (keys x)) (set (keys y)))
-           (every? (fn [[k v]]
-                     (query=* v (get y k)))
-                   x)))
-
-    (and (sequential? x) (sequential? y))
-    (and (= (count x) (count y))
-         (every? true? (map query=* x y)))
-
-    ;; Either mismatched map/sequence/nil/etc., or primitives like strings.
-    ;; Either way, = does the right thing.
-    :else (= x y)))
+    (let [mbql5-query (if (= (lib.core/normalized-mbql-version normalized-query) :mbql-version/legacy)
+                        ;; Cleaning removes clauses that fail schema validation, and two queries that differ only
+                        ;; in such a clause are not equal.
+                        (lib.convert/without-cleaning #(lib.convert/->mbql5 normalized-query))
+                        normalized-query)]
+      (cond-> (dissoc mbql5-query :info) ; `:info` once held a random `:card-entity-id`, and says nothing about the query.
+        (seq (:stages mbql5-query))
+        (update :stages (fn [stages]
+                          (-> (mapv prep-stage-for-equals stages)
+                              (update (dec (count stages)) prep-last-stage-for-equals field-ids))))))))
 
 (defn ^:export query=
   "Returns whether the provided queries should be considered equal.
 
-  If `field-ids` is specified, an input MBQL query without `:fields` set defaults to the `field-ids`.
+  If `field-ids` is specified, an MBQL query whose last stage has no `:fields` defaults to the `field-ids`.
 
-  Works on either MBQL 4 or MBQL 5 in either JS or Cljs form.
-  It duplicates the logic formerly found in `query_builder/selectors.js`.
-
-  > **Code health:** Legacy. New calls are acceptable if necessary. Eventually this will be replaced with an equivalent
-  function that compares two MBQL 5 queries in CLJS form, but that needs MBQL 5 queries to be the source of truth on the
-  wire, rather than legacy."
+  Works on either MBQL 4 or MBQL 5 in either JS or Cljs form. The comparison itself is [[lib.equality/=]] on MBQL 5."
   ([query1 query2] (query= query1 query2 nil))
   ([query1 query2 field-ids]
-   (let [ids (mapv js->clj field-ids)
-         q1  (prep-query-for-equals query1 ids)
-         q2  (prep-query-for-equals query2 ids)]
-     (query=* q1 q2))))
+   (let [ids (mapv js->clj field-ids)]
+     (lib.equality/= (prep-query-for-equals query1 ids)
+                     (prep-query-for-equals query2 ids)))))
 
 ;; # Column Groups
 ;; In many places in the FE we show a list of columns which might be used to filter, aggregate, etc. These are shown in
@@ -1091,29 +1056,19 @@
 ;; When rendering expressions, the FE calls [[expression-parts]], which returns a kind of AST for the expression.
 ;; This form is deliberately different from the MBQL representation.
 
-(defn- expression-parts-like?
-  "Test if [[x]] has the shape expression-parts, possible with missing :lib/type."
-  [x]
-  (and (map? x)
-       (:operator x)
-       (:args x)
-       (or
-        (and
-         (not (:lib/type x))
-         (not (:type x)))
-        (= (:lib/type x) :mbql/expression-parts)
-        (= (:type x) :mbql/expression-parts))))
-
 (defn- expression-parts-js->cljs
   "When coming from js the expression parts will have no :lib/type, so we need to add
    it back in recursively for each node down the path."
   [x]
   (as-> x parts
     (js->clj parts :keywordize-keys true)
-    (perf/postwalk
-     #(cond-> %
-        (expression-parts-like? %) (assoc :lib/type :mbql/expression-parts))
-     parts)))
+    (match/replace-all parts
+      (:and {:operator &truthy, :args &truthy}
+            (m :guard (or (and (not (:lib/type m))
+                               (not (:type m)))
+                          (= (:lib/type m) :mbql/expression-parts)
+                          (= (:type m) :mbql/expression-parts))))
+      (assoc m :lib/type :mbql/expression-parts))))
 
 (defn ^:export expression-clause
   "Returns a standalone expression clause for the given `operator`, `options`, and list of arguments."
@@ -1146,16 +1101,13 @@
   > **Code health:** Healthy"
   [a-query stage-number an-expression-clause]
   (let [parts (lib.core/expression-parts a-query stage-number an-expression-clause)]
-    (perf/postwalk
-     (fn [node]
-       (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
-         (let [{:keys [operator options args]} node]
-           #js {:operator (name operator)
-                :options (fix-namespaced-values
-                          (clj->js (select-keys options [:case-sensitive :include-current :base-type :mode]) :keyword-fn u/qualified-name))
-                :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
-         node))
-     parts)))
+    (match/replace-all parts
+      {:lib/type :mbql/expression-parts}
+      (let [{:keys [operator options args]} &match]
+        #js {:operator (name operator)
+             :options (fix-namespaced-values
+                       (clj->js (select-keys options [:case-sensitive :include-current :base-type :mode]) :keyword-fn u/qualified-name))
+             :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))}))))
 
 (defn ^:export string-filter-clause
   "Creates a string filter clause based on FE-friendly filter parts. It should be possible to destructure each created
@@ -1616,6 +1568,10 @@
 (defn- ref->legacy-ref
   [a-ref]
   (-> a-ref
+      ;; TODO (Cam 2026-11-16) check whether we can change this to [[lib.convert/->legacy-MBQL-ref]] -- I have no idea
+      ;; why we'd ever be calling [[legacy-ref]] with a Metric/Segment/Measure in the first place, I don't think their
+      ;; legacy refs are used anywhere.
+      #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
       lib.convert/->legacy-MBQL
       normalize-legacy-ref))
 
@@ -1635,9 +1591,9 @@
 
   > **Code health:** Legacy. New calls strongly discouraged; refs are a bad leak in the abstraction and we should aim
   to refactor the existing ones."
-  [a-query stage-number column]
+  [a-query stage-number referenceable]
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
-    (-> column
+    (-> referenceable
         lib.core/ref
         ref->legacy-ref
         clj->js)))
@@ -1672,7 +1628,7 @@
           column-refs   (into {} (keep-indexed (fn [i col]
                                                  [(-> col
                                                       lib.core/ref
-                                                      lib.convert/->legacy-MBQL
+                                                      lib.convert/->legacy-MBQL-ref
                                                       normalize-legacy-ref)
                                                   i]))
                               legacy-columns)

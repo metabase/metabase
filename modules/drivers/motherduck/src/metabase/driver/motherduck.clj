@@ -16,7 +16,6 @@
    [metabase.driver.postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :as sql-jdbc.quoting]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
@@ -29,12 +28,13 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
    (com.mchange.v2.c3p0 ConnectionTester UnifiedConnectionTester)
    (com.mchange.v2.c3p0.impl DefaultConnectionTester)
-   (java.sql Connection ResultSet ResultSetMetaData SQLException Types)
-   (java.time LocalDateTime LocalTime OffsetTime ZoneOffset)))
+   (java.sql Connection ResultSet ResultSetMetaData SQLException Statement Types)
+   (java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -50,18 +50,22 @@
   ;; `DefaultJavaSSLFactory` checks the certificate chain against the JVM's trust store; pgjdbc's default factory
   ;; expects a root certificate file in ~/.postgresql instead. `verify-full` also checks the hostname. Through an SSH
   ;; tunnel, pgjdbc would check it against localhost, so check only the chain there.
-  ;; The startup option enables Metabase compatibility, including Postgres-style array serialization and command tags
-  ;; for CREATE TABLE and INSERT.
+  ;; The startup options enable Metabase compatibility, including Postgres-style array serialization. They also turn
+  ;; on Postgres command tags for every statement: without them, the endpoint answers UPDATE, DELETE, ALTER, DROP and
+  ;; SET, among others, with a result set, which pgjdbc's `executeUpdate` rejects. Single attach mode attaches only the
+  ;; connected database instead of the whole MotherDuck workspace, which avoids a background attach fan-out of every
+  ;; database in the account. See https://motherduck.com/docs/sql-reference/postgres-endpoint/
   ;; The endpoint ignores the user name and the form has no field for it; send the one MotherDuck's docs use.
   (-> (sql-jdbc.conn/connection-details->spec :postgres (assoc details :ssl true, :user "postgres"))
       (assoc :sslmode    (if tunnel-enabled "verify-ca" "verify-full")
              :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"
-             :options    "--compatibility-mode=metabase")))
+             :options    "--compatibility-mode=metabase --return_pg_command_tags=true --attach_mode=single")))
 
 ;;; Resetting the current database at checkout
 ;;;
 ;;; SQL on a connection can switch its current database, with `USE`, `SET search_path` or `SET schema`, and the switch
-;;; lasts for the session. A MotherDuck connection can see every database in the account, and `USE` is idiomatic
+;;; lasts for the session. A MotherDuck connection starts with only its own database attached, but SQL can `ATTACH`
+;;; any database in the account for the rest of the session, and `ATTACH` plus `USE` is idiomatic
 ;;; DuckDB, so analysts will write it in native queries. Metabase qualifies tables with only the schema, so later
 ;;; queries and syncs that reuse the pooled connection would read the other database: queries fail, or silently return
 ;;; another database's data, and sync can deactivate every table.
@@ -73,10 +77,10 @@
 ;;;
 ;;; 2. `USE` as c3p0's `preferredTestQuery`. c3p0 already makes one round trip at each checkout to test the connection,
 ;;;    so the reset would come free. But c3p0's `DefaultConnectionTester` runs the test query with `executeQuery`, which
-;;;    pgjdbc rejects unless the statement returns exactly one result set. The endpoint happens to return an empty one
-;;;    for `USE` today. We have asked MotherDuck to stop returning result sets for statements like this (QUE-1012). If
-;;;    they do, every checkout test fails, c3p0 discards every connection, and the database is unusable. Batching
-;;;    `USE ...; SELECT 1` doesn't help: `executeQuery` rejects two result sets today and zero first results later.
+;;;    pgjdbc rejects unless the statement returns exactly one result set. With `return_pg_command_tags`, `USE` returns
+;;;    a command tag and no result set, so every checkout test would fail, c3p0 would discard every connection, and the
+;;;    database would be unusable. Batching `USE ...; SELECT 1` doesn't help: `executeQuery` rejects a statement whose
+;;;    first result isn't a result set.
 ;;;
 ;;; 3. A custom connection tester, below. It runs the `USE` with `Statement.execute`, which accepts any result, as the
 ;;;    checkout test. The reset costs no round trip beyond the test c3p0 makes anyway, and it doesn't depend on what the
@@ -155,7 +159,7 @@
    driver database nil
    (fn [^Connection conn]
      (with-open [stmt (.prepareStatement conn "SELECT current_setting('TimeZone')")
-                 rset (.executeQuery stmt)]
+                 ^ResultSet rset (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
        (when (.next rset)
          (.getString rset 1))))))
 
@@ -185,16 +189,9 @@
                  ;; MotherDuck uses token authentication rather than Postgres roles and row-level security.
                  :test/rls-impersonation
                  :test/column-impersonation
-                 ;; Transforms are not supported at all. The rename flags are read only by transforms; the endpoint can
-                 ;; rename tables, so turn them back on with transforms.
-                 :atomic-renames
-                 :rename
-                 :transforms/table
-                 :transforms/python
-                 :transforms/index-ddl
-                 :transforms/testing
                  ;; The inherited fetch-table-indexes reads pg_index, which is empty on the endpoint, and calls
                  ;; a pg_get_indexdef arity it doesn't provide. Only transform index management uses these.
+                 :transforms/index-ddl
                  :index/fetch
                  :index/standalone-create
                  ;; Workspace isolation creates Postgres users and schema grants (pg_user, CREATE USER, GRANT).
@@ -206,6 +203,17 @@
   (defmethod driver/database-supports? [:motherduck feature]
     [_driver _feature _db]
     false))
+
+;; `CREATE OR REPLACE TABLE ... AS` swaps a transform's target in one atomic statement, inside or outside a
+;; transaction, and reports the rows it inserted.
+(defmethod driver/database-supports? [:motherduck :create-or-replace-table]
+  [_driver _feature _db]
+  true)
+
+;; `:atomic-renames` and `:rename` are inherited from Postgres. SQL transforms don't need them, since they check
+;; `:create-or-replace-table` first, but Python transforms do: they load into a new table and swap it in with
+;; [[driver/rename-tables!*]]. Without renames they drop the target and recreate it, so readers find it missing and
+;; then half-filled, and a failed run loses the old data.
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Metadata / sync                                                    |
@@ -241,7 +249,7 @@
   [driver ^Connection conn _metadata inclusion-patterns exclusion-patterns]
   (with-open [stmt (sql-jdbc.sync.common/prepare-statement
                     driver conn "SELECT schema_name FROM duckdb_schemas() WHERE database_name = current_database()" [])
-              rs   (.executeQuery stmt)]
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
     (loop [schemas (transient [])]
       (if (.next rs)
         (let [schema (.getString rs 1)]
@@ -250,6 +258,20 @@
                     inclusion-patterns exclusion-patterns schema)
                    (conj! schema))))
         (persistent! schemas)))))
+
+;; The inherited check reads the same `getSchemas()`, so it finds a schema that exists only in another attached
+;; database. Transforms then skip `CREATE SCHEMA`, and the table creation that follows fails.
+(defmethod driver/schema-exists? :motherduck
+  [driver db-id schema]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver db-id nil
+   (fn [^Connection conn]
+     (with-open [stmt (sql-jdbc.sync.common/prepare-statement
+                       driver conn
+                       "SELECT 1 FROM duckdb_schemas() WHERE database_name = current_database() AND schema_name = ?"
+                       [schema])
+                 ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+       (.next rs)))))
 
 ;; Based on the Postgres query, with three changes:
 ;; - Primary keys come from duckdb_constraints(), scoped to the current database. The endpoint's
@@ -347,8 +369,8 @@
 
 (defmethod sql-jdbc.describe-table/get-table-pks :motherduck
   [driver ^Connection conn _db-name-or-nil table]
-  (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn table-pks-sql [(:schema table) (:name table)])
-              rs   (.executeQuery stmt)]
+  (with-open [stmt          (sql-jdbc.sync.common/prepare-statement driver conn table-pks-sql [(:schema table) (:name table)])
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
     (loop [pks (transient [])]
       (if (.next rs)
         (recur (conj! pks (.getString rs 1)))
@@ -515,6 +537,132 @@
     ((get-method sql.qp/->honeysql [:postgres :convert-timezone])
      driver [tag opts arg (h2x/literal target-timezone) (some-> source-timezone h2x/literal)])))
 
+;; DuckDB reads text after a space in a TIMESTAMPTZ literal as a zone name, so the inherited
+;; `'2020-06-07 12:00:00.000 +00:00'` fails with "Unknown TimeZone '+00:00'". Attach the offset to the time.
+(defmethod sql.qp/inline-value [:motherduck OffsetDateTime]
+  [_driver t]
+  (format "timestamp with time zone '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSSxxx" t)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Executing queries                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; A connection plans each query against its snapshot of the account's catalog. When another session changes the
+;;; catalog, by creating or dropping a database, table or view, a query planned on the stale snapshot fails with
+;;; "Catalog Error: Remote catalog has changed. Please rerun query.", and the endpoint refreshes the snapshot for the
+;;; next query on the connection. So the same statement succeeds when it's run again, as the message says to do.
+;;;
+;;; Catalog changes also cause a vaguer error: "IO Error: You've encountered an internal MotherDuck error. ... error
+;;; ID: ...". In CI, `duckdb_constraints()` raised it while another session was loading a database. A connection sees
+;;; every database in the account, and that function reads them all before filtering on `current_database()`. That
+;;; error doesn't say whether a rerun will succeed, but rerunning a read is harmless.
+;;;
+;;; Only the two read-side execute methods retry. Write queries, transforms, actions and uploads use `executeUpdate` or
+;;; `executeBatch` directly, so a retry can never apply a write twice. Sync reads go through
+;;; `execute-prepared-statement!`, so they retry too, except where they read JDBC's `DatabaseMetaData`.
+
+(def ^:private retryable-error-message
+  ;; The endpoint reports every error with SQLState `XXUUU` and no error code, so the message is the only way to tell
+  ;; these from the rest.
+  #"Remote catalog has changed|internal MotherDuck error")
+
+(def ^:private max-retries
+  "How many times to rerun a statement that keeps failing with a [[retryable-error-message]]. Each rerun plans against
+  a fresh snapshot, so one is normally enough; the rest cover a catalog that is changing continuously, as it does in
+  CI."
+  2)
+
+(defn- roll-back-aborted-transaction!
+  "Roll back the transaction a retryable error aborted, so that the rerun isn't rejected with \"current transaction is
+  aborted\" instead. With autoCommit on there is no transaction to roll back. Reads turn autoCommit off to stream
+  their results through a cursor: downloads, `:table-rows-sample` and `describe-database-tables` do. Those transactions
+  only read, so rolling one back loses nothing that wasn't lost with the error. Should the rollback itself fail, the
+  original error is thrown, with the rollback's attached."
+  [^Statement stmt ^SQLException e]
+  (try
+    (let [conn (.getConnection stmt)]
+      (when-not (.getAutoCommit conn)
+        (.rollback conn)))
+    (catch Throwable rollback-error
+      (.addSuppressed e rollback-error)
+      (throw e))))
+
+(defn- execute-with-retry
+  "Call `execute!`, a thunk that runs `stmt`, and return its result. If the endpoint rejects the statement with a
+  [[retryable-error-message]], roll back the transaction that aborted, if any, and call `execute!` again, up to
+  [[max-retries]] times. Any other `SQLException`, and the last retryable error, are thrown as they are."
+  [^Statement stmt execute!]
+  (loop [retries-left max-retries]
+    (let [result (try
+                   (execute!)
+                   (catch SQLException e
+                     (if (and (pos? retries-left)
+                              (some->> (ex-message e) (re-find retryable-error-message)))
+                       (do (log/debugf "MotherDuck rejected a statement with a retryable error, rerunning it (%d retries left): %s"
+                                       (dec retries-left)
+                                       (ex-message e))
+                           (roll-back-aborted-transaction! stmt e)
+                           ::retry)
+                       (throw e))))]
+      (if (= result ::retry)
+        (recur (dec retries-left))
+        result))))
+
+(defmethod sql-jdbc.execute/execute-prepared-statement! :motherduck
+  [driver stmt]
+  (let [postgres-method (get-method sql-jdbc.execute/execute-prepared-statement! :postgres)]
+    (execute-with-retry stmt #(postgres-method driver stmt))))
+
+(defmethod sql-jdbc.execute/execute-statement! :motherduck
+  [driver stmt sql]
+  (let [postgres-method (get-method sql-jdbc.execute/execute-statement! :postgres)]
+    (execute-with-retry stmt #(postgres-method driver stmt sql))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  Transforms                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; `CREATE OR REPLACE TABLE ... AS` replaces the target atomically, so a failed run leaves the old table in place and a
+;; successful one never leaves readers without a table. HoneySQL's `:or-replace` modifier puts the words after the
+;; table name, so build the statement from the quoted name, as the SQL Server driver does.
+(defmethod driver/compile-transform :motherduck
+  [driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
+    [(str "CREATE OR REPLACE TABLE " table-name " AS " sql-query) sql-params]))
+
+;; Python transforms create their target table from Metabase types. Three of the inherited Postgres type names mean
+;; something else on the endpoint, or don't exist there: Postgres's `float` is double precision, but DuckDB's FLOAT
+;; is 4 bytes; `jsonb` doesn't exist; and `inet` needs an extension the endpoint doesn't load. Everything else maps
+;; as it does on Postgres, including `decimal`, which becomes DECIMAL(18,3), as the other drivers' bare `decimal`
+;; does. `:type/Decimal` derives from `:type/Float`, so it's checked first to keep the inherited `decimal`.
+(defmethod driver/type->database-type :motherduck
+  [driver base-type]
+  (condp #(isa? %2 %1) base-type
+    :type/Decimal        ((get-method driver/type->database-type :postgres) driver base-type)
+    :type/Float          [:double-precision]
+    :type/JSON           [:json]
+    :type/SerializedJSON [:json]
+    :type/IPAddress      [:text]
+    ((get-method driver/type->database-type :postgres) driver base-type)))
+
+;; Not the Postgres method, which turns on pgjdbc's autosave so that a failed statement doesn't abort the rest of a
+;; transform test. Autosave sets a savepoint before each statement, and the endpoint has no savepoints. As on Redshift,
+;; a failed statement in a transform test therefore aborts the transaction for every statement after it.
+(defmethod driver/do-with-test-connection :motherduck
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc) driver database f))
+
+;; The endpoint refuses `CREATE TEMPORARY TABLE` ("Creating temp tables is not allowed"), and MotherDuck has said temp
+;; tables aren't coming. Transform tests run on one connection inside a transaction that is always rolled back, and
+;; DDL is transactional here, so an ordinary table does the job: it's visible on that connection alone, dropped by the
+;; test's own cleanup, and gone after the rollback in any case. The inherited drop is a plain `DROP TABLE IF EXISTS`.
+(defmethod driver/compile-create-temp-table :motherduck
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (sql.qp/format-honeysql driver [:raw ["CREATE TABLE " [:inline (keyword table)] " AS " sql-query]]))
+     sql-params]))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Reading results                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -623,21 +771,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Driver-managed table DDL                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; The endpoint returns a result set for DROP TABLE, even in Metabase compatibility mode.
-;; Use Statement.execute to accept it. The inherited executeUpdate path rejects result sets.
-;; Qualify the name like the :sql-jdbc method does: a plain `keyword` would let HoneySQL rewrite `-` to `_` in the
-;; schema part, dropping a table in a different schema.
-(defmethod driver/drop-table! :motherduck
-  [driver db-id table-name]
-  (let [sql (first (sql/format {:drop-table [:if-exists (sql-jdbc.quoting/dot-qualified table-name)]}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver db-id {:write? true}
-     (fn [^Connection conn]
-       (with-open [stmt (.createStatement conn)]
-         (.execute stmt ^String sql))))))
 
 ;; The endpoint does not support Postgres COPY FROM STDIN. Use SQL-JDBC's batched INSERTs.
 (defmethod driver/insert-into! :motherduck

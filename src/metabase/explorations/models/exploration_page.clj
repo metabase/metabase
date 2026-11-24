@@ -2,9 +2,14 @@
   "A page within a block: the bundle of queries that appear together on one page
    (currently, those that share a card, dimension, and query_type)."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,21 +20,33 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defmethod mi/can-read? :model/ExplorationPage
-  ([instance]
-   (mi/can-read? :model/ExplorationBlock (:exploration_block_id instance)))
-  ([_model pk]
-   (when-let [p (explorations.db/page-block-id-row pk)]
-     (mi/can-read? :model/ExplorationBlock (:exploration_block_id p)))))
-
-(defmethod mi/can-write? :model/ExplorationPage
-  ([instance]
-   (mi/can-write? :model/ExplorationBlock (:exploration_block_id instance)))
-  ([_model pk]
-   (when-let [p (explorations.db/page-block-id-row pk)]
-     (mi/can-write? :model/ExplorationBlock (:exploration_block_id p)))))
+(methodical/defmethod t2/simple-hydrate [:model/ExplorationPage :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some-> (explorations.db/block-thread-id-row (:exploration_block_id instance)) (t2/hydrate :can_read) mi/can-read?))))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationPage :can_write]
   "Add whether the current user can write each ExplorationPage, which is whether they can write its parent."
   [_model k instances]
   (exploration/hydrate-can-write-from-parents k instances :exploration_block_id :model/ExplorationBlock))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-pages! :- [:sequential (ms/InstanceOf :model/ExplorationPage)]
+  "Insert the ExplorationPage `rows` and return the new instances, in the order of `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-page.create]]
+  (app-db/create-batched! :model/ExplorationPage rows {}))
+
+(mu/defn update-pages! :- :nil
+  "Apply `updates`, each the `:id` of an ExplorationPage with the columns to give it, in one transaction."
+  [updates :- [:sequential ::explorations.schema/exploration-page.update]]
+  (app-db/update-batched! :model/ExplorationPage updates {}))
+
+(mu/defn delete-pages! :- :nil
+  "Delete the ExplorationPages with `page-ids` in one transaction."
+  [page-ids :- [:sequential ms/PositiveInt]]
+  (app-db/delete-batched! :model/ExplorationPage page-ids {}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationPage [_model]
+  {:skip? false})

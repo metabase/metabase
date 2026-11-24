@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [honey.sql :as sql]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    ;; Register the driver before testing its methods.
    [metabase.driver.motherduck]
@@ -27,6 +28,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -36,9 +38,10 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 ConnectionTester)
-   (java.sql Connection ResultSet ResultSetMetaData SQLException Statement Types)
-   (java.time LocalDateTime OffsetTime)
-   (metabase.driver.motherduck ResetDatabaseConnectionTester)))
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData SQLException Statement Types)
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZoneId ZonedDateTime)
+   (metabase.driver.motherduck ResetDatabaseConnectionTester)
+   (org.postgresql.util PSQLException PSQLState)))
 
 (set! *warn-on-reflection* true)
 
@@ -147,6 +150,140 @@
                 :minute  -503191}
                (diffs "2020-12-15T10:31:45" "2020-01-01T00:00:00")))))))
 
+(defn- stale-catalog-exception
+  "The error the endpoint raises when the catalog changed under a statement. Like every error it raises, it carries no
+  error code and the SQLState `XXUUU`."
+  []
+  (PSQLException. "ERROR: Catalog Error: Remote catalog has changed. Please rerun query." PSQLState/UNKNOWN_STATE))
+
+(defn- stand-in-connection
+  "A stand-in `Connection` with autoCommit set to `auto-commit?`. Counts every rollback in the `rollbacks` atom."
+  [auto-commit? rollbacks]
+  (reify Connection
+    (getAutoCommit [_] auto-commit?)
+    (rollback [_] (swap! rollbacks inc))))
+
+(defn- internal-error-exception
+  "The vaguer error the endpoint raises, among other times, when a function reads a database another session is
+  creating."
+  []
+  (PSQLException. (str "ERROR: IO Error: You've encountered an internal MotherDuck error. You can help us diagnose and"
+                       " fix the issue by contacting support via slack, in-app chat, or support@motherduck.com and"
+                       " referencing error ID: 5da7b031.")
+                  PSQLState/UNKNOWN_STATE))
+
+(defn- failing-statement
+  "A stand-in `PreparedStatement` on `conn` whose `executeQuery` throws each of `exceptions` in turn, then returns `rs`.
+  Counts every call in the `attempts` atom."
+  ([exceptions rs attempts]
+   (failing-statement exceptions rs attempts (stand-in-connection true (atom 0))))
+  ([exceptions rs attempts conn]
+   (let [remaining (atom exceptions)]
+     (reify PreparedStatement
+       (getConnection [_] conn)
+       (^ResultSet executeQuery [_]
+         (swap! attempts inc)
+         (let [[e & more] @remaining]
+           (reset! remaining more)
+           (if e
+             (throw e)
+             rs)))))))
+
+;; Not ^:parallel: kondo counts `execute-statement!` as destructive, though these statements are stand-ins.
+(deftest execute-reruns-on-retryable-error-test
+  (let [rs (reify ResultSet)]
+    (testing "a statement rejected because the catalog changed runs again, and the rerun's result is returned"
+      (let [attempts (atom 0)]
+        (is (identical? rs (sql-jdbc.execute/execute-prepared-statement!
+                            :motherduck (failing-statement [(stale-catalog-exception)] rs attempts))))
+        (is (= 2 @attempts))))
+    (testing "an internal MotherDuck error runs again too"
+      (let [attempts (atom 0)]
+        (is (identical? rs (sql-jdbc.execute/execute-prepared-statement!
+                            :motherduck (failing-statement [(internal-error-exception)] rs attempts))))
+        (is (= 2 @attempts))))
+    (testing "it keeps retrying while the catalog keeps changing, up to the limit"
+      (let [attempts (atom 0)]
+        (is (identical? rs (sql-jdbc.execute/execute-prepared-statement!
+                            :motherduck (failing-statement (repeatedly 2 stale-catalog-exception) rs attempts))))
+        (is (= 3 @attempts))))
+    (testing "past the limit, the last error is thrown"
+      (let [attempts (atom 0)]
+        (is (thrown-with-msg? PSQLException #"Remote catalog has changed"
+                              (sql-jdbc.execute/execute-prepared-statement!
+                               :motherduck (failing-statement (repeatedly 3 stale-catalog-exception) rs attempts))))
+        (is (= 3 @attempts))))
+    (testing "with autoCommit off, the transaction the error aborted is rolled back before each rerun"
+      (let [attempts  (atom 0)
+            rollbacks (atom 0)
+            conn      (stand-in-connection false rollbacks)]
+        (is (identical? rs (sql-jdbc.execute/execute-prepared-statement!
+                            :motherduck (failing-statement (repeatedly 2 stale-catalog-exception) rs attempts conn))))
+        (is (= 3 @attempts))
+        (is (= 2 @rollbacks))))
+    (testing "with autoCommit on, there is no transaction to roll back"
+      (let [attempts  (atom 0)
+            rollbacks (atom 0)
+            conn      (stand-in-connection true rollbacks)]
+        (is (identical? rs (sql-jdbc.execute/execute-prepared-statement!
+                            :motherduck (failing-statement [(stale-catalog-exception)] rs attempts conn))))
+        (is (= 2 @attempts))
+        (is (zero? @rollbacks))))
+    (testing "any other error is thrown at once, without a rerun"
+      (let [attempts (atom 0)
+            e        (PSQLException. "ERROR: Parser Error: syntax error at or near \"DISABLE\"" PSQLState/UNKNOWN_STATE)]
+        (is (thrown-with-msg? PSQLException #"Parser Error"
+                              (sql-jdbc.execute/execute-prepared-statement!
+                               :motherduck (failing-statement [e] rs attempts))))
+        (is (= 1 @attempts))))
+    (testing "a plain Statement, used for queries without parameters, reruns the same way"
+      (let [attempts  (atom 0)
+            remaining (atom [(stale-catalog-exception)])
+            conn      (stand-in-connection true (atom 0))
+            stmt      (reify Statement
+                        (getConnection [_] conn)
+                        (^boolean execute [_ ^String _sql]
+                          (swap! attempts inc)
+                          (let [[e & more] @remaining]
+                            (reset! remaining more)
+                            (if e (throw e) true)))
+                        (^ResultSet getResultSet [_] rs))]
+        (is (identical? rs (sql-jdbc.execute/execute-statement! :motherduck stmt "SELECT 1")))
+        (is (= 2 @attempts))))))
+
+(deftest ^:parallel compile-transform-test
+  (is (= ["CREATE OR REPLACE TABLE \"main\".\"out\" AS SELECT x FROM src WHERE y = ?" [5]]
+         (driver/compile-transform :motherduck {:query        {:query "SELECT x FROM src WHERE y = ?", :params [5]}
+                                                :output-table :main/out}))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "the Postgres names that mean something else on the endpoint, or don't exist there"
+    (are [base-type database-type] (= database-type (driver/type->database-type :motherduck base-type))
+      :type/Float          [:double-precision]
+      :type/JSON           [:json]
+      :type/SerializedJSON [:json]
+      :type/IPAddress      [:text]))
+  (testing "the rest is inherited from Postgres"
+    (are [base-type database-type] (= database-type (driver/type->database-type :motherduck base-type))
+      :type/Decimal        [:decimal]
+      :type/Integer        [:int]
+      :type/BigInteger     [:bigint]
+      :type/Number         [:bigint]
+      :type/Text           [:text]
+      :type/Boolean        [:boolean]
+      :type/Date           [:date]
+      :type/DateTime       [:timestamp]
+      :type/DateTimeWithTZ [:timestamp-with-time-zone]
+      :type/Instant        [:timestamp-with-time-zone]
+      :type/UUID           [:uuid])))
+
+(deftest ^:parallel compile-create-temp-table-test
+  (testing "transform tests use an ordinary table, since the endpoint refuses temp tables"
+    (is (= ["CREATE TABLE \"mb_test_abc\" AS SELECT 1 AS x" []]
+           (driver/compile-create-temp-table :motherduck {:table "mb_test_abc", :query {:query "SELECT 1 AS x", :params []}})))
+    (is (= ["DROP TABLE IF EXISTS \"mb_test_abc\"" []]
+           (driver/compile-drop-temp-table :motherduck "mb_test_abc")))))
+
 (defn- read-unparseable
   "Read `s` with the driver's reader for a column of `jdbc-type` and `type-name`, through stand-in JDBC objects.
 
@@ -204,6 +341,20 @@
                             (read-unparseable jdbc-type type-name s))
           s))))
 
+(deftest ^:parallel inline-timestamptz-test
+  (testing "the offset follows the time with no space, because DuckDB reads text after a space as a zone name"
+    (are [t] (= "timestamp with time zone '2020-06-07 12:00:00.000+05:30'"
+                (sql.qp/inline-value :motherduck t))
+      (OffsetDateTime/parse "2020-06-07T12:00:00+05:30")
+      (ZonedDateTime/of 2020 6 7 12 0 0 0 (ZoneId/of "Asia/Kolkata"))))
+  (testing "a pinned clock writes the pinned moment as such a literal"
+    (driver/with-driver :motherduck
+      (mt/with-results-timezone-id "Asia/Kolkata"
+        (qp.timezone/with-pinned-now (t/instant "2020-06-17T12:00:00Z")
+          (is (str/includes? (first (sql.qp/format-honeysql :motherduck
+                                                            (sql.qp/current-datetime-honeysql-form :motherduck)))
+                             "timestamp with time zone '2020-06-17 17:30:00.000+05:30'")))))))
+
 (deftest ^:parallel duckdb-only-base-types-test
   (are [database-type base-type] (= base-type (sql-jdbc.sync/database-type->base-type :motherduck database-type))
     :duckdb_enum         :type/Text
@@ -238,6 +389,27 @@
       (is (=? {:sslmode    "verify-ca"
                :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"}
               (sql-jdbc.conn/connection-details->spec :motherduck (assoc details :tunnel-enabled true)))))))
+
+(deftest command-tags-test
+  (mt/test-driver :motherduck
+    (testing "every write statement returns a Postgres command tag, which `executeUpdate` needs, not a result set"
+      (let [table (str "command_tags_" (mt/random-name))
+            sql   (fn [fmt] (format fmt (str \" table \")))]
+        (sql-jdbc.execute/do-with-connection-with-options
+         :motherduck (mt/id) {:write? true}
+         (fn [^Connection conn]
+           (with-open [stmt (.createStatement conn)]
+             (try
+               (is (= [0 3 2 1 0 0]
+                      (mapv #(.executeUpdate stmt ^String (sql %))
+                            ["CREATE TABLE %s (id INTEGER, x INTEGER)"
+                             "INSERT INTO %s VALUES (1, 1), (2, 2), (3, 3)"
+                             "UPDATE %s SET x = 0 WHERE id < 3"
+                             "DELETE FROM %s WHERE id = 3"
+                             "ALTER TABLE %s ADD COLUMN y INTEGER"
+                             "COMMENT ON TABLE %s IS 'command tags'"])))
+               (finally
+                 (is (= 0 (.executeUpdate stmt ^String (sql "DROP TABLE IF EXISTS %s")))))))))))))
 
 (deftest ^:parallel connection-form-test
   (let [field-names (into #{}
@@ -303,6 +475,14 @@
           (is (= [{:db (:dbname details)}]
                  (jdbc/query spec ["SELECT current_database() AS db"]))))))))
 
+(deftest connection-attaches-only-its-own-database-test
+  (mt/test-driver :motherduck
+    (testing "a new connection attaches only its own database, not every database in the account"
+      (let [details (:details (mt/db))]
+        (is (= [{:database_name (:dbname details)}]
+               (jdbc/query (sql-jdbc.conn/connection-details->spec :motherduck details)
+                           ["SELECT database_name FROM duckdb_databases() WHERE type = 'motherduck'"])))))))
+
 (defn- with-pooled-connection [f]
   (sql-jdbc.execute/do-with-connection-with-options :motherduck (mt/id) nil f))
 
@@ -329,6 +509,9 @@
             (with-pooled-connection
               (fn [^Connection conn]
                 (with-open [stmt (.createStatement conn)]
+                  ;; A connection attaches only its own database, so attach the other one first, as a native query
+                  ;; would. The attachment lasts for this pooled session.
+                  (.execute stmt (format "ATTACH IF NOT EXISTS 'md:%s'" other-db))
                   (.execute stmt ^String sql))))
             (testing "later checkouts are back on the connection's own database"
               (is (= (repeat 5 test-db)
@@ -342,8 +525,8 @@
         (finally
           (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))
 
-;; The checkout tester must accept a `USE` whether or not the endpoint returns a result set for it, which it does today
-;; but may stop doing (QUE-1012). A mock connection stands in for both behaviors.
+;; The checkout tester must accept a `USE` whether or not the endpoint returns a result set for it. It returns none with
+;; `return_pg_command_tags`, and an empty one without. A mock connection stands in for both behaviors.
 (defn- mock-connection
   "A Connection opened on `catalog` whose statements record their SQL in `executed`, then return `result-set?` or
   throw `error`."
@@ -418,7 +601,6 @@
    :motherduck spec {:write? true}
    (fn [^Connection conn]
      (with-open [stmt (.createStatement conn)]
-       ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
        (doseq [^String statement statements]
          (.execute stmt statement))))))
 
@@ -476,7 +658,6 @@
     (fn [^Connection conn]
       (doseq [^String sql statements]
         (with-open [stmt (.createStatement conn)]
-          ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
           (.execute stmt sql))))))
 
 ;; The endpoint's information_schema.table_constraints and key_column_usage list every database in the account. A
@@ -595,6 +776,16 @@
     ;; option with "FATAL: option is not allowed: search_path".
     (is (= "main"
            (driver.sql/default-schema :motherduck (lib.metadata/database (mt/metadata-provider)))))))
+
+(deftest schema-exists?-test
+  (mt/test-driver :motherduck
+    (testing "a schema of the connected database"
+      (is (true? (driver/schema-exists? :motherduck (mt/id) "main"))))
+    ;; JDBC's getSchemas() lists these, and would answer yes for a schema of any attached database.
+    (testing "a schema the endpoint only emulates for Postgres clients"
+      (is (false? (driver/schema-exists? :motherduck (mt/id) "pg_catalog"))))
+    (testing "a schema that doesn't exist"
+      (is (false? (driver/schema-exists? :motherduck (mt/id) (str "no_such_schema_" (mt/random-name))))))))
 
 (deftest recreated-views-test
   (mt/test-driver :motherduck

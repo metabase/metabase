@@ -1,9 +1,13 @@
 (ns metabase.metabot.models.metabot
   (:require
+   [malli.util :as mut]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -37,22 +41,40 @@
    :id
    {:default []}))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn update-metabots! :- :nil
+  "Apply the changes in each of `rows`, the id of a Metabot and the columns to change, in one transaction."
+  [rows :- [:sequential (mut/select-keys ::metabot.schema/metabot.update [:id :use_verified_content :collection_id])]]
+  (mdb/update-batched! :model/Metabot rows {}))
+
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serialization/storage-paths :model/Metabot [_ entities _ctx]
+(defn- storage-paths
+  "The storage path of each of the Metabot `entities`, under `metabots/` by name."
+  [entities _ctx]
   (mapv (fn [metabot]
           [{:label "metabots"} {:label (:name metabot) :key (:entity_id metabot)}])
         entities))
 
-(defmethod serialization/spec :model/Metabot [_]
-  {:schema    ::metabot.schema/external-metabot
-   :copy      [:name :description :entity_id :use_verified_content]
-   :transform {:collection_id (serialization/fk-transform :model/Collection)}
-   :children  {:prompts :model/MetabotPrompt}
-   :defaults  {:use_verified_content false}})
-
-(defmethod serialization/import-dependencies :model/Metabot [_ entities]
+(defn- import-dependencies
+  "The Collection each of the Metabot `entities` depends on, if any."
+  [entities]
   (mapv (fn [{:keys [collection_id]}]
           (when collection_id
             #{[:model/Collection collection_id]}))
         entities))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Metabot [_model]
+  {:skip? false})
+
+(defmethod serialization/spec :model/Metabot [_]
+  {:schema              ::metabot.schema/external-metabot
+   :copy                [:name :description :entity_id :use_verified_content]
+   :transform           {:collection_id (serialization/fk-transform :model/Collection)}
+   :children            {:prompts :model/MetabotPrompt}
+   :defaults            {:use_verified_content false}
+   :storage-paths       storage-paths
+   :import-dependencies import-dependencies})

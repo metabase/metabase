@@ -44,6 +44,22 @@
    where-clause :- [:maybe vector?]]
   (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause)))
 
+(mu/defn spec-index-doc-ids-reducible
+  "A reducible of at most `limit` distinct document ids `search-model` produces under `where-clause`, each row as
+  `{:id id}`.
+  Each id comes once, even when a spec join repeats its row, so `limit` counts documents rather than rows.
+  The where-clause is a search-spec fragment, as for [[spec-index-reducible-rows]].
+  Reducing it runs the query in its own transaction, a savepoint inside an enclosing one, so a failed query leaves
+  the enclosing transaction usable."
+  [search-model :- :string
+   where-clause :- vector?
+   limit        :- pos-int?]
+  (mdb/streaming-reducible-query
+   (-> (ingestion.query/spec-index-query-where search-model where-clause)
+       (dissoc :select)
+       (assoc :select-distinct [(ingestion.query/doc-id-select-item search-model)]
+              :limit           limit))))
+
 (mu/defn spec-index-row
   "A probe row when the `search-model` row with the underlying model PK `id` is indexable, or nil."
   [search-model :- :string
@@ -262,7 +278,7 @@
 
 (mu/defn insert-index-metadata!
   "Insert the SearchIndexMetadata `row`."
-  [row :- ::search.schema/search-index-metadata.update]
+  [row :- ::search.schema/search-index-metadata.create]
   (t2/insert! :model/SearchIndexMetadata row))
 
 (mu/defn delete-index-metadata-by-version!
@@ -383,11 +399,6 @@
                                 [:not-in :version keep-versions]
                                 [:< :updated_at updated-before]]]}))
 
-(mu/defn non-destination-database-ids
-  "The ids of the Databases that are not routing destinations, or nil."
-  []
-  (t2/select-pks-set :model/Database :router_database_id nil))
-
 (mu/defn user-common-names
   "A map of User id to common name for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
@@ -408,3 +419,14 @@
           (map (juxt :id (comp result-metadata-out :result_metadata)))
           (when (seq card-ids)
             (t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in card-ids])))))
+
+(mu/defn collection-permission-rows
+  "The Collections with `collection-ids`, with the columns their `:can_write` hydration reads, which search results
+  don't carry."
+  [collection-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Collection :id :type :namespace :location :is_remote_synced] :id [:in collection-ids]))
+
+(mu/defn document-exploration-ids
+  "A map of the id of each Document in `document-ids` to its `:exploration_id`, nil for a Document in no Exploration."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pk->fn :exploration_id [:model/Document :id :exploration_id] :id [:in document-ids]))

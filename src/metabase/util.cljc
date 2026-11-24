@@ -19,13 +19,13 @@
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [flatland.ordered.map :refer [ordered-map]]
    [medley.core :as m]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
    [metabase.util.number :as u.number]
@@ -105,6 +105,19 @@
                          :clj  'Throwable)
                       ~'_)))
 
+(defn run-each!
+  "Call each thunk in `steps`, a sequence of `[label thunk]` pairs, in order, whether or not an earlier one throws.
+  Returns the `[label exception]` pairs of the thunks that threw, in order, or an empty vector."
+  [steps]
+  (into []
+        (keep (fn [[label thunk]]
+                (try
+                  (thunk)
+                  nil
+                  (catch #?(:clj Throwable :cljs :default) e
+                    [label e]))))
+        steps))
+
 (defn strip-error
   "Transforms the error in a list of strings to log"
   ([e]
@@ -179,11 +192,8 @@
 (defn recursive-map-keys
   "Recursively replace the keys in a map with the value of `(f key)`."
   [f m]
-  (walk/postwalk
-   #(if (map? %)
-      (m/map-keys f %)
-      %)
-   m))
+  (match/replace-all m
+    #'map? (m/map-keys f &match)))
 
 (defn trimmed-string
   "`value` trimmed of surrounding whitespace, or nil when it is not a string or has nothing left once trimmed."
@@ -1391,3 +1401,15 @@
   "Transducer that collects items into an atom while passing them through unchanged."
   [atom]
   (map (fn [x] (swap! atom conj x) x)))
+
+(defn map-by-key-set
+  "Call `f` with each group of the map `rows` that have the same keys, and return what the calls return, one result per
+  row, in the order of `rows`. An insert of rows with different keys puts NULL in the columns that a row leaves out,
+  which a NOT NULL column with a default refuses."
+  [f rows]
+  (->> (map-indexed vector rows)
+       (group-by (comp set keys second))
+       vals
+       (mapcat (fn [group] (map vector (map first group) (f (mapv second group)))))
+       (sort-by first)
+       (mapv second)))

@@ -1,12 +1,19 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import {
+  setupCreateCollectionEndpoint,
+  setupUnauthorizedCollectionEndpoints,
+} from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { dayjs } from "metabase/dayjs";
 import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import {
   createMockBookmark,
   createMockCard,
+  createMockCollection,
   createMockDashboard,
   createMockModelResult,
   createMockUser,
@@ -437,6 +444,49 @@ describe("nav > containers > MainNavbar", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("should create a collection in the personal collection for a user without collection access", async () => {
+      // Registered before `setup` so it wins: the API 403s the root collection
+      // for a user without any collection access.
+      setupUnauthorizedCollectionEndpoints(
+        createMockCollection(ROOT_COLLECTION),
+      );
+      setupCreateCollectionEndpoint(
+        createMockCollection({ id: 42, name: "Foo" }),
+      );
+      const { router } = await setup({
+        route: "*",
+        canCurateRootCollection: false,
+      });
+
+      const button = screen.getByRole("button", {
+        name: "Create a new collection",
+      });
+      expect(button).toBeInTheDocument();
+      await userEvent.click(button);
+
+      const modal = await screen.findByTestId("new-collection-modal");
+      await userEvent.type(within(modal).getByLabelText("Name"), "Foo");
+      await waitFor(() =>
+        expect(
+          within(modal).getByTestId("collection-picker-button"),
+        ).toHaveTextContent(PERSONAL_COLLECTION_BASE.name),
+      );
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Create" }),
+      );
+
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe("/collection/42-foo"),
+      );
+      const request = fetchMock.callHistory.lastCall("create-collection");
+      expect(
+        await new Request(request?.url ?? "", request?.options).json(),
+      ).toMatchObject({
+        name: "Foo",
+        parent_id: PERSONAL_COLLECTION_BASE.id,
+      });
+    });
+
     it("should move focus through the new collection modal with Tab (#83338)", async () => {
       await setup();
 
@@ -524,6 +574,218 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
+  describe("trash", () => {
+    const TRASH_COLLECTION = createMockCollection({
+      id: 20000000,
+      name: "Trash",
+      type: "trash",
+      // The trash link must not become expandable, even if the API returns
+      // children for it.
+      children: [
+        createMockCollection({ id: 30, name: "Trashed child", archived: true }),
+      ],
+    });
+
+    const TRASHED_COLLECTION = createMockCollection({
+      id: 5,
+      name: "Trashed collection",
+      archived: true,
+    });
+
+    const getTrashItem = () => screen.getByRole("treeitem", { name: /Trash/i });
+    const getRegularCollectionItem = () =>
+      screen.getByRole("treeitem", { name: /Test collection/i });
+
+    it("should show the trash as the last collection link, without an expand toggle", async () => {
+      await setup({ trashCollection: TRASH_COLLECTION });
+
+      const collectionLinks = screen.getAllByTestId(
+        "sidebar-collection-link-root",
+      );
+      const trashLink = collectionLinks.at(-1);
+      expect(trashLink).toHaveTextContent("Trash");
+      expect(collectionLinks.at(0)).not.toHaveTextContent("Trash");
+      expect(
+        within(checkNotNull(trashLink)).getByLabelText("chevronright icon"),
+      ).not.toBeVisible();
+      expect(screen.queryByText("Trashed child")).not.toBeInTheDocument();
+    });
+
+    it("should highlight the trash when viewing the trash", async () => {
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        route: "/trash",
+        pathname: "/trash",
+      });
+
+      expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      expect(
+        screen.getByRole("treeitem", { name: /Our analytics/i }),
+      ).toHaveAttribute("aria-selected", "false");
+    });
+
+    it("should highlight the trash when viewing a trashed collection", async () => {
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        extraCollections: [TRASHED_COLLECTION],
+        route: "/collection/:slug",
+        pathname: Urls.collection(TRASHED_COLLECTION),
+      });
+
+      await waitFor(() => {
+        expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      });
+      expect(getRegularCollectionItem()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    });
+
+    it("should highlight the trash instead of the collection of a trashed dashboard", async () => {
+      const dashboard = createMockDashboard({
+        collection_id: Number(TEST_COLLECTION.id),
+        archived: true,
+      });
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        openDashboard: dashboard,
+        route: "/dashboard/:slug",
+        pathname: `/dashboard/${dashboard.id}`,
+      });
+
+      expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      expect(getRegularCollectionItem()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    });
+
+    it("should highlight the trash instead of the collection of a trashed question", async () => {
+      const card = createMockCard({
+        collection_id: Number(TEST_COLLECTION.id),
+        archived: true,
+      });
+      await setup({
+        trashCollection: TRASH_COLLECTION,
+        openQuestionCard: card,
+        route: "/question/:slug",
+        pathname: `/question/${card.id}`,
+      });
+
+      await waitFor(() => {
+        expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      });
+      expect(getRegularCollectionItem()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    });
+  });
+
+  describe("collection tree navigation (metabase#17339)", () => {
+    const DEEP_COLLECTION = createMockCollection({
+      id: 13,
+      name: "Deep collection",
+      location: "/11/12/",
+      parent_id: 12,
+      children: [],
+    });
+    const MIDDLE_COLLECTION = createMockCollection({
+      id: 12,
+      name: "Middle collection",
+      location: "/11/",
+      parent_id: 11,
+      children: [DEEP_COLLECTION],
+    });
+    const TOP_COLLECTION = createMockCollection({
+      id: 11,
+      name: "Top collection",
+      location: "/",
+      children: [MIDDLE_COLLECTION],
+    });
+
+    function getTreeItem(name: string) {
+      return screen.getByRole("treeitem", { name: new RegExp(name) });
+    }
+
+    function queryTreeItem(name: string) {
+      return screen.queryByRole("treeitem", { name: new RegExp(name) });
+    }
+
+    function getTreeLink(name: string) {
+      return within(getTreeItem(name)).getByRole("link");
+    }
+
+    function getExpandToggle(name: string) {
+      return within(getTreeItem(name)).getByRole("button", { hidden: true });
+    }
+
+    it("expands with the chevron without navigating, and toggles a collection only once it is open", async () => {
+      await setup({
+        pathname: Urls.collection(ROOT_COLLECTION),
+        route: "/collection/:slug",
+        collections: [TOP_COLLECTION],
+      });
+
+      await userEvent.click(getExpandToggle(TOP_COLLECTION.name));
+      expect(getTreeItem(MIDDLE_COLLECTION.name)).toBeInTheDocument();
+      expect(queryTreeItem(DEEP_COLLECTION.name)).not.toBeInTheDocument();
+      expect(getTreeItem("Our analytics")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      await userEvent.click(getTreeLink(MIDDLE_COLLECTION.name));
+      expect(getTreeItem(MIDDLE_COLLECTION.name)).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(getTreeItem(DEEP_COLLECTION.name)).toBeInTheDocument();
+
+      await userEvent.click(getTreeLink(MIDDLE_COLLECTION.name));
+      expect(queryTreeItem(DEEP_COLLECTION.name)).not.toBeInTheDocument();
+
+      await userEvent.click(getTreeLink(TOP_COLLECTION.name));
+      expect(getTreeItem(TOP_COLLECTION.name)).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(getTreeItem(MIDDLE_COLLECTION.name)).toBeInTheDocument();
+
+      await userEvent.click(getTreeLink(TOP_COLLECTION.name));
+      expect(queryTreeItem(MIDDLE_COLLECTION.name)).not.toBeInTheDocument();
+      expect(queryTreeItem(DEEP_COLLECTION.name)).not.toBeInTheDocument();
+    });
+
+    it("opens a directly visited collection, shows a chevron only for collections with children, and creates new collections inside it", async () => {
+      await setup({
+        pathname: Urls.collection(MIDDLE_COLLECTION),
+        route: "/collection/:slug",
+        collections: [TOP_COLLECTION],
+      });
+
+      expect(getTreeItem(MIDDLE_COLLECTION.name)).toBeInTheDocument();
+      expect(getTreeItem(DEEP_COLLECTION.name)).toBeInTheDocument();
+      expect(getExpandToggle(MIDDLE_COLLECTION.name)).toBeVisible();
+      // Collections without children have no chevron (metabase#14753)
+      expect(getExpandToggle(DEEP_COLLECTION.name)).not.toBeVisible();
+      expect(getExpandToggle("Your personal collection")).not.toBeVisible();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Create a new collection" }),
+      );
+      const modal = await screen.findByRole("dialog", {
+        name: "New collection",
+      });
+      expect(
+        within(modal).getByText("Collection it's saved in"),
+      ).toBeInTheDocument();
+      expect(
+        await within(modal).findByTestId("collection-picker-button"),
+      ).toHaveTextContent(MIDDLE_COLLECTION.name);
+    });
+  });
+
   describe("Personal Collections", () => {
     it("non-admin should see not other users personal collections", async () => {
       await setup({});
@@ -573,6 +835,11 @@ describe("nav > containers > MainNavbar", () => {
         user: createMockUser({ is_superuser: true }),
         activeUsersCount: 1,
       });
+      expect(
+        await screen.findByRole("treeitem", {
+          name: /Your personal collection/i,
+        }),
+      ).toBeVisible();
       expect(
         screen.queryByText(/Other users' personal collections/i),
       ).not.toBeInTheDocument();

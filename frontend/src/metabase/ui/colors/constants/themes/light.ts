@@ -204,7 +204,7 @@ export const getLightTheme = (
     "icon-secondary-inverse": baseColors.orionAlphaInverse[60], // Matches text-secondary-inverse
     "illustration-secondary-brand": brand[10],
     "illustration-tertiary-brand": brand[5],
-    "input-background": baseColors.orionAlpha[5],
+    "input-background": baseColors.white, // Matches background_surface-primary
     "input-focus": baseColors.blue[20],
     "modal-border": baseColors.transparent,
     "modal-overlay": baseColors.blackAlpha[10],

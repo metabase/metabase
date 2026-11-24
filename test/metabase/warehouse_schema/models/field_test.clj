@@ -2,11 +2,14 @@
   "Tests for specific behavior related to the Field model."
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
@@ -65,17 +68,17 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/Field {field-id :id} {:table_id table-id :name "test_field" :base_type :type/Integer}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       ;; Start with blocked permissions
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (not (mi/can-read? (t2/select-one :model/Field :id field-id)))))
+        (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Field :id field-id) :can_read)))))
       ;; Grant view-data permission - field should still not be readable
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (false? (boolean (mi/can-read? (t2/select-one :model/Field :id field-id)))))))))
+        (is (false? (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/Field :id field-id) :can_read)))))))))
 
 (deftest field-can-read?-delegates-to-parent-table-allowed-test
   (testing "Field can-read? delegates to parent table"
@@ -83,18 +86,18 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/Field {field-id :id} {:table_id table-id :name "test_field" :base_type :type/Integer}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       ;; Start with blocked permissions
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (not (mi/can-read? (t2/select-one :model/Field :id field-id)))))
+        (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Field :id field-id) :can_read)))))
       ;; Grant view-data permission - now field should be readable
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? (t2/select-one :model/Field :id field-id))))))))
+        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Field :id field-id) :can_read))))))))
 
 (deftest field-can-query?-delegates-to-parent-table-test
   (testing "Field can-query? delegates to parent table"
@@ -102,7 +105,7 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/Field {field-id :id} {:table_id table-id :name "test_field" :base_type :type/Integer}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -110,7 +113,7 @@
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-query? (t2/select-one :model/Field :id field-id))))))))
+        (is (true? (mi/can-query? (t2/hydrate (t2/select-one :model/Field :id field-id) :can_query))))))))
 
 ;;; ---------------------------------- effective_type invariant guard tests -----------------------------------
 ;;; GHY-3388: a Field with coercion_strategy=nil and effective_type ≠ base_type is internally
@@ -147,8 +150,8 @@
                                                 :name "broken_on_update"
                                                 :base_type :type/Number
                                                 :effective_type :type/Number}]
-      (t2/update! :model/Field :id field-id {:effective_type    :type/Text
-                                             :coercion_strategy nil})
+      (field/update-fields! [{:id field-id :effective_type    :type/Text
+                              :coercion_strategy nil}])
       (is (=? {:base_type      :type/Number
                :effective_type :type/Number}
               (t2/select-one :model/Field :id field-id))))))
@@ -162,11 +165,11 @@
                                                 :name "with_coercion"
                                                 :base_type :type/Text
                                                 :effective_type :type/Text}]
-      (t2/update! :model/Field :id field-id {:effective_type    :type/Number
-                                             :coercion_strategy :Coercion/String->Number})
+      (field/update-fields! [{:id field-id :effective_type    :type/Number
+                              :coercion_strategy :Coercion/String->Float}])
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Number
-               :coercion_strategy :Coercion/String->Number}
+               :coercion_strategy :Coercion/String->Float}
               (t2/select-one :model/Field :id field-id))))))
 
 (deftest effective-type-guard-clearing-coercion-resets-effective-type-test
@@ -178,9 +181,9 @@
                                                 :name              "clearing_coercion"
                                                 :base_type         :type/Text
                                                 :effective_type    :type/Number
-                                                :coercion_strategy :Coercion/String->Number}]
+                                                :coercion_strategy :Coercion/String->Float}]
       ;; user clears the coercion but doesn't reset effective_type — guard catches this
-      (t2/update! :model/Field :id field-id {:coercion_strategy nil})
+      (field/update-fields! [{:id field-id :coercion_strategy nil}])
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Text
                :coercion_strategy nil}
@@ -227,7 +230,7 @@
                          :effective_type    :type/Integer
                          :position          0
                          :database_position 0})))]
-             ["t2/update! sets effective_type to differ from base_type without coercion"
+             ["update-fields! sets effective_type to differ from base_type without coercion"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
@@ -239,9 +242,9 @@
                                   :effective_type    :type/Number
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field :id id {:effective_type :type/Text})
+                  (field/update-fields! [{:id id :effective_type :type/Text}])
                   id))]
-             ["t2/update! clears coercion_strategy but leaves effective_type stale"
+             ["update-fields! clears coercion_strategy but leaves effective_type stale"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
@@ -251,12 +254,12 @@
                                   :database_type     "TEXT"
                                   :base_type         :type/Text
                                   :effective_type    :type/Number
-                                  :coercion_strategy :Coercion/String->Number
+                                  :coercion_strategy :Coercion/String->Float
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field :id id {:coercion_strategy nil})
+                  (field/update-fields! [{:id id :coercion_strategy nil}])
                   id))]
-             ["t2/update! changes base_type but leaves effective_type stale"
+             ["update-fields! changes base_type but leaves effective_type stale"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
@@ -268,9 +271,9 @@
                                   :effective_type    :type/Text
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field :id id {:base_type :type/Number})
+                  (field/update-fields! [{:id id :base_type :type/Number}])
                   id))]
-             ["t2/update! sets both effective_type AND coercion_strategy=nil to mismatched values"
+             ["update-fields! sets both effective_type AND coercion_strategy=nil to mismatched values"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
@@ -282,14 +285,34 @@
                                   :effective_type    :type/Number
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field :id id {:effective_type    :type/Text
-                                                   :coercion_strategy nil})
+                  (field/update-fields! [{:id id :effective_type    :type/Text
+                                          :coercion_strategy nil}])
                   id))]]]
       (testing label
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Table {table-id :id} {:db_id db-id}]
           (let [field-id (op table-id)]
             (assert-coercion-effective-type-invariant! field-id label)))))))
+
+(deftest update-fields-repairing-effective-types-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table    {table-id :id} {:db_id db-id}]
+    (mt/with-model-cleanup [:model/Field]
+      (let [fields  (fn [n]
+                      (vec (for [_ (range n)]
+                             (first (t2/insert-returning-pks! :model/Field {:table_id       table-id
+                                                                            :name           (mt/random-name)
+                                                                            :base_type      :type/Text
+                                                                            :effective_type :type/Text
+                                                                            :database_type "TEXT" :position 0 :database_position 0})))))
+            counted (fn [ids]
+                      (t2/update! :metabase_field :id [:in (vec (take-nth 2 ids))] {:effective_type "type/Integer"})
+                      (events.tu/statement-count! #(field/update-fields! (for [id ids] {:id id :description "x"}))))
+            six     (fields 6)]
+        (counted (fields 1))
+        (is (= (counted (fields 2)) (counted six)))
+        (testing "every Field without a coercion has its base type as effective type"
+          (is (= #{:type/Text} (t2/select-fn-set :effective_type :model/Field :id [:in six]))))))))
 
 (deftest data-sensitivity-transform-round-trip-test
   (testing "data_sensitivity is stored as the enum string and read back as a keyword"
@@ -352,7 +375,7 @@
       (field-user-settings/upsert-field-user-settings! field {:semantic_type    :type/Email
                                                               :visibility_type  :sensitive
                                                               :display_name     "User Name"})
-      (field-user-settings/delete-field-user-settings! [field-id])
+      (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [field-id]))
       (is (=? {:semantic_type :type/Email :visibility_type :sensitive :display_name "User Name"}
               (t2/select-one :model/Field :id field-id)))
       (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id))))))
@@ -389,23 +412,67 @@
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {:semantic_type :type/Category}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/FK :fk_target_field_id target-id})
-      (t2/update! :model/Field :id target-id {:active false})
+      (field/update-fields! [{:id target-id :active false}])
       (is (nil? (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))))
   (testing "retiring Field also drops a user-set FK semantic type whose target sync set"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/FK})
-      (t2/update! :model/Field :id source-id {:fk_target_field_id target-id})
-      (t2/update! :model/Field :id target-id {:active false})
+      (field/update-fields! [{:id source-id :fk_target_field_id target-id}])
+      (field/update-fields! [{:id target-id :active false}])
       (is (not (t2/select-one-fn :semantic_type_set :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))))
   (testing "retiring Field keeps a user-set semantic type other than FK on a Field sync pointed at it"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/Category})
-      (t2/update! :model/Field :id source-id {:fk_target_field_id target-id})
-      (t2/update! :model/Field :id target-id {:active false})
+      (field/update-fields! [{:id source-id :fk_target_field_id target-id}])
+      (field/update-fields! [{:id target-id :active false}])
       (is (=? {:semantic_type :type/Category :semantic_type_set true}
               (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type :type/Category :fk_target_field_id nil} (t2/select-one :model/Field :id source-id))))))
+
+(deftest sync-base-type-change-keeps-fk-remapping-test
+  (testing "A base type change written by sync keeps the foreign key target and external remapping of a Field"
+    (mt/with-temp [:model/Database  {db-id :id}    {}
+                   :model/Table     {products :id} {:db_id db-id :name "PRODUCTS"}
+                   :model/Table     {orders :id}   {:db_id db-id :name "ORDERS"}
+                   :model/Field     {pk-id :id}    {:table_id products :name "ID" :base_type :type/Integer
+                                                    :semantic_type :type/PK}
+                   :model/Field     {title-id :id} {:table_id products :name "TITLE" :base_type :type/Text}
+                   :model/Field     {fk-id :id}    {:table_id orders :name "PRODUCT_ID" :base_type :type/Integer
+                                                    :semantic_type :type/FK :fk_target_field_id pk-id}
+                   :model/Dimension _              {:field_id fk-id :type :external :name "Product"
+                                                    :human_readable_field_id title-id}]
+      (sync.updates/update-field-unless-user-set! fk-id {:base_type           :type/BigInteger
+                                                         :effective_type      :type/BigInteger
+                                                         :coercion_strategy   nil
+                                                         :fingerprint_version 0
+                                                         :fingerprint         nil
+                                                         :semantic_type       nil})
+      (is (= pk-id (t2/select-one-fn :fk_target_field_id :model/Field :id fk-id)))
+      (is (t2/exists? :model/Dimension :field_id fk-id :type "external")))))
+
+(deftest sync-classification-keeps-internal-remapping-test
+  (testing "A semantic type written by sync keeps the internal remapping of a Field"
+    (mt/with-temp [:model/Database  {db-id :id}    {}
+                   :model/Table     {table-id :id} {:db_id db-id :name "ORDERS"}
+                   :model/Field     {field-id :id} {:table_id table-id :name "RATING" :base_type :type/Integer}
+                   :model/Dimension _              {:field_id field-id :type :internal :name "Rating"}]
+      (sync.updates/update-field-unless-user-set! field-id {:semantic_type :type/Score})
+      (is (t2/exists? :model/Dimension :field_id field-id :type "internal")))))
+
+(deftest upsert-after-concurrent-insert-updates-stored-row-test
+  (testing "settings another writer inserts between the read and the insert are updated, not duplicated"
+    (mt/with-temp [:model/Field {field-id :id :as field} {}]
+      (t2/insert! :model/FieldUserSettings {:field_id field-id :description "Other Writer"})
+      (let [reads (atom 0)
+            read  (mt/original-fn #'warehouse-schema.db/field-user-settings)]
+        (mt/with-dynamic-fn-redefs [warehouse-schema.db/field-user-settings (fn [id]
+                                                                              (when (> (swap! reads inc) 1)
+                                                                                (read id)))]
+          (field-user-settings/upsert-field-user-settings! field {:display_name "User Name"})))
+      (is (=? [{:description "Other Writer" :display_name "User Name"}]
+              (t2/select :model/FieldUserSettings :field_id field-id)))
+      (is (= "User Name" (t2/select-one-fn :display_name :model/Field :id field-id))))))

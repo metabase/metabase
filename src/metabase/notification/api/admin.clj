@@ -33,7 +33,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -424,15 +423,11 @@
   ;; publish side effects for. (The endpoint schema also enforces `:min 1`.)
   (if (empty? ids)
     []
-    ;; The endpoint is superuser-gated (`api/check-superuser`), which is what the model's
-    ;; before-update hook checks before permitting a `creator_id` change. (Harmless for the
-    ;; archive action, whose update-map never touches creator_id.)
-    (t2/with-transaction [_conn]
-      (let [before (-> (notification.db/card-notifications ids)
-                       models.notification/hydrate-notification
-                       vec)]
-        (notification.db/update-card-notifications! ids update-map)
-        before))))
+    (let [before (-> (notification.db/card-notifications ids)
+                     models.notification/hydrate-notification
+                     vec)]
+      (models.notification/update-notifications! (mapv #(assoc update-map :id (:id %)) before))
+      before)))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
   "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes

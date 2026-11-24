@@ -2,8 +2,8 @@
   "Application database queries for the metabot module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [metabase-enterprise.metabot.schema :as metabot-ee.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -32,26 +32,22 @@
                         :where  [:= :user_id user-id]}]
                       (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
-(mu/defn permission-exists?
-  "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
+(mu/defn permission :- [:maybe ::metabot-ee.schema/metabot-permissions]
+  "The MetabotPermissions row of `perm-type` of the group with `group-id`, or nil."
   [group-id  :- ms/PositiveInt
    perm-type :- :keyword]
-  (t2/exists? :model/MetabotPermissions :group_id group-id :perm_type perm-type))
+  (t2/select-one :model/MetabotPermissions :group_id group-id :perm_type perm-type))
 
 (mu/defn update-permission-value!
   "Set the value of the MetabotPermissions row of `perm-type` for the group with `group-id`."
   [group-id   :- ms/PositiveInt
-   perm-type  :- :keyword
-   perm-value :- :keyword]
+   perm-type  :- ::metabot-ee.schema/metabot-permissions.perm-type
+   perm-value :- ::metabot-ee.schema/metabot-permissions.perm-value]
   (t2/update! :model/MetabotPermissions {:group_id group-id :perm_type perm-type} {:perm_value perm-value}))
 
 (mu/defn insert-permission!
   "Insert the MetabotPermissions `row`."
-  [row :- [:map {:closed true}
-           [:id         {:optional true} ms/PositiveInt]
-           [:group_id   {:optional true} [:maybe ms/PositiveInt]]
-           [:perm_type  {:optional true} [:maybe [:or :keyword :string]]]
-           [:perm_value {:optional true} [:maybe [:or :keyword :string]]]]]
+  [row :- ::metabot-ee.schema/metabot-permissions.update]
   (t2/insert! :model/MetabotPermissions row))
 
 (mu/defn delete-hidden-group-permissions!
@@ -87,13 +83,13 @@
   [row :- [:map {:closed true}
            [:id        {:optional true} ms/PositiveInt]
            [:group_id  {:optional true} [:maybe ms/PositiveInt]]
-           [:max_usage {:optional true} [:maybe :int]]]]
+           [:max_usage {:optional true} ::metabot-ee.schema/metabot-limit.max-usage]]]
   (t2/insert! :model/MetabotGroupLimit row))
 
 (mu/defn update-group-limit!
   "Set the maximum usage of the MetabotGroupLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
-   max-usage :- [:maybe :int]]
+   max-usage :- ::metabot-ee.schema/metabot-limit.max-usage]
   (t2/update! :model/MetabotGroupLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-group-limit!
@@ -116,24 +112,19 @@
   [row :- [:map {:closed true}
            [:id        {:optional true} ms/PositiveInt]
            [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
-           [:max_usage {:optional true} [:maybe :int]]]]
+           [:max_usage {:optional true} ::metabot-ee.schema/metabot-limit.max-usage]]]
   (t2/insert! :model/MetabotInstanceLimit row))
 
 (mu/defn update-instance-limit!
   "Set the maximum usage of the MetabotInstanceLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
-   max-usage :- [:maybe :int]]
+   max-usage :- ::metabot-ee.schema/metabot-limit.max-usage]
   (t2/update! :model/MetabotInstanceLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-instance-limit!
   "Delete the MetabotInstanceLimit of the Tenant with `tenant-id`."
   [tenant-id :- [:maybe ms/PositiveInt]]
   (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id))
-
-(mu/defn insert-usage-log!
-  "Insert the AiUsageLog `row`."
-  [row :- ::metabot.schema/ai-usage-log.update]
-  (t2/insert! :model/AiUsageLog row))
 
 (defn- usage-window-expr
   [period-start user-id tenant-id]
@@ -168,8 +159,3 @@
                  :where  (cond-> (usage-window-expr period-start user-id tenant-id)
                            (seq sources) (conj [:in :source sources])
                            request-id    (conj [:not= :request_id request-id]))}))
-
-(mu/defn delete-usage-logs-created-before!
-  "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))

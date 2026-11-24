@@ -565,10 +565,22 @@
 (deftest snippet-target-test
   (testing "Snippet target exports the snippets and cards it uses"
     (mt/with-empty-h2-app-db!
-      (mt/with-temp [:model/NativeQuerySnippet {b-eid :entity_id} {:name "B" :content "1 = 1"}
+      (mt/with-temp [:model/NativeQuerySnippet {b-id :id b-eid :entity_id} {:name "B" :content "1 = 1" :template_tags {}}
                      :model/Card               {d-id :id d-eid :entity_id} {:name "D"}
                      :model/NativeQuerySnippet {a-id :id a-eid :entity_id}
-                     {:name "A" :content (format "{{snippet: B}} AND id IN ({{#%d-d}})" d-id)}]
+                     {:name          "A"
+                      :content       (format "{{snippet: B}} AND id IN ({{#%d-d}})" d-id)
+                      :template_tags {"snippet: B"         {:id           (str (random-uuid))
+                                                            :name         "snippet: B"
+                                                            :display-name "Snippet: B"
+                                                            :type         :snippet
+                                                            :snippet-name "B"
+                                                            :snippet-id   b-id}
+                                      (format "#%d-d" d-id) {:id           (str (random-uuid))
+                                                             :name         (format "#%d-d" d-id)
+                                                             :display-name (format "#%d D" d-id)
+                                                             :type         :card
+                                                             :card-id      d-id}}}]
         (let [extraction (into [] (extract/extract {:no-settings   true
                                                     :no-data-model true
                                                     :no-transforms true
@@ -588,9 +600,10 @@
                                                              :dataset_query {:database db-id
                                                                              :type     :native
                                                                              :native   {:query "select 1"}}}
-                         :model/Action     {action-id :id}  {:name "My Action" :type :implicit :model_id model-id}
+                         :model/Action     {action-id :id}  {:name "My Action" :type :implicit :model_id model-id
+                                                             :collection_id coll-id}
                          :model/Action     {archived-id :id} {:name "Old Action" :type :implicit :model_id model-id
-                                                              :archived true}]
+                                                              :collection_id coll-id :archived true}]
         (let [eid (fn [id] (t2/select-one-fn :entity_id :model/Action :id id))]
           (is (= #{(eid action-id) (eid archived-id)}
                  (ids-by-model "Action" (extract/extract {:targets       [[:model/Collection coll-id]]
@@ -680,7 +693,6 @@
                                                                  :table_id  table-id
                                                                  :base_type :type/Text}
                          :model/Segment    {segment-id :id}     {:name       "Test Segment"
-                                                                 :table_id   table-id
                                                                  :definition (filter-definition db-id table-id field1-id)}
                          ;; Create another table with fields that should NOT be exported
                          :model/Table      {other-table-id :id} {:name          "Other Table"
@@ -781,8 +793,10 @@
                          {:name     "Active Child Collection"
                           :archived false
                           :location (format "/%d/" parent-id)}
-                         :model/Card       {in-archived-eid :entity_id} {:name          "Card in archived collection"
-                                                                         :collection_id archived-child-id}
+                         :model/Card       {in-archived-eid :entity_id} {:name              "Card in archived collection"
+                                                                         :archived          true
+                                                                         :archived_directly false
+                                                                         :collection_id     archived-child-id}
                          :model/Card       {in-active-eid :entity_id}   {:name          "Card in active collection"
                                                                          :collection_id active-child-id}]
         (let [opts {:targets       [[:model/Collection parent-id]]

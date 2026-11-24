@@ -6,12 +6,13 @@
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.events.core :as events]
    [metabase.server.streaming-response :as sr]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]
@@ -153,9 +154,7 @@
             _            (api/check-400
                           (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
                           (format "A custom visualization with identifier \"%s\" already exists." identifier))
-            plugin       (cache/insert-bundle! identifier validated)]
-        (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
-                                                                :user-id api/*current-user-id*})
+            plugin       (custom-viz-plugin/insert-bundle! identifier validated)]
         (plugin->response (dissoc plugin :bundle)))
       (finally
         (try (.delete tempfile) (catch Exception _))))))
@@ -167,7 +166,7 @@
   [_route-params
    _query-params
    {:keys [identifier dev_bundle_url]} :- [:map {:closed true}
-                                           [:identifier     {:optional true} [:maybe ms/NonBlankString]]
+                                           [:identifier     {:optional true} [:maybe ::custom-viz-plugin.schema/custom-viz-plugin.identifier]]
                                            [:dev_bundle_url ms/NonBlankString]]]
   (api/check-superuser)
   (check-dev-mode-enabled!)
@@ -186,17 +185,16 @@
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
         version-str  (get-in manifest [:metabase :version])
-        plugin       (custom-viz-plugin.db/insert-plugin! {:display_name     display-name
-                                                           :identifier       identifier
-                                                           :status           :active
-                                                           :enabled          true
-                                                           :dev_bundle_url   dev_bundle_url
-                                                           :icon             icon
-                                                           :manifest         manifest
-                                                           :metabase_version version-str})]
-    (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
-    (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
-                                                            :user-id api/*current-user-id*})
+        plugin       (first (custom-viz-plugin/create-custom-viz-plugins!
+                             [{:display_name     display-name
+                               :identifier       identifier
+                               :status           :active
+                               :enabled          true
+                               :dev_bundle_url   dev_bundle_url
+                               :icon             icon
+                               :manifest         manifest
+                               :metabase_version version-str}]))]
+    (custom-viz-plugin/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
     (plugin->response plugin)))
 
 (api.macros/defendpoint :get "/" :- [:sequential CustomVizPluginResponse]
@@ -226,10 +224,8 @@
   "Remove a custom visualization plugin and evict its on-disk cache."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
-    (custom-viz-plugin.db/delete-plugin! id)
+    (custom-viz-plugin/delete-custom-viz-plugins! [id])
     (cache/purge-plugin-cache! plugin)
-    (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
-                                                            :user-id api/*current-user-id*})
     nil))
 
 (api.macros/defendpoint :put "/:id" :- CustomVizPluginResponse
@@ -238,14 +234,11 @@
    _query-params
    body :- [:map {:closed true}
             [:enabled {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
-        updates  (select-keys body [:enabled])]
+  (let [_       (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
+        updates (select-keys body [:enabled])]
     (when (seq updates)
-      (custom-viz-plugin.db/update-plugin! id updates))
+      (custom-viz-plugin/update-custom-viz-plugins! [(assoc updates :id id)]))
     (let [result (custom-viz-plugin.db/non-blob-plugin id)]
-      (events/publish-event! :event/custom-viz-plugin-update {:object          result
-                                                              :previous-object existing
-                                                              :user-id         api/*current-user-id*})
       (plugin->response result))))
 
 (api.macros/defendpoint :put "/:id/bundle" :- CustomVizPluginResponse
@@ -267,11 +260,7 @@
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
             validated    (->> (cache/validate-bundle! bundle-bytes)
                               (cache/check-bundle-identifier! (:identifier existing)))
-            result       (cache/save-bundle! existing validated)]
-        (events/publish-event! :event/custom-viz-plugin-update
-                               {:object          result
-                                :previous-object existing
-                                :user-id         api/*current-user-id*})
+            result       (custom-viz-plugin/save-bundle! existing validated)]
         (plugin->response (dissoc result :bundle)))
       (finally
         (try (.delete tempfile) (catch Exception _))))))
@@ -351,7 +340,7 @@
    {:keys [dev_bundle_url]} :- [:map {:closed true} [:dev_bundle_url [:maybe :string]]]]
   (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
   (check-dev-mode-enabled!)
-  (cache/set-or-clear-dev-bundle! id dev_bundle_url)
+  (custom-viz-plugin/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
 
 (api.macros/defendpoint :get "/:id/dev-sse" :- :any
@@ -405,15 +394,11 @@
           manifest     (or (cache/fetch-dev-manifest dev-url)
                            (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
           version-str  (get-in manifest [:metabase :version])]
-      (custom-viz-plugin.db/update-plugin! id
-                                           {:display_name     (or (:name manifest) (:identifier plugin))
-                                            :icon             (:icon manifest)
-                                            :manifest         manifest
-                                            :metabase_version version-str})
+      (custom-viz-plugin/update-custom-viz-plugins! [{:id id :display_name     (or (:name manifest) (:identifier plugin))
+                                                      :icon             (:icon manifest)
+                                                      :manifest         manifest
+                                                      :metabase_version version-str}])
       (let [result (custom-viz-plugin.db/non-blob-plugin id)]
-        (events/publish-event! :event/custom-viz-plugin-update {:object          result
-                                                                :previous-object plugin
-                                                                :user-id         api/*current-user-id*})
         (plugin->response result)))))
 
 (def routes

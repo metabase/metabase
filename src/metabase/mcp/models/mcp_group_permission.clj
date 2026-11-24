@@ -3,14 +3,17 @@
   members may connect to the MCP server and, per tool name, the admin's explicit `\"yes\"` or `\"no\"`."
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.permissions :as mcp.perms]
+   [metabase.mcp.schema :as mcp.schema]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -40,30 +43,61 @@
     (doseq [tool-name (keys tool-access)]
       (api/check-400 (or (known tool-name) (stored tool-name)) (tru "Unknown MCP tool: {0}" tool-name)))))
 
-(defn- check-one-mode
-  "Throw a 400 when a row for the group with `group-id` would sit beside rows of the other permission mode: All Users
-  and All tenant users have rows only in simple mode, every group but them and Administrators only in group-level
-  mode."
-  [group-id]
-  (when-not (= (u/the-id (perms/admin-group)) group-id)
-    (let [advanced? (not-any? #{group-id} (usage-controls/simple-mode-group-ids))]
-      (api/check-400 (not (mcp.db/group-permission-exists?
-                           [:not (usage-controls/visible-groups-clause :group_id advanced?)]))
-                     (if advanced?
-                       (tru "Group {0} can''t have an MCP policy while All Users has one" (str group-id))
-                       (tru "All Users can''t have an MCP policy while groups have their own"))))))
-
 (t2/define-before-insert :model/McpGroupPermission
-  [{:keys [group_id tool_access] :as row}]
+  [{:keys [tool_access] :as row}]
   (check-tool-access tool_access #{})
-  (check-one-mode group_id)
   row)
 
 (t2/define-before-update :model/McpGroupPermission
   [row]
   (let [changes (t2/changes row)]
     (when (contains? changes :tool_access)
-      (check-tool-access (:tool_access changes) (set (keys (:tool_access (t2/original row))))))
-    (when (contains? changes :group_id)
-      (check-one-mode (:group_id changes))))
+      (check-tool-access (:tool_access changes) (set (keys (:tool_access (t2/original row)))))))
   row)
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn- check-one-mode
+  "Throw a 400 when rows for the groups with `group-ids` would sit beside rows of the other permission mode: All Users
+  and All tenant users have rows only in simple mode, every group but them and Administrators only in group-level
+  mode."
+  [group-ids]
+  (let [simple-ids (set (usage-controls/simple-mode-group-ids))
+        admin-id   (u/the-id (perms/admin-group))]
+    (doseq [[advanced? [group-id]] (group-by #(not (contains? simple-ids %)) (remove #{admin-id} group-ids))]
+      (api/check-400 (not (mcp.db/group-permission-exists?
+                           [:not (usage-controls/visible-groups-clause :group_id advanced?)]))
+                     (if advanced?
+                       (tru "Group {0} can''t have an MCP policy while All Users has one" (str group-id))
+                       (tru "All Users can''t have an MCP policy while groups have their own"))))))
+
+(mu/defn upsert-mcp-group-permissions!
+  "Set the McpGroupPermission of each group in `rows` in one transaction, creating the row of a group that has none:
+  one read, one insert, and one update per existing row."
+  [rows :- [:sequential ::mcp.schema/mcp-group-permission.create]]
+  (t2/with-transaction [_conn]
+    (check-one-mode (map :group_id rows))
+    (let [stored          (u/index-by :group_id (mcp.db/group-permissions (mapv :group_id rows)))
+          {updates true
+           inserts false} (group-by #(contains? stored (:group_id %)) rows)]
+      (mcp.db/insert-group-permissions! (vec inserts))
+      (mcp.db/update-group-permissions! (vec updates)))))
+
+(mu/defn create-missing-mcp-group-permissions!
+  "Give each group in `rows` that has no McpGroupPermission the one in its row, in one transaction: one read and one
+  insert."
+  [rows :- [:sequential ::mcp.schema/mcp-group-permission.create]]
+  (t2/with-transaction [_conn]
+    (check-one-mode (map :group_id rows))
+    (let [existing (mcp.db/group-ids-with-permission (mapv :group_id rows))]
+      (mcp.db/insert-group-permissions! (vec (remove #(contains? existing (:group_id %)) rows))))))
+
+(mu/defn delete-hidden-mcp-group-permissions!
+  "Delete the McpGroupPermission rows of the groups the permission mode selected by `advanced?` hides."
+  [advanced? :- :boolean]
+  (mcp.db/delete-hidden-group-permissions! advanced?))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/McpGroupPermission [_model]
+  {:skip? false})

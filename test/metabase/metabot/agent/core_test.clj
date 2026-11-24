@@ -18,6 +18,8 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -36,6 +38,7 @@
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.util :as metabot.u]
    [metabase.native-query-snippets.core :as snippets]
@@ -77,6 +80,17 @@
     (is (not (#'agent/has-tool-calls? [{:type :text :text "hello"}])))
     (is (#'agent/has-tool-calls? [{:type :text :text "hi"}
                                   {:type :tool-input :id "t1"}]))))
+
+(deftest step-parts-test
+  (testing "memory keeps text as history replays it: deltas merged first, blank text dropped after"
+    (let [tool-input {:type :tool-input :id "t1" :function "search" :arguments {}}]
+      (is (= [{:type :text :text "Hello world"} tool-input]
+             (#'agent/step-parts [{:type :text :text "Hello"}
+                                  {:type :text :text " "}
+                                  {:type :text :text "world"}
+                                  tool-input
+                                  {:type :text :text "\n"}
+                                  {:type :text :text "\n"}]))))))
 
 (deftest should-continue-test
   (let [max-iter 3
@@ -163,6 +177,28 @@
                                                 (assoc-in parts [1 :result :error] {:class :recoverable :code :test/failure})))))))
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
+
+(deftest sql-reference-warning-keeps-turn-open-test
+  (let [terminal #{"create_sql_query"}
+        warned   [{:type :tool-input :id "a" :function "create_sql_query"}
+                  {:type :tool-output :id "a" :result {:output "Created, with warnings" :non-terminal? true}}]]
+    (testing "a successful terminal-tool call whose result is marked :non-terminal? does not end the turn"
+      (is (not (#'agent/terminal-tool-call? terminal warned)))
+      (is (#'agent/should-continue? 0 20 terminal warned)))
+    (testing "another successful terminal call in the same iteration does not end it either"
+      (is (not (#'agent/terminal-tool-call? terminal (into warned [{:type :tool-input :id "b" :function "create_sql_query"}
+                                                                   {:type :tool-output :id "b" :result {:output "ok"}}])))))
+    (testing "nor does a successful clarification question in the same iteration"
+      (is (not (#'agent/terminal-tool-call? (conj terminal "ask_for_sql_clarification")
+                                            (into warned [{:type :tool-input :id "c" :function "ask_for_sql_clarification"}
+                                                          {:type :tool-output :id "c" :result {:output "Asked"}}])))))
+    (testing "on the last step the turn ends as :terminal-tool, because no step is left to act on the warning"
+      (is (not (#'agent/should-continue? 20 20 terminal warned)))
+      (is (= :terminal-tool (#'agent/finish-reason 20 20 terminal warned))))
+    (testing "on the last step a failed terminal-tool call still ends the turn at the step limit"
+      (is (= :max-iterations
+             (#'agent/finish-reason 20 20 terminal
+                                    (assoc-in warned [1 :result :error] {:class :recoverable :code :test/failure})))))))
 
 (defn- tools-registered-for-request!
   ([capabilities] (tools-registered-for-request! :internal capabilities))
@@ -573,6 +609,68 @@
                         (outcome call))
                     function)))))))))
 
+(deftest sql-reference-warning-gets-one-more-iteration-test
+  (testing (str "in the :sql profile, SQL with a reference warning keeps the turn open, the model reads the warning, "
+                "and the same SQL again ends the turn")
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; The BOT-1154 shape: a bare name of a table that exists only in another schema. The query does not run, so
+        ;; the warehouse needs no `core.account` table.
+        (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "core" :name "account" :active true}
+                       :model/Field _              {:table_id      table-id
+                                                    :name          "customer_name"
+                                                    :base_type     :type/Text
+                                                    :database_type "text"}]
+          (let [call                               (fn [id]
+                                                     [{:type      :tool-input
+                                                       :id        id
+                                                       :function  "create_sql_query"
+                                                       :arguments {:database_id (mt/id)
+                                                                   :sql_query   "SELECT a.customer_name FROM account a"
+                                                                   :title       "Results"}}])
+                {:keys [llm-calls requests parts]} (run-turn! :sql "Fix this SQL query" [(call "t1") (call "t2")]
+                                                              :context {:capabilities    ["permission:write_sql_queries"]
+                                                                        :user_is_viewing sql-editor-viewing})
+                outputs                            (filter #(= :tool-output (:type %)) parts)
+                ;; Only the tool result holds this text: the tool arguments hold the table and column names too.
+                holds-warning?                     (fn [request]
+                                                     (some #(and (string? %)
+                                                                 (str/includes? % "checking its table references"))
+                                                           (tree-seq coll? seq (:input request))))]
+            (is (= 2 llm-calls))
+            (is (= [true nil] (map #(get-in % [:result :non-terminal?]) outputs)))
+            (testing "the second LLM request holds the warning, and the first does not"
+              (is (not (holds-warning? (first requests))))
+              (is (holds-warning? (second requests))))
+            (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
+(deftest sql-reference-warning-on-the-last-step-ends-the-turn-test
+  (testing "in the :sql profile, SQL with a reference warning on the last step ends the turn with no step-limit call"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "core" :name "account" :active true}
+                       :model/Field _              {:table_id      table-id
+                                                    :name          "customer_name"
+                                                    :base_type     :type/Text
+                                                    :database_type "text"}]
+          (let [get-profile                        (mt/original-fn #'profiles/get-profile)
+                {:keys [llm-calls requests parts]} (mt/with-dynamic-fn-redefs [profiles/get-profile
+                                                                               (comp #(assoc % :max-iterations 1) get-profile)]
+                                                     (run-turn! :sql "Fix this SQL query"
+                                                                [[{:type      :tool-input
+                                                                   :id        "t1"
+                                                                   :function  "create_sql_query"
+                                                                   :arguments {:database_id (mt/id)
+                                                                               :sql_query   "SELECT a.customer_name FROM account a"
+                                                                               :title       "Results"}}]]
+                                                                :context {:capabilities    ["permission:write_sql_queries"]
+                                                                          :user_is_viewing sql-editor-viewing}))]
+            (is (= 1 llm-calls))
+            (is (not-any? #(= "none" (:tool_choice %)) requests))
+            (is (=? [{:result {:non-terminal? true}}] (filter #(= :tool-output (:type %)) parts)))
+            (is (not-any? #(and (= :text (:type %)) (str/includes? (:text %) "step limit")) parts))
+            (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
 (deftest a-turn-survives-one-undeclared-failure-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
@@ -631,6 +729,19 @@
               (is (= finish-reason (:finish-reason (last parts))))
               (is (= text (apply str (keep #(when (= :text (:type %)) (:text %)) parts)))
                   "what the user reads"))))))))
+
+(deftest run-agent-loop-binds-metabot-while-building-prompt-test
+  (testing "the viewing context is built with the turn's Metabot and profile bound, as a tool call binds them"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [format-viewing-context (mt/original-fn #'user-context/format-viewing-context)
+            seen                   (atom [])]
+        (mt/with-dynamic-fn-redefs [user-context/format-viewing-context
+                                    (fn [context]
+                                      (swap! seen conj [(:id tools.shared/*metabot*) tools.shared/*profile-id*])
+                                      (format-viewing-context context))]
+          (run-turn! :internal "Hello" []))
+        (is (seq @seen))
+        (is (every? #{[(:id (internal-metabot)) :internal]} @seen))))))
 
 (deftest the-turn-stops-when-the-client-leaves-during-a-tool-call-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -983,6 +1094,28 @@
                      {:type :finish :finish-reason :max-iterations}]
                     (take-last 3 parts)))))))))
 
+(deftest step-limit-reply-input-test
+  (mt/as-admin
+    (testing "the last call of a turn at its step limit sends what the previous call sent, then the new step and the
+             instruction, and does not build the history again"
+      (let [build-history (mt/original-fn #'messages/build-message-history)
+            builds        (atom 0)
+            {:keys [requests]}
+            (mt/with-dynamic-fn-redefs [messages/build-message-history (fn [& args]
+                                                                         (swap! builds inc)
+                                                                         (apply build-history args))]
+              (step-limit-turn! :document-generate-content
+                                #(mut/mock-llm-response [{:type :text :text "The orders table has no revenue."}])))
+            [_ {input-2 :input} {input-3 :input}] requests
+            added (drop (count input-2) input-3)]
+        (is (= [1 3] [@builds (count requests)]))
+        (is (= input-2 (take (count input-2) input-3)))
+        (is (= 3 (count added)))
+        (is (=? [{:type :tool-input :id "t2"}
+                 {:type :tool-output :id "t2"}
+                 {:role :user :content #(str/includes? % "step limit")}]
+                added))))))
+
 (deftest step-limit-reply-fallback-test
   (mt/as-admin
     (testing "a last call that fails, throws or answers with no text leaves the fixed reply"
@@ -1025,6 +1158,28 @@
         (is (= {test-provider {:prompt 900 :completion 70}}
                (metabot.persistence/extract-usage parts)))
         (is (= 730 (metabot.persistence/extract-context-tokens parts)))))))
+
+(defn- llm-span-usages
+  "The `:ai/usage` of each `llm` span in `spans`, in the order of the iterations."
+  [spans]
+  (->> (map :attributes spans)
+       (sort-by :ai/iteration)
+       (map :ai/usage)))
+
+(deftest step-limit-reply-eval-usage-test
+  (testing "the last call of a turn at its step limit has its own usage on its eval span, and the turn has the sum"
+    (mt/as-admin
+      (let [reply           #(mut/mock-llm-response [{:type :text :text "The customer table has no link to orders."}
+                                                     {:type  :usage
+                                                      :usage {:promptTokens 700 :completionTokens 30}}])
+            {:keys [trace]} (ait/capturing (step-limit-turn! :document-generate-content reply))
+            turn            (first trace)]
+        (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
+                {test-provider {:promptTokens 100 :completionTokens 20}}
+                {test-provider {:promptTokens 700 :completionTokens 30}}]
+               (llm-span-usages (:children turn))))
+        (is (= {test-provider {:promptTokens 900 :completionTokens 70}}
+               (get-in turn [:attributes :ai/usage])))))))
 
 (def ^:private partial-reply
   "The text that the last call streams before it stops."
@@ -1092,21 +1247,27 @@
           (is (not-any? #(= :error (:type %)) parts))
           (is (= {:type :finish :finish-reason :max-iterations} (last parts))))))))
 
-(deftest step-limit-reply-history-failure-test
-  (testing "a failure while the last call's history is built leaves the fixed reply and the earlier usage"
+(deftest step-limit-reply-input-failure-test
+  (testing "a failure while the last call's input is built leaves the fixed reply and the earlier usage"
     (mt/as-admin
       (let [build-history (mt/original-fn #'messages/build-message-history)
+            steps->parts  (mt/original-fn #'messages/steps->parts)
             builds        (atom 0)
-            third-fails   (fn [& args]
-                            (if (= 3 (swap! builds inc))
-                              (throw (ex-info "The viewing context is gone" {}))
-                              (apply build-history args)))
+            conversions   (atom 0)
             {:keys [parts requests]}
-            (mt/with-dynamic-fn-redefs [messages/build-message-history third-fails]
+            (mt/with-dynamic-fn-redefs [messages/build-message-history (fn [& args]
+                                                                         (swap! builds inc)
+                                                                         (apply build-history args))
+                                        ;; The first call converts the steps of the history it builds, the second
+                                        ;; the step added since, and the third, the call at the step limit, fails.
+                                        messages/steps->parts           (fn [steps]
+                                                                          (if (= 3 (swap! conversions inc))
+                                                                            (throw (ex-info "A step can't be converted" {}))
+                                                                            (steps->parts steps)))]
               (mt/with-log-level [metabase.metabot.agent.core :fatal]
                 (step-limit-turn! :document-generate-content
                                   #(mut/mock-llm-response [{:type :text :text "Unexpected"}]))))]
-        (is (= [3 2] [@builds (count requests)]))
+        (is (= [1 3 2] [@builds @conversions (count requests)]))
         (is (=? [{:type :text :text step-limit-text}
                  {:type :data :data-type "state"}
                  {:type :finish :finish-reason :max-iterations}]
@@ -1191,6 +1352,18 @@
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-queries memory parts)]
       (is (empty? (:queries (memory/get-state updated)))))))
+
+(deftest extract-charts-uses-the-query-memory-holds-test
+  (testing "a chart shows the query memory holds under its id, as edited later in the same response"
+    (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          edited (lib/query meta/metadata-provider (meta/table-metadata :products))
+          parts  [{:type     :tool-output
+                   :id       "t1"
+                   :function "create_chart"
+                   :result   {:structured-output {:chart-id "c-456" :query-id "q-123" :query query :chart-type :bar}}}]
+          memory {:state {:queries {"q-123" edited} :charts {}}}]
+      (is (= [edited]
+             (get-in (memory/get-state (#'agent/extract-charts memory parts)) [:charts "c-456" :queries]))))))
 
 (deftest extract-charts-test
   (testing "extracts charts from tool output parts"
@@ -1370,7 +1543,7 @@
                                       :charts  map?}}
                          {:type :finish :finish-reason :stop}]
                         (mt/with-log-level [metabase.metabot.agent.core :warn]
-                          (into [] (metabot.persistence/combine-text-parts-xf)
+                          (into [] (streaming/combine-text-parts-xf)
                                 (run-agent-loop
                                  {:messages   [{:role    :user
                                                 :content "Show me the first 10 orders"}]
@@ -1541,6 +1714,71 @@
                            {:role "user" :content [{:type "tool_result"}]}]
                           (drop (count messages-1) messages-2))))))))))))
 
+(deftest later-calls-do-not-render-the-context-again-test
+  (testing "only the first call of a turn renders the context, and each later call sends what the previous call sent,
+           then the new steps"
+    (doseq [[case-name context preload?]
+            [["without a SQL dialect"
+              {:current_user_time "2026-10-05T12:00:00Z"}
+              false]
+             ["with a SQL dialect preload"
+              {:current_user_time "2026-10-05T12:00:00Z"
+               :capabilities      ["permission:write_sql_queries"]
+               :user_is_viewing   [{:type       "adhoc"
+                                    :sql_engine "postgres"
+                                    :query      (lib/native-query (mt/metadata-provider) "SELECT 1")}]}
+              true]]]
+      (testing case-name
+        (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                           llm-metabot-provider test-provider]
+          (let [inputs      (atom [])
+                renders     (atom 0)
+                orig-render (mt/original-fn #'user-context/enrich-context-for-template)]
+            (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                        (fn [ctx] (swap! renders inc) (orig-render ctx))
+                                        openrouter/openrouter
+                                        (fn [{:keys [input]}]
+                                          (mut/mock-llm-response
+                                           ;; The links fill the registry, so the tails of calls 2 and 3 go
+                                           ;; through a real inversion.
+                                           (case (count (swap! inputs conj input))
+                                             1 [{:type :text :text "See [Orders](metabase://model/1)."}
+                                                {:type      :tool-input
+                                                 :id        "call-1"
+                                                 :function  "search"
+                                                 :arguments {:keyword_queries ["orders"]}}]
+                                             2 [{:type :text :text "See [Ops](metabase://dashboard/2)."}
+                                                {:type      :tool-input
+                                                 :id        "call-2"
+                                                 :function  "search"
+                                                 :arguments {:keyword_queries ["people"]}}]
+                                             [{:type :text :text "Found them."}])))
+                                        metabot-search/search (constantly [])]
+              (run-agent-loop! {:messages   [{:role :user :content "Show me orders and people"}]
+                                :state      {}
+                                :profile-id :internal
+                                :context    context})
+              (let [[input-1 input-2 input-3] @inputs]
+                (is (= 3 (count @inputs)))
+                (is (= 1 @renders))
+                (is (= preload? (boolean (some #(= "load_skill" (:function %)) input-1))))
+                (is (= input-1 (take (count input-1) input-2)))
+                (is (= input-2 (take (count input-2) input-3)))
+                (is (=? [{:type :text :text "See [Orders](metabase://model/1)."}
+                         {:type :tool-input :id "call-1" :function "search" :arguments {:keyword_queries ["orders"]}}
+                         {:type     :tool-output
+                          :id       "call-1"
+                          :function "search"
+                          :result   {:structured-output {:result-type :search}}}]
+                        (drop (count input-1) input-2)))
+                (is (=? [{:type :text :text "See [Ops](metabase://dashboard/2)."}
+                         {:type :tool-input :id "call-2" :function "search" :arguments {:keyword_queries ["people"]}}
+                         {:type     :tool-output
+                          :id       "call-2"
+                          :function "search"
+                          :result   {:structured-output {:result-type :search}}}]
+                        (drop (count input-2) input-3)))))))))))
+
 (deftest eval-tracing-nesting-test
   (testing "capture-reducible over the real agent loop builds a turn -> llm -> tool span tree"
     ;; This exercises the cross-module wiring the ai-tracing docstrings promise: the turn/llm spans
@@ -1604,6 +1842,12 @@
                   (is (= 2 (count llms)))
                   (is (every? #(= :llm (:type %)) llms))
                   (is (every? #(= (:id turn) (:parent-id %)) llms)))
+                (testing "each llm.call has the usage of its own call, and the turn has the sum"
+                  (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
+                          {test-provider {:promptTokens 200 :completionTokens 10}}]
+                         (llm-span-usages llms)))
+                  (is (= {test-provider {:promptTokens 300 :completionTokens 30}}
+                         (get-in turn [:attributes :ai/usage]))))
                 (testing "the search tool span nests under the llm.call it ran in"
                   (is (= :tool (:type search)))
                   ;; the decoded tool arguments are recorded on the span (metabase.metabot.self.core)
@@ -1706,7 +1950,7 @@
                      {:type :data :data-type "state"}
                      {:type :finish :finish-reason :stop}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
-                      (into [] (metabot.persistence/combine-text-parts-xf)
+                      (into [] (streaming/combine-text-parts-xf)
                             (run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}

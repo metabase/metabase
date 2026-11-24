@@ -1,7 +1,6 @@
 (ns metabase.eid-translation.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.eid-translation.util :as eid-translation.util]
    [metabase.test :as mt]))
 
 (deftest ^:parallel entity-id-translation-test
@@ -13,6 +12,8 @@
                :entity_ids
                (update-keys name))))
     (testing "error message contains allowed models"
-      (is (= (set (map name (keys @#'eid-translation.util/api-name->model)))
+      (is (= #{"action" "card" "collection" "dashboard" "dashboard-card" "dashboard-tab" "dataset" "dimension" "document"
+               "exploration" "measure" "metric" "permissions-group" "pulse" "pulse-card" "pulse-channel" "segment"
+               "snippet" "timeline" "transform" "user"}
              (set (:allowed-models (mt/user-http-request :crowberto :post 400 "eid-translation/translate"
                                                          {:entity_ids {"Card" [card-eid]}}))))))))

@@ -16,6 +16,7 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -74,11 +75,11 @@
   (let [new-card (-> card
                      (assoc :name new-name :collection_id collection-id)
                      (dissoc :dashboard_id :collection_position))]
-    (api/create-check :model/Card {:collection_id collection-id})
     ;; Copy semantics for timelines too: an inherited selection the caller cannot read is preserved, as in
     ;; `POST /api/card/:id/copy`, while any change to it is still checked.
     (queries/with-copy-source-card card
-      (queries/create-card! new-card @api/*current-user*))))
+      (api/create-check :model/Card new-card))
+    (first (queries.card/create-cards! [(queries.card/new-card-row new-card api/*current-user-id*)]))))
 
 (defn- fetch-dashboard
   [id-or-eid]

@@ -2,7 +2,7 @@
   "Application database queries for the measures module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema :as measures.schema]
@@ -19,19 +19,10 @@
   [:and
    (when-not (:include-archived? opts)
      [:= (u/qualified-key alias :archived) false])
-   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings opts)])
-
-(mu/defn insert-measure!
-  "Insert a Measure and return the inserted instance."
-  [creator-id   :- ::lib.schema.id/user
-   measure-name :- :string
-   description  :- [:maybe :string]
-   definition   :- [:maybe ::measures.schema/measure.definition]]
-  (t2/insert-returning-instance! :model/Measure
-                                 :creator_id  creator-id
-                                 :name        measure-name
-                                 :description description
-                                 :definition  definition))
+   [:in (u/qualified-key alias :table_id)
+    ^:allow-subquery {:select [:settings.table_id]
+                      :from   [[(t2/table-name :model/TableUserSettings) :settings]]
+                      :where  (remote-sync/synced-filter-clause :model/TableUserSettings :settings opts)}]])
 
 (mu/defn measure
   "The Measure with `id`, or nil."
@@ -42,17 +33,6 @@
   "The unarchived Measures, in case-insensitive name order."
   []
   (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
-
-(mu/defn table-database-ids
-  "The set of Database ids of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
-
-(mu/defn update-measure!
-  "Apply `changes` to the Measure with `id`."
-  [id      :- ::lib.schema.id/measure
-   changes :- (mut/select-keys ::measures.schema/measure.update [:name :description :archived :definition])]
-  (t2/update! :model/Measure :id id changes))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -67,7 +47,7 @@
 (mu/defn set-measure-dimensions!
   "Set the dimensions and dimension mappings of the Measure with `id`."
   [id                 :- ::lib.schema.id/measure
-   dimensions         :- [:maybe sequential?]
+   dimensions         :- [:maybe [:sequential ::measures.schema/measure.dimension]]
    dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
   (t2/update! :model/Measure :id id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
 
@@ -78,3 +58,17 @@
     (-> (t2/select [:model/Measure :id :name :table_id] :id [:in ids])
         (t2/hydrate [:table [:collection :effective_ancestors]])
         (->> (mapv (fn [row] (update row :table #(some-> % (collection.root/hydrate-root-collection root)))))))))
+
+(mu/defn dependency-measure-items :- :map
+  "The query of the Measures the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of the
+  tables the user queries, located by their table."
+  [{:keys [include-archived] :as opts} :- :metabase.dependencies.items/items-opts]
+  {:select    [[:measure.id :entity_id] [:measure.name :name] [:table.display_name :location]]
+   :from      [:measure]
+   :left-join [[:metabase_table :table] [:= :measure.table_id :table.id]]
+   :where     (into [:and]
+                    (remove nil?)
+                    [[:in :measure.table_id ^:allow-subquery {:select [:metabase_table.id]
+                                                              :from   [:metabase_table]
+                                                              :where  (collections.listing/visible-tables-clause :metabase_table.id opts)}]
+                     (collections.listing/archived-clause :measure include-archived)])})

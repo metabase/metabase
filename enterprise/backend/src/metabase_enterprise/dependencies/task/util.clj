@@ -7,12 +7,15 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.lib-be.core :as lib-be]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
    (java.util Date)
+   (java.util.concurrent.locks ReentrantLock)
    (org.quartz Scheduler)))
 
 (set! *warn-on-reflection* true)
@@ -32,6 +35,25 @@
 (def ^:private MaybeScheduler
   "A Quartz scheduler, or nil when none is running."
   [:maybe (ms/InstanceOfClass Scheduler)])
+
+(defonce ^:private batch-locks (atom {}))
+
+(mu/defn- batch-lock :- (ms/InstanceOfClass ReentrantLock)
+  "The lock of `job` on this node only: Quartz already keeps scheduled runs apart across the cluster. Fair, so a
+  waiting runner gets the next batch."
+  ^ReentrantLock [{:keys [job-key]} :- Job]
+  (get (swap! batch-locks update job-key #(or % (ReentrantLock. true))) job-key))
+
+(mu/defn- run-batch-locked! :- :any
+  "Run a batch of `job` once no other runner on this node is running one, and return its result. Two runners taking a
+  batch at once would process the same entities."
+  [{:keys [run-batch!] :as job} :- Job]
+  (let [lock (batch-lock job)]
+    (.lock lock)
+    (try
+      (run-batch!)
+      (finally
+        (.unlock lock)))))
 
 (mu/defn- job-delay :- ms/IntGreaterThanOrEqualToZero
   "A random delay in seconds between `delay - variance` and `delay + variance` minutes."
@@ -89,16 +111,36 @@
   asks for one, and after [[next-run-delay]] when it throws, before rethrowing, so a failure doesn't stop it until the
   next write."
   [scheduler                                     :- MaybeScheduler
-   {:keys [run-batch! job-name batch-size] :as job} :- Job]
+   {:keys [job-name batch-size] :as job} :- Job]
   (if (pos? (batch-size))
     (try
-      (if-some [delay-in-seconds (run-batch!)]
+      (if-some [delay-in-seconds (run-batch-locked! job)]
         (schedule-run! scheduler job delay-in-seconds)
         (log/debug "Job" job-name "has nothing more to do, stopping."))
       (catch Throwable e
         (schedule-run! scheduler job (next-run-delay job))
         (throw e)))
     (log/debug "Job" job-name "has a batch size that isn't positive, stopping.")))
+
+(mu/defn enabled? :- :boolean
+  "Whether `job` runs, which a batch size that isn't positive prevents."
+  [{:keys [batch-size]} :- Job]
+  (pos? (batch-size)))
+
+(mr/def ::batch-outcome
+  "A batch run in place: took entities (`:worked`), found none (`:idle`), or the batch size isn't positive
+  (`:disabled`)."
+  [:enum :worked :idle :disabled])
+
+(mu/defn run-batch-in-place! :- ::batch-outcome
+  "Run a batch of `job` now, under the lock its scheduled runs take."
+  [job :- Job]
+  (if (enabled? job)
+    ;; a caller's metadata provider cache would still hold entities as they were before an earlier batch rewrote them
+    (if (some? (lib-be/with-existing-metadata-provider-cache nil (run-batch-locked! job)))
+      :worked
+      :idle)
+    :disabled))
 
 (mu/defn trigger-run! :- :any
   "Schedule a run of `job` a second from now, unless a batch size that isn't positive disables it."

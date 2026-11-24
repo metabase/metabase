@@ -5,6 +5,7 @@ model: sonnet
 memory: project
 skills:
   - backend-module-conventions
+  - backend-model-rules
 ---
 
 You work on how Metabase sends content out: alerts, dashboard subscriptions, system-event emails, and the channels and renderers behind them. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans.

@@ -5,12 +5,11 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn active-visible-tables-for-databases
@@ -56,9 +55,9 @@
         where      (if filter-by-data-access?
                      [:and base-where
                       [:or
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
+                       (perms/visible-databases-filter-clause :id user-info {:perms/create-queries :query-builder})
+                       (perms/visible-databases-filter-clause :id user-info {:perms/manage-database :yes})
+                       (perms/visible-databases-filter-clause :id user-info {:perms/manage-table-metadata :yes})]]
                      base-where)]
     (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                 :where where})))
@@ -184,11 +183,6 @@
              :table_id        [:in table-ids]
              :visibility_type [:not-in ["sensitive" "retired"]]))
 
-(mu/defn insert-database!
-  "Insert the Database `row` and return the inserted instance."
-  [row :- ::warehouses.schema/database.update]
-  (t2/insert-returning-instance! :model/Database row))
-
 (mu/defn sample-database
   "The sample Database, or nil."
   []
@@ -199,36 +193,10 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn update-database!
-  "Apply `changes` to the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database :id database-id changes))
-
-(mu/defn delete-destination-databases!
-  "Delete the routing destination Databases of the Database with `router-database-id`, returning the number deleted."
+(mu/defn destination-database-ids :- [:sequential ::lib.schema.id/database]
+  "The ids of the routing destination Databases of the Database with `router-database-id`."
   [router-database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :router_database_id router-database-id))
-
-(mu/defn delete-database!
-  "Delete the Database with `database-id`, returning the number deleted."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :id database-id))
-
-(mu/defn mark-tables-sync-complete!
-  "Mark the initial sync of the Tables with `table-ids` complete, returning the number updated."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/update! :model/Table {:id [:in table-ids]} {:initial_sync_status "complete"}))
-
-(mu/defn delete-field-values-for-database!
-  "Delete the FieldValues of every Field of the Database with `database-id`, returning the number deleted."
-  [database-id :- ::lib.schema.id/database]
-  (t2/query-one {:delete-from :metabase_fieldvalues
-                 :where      [:in :field_id
-                              ^:allow-subquery {:select     [:f.id]
-                                                :from       [[:metabase_field :f]]
-                                                :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                                :where      [:= :t.db_id database-id]}]}))
+  (vec (t2/select-pks-vec :model/Database :router_database_id router-database-id)))
 
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`."

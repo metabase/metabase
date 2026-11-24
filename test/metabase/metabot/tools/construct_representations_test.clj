@@ -51,6 +51,7 @@
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
@@ -607,7 +608,7 @@
             (when-not (instance? clojure.lang.ExceptionInfo result)
               (let [q          (get-in result [:structured-output :query])
                     ;; Round-trip through legacy is the gate the production failure hit.
-                    legacy     (lib/->legacy-MBQL q)
+                    legacy     #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL q)
                     rebuilt    (try (lib/query mp legacy)
                                     (catch clojure.lang.ExceptionInfo e e))]
                 (testing "order-by uses an aggregation reference, not an inline aggregation"
@@ -1743,11 +1744,8 @@
                    "stages"   [{"lib/type"     "mbql.stage/mbql"
                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
                                 "aggregation"  [["count" {}]]}]})
-              strip-run-specific
-              (fn [query]
-                (walk/postwalk (fn [node]
-                                 (cond-> node (map? node) (dissoc :lib/uuid :lib/metadata)))
-                               query))
+              strip-run-specific #(match/replace-all %
+                                    #'map? (dissoc &match :lib/uuid :lib/metadata))
               v1 (get-in (construct/execute-representations-query q) [:structured-output :query])
               v2 (with-v2-surface
                    (get-in (construct/execute-representations-query q) [:structured-output :query]))]
@@ -1864,14 +1862,8 @@
                                                   -12 "month"]]}]}))
               structured (:structured-output result)
               q          (:query structured)
-              metric-refs (let [acc (volatile! [])]
-                            (walk/postwalk (fn [x]
-                                             (when (and (vector? x)
-                                                        (= :metric (first x)))
-                                               (vswap! acc conj x))
-                                             x)
-                                           (:stages q))
-                            @acc)]
+              metric-refs (match/match-all (:stages q)
+                            [:metric & _] &match)]
           (testing "the tool returns structured output rather than an expression-editor rejection"
             (is (string? (:query-id structured)))
             (is (vector? (:result-columns structured))))
@@ -1925,13 +1917,12 @@
                {:id 301 :name "NAME"        :table-id 30 :base-type :type/Text}]}))
 
 (def ^:private metric-definition
-  "Count of ORDERS with an EXPLICIT (no-FK) join to CAMPAIGNS, as legacy MBQL for storage."
+  "Count of ORDERS with an EXPLICIT (no-FK) join to CAMPAIGNS, for storage."
   (-> (lib/query mp-metric-base (lib.metadata/table mp-metric-base 10))
       (lib/join (lib/join-clause (lib.metadata/table mp-metric-base 30)
                                  [(lib/= (lib.metadata/field mp-metric-base 102)
                                          (lib.metadata/field mp-metric-base 300))]))
-      (lib/aggregate (lib/count))
-      lib.convert/->legacy-MBQL))
+      (lib/aggregate (lib/count))))
 
 (def ^:private mp-metric
   (lib.tu/mock-metadata-provider
@@ -1953,6 +1944,9 @@
                 ;; permission-filtered is covered against real tables in entity-details-test.
                 mi/can-read?                             (constantly true)
                 mi/can-query?                            (constantly true)
+                metabot.db/table                         (fn [id]
+                                                           (-> (t2/instance :model/Table {:id id :can_query true})
+                                                               (vary-meta assoc :can_read true)))
                 entity-details/permission-filter-columns (fn [cols & _] cols)
                 entity-details/verified-review?          (constantly false)]
     (f)))
@@ -2093,7 +2087,8 @@
                                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]}
                                                 stage-kvs)]}))
         before (get-in result [:structured-output :query])]
-    [before (-> before links/->legacy-mbql json/encode (json/decode true))]))
+    ;; existing usage -- do not use going forward
+    [before (-> before #_{:clj-kondo/ignore [:deprecated-var]} links/->legacy-mbql json/encode (json/decode true))]))
 
 (defn- stage-clause-counts
   "Per-stage counts of the clause vectors on a query, for comparing a query with its round-trip."
@@ -2626,6 +2621,7 @@
                                     :query    {:source-table (mt/id :products)}}}
                    :model/Card {metric-id :id, metric-eid :entity_id}
                    {:name "Multi-stage card metric" :type :metric
+                    :table_id (mt/id :products)
                     :dataset_query {:database (mt/id)
                                     :type     :query
                                     :query    {:source-query {:source-table (str "card__" question-id)}
@@ -2925,7 +2921,7 @@
     (mt/with-temp [:model/Card {c1-id :id}
                    {:name "C1" :type :question :dataset_query (table-query :orders)}
                    :model/Card {c2-id :id, c2-eid :entity_id}
-                   {:name "C2" :type :question :dataset_query (card-query c1-id)}
+                   {:name "C2" :type :question :table_id (mt/id :orders) :dataset_query (card-query c1-id)}
                    :model/Card {products-metric-eid :entity_id}
                    {:name "Product count" :type :metric
                     :dataset_query (lib/aggregate (table-query :products) (lib/count))}
@@ -2933,7 +2929,7 @@
                    {:name "Order count" :type :metric
                     :dataset_query (lib/aggregate (table-query :orders) (lib/count))}
                    :model/Card {two-stage-id :id, two-stage-eid :entity_id}
-                   {:name "Two-stage count" :type :metric
+                   {:name "Two-stage count" :type :metric :table_id (mt/id :orders)
                     :dataset_query (-> (card-query c1-id) lib/append-stage (lib/aggregate (lib/count)))}]
       (t2/update! :model/Card :id c1-id {:dataset_query (table-query :products)})
       (mt/with-current-user (mt/user->id :crowberto)
@@ -4446,3 +4442,28 @@
               (is (str/includes? msg "The query builder cannot convert text to a number on this database."))
               (is (str/includes? msg "SQL question"))
               (is (= table-field? (str/includes? msg "Table Metadata"))))))))))
+
+(deftest repairs-in-structured-output-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [query (fn [op]
+                    (query-data
+                     {"lib/type" "mbql/query"
+                      "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                   "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                   "filters"      [[op {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 10]]}]}))]
+        (testing "the pipeline names the repair passes that changed the query"
+          (is (= ["rewrite-operator-name-aliases"]
+                 (get-in (construct/execute-representations-query (query "gte")) [:structured-output :repairs]))))
+        (testing "a query that follows the prompt contract has an empty list, not a missing key"
+          (is (= []
+                 (get-in (construct/execute-representations-query (query ">=")) [:structured-output :repairs]))))
+        (doseq [tool [construct/construct-notebook-query-tool
+                      slackbot-query/slackbot-construct-notebook-query-tool]]
+          (testing (str (type tool))
+            (let [result (tools/handle tool {:query (query "gte") :reasoning "orders above 10"} {})]
+              (testing "the tool result holds the list for the agent_used_tool event"
+                (is (= ["rewrite-operator-name-aliases"]
+                       (get-in result [:structured-output :repairs]))))
+              (testing "the text the model reads does not hold it"
+                (is (not (str/includes? (tools/render-text (:output result)) "rewrite-operator-name-aliases")))))))))))

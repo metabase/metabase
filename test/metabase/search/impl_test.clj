@@ -5,15 +5,17 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.lib.core :as lib]
    [metabase.queries-rest.api.card :as api.card]
+   [metabase.queries.models.card :as card]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.impl :as search.impl]
    [metabase.search.in-place.legacy :as search.legacy]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util.honey-sql-2 :as h2x]
@@ -43,7 +45,6 @@
   ;; back to its setting-backed defaults, and the schema's default-value transformer makes that easy to
   ;; break by adding an innocent-looking :default
   (let [ctx (search.impl/search-context {:current-user-id       1
-                                         :current-user-perms    #{"/"}
                                          :is-superuser?         true
                                          :is-impersonated-user? false
                                          :is-sandboxed-user?    false
@@ -76,55 +77,56 @@
            (search.legacy/order-clause "Foo")))))
 
 (deftest search-db-call-count-test
-  (let [search-string (mt/random-name)]
-    (mt/with-temp
-      [:model/Card      _              {:name (str "card db 1 " search-string)}
-       :model/Card      _              {:name (str "card db 2 " search-string)}
-       :model/Card      _              {:name (str "card db 3 " search-string)}
-       :model/Dashboard _              {:name (str "dash 1 " search-string)}
-       :model/Dashboard _              {:name (str "dash 2 " search-string)}
-       :model/Dashboard _              {:name (str "dash 3 " search-string)}
-       :model/Database  {db-id :id}    {:name (str "database 1 " search-string)}
-       :model/Database  _              {:name (str "database 2 " search-string)}
-       :model/Database  _              {:name (str "database 3 " search-string)}
-       :model/Table     {table-id :id} {:db_id  db-id
-                                        :schema nil}
-       :model/Card      _              {:name (str "metric 1 " search-string) :type :metric}
-       :model/Card      _              {:name (str "metric 1 " search-string) :type :metric}
-       :model/Card      _              {:name (str "metric 2 " search-string) :type :metric}
-       :model/Segment   _              {:table_id table-id
-                                        :name     (str "segment 1 " search-string)}
-       :model/Segment   _              {:table_id table-id
-                                        :name     (str "segment 2 " search-string)}
-       :model/Segment   _              {:table_id table-id
-                                        :name     (str "segment 3 " search-string)}]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (binding [config/*request-id* (random-uuid)]
-          (let [do-search (fn []
-                            (search.impl/search {:search-string               search-string
-                                                 :archived?                   false
-                                                 :models                      search.config/all-models
-                                                 :current-user-id             (mt/user->id :crowberto)
-                                                 :is-superuser?               true
-                                                 :is-impersonated-user?       false
-                                                 :is-sandboxed-user?          false
-                                                 :is-routed-user?             false
-                                                 :is-data-analyst?            false
-                                                 :current-user-perms          #{"/"}
-                                                 :model-ancestors?            false
-                                                 :limit-int                   100
-                                                 :calculate-available-models? false
-                                                 :enabled-transform-source-types (transforms.gating/enabled-source-types)}))]
-            ;; warm it up, in case the DB call depends on the order of test execution and it needs to
-            ;; do some initialization
+  (testing "search takes the same number of DB calls for 1 result of each model and for 3 of each"
+    (let [small (mt/random-name)
+          large (mt/random-name)]
+      (mt/with-temp
+        [:model/Card      _ {:name (str "card db 1 " small)}
+         :model/Dashboard _ {:name (str "dash 1 " small)}
+         :model/Database  _ {:name (str "database 1 " small)}
+         :model/Card      _ {:name (str "metric 1 " small) :type :metric}
+         :model/Segment   _ {:name (str "segment 1 " small)}
+         :model/Card      _ {:name (str "card db 1 " large)}
+         :model/Card      _ {:name (str "card db 2 " large)}
+         :model/Card      _ {:name (str "card db 3 " large)}
+         :model/Dashboard _ {:name (str "dash 1 " large)}
+         :model/Dashboard _ {:name (str "dash 2 " large)}
+         :model/Dashboard _ {:name (str "dash 3 " large)}
+         :model/Database  _ {:name (str "database 1 " large)}
+         :model/Database  _ {:name (str "database 2 " large)}
+         :model/Database  _ {:name (str "database 3 " large)}
+         :model/Card      _ {:name (str "metric 1 " large) :type :metric}
+         :model/Card      _ {:name (str "metric 2 " large) :type :metric}
+         :model/Card      _ {:name (str "metric 3 " large) :type :metric}
+         :model/Segment   _ {:name (str "segment 1 " large)}
+         :model/Segment   _ {:name (str "segment 2 " large)}
+         :model/Segment   _ {:name (str "segment 3 " large)}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [counted (fn [search-string]
+                          (binding [config/*request-id* (random-uuid)]
+                            (t2/with-call-count [call-count]
+                              (let [results (search.impl/search {:search-string               search-string
+                                                                 :search-engine               :search.engine/in-place
+                                                                 :archived?                   false
+                                                                 :models                      search.config/all-models
+                                                                 :current-user-id             (mt/user->id :crowberto)
+                                                                 :is-superuser?               true
+                                                                 :is-impersonated-user?       false
+                                                                 :is-sandboxed-user?          false
+                                                                 :is-routed-user?             false
+                                                                 :is-data-analyst?            false
+                                                                 :model-ancestors?            false
+                                                                 :limit-int                   100
+                                                                 :calculate-available-models? false
+                                                                 :enabled-transform-source-types (transforms.gating/enabled-source-types)})]
+                                [(count (:data results)) (call-count)]))))]
             (search/init-index!)
-            (do-search)
-            (t2/with-call-count [call-count]
-              (do-search)
-              ;; the call count number here are expected to change if we change the search api
-              ;; we have this test here just to keep tracks this number to remind us to put effort
-              ;; into keep this number as low as we can
-              (is (<= (call-count) 10)))))))))
+            (counted small)
+            (counted large)
+            (let [[small-rows small-calls] (counted small)
+                  [large-rows large-calls] (counted large)]
+              (is (= [5 15] [small-rows large-rows]))
+              (is (= small-calls large-calls)))))))))
 
 (deftest created-at-correctness-test
   (let [search-term   "created-at-filtering"
@@ -191,8 +193,7 @@
                                                                   :is-superuser?      true
                                                                   :is-impersonated-user? false
                                                                   :is-sandboxed-user? false
-                                                                  :is-routed-user?    false
-                                                                  :current-user-perms @api/*current-user-permissions-set*}))
+                                                                  :is-routed-user?    false}))
                                             :data
                                             (map (juxt :model :id))
                                             set))))))
@@ -280,8 +281,7 @@
                                                                   :is-superuser?      true
                                                                   :is-impersonated-user? false
                                                                   :is-sandboxed-user? false
-                                                                  :is-routed-user?    false
-                                                                  :current-user-perms @api/*current-user-permissions-set*}))
+                                                                  :is-routed-user?    false}))
                                             :data
                                             (map (juxt :model :id))
                                             set))))))
@@ -313,43 +313,47 @@
   (when (search/supports-index?)
     (#'search.index/sync-tracking-atoms!)
     (let [search-term (str (random-uuid))]
-      (binding [search.ingestion/*force-sync* true]
-        (mt/with-temp
-          [:model/Card {card-id :id} {:name search-term}]
-          (mt/with-current-user (mt/user->id :crowberto)
-            (testing "Initially finds the question"
-              (is (= #{["card" card-id]}
-                     (->> (search.impl/search (search.impl/search-context
-                                               {:search-string      search-term
-                                                :search-engine      "appdb"
-                                                :archived           false
-                                                :models             search.config/all-models
-                                                :current-user-id    (mt/user->id :crowberto)
-                                                :is-superuser?      true
-                                                :is-impersonated-user? false
-                                                :is-sandboxed-user? false
-                                                :is-routed-user?    false
-                                                :current-user-perms @api/*current-user-permissions-set*}))
-                          :data
-                          (map (juxt :model :id))
-                          set))))
-            (testing "Changing to a different type removes the old value from the index"
-              (api.card/update-card! card-id {:type :model} true)
-              (is (= #{["dataset" card-id]}
-                     (->> (search.impl/search (search.impl/search-context
-                                               {:search-string      search-term
-                                                :search-engine      "appdb"
-                                                :archived           false
-                                                :models             search.config/all-models
-                                                :current-user-id    (mt/user->id :crowberto)
-                                                :is-superuser?      true
-                                                :is-impersonated-user? false
-                                                :is-sandboxed-user? false
-                                                :is-routed-user?    false
-                                                :current-user-perms @api/*current-user-permissions-set*}))
-                          :data
-                          (map (juxt :model :id))
-                          set))))))))))
+      (search.tu/with-temp-index-table
+        (binding [search.ingestion/*force-sync* true]
+          (mt/with-model-cleanup [:model/Card]
+            (let [[{card-id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                        :database_id (mt/id)
+                                                        :display :table
+                                                        :visualization_settings {}
+                                                        :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                        :name search-term}])]
+              (mt/with-current-user (mt/user->id :crowberto)
+                (testing "Initially finds the question"
+                  (is (= #{["card" card-id]}
+                         (->> (search.impl/search (search.impl/search-context
+                                                   {:search-string      search-term
+                                                    :search-engine      "appdb"
+                                                    :archived           false
+                                                    :models             search.config/all-models
+                                                    :current-user-id    (mt/user->id :crowberto)
+                                                    :is-superuser?      true
+                                                    :is-impersonated-user? false
+                                                    :is-sandboxed-user? false
+                                                    :is-routed-user?    false}))
+                              :data
+                              (map (juxt :model :id))
+                              set))))
+                (testing "Changing to a different type removes the old value from the index"
+                  (api.card/update-card! card-id {:type :model} true)
+                  (is (= #{["dataset" card-id]}
+                         (->> (search.impl/search (search.impl/search-context
+                                                   {:search-string      search-term
+                                                    :search-engine      "appdb"
+                                                    :archived           false
+                                                    :models             search.config/all-models
+                                                    :current-user-id    (mt/user->id :crowberto)
+                                                    :is-superuser?      true
+                                                    :is-impersonated-user? false
+                                                    :is-sandboxed-user? false
+                                                    :is-routed-user?    false}))
+                              :data
+                              (map (juxt :model :id))
+                              set))))))))))))
 
 (deftest limit-correct-with-permissions
   (let [search-term "permissions-filtering"]
@@ -384,8 +388,7 @@
                                                     :is-superuser?      true
                                                     :is-impersonated-user? false
                                                     :is-sandboxed-user? false
-                                                    :is-routed-user?    false
-                                                    :current-user-perms @api/*current-user-permissions-set*}))
+                                                    :is-routed-user?    false}))
                               :data
                               (map (juxt :model :id))
                               set)]
@@ -393,3 +396,20 @@
               (doseq [[model id] result]
                 (is (= "card" model))
                 (is (= 0 (mod id 2)))))))))))
+
+(deftest indexed-entity-without-hydrated-checks-is-denied-test
+  (testing "An indexed entity that `hydrate-checks` did not tag is denied, and the denial is logged"
+    (mt/with-log-messages-for-level [messages [metabase.search.impl :warn]]
+      (is (false? (#'search.impl/check-permissions-for-model
+                   {:current-user-id (mt/user->id :crowberto), :is-superuser? true}
+                   {:model "indexed-entity", :id 1, :database_id (mt/id)})))
+      (is (=? [{:message #"Denying an indexed entity search result that was not tagged by hydrate-checks"}]
+              (messages))))))
+
+(deftest indexed-entity-without-database-is-denied-quietly-test
+  (testing "An indexed entity with no database is tagged by `hydrate-checks`, so its denial is not logged"
+    (mt/with-log-messages-for-level [messages [metabase.search.impl :warn]]
+      (let [search-ctx {:current-user-id (mt/user->id :crowberto), :is-superuser? true}
+            [row]      (#'search.impl/hydrate-checks search-ctx :read [{:model "indexed-entity", :id 1, :database_id nil}])]
+        (is (false? (#'search.impl/check-permissions-for-model search-ctx row)))
+        (is (= [] (messages)))))))

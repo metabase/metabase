@@ -1,10 +1,13 @@
 (ns metabase.warehouses.schema
   "Malli schemas for the warehouses module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.cron]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -13,13 +16,23 @@
   returns as the raw ciphertext string."
   :string)
 
+(mr/def ::database.connection-details
+  (mu/with-api-error-message
+   [:map {:closed false, :description "database connection details, keyed by the driver's connection properties"}]
+   (deferred-tru "Value must be a map.")))
+
+(mr/def ::database.local-settings
+  (mu/with-api-error-message
+   [:map {:closed false, :description "database-local settings, keyed by the settings registry"}]
+   (deferred-tru "Value must be a map.")))
+
 (mr/def ::database.details
   "The `:details` column of a Database, decoded."
-  [:or ms/DatabaseDetails ::database.undecryptable-column])
+  [:or ::database.connection-details ::database.undecryptable-column])
 
 (mr/def ::database.settings
   "The `:settings` column of a Database, decoded."
-  [:or ms/DatabaseSettings ::database.undecryptable-column])
+  [:or ::database.local-settings ::database.undecryptable-column])
 
 (mr/def ::database.dbms-version
   "The `:dbms_version` column of a Database, decoded."
@@ -34,32 +47,36 @@
 
 (mr/def ::database.write-data-details
   "The `:write_data_details` column of a Database, decoded."
-  [:or ms/DatabaseDetails ::database.undecryptable-column])
+  [:or ::database.connection-details ::database.undecryptable-column])
 
 (mr/def ::database.admin-details
   "The `:admin_details` column of a Database, decoded."
-  [:or ms/DatabaseDetails ::database.undecryptable-column])
+  [:or ::database.connection-details ::database.undecryptable-column])
 
 (mr/def ::database
   "A Database as selected from the app DB: every column of `:metabase_database`, plus `:features` added by the model's after-select hook."
   [:merge
    ::database.update
    [:map {:closed true}
-    [:id                          ::lib.schema.id/database]
-    [:features                    {:optional true} [:maybe [:set :keyword]]]
-    [:can-manage                  {:optional true} [:maybe :boolean]]
-    [:can_upload                  {:optional true} [:maybe :boolean]]
-    [:tables                      {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
-    [:native_permissions          {:optional true} [:maybe [:enum :write :none]]]
-    [:router_user_attribute       {:optional true} [:maybe :string]]
-    [:schedules                   {:optional true} [:maybe [:map {:closed true}
-                                                            [:metadata_sync      :metabase.util.cron/ScheduleMap]
-                                                            [:cache_field_values [:maybe :metabase.util.cron/ScheduleMap]]]]]
-    [:transforms_permissions      {:optional true} [:maybe [:enum :write :none]]]]])
+    [:id                              ::lib.schema.id/database]
+    [:features                        {:optional true} [:maybe [:set :keyword]]]
+    [:can-manage                      {:optional true} [:maybe :boolean]]
+    [:can_upload                      {:optional true} [:maybe :boolean]]
+    [:can_write                       {:optional true} [:maybe :boolean]]
+    [:can_query                       {:optional true} [:maybe :boolean]]
+    [:tables                          {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
+    [:native_permissions              {:optional true} [:maybe [:enum :write :none]]]
+    [:router_user_attribute           {:optional true} [:maybe :string]]
+    [:router_anonymous_access_granted {:optional true} [:maybe :boolean]]
+    [:schedules                       {:optional true} [:maybe [:map {:closed true}
+                                                                [:metadata_sync      :metabase.util.cron/ScheduleMap]
+                                                                [:cache_field_values [:maybe :metabase.util.cron/ScheduleMap]]]]]
+    [:transforms_permissions          {:optional true} [:maybe [:enum :write :none]]]]])
 
 (mr/def ::database.update
-  "What an update (or insert) of a Database accepts: every column of `:metabase_database` except `id`, all optional."
+  "What an update of a Database takes: its `:id` and the columns of `:metabase_database` to change, each optional."
   [:map {:closed true}
+   [:id                          ::lib.schema.id/database]
    [:created_at                  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                  {:optional true} [:maybe ms/TemporalInstant]]
    [:name                        {:optional true} [:maybe :string]]
@@ -94,6 +111,16 @@
    [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
+(mr/def ::database.create
+  "What a caller gives to create a Database: the columns of an update, with an `:id` only for a Database whose id is
+  fixed, and its name and engine."
+  [:merge
+   (mut/dissoc ::database.update :id)
+   [:map
+    [:id     {:optional true} ::lib.schema.id/database]
+    [:name   :string]
+    [:engine ::lib.schema.common/keyword]]])
+
 (mr/def ::database-or-metadata
   "A Database as an app DB row or as Lib metadata."
   [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}
@@ -106,7 +133,7 @@
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
     [:select-keys ::database [:auto_run_queries :caveats :description :engine :is_audit :is_attached_dwh
-                              :is_full_sync :is_on_demand :default_schema :name :points_of_interest :provider_name
+                              :is_full_sync :is_on_demand :default_schema :name :points_of_interest
                               :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
                               :uploads_table_prefix :cache_field_values_schedule :metadata_sync_schedule :details
                               :write_data_details :admin_details :creator_id :router_database_id :initial_sync_status

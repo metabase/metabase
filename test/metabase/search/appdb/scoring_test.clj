@@ -6,6 +6,10 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.models.measure :as measure]
    [metabase.search.appdb.core :as search.appdb.core]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as scoring]
@@ -15,9 +19,11 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2])
   (:import
@@ -363,7 +369,7 @@
       (mt/with-temp [:model/Collection lib       {:name "lib top"        :type "library"        :location "/"}
                      :model/Collection lib-data  {:name "lib data"       :type "library-data"   :location "/"}
                      :model/Collection lib-met   {:name "lib metrics"    :type "library-metrics" :location "/"}
-                     :model/Collection sub       {:name "sub of lib"     :location (format "/%d/" (:id lib))}
+                     :model/Collection sub       {:name "sub of lib"     :type "library-data" :location (format "/%d/" (:id lib))}
                      :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
                      :model/Collection other     {:name "non-library"    :location "/"}]
         (with-index-contents
@@ -382,18 +388,33 @@
               (is (= [false false true true true true true]
                      (map in-library? (with-weights {:library -1} (search-results* "card"))))))))))))
 
+(defn- table-measure-definition
+  "A full query on `table-id` with a count aggregation."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
+
+(defn- table-definition
+  "A full query on `table-id` with an always-true filter."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/= 1 1)))))
+
 (deftest measure-segment-library-test
   ;; Index table first, before `with-temp` opens its transaction; see [[library-test]].
   (search.tu/with-temp-index-table
     (testing "measures and segments on a published Library table inherit its library boost and curated status"
       (collections.tu/with-library [{data :data}]
-        (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
-                       :model/Table   plain-tbl {:name "plain_tbl"}
-                       :model/Measure _ {:name "foo measure lib"   :table_id (:id lib-tbl)}
-                       :model/Measure _ {:name "foo measure plain" :table_id (:id plain-tbl)}
-                       :model/Segment _ {:name "foo segment lib"   :table_id (:id lib-tbl)}
-                       :model/Segment _ {:name "foo segment plain" :table_id (:id plain-tbl)}]
-          (let [results (search-results** "foo" {:context :metabot :models #{"measure" "segment"}})]
+        (mt/with-model-cleanup [:model/Segment :model/Measure :model/Table]
+          (let [[lib-tbl plain-tbl] (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "lib_tbl" :is_published true :collection_id (:id data))
+                                                           (assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "plain_tbl" :is_published false :collection_id nil)])
+                _                   (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name "foo measure lib" :definition (table-measure-definition (:id lib-tbl)))
+                                                               (assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name "foo measure plain" :definition (table-measure-definition (:id plain-tbl)))])
+                _                   (segment/create-segments! [(assoc (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id) :name "foo segment lib" :definition (table-definition (:id lib-tbl)))
+                                                               (assoc (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id) :name "foo segment plain" :definition (table-definition (:id plain-tbl)))])
+                results (search-results** "foo" {:context :metabot :models #{"measure" "segment"}})]
             (is (=? [{:name #".* lib",   :curated true}
                      {:name #".* lib",   :curated true}
                      {:name #".* plain", :curated false}
@@ -411,10 +432,11 @@
   (search.tu/with-temp-index-table
     (testing "measures and segments follow a table published and unpublished through its user settings"
       (collections.tu/with-library [{data :data}]
-        (mt/with-temp [:model/Table   {table-id :id :as table} {:name "tbl"}
-                       :model/Measure _ {:name "foo measure" :table_id table-id}
-                       :model/Segment _ {:name "foo segment" :table_id table-id}]
-          (let [curated #(mapv :curated (search-results** "foo" {:context :metabot :models #{"measure" "segment"}}))]
+        (mt/with-model-cleanup [:model/Segment :model/Measure :model/Table]
+          (let [[{table-id :id :as table}] (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "tbl")])
+                _       (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name "foo measure" :definition (table-measure-definition table-id))])
+                _       (segment/create-segments! [(assoc (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id) :name "foo segment" :definition (table-definition table-id))])
+                curated #(mapv :curated (search-results** "foo" {:context :metabot :models #{"measure" "segment"}}))]
             (is (= [[false false] [true true] [false false]]
                    [(curated)
                     (do (table-user-settings/upsert-table-user-settings!

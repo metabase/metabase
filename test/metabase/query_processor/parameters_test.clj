@@ -5,7 +5,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -20,7 +19,8 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.match :as match]))
 
 (defn- run-count-query [query]
   (or (ffirst
@@ -719,12 +719,8 @@
                         "Should never get here, query should throw an Exception")
                     (catch Throwable e
                       (doseq [data (keep ex-data (u/full-exception-chain e))]
-                        (walk/postwalk
-                         (fn [form]
-                           (when (string? form)
-                             (is (not (re-find #"SELECT" form))))
-                           form)
-                         data)))))
+                        (is (empty? (match/match-all data
+                                      (s :guard (and (string? s) (str/includes? s "SELECT"))) s)))))))
                 (testing (str "Permissions for Card 2's Collection are not enough to run a native query referencing"
                               " Card 2 while it references Card 1, which we still cannot read")
                   (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
@@ -811,7 +807,7 @@
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/expression "Quantity_2" (lib.metadata/field mp (mt/id :orders :quantity))))
               query (assoc query :parameters [{:type   :number/=
-                                               :target [:dimension (lib.convert/->legacy-MBQL
+                                               :target [:dimension (lib.convert/->legacy-MBQL-ref
                                                                     (lib/expression-ref query "Quantity_2"))]
                                                :value  [14]}])]
           (is (= 1
@@ -868,7 +864,7 @@
                                            (lib/returned-columns query)))
               query   (assoc query :parameters [{:type   :string/=
                                                  :value  ["Facebook MN"]
-                                                 :target [:dimension (lib.convert/->legacy-MBQL (lib/ref ss-col))]}])
+                                                 :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref ss-col))]}])
               rows    (mt/rows (qp/process-query query))]
           (is (some? ss-idx))
           (is (seq rows))

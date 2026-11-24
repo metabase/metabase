@@ -3,9 +3,17 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
+
+(use-fixtures :once
+  (fixtures/initialize :db :test-users)
+  ;; Loading test-data syncs it, which records a task run, so load it before any test clears the task runs.
+  (fn [thunk]
+    (mt/db)
+    (thunk)))
 
 (def ^:private default-task-history
   {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil
@@ -641,7 +649,10 @@
       (is (= 2 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-type "database"))))
       (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-type "dashboard")))))
     (testing "filter by entity-id"
-      (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-id (:id db1))))))
+      ;; Ids of different entity types can coincide, so the dashboard run could share `db1`'s id.
+      (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs"
+                                             :entity-type "database"
+                                             :entity-id   (:id db1))))))
     (testing "filter by status"
       (is (= 2 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :status "success"))))
       (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :status "failed")))))

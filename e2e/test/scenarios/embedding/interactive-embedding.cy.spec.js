@@ -1435,7 +1435,7 @@ describe("scenarios > embedding > full app", () => {
       H.dashboardHeader().findByRole("img", { name: /info/i }).click();
       H.sidesheet().within(() => {
         cy.findByRole("heading", { name: "Description" }).should("be.visible");
-        cy.findByRole("heading", { name: /entity id/i }).should("not.exist");
+        cy.findByText("Entity ID info").should("not.exist");
       });
       H.sidesheet().findByLabelText("Close").click();
       H.sidesheet().should("not.exist");
@@ -1634,7 +1634,7 @@ describe("scenarios > embedding > full app", () => {
 
       const goTo = (url) => {
         H.postMessageToIframe({
-          iframeSelector: 'iframe[src*="localhost:4000/dashboard"]',
+          iframeSelector: `iframe[src*="${H.METABASE_INSTANCE_URL}/dashboard"]`,
           messageData: {
             metabase: { type: "location", location: url },
           },
@@ -1656,10 +1656,10 @@ describe("scenarios > embedding > full app", () => {
         }).then((dashboard) => {
           H.loadInteractiveIframeEmbedTestPage({
             dashboardId: dashboard.id,
-            iframeSelector: 'iframe[src*="localhost:4000/dashboard"]',
+            iframeSelector: `iframe[src*="${H.METABASE_INSTANCE_URL}/dashboard"]`,
           });
 
-          cy.get('iframe[src*="localhost:4000/dashboard"]')
+          cy.get(`iframe[src*="${H.METABASE_INSTANCE_URL}/dashboard"]`)
             .its("0.contentDocument.body")
             .should("not.be.empty")
             .then(cy.wrap)

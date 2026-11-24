@@ -175,6 +175,22 @@ export function isLoopbackHostname(hostname: string): boolean {
   return LOOPBACK_HOSTNAMES.has(hostname);
 }
 
+/**
+ * Whether a browser-supplied origin, such as `MessageEvent.origin`, is on a
+ * loopback hostname. Missing and opaque (`"null"`) origins are not loopback.
+ */
+export function isLoopbackOrigin(origin: string | null): boolean {
+  if (!origin) {
+    return false;
+  }
+
+  try {
+    return isLoopbackHostname(new URL(origin).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function initializeIframeResizer(onReady = () => {}): void {
   if (!isWithinIframe()) {
     return;

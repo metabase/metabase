@@ -4,12 +4,14 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
+   [metabase.queries.models.card :as queries.card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -69,7 +71,7 @@
                  :model/DataTestRun {other-run :id} {:test_type :transform, :test_id test-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :card test-id)]
       (data-testing.run-tracking/finish-run! run-id :passed)
-      (t2/delete! :model/CardTest :id test-id)
+      (data-testing.models.card-test/delete-card-tests! [test-id])
       (testing "the run stays, with no test id"
         (is (=? {:test_id nil :status :passed} (t2/select-one :model/DataTestRun :id run-id))))
       (testing "a run of a transform test with the same id keeps its test id"
@@ -87,11 +89,11 @@
           (data-testing.run-tracking/finish-run! run-id :passed))
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/card-test-delete topic)
-                                                (swap! published conj (:id (:object event)))))]
-          (t2/delete! :model/Card :id card-id))
+                                                (swap! published into (map (comp :id :previous-object) (:changes event)))))]
+          (queries.card/delete-cards! [card-id]))
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/CardTest :card_id card-id))))
-        (testing "each test was deleted through its own hook, so its runs stay with no test id"
+        (testing "runs of deleted tests stay with no test id"
           (is (= [nil nil] (mapv #(t2/select-one-fn :test_id :model/DataTestRun :id %) run-ids))))
         (testing "each test published one delete event"
           (is (= [test-id other-id] (sort @published))))
@@ -119,13 +121,13 @@
             :read  (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
             :write (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id))
           (mt/with-current-user (mt/user->id :rasta)
-            {:read      (boolean (mi/can-read? card-test))
-             :read-pk   (boolean (mi/can-read? :model/CardTest test-id))
+            {:read      (boolean (mi/can-read? (t2/hydrate card-test :can_read)))
+             :read-pk   (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/CardTest :id test-id) :can_read)))
              :run       (boolean (data-testing.models.card-test/can-run? card-test))
              :create    (boolean (mi/can-create? :model/CardTest {:card_id card-id}))
-             :update    (boolean (mi/can-update? card-test {:name "renamed"}))
-             :write     (boolean (mi/can-write? card-test))
-             :write-pk  (boolean (mi/can-write? :model/CardTest test-id))}))))))
+             :update    (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:name "renamed"}))
+             :write     (boolean (mi/can-write? (t2/hydrate card-test :can_write)))
+             :write-pk  (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/CardTest :id test-id) :can_write)))}))))))
 
 (defn- allowed
   [& ks]
@@ -156,8 +158,8 @@
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable)
       (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
       (mt/with-current-user (mt/user->id :rasta)
-        (is (true? (boolean (mi/can-update? card-test {:name "renamed"}))))
-        (is (false? (boolean (mi/can-update? card-test {:card_id other-id}))))))))
+        (is (true? (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:name "renamed"}))))
+        (is (false? (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:card_id other-id}))))))))
 
 (deftest permissions-take-the-database-of-the-card-query-test
   ;; Card hooks set `database_id` from the query on every insert and update, so only a direct row update makes the
@@ -180,8 +182,8 @@
               (is (= {:run true :create true :update true :write true}
                      {:run    (boolean (data-testing.models.card-test/can-run? card-test))
                       :create (boolean (mi/can-create? :model/CardTest {:card_id card-id}))
-                      :update (boolean (mi/can-update? card-test {:name "renamed"}))
-                      :write  (boolean (mi/can-write? card-test))})))))))))
+                      :update (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:name "renamed"}))
+                      :write  (boolean (mi/can-write? (t2/hydrate card-test :can_write)))})))))))))
 
 (deftest permissions-of-a-test-of-a-card-with-no-query-test
   (mt/with-temp [:model/Card     {card-id :id} {:dataset_query {}}
@@ -192,9 +194,20 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (is (= {:run true :write true}
                {:run   (boolean (data-testing.models.card-test/can-run? card-test))
-                :write (boolean (mi/can-write? card-test))}))))
+                :write (boolean (mi/can-write? (t2/hydrate card-test :can_write)))}))))
     (testing "another user may not: the card has no Database to write native SQL against"
       (mt/with-current-user (mt/user->id :rasta)
         (is (= {:run false :write false}
                {:run   (boolean (data-testing.models.card-test/can-run? card-test))
-                :write (boolean (mi/can-write? card-test))}))))))
+                :write (boolean (mi/can-write? (t2/hydrate card-test :can_write)))}))))))
+
+(deftest create-card-tests-with-different-key-sets-test
+  (mt/with-temp [:model/Card {card-id :id} {}]
+    (mt/with-model-cleanup [:model/CardTest]
+      (let [row                (fn [test-name] {:card_id card-id :name test-name :creator_id (mt/user->id :crowberto)
+                                                :inputs (lib/normalize ::data-testing.schema/inputs inputs)
+                                                :expectations (lib/normalize ::data-testing.schema/expectations expectations)})
+            [plain described]  (data-testing.models.card-test/create-card-tests! [(row "Plain")
+                                                                                  (assoc (row "Described") :description "About")])]
+        (is (nil? (t2/select-one-fn :description :model/CardTest :id (:id plain))))
+        (is (= "About" (t2/select-one-fn :description :model/CardTest :id (:id described))))))))
