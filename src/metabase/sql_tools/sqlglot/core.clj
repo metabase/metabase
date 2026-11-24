@@ -87,11 +87,10 @@
    "full"  :full-join
    "cross" :cross-join})
 
-(defn join-steps
-  "The row-count queries of each join in `query`, a native query, for `driver`, from `parser`.
-  See [[metabase.sql-tools.core/join-steps]]."
-  [parser driver query]
-  (let [dialect (driver->dialect driver)
+(defmethod sql-tools/join-steps-impl :sqlglot
+  [backend driver query]
+  (let [parser  (sql-parsing/parser backend)
+        dialect (driver->dialect driver)
         sql     (lib/raw-native-query query)
         ;; A driver with no sqlglot dialect of its name, such as a third-party one, is read in the default dialect.
         result  (try

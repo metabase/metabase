@@ -131,29 +131,41 @@
   (mapv (fn [{:keys [step-sql]}] (mapv long (first (run-sql step-sql))))
         (:join-structure result)))
 
+(defn- check-widget-left-join-steps
+  "Check the steps of a LEFT JOIN on a compound condition, under a WHERE clause the counts leave out."
+  []
+  (let [query   (lib/native-query
+                 (mt/metadata-provider)
+                 (str "SELECT o." (qf :orders :id) " "
+                      "FROM " (qt :orders) " o "
+                      "LEFT JOIN " (qt :products) " pr "
+                      "ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
+                      "AND pr." (qf :products :category) " = 'Widget' "
+                      "WHERE o." (qf :orders :total) " > 100"))
+        result  (query-analysis/analyze-native-query (make-native-transform query) (test-sources))
+        orders  (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))
+        widgets (count-of (str "SELECT COUNT(*) FROM " (qt :orders) " o "
+                               "JOIN " (qt :products) " pr "
+                               "ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
+                               "WHERE pr." (qf :products :category) " = 'Widget'"))]
+    (is (=? {:from-table-id  (mt/id :orders)
+             :join-structure [{:strategy :left-join, :source-table (mt/id :products)}]}
+            result))
+    (testing "the WHERE clause is left out of every count"
+      (is (= orders (count-of (:from-count-sql result))))
+      (is (= [[orders widgets]] (step-counts result))))))
+
 (deftest analyze-native-query-step-queries-count-the-join-chain-test
   (mt/test-drivers (join-steps-drivers)
     (testing "a LEFT JOIN with a compound condition counts the rows as written and the rows that found a match"
-      (let [query   (lib/native-query
-                     (mt/metadata-provider)
-                     (str "SELECT o." (qf :orders :id) " "
-                          "FROM " (qt :orders) " o "
-                          "LEFT JOIN " (qt :products) " pr "
-                          "ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
-                          "AND pr." (qf :products :category) " = 'Widget' "
-                          "WHERE o." (qf :orders :total) " > 100"))
-            result  (query-analysis/analyze-native-query (make-native-transform query) (test-sources))
-            orders  (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))
-            widgets (count-of (str "SELECT COUNT(*) FROM " (qt :orders) " o "
-                                   "JOIN " (qt :products) " pr "
-                                   "ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
-                                   "WHERE pr." (qf :products :category) " = 'Widget'"))]
-        (is (=? {:from-table-id  (mt/id :orders)
-                 :join-structure [{:strategy :left-join, :source-table (mt/id :products)}]}
-                result))
-        (testing "the WHERE clause is left out of every count"
-          (is (= orders (count-of (:from-count-sql result))))
-          (is (= [[orders widgets]] (step-counts result))))))))
+      (check-widget-left-join-steps))))
+
+(deftest analyze-native-query-step-queries-with-the-macaw-backend-test
+  ;; The drivers Macaw's options were tuned for.
+  (mt/test-drivers #{:h2 :postgres}
+    (mt/with-temporary-setting-values [sql-tools-parser-backend :macaw]
+      (testing "with the Macaw backend, a LEFT JOIN with a compound condition still counts both"
+        (check-widget-left-join-steps)))))
 
 (deftest analyze-native-query-matched-count-is-the-inner-join-count-test
   (mt/test-drivers (join-steps-drivers)

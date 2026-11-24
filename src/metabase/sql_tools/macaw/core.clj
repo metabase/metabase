@@ -1,13 +1,18 @@
 (ns metabase.sql-tools.macaw.core
   (:require
    [clojure.string :as str]
+   [macaw.ast :as macaw.ast]
    [macaw.core :as macaw]
    [metabase.driver :as driver]
+   [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.interface :as sql-tools]
    [metabase.sql-tools.macaw.references :as sql-tools.macaw.references]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -213,3 +218,127 @@
   [_parser _sql _from-dialect _to-dialect]
   (throw (java.lang.UnsupportedOperationException.
           "sql-tools/transpile-sql :macaw is not implemented.")))
+
+;;;; join-steps
+;;; The Transform Inspector's step queries as it built them from Macaw's AST before sqlglot, so that the Macaw backend
+;;; keeps them until it is retired.
+
+(defn- table->hsql
+  "The Macaw table node `node` as a HoneySQL FROM or JOIN entry: `[identifier alias]`, or `[identifier]` unaliased."
+  [driver {:keys [schema table table-alias]}]
+  (let [identifier (apply h2x/identifier :table (remove nil? [(some->> schema (sql.normalize/normalize-name driver))
+                                                              (sql.normalize/normalize-name driver table)]))]
+    (if table-alias
+      [identifier (keyword (sql.normalize/normalize-name driver table-alias))]
+      [identifier])))
+
+(defn- expr->hsql
+  "The Macaw column or literal `node` as HoneySQL, or nil for anything else."
+  [driver {:keys [schema table column value] :as node}]
+  (case (:type node)
+    :macaw.ast/column  (apply h2x/identifier :field (remove nil? [(some->> schema (sql.normalize/normalize-name driver))
+                                                                  (some->> table (sql.normalize/normalize-name driver))
+                                                                  (sql.normalize/normalize-name driver column)]))
+    ;; Inlined, because the steps are returned as SQL alone, with no parameters.
+    :macaw.ast/literal (when (some? value) [:inline value])
+    nil))
+
+(defn- condition->hsql
+  "The Macaw binary expression `condition` as a HoneySQL condition, or nil if any part of it is not a column or
+  literal."
+  [driver {:keys [operator left right] :as condition}]
+  (when (= :macaw.ast/binary-expression (:type condition))
+    (let [op (u/upper-case-en (str operator))]
+      (if (#{"AND" "OR"} op)
+        (let [left  (condition->hsql driver left)
+              right (condition->hsql driver right)]
+          (when (and left right)
+            ;; HoneySQL reads only the lower-case keyword as the operator, and an upper-case one as a function.
+            [(keyword (u/lower-case-en op)) left right]))
+        (let [left  (expr->hsql driver left)
+              right (expr->hsql driver right)]
+          (when (and left right)
+            [(keyword operator) left right]))))))
+
+(defn- join-condition->hsql
+  "The ON clause of the Macaw join node `join` as one HoneySQL condition, or nil when no part of it converts."
+  [driver join]
+  (let [parts (keep #(condition->hsql driver %) (:condition join))]
+    (case (count parts)
+      0 nil
+      1 (first parts)
+      (into [:and] parts))))
+
+(def ^:private join-type->strategy
+  {:left    :left-join
+   :right   :right-join
+   :full    :full-join
+   :cross   :cross-join
+   :natural :inner-join
+   :inner   :inner-join})
+
+(def ^:private strategy->hsql-join
+  ;; HoneySQL's :join is INNER JOIN.
+  {:inner-join :join
+   :left-join  :left-join
+   :right-join :right-join
+   :full-join  :full-join
+   :cross-join :cross-join})
+
+(defn- join-step-source
+  "The Macaw table node `node` as a [[metabase.sql-tools.core/join-steps]] source without its `:sql`."
+  [driver {:keys [table table-alias]}]
+  {:source :table
+   :table  (sql.normalize/normalize-name driver table)
+   :alias  (sql.normalize/normalize-name driver (or table-alias table))})
+
+(defn- join-steps-sql
+  "The `ok` result of [[metabase.sql-tools.core/join-steps]] for the Macaw SELECT node `ast`, whose sources are all
+  tables."
+  [driver ast]
+  (let [count-sql #(first (sql.qp/format-honeysql driver %))
+        from      [(table->hsql driver (:from ast))]
+        joins     (mapv (fn [join]
+                          (let [node      (:source join)
+                                strategy  (get join-type->strategy (:join-type join) :inner-join)
+                                condition (join-condition->hsql driver join)]
+                            {:node      node
+                             :strategy  strategy
+                             :condition condition
+                             :join-by   [(strategy->hsql-join strategy) [(table->hsql driver node) condition]]}))
+                        (:join ast))]
+    {:from  (assoc (join-step-source driver (:from ast)) :sql (count-sql {:select [[[:count :*]]], :from from}))
+     :steps (vec (for [n    (range 1 (inc (count joins)))
+                       :let [chain                             (subvec joins 0 n)
+                             {:keys [node strategy condition]} (peek chain)]]
+                   (assoc (join-step-source driver node)
+                          :strategy strategy
+                          :sql      (count-sql {:select  (if (and condition
+                                                                  (#{:left-join :right-join :full-join} strategy))
+                                                           [[[:count :*]] [[:count [:case condition [:inline 1]]]]]
+                                                           [[[:count :*]]])
+                                                :from    from
+                                                :join-by (into [] (mapcat :join-by) chain)}))))}))
+
+(defn- join-steps
+  [driver query]
+  (let [parsed (parsed-query (lib/raw-native-query query) driver)
+        ast    (when-not (:error parsed)
+                 (macaw.ast/->ast parsed {:with-instance? false}))]
+    (cond
+      (:error parsed)
+      {:unsupported :unparseable}
+
+      (not= :macaw.ast/select (:type ast))
+      {:unsupported :not-a-select}
+
+      ;; A subquery source has no table name to build an identifier from.
+      (not-every? :table (cons (:from ast) (map :source (:join ast))))
+      {:unsupported :unsupported-source}
+
+      :else
+      (join-steps-sql driver ast))))
+
+(defmethod sql-tools/join-steps-impl :macaw
+  [_parser driver query]
+  (join-steps driver query))

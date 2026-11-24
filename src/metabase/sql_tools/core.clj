@@ -325,11 +325,14 @@
   The other reasons are `:set-operation`, `:not-a-select`, `:no-from`, `:nested-join`, `:unsupported-join`,
   `:unsupported-source`, `:parameters`, `:large-literal-list` and `:unparseable`.
 
-  Always parses with sqlglot, so with Macaw selected it uses the default sqlglot backend."
+  With the Macaw backend, the steps are the ones the Transform Inspector built from Macaw's AST before sqlglot:
+  every source is a `:table`, a query with a subquery source is refused as `:unsupported-source`, and a WITH clause is
+  left out."
   [driver       :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
-  (metrics/with-operation-timing [(sqlglot-backend) "join-steps"]
-    (sqlglot/join-steps (sqlglot-parser) driver native-query)))
+  (let [parser (sql-tools.settings/current-parser-backend)]
+    (metrics/with-operation-timing [parser "join-steps"]
+      (interface/join-steps-impl parser driver native-query))))
 
 (mu/defn read-only-select? :- :boolean
   "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, holding nothing known to write,
