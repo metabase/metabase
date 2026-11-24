@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.agent.profiles :as profiles]
@@ -21,6 +22,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.queries.models.card :as queries.card]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -32,6 +34,12 @@
 (defn- venues-query []
   (lib/query (mt/metadata-provider)
              (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
+
+(defn- table-query
+  "A query over the test Table `table-key`."
+  [table-key]
+  (lib/query (mt/metadata-provider)
+             (lib.metadata/table (mt/metadata-provider) (mt/id table-key))))
 
 (defn- chart-memory
   "A memory atom holding generated charts `A`, `B` and `C` over `query` (by default the venues table), shown as
@@ -805,6 +813,131 @@
                       (failure {:name "x", :ops [{:op "add_card", :id -1, :chart_id "A", :name "Venues"}]})))))
           (testing "nothing is created"
             (is (= before (t2/count :model/Dashboard)))))))))
+
+(defn- charts-memory
+  "A memory atom of conversation `conversation-id` holding a chart for each of `chart-ids`, the i-th limited to i + 1
+  rows over the venues table when i is even and the checkins table when odd."
+  [conversation-id chart-ids]
+  (atom (cond-> {:state   {:queries {}
+                           :charts  (into {}
+                                          (map-indexed
+                                           (fn [i id]
+                                             (let [query (lib/limit (table-query (if (even? i) :venues :checkins)) (inc i))]
+                                               [id {:chart_id               id
+                                                    :queries                [query]
+                                                    :visualization_settings {:chart_type (if (even? i) :bar :line)}}])))
+                                          chart-ids)}
+                 :context {}}
+          conversation-id (assoc :conversation-id conversation-id))))
+
+(defn- add-chart-ops
+  "An `add_card` op for each of `chart-ids`, stacked from row `row`."
+  [chart-ids row]
+  (vec (map-indexed (fn [i id]
+                      {:op "add_card", :id (- (inc i)), :chart_id id, :name (str "Chart " id)
+                       :position {:row (+ row (* 6 i)), :col 0}, :size {:size_x 12, :size_y 6}})
+                    chart-ids)))
+
+(deftest save-charts-statement-count-test
+  (mt/with-model-cleanup [:model/Card]
+    (sales-dashboard!
+     (fn [{:keys [dash-id]}]
+       (mt/with-temp [:model/Dashboard           {su-dash-id :id} {:name "Superuser dashboard"}
+                      :model/MetabotConversation {su-convo :id}   {:user_id (mt/user->id :crowberto)}
+                      :model/MetabotConversation {user-convo :id} {:user_id (mt/user->id :rasta)}]
+         (doseq [[user dashboard-id convo] [[:crowberto su-dash-id nil] [:crowberto su-dash-id su-convo]
+                                            [:rasta dash-id nil] [:rasta dash-id user-convo]]]
+           (testing (str user (when convo " in conversation"))
+             (mt/with-current-user (mt/user->id user)
+               (let [calls! (fn [prefix n]
+                              (let [chart-ids (mapv #(str prefix "-" %) (range n))]
+                                (binding [shared/*memory-atom* (charts-memory convo chart-ids)]
+                                  (t2/with-call-count [call-count]
+                                    (call {:dashboard_id dashboard-id, :ops (add-chart-ops chart-ids 100)})
+                                    (call-count)))))
+                     reference! (fn [n]
+                                  (t2/with-call-count [call-count]
+                                    (lib-be/with-metadata-provider-cache
+                                      (queries.card/create-cards!
+                                       (mapv #(queries.card/new-card-row {:name                   (str "Reference " %)
+                                                                          :dataset_query          (lib/limit (table-query (if (even? %) :venues :checkins))
+                                                                                                             (inc %))
+                                                                          :display                :bar
+                                                                          :visualization_settings {}
+                                                                          :dashboard_id           dashboard-id}
+                                                                         (mt/user->id user))
+                                             (range n))))
+                                    (call-count)))]
+                 (calls! "warm" 2)
+                 (reference! 2)
+                 (let [two         (calls! "two" 2)
+                       six         (calls! "six" 6)
+                       ref-two     (reference! 2)
+                       ref-six     (reference! 6)
+                       per-link    (if convo 1 0)]
+                   (testing (str "each chart adds at most one more create-cards! row and 6 statements, plus 1 for its link"
+                                 " in a conversation")
+                     (is (<= (- six two) (+ (- ref-six ref-two) (* 4 (+ 12 per-link))))))))))))))))
+
+(defn- saved-card-shape
+  "The columns of `card` that do not depend on its id or dashboard, with result metadata without fingerprints."
+  [card]
+  (-> (select-keys card [:name :display :dataset_query :visualization_settings :type :creator_id :archived
+                         :metabot_conversation_id :metabot_chart_id :result_metadata :parameters :parameter_mappings
+                         :query_type :database_id :table_id :collection_position :description :cache_ttl
+                         :document_id :card_schema])
+      (update :result_metadata #(mapv (fn [col] (dissoc col :fingerprint)) %))))
+
+(deftest save-charts-same-as-one-chart-per-call-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-additional-premium-features #{:audit-app}
+      (mt/with-temp [:model/Collection          {coll-id :id :as coll} {:name "Charts"}
+                     :model/Dashboard           {bulk-id :id}          {:name "At once", :collection_id coll-id}
+                     :model/Dashboard           {single-id :id}        {:name "One by one", :collection_id coll-id}
+                     :model/MetabotConversation {convo-id :id}         {:user_id (mt/user->id :rasta)}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
+        (mt/with-current-user (mt/user->id :rasta)
+          (binding [shared/*memory-atom* (charts-memory convo-id ["A" "B" "C" "D"])]
+            (let [ops      (add-chart-ops ["B" "A" "C" "D"] 6)
+                  first-op (assoc (first (add-chart-ops ["A"] 0)) :name "First name")
+                  save!    (fn [dash-id ops] (:saved_charts (event (call {:dashboard_id dash-id, :ops ops}))))]
+              (doseq [dash-id [bulk-id single-id]]
+                (save! dash-id [first-op]))
+              (let [bulk   (save! bulk-id ops)
+                    single (into [] (mapcat #(save! single-id [(assoc % :id -1)])) ops)
+                    cards  (fn [dash-id] (t2/select :model/Card :dashboard_id dash-id {:order-by [[:id :asc]]}))
+                    shape  (fn [dash-id saved]
+                             (let [id->index (into {} (map-indexed (fn [i card] [(:id card) i])) (cards dash-id))]
+                               {:saved     (mapv #(update % :card_id id->index) saved)
+                                :cards     (mapv saved-card-shape (cards dash-id))
+                                :dashcards (mapv #(-> % (dissoc :id :dashboard_tab_id) (update :card_id id->index))
+                                                 (dashcards dash-id))}))]
+                (testing "chart A reuses the question of the first call"
+                  (is (= (t2/select-one-pk :model/Card :dashboard_id bulk-id :metabot_chart_id "A")
+                         (:card_id (second bulk)))))
+                (testing "saving the charts in one call saves the same questions and dashcards as one call per chart"
+                  (is (= 4 (count (cards bulk-id))))
+                  (is (= (shape single-id single) (shape bulk-id bulk))))
+                (testing "audit rows record each new question, as one call per chart does"
+                  (is (= [3 3]
+                         (for [saved [bulk single]]
+                           (t2/count :model/AuditLog :topic :card-create :model "Card"
+                                     :model_id [:in (keep #(when (not= "A" (:chart_id %)) (:card_id %)) saved)])))))))))))))
+
+(deftest save-charts-refused-chart-saves-nothing-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Venues"}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (binding [shared/*memory-atom* (charts-memory nil ["A" "B" "C"])]
+            (testing "a chart in the middle whose query the user can't run ends the turn"
+              (is (=? {:class :unrecoverable, :code ::save-entity/no-query-permission}
+                      (failure {:dashboard_id dash-id, :ops (add-chart-ops ["A" "B" "C"] 0)}))))
+            (testing "no question and no dashcard is saved"
+              (is (zero? (t2/count :model/Card :dashboard_id dash-id)))
+              (is (empty? (dashcards dash-id))))))))))
 
 ;;; --------------------------------------------- Curated content --------------------------------------------------
 
