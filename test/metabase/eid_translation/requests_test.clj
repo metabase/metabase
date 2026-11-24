@@ -7,7 +7,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.serialization.core :as serialization]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest refs->ids-test
   (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {}]
