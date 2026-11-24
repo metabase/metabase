@@ -698,7 +698,10 @@
 (defn- error-part [^Exception e]
   (m/assoc-some {:type :error, :error (or (self/context-overflow-error e)
                                           (self/provider-error e)
-                                          {:message (.getMessage e), :type (str (type e)), :data (ex-data e)})}
+                                          ;; An exception can have no message, such as a `NullPointerException`.
+                                          {:message (or (not-empty (.getMessage e)) (tru "Something went wrong."))
+                                           :type    (str (type e))
+                                           :data    (ex-data e)})}
                 :provider-failure (self/call-failure e)))
 
 (defn- usage-model

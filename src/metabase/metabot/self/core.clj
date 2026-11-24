@@ -1411,8 +1411,10 @@
   Takes the reducible first so adapters can thread it straight off
   [[sse-reducible]]/`capture-stream` with `->`.
 
-  An exception that `rf` throws comes from Metabot's own code downstream (the chunk transducers, the agent loop), not
-  from the provider's stream, so it is rethrown as it is, without the provider tag."
+  An exception that `rf` throws comes from Metabot's own code downstream (the adapter's chunk translation, the agent
+  loop), so it is rethrown as it is, without the provider tag. The chunk translation counts as Metabot's code also
+  when it throws because the provider sent a stream that is wrong, such as an event with no type: nothing here can
+  tell that case from a fault in the translation."
   [reducible provider res->message]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
