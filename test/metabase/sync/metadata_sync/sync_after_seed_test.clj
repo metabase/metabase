@@ -96,32 +96,44 @@
             (some (fn [[n result]] (when (= step-name n) result)) steps)))
         results))
 
+(defn- do-with-synced-sender
+  "Call `f` with a copy of the test data's Database that has run its own sync, renamed so that a sender serves it. Other
+  tests change the metadata of the test data, and a Field they leave unanalyzed would be analyzed by the sender's own
+  sync as much as by the receiver's."
+  [f]
+  (mt/with-temp-copy-of-db
+    (t2/update! :model/Database :id (mt/id) {:name                (str "seed sender " (mt/random-name))
+                                             :initial_sync_status "complete"})
+    (sync/sync-database! (mt/id))
+    (f (t2/select-one :model/Database :id (mt/id)))))
+
 (deftest sync-after-a-seed-finds-the-metadata-there-test
   (mt/test-drivers #{:h2 :postgres :mysql}
-    (let [sender (mt/db)]
-      (mt/with-temp [:model/Database {receiver-id :id} {:engine              (:engine sender)
-                                                        :details             (:details sender)
-                                                        :initial_sync_status "incomplete"}]
-        (seed! (:name sender) receiver-id)
-        (let [seeded        (field-state receiver-id)
-              seeded-tables (table-state receiver-id)]
-          (testing "the seed copied every active Table and Field, with their fingerprints and FKs"
-            (is (= (update-vals (as-seeded (field-state (:id sender))) #(dissoc % :fk_target_field_id))
-                   (update-vals seeded #(dissoc % :fk_target_field_id))))
-            (is (= (fk-targets (:id sender)) (fk-targets receiver-id))))
-          (testing "the seed did not copy whether the sender's login can write a Table: the receiver's sync reads it"
-            (is (every? nil? (t2/select-fn-vec :is_writable :model/Table :db_id receiver-id))))
-          (let [results (sync/sync-database! receiver-id)]
-            (testing "the receiver's own sync runs, finds every Table, and updates and fingerprints nothing"
-              (is (= {} (differences seeded-tables (table-state receiver-id))))
-              (is (=? {:total-tables pos-int?} (step-result results "metadata" "sync-tables")))
-              (is (=? {:updated-fields 0} (step-result results "metadata" "sync-fields")))
-              (is (=? {:updated-fks 0} (step-result results "metadata" "sync-fks")))
-              (is (=? {:fingerprints-attempted 0} (step-result results "analyze" "fingerprint-fields")))
-              (is (=? {:fields-classified 0} (step-result results "analyze" "classify-fields")))))
-          (testing "the receiver's own sync then adds, retires and analyzes nothing"
-            (is (= (set (keys seeded)) (set (keys (field-state receiver-id)))))
-            (is (= {} (differences seeded (field-state receiver-id))))))))))
+    (do-with-synced-sender
+     (fn [sender]
+       (mt/with-temp [:model/Database {receiver-id :id} {:engine              (:engine sender)
+                                                         :details             (:details sender)
+                                                         :initial_sync_status "incomplete"}]
+         (seed! (:name sender) receiver-id)
+         (let [seeded        (field-state receiver-id)
+               seeded-tables (table-state receiver-id)]
+           (testing "the seed copied every active Table and Field, with their fingerprints and FKs"
+             (is (= (update-vals (as-seeded (field-state (:id sender))) #(dissoc % :fk_target_field_id))
+                    (update-vals seeded #(dissoc % :fk_target_field_id))))
+             (is (= (fk-targets (:id sender)) (fk-targets receiver-id))))
+           (testing "the seed did not copy whether the sender's login can write a Table: the receiver's sync reads it"
+             (is (every? nil? (t2/select-fn-vec :is_writable :model/Table :db_id receiver-id))))
+           (let [results (sync/sync-database! receiver-id)]
+             (testing "the receiver's own sync runs, finds every Table, and updates and fingerprints nothing"
+               (is (= {} (differences seeded-tables (table-state receiver-id))))
+               (is (=? {:total-tables pos-int?} (step-result results "metadata" "sync-tables")))
+               (is (=? {:updated-fields 0} (step-result results "metadata" "sync-fields")))
+               (is (=? {:updated-fks 0} (step-result results "metadata" "sync-fks")))
+               (is (=? {:fingerprints-attempted 0} (step-result results "analyze" "fingerprint-fields")))
+               (is (=? {:fields-classified 0} (step-result results "analyze" "classify-fields")))))
+           (testing "the receiver's own sync then adds, retires and analyzes nothing"
+             (is (= (set (keys seeded)) (set (keys (field-state receiver-id)))))
+             (is (= {} (differences seeded (field-state receiver-id)))))))))))
 
 (defn- user-set-state
   "What a user set on the active Tables and Fields of the Database with `db-id`, by name: the columns each settings
