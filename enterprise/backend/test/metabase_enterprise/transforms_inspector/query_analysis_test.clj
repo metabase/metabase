@@ -134,20 +134,20 @@
 (deftest analyze-native-query-step-queries-count-the-join-chain-test
   (mt/test-drivers (join-steps-drivers)
     (testing "a LEFT JOIN with a compound condition counts the rows as written and the rows that found a match"
-      (let [query     (lib/native-query
-                       (mt/metadata-provider)
-                       (str "SELECT o." (qf :orders :id) " "
-                            "FROM " (qt :orders) " o "
-                            "LEFT JOIN " (qt :products) " pr "
-                            "ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
-                            "AND pr." (qf :products :category) " = 'Widget' "
-                            "WHERE o." (qf :orders :total) " > 100"))
-            result    (query-analysis/analyze-native-query (make-native-transform query) (test-sources))
-            orders    (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))
-            widgets   (count-of (str "SELECT COUNT(*) FROM " (qt :orders) " o "
-                                     "JOIN " (qt :products) " pr "
-                                     "ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
-                                     "WHERE pr." (qf :products :category) " = 'Widget'"))]
+      (let [query   (lib/native-query
+                     (mt/metadata-provider)
+                     (str "SELECT o." (qf :orders :id) " "
+                          "FROM " (qt :orders) " o "
+                          "LEFT JOIN " (qt :products) " pr "
+                          "ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
+                          "AND pr." (qf :products :category) " = 'Widget' "
+                          "WHERE o." (qf :orders :total) " > 100"))
+            result  (query-analysis/analyze-native-query (make-native-transform query) (test-sources))
+            orders  (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))
+            widgets (count-of (str "SELECT COUNT(*) FROM " (qt :orders) " o "
+                                   "JOIN " (qt :products) " pr "
+                                   "ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
+                                   "WHERE pr." (qf :products :category) " = 'Widget'"))]
         (is (=? {:from-table-id  (mt/id :orders)
                  :join-structure [{:strategy :left-join, :source-table (mt/id :products)}]}
                 result))
