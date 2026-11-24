@@ -361,15 +361,6 @@
                   :email           email
                   :notification-id notification-id}))))
 
-(defn pulse->alert-condition-kwd
-  "Given an `alert` return a keyword representing what kind of goal needs to be met."
-  [{:keys [alert_above_goal alert_condition] :as _alert}]
-  (if (= "goal" alert_condition)
-    (if (true? alert_above_goal)
-      :meets
-      :below)
-    :rows))
-
 (defn- send-email-sync!
   ([recipients subject template-name template-context]
    (send-email-sync! recipients subject template-name template-context false))
