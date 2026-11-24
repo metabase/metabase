@@ -2,6 +2,7 @@ import { useClipboard } from "@mantine/hooks";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { readBlobText, setupDownloadCapture } from "__support__/downloads";
 import {
   setupDatabasesEndpoints,
   setupTaskEndpoint,
@@ -14,7 +15,6 @@ import {
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { openSaveDialog } from "metabase/utils/dom";
 import type { Task } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -26,23 +26,8 @@ jest.mock("@mantine/hooks", () => ({
   useClipboard: jest.fn(),
 }));
 
-jest.mock("metabase/utils/dom", () => ({
-  ...jest.requireActual("metabase/utils/dom"),
-  openSaveDialog: jest.fn(),
-}));
-
 // Unjustified type cast. FIXME
 const mockUseClipboard = useClipboard as jest.Mock;
-// jest.mock replaces the module factory; retype the import as its mock
-const mockOpenSaveDialog = openSaveDialog as jest.Mock;
-
-const readBlobText = (blob: Blob): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsText(blob);
-  });
 
 const PATHNAME = `${Urls.monitorTasksList()}/:taskId`;
 
@@ -196,8 +181,14 @@ describe("TaskDetailsPage", () => {
       "clipboard",
     );
 
+    let downloadCapture: ReturnType<typeof setupDownloadCapture>;
+
+    beforeEach(() => {
+      downloadCapture = setupDownloadCapture();
+    });
+
     afterEach(() => {
-      mockOpenSaveDialog.mockReset();
+      downloadCapture.restore();
       if (originalClipboard) {
         Object.defineProperty(navigator, "clipboard", originalClipboard);
       } else {
@@ -246,11 +237,11 @@ describe("TaskDetailsPage", () => {
       expect(await screen.findByRole("tooltip")).toHaveTextContent("Copied!");
 
       await userEvent.click(screen.getByRole("button", { name: /Download/ }));
-      expect(mockOpenSaveDialog).toHaveBeenCalledTimes(1);
-      const [filename, blob] = mockOpenSaveDialog.mock.calls[0];
-      expect(filename).toBe("task-7.json");
-      // mock.calls args are untyped; the dialog is always called with a Blob
-      expect(await readBlobText(blob as Blob)).toBe(formattedJson);
+      expect(downloadCapture.downloads).toHaveLength(1);
+      const [download] = downloadCapture.downloads;
+      expect(download.fileName).toBe("task-7.json");
+      expect(download.href).toMatch(/^blob:/);
+      expect(await readBlobText(download.blob)).toBe(formattedJson);
     });
 
     it("shows the captured logs instead of the placeholder", async () => {

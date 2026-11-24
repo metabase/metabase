@@ -1,23 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { readBlobText, setupDownloadCapture } from "__support__/downloads";
 import { createMockLocation } from "__support__/state";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { dayjs } from "metabase/dayjs";
 import type { Location } from "metabase/router";
 import { Route } from "metabase/router";
-import { openSaveDialog } from "metabase/utils/dom";
 
 import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";
-
-jest.mock("metabase/utils/dom", () => ({
-  ...jest.requireActual("metabase/utils/dom"),
-  openSaveDialog: jest.fn(),
-}));
-
-// jest.mock replaces the module factory; retype the import as its mock
-const mockOpenSaveDialog = openSaveDialog as jest.Mock;
 
 const PATHNAME = "/monitor/logs";
 
@@ -194,14 +186,6 @@ describe("Logs", () => {
   });
 
   describe("download", () => {
-    const readBlobText = (blob: Blob): Promise<string> =>
-      new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsText(blob);
-      });
-
     const alpha = {
       ...log,
       process_uuid: "uuid-1",
@@ -215,8 +199,14 @@ describe("Logs", () => {
       msg: "beta-message",
     };
 
+    let downloadCapture: ReturnType<typeof setupDownloadCapture>;
+
     beforeEach(() => {
-      mockOpenSaveDialog.mockClear();
+      downloadCapture = setupDownloadCapture();
+    });
+
+    afterEach(() => {
+      downloadCapture.restore();
     });
 
     it("downloads only the currently filtered logs, prefixed by process UUID", async () => {
@@ -234,11 +224,10 @@ describe("Logs", () => {
       await waitFor(() => expect(downloadButton).toBeEnabled());
       await userEvent.click(downloadButton);
 
-      expect(mockOpenSaveDialog).toHaveBeenCalledTimes(1);
-      const [filename, blob] = mockOpenSaveDialog.mock.calls[0];
-      expect(filename).toBe("logs.txt");
-      // mock.calls args are untyped; the dialog is always called with a Blob
-      const text = await readBlobText(blob as Blob);
+      expect(downloadCapture.downloads).toHaveLength(1);
+      const [download] = downloadCapture.downloads;
+      expect(download.fileName).toBe("logs.txt");
+      const text = await readBlobText(download.blob);
       expect(text).toContain("[uuid-1]");
       expect(text).toContain("alpha-message");
       expect(text).not.toContain("beta-message");
@@ -272,22 +261,22 @@ describe("Logs", () => {
       await waitFor(() => expect(downloadButton).toBeEnabled());
       await userEvent.click(downloadButton);
 
-      expect(mockOpenSaveDialog).toHaveBeenCalledTimes(1);
-      const [allFilename, allBlob] = mockOpenSaveDialog.mock.calls[0];
-      expect(allFilename).toBe("logs.txt");
-      // mock.calls args are untyped; the dialog is always called with a Blob
-      expect(await readBlobText(allBlob as Blob)).toBe(
+      expect(downloadCapture.downloads).toHaveLength(1);
+      const [allLogsDownload] = downloadCapture.downloads;
+      expect(allLogsDownload.fileName).toBe("logs.txt");
+      expect(allLogsDownload.href).toMatch(/^blob:/);
+      expect(await readBlobText(allLogsDownload.blob)).toBe(
         [debugLine, errorLine].join("\n"),
       );
 
       await userEvent.type(screen.getByPlaceholderText("Filter logs"), "error");
       await userEvent.click(screen.getByRole("button", { name: /Download/ }));
 
-      expect(mockOpenSaveDialog).toHaveBeenCalledTimes(2);
-      const [filteredFilename, filteredBlob] = mockOpenSaveDialog.mock.calls[1];
-      expect(filteredFilename).toBe("logs.txt");
-      // mock.calls args are untyped; the dialog is always called with a Blob
-      expect(await readBlobText(filteredBlob as Blob)).toBe(errorLine);
+      expect(downloadCapture.downloads).toHaveLength(2);
+      const filteredDownload = downloadCapture.downloads[1];
+      expect(filteredDownload.fileName).toBe("logs.txt");
+      expect(filteredDownload.href).toMatch(/^blob:/);
+      expect(await readBlobText(filteredDownload.blob)).toBe(errorLine);
     });
   });
 });
