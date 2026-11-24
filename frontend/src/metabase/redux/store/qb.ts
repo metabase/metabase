@@ -1,4 +1,5 @@
 import type { Widget } from "metabase/viz-core";
+import type { ExpressionClause } from "metabase-lib";
 import type {
   Card,
   CollectionItemModel,
@@ -50,7 +51,7 @@ export type Range = {
 export type SummaryGeneratedExpression = {
   stageIndex: number;
   name: string;
-  expression: string;
+  clause: ExpressionClause;
 };
 
 export interface QueryBuilderUIControls {

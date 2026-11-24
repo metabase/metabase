@@ -153,6 +153,7 @@
   cursor: grab;
   touch-action: none;
   user-select: none;
+  line-height: 1rem;
 }
 
 .dragPreview {
@@ -165,6 +166,11 @@
   opacity: 0.4;
 }
 
+.isSelected {
+  outline: 2px solid var(--mb-color-core-brand);
+  outline-offset: 1px;
+}
+
 .chipButton {
   display: inline-flex;
   align-items: center;
@@ -172,6 +178,30 @@
   min-width: 0;
   color: inherit;
   font-weight: inherit;
+}
+
+.chipBucketButton {
+  z-index: 1;
+  flex-shrink: 0;
+  width: auto;
+  margin-inline: calc(1px - 0.25rem) -0.25rem;
+  padding-inline: 0.25rem;
+  overflow: visible;
+  font-weight: inherit;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -4px 0 -4px -2px;
+  }
+}
+
+.chipBucketContent {
+  --mb-ai-icon-size: 10px;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .chipRemove {

@@ -7,6 +7,8 @@ export type SummaryWellId = "values" | "columns";
 export type SummaryQueryChangeOptions = {
   isFormulaCreated?: boolean;
   renamedFormula?: { name: string; nextName: string };
+  /** A formula of the stage changed its definition. */
+  editedFormula?: boolean;
 };
 
 export type SummaryField =

@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLatest } from "react-use";
+import { useMountedState } from "react-use";
 import { t } from "ttag";
 
 import { getTooltipPosition } from "metabase/querying/components/expressions/Editor";
 import { Tooltip } from "metabase/querying/components/expressions/Editor/Tooltip";
 import { useCustomTooltip } from "metabase/querying/components/expressions/Editor/custom-tooltip";
 import { useExtensions } from "metabase/querying/components/expressions/Editor/extensions";
-import { diagnoseAndCompile } from "metabase/querying/expressions";
+import { diagnoseAndCompile, format } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
 import { parenPairDeletion } from "./formula-parens";
 import { formulaTokens } from "./formula-tokens";
-import type { FormulaEditorProps, NamedExpression } from "./types";
+import type { FormulaEditorProps } from "./types";
 import { useFormulaKeymap } from "./use-formula-keymap";
 import { useFormulaSource } from "./use-formula-source";
 import { getDefaultFormulaName, getFormulaColumns } from "./utils";
@@ -22,16 +22,20 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     stageIndex,
     database,
     expressionMode,
+    expressionIndex,
     initialSource,
+    sourceStatus = "ready",
     onEditorCreate,
     onNameChange,
     onSubmit,
     onCancel,
   } = props;
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMounted = useMountedState();
   const availableColumns = useMemo(
-    () => getFormulaColumns(query, stageIndex, expressionMode),
-    [query, stageIndex, expressionMode],
+    () => getFormulaColumns(query, stageIndex, expressionMode, expressionIndex),
+    [query, stageIndex, expressionMode, expressionIndex],
   );
   const availableMetrics = useMemo(
     () =>
@@ -45,14 +49,14 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     onEditorCreate,
     onChange: () => setErrorMessage(null),
   });
-  const hasFormula = source.trim().length > 0;
+  const hasFormula = source.trim().length > 0 && sourceStatus === "ready";
   const formulaName = getDefaultFormulaName(source);
-  const nameChangeRef = useLatest(onNameChange);
-  useEffect(() => {
-    nameChangeRef.current?.(formulaName, source);
-  }, [formulaName, source, nameChangeRef]);
 
-  const getExpression = (): NamedExpression | null => {
+  useEffect(() => {
+    onNameChange?.(formulaName, source);
+  }, [formulaName, source, onNameChange]);
+
+  const getClause = (): Lib.ExpressionClause | null => {
     if (!hasFormula) {
       return null;
     }
@@ -61,6 +65,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
       expressionMode,
       query,
       stageIndex,
+      expressionIndex,
       database,
       availableColumns,
       availableMetrics,
@@ -69,16 +74,31 @@ export function useFormulaEditor(props: FormulaEditorProps) {
       setErrorMessage(error?.message ?? t`This formula isn't valid.`);
       return null;
     }
-    return {
-      name: formulaName,
-      clause: expressionClause,
-    };
+    return expressionClause;
   };
+
+  // names the formula after its formatted text, which is what `isDefaultFormulaName` compares names with.
   const handleSubmit = () => {
-    const expression = getExpression();
-    if (expression !== null) {
-      onSubmit(expression);
+    if (isSubmitting || sourceStatus !== "ready") {
+      return;
     }
+    const clause = getClause();
+    if (clause === null) {
+      return;
+    }
+    setIsSubmitting(true);
+    format(clause, { query, stageIndex, printWidth: Infinity })
+      .catch(() => source)
+      .then((formula) => {
+        if (isMounted()) {
+          setIsSubmitting(false);
+          onSubmit({
+            name: getDefaultFormulaName(formula),
+            clause,
+            source: source.trim(),
+          });
+        }
+      });
   };
   const keys = useFormulaKeymap({
     onSubmit: handleSubmit,
@@ -110,7 +130,11 @@ export function useFormulaEditor(props: FormulaEditorProps) {
   return {
     source,
     hasFormula,
-    errorMessage,
+    isSubmitting,
+    errorMessage:
+      sourceStatus === "failed"
+        ? t`Couldn't load this formula. Please, close it and try again.`
+        : errorMessage,
     extensions,
     completionTooltipPortal,
     handleChange,

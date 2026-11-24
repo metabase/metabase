@@ -2,9 +2,13 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Box } from "metabase/ui";
+import { isEmpty } from "metabase/utils/validate";
 import * as Lib from "metabase-lib";
 
-import type { SummaryFormulaInput } from "../SummaryFormulaBar";
+import type {
+  SummaryFormulaClause,
+  SummaryFormulaInput,
+} from "../SummaryFormulaBar";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryDragItem,
@@ -37,6 +41,7 @@ type SummaryWellsProps = {
   draftFormula?:
     | (DraftFormulaChipProps & { wellId: SummaryWellId; draftKey: number })
     | null;
+  editingFormulaClause?: SummaryFormulaClause;
   draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query, options?: SummaryQueryChangeOptions) => void;
@@ -48,10 +53,15 @@ export function SummaryWells({
   sections,
   formulaInputs,
   draftFormula,
+  editingFormulaClause,
   draggedItem,
   onPick,
   onChange,
 }: SummaryWellsProps) {
+  const isEditing = (clause?: SummaryFormulaClause) =>
+    !isEmpty(clause) &&
+    !isEmpty(editingFormulaClause) &&
+    Lib.isSameClause(clause, editingFormulaClause);
   const valueItems = useMemo(
     () => getValueItems(query, stageIndex),
     [query, stageIndex],
@@ -110,6 +120,8 @@ export function SummaryWells({
               query={query}
               stageIndex={stageIndex}
               item={item}
+              isEditing={isEditing(item.clause)}
+              formulaInput={formulaInputs?.values}
               onChange={onChange}
               onRemove={() => handleRemove(item.clause)}
             />
@@ -143,6 +155,8 @@ export function SummaryWells({
               query={query}
               stageIndex={stageIndex}
               item={item}
+              isEditing={isEditing(item.expression)}
+              formulaInput={formulaInputs?.columns}
               onChange={onChange}
               onRemove={() => handleRemove(item.clause)}
             />
