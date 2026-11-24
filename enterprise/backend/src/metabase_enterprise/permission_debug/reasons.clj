@@ -50,9 +50,10 @@
 (defn collection-reasons
   "What each group of the User with `user-id` gives on the Collection with `collection-id` (nil: the root), and the
   User's own access. `:by-rule` is true when the User has access that no group gives, as a personal or tenant
-  Collection does."
+  Collection does, and `:personal?` when the Collection is someone's personal Collection."
   [user-id collection-id]
-  (let [groups     (permission-debug.db/user-groups user-id)
+  (let [collection (some-> collection-id permission-debug.db/collection)
+        groups     (permission-debug.db/user-groups user-id)
         names      (group-names groups)
         target     (or collection-id {:metabase.collections.models.collection.root/is-root? true})
         writes     (perms/collection-readwrite-path target)
@@ -67,10 +68,9 @@
                         collection-id)
         value-of   (comp collection-values group-read)]
     {:collection-id collection-id
-     :name          (if collection-id
-                      (:name (permission-debug.db/collection collection-id))
-                      (tru "Our analytics"))
-     :value         (name (collection-values effective))
+     :name          (if collection-id (:name collection) (tru "Our analytics"))
+     :personal?     (some? (:personal_owner_id collection))
+     :value        (name (collection-values effective))
      :by-rule       (and (not= :none effective)
                          (every? #(= :none (group-read (:id %))) groups))
      :groups        (by-group groups names value-of (collection-values effective) :none)}))
@@ -228,3 +228,14 @@
      :impersonations impersonations
      :routes         routes
      :problems       (problems entries impersonations routes)}))
+
+;;; --------------------------------------------------- Everything -----------------------------------------------
+
+(defn access-reasons
+  "Everything the User with `user-id` can reach: `:collections`, each one's `collection-reasons` with its `:location`,
+  and `:reasons`, the `table-reasons` of every active Table."
+  [user-id]
+  {:collections (mapv (fn [{:keys [id location]}]
+                        (assoc (collection-reasons user-id id) :location location))
+                      (permission-debug.db/accessible-collections user-id))
+   :reasons     (table-reasons user-id (permission-debug.db/active-table-ids))})

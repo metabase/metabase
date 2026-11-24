@@ -101,6 +101,25 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
 
+(mu/defn accessible-collections
+  "The `:id`, `:name`, `:location` and `:personal_owner_id` of the Collections of the default namespace that are worth
+  explaining for the User with `user-id`: not archived, not the Trash or analytics, and not another person's personal
+  Collection."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select [:model/Collection :id :name :location :personal_owner_id]
+             :archived false
+             :namespace nil
+             {:where    [:and
+                         [:or [:= :type nil] [:not-in :type ["trash" "instance-analytics"]]]
+                         [:or [:= :personal_owner_id nil] [:= :personal_owner_id user-id]]]
+              :order-by [[:name :asc] [:id :asc]]}))
+
+(mu/defn active-table-ids
+  "The ids of the active Tables of every Database that isn't the audit Database."
+  []
+  (when-let [database-ids (not-empty (t2/select-pks-set :model/Database :is_audit false))]
+    (t2/select-pks-set :model/Table :active true :db_id [:in database-ids])))
+
 (mu/defn user-groups
   "The `:id`, `:name` and `:magic_group_type` of the PermissionsGroups the User with `user-id` belongs to, in ID order."
   [user-id :- ::lib.schema.id/user]

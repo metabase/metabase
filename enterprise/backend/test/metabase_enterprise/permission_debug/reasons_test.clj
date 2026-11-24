@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.permission-debug.impl :as permission-debug.impl]
+   [metabase-enterprise.permission-debug.reasons :as permission-debug.reasons]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
@@ -309,3 +310,60 @@
           (is (= "allow" (:decision response)))
           (is (= "allowed" (:outcome response)))
           (is (= collection-id (-> response :reasons :collection :collection-id))))))))
+
+(defn- access
+  [user-id]
+  (request/with-current-user (mt/user->id :crowberto)
+    (permission-debug.reasons/access-reasons user-id)))
+
+(defn- collection-entry
+  [result collection-name]
+  (some #(when (= collection-name (:name %)) %) (:collections result)))
+
+(deftest access-lists-every-collection-the-person-could-be-given-test
+  (mt/with-temp [:model/PermissionsGroup {sales-id :id :as sales} {:name "Sales"}
+                 :model/User {user-id :id} {}
+                 :model/User {other-id :id} {}
+                 :model/PermissionsGroupMembership _ {:user_id user-id :group_id (:id (perms/all-users-group))}
+                 :model/PermissionsGroupMembership _ {:user_id user-id :group_id sales-id}
+                 :model/Collection open {:name "Access test open"}
+                 :model/Collection hidden {:name "Access test hidden"}
+                 :model/Collection archived {:name "Access test archived" :archived true}
+                 :model/Collection _ {:name "Access test child" :location (collection/children-location open)}]
+    (perms/revoke-collection-permissions! (perms/all-users-group) open)
+    (perms/revoke-collection-permissions! (perms/all-users-group) hidden)
+    (perms/grant-collection-readwrite-permissions! sales open)
+    (let [own-personal   (collection/user->personal-collection user-id)
+          other-personal (collection/user->personal-collection other-id)
+          result         (access user-id)]
+      (testing "a collection the person can open names the group that gives the access"
+        (let [entry (collection-entry result "Access test open")]
+          (is (= "curate" (:value entry)))
+          (is (= "/" (:location entry)))
+          (is (= ["Sales"] (->> (:groups entry) (filter :applies?) (map :group-name))))))
+      (testing "a collection nobody gives the person access to is listed with no access"
+        (is (= "none" (:value (collection-entry result "Access test hidden")))))
+      (testing "a subcollection carries its location, so the root's children can be told apart"
+        (is (= (collection/children-location open) (:location (collection-entry result "Access test child")))))
+      (testing "the person's own personal collection is listed, curated by rule and marked personal"
+        (let [entry (some #(when (= (:id own-personal) (:collection-id %)) %) (:collections result))]
+          (is (true? (:personal? entry)))
+          (is (= "curate" (:value entry)))
+          (is (true? (:by-rule entry)))))
+      (testing "another person's personal collection and an archived collection are left out"
+        (is (not-any? #(= (:id other-personal) (:collection-id %)) (:collections result)))
+        (is (nil? (collection-entry result (:name archived))))))))
+
+(deftest access-lists-every-table-the-same-way-as-a-query-check-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/PermissionsGroupMembership _ {:user_id user-id :group_id (:id (perms/all-users-group))}]
+      (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
+      (let [result (access user-id)]
+        (testing "a table the person can view is listed with the groups that give it"
+          (is (= "unrestricted" (-> (table-entry result "VENUES") :view-data :value))))
+        (testing "a table blocked for the person is listed as blocked"
+          (is (= "blocked" (-> (table-entry result "CHECKINS") :view-data :value))))
+        (testing "tables of the same database are all there, not only the ones a query reads"
+          (is (<= 4 (count (-> result :reasons :tables)))))))))

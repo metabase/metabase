@@ -157,3 +157,16 @@
         (testing "data and suggestions should be maps"
           (is (map? (:data response)))
           (is (map? (:suggestions response))))))))
+
+(deftest permission-debug-access-test
+  (testing "GET /api/ee/permission_debug/access"
+    (testing "should require superuser permissions"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "ee/permission_debug/access"
+                                   :user-id (mt/user->id :rasta)))))
+    (testing "lists the collections and the tables a person can reach"
+      (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug/access"
+                                           :user-id (mt/user->id :rasta))]
+        (is (seq (:collections response)))
+        (is (seq (-> response :reasons :tables)))
+        (is (every? #(contains? % :value) (:collections response)))))))

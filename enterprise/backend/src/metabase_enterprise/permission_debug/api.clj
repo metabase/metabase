@@ -2,6 +2,7 @@
   "`/api/ee/permission_debug/` routes"
   (:require
    [metabase-enterprise.permission-debug.impl :as permission-debug.impl]
+   [metabase-enterprise.permission-debug.reasons :as permission-debug.reasons]
    [metabase-enterprise.permission-debug.stand-in :as stand-in]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -81,6 +82,17 @@
    {:user-id user_id
     :model-id model_id
     :action-type action_type}))
+
+(api.macros/defendpoint :get "/access" :- [:map
+                                           [:collections [:sequential :map]]
+                                           [:reasons     :map]]
+  "Everything the user `user-id` can reach: `collections`, each with the access each of the user's groups gives, and
+  `reasons`, the same `tables`, `impersonations`, `routes` and `problems` as a query check gives, for every active
+  table."
+  [_route-params
+   {:keys [user-id]} :- [:map {:closed true}
+                         [:user-id ms/PositiveInt]]]
+  (permission-debug.reasons/access-reasons user-id))
 
 (defn- check-browser-session!
   "Throw a 403 unless `request` is authenticated by a login session, not an API key, and not a full-app embedding
