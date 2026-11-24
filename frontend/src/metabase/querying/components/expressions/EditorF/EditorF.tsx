@@ -41,6 +41,7 @@ import { useDiffControls } from "../../CodeMirrorEditor/use-diff-controls";
 import { ExpressionSidePanel } from "../ExpressionSidePanel";
 import { LayoutMain, LayoutSidebar } from "../Layout";
 
+import { DocsButton } from "./DocsButton";
 import S from "./EditorF.module.css";
 import { Errors } from "./Errors";
 import { ExpressionDiffControls } from "./ExpressionDiffControls";
@@ -734,7 +735,19 @@ export function EditorF(props: EditorFProps) {
               }
             />
           </div>
-          <div className={S.inlineToolbar}>{toolbarEnd}</div>
+          <div className={S.inlineToolbar}>
+            {!isAiMode && !readOnly && (
+              <DocsButton
+                isOpen={openSidebar === "functions"}
+                onToggle={() =>
+                  setOpenSidebar(
+                    openSidebar === "functions" ? null : "functions",
+                  )
+                }
+              />
+            )}
+            {toolbarEnd}
+          </div>
         </div>
         {proposal != null && (
           <ExpressionDiffControls

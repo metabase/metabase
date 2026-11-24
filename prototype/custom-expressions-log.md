@@ -61,6 +61,7 @@ Pills B and C (Figma nodes 361:2521, 361:2582) are used only in the custom colum
 - F: the first suggestion is highlighted as the list opens, so Enter or Tab picks it.
 - F: the button at the end of the editor: Cancel (subtle neutral) while the prompt and the code are empty; Run (light brand, at least 64px) while a prompt is typed or the code changed since its last run; Stop (subtle neutral), with three moving dots before it, while the AI works; Done (light brand, at least 64px) once the code has run. An opened clause starts with Done. Run does what Cmd+Enter does.
 - F: the prompt stays after the AI answers. The editor goes to the code; back in AI mode, the prompt is there with the cursor at its end, and the code is the context pill. The button shows Done until the prompt is edited, then Run. Removing the context pill keeps the prompt, which can then run again (Run).
+- F: in code mode only, an info button (24px subtle neutral action icon) sits 12px left of the action button. It opens the docs side panel (tooltip "Open the docs") and closes it when it's open ("Close the docs"). Clicking it keeps the focus in the code.
 - Popover editors (A): Enter, in order: an input method composing → its own; a text field (AI prompt, name) → its own; a highlighted suggestion → picks it; inside a function's placeholders → next placeholder; a request in words in a new column → sends it to the AI; otherwise → saves.
 - A: Cmd+Enter behaves like Enter (since Oleh's d1054a7e59f).
 - Tab and Enter move through a function's placeholders and a template's blanks; the last stop is after `)`.
@@ -118,6 +119,7 @@ Pills B and C (Figma nodes 361:2521, 361:2582) are used only in the custom colum
 - 2026-11-24 — F: Enter adds a new line; Cmd+Enter saves the code or sends the prompt. Why: the CEO asked not to take over Enter, and reviewers found the single-line editor limiting for long expressions. The first suggestion is now highlighted (asked for in review), since Enter no longer saves.
 - 2026-11-24 — F: the Done button changes with the state: Cancel, Run, Stop, Done (Figma frames 395:4569 to 395:4735). Why: reviewers read Done as the prompt's submit button, and it looked active when it did nothing. The loader is CSS only, from the designer; its two shades (74% and 22% of the text color) have no tokens, so it uses `icon-primary` and `border-neutral-strong`.
 - 2026-11-24 — F: the AI prompt is kept after it runs, instead of being cleared. Why: reviewers wanted to see and reword the prompt that made the expression (Jacob), and the design shows it (Figma frame 395:4658).
+- 2026-11-24 — F: an info button in code mode toggles the docs side panel (Figma frame 395:4735). Why: reviewers found no way to get help, especially while editing an existing expression.
 
 ## Settings
 - `expression-hide-ai` — behave as without an AI provider.

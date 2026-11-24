@@ -50,8 +50,9 @@
   margin: -0.5px 20px -0.5px -0.5px;
 }
 
-/* Done or Cancel, centered on the first line of the code or prompt: 20px +
-   half its 24px height = 32px, the middle of a 64px editor. */
+/* The info button (code mode only) and the action button, 12px apart.
+   Centered on the first line of the code or prompt: 20px + half its 24px
+   height = 32px, the middle of a 64px editor. */
 .inlineToolbar {
   display: flex;
   flex-shrink: 0;
