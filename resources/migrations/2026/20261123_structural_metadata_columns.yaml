@@ -511,3 +511,43 @@ databaseChangeLog:
                   remarks: "Whether the user set load_strategy, so a NULL load_strategy overrides the sync value"
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: 8a3n65
+      author: metatyb
+      comment: Drop is_grain_set from metabase_field_user_settings; a non-NULL is_grain, false included, records the user's call
+      changes:
+        - dropColumn:
+            tableName: metabase_field_user_settings
+            columnName: is_grain_set
+      rollback:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: is_grain_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Whether the user set is_grain, so a NULL is_grain overrides the sync value"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: f67hjp
+      author: metatyb
+      comment: Drop facets_set from metabase_field_user_settings; non-NULL facets, an empty list included, record the user's call
+      changes:
+        - dropColumn:
+            tableName: metabase_field_user_settings
+            columnName: facets_set
+      rollback:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: facets_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Whether the user set facets, so a NULL facets overrides the sync value"
+                  constraints:
+                    nullable: false

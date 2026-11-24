@@ -53,7 +53,7 @@
    :facets             [:type/DurableKey]})
 
 (def ^:private structural-metadata-flags
-  {:is_grain_set true, :attribute_scd_type_set true, :facets_set true})
+  {:attribute_scd_type_set true})
 
 (defn- field-row
   "The Field with `field-id`, read through the model so its columns come back decoded."
@@ -73,13 +73,31 @@
     (sync.updates/update-field-unless-user-set! field-id synced-structural-metadata)
     (is (=? structural-metadata (field-row field-id)))))
 
-(deftest user-null-structural-metadata-is-kept-test
-  (let [nulls (update-vals structural-metadata (constantly nil))]
-    (mt/with-temp [:model/Field {field-id :id} synced-structural-metadata]
-      (field-user-settings/upsert-field-user-settings! (field-row field-id) nulls)
-      (is (=? (merge nulls structural-metadata-flags) (t2/select-one :model/FieldUserSettings :field_id field-id)))
-      (sync.updates/update-field-unless-user-set! field-id synced-structural-metadata)
-      (is (= nulls (select-keys (field-row field-id) (keys nulls)))))))
+(deftest user-null-attribute-scd-type-is-kept-test
+  (mt/with-temp [:model/Field {field-id :id} synced-structural-metadata]
+    (field-user-settings/upsert-field-user-settings! (field-row field-id) {:attribute_scd_type nil})
+    (is (=? {:attribute_scd_type nil, :attribute_scd_type_set true}
+            (t2/select-one :model/FieldUserSettings :field_id field-id)))
+    (sync.updates/update-field-unless-user-set! field-id synced-structural-metadata)
+    (is (nil? (:attribute_scd_type (field-row field-id))))))
+
+(deftest user-none-is-grain-and-facets-are-kept-test
+  (testing "false and [] record that a user set no grain membership and no facets"
+    (let [none {:is_grain false, :facets []}]
+      (mt/with-temp [:model/Field {field-id :id} synced-structural-metadata]
+        (field-user-settings/upsert-field-user-settings! (field-row field-id) none)
+        (sync.updates/update-field-unless-user-set! field-id synced-structural-metadata)
+        (is (= none (select-keys (field-row field-id) (keys none))))))))
+
+(deftest user-null-is-grain-and-facets-are-left-to-sync-test
+  (testing "a NULL is_grain or facets is no user value, so sync writes the column"
+    (let [nulls {:is_grain nil, :facets nil}]
+      (mt/with-temp [:model/Field {field-id :id} {}]
+        (field-user-settings/upsert-field-user-settings! (field-row field-id)
+                                                         (assoc nulls :display_name "User Name"))
+        (sync.updates/update-field-unless-user-set! field-id synced-structural-metadata)
+        (is (= (select-keys synced-structural-metadata (keys nulls))
+               (select-keys (field-row field-id) (keys nulls))))))))
 
 (deftest unset-structural-metadata-clears-flags-test
   (mt/with-temp [:model/Field {field-id :id} {}]

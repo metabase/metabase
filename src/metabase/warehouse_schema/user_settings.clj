@@ -12,14 +12,13 @@
     :is_grain :attribute_scd_type :facets})
 
 (def field-set-flags
-  "The user-settable Field columns sync also writes, and the structural metadata columns, mapped to the flag that says
-  the user set the column, NULL included."
+  "The user-settable Field columns sync also writes, and `attribute_scd_type`, mapped to the flag that says the user set
+  the column, NULL included. A user's `is_grain` or `facets` is never NULL, `false` and `[]` recording none, so they
+  have no flag."
   {:description        :description_set
    :semantic_type      :semantic_type_set
    :fk_target_field_id :fk_target_field_id_set
-   :is_grain           :is_grain_set
-   :attribute_scd_type :attribute_scd_type_set
-   :facets             :facets_set})
+   :attribute_scd_type :attribute_scd_type_set})
 
 (mu/defn user-set-field-columns :- [:set (into [:enum] user-settable-field-columns)]
   "The columns the FieldUserSettings row `settings` says a user set; `coercion_strategy` follows `effective_type`."

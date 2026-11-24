@@ -295,7 +295,7 @@
   {:track [:field_id :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values
            :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings
            :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set :custom_position
-           :is_grain :attribute_scd_type :facets :is_grain_set :attribute_scd_type_set :facets_set]
+           :is_grain :attribute_scd_type :facets :attribute_scd_type_set]
    :skip  []})
 
 (defmethod serialization/spec :model/FieldUserSettings [_]
@@ -307,7 +307,7 @@
                    :description_set :semantic_type_set :fk_target_field_id_set]
    :skip          [:nfc_path
                    ;; structural metadata
-                   :is_grain :attribute_scd_type :facets :is_grain_set :attribute_scd_type_set :facets_set]
+                   :is_grain :attribute_scd_type :facets :attribute_scd_type_set]
    :defaults      {:description_set        false
                    :semantic_type_set      false
                    :fk_target_field_id_set false}

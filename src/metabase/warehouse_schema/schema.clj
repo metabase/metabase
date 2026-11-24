@@ -221,9 +221,7 @@
    [:is_grain               {:optional true} [:maybe :boolean]]
    [:attribute_scd_type     {:optional true} [:maybe ::attribute-scd-type]]
    [:facets                 {:optional true} [:maybe ::facets]]
-   [:is_grain_set           {:optional true} :boolean]
-   [:attribute_scd_type_set {:optional true} :boolean]
-   [:facets_set             {:optional true} :boolean]])
+   [:attribute_scd_type_set {:optional true} :boolean]])
 
 (mr/def ::field-user-settings.create
   "What a caller gives to create a FieldUserSettings: the columns of an update without the `:id`, and its Field."

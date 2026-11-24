@@ -5563,7 +5563,7 @@
 
 (deftest structural-metadata-columns-test
   (testing "existing Tables, Fields and their user settings get NULL structural metadata and unset flags"
-    (impl/test-migrations ["as9qdr" "qpwu5p"] [migrate!]
+    (impl/test-migrations ["as9qdr" "f67hjp"] [migrate!]
       (let [db-id    (t2/insert-returning-pk! :metabase_database {:name       "Structural Metadata Test DB"
                                                                   :engine     "h2"
                                                                   :created_at :%now
@@ -5590,7 +5590,7 @@
                              :scd_type :history_definition :eav_definition]
               field-columns [:is_grain :attribute_scd_type :facets]
               table-flags   (map #(keyword (str (name %) "_set")) table-columns)
-              field-flags   (map #(keyword (str (name %) "_set")) field-columns)
+              field-flags   [:attribute_scd_type_set]
               nils          #(zipmap % (repeat nil))
               unset         #(zipmap % (repeat false))]
           (is (= (nils table-columns)
@@ -5603,6 +5603,9 @@
           (is (= (merge (nils field-columns) (unset field-flags))
                  (select-keys (t2/select-one :metabase_field_user_settings :field_id field-id)
                               (concat field-columns field-flags))))
+          (testing "is_grain and facets have no flag"
+            (is (not-any? #(contains? (t2/select-one :metabase_field_user_settings :field_id field-id) %)
+                          [:is_grain_set :facets_set])))
           (testing "user settings rows inserted after the migration default their flags to false"
             (let [new-table-id (t2/insert-returning-pk! :metabase_table {:active       true
                                                                          :db_id        db-id
