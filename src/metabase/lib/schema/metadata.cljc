@@ -330,17 +330,11 @@
 (mr/def ::column.data-sensitivity
   (into [:enum {:decode/normalize keyword}] column-data-sensitivity-types))
 
-(mr/def ::column.facet-type
-  "The value of one of a Field's `facets`: a type in the global type hierarchy."
-  [:and
-   ::lib.schema.common/keyword
-   [:fn {:error/message "valid type"}
-    (fn [k] (or (isa? k :type/*) (isa? k :Semantic/*) (isa? k :Relation/*)))]])
-
 (mr/def ::column.facets
-  "A Field's `facets`: the roles it plays besides its semantic type, by facet."
+  "A Field's `facets`: the roles it plays besides its semantic type, by facet, each one of the types
+  [[types/field-facet-types]] allows for its facet."
   (into [:map {:closed true}]
-        (map (fn [k] [k {:optional true} [:ref ::column.facet-type]]))
+        (map (fn [k] [k {:optional true} (into [:enum {:decode/normalize keyword}] (types/field-facet-types k))]))
         types/field-facet-keys))
 
 (mr/def ::column.legacy-source

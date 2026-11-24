@@ -161,6 +161,15 @@
   "The keys of a Field's `facets`, each naming a role the Field plays besides its semantic type."
   [:time :key :structure :lifecycle])
 
+(def field-facet-types
+  "The types each key of a Field's `facets` allows. Only the listed types: not their descendants."
+  {:time      [:type/EventTimestamp :type/MilestoneTimestamp :type/StartTimestamp :type/EndTimestamp
+               :type/ValidFrom :type/ValidTo :type/PeriodKey :type/LoadTimestamp :type/LastActivityTimestamp]
+   :key       [:type/SurrogateKey :type/NaturalKey :type/DurableKey :type/ExternalID :type/TenantKey
+               :type/ParentKey :type/PolymorphicKey :type/RoleKey]
+   :structure [:type/SystemColumn :type/CustomProperty :type/SortOrder :type/HierarchyLevel :type/HierarchyPath]
+   :lifecycle [:type/SoftDeleteFlag :type/CurrentRowFlag :type/TestDataFlag]})
+
 ;;; Modifier Types
 
 ;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific

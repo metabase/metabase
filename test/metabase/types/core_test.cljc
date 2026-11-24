@@ -207,6 +207,18 @@
 (deftest ^:parallel field-facet-keys-test
   (is (= [:time :key :structure :lifecycle] types/field-facet-keys)))
 
+(deftest ^:parallel field-facet-types-test
+  (testing "every facet key lists its types"
+    (is (= (set types/field-facet-keys) (set (keys types/field-facet-types)))))
+  (testing "every listed type is a semantic type"
+    (doseq [[facet-key ts] types/field-facet-types
+            t              ts]
+      (testing (pr-str facet-key t)
+        (is (isa? t :Semantic/*)))))
+  (testing "no type is listed under two facet keys"
+    (let [ts (mapcat val types/field-facet-types)]
+      (is (= (count ts) (count (set ts)))))))
+
 (deftest ^:parallel semantic-layer-types-test
   (testing "semantic-layer types derive from the type consumers check with isa?"
     (are [t parent] (isa? t parent)

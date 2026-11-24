@@ -58,10 +58,6 @@
    [:label            {:optional true} [:maybe ::lib.schema.id/field]]
    [:type             {:optional true} [:maybe ::lib.schema.id/field]]])
 
-(mr/def ::facet-type
-  "The value of one of a Field's `facets`: a type in the global type hierarchy."
-  [:ref ::lib.schema.metadata/column.facet-type])
-
 (mr/def ::facets
   "A Field's `facets`: the roles it plays besides its semantic type, by facet."
   [:ref ::lib.schema.metadata/column.facets])

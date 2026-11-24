@@ -97,6 +97,11 @@
     (is (not (mr/validate ::warehouse-schema.schema/facets {:time :role/Fact})))
     (is (not (mr/validate ::warehouse-schema.schema/facets {:color :type/Category})))
     (is (not (mr/validate ::warehouse-schema.schema/facets {:time nil}))))
+  (testing "a facet holds only a type its key lists"
+    (is (not (mr/validate ::warehouse-schema.schema/facets {:time :type/PK})))
+    (is (not (mr/validate ::warehouse-schema.schema/facets {:time :type/DurableKey})))
+    (is (not (mr/validate ::warehouse-schema.schema/facets {:key :type/HashKey}))
+        "a descendant of a listed type is not listed"))
   (testing "string types normalize to keywords"
     (is (= {:time :type/EventTimestamp}
            (lib/normalize ::warehouse-schema.schema/facets {:time "type/EventTimestamp"})))))

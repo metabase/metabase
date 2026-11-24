@@ -83,13 +83,19 @@
     (testing "a read keeps the valid facets and drops the others"
       (is (= {:time :type/EventTimestamp}
              (read-back transforms :facets
-                        "{\"time\":\"type/EventTimestamp\",\"key\":\"type/NotAType\",\"color\":\"type/Category\"}"))))
+                        "{\"time\":\"type/EventTimestamp\",\"key\":\"type/NotAType\",\"color\":\"type/Category\"}")))
+      (is (= {:key :type/DurableKey}
+             (read-back transforms :facets
+                        "{\"key\":\"type/DurableKey\",\"time\":\"type/DurableKey\",\"lifecycle\":\"type/Flag\"}"))
+          "a type under a key that does not list it is dropped"))
     (testing "stored facets that are not a JSON object read as nil"
       (is (nil? (read-back transforms :facets "[\"type/Category\"]")))
       (is (nil? (read-back transforms :facets "not json"))))
     (testing "a write with an unknown facet throws a 400"
       (is (=? {:status-code 400, :errors {:facets some?}}
-              (write-error transforms :facets {:color :type/Category}))))))
+              (write-error transforms :facets {:color :type/Category})))
+      (is (=? {:status-code 400, :errors {:facets some?}}
+              (write-error transforms :facets {:time :type/PK}))))))
 
 (deftest ^:parallel check-values-test
   (testing "scd_type is 0 to 7"

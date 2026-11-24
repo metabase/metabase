@@ -110,7 +110,7 @@
                                            nil)))))})
 
 (defn- facets-out
-  "The facets stored as the JSON `s`, without any facet with an unknown key or type."
+  "The facets stored as the JSON `s`, without any facet with an unknown key or a type its key does not allow."
   [s]
   (when (string? s)
     (let [facets (decoded-json :facets s)]
@@ -118,8 +118,7 @@
         (into {}
               (keep (fn [[k v]]
                       (let [t (some-> v keyword)]
-                        (if (and (some #{k} types/field-facet-keys)
-                                 (mr/validate ::warehouse-schema.schema/facet-type t))
+                        (if (mr/validate ::warehouse-schema.schema/facets {k t})
                           [k t]
                           (do (log/warnf "Invalid facet %s %s: dropping it" k (pr-str v))
                               nil)))))
