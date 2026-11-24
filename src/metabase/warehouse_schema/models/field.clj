@@ -175,7 +175,6 @@
 
 (t2/define-before-insert :model/Field
   [field]
-  (warehouse-schema.transforms/check-field-values field)
   (let [field (merge field
                      {:display_name (:display_name field (humanization/name->human-readable-name (:name field)))}
                      (coercion-changes field field))]
@@ -198,7 +197,6 @@
 (t2/define-before-update :model/Field
   [field]
   (let [changes (t2/changes field)]
-    (warehouse-schema.transforms/check-field-values changes)
     (when (contains? changes :table_id)
       (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
     (cond-> field

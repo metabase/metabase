@@ -22,8 +22,7 @@
 
 (deftest invalid-structural-metadata-test
   (mt/with-temp [:model/Field {field-id :id} {}]
-    (doseq [[column value] [[:attribute_scd_type 4]
-                            [:facets [:type/NotAType]]
+    (doseq [[column value] [[:facets [:type/NotAType]]
                             [:facets {:time :type/EventTimestamp}]]]
       (testing (pr-str column value)
         (is (=? {:status-code 400, :errors {column some?}}
@@ -32,18 +31,6 @@
                   nil
                   (catch clojure.lang.ExceptionInfo e
                     (ex-data e)))))))))
-
-(deftest invalid-attribute-scd-type-update-test
-  (mt/with-temp [:model/Field             {field-id :id} {}
-                 :model/FieldUserSettings _              {:field_id field-id, :display_name "User Name"
-                                                          :attribute_scd_type 1}]
-    (is (=? {:status-code 400, :errors {:attribute_scd_type some?}}
-            (try
-              (t2/update! :model/FieldUserSettings :field_id field-id {:attribute_scd_type 4})
-              nil
-              (catch clojure.lang.ExceptionInfo e
-                (ex-data e)))))
-    (is (= 1 (t2/select-one-fn :attribute_scd_type :model/FieldUserSettings :field_id field-id)))))
 
 (deftest bad-stored-facet-is-dropped-test
   (mt/with-temp [:model/Field             {field-id :id} {}

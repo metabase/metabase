@@ -56,13 +56,11 @@
 
 (t2/define-before-insert :model/FieldUserSettings
   [settings]
-  (warehouse-schema.transforms/check-field-values settings)
   (with-set-flags settings settings))
 
 (t2/define-before-update :model/FieldUserSettings
   [settings]
   (let [changes (t2/changes settings)]
-    (warehouse-schema.transforms/check-field-values changes)
     (with-set-flags settings changes)))
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------

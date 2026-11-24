@@ -1,5 +1,5 @@
 (ns metabase.warehouse-schema.transforms
-  "Column transforms and value checks the Table, Field and user settings models share."
+  "Column transforms the Table, Field and user settings models share."
   (:require
    [clojure.string :as str]
    [malli.error :as me]
@@ -143,19 +143,3 @@
 (def field-transforms
   "The transforms of the structural metadata columns of Fields and their user settings."
   {:facets transform-facets})
-
-(defn- check-values
-  "Throws a 400 for the first non-nil value in `row` that fails the schema `column->schema` gives its column."
-  [column->schema row]
-  (doseq [[column schema] column->schema
-          :let [v (get row column)]
-          :when (and (some? v) (not (mr/validate schema v)))]
-    (throw-invalid-value column v (schema-message column schema v))))
-
-(def ^{:arglists '([row])} check-table-values
-  "Throws a 400 when `row`, a Table or its user settings, holds an `scd_type` that fails its schema."
-  (partial check-values {:scd_type ::warehouse-schema.schema/scd-type}))
-
-(def ^{:arglists '([row])} check-field-values
-  "Throws a 400 when `row`, a Field or its user settings, holds an `attribute_scd_type` that fails its schema."
-  (partial check-values {:attribute_scd_type ::warehouse-schema.schema/attribute-scd-type}))

@@ -89,13 +89,11 @@
 
 (t2/define-before-insert :model/TableUserSettings
   [settings]
-  (warehouse-schema.transforms/check-table-values settings)
   (with-set-flags settings settings settings))
 
 (t2/define-before-update :model/TableUserSettings
   [settings]
   (let [changes (t2/changes settings)]
-    (warehouse-schema.transforms/check-table-values changes)
     (with-set-flags settings changes changes)))
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------

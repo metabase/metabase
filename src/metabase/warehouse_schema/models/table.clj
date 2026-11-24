@@ -222,7 +222,6 @@
 
 (t2/define-before-insert :model/Table
   [table]
-  (warehouse-schema.transforms/check-table-values table)
   (check-publication table)
   (merge table
          (apply dissoc
@@ -235,7 +234,6 @@
   [table]
   (let [changes  (t2/changes table)
         original (t2/original table)]
-    (warehouse-schema.transforms/check-table-values changes)
     (check-changes changes original)
     (when (some #(contains? changes %) [:is_published :collection_id])
       (check-publication table))

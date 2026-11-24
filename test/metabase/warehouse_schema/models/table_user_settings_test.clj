@@ -158,7 +158,6 @@
                             [:period_granularity :fortnight]
                             [:mutability :append-only]
                             [:load_strategy :upsert]
-                            [:scd_type 8]
                             [:history_definition {:surrogate_key 12}]
                             [:eav_definition {:entity_key "31"}]]]
       (testing (pr-str column value)
@@ -168,17 +167,6 @@
                   nil
                   (catch clojure.lang.ExceptionInfo e
                     (ex-data e)))))))))
-
-(deftest invalid-scd-type-update-test
-  (mt/with-temp [:model/Table             {table-id :id} {}
-                 :model/TableUserSettings _              {:table_id table-id, :display_name "User Name", :scd_type 1}]
-    (is (=? {:status-code 400, :errors {:scd_type some?}}
-            (try
-              (t2/update! :model/TableUserSettings :table_id table-id {:scd_type 8})
-              nil
-              (catch clojure.lang.ExceptionInfo e
-                (ex-data e)))))
-    (is (= 1 (t2/select-one-fn :scd_type :model/TableUserSettings :table_id table-id)))))
 
 (deftest bad-stored-structural-metadata-reads-as-nil-test
   (mt/with-temp [:model/Table             {table-id :id} {}

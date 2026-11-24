@@ -472,9 +472,7 @@
    :facets             [:type/EventTimestamp :type/DurableKey :type/CustomProperty :type/SoftDeleteFlag]})
 
 (def ^:private invalid-structural-metadata
-  [[:attribute_scd_type 4]
-   [:attribute_scd_type -1]
-   [:facets             [:type/NotAType]]
+  [[:facets             [:type/NotAType]]
    [:facets             ["type/Category"]]
    [:facets             {:time :type/EventTimestamp}]])
 

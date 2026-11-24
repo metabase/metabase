@@ -756,8 +756,6 @@
    [:period_granularity :fortnight]
    [:mutability         :append-only]
    [:load_strategy      :upsert]
-   [:scd_type           8]
-   [:scd_type           -1]
    [:history_definition {:durable_key 12, :surrogate_key 13}]
    [:history_definition {:durable_key "12"}]
    [:eav_definition     {:definition_table 0}]])

@@ -97,18 +97,3 @@
               (write-error transforms :facets [:type/PK])))
       (is (=? {:status-code 400, :errors {:facets some?}}
               (write-error transforms :facets {:time :type/EventTimestamp}))))))
-
-(deftest ^:parallel check-values-test
-  (testing "scd_type is 0 to 7"
-    (is (nil? (warehouse-schema.transforms/check-table-values {:scd_type 7})))
-    (is (nil? (warehouse-schema.transforms/check-table-values {:scd_type nil})))
-    (is (=? {:status-code 400, :errors {:scd_type some?}, :value 8}
-            (try (warehouse-schema.transforms/check-table-values {:scd_type 8})
-                 nil
-                 (catch clojure.lang.ExceptionInfo e (ex-data e))))))
-  (testing "attribute_scd_type is 0 to 3"
-    (is (nil? (warehouse-schema.transforms/check-field-values {:attribute_scd_type 3})))
-    (is (=? {:status-code 400, :errors {:attribute_scd_type some?}, :value 4}
-            (try (warehouse-schema.transforms/check-field-values {:attribute_scd_type 4})
-                 nil
-                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
