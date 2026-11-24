@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import type { NativeQuestionDetails } from "e2e/support/helpers";
 
 const { H } = cy;
@@ -192,6 +193,27 @@ describe("monitor > tools", () => {
     cy.wait("@getTaskRuns").its("response.statusCode").should("eq", 200);
     cy.findByTestId("task-runs-table").should("be.visible");
 
+    cy.log("A real sync run: open its details, then reload them");
+    cy.request("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`);
+    waitForSuccessfulSyncRun();
+    cy.intercept({ method: "GET", pathname: "/api/task/runs/*" }).as(
+      "getTaskRun",
+    );
+    cy.visit(`/monitor/tasks/runs?${SAMPLE_DB_SYNC_RUNS_QUERY}`);
+    cy.findByTestId("task-runs-table")
+      .findAllByTestId("task-run")
+      .first()
+      .click();
+    cy.location("pathname").should("match", /^\/monitor\/tasks\/runs\/\d+$/);
+    cy.wait("@getTaskRun").its("response.statusCode").should("eq", 200);
+    assertSampleDatabaseSyncRunDetails();
+
+    cy.reload();
+    cy.wait("@getTaskRun").its("response.statusCode").should("eq", 200);
+    assertSampleDatabaseSyncRunDetails();
+
+    cy.findByRole("link", { name: /Back to Runs/ }).click();
+    cy.location("pathname").should("eq", "/monitor/tasks/runs");
     cy.findByRole("tab", { name: "Tasks" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/list");
 
@@ -225,6 +247,50 @@ describe("monitor > tools", () => {
     cy.location("pathname").should("eq", "/monitor/logs");
     cy.wait("@getLogs").its("response.statusCode").should("eq", 200);
     cy.findByLabelText("Logs output").should("be.visible");
-    cy.button(/Download/).should("be.enabled");
+    cy.button(/Download/)
+      .should("be.enabled")
+      .click();
+    // every log line starts with its ISO timestamp
+    cy.readFile("cypress/downloads/logs.txt").should(
+      "match",
+      /^\S*\s?\d{4}-\d{2}-\d{2}T/,
+    );
   });
 });
+
+const SAMPLE_DB_SYNC_RUNS_QUERY = new URLSearchParams({
+  "run-type": "sync",
+  "started-at": "thisday",
+  "entity-type": "database",
+  "entity-id": String(SAMPLE_DB_ID),
+  status: "success",
+}).toString();
+
+function waitForSuccessfulSyncRun(attempt = 0) {
+  const MAX_ATTEMPTS = 30;
+  cy.request(`/api/task/runs?${SAMPLE_DB_SYNC_RUNS_QUERY}`).then(
+    ({ body }: Cypress.Response<{ total: number }>) => {
+      if (body.total > 0) {
+        return;
+      }
+      if (attempt >= MAX_ATTEMPTS) {
+        throw new Error("The Sample Database sync run did not finish");
+      }
+      cy.wait(1000);
+      waitForSuccessfulSyncRun(attempt + 1);
+    },
+  );
+}
+
+function assertSampleDatabaseSyncRunDetails() {
+  cy.findByTestId("monitor-main").within(() => {
+    cy.findByText("Run type").should("be.visible");
+    cy.findByText("Sync").should("be.visible");
+    cy.findByRole("link", { name: "Sample Database" })
+      .should("be.visible")
+      .and("have.attr", "href", `/admin/databases/${SAMPLE_DB_ID}`);
+  });
+  cy.findByTestId("task-run-tasks-table")
+    .findAllByTestId("task-run-task")
+    .should("have.length.at.least", 1);
+}
