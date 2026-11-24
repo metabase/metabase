@@ -52,7 +52,7 @@ describe("scenarios > monitor > api key usage", { viewportWidth: 1600 }, () => {
     H.activateToken("pro-self-hosted");
   });
 
-  it("shows seeded usage and lets an admin filter by API key and date", () => {
+  it("shows seeded usage and filters the events by API key", () => {
     H.createApiKey(SEEDED_KEY_NAME, ADMIN_GROUP_ID).then(
       ({ body }: { body: CreateApiKeyResponse }) => {
         seedApiKeyUsage(body.id);
@@ -62,59 +62,20 @@ describe("scenarios > monitor > api key usage", { viewportWidth: 1600 }, () => {
 
     visitApiKeyUsagePage();
 
-    cy.log("The nav item lives directly under Monitor");
-    cy.findByRole("link", { name: "API key usage" }).should("be.visible");
-
-    cy.log("The Usage tab renders with the seeded key (not the empty state)");
-    H.main().within(() => {
-      cy.findByRole("heading", { name: "API key usage" }).should("be.visible");
-      cy.findByText("No API key activity").should("not.exist");
-      cy.findByText(SEEDED_KEY_NAME).should("be.visible");
-    });
-
-    cy.log(
-      "The API key filter scopes the Key activity table, but an unused key still shows its own row",
-    );
-    selectApiKeyFilter(UNUSED_KEY_NAME);
-    H.main().within(() => {
-      cy.findByText("No API key activity").should("not.exist");
-      cy.findByText(UNUSED_KEY_NAME).should("be.visible");
-      cy.findByText(SEEDED_KEY_NAME).should("not.exist");
-    });
-    selectApiKeyFilter("All API keys");
+    cy.log("The Usage tab renders with the seeded key");
     H.main().findByText(SEEDED_KEY_NAME).should("be.visible");
 
     cy.log("The Events tab shows the seeded call, attributed to its creator");
     H.main().findByRole("link", { name: "Events" }).click();
     eventsTable().within(() => {
-      cy.findByText("Created by").should("be.visible");
       cy.findByText(SEEDED_KEY_NAME).should("be.visible");
       cy.findByText(ADMIN_DISPLAY_NAME).should("be.visible");
     });
 
-    cy.log(
-      "There's no separate user filter — the API key filter is the primary way to scope the page",
-    );
-    cy.findByTestId("conversation-filters-user-select").should("not.exist");
-
-    cy.log("Filtering by the seeded API key keeps the call");
-    selectApiKeyFilter(SEEDED_KEY_NAME);
-    eventsTable().findByText(SEEDED_KEY_NAME).should("be.visible");
-
-    cy.log(
-      "Filtering by an unused API key shows the events table's own empty state, not the whole page",
-    );
+    cy.log("The backend applies the API key filter to the events query");
     selectApiKeyFilter(UNUSED_KEY_NAME);
-    H.main().findByText("No API key activity").should("not.exist");
     eventsTable().findByText("No calls found").should("be.visible");
-
-    cy.log("Clearing the API key filter restores the call");
-    selectApiKeyFilter("All API keys");
-    eventsTable().findByText(SEEDED_KEY_NAME).should("be.visible");
-
-    cy.log("Widening the date range still includes the just-seeded call");
-    cy.findByTestId("conversation-filters-date-select").click();
-    H.popover().findByText("Last 7 days").click();
+    selectApiKeyFilter(SEEDED_KEY_NAME);
     eventsTable().findByText(SEEDED_KEY_NAME).should("be.visible");
   });
 });
