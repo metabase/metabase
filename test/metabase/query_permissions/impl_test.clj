@@ -12,6 +12,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-permissions.impl :as query-perms.impl]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.request.core :as request]
@@ -1086,8 +1087,7 @@
                        (- (preprocess! (take 6 (drop 2 cards))) (preprocess! (take 2 cards)))))))))))))
 
 (defn- per-card-result-metadata-check
-  "The check of the result metadata of source Cards one Card at a time, as the query processor ran it before it read
-  them together."
+  "The check of the result metadata of the source Cards `card-ids`, one Card at a time."
   [database-id card-ids]
   (doseq [card-id card-ids]
     (query-perms/check-card-result-metadata-data-perms database-id card-id)))
@@ -1146,3 +1146,79 @@
               (count! (take 2 (drop 6 cards)))
               (is (= (count! (take 2 cards))
                      (count! (take 6 (drop 2 cards))))))))))))
+
+(deftest query-run-answers-source-cards-statement-count-test
+  (testing "queries over more distinct source Cards take as many statements, as a non-admin"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+      (mt/with-model-cleanup [:model/Card]
+        (let [mp     (mt/metadata-provider)
+              cards  (t2/insert-returning-instances!
+                      :model/Card
+                      (for [table [:venues :checkins :users :categories :orders :people :products :reviews]]
+                        {:name                   (name table)
+                         :display                :table
+                         :visualization_settings {}
+                         :creator_id             (mt/user->id :crowberto)
+                         :collection_id          coll-id
+                         :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id table)))}))
+              query  (fn [card] (lib/query mp (lib.metadata/card mp (:id card))))
+              count! (fn [cards]
+                       (t2/with-call-count [call-count]
+                         (query-perms/query-run-answers (mapv query cards))
+                         (call-count)))]
+          (mt/with-test-user :rasta
+            (testing "a batch answers each query as it is answered on its own"
+              (is (= (mapv #(first (query-perms/query-run-answers [(query %)])) cards)
+                     (query-perms/query-run-answers (mapv query cards)))))
+            (count! (take 2 (drop 6 cards)))
+            (is (= (count! (take 2 cards))
+                   (count! (take 6 (drop 2 cards)))))))))))
+
+(defn- one-query-run-answer
+  "Whether the current user may run `query`, worked out for that query alone."
+  [query]
+  (try
+    (let [required-perms (query-perms/required-perms-for-query query)]
+      (#'query-perms.impl/check-query-allowed
+       (#'query-perms.impl/single-check-answers query required-perms) query required-perms))
+    (catch clojure.lang.ExceptionInfo _
+      false)))
+
+(defn- one-query-run-check
+  "Throws what the run check of `query` alone throws."
+  [query]
+  (let [prepared (#'query-perms.impl/prepared-run-checks [query] nil)]
+    (#'query-perms.impl/check-prepared-run-check
+     (#'query-perms.impl/run-check-answers prepared)
+     (first prepared))))
+
+(deftest one-query-run-check-statement-count-test
+  (testing "one query checked through the list functions takes no more statements than checked alone"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:collection_id coll-id
+                                                    :dataset_query (lib/query (mt/metadata-provider)
+                                                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+      (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+      (doseq [user           [:rasta :crowberto]
+              [kind make]    [[:table  #(lib/query % (lib.metadata/table % (mt/id :venues)))]
+                              [:card   #(lib/query % (lib.metadata/card % card-id))]
+                              [:native #(lib/native-query % "SELECT 1")]]
+              [label f alone] [[:answer #(first (query-perms/query-run-answers [%])) one-query-run-answer]
+                               [:check #(query-perms/check-run-permissions-for-queries [%]) one-query-run-check]]
+              cache?         [false true]]
+        (testing [user kind label cache?]
+          (mt/with-test-user user
+            (let [count! (fn [g]
+                           (let [run (fn []
+                                       (let [query (make (lib-be/application-database-metadata-provider (mt/id)))]
+                                         (t2/with-call-count [call-count]
+                                           (try (g query) (catch Exception _ nil))
+                                           (call-count))))]
+                             (if cache?
+                               (lib-be/with-metadata-provider-cache (run) (run))
+                               (do (run) (run)))))]
+              (when (= label :answer)
+                (is (= (alone (make (mt/metadata-provider)))
+                       (f (make (mt/metadata-provider))))))
+              (is (<= (count! f) (count! alone))))))))))

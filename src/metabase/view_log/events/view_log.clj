@@ -280,7 +280,12 @@
     (try
       (increment-view-counts! :model/Table (:id object))
       (let [has-access? (when (= api/*current-user-id* user-id)
-                          (mi/can-query? (t2/hydrate object :can_query)))]
+                          (try
+                            (mi/can-query? (t2/hydrate object :can_query))
+                            (catch Exception e
+                              (log/warnf "Could not tell whether the reader of table %s may query it: %s"
+                                         (u/id object) (ex-message e))
+                              false)))]
         (-> event
             (assoc :has-access has-access?)
             generate-view

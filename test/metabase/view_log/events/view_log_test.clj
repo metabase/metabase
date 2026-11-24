@@ -8,6 +8,7 @@
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing-rest.api-test :as public-test]
@@ -204,6 +205,18 @@
                 (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
                 (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
                 (is (false? (:has_access (latest-view (u/id user) (u/id table)))))))))))))
+
+(deftest table-read-access-failure-test
+  (testing "a table read whose access cannot be worked out is recorded without access"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-model-cleanup [:model/User]
+        (let [[user] (user/create-users! [{:email (mt/random-email)}])
+              table  (t2/select-one :model/Table :id (mt/id :venues))]
+          (mt/with-full-data-perms-for-all-users!
+            (mt/with-current-user (u/id user)
+              (mt/with-dynamic-fn-redefs [mi/can-query? (fn [_] (throw (ex-info "boom" {})))]
+                (events/publish-event! :event/table-read {:object table :user-id (u/id user)}))
+              (is (false? (:has_access (latest-view (u/id user) (u/id table))))))))))))
 
 (deftest dashboard-read-ee-test
   (mt/with-premium-features #{:audit-app}
