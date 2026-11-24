@@ -658,6 +658,14 @@ const configs = [
     },
   },
   {
+    // Throwaway prototypes (DSN-785): never shipped, so their copy is not translated.
+    files: ["frontend/src/metabase/prototypes/**/*"],
+    rules: {
+      "ttag/no-module-declaration": "off",
+      "i18next/no-literal-string": "off",
+    },
+  },
+  {
     files: [
       "frontend/src/metabase/**/*.spec.*",
       "frontend/src/metabase/**/test-utils.*",

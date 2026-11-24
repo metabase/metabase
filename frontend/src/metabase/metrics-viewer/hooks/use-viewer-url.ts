@@ -184,7 +184,12 @@ export function useViewerUrl(
     const hash = encodeState(serializedState);
     if (hash !== undefined && hash !== lastHashRef.current) {
       lastHashRef.current = hash;
-      const url = Urls.metricsViewer(hash);
+      // DSN-785 prototype (branch never merges): embedded under /prototypes,
+      // keep the state on the current page instead of jumping to /explore.
+      const isPrototype = window.location.pathname.startsWith("/prototypes/");
+      const url = isPrototype
+        ? `${window.location.pathname}${window.location.search}#${hash}`
+        : Urls.metricsViewer(hash);
       if (!window.location.hash) {
         navigate(url, { replace: true });
       } else {

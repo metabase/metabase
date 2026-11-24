@@ -1,0 +1,315 @@
+/* Metric Explorer prototype: a keyboard-first definition bar, modelled on the
+   filter expression bar. Every token is the same height. */
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 6px;
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 8px;
+  background: var(--mb-color-background_surface-primary);
+  cursor: text;
+}
+
+.barFocused {
+  border-color: var(--mb-color-core-brand);
+  box-shadow: 0 0 0 1px var(--mb-color-core-brand);
+}
+
+/* Click targets between tokens: clicking one puts the caret there. */
+.gap {
+  align-self: stretch;
+  width: 6px;
+  flex: none;
+}
+
+.slot {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+.pill,
+.connector {
+  display: inline-flex;
+  align-items: stretch;
+  flex: none;
+  height: 28px;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.pill {
+  overflow: hidden;
+  background: var(--mb-color-background_surface-secondary);
+}
+
+/* + − × ÷ and parentheses: a small grey square, as in the filter bar. */
+.connector {
+  position: relative;
+  min-width: 28px;
+  justify-content: center;
+  align-items: center;
+  padding: 0 6px;
+  border-color: transparent;
+  background: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.connector:hover {
+  background: var(--mb-color-background_surface-secondary-hover);
+}
+
+/* Hovered, a parenthesis is a close button: the label gives way to the icon. */
+.connectorIcon {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.connectorRemovable:hover .connectorLabel {
+  visibility: hidden;
+}
+
+.connectorRemovable:hover .connectorIcon {
+  display: inline-flex;
+}
+
+.connectorEditing {
+  padding: 0 8px;
+  border-color: var(--mb-color-core-brand);
+  background: var(--mb-color-background_surface-primary);
+  font-weight: 400;
+  cursor: text;
+}
+
+.selected {
+  border-color: var(--mb-color-core-brand);
+  box-shadow: 0 0 0 1px var(--mb-color-core-brand);
+}
+
+.seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.seg + .seg {
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+.seg:hover {
+  background: var(--mb-color-background_surface-hover);
+}
+
+.segMeasure {
+  font-weight: 700;
+}
+
+.segFilter {
+  color: var(--mb-color-text-secondary);
+}
+
+.segEditing {
+  background: var(--mb-color-background_surface-primary);
+  font-weight: 400;
+  cursor: text;
+}
+
+.segEditing:hover {
+  background: var(--mb-color-background_surface-primary);
+}
+
+.pipe {
+  color: var(--mb-color-text-secondary);
+  font-weight: 400;
+}
+
+/* A pill with a filter draft attached to its right edge. */
+.pillHost {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.draftSeg {
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--mb-color-core-brand);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  background: var(--mb-color-background_surface-secondary);
+  font-size: 13px;
+}
+
+.input {
+  height: 26px;
+  min-width: 2px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+
+.input::placeholder {
+  color: var(--mb-color-text-secondary);
+}
+
+/* The dropdown, after the filter bar's suggestion list. */
+.dropdown {
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.5rem;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  max-height: 20rem;
+  padding: var(--mantine-spacing-md);
+  overflow: auto;
+}
+
+.empty {
+  padding: var(--mantine-spacing-md);
+  color: var(--mb-color-text-secondary);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: 0 var(--mantine-spacing-sm) var(--mantine-spacing-xs);
+  color: var(--mb-color-text-primary);
+  font-weight: bold;
+}
+
+.sectionDivider {
+  margin-top: var(--mantine-spacing-sm);
+  padding-top: var(--mantine-spacing-sm);
+  border-top: 0.5px solid var(--mb-color-border-neutral);
+}
+
+.sectionIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-core-brand);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  width: 100%;
+  padding: 0.25rem var(--mantine-spacing-sm);
+  border: 0;
+  border-radius: var(--mantine-radius-sm);
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:disabled {
+  color: var(--mb-color-text-disabled);
+  cursor: default;
+}
+
+.optionActive {
+  background: var(--mb-color-background_surface-hover);
+}
+
+.optionIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-text-secondary);
+}
+
+.optionLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.optionDescription {
+  flex: none;
+  color: var(--mb-color-text-secondary);
+}
+
+.optionHint {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: var(--mantine-spacing-md);
+  color: var(--mb-color-text-secondary);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 0.75rem;
+  font-variant-ligatures: none;
+}
+
+.tabHint {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 0.25rem;
+  border-radius: 2px;
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.optionHint + .tabHint {
+  margin-left: 0;
+}
+
+/* An info icon that shows on a hovered or highlighted option; its tooltip explains it. */
+.optionInfo {
+  display: none;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--mb-color-text-secondary);
+}
+
+.option:hover .optionInfo,
+.optionActive .optionInfo {
+  display: inline-flex;
+}
+
+.optionInfo:hover {
+  color: var(--mb-color-text-primary);
+}
+
+.optionInfo + .tabHint {
+  margin-left: 0;
+}
+
+/* A definition that doesn't add up: the bar and the tokens at fault go red. */
+.barError,
+.barError.barFocused {
+  border-color: var(--mb-color-feedback-negative);
+  box-shadow: 0 0 0 1px var(--mb-color-feedback-negative);
+}
+
+.pill.error,
+.connector.error {
+  border-color: var(--mb-color-feedback-negative);
+  box-shadow: 0 0 0 1px var(--mb-color-feedback-negative);
+}

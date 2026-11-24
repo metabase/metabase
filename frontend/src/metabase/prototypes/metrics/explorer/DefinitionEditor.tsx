@@ -1,0 +1,461 @@
+import cx from "classnames";
+import { useRef, useState } from "react";
+
+import { Box, Group, Icon, Stack, Text } from "metabase/ui";
+
+import { getMeasure } from "../data";
+
+import S from "./Explorer.module.css";
+import { type BarItem, InlineSuggest, TokenBar } from "./TokenBar";
+import {
+  FILTER_ITEMS,
+  type FormulaToken,
+  KEY_TO_OP,
+  LOGIC_OPTIONS,
+  MEASURE_ITEMS,
+  type MetricDraft,
+  OP_OPTIONS,
+  type WhereToken,
+  endsOperand,
+  findProblem,
+  insertOp,
+  insertOperand,
+  newKey,
+  search,
+  toOp,
+} from "./formula";
+
+type Editing = { key: string; part: string };
+
+/**
+ * The definition of a metric: math over measures in a keyboard-first bar,
+ * plus filters on the whole metric. Controlled, so a modal can hold the draft.
+ */
+export function DefinitionEditor({
+  draft,
+  onChange,
+  measureItems = MEASURE_ITEMS,
+  measureName = (id) => getMeasure(id).name,
+  layout = "stacked",
+  filterItems = FILTER_ITEMS,
+  filtersForTerm = () => filterItems,
+}: {
+  draft: MetricDraft;
+  onChange: (draft: MetricDraft) => void;
+  /** What the bar offers as terms; the mock measures by default. */
+  measureItems?: BarItem[];
+  measureName?: (id: string) => string;
+  /** "explorer": one box like the Explorer's bar, the Where row under it. */
+  layout?: "stacked" | "explorer";
+  /** Filters and segments for the whole metric; the mock ones by default. */
+  filterItems?: BarItem[];
+  /** Filters that fit one measure, like the columns of its table. */
+  filtersForTerm?: (measureId: string) => BarItem[];
+}) {
+  const { formula, where } = draft;
+  const setFormula = (next: FormulaToken[]) =>
+    onChange({ ...draft, formula: next });
+  const setWhere = (next: WhereToken[]) => onChange({ ...draft, where: next });
+
+  const [filterHost, setFilterHost] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const formulaInput = useRef<HTMLInputElement>(null);
+  const whereInput = useRef<HTMLInputElement>(null);
+
+  const problem = findProblem(formula, measureName);
+  const hasProblem = (key: string) => problem?.keys.includes(key) ?? false;
+
+  const isEditing = (key: string, part: string) =>
+    editing?.key === key && editing.part === part;
+
+  /** Done with a pill part: Enter, Tab, Escape or Backspace. */
+  const finish = (input = formulaInput) => {
+    setEditing(null);
+    input.current?.focus();
+  };
+
+  /** Left a pill part by clicking elsewhere: keep focus where it went. */
+  const cancel = (isEscape: boolean, input = formulaInput) =>
+    isEscape ? finish(input) : setEditing(null);
+
+  const updateTerm = (key: string, filters: (current: string[]) => string[]) =>
+    setFormula(
+      formula.map((token) =>
+        token.key === key && token.kind === "term"
+          ? { ...token, filters: filters(token.filters) }
+          : token,
+      ),
+    );
+
+  const replaceToken = (key: string, token: FormulaToken) =>
+    setFormula(formula.map((t) => (t.key === key ? token : t)));
+
+  const removeToken = (key: string) =>
+    setFormula(formula.filter((t) => t.key !== key));
+
+  const getFormulaItems = (query: string, caret: number): BarItem[] => {
+    const host = formula.find((token) => token.key === filterHost);
+    if (host?.kind === "term") {
+      return search(filtersForTerm(host.measureId), query, host.filters);
+    }
+    const before = formula[caret - 1];
+    const afterOperand = endsOperand(before);
+    const depth = formula
+      .slice(0, caret)
+      .reduce(
+        (acc, token) =>
+          token.kind === "paren" ? acc + (token.side === "(" ? 1 : -1) : acc,
+        0,
+      );
+    const isAllowed = (key: string) => {
+      if (key === "(") {
+        return true;
+      }
+      if (key === ")") {
+        return depth > 0 && afterOperand;
+      }
+      return afterOperand || before?.kind === "op";
+    };
+    const logic = LOGIC_OPTIONS.map(
+      ({ key, label, description }): BarItem => ({
+        id: `logic:${key}`,
+        label,
+        description,
+        aliases: [key],
+        section: "Logic",
+        sectionIcon: "function",
+        disabled: !isAllowed(key),
+      }),
+    );
+    return [...search(measureItems, query), ...search(logic, query)];
+  };
+
+  const handleFormulaChar = (char: string, caret: number): number | null => {
+    const op = KEY_TO_OP[char];
+    if (op != null) {
+      const result = insertOp(formula, caret, op);
+      setFormula(result.tokens);
+      return result.caret;
+    }
+    if (char === "(") {
+      const result = insertOperand(formula, caret, {
+        key: newKey(),
+        kind: "paren",
+        side: "(",
+      });
+      setFormula(result.tokens);
+      return result.caret;
+    }
+    if (char === ")") {
+      setFormula(
+        formula.toSpliced(caret, 0, {
+          key: newKey(),
+          kind: "paren",
+          side: ")",
+        }),
+      );
+      return caret + 1;
+    }
+    if (char === "|") {
+      const before = formula[caret - 1];
+      if (before?.kind === "term") {
+        setFilterHost(before.key);
+      }
+      return caret;
+    }
+    return null;
+  };
+
+  const pickFormulaItem = (item: BarItem, caret: number): number => {
+    if (item.id.startsWith("logic:")) {
+      return handleFormulaChar(item.id.slice("logic:".length), caret) ?? caret;
+    }
+    const host = formula.find((token) => token.key === filterHost);
+    if (host != null) {
+      updateTerm(host.key, (filters) => [...filters, item.id]);
+      setFilterHost(null);
+      return caret;
+    }
+    const result = insertOperand(formula, caret, {
+      key: newKey(),
+      kind: "term",
+      measureId: item.id,
+      filters: [],
+    });
+    setFormula(result.tokens);
+    return result.caret;
+  };
+
+  const renderFormulaToken = (
+    token: FormulaToken,
+    { isSelected, isHost }: { isSelected: boolean; isHost: boolean },
+  ) => {
+    const isError = hasProblem(token.key);
+
+    if (token.kind === "paren") {
+      return (
+        <button
+          className={cx(S.connector, S.connectorRemovable, {
+            [S.selected]: isSelected,
+            [S.error]: isError,
+          })}
+          aria-label="Remove"
+          onClick={() => removeToken(token.key)}
+        >
+          <span className={S.connectorLabel}>{token.side}</span>
+          <span className={S.connectorIcon}>
+            <Icon name="close" size={12} />
+          </span>
+        </button>
+      );
+    }
+
+    if (token.kind === "op") {
+      if (isEditing(token.key, "op")) {
+        return (
+          <span className={cx(S.connector, S.connectorEditing)}>
+            <InlineSuggest
+              placeholder={token.op}
+              getItems={(query) => search(OP_OPTIONS, query)}
+              onPick={(item) => {
+                replaceToken(token.key, { ...token, op: toOp(item.id) });
+                finish();
+              }}
+              onCancel={(isEscape) => cancel(isEscape)}
+              onBackspaceEmpty={() => {
+                removeToken(token.key);
+                finish();
+              }}
+            />
+          </span>
+        );
+      }
+      return (
+        <button
+          className={cx(S.connector, {
+            [S.selected]: isSelected,
+            [S.error]: isError,
+          })}
+          onClick={() => setEditing({ key: token.key, part: "op" })}
+        >
+          {token.op}
+        </button>
+      );
+    }
+
+    const name = measureName(token.measureId);
+    return (
+      <span
+        className={cx(S.pill, {
+          [S.selected]: isSelected,
+          [S.pillHost]: isHost,
+          [S.error]: isError,
+        })}
+      >
+        {isEditing(token.key, "measure") ? (
+          <span className={cx(S.seg, S.segEditing)}>
+            <InlineSuggest
+              placeholder={name}
+              getItems={(query) => search(measureItems, query)}
+              onPick={(item) => {
+                replaceToken(token.key, { ...token, measureId: item.id });
+                finish();
+              }}
+              onCancel={(isEscape) => cancel(isEscape)}
+            />
+          </span>
+        ) : (
+          <button
+            className={cx(S.seg, S.segMeasure)}
+            onClick={() => setEditing({ key: token.key, part: "measure" })}
+          >
+            {name}
+          </button>
+        )}
+        {token.filters.map((filter) =>
+          isEditing(token.key, `filter:${filter}`) ? (
+            <span key={filter} className={cx(S.seg, S.segEditing)}>
+              <span className={S.pipe}>|</span>
+              <InlineSuggest
+                placeholder={filter}
+                getItems={(query) =>
+                  search(filtersForTerm(token.measureId), query, token.filters)
+                }
+                onPick={(item) => {
+                  updateTerm(token.key, (filters) =>
+                    filters.map((f) => (f === filter ? item.id : f)),
+                  );
+                  finish();
+                }}
+                onCancel={(isEscape) => cancel(isEscape)}
+                onBackspaceEmpty={() => {
+                  updateTerm(token.key, (filters) =>
+                    filters.filter((f) => f !== filter),
+                  );
+                  finish();
+                }}
+              />
+            </span>
+          ) : (
+            <button
+              key={filter}
+              className={cx(S.seg, S.segFilter)}
+              onClick={() =>
+                setEditing({ key: token.key, part: `filter:${filter}` })
+              }
+            >
+              <span className={S.pipe}>|</span>
+              {filter}
+            </button>
+          ),
+        )}
+      </span>
+    );
+  };
+
+  const renderWhereToken = (
+    token: WhereToken,
+    { isSelected }: { isSelected: boolean },
+  ) => (
+    <span className={cx(S.pill, { [S.selected]: isSelected })}>
+      {isEditing(token.key, "where") ? (
+        <span className={cx(S.seg, S.segEditing)}>
+          <InlineSuggest
+            placeholder={token.filter}
+            getItems={(query) =>
+              search(
+                filterItems,
+                query,
+                where.map((w) => w.filter),
+              )
+            }
+            onPick={(item) => {
+              setWhere(
+                where.map((w) =>
+                  w.key === token.key ? { ...w, filter: item.id } : w,
+                ),
+              );
+              finish(whereInput);
+            }}
+            onCancel={(isEscape) => cancel(isEscape, whereInput)}
+            onBackspaceEmpty={() => {
+              setWhere(where.filter((w) => w.key !== token.key));
+              finish(whereInput);
+            }}
+          />
+        </span>
+      ) : (
+        <button
+          className={S.seg}
+          onClick={() => setEditing({ key: token.key, part: "where" })}
+        >
+          {token.filter}
+        </button>
+      )}
+    </span>
+  );
+
+  const formulaBar = (
+    <TokenBar
+      tokens={formula}
+      inputRef={formulaInput}
+      placeholder={
+        layout === "explorer"
+          ? "Type a measure or metric, like Revenue − Cost"
+          : "Type a measure, like Revenue"
+      }
+      hasError={problem != null}
+      renderToken={renderFormulaToken}
+      getItems={getFormulaItems}
+      onPick={pickFormulaItem}
+      onKeyChar={handleFormulaChar}
+      onDelete={(index) => {
+        setFormula(formula.toSpliced(index, 1));
+        return index;
+      }}
+      onOpenToken={(index) => {
+        const token = formula[index];
+        if (token.kind === "paren") {
+          removeToken(token.key);
+        } else {
+          setEditing({
+            key: token.key,
+            part: token.kind === "term" ? "measure" : "op",
+          });
+        }
+      }}
+      inputHostKey={filterHost}
+      hostPrefix={<span className={S.pipe}>|</span>}
+      onExitHost={() => setFilterHost(null)}
+    />
+  );
+
+  const whereBar = (
+    <TokenBar
+      tokens={where}
+      inputRef={whereInput}
+      placeholder={
+        layout === "explorer"
+          ? "Filter the whole metric"
+          : "Add a filter or segment"
+      }
+      renderToken={renderWhereToken}
+      getItems={(query) =>
+        search(
+          filterItems,
+          query,
+          where.map((w) => w.filter),
+        )
+      }
+      onPick={(item, caret) => {
+        setWhere(where.toSpliced(caret, 0, { key: newKey(), filter: item.id }));
+        return caret + 1;
+      }}
+      onDelete={(index) => {
+        setWhere(where.toSpliced(index, 1));
+        return index;
+      }}
+      onOpenToken={(index) =>
+        setEditing({ key: where[index].key, part: "where" })
+      }
+    />
+  );
+
+  const problemText = problem && (
+    <Text size="sm" c="feedback-negative">
+      {problem.message}
+    </Text>
+  );
+
+  if (layout === "explorer") {
+    return (
+      <Stack gap="xs">
+        {formulaBar}
+        <Group gap="sm" wrap="nowrap" align="center">
+          <Text size="sm" fw={700} c="text-secondary" w={48}>
+            Where
+          </Text>
+          <Box flex={1} miw={0}>
+            {whereBar}
+          </Box>
+        </Group>
+        {problemText}
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack gap="lg">
+      <Stack gap="sm">
+        <Text fw={700}>Definition</Text>
+        {formulaBar}
+        {problemText}
+      </Stack>
+
+      <Stack gap="sm">
+        <Text fw={700}>Filter the whole metric</Text>
+        {whereBar}
+      </Stack>
+    </Stack>
+  );
+}

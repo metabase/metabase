@@ -1,0 +1,34 @@
+/* Low-fidelity look: monospace everywhere, including SVG text. */
+.lofi,
+.lofi * {
+  font-family: var(--mb-default-monospace-font-family), monospace !important;
+}
+
+.box {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 6px;
+  background: var(--mb-color-background-primary);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 4px;
+  background: var(--mb-color-background-secondary);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.chip:hover,
+.chipActive {
+  border-color: var(--mb-color-brand);
+}
+
+.dashed {
+  border-style: dashed;
+  background: transparent;
+  color: var(--mb-color-text-secondary);
+}
