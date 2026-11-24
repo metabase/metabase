@@ -380,7 +380,9 @@ describe("NewTransformPage", () => {
         screen.getByRole("option", { name: "Writable Postgres12" }),
       ).toHaveAttribute("aria-disabled", "false");
 
-      await userEvent.click(sampleDatabase);
+      await userEvent.click(
+        within(sampleDatabase).getByText("Sample Database"),
+      );
       expect(
         screen.getByRole("option", { name: "Sample Database" }),
       ).toBeInTheDocument();
