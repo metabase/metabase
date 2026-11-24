@@ -902,12 +902,12 @@
                                            (let [cache (assoc (transforms.u/prefetch-source-models transforms)
                                                               :source-query-permissions (per-query-permissions transforms))]
                                              {:source_readable (mapv #(transforms.u/source-tables-readable? (transforms.u/->definition %)) transforms)
-                                              :permissions     (mapv #(select-keys % [:can_read :can_write :can_execute])
-                                                                     (transform/assoc-permissions transforms cache [:can_read :can_write :can_execute]))}))
+                                              :permissions     (mapv #(select-keys % [:can_read :can_write])
+                                                                     (transform/assoc-permissions transforms cache [:can_read :can_write]))}))
                                 actual   (fn [transforms]
                                            {:source_readable (mapv :source_readable (transforms.u/add-source-readable transforms))
-                                            :permissions     (mapv #(select-keys % [:can_read :can_write :can_execute])
-                                                                   (t2/hydrate transforms :can_read :can_write :can_execute))})]
+                                            :permissions     (mapv #(select-keys % [:can_read :can_write])
+                                                                   (t2/hydrate transforms :can_read :can_write))})]
                             (doseq [[label user-id] [["a superuser" (mt/user->id :crowberto)]
                                                      ["an analyst with native access to the first database" (:id native-user)]
                                                      ["an analyst with query builder access to the first database" (:id builder-user)]

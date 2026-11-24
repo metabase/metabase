@@ -2760,6 +2760,7 @@
            models
            premium-features
            queries
+           query-permissions
            remote-sync
            replacement
            revisions

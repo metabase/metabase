@@ -706,6 +706,36 @@
     (can-run-query* query {:resolved-source-ids resolved-source-ids
                            :throw-exceptions?   false})))
 
+(mu/defn native-query-database-ids :- [:set ::lib.schema.id/database]
+  "The set of those of `db-ids` against which the current user may run a native query of no Cards, as
+  [[check-data-perms-with]] answers it, read with one statement per permission type and none per Database."
+  [db-ids :- [:sequential ::lib.schema.id/database]]
+  (let [db-ids         (vec (distinct db-ids))
+        user-info      (perms/user-info api/*current-user-id*)
+        required-perms (native-perms nil)
+        allowed-ids    (fn [ids perm-type]
+                         (let [values (perms/every-table-in-database-permissions-for-user user-info perm-type ids)]
+                           (filterv #(perms/at-least-as-permissive? perm-type (get values %) (get required-perms perm-type))
+                                    ids)))
+        permitted      (reduce (fn [ids perm-type] (cond-> ids (seq ids) (allowed-ids perm-type)))
+                               db-ids
+                               query-perm-types)]
+    (into #{} (remove perms/sandboxed-user-for-db?) permitted)))
+
+(defn assoc-can-query
+  "Each of `instances`, nil ones left nil, with under `k` whether the current user reads it, as its `:can_read`
+  hydration answers for all of them at once, and may run the query its `query-key` holds, one [[can-run-query?]] per
+  readable instance with the metadata providers shared."
+  [instances k query-key]
+  (run! #(when % (api/check-500 (contains? % query-key) (format "No %s is set for a %s." query-key (t2/model %))))
+        instances)
+  (lib-be/with-metadata-provider-cache
+    (mapv (fn [instance]
+            (when instance
+              (assoc instance k (boolean (and (mi/can-read? instance)
+                                              (can-run-query? (get instance query-key)))))))
+          (t2/hydrate instances :can_read))))
+
 (mu/defn can-query-table?
   "Does the current user have permissions to run an ad-hoc query against the Table with `table-id`?"
   [database-id :- ::lib.schema.id/database

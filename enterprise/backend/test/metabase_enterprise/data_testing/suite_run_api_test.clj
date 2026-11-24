@@ -4,9 +4,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
-   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -299,15 +299,12 @@
               (is (=? [200 (outcome "inside the run") (outcome "inside the run")]
                       (run-and-stored))))))
         (testing "an exception in a member's permission check is that member's error"
-          (let [spec data-testing.test-type/spec]
-            (with-redefs [data-testing.test-type/spec (fn [test-type]
-                                                        (cond-> (spec test-type)
-                                                          (= :card test-type)
-                                                          (update :can-run? (fn [can-run?]
-                                                                              (fn [saved-test]
-                                                                                (if (= id-1 (:id saved-test))
-                                                                                  (throw (ex-info "in the permission check" {}))
-                                                                                  (can-run? saved-test)))))))]
+          (let [answers (mt/original-fn #'data-testing.models/assoc-subject-answers)]
+            (mt/with-dynamic-fn-redefs [data-testing.models/assoc-subject-answers
+                                        (fn [tests & more]
+                                          (if (some #(= id-1 (:id %)) tests)
+                                            (throw (ex-info "in the permission check" {}))
+                                            (apply answers tests more)))]
               (let [[status response stored] (run-and-stored)]
                 (is (=? [200 (outcome "in the permission check")] [status response]))
                 (testing "and the history, whose own check of that member throws too, withholds the error"

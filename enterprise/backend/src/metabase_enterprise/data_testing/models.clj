@@ -14,7 +14,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -94,23 +93,44 @@
   "Whether the current user may run native SQL against the Database with `db-id`, as the input and expectation SQL of a
   test does."
   [db-id]
-  (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))
+  (contains? (query-perms/native-query-database-ids [db-id]) db-id))
+
+(defn query-database-id
+  "The id of the Database of `query`, a card's or a segment's query, or nil when it has none."
+  [query]
+  (some-> (not-empty query) lib/database-id))
 
 (defn query-subject-allows?
-  "Whether `subject-check` holds for `subject`, a card or a segment, hydrated with `k`, and the current user may run
-  `query`, the subject's query, and write the native SQL of a test against the Database of `query`, as `native?`, by
-  default [[can-run-native-query?]], answers for a Database id, and false when `subject` is nil."
-  ([subject-check k subject query]
-   (query-subject-allows? subject-check k subject query can-run-native-query?))
-  ([subject-check k subject query native?]
-   (boolean
-    (when subject
-      (and (subject-check (t2/hydrate subject k))
-           ;; A run compiles the query with the cards, snippets and segments it includes, and a run's errors can quote
-           ;; their SQL, so the user must be allowed to run the query, not only to read the subject.
-           (query-perms/can-run-query? query)
-           (or (mi/superuser?)
-               (some-> (not-empty query) lib/database-id native?)))))))
+  "Whether `subject-check` holds for `subject`, a card or a segment, hydrated with `k`, the current user may run the
+  subject's query, as its `:can_query` says, and write the native SQL of a test against the Database of `query`, the
+  subject's query, and false when `subject` is nil."
+  [subject-check k subject query]
+  (boolean
+   (when subject
+     (let [subject (t2/hydrate subject k :can_query)]
+       (and (subject-check subject)
+            (mi/can-query? subject)
+            (or (mi/superuser?)
+                (some-> (query-database-id query) can-run-native-query?)))))))
+
+(defn assoc-subject-answers
+  "Each of the saved `tests`, nil ones left nil, with under `k` whether the subject its `subject-key` names among
+  `subjects` exists, passes `subject-check` once all are hydrated with `subject-ks`, and has a Database, which `db-id`
+  gives, that the current user, unless a superuser, may run native SQL against, asked once for all of them."
+  [tests k {:keys [subject-key subjects subject-ks subject-check db-id]}]
+  (let [id->subject (u/index-by :id (apply t2/hydrate subjects subject-ks))
+        superuser?  (mi/superuser?)
+        native?     (if superuser?
+                      #{}
+                      (query-perms/native-query-database-ids
+                       (into [] (comp (keep db-id) (distinct)) (vals id->subject))))]
+    (for [saved-test tests]
+      (when saved-test
+        (assoc saved-test k (boolean
+                             (when-let [subject (get id->subject (subject-key saved-test))]
+                               (and (subject-check subject)
+                                    (or superuser?
+                                        (some-> (db-id subject) native?))))))))))
 
 (defn- can-save-for-transform?
   "Whether the current user may save or delete a test of `transform`: they may edit it, as `transform-writable?` says,
@@ -127,17 +147,6 @@
   [transform-id :- ::lib.schema.id/transform]
   (let [transform (data-testing.db/transform transform-id)]
     (can-save-for-transform? transform (some-> transform (t2/hydrate :can_write) mi/can-write?) can-run-native-query?)))
-
-(mu/defn can-run-test? :- :boolean
-  "Whether the current user may run a test of the Transform `transform-id`: they may read it, and run the native SQL of
-  a test against its source Database."
-  [transform-id :- ::lib.schema.id/transform]
-  (let [transform (data-testing.db/transform transform-id)]
-    (boolean
-     (and transform
-          (mi/can-read? (t2/hydrate transform :can_read))
-          (or (mi/superuser?)
-              (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
 
 (defn with-readable-subjects
   "Add to each of the saved `tests` whether the current user can read its subject, as `:can_read` in its metadata, the
@@ -156,15 +165,16 @@
     (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
-  "Add whether the current user can write each transform test, loading their transforms at once and checking each
-  source Database once."
+  "Add whether the current user can write each transform test, loading their transforms at once and asking about
+  their source Databases together."
   [_model k transform-tests]
   (mi/instances-with-hydrated-data
    transform-tests k
    #(let [transforms (u/index-by :id (t2/hydrate (data-testing.db/transforms
                                                   (into [] (comp (keep :transform_id) (distinct)) transform-tests))
                                                  :can_write))
-          native?    (memoize can-run-native-query?)]
+          native?    (query-perms/native-query-database-ids
+                      (into [] (comp (keep transforms-base.i/source-db-id) (distinct)) (vals transforms)))]
       (into {}
             (map (fn [{:keys [id transform_id]}]
                    [id (and (not (remote-sync/read-only?))
@@ -173,6 +183,18 @@
             (remove nil? transform-tests)))
    :id
    {:default false}))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_query]
+  "Add whether the current user may run each transform test: they may run its transform, as its `:can_query` says,
+  and, unless a superuser, native SQL against its source Database, loading the transforms at once."
+  [_model k transform-tests]
+  (assoc-subject-answers transform-tests k
+                         {:subject-key   :transform_id
+                          :subjects      (data-testing.db/transforms
+                                          (into [] (comp (keep :transform_id) (distinct)) transform-tests))
+                          :subject-ks    [:can_query]
+                          :subject-check mi/can-query?
+                          :db-id         transforms-base.i/source-db-id}))
 
 (defmethod mi/can-create? :model/TransformTest
   [_model instance]
@@ -275,8 +297,7 @@
   {:model      :model/TransformTest
    :run-topics {:start   :event/transform-test-run-start
                 :timeout :event/transform-test-run-timeout}
-   :subject    #(data-testing.db/transform (:transform_id %))
-   :can-run?   #(can-run-test? (:transform_id %))})
+   :subject    #(data-testing.db/transform (:transform_id %))})
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 

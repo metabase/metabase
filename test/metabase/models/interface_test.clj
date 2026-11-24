@@ -239,17 +239,17 @@
 
 (deftest can-query?-default-falls-back-to-can-read?-test
   (testing "Default implementation falls back to can-read?"
-    ;; Use Card model which uses the default can-query? implementation
-    (mt/with-temp [:model/Card card {}]
+    ;; Use Dashboard model which uses the default can-query? implementation
+    (mt/with-temp [:model/Dashboard dashboard {}]
       (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
-        (is (true? (mi/can-query? (t2/hydrate card :can_query)))))
+        (is (true? (mi/can-query? (t2/hydrate dashboard :can_query)))))
       (mt/with-dynamic-fn-redefs [mi/can-read? (constantly false)]
-        (is (false? (mi/can-query? (t2/hydrate card :can_query))))))))
+        (is (false? (mi/can-query? (t2/hydrate dashboard :can_query))))))))
 
 (deftest can-query-hydration-returns-boolean-test
   (testing ":can_query hydration returns a boolean value"
-    (mt/with-temp [:model/Card card {}]
-      (let [hydrated (t2/hydrate card :can_query)]
+    (mt/with-temp [:model/Dashboard dashboard {}]
+      (let [hydrated (t2/hydrate dashboard :can_query)]
         (is (contains? hydrated :can_query))
         (is (boolean? (:can_query hydrated)))))))
 

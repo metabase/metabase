@@ -3,14 +3,26 @@
   DataTestRun heartbeat and terminal-state lifecycle."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
+   [metabase-enterprise.sandbox.test-util :as met]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.test-util :as perms.tu]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.test :as mt]
+   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms.models.transform :as transform]
    [toucan2.core :as t2])
   (:import
@@ -430,3 +442,262 @@
                 [create-6 update-6 delete-6 by-subject-6] (measured 6)]
             (is (= [create-2 delete-2 by-subject-2] [create-6 delete-6 by-subject-6]))
             (is (= update-2 update-6))))))))
+
+;;; ------------------------------------------ Native query Databases ------------------------------------------
+
+(defn- per-query-answer
+  "What the run permission check of a native query on the Database `db-id` answers, or `:throws`."
+  [db-id]
+  (try
+    (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1"))
+    (catch Throwable _
+      :throws)))
+
+(defn- native-answers
+  "The answers of the per-query check, the per-Database check and the bulk check for each of `db-ids`."
+  [db-ids]
+  (let [bulk (query-perms/native-query-database-ids db-ids)]
+    {:per-query    (into {} (map (juxt identity per-query-answer)) db-ids)
+     :per-database (into {} (map (juxt identity data-testing.models/can-run-native-query?)) db-ids)
+     :bulk         (into {} (map (juxt identity #(contains? bulk %))) db-ids)}))
+
+(defn- check-native-answers
+  "Assert that the three checks agree for `user` on `db-ids` and that the Databases allowed are `expected`."
+  [user db-ids expected]
+  (mt/with-current-user (mt/user->id user)
+    (let [{:keys [per-query per-database bulk]} (native-answers db-ids)]
+      (is (= per-query bulk))
+      (is (= per-database bulk))
+      (is (= expected (into #{} (comp (filter val) (map key)) bulk))))))
+
+(defn- grant-native!
+  "Give `group` native queries on the Database `db-id`."
+  [group db-id]
+  (perms/set-database-permission! group db-id :perms/view-data :unrestricted)
+  (perms/set-database-permission! group db-id :perms/create-queries :query-builder-and-native))
+
+(deftest native-query-database-ids-matches-per-query-check-test
+  (mt/with-premium-features #{:advanced-permissions :sandboxes}
+    (mt/with-temp [:model/Database {db-b :id} {:engine :h2 :details (:details (mt/db))}]
+      (perms.tu/with-no-data-perms-for-all-users!
+        (let [db-a (mt/id)]
+          (grant-native! (perms-group/all-users) db-a)
+          (perms/set-database-permission! (perms-group/all-users) db-b :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms-group/all-users) db-b :perms/create-queries :query-builder)
+          (testing "superuser"
+            (check-native-answers :crowberto [db-a db-b] #{db-a db-b}))
+          (testing "native queries on one Database and query builder on another, asked in one call"
+            (check-native-answers :rasta [db-a db-b] #{db-a}))
+          (testing "query builder only"
+            (check-native-answers :rasta [db-b] #{}))
+          (testing "native queries with one blocked Table"
+            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+            (check-native-answers :rasta [db-a db-b] #{}))
+          (testing "Database that does not exist"
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (= :throws (per-query-answer Integer/MAX_VALUE)))
+              (is (= #{} (query-perms/native-query-database-ids [Integer/MAX_VALUE])))
+              (is (false? (data-testing.models/can-run-native-query? Integer/MAX_VALUE))))))))))
+
+(deftest native-query-database-ids-sandboxed-user-test
+  (met/with-gtaps! {:gtaps {:venues {}}}
+    (mt/with-temp [:model/Database {db-b :id} {:engine :h2 :details (:details (mt/db))}]
+      (grant-native! &group (mt/id))
+      (grant-native! &group db-b)
+      (testing "enforced sandbox on one Database"
+        (check-native-answers :rasta [(mt/id) db-b] #{db-b}))
+      (testing "sandbox lifted by another group with full access to its Table"
+        (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                       :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+          (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+          (check-native-answers :rasta [(mt/id) db-b] #{(mt/id) db-b}))))))
+
+(deftest native-query-database-ids-impersonated-user-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "KEY"}]
+                                                   :attributes     {"KEY" "VAL"}}
+      (check-native-answers :rasta [(mt/id)] #{(mt/id)}))))
+
+(deftest native-query-database-ids-router-and-destination-test
+  (mt/with-premium-features #{:database-routing}
+    (mt/with-temp [:model/Database       {router :id}      {:engine :h2 :details (:details (mt/db))}
+                   :model/DatabaseRouter _                 {:database_id router :user_attribute "db_name"}
+                   :model/Database       {destination :id} {:engine             :h2
+                                                            :name               "native-destination"
+                                                            :details            (:details (mt/db))
+                                                            :router_database_id router}]
+      (perms.tu/with-no-data-perms-for-all-users!
+        (grant-native! (perms-group/all-users) router)
+        (met/with-user-attributes! :rasta {"db_name" "native-destination"}
+          (check-native-answers :rasta [router destination] #{router})
+          (check-native-answers :crowberto [router destination] #{router destination}))))))
+
+(deftest native-query-database-ids-statements-do-not-grow-with-databases-test
+  (met/with-gtaps! {:gtaps {:venues {}}}
+    (mt/with-temp [:model/Database {d1 :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Database {d2 :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Database {d3 :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Database {d4 :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Database {d5 :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Database {d6 :id} {:engine :h2 :details (:details (mt/db))}]
+      (let [db-ids [(mt/id) d1 d2 d3 d4 d5 d6]]
+        (doseq [db-id db-ids]
+          (grant-native! &group db-id))
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [measure (fn [n]
+                          (t2/with-call-count [call-count]
+                            (let [allowed (query-perms/native-query-database-ids (vec (take n db-ids)))]
+                              {:statements (call-count)
+                               :allowed    allowed})))]
+            (measure 1)
+            (is (= (:statements (measure 2)) (:statements (measure 6))))
+            (is (= (set (rest (take 6 db-ids))) (:allowed (measure 6))))))))))
+
+(defn- native-transform
+  "Attributes of a transform whose source is a native query on the Database `db-id`, writing table number `i`."
+  [db-id i]
+  {:source {:type  :query
+            :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1 AS ID")}
+   :target {:type     "table"
+            :schema   "PUBLIC"
+            :name     (str "NATIVE_DB_TARGET_" i)
+            :database db-id}})
+
+(defn- native-card
+  "Attributes of a card in the collection `collection-id` whose query is native SQL on the Database `db-id`."
+  [collection-id db-id]
+  {:collection_id collection-id
+   :dataset_query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")})
+
+(deftest transform-test-can-write-statements-do-not-grow-with-databases-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Database {d1 :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Database {d2 :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Database {d3 :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Database {d4 :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Database {d5 :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Database {d6 :id} {:engine :h2 :details (:details (mt/db))}]
+      (perms.tu/with-no-data-perms-for-all-users!
+        (let [db-ids [d1 d2 d3 d4 d5 d6]]
+          (doseq [db-id db-ids]
+            (grant-native! (perms-group/all-users) db-id)
+            (perms/set-database-permission! (perms-group/all-users) db-id :perms/transforms :yes))
+          (perms/set-database-permission! (perms-group/all-users) d6 :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Transform {tr1 :id} (native-transform d1 1)
+                         :model/Transform {tr2 :id} (native-transform d2 2)
+                         :model/Transform {tr3 :id} (native-transform d3 3)
+                         :model/Transform {tr4 :id} (native-transform d4 4)
+                         :model/Transform {tr5 :id} (native-transform d5 5)
+                         :model/Transform {tr6 :id} (native-transform d6 6)]
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (mt/with-current-user (mt/user->id :lucky)
+                (let [tests   (mapv (fn [i transform-id] (t2/instance :model/TransformTest {:id i :transform_id transform-id}))
+                                    (range 6) [tr1 tr2 tr3 tr4 tr5 tr6])
+                      hydrate (fn [k n]
+                                (t2/with-call-count [call-count]
+                                  (let [hydrated (doall (t2/hydrate (vec (take n tests)) k))]
+                                    {:statements (call-count)
+                                     :values     (mapv k hydrated)})))]
+                  (testing "the statements of the hydration on transforms of distinct Databases, beyond loading the transforms and their own check"
+                    (let [own        (fn [subject-k n]
+                                       (t2/with-call-count [call-count]
+                                         (doall (t2/hydrate (data-testing.db/transforms (vec (take n [tr1 tr2 tr3 tr4 tr5 tr6])))
+                                                            subject-k))
+                                         (call-count)))
+                          beyond-own (fn [k subject-k n]
+                                       (own subject-k n)
+                                       (- (:statements (hydrate k n)) (own subject-k n)))]
+                      (doseq [[k subject-k] [[:can_write :can_write] [:can_query :can_query]]]
+                        (beyond-own k subject-k 1)
+                        (is (= (beyond-own k subject-k 2) (beyond-own k subject-k 6))))))
+                  (testing "each test gets the answer the per-test check gave"
+                    (is (= [true true true true true false] (:values (hydrate :can_write 6))))
+                    (is (= [true true true true true false] (:values (hydrate :can_query 6))))
+                    (is (= (mapv #(#'data-testing.models/can-save? (:transform_id %)) tests)
+                           (:values (hydrate :can_write 6))))))))))))))
+
+(defn- per-query-native?
+  "Whether the per-query run check allows a native query on the Database `db-id`."
+  [db-id]
+  (true? (per-query-answer db-id)))
+
+(defn- single-row-can-run-transform-test?
+  "The single-row run check of a transform test that its `:can_query` hydration replaces."
+  [{:keys [transform_id]}]
+  (let [transform (t2/select-one :model/Transform :id transform_id)]
+    (boolean
+     (and transform
+          (mi/can-read? (t2/hydrate transform :can_read))
+          (or (mi/superuser?)
+              (some-> (transforms-base.i/source-db-id transform) per-query-native?))))))
+
+(defn- single-row-subject-allows?
+  "The single-row run check of a card or segment test, given its `subject` and the subject's `query`."
+  [subject query]
+  (boolean
+   (when subject
+     (and (mi/can-read? (t2/hydrate subject :can_read))
+          (query-perms/can-run-query? query)
+          (or (mi/superuser?)
+              (some-> (data-testing.models/query-database-id query) per-query-native?))))))
+
+(defn- single-row-can-run-card-test?
+  [{:keys [card_id]}]
+  (let [card (t2/select-one :model/Card :id card_id)]
+    (single-row-subject-allows? card (:dataset_query card))))
+
+(defn- single-row-can-run-segment-test?
+  [{:keys [segment_id]}]
+  (let [segment (t2/select-one :model/Segment :id segment_id)]
+    (single-row-subject-allows? segment (:definition segment))))
+
+(defn- check-can-query
+  "Assert that the `:can_query` of `tests`, hydrated together, is what `single-row` answers for each, and is `expected`."
+  [tests single-row expected]
+  (let [hydrated (mapv mi/can-query? (t2/hydrate tests :can_query))]
+    (is (= (mapv single-row tests) hydrated))
+    (is (= expected hydrated))))
+
+(deftest can-query-matches-single-row-run-check-test
+  (met/with-gtaps-for-user! :lucky {:gtaps {:venues {}}}
+    (data-testing.test-util/with-transforms-enabled (conj data-testing.test-util/data-analyst-features :sandboxes)
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Database   {db-b :id}       {:engine :h2 :details (:details (mt/db))}
+                       :model/Database   {db-c :id}       {:engine :h2 :details (:details (mt/db))}
+                       :model/Collection {readable :id}   {}
+                       :model/Collection {unreadable :id} {}]
+          (let [db-a (mt/id)]
+            (grant-native! &group db-b)
+            (perms/set-database-permission! &group db-c :perms/view-data :unrestricted)
+            (perms/set-database-permission! &group db-c :perms/create-queries :query-builder)
+            (perms/set-database-permission! (perms-group/all-users) db-c :perms/create-queries :query-builder)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
+            (mt/with-temp [:model/Transform {tr-a :id}      (native-transform db-a 1)
+                           :model/Transform {tr-b :id}      (native-transform db-b 2)
+                           :model/Transform {tr-c :id}      (native-transform db-c 3)
+                           :model/Card      {card-a :id}    (native-card readable db-a)
+                           :model/Card      {card-b :id}    (native-card readable db-b)
+                           :model/Card      {card-c :id}    (native-card readable db-c)
+                           :model/Card      {hidden-b :id}  (native-card unreadable db-b)
+                           :model/Segment   {segment-a :id} (data-testing.test-util/from-google-segment)]
+              (let [transform-tests (mapv #(t2/instance :model/TransformTest {:id %1 :transform_id %2})
+                                          (range) [tr-a tr-b tr-c Integer/MAX_VALUE])
+                    card-tests      (mapv #(t2/instance :model/CardTest {:id %1 :card_id %2})
+                                          (range) [card-a card-b card-c hidden-b Integer/MAX_VALUE])
+                    segment-tests   (mapv #(t2/instance :model/SegmentTest {:id %1 :segment_id %2})
+                                          (range) [segment-a Integer/MAX_VALUE])]
+                (testing "data analyst: sandboxed Database, native, query builder only, deleted subject"
+                  (mt/with-data-analyst-role! (mt/user->id :lucky)
+                    (mt/with-current-user (mt/user->id :lucky)
+                      (check-can-query transform-tests single-row-can-run-transform-test? [false true false false])
+                      (check-can-query card-tests single-row-can-run-card-test? [false true false false false])
+                      (check-can-query segment-tests single-row-can-run-segment-test? [false false]))))
+                (testing "user who reads no transform, with native queries on one Database"
+                  (mt/with-current-user (mt/user->id :lucky)
+                    (check-can-query transform-tests single-row-can-run-transform-test? [false false false false])
+                    (check-can-query card-tests single-row-can-run-card-test? [false true false false false])))
+                (testing "superuser"
+                  (mt/with-current-user (mt/user->id :crowberto)
+                    (check-can-query transform-tests single-row-can-run-transform-test? [true true true false])
+                    (check-can-query card-tests single-row-can-run-card-test? [true true true true false])
+                    (check-can-query segment-tests single-row-can-run-segment-test? [true false])))))))))))

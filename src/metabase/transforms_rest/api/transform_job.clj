@@ -28,8 +28,9 @@
   [:merge
    ::transforms.schema/transform-job
    [:map {:closed true}
-    [:tag_ids  {:optional true} [:sequential ms/PositiveInt]]
-    [:last_run {:optional true} [:maybe ::transforms.schema/transform-job-run]]]])
+    [:tag_ids   {:optional true} [:sequential ms/PositiveInt]]
+    [:last_run  {:optional true} [:maybe ::transforms.schema/transform-job-run]]
+    [:can_query {:optional true} :boolean]]])
 
 (mr/def ::job-with-next-run
   [:merge
@@ -71,7 +72,8 @@
    [:built_in_type {:optional true} [:maybe :string]]
    [:tag_ids {:optional true} [:sequential pos-int?]]
    [:last_run {:optional true} [:maybe LastRunResponse]]
-   [:next_run {:optional true} [:maybe NextRunResponse]]])
+   [:next_run {:optional true} [:maybe NextRunResponse]]
+   [:can_query {:optional true} :boolean]])
 
 (def ^:private CreatorResponse
   [:map {:closed true}
@@ -129,7 +131,7 @@
         _        (api/create-check :model/TransformJob (assoc job-data :tag_ids tag_ids))
         job      (first (transform-job/create-transform-jobs! [(cond-> job-data (seq tag_ids) (assoc :tag_ids tag_ids))]))]
     ;; Return with hydrated tag_ids
-    (t2/hydrate job :tag_ids)))
+    (t2/hydrate job :tag_ids :can_query)))
 
 (api.macros/defendpoint :put "/active" :- [:map {:closed true}
                                            [:updated :int]
@@ -192,7 +194,7 @@
         (transform-job/activate-job! job-id)
         (transform-job/deactivate-job! job-id)))
     (-> (transforms-rest.db/job job-id)
-        (t2/hydrate :tag_ids :last_run)
+        (t2/hydrate :tag_ids :last_run :can_query)
         (update :last_run transforms-base.u/present-run))))
 
 (api.macros/defendpoint :delete "/:job-id" :- nil
@@ -216,7 +218,7 @@
    {:keys [run_all]} :- [:map {:closed true}
                          [:run_all {:default false} :boolean]]]
   (log/info "Manual run of transform job" job-id)
-  (api/write-check (transforms-rest.db/job job-id))
+  (api/check-403 (mi/can-query? (t2/hydrate (api/read-check (transforms-rest.db/job job-id)) :can_query)))
   (transforms-rest.api.u/async-run-response
    (deferred-tru "Job run started")
    :job_run_id
@@ -232,7 +234,7 @@
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
   (-> (api/read-check (transforms-rest.db/job job-id))
-      (t2/hydrate :tag_ids :last_run)
+      (t2/hydrate :tag_ids :last_run :can_query)
       (update :last_run transforms-base.u/present-run)))
 
 (mu/defn- add-next-run :- ::job-with-next-run
@@ -273,7 +275,7 @@
                 (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
                 (map #(update % :last_run transforms-base.u/present-run))
                 (map #(update % :next_run transforms-base.u/present-run)))
-          (t2/hydrate jobs :tag_ids :last_run))))
+          (t2/hydrate jobs :tag_ids :last_run :can_query))))
 
 (def ^:private JobRunResponse
   [:map {:closed true}
@@ -327,7 +329,7 @@
   [{:keys [job-id run-id]} :- [:map {:closed true}
                                [:job-id ms/PositiveInt]
                                [:run-id ms/PositiveInt]]]
-  (api/write-check :model/TransformJob job-id)
+  (api/check-403 (mi/can-query? (t2/hydrate (api/read-check :model/TransformJob job-id) :can_query)))
   (api/check-404 (transforms-rest.db/job-run run-id job-id))
   (api/check-400 (transforms.core/cancel-job-run! run-id))
   nil)

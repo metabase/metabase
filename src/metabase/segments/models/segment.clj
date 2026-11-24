@@ -15,6 +15,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
    [metabase.revisions.core :as revisions]
@@ -77,6 +78,12 @@
   together."
   [_model _k segments]
   (collection/hydrate-table-content-can-read segments))
+
+(methodical/defmethod t2/batched-hydrate [:model/Segment :can_query]
+  "Whether the current user may run the definition of each of `segments`: they read it, and the query permission check
+  allows its `definition`."
+  [_model k segments]
+  (query-perms/assoc-can-query segments k :definition))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
   "Whether the current user can write each of `segments`, which they can when they write Segments of its Table."

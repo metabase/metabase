@@ -55,6 +55,7 @@
    [metabase.queries.serialization :as queries.serialization]
    [metabase.queries.staleness :as queries.staleness]
    [metabase.queries.xrays :as queries.xrays]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.card-writes :as qp.card-writes]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
@@ -232,6 +233,12 @@
                                    (and (contains? @summary-readable (:collection_id document))
                                         (every? cached-result/viewer-can-view-cached-result? snapshots))
                                    (mi/can-read? document))))))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :can_query]
+  "Whether the current user may run the query of each of `cards`: they read it, and the query permission check allows
+  its `dataset_query`."
+  [_model k cards]
+  (query-perms/assoc-can-query cards k :dataset_query))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :can_write]
   "Whether the current user writes each of `cards`: its Collection's content, and, for a Card of a Document, the

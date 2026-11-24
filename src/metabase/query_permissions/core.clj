@@ -8,6 +8,7 @@
 
 (p/import-vars
  [metabase.query-permissions.impl
+  assoc-can-query
   can-query-table?
   check-parameter-field-permissions
   can-run-query?
@@ -21,6 +22,7 @@
   check-run-permissions-for-query
   has-perm-for-query?
   merge-resolved-source-ids
+  native-query-database-ids
   perms-exception
   query->resolved-source-ids
   query->source-ids

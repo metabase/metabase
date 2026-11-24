@@ -13,14 +13,12 @@
    [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -63,34 +61,37 @@
   [card-id :- ::lib.schema.id/card]
   (card-allows? mi/can-write? :can_write card-id))
 
-(mu/defn can-run? :- :boolean
-  "Whether the current user may run the saved `card-test`: they may read its card and run the card's query, and write
-  the native SQL of a test against the Database of the card's query."
-  [card-test :- ::data-testing.schema/card-test]
-  ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the card is not enough.
-  (card-allows? mi/can-read? :can_read (:card_id card-test)))
-
 (methodical/defmethod t2/batched-hydrate [:model/CardTest :can_read]
   "Add whether the current user can read the card of each card test, loading the cards at once."
   [_model k card-tests]
   (data-testing.models/with-readable-subjects k card-tests :card_id
     (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) card-tests))))
 
+(defn- assoc-card-answers
+  "Each of `card-tests` with under `k` whether the current user passes `card-check` on its card hydrated with
+  `card-ks` and, unless a superuser, may write native SQL against its Database, loading the cards and hydrating them
+  at once."
+  [card-tests k card-ks card-check]
+  (vec (data-testing.models/assoc-subject-answers
+        card-tests k
+        {:subject-key   :card_id
+         :subjects      (data-testing.db/cards-by-ids
+                         (into [] (comp (remove nil?) (keep :card_id) (distinct)) card-tests))
+         :subject-ks    card-ks
+         :subject-check card-check
+         :db-id         (comp data-testing.models/query-database-id :dataset_query)})))
+
 (methodical/defmethod t2/batched-hydrate [:model/CardTest :can_write]
-  "Add whether the current user may save or delete each card test, loading the cards and answering their
-  `:can_write` at once, and the native SQL question once per Database."
+  "Add whether the current user may save or delete each card test: they may edit its card, run the card's query, and
+  write native SQL against its Database."
   [_model k card-tests]
-  (lib-be/with-metadata-provider-cache
-    (let [cards   (u/index-by :id (t2/hydrate (data-testing.db/cards-by-ids
-                                               (into [] (comp (remove nil?) (keep :card_id) (distinct)) card-tests))
-                                              :can_write))
-          native? (memoize data-testing.models/can-run-native-query?)]
-      (mapv (fn [card-test]
-              (when card-test
-                (let [card (get cards (:card_id card-test))]
-                  (assoc card-test k (data-testing.models/query-subject-allows?
-                                      mi/can-write? :can_write card (:dataset_query card) native?)))))
-            card-tests))))
+  (assoc-card-answers card-tests k [:can_write :can_query] #(and (mi/can-write? %) (mi/can-query? %))))
+
+(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_query]
+  "Add whether the current user may run each card test: they may run its card, as its `:can_query` says, and
+  write native SQL against its Database."
+  [_model k card-tests]
+  (assoc-card-answers card-tests k [:can_query] mi/can-query?))
 
 (defmethod mi/can-create? :model/CardTest
   [_model instance]
@@ -135,8 +136,7 @@
    :run-topics {:start   :event/card-test-run-start
                 :timeout :event/card-test-run-timeout}
    ;; A suite records a typed refusal of the subject as the member's refusal.
-   :subject    #(testable-card (:card_id %))
-   :can-run?   can-run?})
+   :subject    #(testable-card (:card_id %))})
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 

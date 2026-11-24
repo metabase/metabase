@@ -2800,3 +2800,24 @@
           (is (= [true false true false true false] (:values (hydrated-values cards :can_manage_db :can_manage_db))))
           (is (= (mapv per-card-can-manage-db? cards)
                  (:values (hydrated-values cards :can_manage_db :can_manage_db)))))))))
+
+(deftest can-query-needs-query-permissions-on-dataset-query-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Collection {readable :id}   {}
+                     :model/Collection {unreadable :id} {}
+                     :model/Card       card             {:collection_id readable
+                                                         :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                     :model/Card       hidden           {:collection_id unreadable
+                                                         :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
+        (mt/with-test-user :rasta
+          (testing "readable card without native query permissions"
+            (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                          :perms/create-queries :query-builder}
+              (is (true? (mi/can-read? (t2/hydrate card :can_read))))
+              (is (= [false false] (mapv mi/can-query? (t2/hydrate [card hidden] :can_query))))))
+          (testing "native query permissions: only readable card"
+            (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                          :perms/create-queries :query-builder-and-native}
+              (is (= [true false] (mapv mi/can-query? (t2/hydrate [card hidden] :can_query)))))))))))
