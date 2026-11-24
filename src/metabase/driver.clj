@@ -1164,11 +1164,6 @@
     ;; this has the same value as `:stage-ctes`.
     :stage-ctes/nested
     ;;
-    ;; Does this driver compile a card referenced from a native query with `{{#123}}` to stage CTEs? If not, Metabase
-    ;; compiles the card with nested subselects, so the database can optimize the subquery together with the query
-    ;; around it. By default, this has the same value as `:stage-ctes/nested`.
-    :stage-ctes/card-reference
-    ;;
     ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
     ;;
     ;; Does this driver supporting executing native queries in the MBQL 5 shape directly, as opposed to the legacy
@@ -1252,11 +1247,6 @@
 (defmethod database-supports? [::driver :stage-ctes/nested]
   [driver _feature database]
   (database-supports? driver :stage-ctes database))
-
-;; by default a driver supports `:stage-ctes/card-reference` if it supports `:stage-ctes/nested`
-(defmethod database-supports? [::driver :stage-ctes/card-reference]
-  [driver _feature database]
-  (database-supports? driver :stage-ctes/nested database))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for

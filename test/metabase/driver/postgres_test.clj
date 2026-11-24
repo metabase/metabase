@@ -1914,7 +1914,7 @@
                  (mt/formatted-rows [int str int 4.0 4.0 int int int] (qp/process-query query)))))))))
 
 (deftest ^:parallel native-source-stage-test
-  (testing "a native first stage that has its own WITH, compiled as the body of a stage CTE on Postgres, runs"
+  (testing "a native first stage that has its own WITH runs on Postgres"
     (mt/test-driver :postgres
       (mt/dataset test-data
         (let [mp    (mt/metadata-provider)

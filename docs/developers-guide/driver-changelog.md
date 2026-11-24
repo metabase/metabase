@@ -112,10 +112,6 @@ summary: Changes to the Metabase driver interface, listed by release.
   with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria in the
   comment for these features in `metabase.driver/features`.
 
-- New driver feature `:stage-ctes/card-reference`. It says whether a card that a native query references with
-  `{{#123}}` compiles with stage CTEs. If not, Metabase compiles the card with nested subselects. By default, it has
-  the same value as `:stage-ctes/nested`. It is false for Postgres and its child drivers.
-
 - `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
   delete their `defmethod`, which no longer compiles.
 

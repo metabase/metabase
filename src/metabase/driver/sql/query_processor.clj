@@ -2425,13 +2425,11 @@
   [driver stages query]
   (when-let [db (and (driver-api/initialized?) (driver-api/database (driver-api/metadata-provider)))]
     (and (driver/database-supports? driver :stage-ctes db)
-         ;; A card reference like {{#123}} is compiled into a subquery of the native query.
-         (or (not (get-in query [:middleware :card-reference?]))
-             (driver/database-supports? driver :stage-ctes/card-reference db))
-         ;; If nested CTEs aren't supported, check that we don't have a native stage with a CTE,
-         ;; otherwise we could end up with nested CTEs.
          (or (driver/database-supports? driver :stage-ctes/nested db)
-             (not-any? native-stage-has-cte? (all-stages stages))))))
+             ;; If nested CTEs aren't supported, check that we don't have a card reference like {{#123}}
+             ;; and don't have a native stage with a CTE, otherwise we could end up with nested CTEs.
+             (and (not (get-in query [:middleware :card-reference?]))
+                  (not-any? native-stage-has-cte? (all-stages stages)))))))
 
 (defn- stages->honeysql
   [driver stages query]
