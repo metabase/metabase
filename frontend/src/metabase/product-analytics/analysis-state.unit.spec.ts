@@ -1,3 +1,4 @@
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { EventTableSettings, Table } from "metabase-types/api";
@@ -6,6 +7,12 @@ import { ORDERS_ID, createOrdersTable } from "metabase-types/api/mocks/presets";
 import type { HabitSettings } from "./analyses/types";
 import { getAnalysisState } from "./analysis-state";
 import { getTableQuery } from "./base-query";
+import {
+  type JsEventDefinition,
+  getEventQuery,
+  getQueryEventDefinition,
+  toJsEventDefinition,
+} from "./event-definition";
 
 const TABLE_QUERY = getTableQuery(SAMPLE_PROVIDER, ORDERS_ID);
 
@@ -14,7 +21,32 @@ const SETTINGS: HabitSettings = {
   date_range: "past90days",
   counting: "person",
   granularity: "week",
+  "habit.active": null,
 };
+
+const getStoredEvent = (minimumTotal: number) =>
+  toJsEventDefinition(
+    getQueryEventDefinition(
+      Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            filters: [
+              {
+                type: "operator",
+                operator: ">",
+                args: [
+                  { type: "column", name: "TOTAL" },
+                  { type: "literal", value: minimumTotal },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+      null,
+    ),
+  );
 
 const createEventTable = (eventSettings: EventTableSettings) =>
   createOrdersTable({
@@ -103,6 +135,49 @@ describe("getAnalysisState", () => {
       "Total is greater than 100",
       "Created At is in the previous 90 days",
     ]);
+  });
+
+  it("gives the planner the active event", () => {
+    const settings = { ...SETTINGS, "habit.active": getStoredEvent(100) };
+
+    const event = checkNotNull(setup({ settings })["habit.active"]);
+    const query = getEventQuery(TABLE_QUERY, event);
+
+    expect(getClauseNames(query, -1, Lib.filters(query, -1))).toEqual([
+      "Total is greater than 100",
+    ]);
+  });
+
+  it("builds a query that depends on the active event", () => {
+    const buildQuery = (event: JsEventDefinition | null) =>
+      Lib.toJsQuery(
+        Lib.buildProductAnalyticsQuery(
+          setup({ settings: { ...SETTINGS, "habit.active": event } }),
+        ),
+      );
+
+    expect(
+      Lib.areLegacyQueriesEqual(
+        buildQuery(getStoredEvent(100)),
+        buildQuery(getStoredEvent(100)),
+      ),
+    ).toBe(true);
+    expect(
+      Lib.areLegacyQueriesEqual(
+        buildQuery(getStoredEvent(100)),
+        buildQuery(null),
+      ),
+    ).toBe(false);
+    expect(
+      Lib.areLegacyQueriesEqual(
+        buildQuery(getStoredEvent(100)),
+        buildQuery(getStoredEvent(200)),
+      ),
+    ).toBe(false);
+  });
+
+  it("gives the planner no event when every event counts", () => {
+    expect(setup()["habit.active"]).toBeNull();
   });
 
   it("throws when the date range isn't one the date picker can produce", () => {

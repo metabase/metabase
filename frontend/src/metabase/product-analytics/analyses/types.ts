@@ -9,6 +9,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import type { JsEventDefinition } from "../event-definition";
+
 /** What an analysis counts. */
 export type Grain = "person" | "session" | "event";
 
@@ -43,7 +45,10 @@ export type CommonSettingsOptions = {
   granularities: readonly [Granularity, ...Granularity[]];
 };
 
-export type HabitSettings = CommonSettings;
+export type HabitSettings = CommonSettings & {
+  /** The event that counts as showing up. `null` when every event counts. */
+  "habit.active": JsEventDefinition | null;
+};
 
 export type AnalysisSettingsByKind = {
   habit: HabitSettings;

@@ -97,6 +97,20 @@ const SET_UP_TABLE = createMockTable({
   }),
 });
 
+const PAGE_VIEWS_TABLE = createMockTable({
+  id: 4,
+  db_id: 1,
+  schema: "public",
+  name: "page_views",
+  display_name: "Page views",
+  entity_type: "entity/EventTable",
+  event_settings: {
+    "columns.timestamp": "created_at",
+    "columns.person": "user_id",
+  },
+  fields: createFields(4),
+});
+
 const UNFINISHED_TABLE = createMockTable({
   id: 2,
   db_id: 1,
@@ -245,6 +259,32 @@ describe("NewAnalysisPage", () => {
     expect(
       screen.queryByPlaceholderText("Search for tables…"),
     ).not.toBeInTheDocument();
+  });
+
+  it("starts another table with the default settings", async () => {
+    const { router } = setup({
+      initialRoute: `${SET_UP_TABLE_ROUTE}#${encodeSettings({ granularity: "week" })}`,
+      tables: [SET_UP_TABLE, PAGE_VIEWS_TABLE],
+    });
+    expect(
+      await screen.findByRole("button", { name: "by week" }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Events/ }));
+    await userEvent.click(await screen.findByText("Page views"));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Habit analysis on Page views",
+      }),
+    ).toBeInTheDocument();
+    expect(router?.location.search).toBe(
+      `?kind=habit&table=${PAGE_VIEWS_TABLE.id}`,
+    );
+    expect(router?.location.hash).toBe("");
+    expect(
+      await screen.findByRole("button", { name: "by day" }),
+    ).toBeInTheDocument();
   });
 
   it("links someone who can set up a table to its Events tab", async () => {

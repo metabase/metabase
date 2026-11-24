@@ -92,6 +92,7 @@ describe("useAnalysis", () => {
       date_range: "past90days",
       counting: "person",
       granularity: "week",
+      "habit.active": null,
     });
     await waitFor(() => expect(result.current.rawSeries).not.toBeNull());
     expect(result.current.rawSeries?.[0].card.name).toBe(
@@ -182,6 +183,7 @@ describe("useAnalysis", () => {
       date_range: "past90days",
       counting: "person",
       granularity: "day",
+      "habit.active": null,
     });
     expect(result.current.isRunning).toBe(false);
     expect(result.current.error).toMatch(/No person column/);

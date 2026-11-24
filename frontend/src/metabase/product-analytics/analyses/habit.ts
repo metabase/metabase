@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { isJsEventDefinition } from "../event-definition";
+
 import { getCommonSettings } from "./common-settings";
 import { getAxisTitleSettings, getSeriesSettings } from "./series-settings";
 import type { AnalysisConfig, CommonSettingsOptions } from "./types";
@@ -15,7 +17,15 @@ const HABIT_OPTIONS: CommonSettingsOptions = {
 
 export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
   options: HABIT_OPTIONS,
-  settings: getCommonSettings(HABIT_OPTIONS),
+  settings: {
+    ...getCommonSettings(HABIT_OPTIONS),
+    "habit.active": {
+      getDefault: () => null,
+      isValid: (_context, settings) =>
+        settings["habit.active"] === null ||
+        isJsEventDefinition(settings["habit.active"]),
+    },
+  },
   getTitle: ({ granularity }) =>
     granularity === "week"
       ? t`How many weeks did people show up?`
