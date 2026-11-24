@@ -316,7 +316,8 @@
           (with-redefs [app-db.query/create-partition-size 1]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
                                   (perms-group-membership/add-users-to-groups! [admin manager])))
-            (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)))))))))
+            (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)))
+            (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (admin-group-id))))))))))
 
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
