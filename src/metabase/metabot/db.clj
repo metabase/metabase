@@ -1224,6 +1224,24 @@
   [id :- ::lib.schema.id/segment]
   (t2/select-one-fn :table_id :model/Segment :id id))
 
+(mu/defn measure-table-ids :- [:map-of ::lib.schema.id/measure ::lib.schema.id/table]
+  "A map of ID to Table ID of the Measures with `ids`."
+  [ids :- [:set ::lib.schema.id/measure]]
+  (mdb/select-batched-map #(t2/select-pk->fn :table_id :model/Measure :id [:in [:auto/param %]]) ids))
+
+(mu/defn segment-tables :- [:map-of ::lib.schema.id/segment [:map {:closed true}
+                                                             [:table_id ::lib.schema.id/table]
+                                                             [:db_id ::lib.schema.id/database]]]
+  "A map of ID to the Table ID and Database ID of the Segments with `ids` whose Table exists."
+  [ids :- [:set ::lib.schema.id/segment]]
+  (mdb/select-batched-map #(into {}
+                                 (map (juxt :id (fn [row] (select-keys row [:table_id :db_id]))))
+                                 (t2/query {:select [:segment.id :segment.table_id :table.db_id]
+                                            :from   [[:segment :segment]]
+                                            :join   [[:metabase_table :table] [:= :table.id :segment.table_id]]
+                                            :where  [:in :segment.id [:auto/param %]]}))
+                          ids))
+
 (mu/defn live-measure-table-id
   "The Table ID of the Measure with `id`, or nil when it is missing or in the trash."
   [id :- ::lib.schema.id/measure]
