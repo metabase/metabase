@@ -75,6 +75,7 @@
                     #(do
                        (oss.table-remapping/table-remappings-exist? db-id)
                        (oss.table-remapping/workspace-remap-schema+name db-id spec)
+                       ((oss.table-remapping/workspace-table-remapper db-id) spec)
                        (oss.table-remapping/canonical-schema+name db-id spec)
                        (oss.table-remapping/filter-workspace-side-tables #{spec} db-id)
                        (oss.table-remapping/inject-workspace-canonical-tuples #{spec} db-id)
@@ -90,6 +91,7 @@
           (sync!)
           (is (= (call-count #(mt/with-dynamic-fn-redefs [oss.table-remapping/table-remappings-exist?             (constantly false)
                                                           oss.table-remapping/workspace-remap-schema+name        (constantly nil)
+                                                          oss.table-remapping/workspace-table-remapper           (constantly (constantly nil))
                                                           oss.table-remapping/filter-workspace-side-tables       (fn [tuples _] tuples)
                                                           oss.table-remapping/inject-workspace-canonical-tuples  (fn [tuples _] tuples)]
                                 (sync!)))
