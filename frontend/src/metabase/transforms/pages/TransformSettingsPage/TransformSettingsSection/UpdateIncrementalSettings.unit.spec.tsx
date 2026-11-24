@@ -7,15 +7,26 @@ import {
   setupGetTransformEndpoint,
   setupUpdateTransformEndpoint,
 } from "__support__/server-mocks";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { useGetTransformQuery } from "metabase/api";
 import { type Deferred, defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { Transform, TransformId } from "metabase-types/api";
+import type {
+  CardQueryMetadata,
+  Transform,
+  TransformId,
+} from "metabase-types/api";
 import {
   createMockCardQueryMetadata,
   createMockTransform,
+  createMockTransformTarget,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -58,18 +69,31 @@ function TransformIncrementalSettings({
   ) : null;
 }
 
-async function setup() {
-  const transform = createMockTransform({
-    source: {
-      type: "query",
-      query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
-    },
-  });
+const QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
+type SetupOpts = {
+  transform?: Transform;
+  holdQueryMetadata?: boolean;
+};
+
+async function setup({
+  transform = createMockTransform({ source: { type: "query", query: QUERY } }),
+  holdQueryMetadata = false,
+}: SetupOpts = {}) {
   let serverTransform = transform;
 
-  setupAdhocQueryMetadataEndpoint(
-    createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
-  );
+  const queryMetadata = createMockCardQueryMetadata({
+    databases: [createSampleDatabase()],
+  });
+  const queryMetadataResponse = defer<CardQueryMetadata>();
+  if (holdQueryMetadata) {
+    fetchMock.post(
+      "path:/api/dataset/query_metadata",
+      () => queryMetadataResponse.promise,
+    );
+  } else {
+    setupAdhocQueryMetadataEndpoint(queryMetadata);
+  }
   createOrdersTable().fields?.forEach((field) => setupFieldEndpoints(field));
   setupGetTransformEndpoint(transform, () => serverTransform);
   setupUpdateTransformEndpoint(transform.id, (call) => {
@@ -87,10 +111,10 @@ async function setup() {
     { withUndos: true },
   );
 
-  const incrementalSwitch = await screen.findByRole("switch", {
-    name: /Only process new data/,
-  });
-  await waitFor(() => expect(incrementalSwitch).toBeEnabled());
+  const incrementalSwitch = await screen.findByRole("switch");
+  if (!holdQueryMetadata) {
+    await waitFor(() => expect(incrementalSwitch).toBeEnabled());
+  }
 
   const settleNextUpdate = (
     getResponse: (body: Partial<Transform>) => UpdateResponse,
@@ -108,6 +132,11 @@ async function setup() {
     transform,
     user,
     incrementalSwitch,
+    releaseQueryMetadata: () =>
+      act(async () => {
+        queryMetadataResponse.resolve(queryMetadata);
+        await jest.advanceTimersByTimeAsync(0);
+      }),
     succeedNextUpdate: () =>
       settleNextUpdate((body) => {
         serverTransform = { ...serverTransform, ...body };
@@ -261,5 +290,75 @@ describe("UpdateIncrementalSettings", () => {
 
     expect(getCheckpointFieldInput()).toHaveValue("Tax");
     expect(incrementalSwitch).toBeChecked();
+  });
+
+  it("enables the incremental switch only once the checkpoint options have loaded", async () => {
+    const {
+      transform,
+      user,
+      incrementalSwitch,
+      releaseQueryMetadata,
+      succeedNextUpdate,
+    } = await setup({ holdQueryMetadata: true });
+
+    expect(incrementalSwitch).toBeDisabled();
+    expect(incrementalSwitch).not.toBeChecked();
+
+    await releaseQueryMetadata();
+    await waitFor(() => expect(incrementalSwitch).toBeEnabled());
+    expect(screen.getByRole("switch", { name: /Only process new data/ })).toBe(
+      incrementalSwitch,
+    );
+
+    await user.click(incrementalSwitch);
+    await advanceTimers(DEBOUNCE_MS);
+    expect(getUpdateRequestBodies(transform.id)).toEqual([
+      expect.objectContaining({
+        source: expect.objectContaining({
+          "source-incremental-strategy": expect.objectContaining({
+            type: "checkpoint",
+          }),
+        }),
+        target: expect.objectContaining({ type: "table-incremental" }),
+      }),
+    ]);
+    await succeedNextUpdate();
+    expect(await screen.findByText(SUCCESS_MESSAGE)).toBeInTheDocument();
+  });
+
+  it("shows the incremental settings saved on the server with the field picker options (GDGT-1774)", async () => {
+    const { transform, user, incrementalSwitch } = await setup({
+      transform: createMockTransform({
+        source: {
+          type: "query",
+          query: QUERY,
+          "source-incremental-strategy": {
+            type: "checkpoint",
+            "checkpoint-filter-field-id": ORDERS.TAX,
+          },
+        },
+        target: createMockTransformTarget({ type: "table-incremental" }),
+      }),
+    });
+
+    expect(incrementalSwitch).toBeChecked();
+
+    await user.click(getCheckpointFieldInput());
+    const listbox = await screen.findByRole("listbox");
+    expect(
+      within(listbox).getByRole("option", { name: "Created At" }),
+    ).toBeInTheDocument();
+    expect(
+      within(listbox).getByRole("option", { name: "Total" }),
+    ).toBeInTheDocument();
+    expect(
+      within(listbox).getByRole("option", { name: "Tax" }),
+    ).toBeInTheDocument();
+
+    // the saved field is kept, not replaced by the first option
+    await waitFor(() => expect(getCheckpointFieldInput()).toHaveValue("Tax"));
+    await advanceTimers(DEBOUNCE_MS);
+    expect(getCheckpointFieldInput()).toHaveValue("Tax");
+    expect(getUpdateRequestBodies(transform.id)).toHaveLength(0);
   });
 });
