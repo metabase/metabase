@@ -621,7 +621,8 @@
 (api.macros/defendpoint :post "/metabot/retrieve" :- [:map {:closed true} [:output :string]]
   "Run one of Metabot's read-only retrieval tools with fixed arguments and no model, for search evals.
   Admins only, because the testing routes are not behind the authentication middleware.
-  Answers 502 when the tool call fails, so a caller can tell a failed search from one that found nothing."
+  Answers 400 when the tool rejects the arguments, and 502 when the call fails or any of its queries fails, so a
+  caller can tell a failed or partial search from one that found nothing."
   [_route-params
    _query-params
    {:keys [retriever arguments]} :- [:map {:closed true}
@@ -634,9 +635,21 @@
                                                   [:semantic_queries {:optional true} [:sequential :string]]
                                                   [:user_search_prompt {:optional true} :string]]]]]
   (api/check-superuser)
-  (let [{:keys [output error]} (metabot.tools/run-retriever retriever arguments (metabot.config/resolve-metabot nil))]
-    (when error
-      (throw (ex-info output {:status-code 502, :retrieval-error (select-keys error [:class :code])})))
+  (let [{:keys [output error failed-queries]} (metabot.tools/run-retriever retriever arguments
+                                                                           (metabot.config/resolve-metabot nil))]
+    (cond
+      error
+      (throw (ex-info output {:status-code     (if (= :validation (:class error)) 400 502)
+                              :error-code      (name (:code error))
+                              :retrieval-error (select-keys error [:class :code])
+                              :response/keys   #{:retrieval-error}}))
+
+      failed-queries
+      (throw (ex-info "The search failed for some of its queries."
+                      {:status-code    502
+                       :error-code     "search-incomplete"
+                       :failed-queries failed-queries
+                       :response/keys  #{:failed-queries}})))
     {:output output}))
 
 (api.macros/defendpoint :post "/mcp/seed-tool-call"

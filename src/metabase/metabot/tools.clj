@@ -187,16 +187,20 @@
 
 (defn run-retriever
   "Run the named retrieval tool once with `args`, as `metabot` and the current user, with no model.
-  Returns the `metabase.metabot.tools.runtime/invoke` outcome, which carries `:error` when the call failed."
+  Returns the `metabase.metabot.tools.runtime/invoke` outcome, which carries `:error` when the call failed.
+  A call that succeeded with some of its queries failing also carries those queries as `:failed-queries`."
   [retriever args metabot]
   (let [{:keys [tool profile-id]} (get retrievers retriever)
         entries                   (tools.core/entries (tools.legacy/adapt-all [tool]))
-        [tool-name]               (keys entries)]
-    (tools.runtime/invoke entries
-                          {:profile-id  profile-id
-                           :metabot     metabot
-                           :user-scope  #{scope/agent-search}
-                           :tool-names  #{tool-name}
-                           :memory-atom (atom {})}
-                          tool-name
-                          args)))
+        [tool-name]               (keys entries)
+        outcome                   (tools.runtime/invoke entries
+                                                        {:profile-id  profile-id
+                                                         :metabot     metabot
+                                                         :user-scope  #{scope/agent-search}
+                                                         :tool-names  #{tool-name}
+                                                         :memory-atom (atom {})}
+                                                        tool-name
+                                                        args)
+        failed-queries            (-> outcome :structured-output :data meta :failed-queries seq)]
+    (cond-> outcome
+      failed-queries (assoc :failed-queries (vec failed-queries)))))

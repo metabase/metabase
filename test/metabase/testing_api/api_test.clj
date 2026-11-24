@@ -235,3 +235,16 @@
                     (str (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
                                                {:retriever "library"
                                                 :arguments {:user_search_prompt "Where are the orders?"}})))))))
+
+(deftest metabot-retrieve-reports-failed-queries-test
+  (testing "a search that lost some of its queries is a failure, not a smaller result"
+    (mt/with-dynamic-fn-redefs [metabot.search/search (fn [_] (with-meta [] {:failed-queries ["people"]}))]
+      (is (=? {:failed-queries ["people"]}
+              (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
+                                    {:retriever "general", :arguments {:keyword_queries ["orders" "people"]}}))))))
+
+(deftest metabot-retrieve-rejects-bad-arguments-test
+  (testing "arguments the tool rejects are the caller's mistake"
+    (is (=? {:retrieval-error {:class "validation"}}
+            (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                  {:retriever "sql", :arguments {:keyword_queries ["orders"]}})))))
