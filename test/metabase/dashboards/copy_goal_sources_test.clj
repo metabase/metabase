@@ -221,7 +221,7 @@
             (is (nil? (:uncopied copy)))))))))
 
 (deftest copied-card-revision-test
-  (testing "the first revision of a copied card holds its rewired goal"
+  (testing "the latest revision of a copied card holds its rewired goal"
     (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Revision]
       (mt/with-temp [:model/Collection {src :id} {}
                      :model/Collection {dest :id} {}
@@ -231,7 +231,7 @@
                      :model/DashboardCard _ {:dashboard_id dash :card_id chart}]
         (deep-copy! dash dest)
         (let [{chart' "Chart" source' "Source"} (cards-in dest)
-              revision (t2/select-one :model/Revision :model "Card" :model_id (:id chart'))]
+              revision (t2/select-one :model/Revision :model "Card" :model_id (:id chart') {:order-by [[:id :desc]]})]
           (is (= (:id source') (goal-id (get-in revision [:object :visualization_settings])))))))))
 
 (deftest write-path-copy-test
@@ -273,8 +273,9 @@
           (is (= (:id (copied "Doc source")) (goal-id (:visualization_settings (copied "A")))))
           (is (= coll-source (goal-id (:visualization_settings (copied "B")))))
           (is (= #{"Doc source" "A" "B"} (set (keys (cards-in dest)))))
-          (testing "the first revision of a copied card holds its rewired goal"
+          (testing "the latest revision of a copied card holds its rewired goal"
             (is (= (:id (copied "Doc source"))
                    (goal-id (:visualization_settings
                              (t2/select-one-fn :object :model/Revision
-                                               :model "Card" :model_id (:id (copied "A")))))))))))))
+                                               :model "Card" :model_id (:id (copied "A"))
+                                               {:order-by [[:id :desc]]})))))))))))

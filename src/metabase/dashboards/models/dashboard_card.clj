@@ -19,7 +19,6 @@
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.pulse.models.pulse :as pulse]
-   [metabase.queries.core :as queries]
    [metabase.queries.models.card :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
@@ -74,23 +73,23 @@
       validate-link-card-entity-id
       validate-click-behavior-target-ids))
 
-;;; before-insert can't take arguments, so the copy source is passed through a binding
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *copy-source-dashcards*
-  "DashboardCards whose goals new DashboardCards may reuse without a fresh read check."
-  nil)
-
-(defmacro with-copy-source-dashcards
-  "Runs `body` with [[*copy-source-dashcards*]] bound to `source-dashcards`, which must belong to a Dashboard the
-  current user has passed a read check on."
-  [source-dashcards & body]
-  `(binding [*copy-source-dashcards* ~source-dashcards] ~@body))
+(defn check-new-goal-references
+  "Throws what [[card/check-new-goal-references]] throws for the goals that `new-dashcards`, about to be written to a
+  Dashboard whose dashcards are `existing-dashcards`, newly reference. A dashcard written in place is compared with its
+  stored self; a new one with every existing dashcard, whose goals were checked when saved, so that an editor
+  duplicate needs no fresh check."
+  [existing-dashcards new-dashcards]
+  (let [id->existing (into {} (keep (fn [dashcard] (when-let [id (:id dashcard)] [id dashcard]))) existing-dashcards)
+        existing-viz (mapv :visualization_settings existing-dashcards)]
+    (card/check-new-goal-references
+     (mapv (fn [{:keys [id visualization_settings]}]
+             [visualization_settings (if-let [stored (get id->existing id)]
+                                       [(:visualization_settings stored)]
+                                       existing-viz)])
+           new-dashcards))))
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
-  (apply queries/check-new-goal-references!
-         (:visualization_settings dashcard)
-         (map :visualization_settings *copy-source-dashcards*))
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -102,9 +101,6 @@
   (let [changes (t2/changes dashcard)]
     (when (contains? changes :dashboard_id)
       (throw (ex-info (tru "You cannot move a dashboard card to another dashboard.") {:status-code 400})))
-    (when (contains? changes :visualization_settings)
-      (queries/check-new-goal-references! (:visualization_settings dashcard)
-                                          (:visualization_settings (t2/original dashcard))))
     (validate-dashcard-on-write dashcard)))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids

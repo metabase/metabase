@@ -16,6 +16,7 @@
    [clojure.core.async :as a]
    [metabase.api.common :as api]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dynamic-goals.db :as dynamic-goals.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.queries.core :as queries]
@@ -32,7 +33,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]
-   [metabase.visualization-settings.dynamic-goals :as viz.dynamic-goals])
+   [metabase.visualization-settings.dynamic-goals :as viz.dynamic-goals]
+   [toucan2.core :as t2])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
@@ -134,14 +136,25 @@
      (binding [qp.perms/*card-id* card-id]
        (qp/process-query query)))))
 
+(defn- load-sources
+  "The entity of each of `sources`, hydrated with `:can_read`, by `[type id]`, from one read per source type."
+  [sources]
+  (into {}
+        (mapcat (fn [[source-type same]]
+                  (map (fn [entity] [[source-type (:id entity)] entity])
+                       (t2/hydrate (dynamic-goals.db/entities (:model (source-models source-type)) (into #{} (map :id) same))
+                                   :can_read))))
+        (group-by :type sources)))
+
 (defn- run-source
-  "Run one source and return its result. Never throws."
-  [{source-type :type, :keys [id columns]} {:keys [dashboard-id] :as opts}]
-  (let [{:keys [model query-key]} (source-models source-type)
-        card?                     (= source-type "card")]
+  "Run one source, read from `::loaded` of `opts`, a delay of what [[load-sources]] returns, and return its result.
+  Never throws."
+  [{source-type :type, :keys [id columns]} {::keys [loaded] :keys [dashboard-id] :as opts}]
+  (let [{:keys [query-key]} (source-models source-type)
+        card?               (= source-type "card")]
     (try
       ;; passes for anything under an anonymous route's `as-admin`: there saving the goal is the gate
-      (let [source (api/read-check model id)]
+      (let [source (api/read-check (get @loaded [source-type id]))]
         (cond
           (viz.dynamic-goals/model-source? source-type source)
           (do
@@ -231,7 +244,7 @@
 
 (defn goal-values
   "Results of `sources` as `{type-string {id-string result}}`, one source at a time under the caller's bindings, each
-  read-checked. Past [[max-sources]] a source fails with `too-many-sources`; once the caller is canceled the rest get no
+  read-checked, all of them read together. Past [[max-sources]] a source fails with `too-many-sources`; once the caller is canceled the rest get no
   entry.
 
   `:check-sources` returns `{[type id] message}` for the deduped sources that may not run (data-app refusals),
@@ -240,12 +253,14 @@
   (let [sources         (dedupe-sources sources)
         [allowed extra] (split-at max-sources sources)
         refused         (refusals check-sources allowed)
+        ;; deref'd in each source's own try, so a failed read fails each source rather than the response
+        loaded          (delay (load-sources (remove #(contains? refused [(:type %) (:id %)]) allowed)))
         results         (perf/mapv (fn [{source-type :type, :keys [id] :as source}]
                                      (when-not (qp.pipeline/canceled?)
                                        (if-let [message (get refused [source-type id])]
                                          (do (log/warnf "Refused goal source %s %s: %s" source-type id message)
                                              (failed nil message))
-                                         (run-source source opts))))
+                                         (run-source source (assoc opts ::loaded loaded)))))
                                    allowed)]
     (merge-with merge
                 (results-map allowed results)

@@ -230,8 +230,8 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
         (computed! :card card-id)
-        (t2/update! :model/Card :id card-id {:visualization_settings
-                                             {:graph.goal_value {:id card-id :type "card" :column "count"}}})
+        (card/update-cards! [{:id                     card-id
+                              :visualization_settings {:graph.goal_value {:id card-id :type "card" :column "count"}}}])
         (is (pending? :card card-id))))))
 
 (deftest card-viz-edit-without-goal-change-keeps-dependencies-test
@@ -247,7 +247,7 @@
                                                            :card.title       "renamed"}}]
           (testing label
             (computed! :card card-id)
-            (t2/update! :model/Card :id card-id {:visualization_settings viz})
+            (card/update-cards! [{:id card-id :visualization_settings viz}])
             (is (not (pending? :card card-id)))))
         (testing "through the API"
           (computed! :card card-id)
@@ -257,7 +257,7 @@
           (is (not (pending? :card card-id))))
         (testing "dropping the goal changes them"
           (computed! :card card-id)
-          (t2/update! :model/Card :id card-id {:visualization_settings {:card.title "renamed"}})
+          (card/update-cards! [{:id card-id :visualization_settings {:card.title "renamed"}}])
           (is (pending? :card card-id)))))))
 
 (deftest card-goal-only-edit-recalculates-dependencies-test
@@ -267,8 +267,8 @@
         (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (table-query :orders)}
                        :model/Card {card-id :id}      {:dataset_query (table-query :products)}]
           (deps.test/synchronously-run-dependency-job!)
-          (t2/update! :model/Card :id card-id {:visualization_settings
-                                               {:graph.goal_value {:id goal-card-id :type "card" :column "count"}}})
+          (card/update-cards! [{:id                     card-id
+                                :visualization_settings {:graph.goal_value {:id goal-card-id :type "card" :column "count"}}}])
           (deps.test/synchronously-run-dependency-job!)
           (is (t2/exists? :model/Dependency
                           :from_entity_type :card :from_entity_id card-id

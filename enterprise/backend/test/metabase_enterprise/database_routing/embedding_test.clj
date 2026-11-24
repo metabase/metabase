@@ -1,11 +1,13 @@
 (ns ^:mb/driver-tests metabase-enterprise.database-routing.embedding-test
   (:require
+   [buddy.sign.jwt :as jwt]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.database-routing.test-util :as routing.tu]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.random :as u.random]))
 
 (defn- body-mentions?
   [body message]
@@ -207,3 +209,38 @@
             (is (true? (:enable_embedding
                         (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))
                                               {:enable_embedding true}))))))))))
+
+(deftest goal-source-on-ungranted-router-database-fails-alone-test
+  (testing "a goal whose source reads a router database without anonymous access fails on its own: the goal-values
+           response and the chart still succeed"
+    (routing.tu/do-with-routed-warehouse!
+     false
+     (fn [{:keys [db-id]}]
+       (let [secret-key (u.random/secure-hex 32)]
+         (mt/with-temporary-setting-values [enable-embedding-modular     true
+                                            enable-embedding-interactive true
+                                            enable-public-sharing        true
+                                            embedding-secret-key         secret-key]
+           (mt/with-temp [:model/Card {source-id :id} {:database_id   db-id
+                                                       :dataset_query {:database db-id
+                                                                       :type     :native
+                                                                       :native   {:query "SELECT COUNT(*) AS \"count\" FROM \"my_database_name\""}}}
+                          :model/Card {card-id :id uuid :public_uuid}
+                          {:enable_embedding       true
+                           :public_uuid            (str (random-uuid))
+                           :display                :scalar
+                           :dataset_query          (mt/native-query {:query "SELECT 1 AS \"one\""})
+                           :visualization_settings {:scalar.segments [{:min   {:id source-id :type "card" :column "count"}
+                                                                       :max   10
+                                                                       :color "red"}]}}]
+             (let [token (jwt/sign {:resource {:question card-id} :params {}} secret-key)]
+               (doseq [[route url] [["embed"  (str "embed/card/" token)]
+                                    ["public" (str "public/card/" uuid)]]]
+                 (testing route
+                   (testing "the goal fails on its own, refused by the router database"
+                     (mt/with-log-messages-for-level [messages [metabase-enterprise.database-routing.common :warn]]
+                       (is (=? {:card {source-id {:status "failed"}}}
+                               (client/client :get 202 (str url "/goal-values"))))
+                       (is (some #(str/includes? (:message %) "Refusing an anonymous query") (messages)))))
+                   (testing "the chart runs"
+                     (is (= [[1]] (mt/rows (client/client :get 202 (str url "/query"))))))))))))))))

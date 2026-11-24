@@ -754,12 +754,12 @@
         (queries/check-newly-exposed-dashcards-timeline-permissions! dashboard current-cards dashcards)
         (queries/check-newly-exposed-dashcards-goal-permissions! dashboard current-cards dashcards))
       ;; a restored dashcard may reuse goals still on the dashboard; one that's no longer anywhere is checked
-      (dashboard-card/with-copy-source-dashcards current-cards
-        (update-dashboard! dashboard-id
-                           (assoc (select-keys serialized-dashboard (:track (revisions/spec :model/Dashboard)))
-                                  :tabs      (mapv #(select-keys % [:id :name :position]) (:tabs serialized-dashboard))
-                                  :dashcards dashcards)
-                           {:writer :revert}))
+      (dashboard-card/check-new-goal-references current-cards dashcards)
+      (update-dashboard! dashboard-id
+                         (assoc (select-keys serialized-dashboard (:track (revisions/spec :model/Dashboard)))
+                                :tabs      (mapv #(select-keys % [:id :name :position]) (:tabs serialized-dashboard))
+                                :dashcards dashcards)
+                         {:writer :revert})
       (dashboard-card/check-archive-internal-dashboard-questions dashboard-id serialized-dashcards)
       (dashboard-card/archive-internal-dashboard-questions! dashboard-id serialized-dashcards))
     serialized-dashboard))

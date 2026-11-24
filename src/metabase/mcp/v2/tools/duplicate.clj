@@ -78,8 +78,8 @@
     ;; Copy semantics for timelines too: an inherited selection the caller cannot read is preserved, as in
     ;; `POST /api/card/:id/copy`, while any change to it is still checked.
     (queries/with-copy-source-card card
-      (api/create-check :model/Card new-card)
-      (first (queries.card/create-cards! [(queries.card/new-card-row new-card api/*current-user-id*)])))))
+      (api/create-check :model/Card new-card))
+    (first (queries.card/create-cards! [(queries.card/new-card-row new-card api/*current-user-id*)]))))
 
 (defn- fetch-dashboard
   [id-or-eid]

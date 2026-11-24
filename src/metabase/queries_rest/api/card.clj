@@ -537,11 +537,11 @@
     ;; the table nor its ids, while the generic run-permissions error carries the query (and its
     ;; :source-table) in ex-data. Reversing these leaks that through the parameter path.
     (check-parameter-permissions (:parameters card) query)
-    (let [created-card (queries/with-copy-source-card source-card
-                         (queries/check-allowed-to-create-card! card card-type)
-                         (queries/check-new-dashboard-questions-timeline-permissions [card])
-                         (queries/check-new-dashboard-questions-goal-permissions [card])
-                         (create-card! card))]
+    (queries/with-copy-source-card source-card
+      (queries/check-allowed-to-create-card! card card-type))
+    (queries/check-new-dashboard-questions-timeline-permissions [card])
+    (queries/check-new-dashboard-questions-goal-permissions [card])
+    (let [created-card (create-card! card)]
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
         (events/publish-event! :event/card-create-with-result-metadata
@@ -562,11 +562,11 @@
   (let [orig-card (api/read-check :model/Card id)
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
-    (-> (queries/with-copy-source-card orig-card
-          (api/create-check :model/Card new-card)
-          (queries/check-new-dashboard-questions-timeline-permissions [new-card])
-          (queries/check-new-dashboard-questions-goal-permissions [new-card])
-          (create-card! new-card))
+    (queries/with-copy-source-card orig-card
+      (api/create-check :model/Card new-card))
+    (queries/check-new-dashboard-questions-timeline-permissions [new-card])
+    (queries/check-new-dashboard-questions-goal-permissions [new-card])
+    (-> (create-card! new-card)
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 

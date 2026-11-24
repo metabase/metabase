@@ -53,6 +53,11 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched-map #(t2/select-pk->fn identity :model/Card :id [:in %]) card-ids))
 
+(mu/defn measures
+  "The Measures with `measure-ids`."
+  [measure-ids :- [:set ms/PositiveInt]]
+  (mdb/select-batched #(t2/select :model/Measure :id [:in %]) measure-ids))
+
 (mu/defn timelines
   "The Timelines with `timeline-ids`; ids of deleted Timelines are skipped."
   [timeline-ids :- [:set ms/PositiveInt]]
@@ -185,10 +190,11 @@
   [document-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Card :document_id document-id))
 
-(mu/defn public-document?
-  "Whether the Document with `document-id` has a public link."
-  [document-id :- ms/PositiveInt]
-  (t2/exists? :model/Document :id document-id :public_uuid [:not= nil]))
+(mu/defn public-document-ids :- [:set ms/PositiveInt]
+  "The ids of the Documents with `document-ids` that have a public link."
+  [document-ids :- [:set ms/PositiveInt]]
+  (or (mdb/select-batched-set #(t2/select-pks-set :model/Document :id [:in %] :public_uuid [:not= nil]) document-ids)
+      #{}))
 
 (mu/defn insert-cards!
   "Insert the Card `rows` with one statement for each set of columns they have and return the new instances, in the

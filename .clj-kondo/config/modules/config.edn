@@ -1087,6 +1087,7 @@
            metabase.dynamic-goals.core}
    :uses #{api
            api-scope
+           app-db
            dashboards
            data-apps
            lib
@@ -2404,6 +2405,7 @@
                     :model/Document
                     :model/Exploration
                     :model/Field
+                    :model/Measure
                     :model/ModerationReview
                     :model/NativeQuerySnippet
                     :model/Notification

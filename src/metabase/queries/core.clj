@@ -43,8 +43,6 @@
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
   check-new-dashboard-questions-goal-permissions
-  check-new-goal-references!
-  check-shared-dashboard-goal-permissions!
   check-newly-exposed-dashcards-goal-permissions!
   card-reads-parameters?
   card-exposed-timeline-ids

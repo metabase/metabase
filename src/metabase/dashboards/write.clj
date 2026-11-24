@@ -116,6 +116,7 @@
                           (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
          _              (api/create-check :model/Dashboard dashboard-data)
          _              (check-new-references (constantly no-references) {:parameters parameters})
+         _              (dashboard-card/check-new-goal-references [] dashcards)
          dash           (t2/with-transaction [_conn]
                           ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                           ;; collection to change position, check that and fix up if needed
@@ -341,6 +342,7 @@
                                                 (assoc :card_id (:id card)))]
                                dashcard))]
       (check-dashcard-parameter-mapping-permissions dashcards-to-add)
+      (dashboard-card/check-new-goal-references [] dashcards-to-add)
       (dashboard/update-dashboard! (:id dashboard)
                                    {:tabs      (vec tabs)
                                     :dashcards (vec dashcards-to-add)})
@@ -385,6 +387,7 @@
      dashboard (:dashcards dashboard) new-dashcards)
     (queries/check-newly-exposed-dashcards-goal-permissions!
      dashboard (:dashcards dashboard) new-dashcards)
+    (dashboard-card/check-new-goal-references (:dashcards dashboard) new-dashcards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
     ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
     ;; references are grandfathered, so pre-existing foreign internal cards don't block saving (UXW-4870).
@@ -511,10 +514,7 @@
                 (vreset! tracked [current-dashcards current-tabs dashcards new-tabs]))))
           (let [old-param-field-ids (when @parts (dashboard-id->param-field-ids id))]
             (when (or (seq updates) @parts)
-              ;; goals the dashboard already stores were read-checked when saved, whatever their display, so new
-              ;; dashcards may reuse them
-              (dashboard-card/with-copy-source-dashcards (first @tracked)
-                (dashboard/update-dashboard! id (merge updates @parts))))
+              (dashboard/update-dashboard! id (merge updates @parts)))
             (when @parts
               (update-field-values-for-on-demand-dbs! old-param-field-ids (dashboard-id->param-field-ids id))))
           (when update-dashcards-and-tabs?
@@ -638,7 +638,7 @@
                          (concat (map :visualization_settings (vals copy))
                                  (map :visualization_settings (filter kept? dashcards))))]
       (update cards :copy merge (m/index-by :id (filter copyable-goal-source?
-                                                        (t2/hydrate (dashboards.db/cards goal-ids) :can_read)))))))
+                                                        (t2/hydrate (dashboards.db/cards-by-ids (vec goal-ids)) :can_read)))))))
 
 (defn remap-copied-goal-sources!
   "Points the goals of the copies in `id->new-card` (old card id -> its copy) that read a copied card at that copy,
@@ -822,12 +822,12 @@
                                                                            (zipmap (map :id tabs) (map :id tabs)))
                                                     id->new-card))
                                parts         (cond-> {} (seq tabs) (assoc :tabs tabs) (seq dashcards) (assoc :dashcards dashcards))
-                               dash          (dashboard-card/with-copy-source-dashcards old-dashcards
-                                               (if questions?
-                                                 (do (when (seq parts)
-                                                       (dashboard/update-dashboard! (:id created) parts))
-                                                     created)
-                                                 (first (dashboard/create-dashboards! [(merge dashboard-data parts)]))))]
+                               _             (dashboard-card/check-new-goal-references old-dashcards dashcards)
+                               dash          (if questions?
+                                               (do (when (seq parts)
+                                                     (dashboard/update-dashboard! (:id created) parts))
+                                                   created)
+                                               (first (dashboard/create-dashboards! [(merge dashboard-data parts)])))]
                            (when (seq dashcards)
                              (update-on-demand-field-values-of-new-dashboard! (:id dash)))
                            (cond-> dash

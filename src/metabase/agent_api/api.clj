@@ -855,6 +855,7 @@
                 :collection_id          collection_id
                 :visualization_settings (or visualization_settings {})}]
       (api/create-check :model/Card card)
+      (queries.card/check-new-card-goal-references card)
       (create-card-response
        (t2/with-transaction [_conn]
          (let [[created] (queries.card/create-cards! [(queries.card/new-card-row card api/*current-user-id*)])]
@@ -908,6 +909,7 @@
     ;; target collection. The caller's `api/write-check :model/Card` only covered the source entity.
     ;; The update check asks write on both collections.
     (api/update-check card-before-update card-updates)
+    (queries.card/check-updated-goal-references [[card-before-update card-updates]])
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
     (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))

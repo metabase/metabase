@@ -214,12 +214,6 @@
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (not-empty (mdb/select-batched #(t2/select-pks-vec :model/Card :dashboard_id [:in %]) dashboard-ids)))
 
-(mu/defn cards
-  "The Cards with `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (when (seq card-ids)
-    (t2/select :model/Card :id [:in card-ids])))
-
 (mu/defn cards-by-ids
   "The Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]

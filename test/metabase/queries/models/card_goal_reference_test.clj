@@ -6,6 +6,8 @@
                                             {:namespaces [metabase.queries.models.card-goal-reference-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -56,10 +58,27 @@
     (catch clojure.lang.ExceptionInfo e
       (:status-code (ex-data e)))))
 
-(defn- save-card-status
-  "The status of inserting a Card with `card-props`."
+(defn- save-card-status!
+  "The status of the checks `POST /api/card` runs on a new question with `card-props`, as the current user."
   [card-props]
-  (status-of #(mt/with-temp [:model/Card _ card-props])))
+  (status-of #(queries/check-allowed-to-create-card! (merge {:dataset_query (venues-count-measure) :display :table} card-props)
+                                                     :question)))
+
+(defn- copy-card-status
+  "The status of the create check that a copy of `source` with `card-props` runs, as the current user."
+  [source card-props]
+  (status-of #(card/with-copy-source-card source
+                (api/create-check :model/Card card-props))))
+
+(defn- update-card-status!
+  "The status of the checks `PUT /api/card/:id` runs on the Card with `card-id` for `changes`, as the current user."
+  [card-id changes]
+  (status-of #(queries/check-allowed-to-update-card! (t2/select-one :model/Card :id card-id) changes)))
+
+(defn- dashcard-status
+  "The status of the goal check of writing `new-dashcards` to a Dashboard holding `existing-dashcards`."
+  [existing-dashcards new-dashcards]
+  (status-of #(dashboard-card/check-new-goal-references existing-dashcards new-dashcards)))
 
 (def ^:private layout {:row 0 :col 0 :size_x 4 :size_y 4})
 
@@ -69,22 +88,22 @@
      (mt/with-temp [:model/Card {readable-id :id} {:dataset_query (count-query)}]
        (mt/with-test-user :rasta
          (testing "a goal reading a card the user can't read is refused"
-           (is (= 403 (save-card-status {:visualization_settings (gauge-viz (card-goal goal-id))}))))
+           (is (= 403 (save-card-status! {:visualization_settings (gauge-viz (card-goal goal-id))}))))
          (testing "a hidden goal is checked too, since flipping the toggle later checks nothing"
-           (is (= 403 (save-card-status {:visualization_settings {:graph.show_goal  false
-                                                                  :graph.goal_value (card-goal goal-id)}}))))
+           (is (= 403 (save-card-status! {:visualization_settings {:graph.show_goal  false
+                                                                   :graph.goal_value (card-goal goal-id)}}))))
          (testing "a goal reading a missing card is refused rather than left to point at whatever gets that id"
-           (is (= 404 (save-card-status {:visualization_settings (gauge-viz (card-goal Integer/MAX_VALUE))}))))
+           (is (= 404 (save-card-status! {:visualization_settings (gauge-viz (card-goal Integer/MAX_VALUE))}))))
          (testing "a goal id that isn't a positive integer is refused, not skipped"
-           (is (= 400 (save-card-status {:visualization_settings (gauge-viz (card-goal (str goal-id)))}))))
+           (is (= 400 (save-card-status! {:visualization_settings (gauge-viz (card-goal (str goal-id)))}))))
          (testing "a keyword type is checked like the string it is saved as"
-           (is (= 403 (save-card-status {:visualization_settings
-                                         (gauge-viz (assoc (card-goal goal-id) :type :card))}))))
+           (is (= 403 (save-card-status! {:visualization_settings
+                                          (gauge-viz (assoc (card-goal goal-id) :type :card))}))))
          (testing "a goal reading a readable card saves"
-           (is (= :no-error (save-card-status {:visualization_settings (gauge-viz (card-goal readable-id))}))))
+           (is (= :no-error (save-card-status! {:visualization_settings (gauge-viz (card-goal readable-id))}))))
          (testing "a goal of a type nothing resolves is left alone"
-           (is (= :no-error (save-card-status {:visualization_settings
-                                               (gauge-viz {:id goal-id :type "table" :column "x"})})))))))))
+           (is (= :no-error (save-card-status! {:visualization_settings
+                                                (gauge-viz {:id goal-id :type "table" :column "x"})})))))))))
 
 (deftest updated-card-goal-reference-permissions-test
   (do-with-unreadable-card!
@@ -92,22 +111,19 @@
      (testing "adding a goal the user can't read is refused and nothing is saved"
        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (count-query)}]
          (mt/with-test-user :rasta
-           (is (= 403 (status-of #(t2/update! :model/Card :id card-id
-                                              {:visualization_settings (gauge-viz (card-goal goal-id))})))))
+           (is (= 403 (update-card-status! card-id {:visualization_settings (gauge-viz (card-goal goal-id))}))))
          (is (= {} (t2/select-one-fn :visualization_settings :model/Card :id card-id)))))
      (testing "a goal already saved doesn't block unrelated edits by a user who can't read it"
        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (count-query)
                                                  :visualization_settings (gauge-viz (card-goal goal-id))}]
          (mt/with-test-user :rasta
-           (is (= :no-error (status-of #(t2/update! :model/Card :id card-id
-                                                    {:visualization_settings (assoc (gauge-viz (card-goal goal-id))
-                                                                                    :card.title "renamed")})))))))
+           (is (= :no-error (update-card-status! card-id {:visualization_settings (assoc (gauge-viz (card-goal goal-id))
+                                                                                         :card.title "renamed")}))))))
      (testing "switching a saved goal to another column of the same card is refused"
        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (count-query)
                                                  :visualization_settings (gauge-viz (card-goal goal-id))}]
          (mt/with-test-user :rasta
-           (is (= 403 (status-of #(t2/update! :model/Card :id card-id
-                                              {:visualization_settings (gauge-viz (card-goal goal-id "sum"))}))))))))))
+           (is (= 403 (update-card-status! card-id {:visualization_settings (gauge-viz (card-goal goal-id "sum"))})))))))))
 
 (deftest measure-goal-reference-permissions-test
   (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
@@ -116,13 +132,13 @@
     (let [card-props {:visualization_settings (gauge-viz {:id measure-id :type "measure" :column "count"})}]
       (testing "a measure on a table the user can query saves"
         (mt/with-test-user :rasta
-          (is (= :no-error (save-card-status card-props)))))
+          (is (= :no-error (save-card-status! card-props)))))
       (testing "metadata access to the measure's table isn't enough: its value is the table's data"
         (mt/with-perm-for-group-and-table! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no
           (mt/with-perm-for-group-and-table! (perms/all-users-group) (mt/id :venues)
             :perms/manage-table-metadata :yes
             (mt/with-test-user :rasta
-              (is (= 403 (save-card-status card-props))))))))))
+              (is (= 403 (save-card-status! card-props))))))))))
 
 (deftest copied-card-goal-reference-permissions-test
   (do-with-unreadable-card!
@@ -133,16 +149,14 @@
              prose      documents.test-util/text->prose-mirror-ast]
          (testing "a copy keeps the goals of a source the user could read without a fresh check"
            (mt/with-test-user :rasta
-             (card/with-copy-source-card source
-               (is (= :no-error (save-card-status copy-props))))))
+             (is (= :no-error (copy-card-status source copy-props)))))
          (testing "a copy into a public document is checked, since the document shows its goals to anyone"
            (mt/with-temp [:model/Document {document-id :id} {:name              "Public"
                                                              :document          (prose "x")
                                                              :public_uuid       (str (random-uuid))
                                                              :made_public_by_id (mt/user->id :crowberto)}]
              (mt/with-test-user :rasta
-               (card/with-copy-source-card source
-                 (is (= 403 (save-card-status (assoc copy-props :document_id document-id)))))))))))))
+               (is (= 403 (copy-card-status source (assoc copy-props :document_id document-id))))))))))))
 
 (deftest goal-less-copy-skips-document-lookup-test
   (testing "a copy with no goals doesn't look up whether its document is public"
@@ -150,11 +164,10 @@
                    :model/Document {document-id :id} {:name     "Doc"
                                                       :document (documents.test-util/text->prose-mirror-ast "x")}]
       (let [lookups (atom 0)]
-        (mt/with-dynamic-fn-redefs [queries.db/public-document? (fn [_] (swap! lookups inc) false)]
+        (mt/with-dynamic-fn-redefs [queries.db/public-document-ids (fn [_] (swap! lookups inc) #{})]
           (mt/with-test-user :rasta
-            (card/with-copy-source-card source
-              (is (= :no-error (save-card-status (assoc (select-keys source [:dataset_query])
-                                                        :document_id document-id)))))))
+            (is (= :no-error (copy-card-status source (assoc (select-keys source [:dataset_query])
+                                                             :document_id document-id))))))
         (is (zero? @lookups))))))
 
 (deftest public-document-card-copy-goal-reference-test
@@ -193,7 +206,8 @@
   (testing "writes with no user bound (serdes, migrations, tasks) aren't checked"
     (do-with-unreadable-card!
      (fn [goal-id]
-       (is (= :no-error (save-card-status {:visualization_settings (gauge-viz (card-goal goal-id))})))))))
+       (is (= :no-error (status-of #(card/check-new-card-goal-references
+                                     {:visualization_settings (gauge-viz (card-goal goal-id))}))))))))
 
 (deftest dashcard-goal-reference-permissions-test
   (do-with-unreadable-card!
@@ -208,17 +222,16 @@
              sum-viz        (gauge-viz (card-goal goal-id "sum"))]
          (mt/with-test-user :rasta
            (testing "a dashcard goal the user can't read is refused"
-             (is (= 403 (status-of #(t2/insert! :model/DashboardCard (dashcard goal-viz))))))
+             (is (= 403 (dashcard-status [] [(dashcard goal-viz)]))))
            (testing "so is one nested in a visualizer dashcard's settings"
-             (is (= 403 (status-of #(t2/insert! :model/DashboardCard (dashcard visualizer-viz)))))))
+             (is (= 403 (dashcard-status [] [(dashcard visualizer-viz)])))))
          (testing "a dashcard goal already saved doesn't block unrelated edits"
            (mt/with-temp [:model/DashboardCard {dashcard-id :id} (dashcard goal-viz)]
              (mt/with-test-user :rasta
-               (is (= :no-error (status-of #(t2/update! :model/DashboardCard :id dashcard-id
-                                                        {:visualization_settings renamed-viz}))))
-               (testing "but switching it to another column of the same card is refused"
-                 (is (= 403 (status-of #(t2/update! :model/DashboardCard :id dashcard-id
-                                                    {:visualization_settings sum-viz})))))))))))))
+               (let [stored [(t2/select-one :model/DashboardCard :id dashcard-id)]]
+                 (is (= :no-error (dashcard-status stored [{:id dashcard-id :visualization_settings renamed-viz}])))
+                 (testing "but switching it to another column of the same card is refused"
+                   (is (= 403 (dashcard-status stored [{:id dashcard-id :visualization_settings sum-viz}])))))))))))))
 
 (deftest copied-dashboard-goal-reference-test
   (testing "copying a dashboard keeps dashcard goals the user can't read: the copy isn't public"
@@ -290,10 +303,12 @@
    (fn [goal-id]
      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (count-query)}]
        (let [snapshot      #(revisions/snapshot :model/Card (t2/select-one :model/Card :id card-id))
+             ;; the revert endpoint runs the update check of the card against the snapshot
              revert-status (fn [serialized]
                              (mt/with-test-user :rasta
-                               (status-of #(revision/revert-to-revision! :model/Card card-id
-                                                                         (mt/user->id :rasta) serialized))))]
+                               (status-of #(do (api/update-check (t2/select-one :model/Card :id card-id) serialized)
+                                               (revision/revert-to-revision! :model/Card card-id
+                                                                             (mt/user->id :rasta) serialized)))))]
          ;; writes with no user bound aren't checked, so these set up revisions the user couldn't save
          (t2/update! :model/Card :id card-id {:visualization_settings (gauge-viz (card-goal goal-id))})
          (let [serialized (snapshot)]
@@ -392,16 +407,14 @@
     (mt/with-test-user :crowberto
       (testing "a goal on a card with variables, or built on one, is refused even for an admin"
         (doseq [source-id [variable-id built-on-id]]
-          (is (= 400 (save-card-status {:visualization_settings (gauge-viz (card-goal source-id))})))
-          (is (= 400 (status-of #(t2/update! :model/Card :id card-id
-                                             {:visualization_settings (gauge-viz (card-goal source-id))}))))
-          (is (= 400 (status-of #(t2/insert! :model/DashboardCard
-                                             (merge layout
-                                                    {:dashboard_id           dash-id
-                                                     :card_id                card-id
-                                                     :visualization_settings (gauge-viz (card-goal source-id))})))))))
+          (is (= 400 (save-card-status! {:visualization_settings (gauge-viz (card-goal source-id))})))
+          (is (= 400 (update-card-status! card-id {:visualization_settings (gauge-viz (card-goal source-id))})))
+          (is (= 400 (dashcard-status [] [(merge layout
+                                                 {:dashboard_id           dash-id
+                                                  :card_id                card-id
+                                                  :visualization_settings (gauge-viz (card-goal source-id))})])))))
       (testing "a goal on a card without variables saves"
-        (is (= :no-error (save-card-status {:visualization_settings (gauge-viz (card-goal plain-id))})))))
+        (is (= :no-error (save-card-status! {:visualization_settings (gauge-viz (card-goal plain-id))})))))
     (testing "the API says why"
       (is (= (str "This question uses variables, directly or through a question it's built on, "
                   "so it can't be a goal.")
@@ -415,18 +428,16 @@
                                               :visualization_settings (gauge-viz (card-goal source-id))}]
       (t2/update! :model/Card :id source-id {:dataset_query (venues-by-tenant)})
       (mt/with-test-user :crowberto
-        (is (= :no-error (status-of #(t2/update! :model/Card :id card-id
-                                                 {:visualization_settings (assoc (gauge-viz (card-goal source-id))
-                                                                                 :card.title "renamed")}))))))))
+        (is (= :no-error (update-card-status! card-id {:visualization_settings (assoc (gauge-viz (card-goal source-id))
+                                                                                      :card.title "renamed")})))))))
 
 (deftest model-goal-reference-test
   (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (count-query)}
                  :model/Card {card-id :id} {:dataset_query (count-query)}]
     (mt/with-test-user :crowberto
       (testing "a goal reading a model is refused even for an admin"
-        (is (= 400 (save-card-status {:visualization_settings (gauge-viz (card-goal model-id))})))
-        (is (= 400 (status-of #(t2/update! :model/Card :id card-id
-                                           {:visualization_settings (gauge-viz (card-goal model-id))}))))))
+        (is (= 400 (save-card-status! {:visualization_settings (gauge-viz (card-goal model-id))})))
+        (is (= 400 (update-card-status! card-id {:visualization_settings (gauge-viz (card-goal model-id))})))))
     (testing "the API says why"
       (is (= "A model can't be a goal."
              (mt/user-http-request :crowberto :put 400 (format "card/%d" card-id)
