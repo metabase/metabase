@@ -7,7 +7,7 @@ type GlobalStyleSheetProps = {
 };
 
 /**
- * Appends a style element to the document head on mount, like Emotion's `Global`.
+ * Appends a style element to the document head on mount.
  * Updates replace its text in place, so it keeps its position in the cascade.
  */
 export function GlobalStyleSheet({ styles }: GlobalStyleSheetProps) {
