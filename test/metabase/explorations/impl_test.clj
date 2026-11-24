@@ -48,7 +48,7 @@
                                               :display                :scalar
                                               :visualization_settings {}
                                               :dataset_query          q})
-             (metrics/sync-dimensions! :metadata/metric <>))))))
+             (metrics/sync-dimensions! :metadata/metric [<>]))))))
 
 (deftest target-resolvable?-test
   (testing "target-resolvable? reuses a prebuilt query and breakoutable columns"

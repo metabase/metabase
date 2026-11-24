@@ -1196,7 +1196,7 @@
       ;; encoded wire shape the endpoints return, which the model's `:dimensions` transform will not
       ;; take back. Reading the fixture out of the tool under test would also make this test agree
       ;; with whatever shape the tool happens to emit.
-      (metrics/sync-dimensions! :metadata/metric metric-id)
+      (metrics/sync-dimensions! :metadata/metric [metric-id])
       (let [seeded (t2/select-one-fn :dimensions :model/Card :id metric-id)]
         (is (seq seeded) "the metric must seed at least one dimension for this to prove anything")
         (t2/update! :model/Card :id metric-id {:dimensions (vec (take 1 seeded))})
@@ -1269,7 +1269,7 @@
                                                   :dataset_query (venues-count-query)}]
         ;; Seed, then retarget one mapping at a column of an unrelated table so the next sync marks
         ;; its dimension `:status/orphaned` — the setup `metabase.metrics.api-dimension-test` uses.
-        (metrics/sync-dimensions! :metadata/metric metric-id)
+        (metrics/sync-dimensions! :metadata/metric [metric-id])
         (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id metric-id)
               orphan-id (:id (first dimensions))]
           (t2/update! :model/Card :id metric-id
@@ -1277,7 +1277,7 @@
                                                     (= orphan-id (:dimension-id %))
                                                     (assoc-in [:target 2] (mt/id :users :name)))
                                                  dimension_mappings)})
-          (metrics/sync-dimensions! :metadata/metric metric-id)
+          (metrics/sync-dimensions! :metadata/metric [metric-id])
           (let [mcp  (mcp-dimensions "metric" metric-id)
                 rest (rest-dimensions "metric" metric-id)]
             (testing "drops it, because the endpoint drops it unless asked for it"
@@ -1290,7 +1290,7 @@
                                                       :definition (measure-definition (lib/count))}]
         ;; Seed first so the generated dimension ids are persisted and both reads reconcile against
         ;; the same set — this block is here for the encoded wire shape, not the unseeded path.
-        (metrics/sync-dimensions! :metadata/measure measure-id)
+        (metrics/sync-dimensions! :metadata/measure [measure-id])
         (let [mcp  (mcp-dimensions "measure" measure-id)
               rest (rest-dimensions "measure" measure-id)]
           (testing "the pair matches outright"
