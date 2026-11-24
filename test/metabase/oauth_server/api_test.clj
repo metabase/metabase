@@ -3303,3 +3303,16 @@
           (is (= {:response [mcp-alias-uri], :stored [mcp-alias-uri]}
                  (resources (refresh-json! client (assoc (stored-token! client v2-scope-set :resource [mcp-alias-uri])
                                                          :resource []))))))))))
+
+;; Unregistered scopes are dropped before the default checks the rest, as [[scope-to-grant]] drops them before
+;; narrowing, so an unregistered scope next to MCP scopes doesn't turn the request into a REST one.
+(deftest unregistered-scope-does-not-stop-the-mcp-default-test
+  (testing "BOT-2689: a refresh with no resource asking for MCP scopes and an unregistered one is defaulted to MCP"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client    (register-app-client! "Copilot Studio" "https://example.com/callback")
+              refreshed (refresh-with-scope! client (stored-token! client v2-scope-set)
+                                             (str all-v2-scopes " bogus:scope"))]
+          (is (=? {:resource [(mcp-resource-uri)]} refreshed))
+          (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed))))))))
