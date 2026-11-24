@@ -1344,6 +1344,78 @@ describe("QueryBuilder > timeline events on the chart and in the events panel", 
     expect(await findEventChip("RC1")).toBeInTheDocument();
   });
 
+  it("does not crash when a native question with no rows becomes a bar chart, and opens the events panel (metabase#44637)", async () => {
+    setupTimelineBackend([]);
+    await setup({
+      card: createMockCard({
+        id: 9,
+        name: "Native empty dates",
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+            query: "SELECT '2023-01-01'::date, 2 FROM people WHERE false",
+          }),
+        ),
+        display: "table",
+      }),
+      dataset: createMockDataset({
+        row_count: 0,
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({
+              name: "CAST",
+              display_name: "CAST",
+              base_type: "type/Date",
+              effective_type: "type/Date",
+              source: "native",
+              field_ref: ["field", "CAST", { "base-type": "type/Date" }],
+            }),
+            createMockColumn({
+              name: "2",
+              display_name: "2",
+              base_type: "type/Integer",
+              effective_type: "type/Integer",
+              source: "native",
+              field_ref: ["field", "2", { "base-type": "type/Integer" }],
+            }),
+          ],
+          rows: [],
+        }),
+      }),
+    });
+
+    expect(
+      await within(screen.getByTestId("question-row-count")).findByText(
+        "Showing 0 rows",
+      ),
+    ).toBeInTheDocument();
+    const main = screen.getByTestId("query-builder-main");
+    expect(within(main).getByText("No results")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(screen.getByTestId("view-footer")).getByRole("button", {
+        name: "Visualization",
+      }),
+    );
+    const vizSidebar = await screen.findByTestId("sidebar-left");
+    await userEvent.click(within(vizSidebar).getByTestId("more-charts-toggle"));
+    await userEvent.click(within(vizSidebar).getByLabelText("bar icon"));
+
+    const footer = screen.getByTestId("view-footer");
+    expect(
+      await within(footer).findByLabelText("calendar icon"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("query-builder-main")).getByText("No results"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(footer).getByLabelText("calendar icon"));
+    expect(
+      await within(screen.getByTestId("sidebar-right")).findByText(
+        "Create event",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows the event popover on a chart split into panels (metabase#74005)", async () => {
     setupTimelineBackend([
       createTimeline({ name: "Releases" }, [
