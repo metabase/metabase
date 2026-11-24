@@ -3,6 +3,7 @@
   take. A ref is a row's entity id, a Database's name, a Table's `[db-name schema table-name]`, a Field's
   `[db-name schema table-name & field-names]`, or a User's email."
   (:require
+   [metabase.eid-translation.spec :as eid-translation.spec]
    [metabase.eid-translation.util :as eid-translation.util]
    [metabase.serialization.core :as serialization]
    [metabase.serialization.resolve :as serialization.resolve]
@@ -60,12 +61,15 @@
     v))
 
 (defn- import-structure
-  "`v`, the value of `column` of a `model` row, imported from the form serialization exports it in, as a response in
-  entity id form gives it. The import sees the row as `row` with `v` in `column`. Numeric ids inside it stay as they
+  "`v`, the value of `column` of a `model` row, imported from the form a response in entity id form gives it in: with
+  the `:import` of the column's `:transforms` in the model's [[eid-translation.spec/spec]], or else of its
+  serialization transform. The import sees the row as `row` with `v` in `column`. Numeric ids inside it stay as they
   are. A ref that names no row is a 404; a value that fails to import otherwise is left for the body's schema to
   refuse."
   [model column row v]
-  (if-let [import (and (some? v) (get-in (serialization/spec model) [:transform column :import]))]
+  (if-let [import (and (some? v)
+                       (or (get-in (eid-translation.spec/spec model) [:transforms column :import])
+                           (get-in (serialization/spec model) [:transform column :import])))]
     (try
       (first (import serialization/app-db-store [(assoc row column v)] [v] {:numeric-ids-allowed? true}))
       (catch clojure.lang.ExceptionInfo e

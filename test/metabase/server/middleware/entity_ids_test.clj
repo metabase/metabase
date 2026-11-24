@@ -680,3 +680,18 @@
                                     {:join  [:permissions_group_membership [:= :permissions_group_membership.group_id :permissions_group.id]]
                                      :where [:= :permissions_group_membership.user_id (mt/user->id :crowberto)]}))
              (set (:group_ids response)))))))
+
+(deftest link-card-write-back-test
+  (testing "with the header, a link card's settings, naming its entity's Collection by entity id, write its id back"
+    (mt/with-temp [:model/Collection    {coll-id :id}                       {}
+                   :model/Card          {card-id :id}                       {:collection_id coll-id :dataset_query (venues-query)}
+                   :model/Dashboard     {dash-id :id}                       {}
+                   :model/DashboardCard {dashcard-id :id dashcard-eid :entity_id} {:dashboard_id           dash-id
+                                                                                   :card_id                nil
+                                                                                   :visualization_settings {:link         {:entity {:id card-id :model "card" :collection_id coll-id}}
+                                                                                                            :virtual_card {:display "link"}}}]
+      (let [before (get-with-entity-ids :crowberto (str "dashboard/" dash-id))]
+        (put-with-entity-ids :crowberto (str "dashboard/" dash-id) (select-keys before [:dashcards]))
+        (is (=? {:link {:entity {:id card-id :collection_id coll-id}}}
+                (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)))
+        (is (= dashcard-eid (t2/select-one-fn :entity_id :model/DashboardCard :id dashcard-id)))))))
