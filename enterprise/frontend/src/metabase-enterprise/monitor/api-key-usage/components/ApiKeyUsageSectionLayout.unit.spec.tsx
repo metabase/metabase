@@ -418,7 +418,7 @@ describe("ApiKeyUsageSectionLayout", () => {
   it("shows the seeded call on the Events tab, attributed to its creator", async () => {
     const { router } = setup();
 
-    await userEvent.click(await screen.findByRole("tab", { name: "Events" }));
+    await userEvent.click(await screen.findByRole("link", { name: "Events" }));
 
     expect(router?.location.pathname).toBe(Urls.monitorApiKeyUsageEvents());
     const table = await eventsTable();
