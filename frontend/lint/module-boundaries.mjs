@@ -168,6 +168,11 @@ const elements = [
     name: "mcp-app",
     pattern: "frontend/src/metabase/embedding/mcp/**",
   }),
+  createElement({
+    type: "app",
+    name: "permission-preview-frame",
+    pattern: "frontend/src/metabase/embedding/permission-preview-frame/**",
+  }),
   // App tier because ResourcePreview imports the EAJS runtime
   // (embedding-iframe-sdk), and PreviewPanel then EmbeddingThemeEditorApp import
   // it in turn -- shared cannot import app. The runtime has real module-load
