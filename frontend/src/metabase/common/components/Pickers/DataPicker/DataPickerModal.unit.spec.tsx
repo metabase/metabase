@@ -875,14 +875,20 @@ describe("DataPickerModal > library", () => {
           collection: createMockCollection({ id: LIBRARY_ID }),
           items: [
             createMockCollectionItem({
-              ...DATA_COLLECTION,
               id: DATA_COLLECTION_ID,
+              name: DATA_COLLECTION.name,
+              type: DATA_COLLECTION.type,
+              location: DATA_COLLECTION.location,
+              is_library_root: true,
               model: "collection",
               here: ["table"],
             }),
             createMockCollectionItem({
-              ...METRICS_COLLECTION,
               id: METRICS_COLLECTION_ID,
+              name: METRICS_COLLECTION.name,
+              type: METRICS_COLLECTION.type,
+              location: METRICS_COLLECTION.location,
+              is_library_root: true,
               model: "collection",
               here: [],
             }),
@@ -914,7 +920,7 @@ describe("DataPickerModal > library", () => {
   });
 
   it("builds the path to a published table from the value", async () => {
-    await setupLibrary({ model: "table", id: ORDERS_ID, db_id: 1 });
+    await setupLibrary({ model: "table", id: ORDERS_ID, database_id: 1 });
 
     expect(await findItem(2, "Orders")).toHaveAttribute("data-active", "true");
     expect(await findItem(2, "Accounts")).not.toHaveAttribute(
