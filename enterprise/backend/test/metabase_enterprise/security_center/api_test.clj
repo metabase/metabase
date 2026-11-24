@@ -63,6 +63,8 @@
         (testing "superuser can list advisories"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/security-center")]
             (is (contains? response :last_checked_at))
+            (is (contains? response :last_sync_attempted_at))
+            (is (contains? response :last_sync_error))
             (is (= 3 (count (:advisories response))))
             (is (= "SC-0000-001" (-> response :advisories first :advisory_id)))))
         (testing "non-superuser gets 403"
