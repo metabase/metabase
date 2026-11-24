@@ -596,14 +596,15 @@
   "Fetch a specific Collection with standard details added"
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :collection id)]
+                    [:id ms/IdOrEntityId]]]
+  (let [resolved-id (eid-translation/->id-or-404 :model/Collection id)]
     (collection-detail (api/read-check :model/Collection resolved-id))))
 
 (api.macros/defendpoint :put "/:id" :- ::Collection
-  "Modify an existing Collection, including archiving or unarchiving it, or moving it."
+  "Modify an existing Collection, including archiving or unarchiving it, or moving it. `id` is a numeric id or an
+  entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id ms/IdOrEntityId]]
    _query-params
    collection-updates :- [:map {:closed true}
                           [:name             {:optional true} [:maybe ::collections.schema/collection.name]]
@@ -611,15 +612,16 @@
                           [:archived         {:optional true} [:maybe ms/BooleanValue]]
                           [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
                           [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
-  (collection-detail (collections/update-collection! id collection-updates)))
+  (collection-detail (collections/update-collection! (eid-translation/->id-or-404 :model/Collection id) collection-updates)))
 
 ;; Returns the number of Collection rows deleted, which `t2/delete!` hands back -- 1 whenever the checks above pass.
 (api.macros/defendpoint :delete "/:id" :- ms/IntGreaterThanOrEqualToZero
-  "Deletes a collection permanently"
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+  "Deletes a collection permanently. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]]
   (api/check-403 api/*is-superuser?*)
-  (let [collection (collections-rest.db/collection id)
+  (let [id         (eid-translation/->id-or-404 :model/Collection id-or-entity-id)
+        collection (collections-rest.db/collection id)
         old-children-location (collection/children-location collection)
         new-children-location (:location collection)]
     (api/check-400 (:archived collection)
@@ -651,7 +653,7 @@
   changed, that should too."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id ms/IdOrEntityId]]
    {:keys [models archived pinned-state sort-column sort-direction official-collections-first
            show-dashboard-questions show-exploration-documents
            q include-available-models]} :- [:map {:closed true}
@@ -665,7 +667,7 @@
                                             [:show-exploration-documents  {:default false} [:maybe ms/BooleanValue]]
                                             [:q                           {:optional true} [:maybe :string]]
                                             [:include-available-models    {:default false} [:maybe ms/BooleanValue]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :collection id)
+  (let [resolved-id (eid-translation/->id-or-404 :model/Collection id)
         model-kwds  (set (map keyword (u/one-or-many models)))
         collection  (api/read-check :model/Collection resolved-id)
         options     {:show-dashboard-questions?   show-dashboard-questions
@@ -695,7 +697,7 @@
   params -- `models`, `archived`, `pinned-state`, `show-dashboard-questions`, `show-exploration-documents` -- so the
   metadata describes the list being shown."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id ms/IdOrEntityId]]
    {:keys [models archived pinned-state
            show-dashboard-questions show-exploration-documents]} :- [:map {:closed true}
                                                                      [:models                     {:optional true} [:maybe collection-items/Models]]
@@ -703,7 +705,7 @@
                                                                      [:pinned-state               {:optional true} [:maybe (into [:enum] collection-items/valid-pinned-state-values)]]
                                                                      [:show-dashboard-questions   {:default false} [:maybe ms/BooleanValue]]
                                                                      [:show-exploration-documents {:default false} [:maybe ms/BooleanValue]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :collection id)
+  (let [resolved-id (eid-translation/->id-or-404 :model/Collection id)
         collection  (api/read-check :model/Collection resolved-id)]
     (collection-items-metadata collection (set (map keyword (u/one-or-many models)))
                                {:archived?                   (boolean (or archived

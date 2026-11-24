@@ -216,3 +216,18 @@
           (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id}]
             (mt/user-http-request :rasta :put 500 (snippet-url snippet-id) {:collection_id Integer/MAX_VALUE})
             (is (nil? (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id)))))))))
+
+(deftest snippet-entity-id-test
+  (testing "GET and PUT /api/native-query-snippet/:id accept an entity id"
+    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id entity-id :entity_id} {:content "-- eid"
+                                                                                    :name    "entity id snippet"}]
+      (testing "GET"
+        (is (=? {:id snippet-id :name "entity id snippet"}
+                (mt/user-http-request :crowberto :get 200 (str "native-query-snippet/" entity-id)))))
+      (testing "PUT"
+        (is (=? {:id snippet-id :description "Updated by entity id"}
+                (mt/user-http-request :crowberto :put 200 (str "native-query-snippet/" entity-id)
+                                      {:description "Updated by entity id"}))))
+      (testing "an unknown entity id is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 "native-query-snippet/aaaaaaaaaaaaaaaaaaaaa")))))))

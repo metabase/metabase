@@ -241,3 +241,21 @@
                       (is (= expected (data-testing.test-util/member-refs suite-id)))))))
               (finally
                 (t2/delete! :model/TestSuite :id [:in @suite-ids])))))))))
+
+(deftest suite-entity-id-test
+  (mt/with-premium-features #{:transforms-testing}
+    (testing "GET, PUT and DELETE /api/ee/test-suite/:id accept an entity id"
+      (mt/with-temp [:model/TestSuite {suite-id :id entity-id :entity_id} {:name "Entity id suite"}]
+        (testing "GET"
+          (is (=? {:id suite-id :name "Entity id suite"}
+                  (mt/user-http-request :crowberto :get 200 (str "ee/test-suite/" entity-id)))))
+        (testing "PUT"
+          (is (=? {:id suite-id :name "Renamed by entity id"}
+                  (mt/user-http-request :crowberto :put 200 (str "ee/test-suite/" entity-id)
+                                        {:name "Renamed by entity id"}))))
+        (testing "an unknown entity id is a 404"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 "ee/test-suite/aaaaaaaaaaaaaaaaaaaaa"))))
+        (testing "DELETE"
+          (mt/user-http-request :crowberto :delete 204 (str "ee/test-suite/" entity-id))
+          (is (not (t2/exists? :model/TestSuite :id suite-id))))))))

@@ -434,3 +434,24 @@
               (is (= "No data-testing.test-util/google-segment-inputs" (t2/select-one-fn :name :model/SegmentTest :id test-id)))))
           (finally
             (t2/delete! :model/SegmentTest :id test-id)))))))
+
+(deftest segment-test-entity-id-test
+  (mt/with-premium-features #{:transforms-testing}
+    (testing "GET, PUT and DELETE /api/ee/segment-test/:id accept an entity id"
+      (mt/with-temp [:model/Segment     {segment-id :id}                    (data-testing.test-util/segment-on
+                                                                             (mt/id :people) "A segment")
+                     :model/SegmentTest {test-id :id entity-id :entity_id} {:segment_id segment-id
+                                                                            :name       "Entity id test"}]
+        (testing "GET"
+          (is (=? {:id test-id :name "Entity id test"}
+                  (mt/user-http-request :crowberto :get 200 (str "ee/segment-test/" entity-id)))))
+        (testing "PUT"
+          (is (=? {:id test-id :name "Renamed by entity id"}
+                  (mt/user-http-request :crowberto :put 200 (str "ee/segment-test/" entity-id)
+                                        {:name "Renamed by entity id"}))))
+        (testing "an unknown entity id is a 404"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 "ee/segment-test/aaaaaaaaaaaaaaaaaaaaa"))))
+        (testing "DELETE"
+          (mt/user-http-request :crowberto :delete 204 (str "ee/segment-test/" entity-id))
+          (is (not (t2/exists? :model/SegmentTest :id test-id))))))))

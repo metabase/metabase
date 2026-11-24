@@ -2885,3 +2885,23 @@
             (testing "cards the user may create are saved by both endpoints"
               (is (some? (post! write-id (three (good) (good)) 200)))
               (is (some? (put! (three (good) (good)) 200))))))))))
+
+(deftest document-entity-id-test
+  (testing "GET, PUT and DELETE /api/document/:document-id accept an entity id"
+    (mt/with-temp [:model/Document {document-id :id entity-id :entity_id}
+                   {:name     "Entity id document"
+                    :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
+      (testing "GET"
+        (is (=? {:id document-id :name "Entity id document"}
+                (mt/user-http-request :crowberto :get 200 (str "document/" entity-id)))))
+      (testing "PUT"
+        (is (=? {:id document-id :name "Renamed by entity id"}
+                (mt/user-http-request :crowberto :put 200 (str "document/" entity-id)
+                                      {:name "Renamed by entity id"}))))
+      (testing "an unknown entity id is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 "document/aaaaaaaaaaaaaaaaaaaaa"))))
+      (testing "DELETE"
+        (mt/user-http-request :crowberto :put 200 (str "document/" entity-id) {:archived true})
+        (mt/user-http-request :crowberto :delete 204 (str "document/" entity-id))
+        (is (not (t2/exists? :model/Document :id document-id)))))))

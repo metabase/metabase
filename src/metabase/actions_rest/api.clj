@@ -48,19 +48,20 @@
   (actions-rest.db/public-actions))
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
-  "Fetch an Action."
+  "Fetch an Action. `action-id` is a numeric id or an entity id."
   {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map {:closed true}
-                           [:action-id ms/PositiveInt]]]
-  (-> (actions/select-action :id action-id :archived false)
+                           [:action-id ms/IdOrEntityId]]]
+  (-> (actions/select-action :id (eid-translation/->id-or-404 :model/Action action-id) :archived false)
       (t2/hydrate :creator :can_write)
       api/read-check))
 
 (api.macros/defendpoint :delete "/:action-id" :- ::api/generic-204-no-content
-  "Delete an Action."
-  [{:keys [action-id]} :- [:map {:closed true}
-                           [:action-id ms/PositiveInt]]]
-  (let [action (api/write-check :model/Action action-id)]
+  "Delete an Action. `action-id` is a numeric id or an entity id."
+  [{id-or-entity-id :action-id} :- [:map {:closed true}
+                                    [:action-id ms/IdOrEntityId]]]
+  (let [action-id (eid-translation/->id-or-404 :model/Action id-or-entity-id)
+        action    (api/write-check :model/Action action-id)]
     (analytics/track-event! :snowplow/action
                             {:event     :action-deleted
                              :type      (:type action)
@@ -92,12 +93,13 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
-  "Update an Action."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ::actions.schema/id]]
+  "Update an Action. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
    action :- ::actions.schema/action.update-request]
-  (let [existing-action (api/write-check :model/Action id)
+  (let [id              (eid-translation/->id-or-404 :model/Action id-or-entity-id)
+        existing-action (api/write-check :model/Action id)
         action          (api/updates-without-collection-when-archiving existing-action action)]
     (api/update-check existing-action action)
     (api/check-400 (not (and (:archived action) (get action :model_id (:model_id existing-action))))
@@ -106,14 +108,14 @@
       (let [merged (merge (actions/select-action :id id) action)]
         (actions/check-implicit-action-table-pk merged)
         (actions/check-action-databases-enabled merged)))
-    (actions.models/update-action! id action nil))
-  (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
-    (analytics/track-event! :snowplow/action
-                            {:event          :action-updated
-                             :type           type
-                             :action_id      id
-                             :num_parameters (count parameters)})
-    action))
+    (actions.models/update-action! id action nil)
+    (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
+      (analytics/track-event! :snowplow/action
+                              {:event          :action-updated
+                               :type           type
+                               :action_id      id
+                               :num_parameters (count parameters)})
+      action)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -223,7 +225,7 @@
    {:keys [parameters], :as _body} :- [:maybe [:map {:closed true}
                                                [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]
    request]
-  (let [resolved-id (eid-translation/->id-or-404 :action id)
+  (let [resolved-id (eid-translation/->id-or-404 :model/Action id)
         _           (some-> (data-apps/request-data-app request) (data-apps/check-action resolved-id))
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
     (analytics/track-event! :snowplow/action

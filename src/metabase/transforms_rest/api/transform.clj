@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
@@ -187,10 +188,10 @@
       transforms.u/add-source-readable))
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
-  "Get a specific transform."
+  "Get a specific transform. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (let [transform (transforms.core/get-transform id)]
+                    [:id ms/IdOrEntityId]]]
+  (let [transform (transforms.core/get-transform (eid-translation/->id-or-404 :model/Transform id))]
     (-> transform
         (u/update-some :last_run transforms-base.u/present-run)
         (assoc :requestable_indexes (transforms.core/requestable-indexes (transforms.u/->definition transform))))))
@@ -290,9 +291,9 @@
       transforms-base.u/present-run))
 
 (api.macros/defendpoint :put "/:id" :- TransformResponse
-  "Update a transform."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+  "Update a transform. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]
    _query-params
    body :- [:map {:closed true}
             [:name {:optional true} :string]
@@ -304,14 +305,15 @@
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
-  (api/write-check :model/Transform id)
-  (transforms.core/update-transform! id body))
+  (let [id (eid-translation/->id-or-404 :model/Transform id-or-entity-id)]
+    (api/write-check :model/Transform id)
+    (transforms.core/update-transform! id body)))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a transform."
+  "Delete a transform. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (transforms.core/delete-transform! (api/write-check :model/Transform id)))
+                    [:id ms/IdOrEntityId]]]
+  (transforms.core/delete-transform! (api/write-check :model/Transform (eid-translation/->id-or-404 :model/Transform id))))
 
 (api.macros/defendpoint :delete "/:id/table" :- :nil
   "Delete a transform's output table."

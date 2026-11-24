@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
@@ -78,12 +79,12 @@
     (:dimension_mappings measure) (update :dimension_mappings metrics/->api-dimension-mappings)))
 
 (api.macros/defendpoint :get "/:id" :- ::measure
-  "Fetch `Measure` with ID."
+  "Fetch `Measure` with ID, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id ms/IdOrEntityId]]
    {:keys [include-orphaned]} :- [:map {:closed true}
                                   [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [measure (hydrated-measure id (boolean include-orphaned))]
+  (let [measure (hydrated-measure (eid-translation/->id-or-404 :model/Measure id) (boolean include-orphaned))]
     (-> measure
         (assoc :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))
         with-api-dimensions)))
@@ -113,9 +114,9 @@
     (hydrated-measure id false)))
 
 (api.macros/defendpoint :put "/:id" :- ::measure
-  "Update a `Measure` with ID."
+  "Update a `Measure` with ID, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id ms/IdOrEntityId]]
    _query-params
    body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ::measures.schema/measure.name]]
@@ -123,7 +124,7 @@
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]
-  (with-api-dimensions (write-check-and-update-measure! id body)))
+  (with-api-dimensions (write-check-and-update-measure! (eid-translation/->id-or-404 :model/Measure id) body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Dimension Value Endpoints                                                |

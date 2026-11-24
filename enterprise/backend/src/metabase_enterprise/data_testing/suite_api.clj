@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
@@ -50,10 +51,11 @@
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/test-suite.response
   "Get a test suite with its members. A member's `status` is `readable`, `unreadable` when the caller cannot read its
-  test, or `missing` when this instance lacks the test; only a `readable` member has `test_id` and `name`."
+  test, or `missing` when this instance lacks the test; only a `readable` member has `test_id` and `name`. `id` is a
+  numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (suite-response id))
+                    [:id ms/IdOrEntityId]]]
+  (suite-response (eid-translation/->id-or-404 :model/TestSuite id)))
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/test-suite.response
   "Create a test suite. Its members run in the order given. Each member names a test the caller can read, by
@@ -70,28 +72,30 @@
   "Update a test suite. `members`, when given, replaces every member, in the order given. Each member names a test by
   `test_type` and either `test_id` or `test_entity_id`, and the caller must be able to read the test, with one
   exception: a current member that the caller cannot read, or whose test is missing, is kept when named by `test_type`
-  and `test_entity_id`. A test can be in a suite at most once."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+  and `test_entity_id`. A test can be in a suite at most once. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]
    _query-params
    body :- UpdateTestSuiteRequest]
-  (api/update-check (api/read-check (data-testing.db/test-suite id)) body)
-  (test-suite/update-test-suite!
-   id
-   (cond-> body
-     (contains? body :members)
-     (assoc :members (data-testing.suite/member-rows
-                      (:members body)
-                      (into #{} (map data-testing.suite/member-ref) (data-testing.db/suite-members [id]))))))
-  (suite-response id))
+  (let [id (eid-translation/->id-or-404 :model/TestSuite id-or-entity-id)]
+    (api/update-check (api/read-check (data-testing.db/test-suite id)) body)
+    (test-suite/update-test-suite!
+     id
+     (cond-> body
+       (contains? body :members)
+       (assoc :members (data-testing.suite/member-rows
+                        (:members body)
+                        (into #{} (map data-testing.suite/member-ref) (data-testing.db/suite-members [id]))))))
+    (suite-response id)))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a test suite. The tests in it are not deleted."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (api/write-check (data-testing.db/test-suite id))
-  (test-suite/delete-test-suites! [id])
-  nil)
+  "Delete a test suite. The tests in it are not deleted. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]]
+  (let [id (eid-translation/->id-or-404 :model/TestSuite id-or-entity-id)]
+    (api/write-check (data-testing.db/test-suite id))
+    (test-suite/delete-test-suites! [id])
+    nil))
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/test-suite-run.result
   "Run the members of a test suite, in order, within the request, and record the run.

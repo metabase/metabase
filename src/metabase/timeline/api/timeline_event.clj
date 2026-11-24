@@ -5,6 +5,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -61,19 +62,19 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Fetch the [[TimelineEvent]] with `id`."
+  "Fetch the [[TimelineEvent]] with `id`, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (api/read-check :model/TimelineEvent id))
+                    [:id ms/IdOrEntityId]]]
+  (api/read-check :model/TimelineEvent (eid-translation/->id-or-404 :model/TimelineEvent id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
-  "Update a [[TimelineEvent]]."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+  "Update a [[TimelineEvent]]. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]
    _query-params
    {:keys [timestamp]
     :as   timeline-event-updates} :- [:map {:closed true}
@@ -85,7 +86,8 @@
                                       [:icon         {:optional true} ::timeline.schema/icon]
                                       [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
                                       [:archived     {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/check-404 (timeline.db/timeline-event id))
+  (let [id       (eid-translation/->id-or-404 :model/TimelineEvent id-or-entity-id)
+        existing (api/check-404 (timeline.db/timeline-event id))
         timeline-event-updates (cond-> timeline-event-updates
                                  (boolean timestamp) (update :timestamp u.date/parse))
         changes  (u/select-keys-when timeline-event-updates
@@ -100,9 +102,10 @@
     (u/prog1 (timeline.db/timeline-event id))))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
-  "Delete a [[TimelineEvent]]."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (api/write-check :model/TimelineEvent id)
-  (timeline-event/delete-timeline-events! [id])
-  api/generic-204-no-content)
+  "Delete a [[TimelineEvent]]. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]]
+  (let [id (eid-translation/->id-or-404 :model/TimelineEvent id-or-entity-id)]
+    (api/write-check :model/TimelineEvent id)
+    (timeline-event/delete-timeline-events! [id])
+    api/generic-204-no-content))

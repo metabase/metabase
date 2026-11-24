@@ -1355,3 +1355,21 @@
         (is (contains? (:specific-errors (mt/user-http-request :crowberto :post 400 "action"
                                                                {:name "HTTP" :type "http" :model_id model-id}))
                        :type))))))
+
+(deftest action-entity-id-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (mt/with-actions [{:keys [action-id]} unshared-action-opts]
+      (let [entity-id (t2/select-one-fn :entity_id :model/Action :id action-id)]
+        (testing "GET /api/action/:action-id accepts an entity id"
+          (is (=? {:id action-id}
+                  (mt/user-http-request :crowberto :get 200 (str "action/" entity-id)))))
+        (testing "PUT /api/action/:id accepts an entity id"
+          (is (=? {:id action-id :name "Renamed by entity id"}
+                  (mt/user-http-request :crowberto :put 200 (str "action/" entity-id)
+                                        {:name "Renamed by entity id"}))))
+        (testing "an unknown entity id is a 404"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 "action/aaaaaaaaaaaaaaaaaaaaa"))))
+        (testing "DELETE /api/action/:action-id accepts an entity id"
+          (mt/user-http-request :crowberto :delete 204 (str "action/" entity-id))
+          (is (not (t2/exists? :model/Action :id action-id))))))))

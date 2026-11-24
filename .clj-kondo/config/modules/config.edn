@@ -1282,6 +1282,7 @@
            metabase.glossary.init
            metabase.glossary.schema}
    :uses #{api
+           api.eid-translation
            app-db
            audit-app
            events
@@ -2768,6 +2769,7 @@
   {:team "UX West"
    :api  #{metabase.segments.rest.api}
    :uses #{api
+           api.eid-translation
            lib.be
            models
            segments
@@ -3371,6 +3373,7 @@
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
+           api.eid-translation
            events
            models
            request
@@ -4168,6 +4171,7 @@
           metabase-enterprise.data-testing.segment-api
           metabase-enterprise.data-testing.suite-api}
    :uses #{api
+           api.eid-translation
            app-db
            audit-app
            collections

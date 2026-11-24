@@ -10,6 +10,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -283,3 +284,6 @@
   ;; No filter clause: every suite syncs, whatever its members, and a run reports a member the instance lacks as
   ;; missing.
   {:synced-items data-testing.db/synced-test-suite-items})
+
+(defmethod eid-translation/spec :model/TestSuite [_model]
+  {:names [:test-suite]})

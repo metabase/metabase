@@ -156,3 +156,19 @@
         "l%s"   #{}
         "a%a%a" #{}
         "literal" #{"g1" "g2"}))))
+
+(deftest glossary-entity-id-test
+  (testing "PUT and DELETE /api/glossary/:id accept an entity id"
+    (mt/with-temp [:model/Glossary {glossary-id :id entity-id :entity_id} {:term       "Entity id term"
+                                                                           :definition "Before"
+                                                                           :creator_id (mt/user->id :crowberto)}]
+      (testing "PUT"
+        (is (=? {:id glossary-id :definition "After"}
+                (mt/user-http-request :crowberto :put 200 (str "glossary/" entity-id)
+                                      {:term "Entity id term" :definition "After"}))))
+      (testing "an unknown entity id is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :delete 404 "glossary/aaaaaaaaaaaaaaaaaaaaa"))))
+      (testing "DELETE"
+        (mt/user-http-request :crowberto :delete 204 (str "glossary/" entity-id))
+        (is (not (t2/exists? :model/Glossary :id glossary-id)))))))
