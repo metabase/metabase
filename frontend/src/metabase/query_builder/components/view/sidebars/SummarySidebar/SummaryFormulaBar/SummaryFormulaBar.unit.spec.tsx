@@ -25,8 +25,11 @@ import { defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { Card, Database } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import type { Card, Database, DatabaseFeature } from "metabase-types/api";
+import {
+  COMMON_DATABASE_FEATURES,
+  createMockCard,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   createSampleDatabase,
@@ -526,6 +529,51 @@ describe("summary formula handoff", () => {
     expect(nextInput).toHaveFocus();
     expect(input).toHaveValue("=Count()");
   });
+
+  it.each<{
+    wellId: SummaryWellId;
+    feature: DatabaseFeature;
+    source: string;
+    functionName: string;
+  }>([
+    {
+      wellId: "values",
+      feature: "percentile-aggregations",
+      source: "Percentile([Total], 0.9)",
+      functionName: "Percentile",
+    },
+    {
+      wellId: "columns",
+      feature: "regex",
+      source: 'regexExtract([Product → Category], "^W")',
+      functionName: "regexExtract",
+    },
+  ])(
+    "flags $functionName in the $wellId well when the database lacks $feature, and leaves the summary alone",
+    async ({ wellId, feature, source, functionName }) => {
+      const { onQueryChange } = await setup({
+        database: createSampleDatabase({
+          features: COMMON_DATABASE_FEATURES.filter((name) => name !== feature),
+        }),
+      });
+      fireEvent.change(getInput(wellId), { target: { value: `=${source}` } });
+      await screen.findByRole("textbox", { name: "Formula" });
+
+      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        `Unsupported function ${functionName}`,
+      );
+      expect(getEditor()?.state.doc.toString()).toBe(source);
+      expect(
+        within(screen.getByTestId(`summary-well-${wellId}`)).getByTestId(
+          "summary-well-draft-formula",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("summary-well-item")).not.toBeInTheDocument();
+      expect(onQueryChange).not.toHaveBeenCalled();
+    },
+  );
 
   it("keeps equals text in the typeahead when formulas are unsupported", async () => {
     const { onQueryChange } = await setup({

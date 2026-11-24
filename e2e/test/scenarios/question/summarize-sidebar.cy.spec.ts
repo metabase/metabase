@@ -130,6 +130,169 @@ describe("scenarios > question > summarize sidebar > building a summary", () => 
   });
 });
 
+describe("scenarios > question > summarize sidebar > values made in the notebook", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("shows custom expressions as chips and keeps them through an edit, a reload and back in the notebook", () => {
+    const formulaChips = ["Average order", "Big orders"];
+
+    H.openOrdersTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    addNotebookFormula({
+      formula: "Sum([Total]) / Count()",
+      name: "Average order",
+    });
+    addNotebookFormula({
+      formula: "CountIf([Total] > 100)",
+      name: "Big orders",
+    });
+    H.addSummaryGroupingField({ field: "Created At" });
+    cy.intercept("POST", "/api/dataset").as("summaryQuery");
+    H.visualize();
+    waitForQueriedValues().as("notebookValues");
+
+    H.summarize();
+    H.assertSummaryWellItems("values", formulaChips);
+    H.assertSummaryWellItems("columns", ["Created At: Month"]);
+
+    cy.log("an edit next to them");
+    H.changeSummaryGroupingBucket("Created At: Month", "Year");
+    cy.wait("@summaryQuery").then(({ request, response }) => {
+      cy.get("@notebookValues").should(
+        "deep.equal",
+        withoutClauseIds(request.body.stages[0].aggregation),
+      );
+      expect(response?.body.error).to.eq(undefined);
+      expect(
+        response?.body.data.cols.map(
+          (col: { display_name: string }) => col.display_name,
+        ),
+      ).to.deep.equal(["Created At: Year", ...formulaChips]);
+    });
+    H.assertSummaryWellItems("values", formulaChips);
+    H.assertSummaryWellItems("columns", ["Created At: Year"]);
+
+    cy.log("a reload keeps them");
+    cy.reload();
+    waitForQueriedValues().then((values) => {
+      cy.get("@notebookValues").should("deep.equal", values);
+    });
+    H.summarize();
+    H.assertSummaryWellItems("values", formulaChips);
+    H.assertSummaryWellItems("columns", ["Created At: Year"]);
+
+    cy.log("the notebook still has the formulas");
+    H.summarize();
+    H.openNotebook();
+    H.getNotebookStep("summarize")
+      .findByText("Big orders")
+      .should("be.visible");
+    H.getNotebookStep("summarize").findByText("Average order").click();
+    H.CustomExpressionEditor.value().should("eq", "Sum([Total]) / Count()");
+    H.CustomExpressionEditor.nameInput().should("have.value", "Average order");
+  });
+});
+
+describe("scenarios > question > summarize sidebar > sidebar and notebook", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("carries a summary from the sidebar to the notebook and back, and keeps it across a reload", () => {
+    const values = ["Sum of Subtotal", "Count"];
+    const groupings = ["Created At: Year", "Product → Category"];
+
+    H.openOrdersTable();
+    cy.intercept("POST", "/api/dataset").as("summaryQuery");
+    H.summarize();
+    H.addSummaryValue("Subtotal");
+    cy.wait("@summaryQuery");
+    H.clickSummaryField("Created At", { section: "Orders" });
+    cy.wait("@summaryQuery");
+    H.changeSummaryGroupingBucket("Created At: Month", "Year");
+    cy.wait("@summaryQuery");
+    H.summarize();
+    H.summarySidebar().should("not.exist");
+
+    cy.log("the notebook shows what the sidebar made");
+    H.openNotebook();
+    assertNotebookSummary({
+      values: ["Sum of Subtotal"],
+      groupings: ["Created At: Year"],
+    });
+
+    cy.log("the sidebar shows what the notebook adds");
+    H.addSummaryField({ metric: "Count of rows" });
+    H.addSummaryGroupingField({ table: "Product", field: "Category" });
+    H.visualize();
+    cy.wait("@summaryQuery");
+    H.summarize();
+    H.assertSummaryWellItems("values", values);
+    H.assertSummaryWellItems("columns", groupings);
+
+    cy.log("a reload keeps it in both");
+    cy.reload();
+    cy.wait("@summaryQuery").then(({ response }) => {
+      expect(response?.body.error).to.eq(undefined);
+    });
+    H.summarize();
+    H.assertSummaryWellItems("values", values);
+    H.assertSummaryWellItems("columns", groupings);
+    H.summarize();
+    H.summarySidebar().should("not.exist");
+    H.openNotebook();
+    assertNotebookSummary({ values, groupings });
+  });
+});
+
+function assertNotebookSummary({
+  values,
+  groupings,
+}: {
+  values: string[];
+  groupings: string[];
+}) {
+  H.getNotebookStep("summarize").within(() => {
+    values.forEach((name) => {
+      cy.findByTestId("aggregate-step").findByText(name).should("be.visible");
+    });
+    groupings.forEach((name) => {
+      cy.findByTestId("breakout-step").findByText(name).should("be.visible");
+    });
+  });
+}
+
+function addNotebookFormula({
+  formula,
+  name,
+}: {
+  formula: string;
+  name: string;
+}) {
+  H.addSummaryField({ metric: "Custom Expression" });
+  H.enterCustomColumnDetails({ formula, name, clickDone: true });
+}
+
+function withoutClauseIds(clauses: unknown): unknown {
+  return JSON.parse(
+    JSON.stringify(clauses, (key, value) =>
+      key === "lib/uuid" ? undefined : value,
+    ),
+  );
+}
+
+function waitForQueriedValues() {
+  return cy
+    .wait("@summaryQuery")
+    .then(({ request }) =>
+      withoutClauseIds(request.body.stages[0].aggregation),
+    );
+}
+
 function assertSummary() {
   H.assertSummaryWellItems("values", ["Sum of Subtotal"]);
   H.assertSummaryWellItems("columns", [

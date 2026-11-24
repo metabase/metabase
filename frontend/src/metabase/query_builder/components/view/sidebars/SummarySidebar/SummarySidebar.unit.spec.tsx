@@ -11,6 +11,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { format } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -140,6 +141,105 @@ const SUMMARIZED_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
     },
   ],
 });
+
+const NOTEBOOK_VALUES = [
+  ["Average order", "Sum([Total]) / Count()"],
+  ["Big orders", "CountIf([Total] > 100)"],
+  ["Median of Total", "Median([Total])"],
+  ["P90 total", "Percentile([Total], 0.9)"],
+];
+const NOTEBOOK_VALUE_NAMES = NOTEBOOK_VALUES.map(([name]) => name);
+const FORMULA_VALUE_NAMES = ["Average order", "Big orders", "P90 total"];
+
+const NOTEBOOK_VALUES_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [
+        {
+          name: "Average order",
+          value: {
+            type: "operator",
+            operator: "/",
+            args: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+              { type: "operator", operator: "count" },
+            ],
+          },
+        },
+        {
+          name: "Big orders",
+          value: {
+            type: "operator",
+            operator: "count-where",
+            args: [
+              {
+                type: "operator",
+                operator: ">",
+                args: [
+                  { type: "column", name: "TOTAL" },
+                  { type: "literal", value: 100 },
+                ],
+              },
+            ],
+          },
+        },
+        {
+          type: "operator",
+          operator: "median",
+          args: [{ type: "column", name: "TOTAL" }],
+        },
+        {
+          name: "P90 total",
+          value: {
+            type: "operator",
+            operator: "percentile",
+            args: [
+              { type: "column", name: "TOTAL" },
+              { type: "literal", value: 0.9 },
+            ],
+          },
+        },
+        {
+          type: "operator",
+          operator: "sum",
+          args: [{ type: "column", name: "SUBTOTAL" }],
+        },
+      ],
+      breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+    },
+  ],
+});
+
+function getValueFormulas(query: Lib.Query) {
+  return Promise.all(
+    Lib.aggregations(query, STAGE_INDEX).map(async (clause) => [
+      Lib.displayInfo(query, STAGE_INDEX, clause).displayName,
+      await format(clause, {
+        query,
+        stageIndex: STAGE_INDEX,
+        printWidth: Infinity,
+      }),
+    ]),
+  );
+}
+
+async function pickValueOption(searchText: string, name: string) {
+  await userEvent.type(
+    screen.getByLabelText("Add a value by name"),
+    searchText,
+  );
+  const options = await screen.findAllByRole("option");
+  const option = options.find((option) => option.textContent === name);
+  if (option == null) {
+    throw new Error(`No ${name} option`);
+  }
+  await userEvent.click(option);
+}
 
 type SetupOpts = {
   query?: Lib.Query;
@@ -375,15 +475,7 @@ describe("SummarySidebar", () => {
   it("aggregates a column picked in the Summarize by typeahead with its default operator", async () => {
     const { getLastQuery } = setup();
 
-    await userEvent.type(screen.getByLabelText("Add a value by name"), "quant");
-    const options = await screen.findAllByRole("option");
-    const quantityOption = options.find(
-      (option) => option.textContent === "Quantity",
-    );
-    if (quantityOption == null) {
-      throw new Error("No Quantity option");
-    }
-    await userEvent.click(quantityOption);
+    await pickValueOption("quant", "Quantity");
 
     expect(getLastQuery()).toEqual({
       values: ["Sum of Quantity"],
@@ -557,6 +649,123 @@ describe("SummarySidebar", () => {
         await screen.findByRole("menuitem", { name: "Year" }),
       ).getByLabelText("check icon"),
     ).toBeInTheDocument();
+  });
+
+  describe("values made in the notebook", () => {
+    it("shows custom expressions, a median and a percentile as chips, with a function menu for the median only", async () => {
+      setup({ query: NOTEBOOK_VALUES_QUERY });
+
+      expect(getChipLabels("values")).toEqual([
+        ...NOTEBOOK_VALUE_NAMES,
+        "Sum of Subtotal",
+      ]);
+      FORMULA_VALUE_NAMES.forEach((name) => {
+        expect(
+          screen.queryByRole("button", {
+            name: `Change how ${name} is calculated`,
+          }),
+        ).not.toBeInTheDocument();
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: "Change how Median of Total is calculated",
+        }),
+      );
+      expect(
+        within(
+          await screen.findByRole("menuitem", { name: "Median of ..." }),
+        ).getByLabelText("check icon"),
+      ).toBeInTheDocument();
+    });
+
+    it.each([
+      {
+        name: "another value is added",
+        edit: () => pickValueOption("quant", "Quantity"),
+        values: [...NOTEBOOK_VALUE_NAMES, "Sum of Subtotal", "Sum of Quantity"],
+        dimensions: ["Created At: Month"],
+      },
+      {
+        name: "another value changes its function",
+        edit: async () => {
+          await userEvent.click(
+            screen.getByRole("button", {
+              name: "Change how Sum of Subtotal is calculated",
+            }),
+          );
+          await userEvent.click(
+            await screen.findByRole("menuitem", { name: "Average of ..." }),
+          );
+        },
+        values: [...NOTEBOOK_VALUE_NAMES, "Average of Subtotal"],
+        dimensions: ["Created At: Month"],
+      },
+      {
+        name: "another value is removed",
+        edit: () =>
+          userEvent.click(
+            screen.getByRole("button", { name: "Remove Sum of Subtotal" }),
+          ),
+        values: NOTEBOOK_VALUE_NAMES,
+        dimensions: ["Created At: Month"],
+      },
+      {
+        name: "a grouping changes its date unit",
+        edit: async () => {
+          await userEvent.click(
+            screen.getByRole("button", {
+              name: "Change how Created At: Month is grouped",
+            }),
+          );
+          await userEvent.click(
+            await screen.findByRole("menuitem", { name: "Year" }),
+          );
+        },
+        values: [...NOTEBOOK_VALUE_NAMES, "Sum of Subtotal"],
+        dimensions: ["Created At: Year"],
+      },
+      {
+        name: "a grouping is added",
+        edit: async () => {
+          const user = userEvent.setup();
+          await user.keyboard("{Alt>}");
+          await user.click(getFieldButton("Product", "Category"));
+        },
+        values: [...NOTEBOOK_VALUE_NAMES, "Sum of Subtotal"],
+        dimensions: ["Created At: Month", "Product → Category"],
+      },
+      {
+        name: "the groupings are replaced",
+        edit: () => userEvent.click(getFieldButton("Product", "Category")),
+        values: [...NOTEBOOK_VALUE_NAMES, "Sum of Subtotal"],
+        dimensions: ["Product → Category"],
+      },
+      {
+        name: "a grouping is removed",
+        edit: () =>
+          userEvent.click(
+            screen.getByRole("button", { name: "Remove Created At: Month" }),
+          ),
+        values: [...NOTEBOOK_VALUE_NAMES, "Sum of Subtotal"],
+        dimensions: [],
+      },
+    ])("keeps them when $name", async ({ edit, values, dimensions }) => {
+      const { onQueryChange, getLastQuery } = setup({
+        query: NOTEBOOK_VALUES_QUERY,
+      });
+
+      await edit();
+
+      expect(onQueryChange).toHaveBeenCalledTimes(1);
+      expect(getLastQuery()).toEqual({ values, dimensions });
+      const [[nextQuery]] = onQueryChange.mock.calls;
+      const formulas = await getValueFormulas(nextQuery);
+      expect(formulas.slice(0, NOTEBOOK_VALUES.length)).toEqual(
+        NOTEBOOK_VALUES,
+      );
+      expect(getChipLabels("values")).toEqual(values);
+    });
   });
 
   describe("drag and drop", () => {

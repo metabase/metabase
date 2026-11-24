@@ -20,7 +20,9 @@ import { loadVisualizationComponents } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type { Database } from "metabase-types/api";
 import {
+  COMMON_DATABASE_FEATURES,
   createMockCard,
   createMockNumericColumn,
   createMockSingleSeries,
@@ -103,6 +105,7 @@ function Harness({
 }
 
 type SetupOpts = {
+  apiDatabase?: Database;
   question?: Question;
   readOnly?: boolean;
   isActive?: boolean;
@@ -126,13 +129,14 @@ function CompetingFormulaBar({
 }
 
 function setup({
+  apiDatabase = database,
   question = defaultQuestion,
   readOnly = false,
   isActive = true,
   withSlot = true,
   withCompetingBar = false,
 }: SetupOpts = {}) {
-  setupDatabaseEndpoints(database);
+  setupDatabaseEndpoints(apiDatabase);
   const onQuestionChange = jest.fn<void, [Question]>();
   const renderHarness = (active: boolean) => (
     <FormulaBarSlotProvider>
@@ -311,6 +315,24 @@ describe("column formula bar", () => {
       },
     });
     await expectClosed();
+  });
+
+  it("flags a function the database doesn't support and keeps the draft open", async () => {
+    const source = 'regexExtract([Product → Category], "^W")';
+    const { onQuestionChange } = setup({
+      apiDatabase: createSampleDatabase({
+        features: COMMON_DATABASE_FEATURES.filter((name) => name !== "regex"),
+      }),
+    });
+    const { textbox, view } = await openFormula(source);
+
+    fireEvent.keyDown(textbox, { key: "Enter", ctrlKey: true });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unsupported function regexExtract",
+    );
+    expect(view?.state.doc.toString()).toBe(source);
+    expect(onQuestionChange).not.toHaveBeenCalled();
   });
 
   it("discards the draft when the query builder leaves view mode", async () => {
