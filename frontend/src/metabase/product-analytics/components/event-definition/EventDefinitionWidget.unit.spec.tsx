@@ -59,17 +59,22 @@ type SetupOpts = {
 
 const setup = ({ value }: SetupOpts) => {
   const onChange = jest.fn<void, [JsEventDefinition | null]>();
-  renderWithProviders(
+  const renderWidget = (value: JsEventDefinition | null) => (
     <EventDefinitionWidget
+      id="habit.active"
       value={value}
       tableQuery={getTableQuery(PROVIDER, ORDERS_ID)}
       emptyLabel="Any event"
       onChange={onChange}
-    />,
-    { storeInitialState: STATE },
+    />
   );
+  const { rerender } = renderWithProviders(renderWidget(value), {
+    storeInitialState: STATE,
+  });
   const getNextValue = () => checkNotNull(onChange.mock.lastCall)[0];
-  return { onChange, getNextValue };
+  const setValue = (newValue: JsEventDefinition | null) =>
+    rerender(renderWidget(newValue));
+  return { onChange, getNextValue, setValue };
 };
 
 describe("EventDefinitionWidget", () => {
@@ -139,5 +144,19 @@ describe("EventDefinitionWidget", () => {
 
     expect(onChange).not.toHaveBeenCalled();
     expect(screen.getByText("Any event")).toBeInTheDocument();
+  });
+
+  it("closes the editor, dropping its draft, when the value changes some other way", async () => {
+    const { onChange, setValue } = setup({ value: createStoredEvent(null) });
+    await userEvent.click(screen.getByText("Total is greater than 100"));
+    expect(screen.getByTestId("event-definition-name")).toBeInTheDocument();
+
+    setValue(createStoredEvent("Big orders"));
+
+    expect(
+      screen.queryByTestId("event-definition-name"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Big orders")).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

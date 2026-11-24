@@ -175,21 +175,31 @@ type KeyedSettingDefinition<
 >;
 
 /**
- * Definitions for every key of `TSettings`, each typed by its own value. Each
- * one checks stored values with `isValid` and has a default, so every computed
- * setting has a valid value. Values can't be `undefined`, which would look
- * like a definition that threw: a setting with no value uses `null`.
+ * The definition of the setting `K` of `TSettings`, typed by its value. It
+ * checks stored values with `isValid` and has a default, so the computed
+ * setting always has a valid value.
+ */
+export type CompleteSettingDefinition<
+  TObject,
+  TSettings,
+  K extends keyof TSettings,
+> = KeyedSettingDefinition<TObject, TSettings, K> &
+  Required<
+    Pick<
+      KeyedSettingDefinition<TObject, TSettings, K>,
+      "getDefault" | "isValid"
+    >
+  >;
+
+/**
+ * Definitions for every key of `TSettings`. Values can't be `undefined`, which
+ * would look like a definition that threw: a setting with no value uses
+ * `null`.
  */
 export type CompleteSettingDefinitions<TObject, TSettings> = {
   [K in keyof TSettings & string]: undefined extends TSettings[K]
     ? never
-    : KeyedSettingDefinition<TObject, TSettings, K> &
-        Required<
-          Pick<
-            KeyedSettingDefinition<TObject, TSettings, K>,
-            "getDefault" | "isValid"
-          >
-        >;
+    : CompleteSettingDefinition<TObject, TSettings, K>;
 };
 
 export type CompleteVisualizationSettingDefinition<

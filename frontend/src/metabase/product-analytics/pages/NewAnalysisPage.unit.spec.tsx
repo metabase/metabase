@@ -25,6 +25,11 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
+import {
+  getQueryEventDefinition,
+  readEventDefinition,
+  toJsEventDefinition,
+} from "../event-definition";
 import { getRoutes } from "../routes";
 import { decodeSettings, encodeSettings } from "../url-state";
 
@@ -126,7 +131,7 @@ const USER_ID_FIELD_ID = checkNotNull(
   SET_UP_TABLE.fields?.find((field) => field.name === "user_id"),
 ).id;
 
-const getBaseQuery = (filterValues: string[]) => {
+const getUserQuery = (filterValues: string[]) => {
   const metadataProvider = createMetadataProvider({
     databaseId: SET_UP_TABLE.db_id,
     metadata: createMockMetadata({
@@ -135,24 +140,28 @@ const getBaseQuery = (filterValues: string[]) => {
       ],
     }),
   });
-  return Lib.toJsQuery(
-    Lib.createTestQuery(metadataProvider, {
-      stages: [
-        {
-          source: { type: "table", id: SET_UP_TABLE.id },
-          filters: filterValues.map((value) => ({
-            type: "operator",
-            operator: "=",
-            args: [
-              { type: "column", name: "user_id" },
-              { type: "literal", value },
-            ],
-          })),
-        },
-      ],
-    }),
-  );
+  return Lib.createTestQuery(metadataProvider, {
+    stages: [
+      {
+        source: { type: "table", id: SET_UP_TABLE.id },
+        filters: filterValues.map((value) => ({
+          type: "operator",
+          operator: "=",
+          args: [
+            { type: "column", name: "user_id" },
+            { type: "literal", value },
+          ],
+        })),
+      },
+    ],
+  });
 };
+
+const getBaseQuery = (filterValues: string[]) =>
+  Lib.toJsQuery(getUserQuery(filterValues));
+
+const getStoredSettings = (router: ReturnType<typeof setup>["router"]) =>
+  decodeSettings(router?.location.hash.replace(/^#/, "") ?? "");
 
 type SetupOpts = {
   initialRoute: string;
@@ -559,9 +568,7 @@ describe("NewAnalysisPage", () => {
       expect(
         screen.getAllByTestId("filter-pill").map((pill) => pill.textContent),
       ).toEqual(["User ID is u2"]);
-      expect(
-        decodeSettings(router?.location.hash.replace(/^#/, "") ?? ""),
-      ).toMatchObject({
+      expect(getStoredSettings(router)).toMatchObject({
         base_query: {
           stages: [
             { filters: [["=", {}, ["field", {}, USER_ID_FIELD_ID], "u2"]] },
@@ -591,6 +598,134 @@ describe("NewAnalysisPage", () => {
       expect(
         await screen.findByRole("button", { name: "by week" }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("setup panel", () => {
+    const ACTIVE_EVENT_TITLE = "What event counts as showing up?";
+
+    const getActiveEvent = () =>
+      screen.getByRole("group", { name: ACTIVE_EVENT_TITLE });
+
+    it("opens with the setup panel, where any event counts as showing up", async () => {
+      setup({ initialRoute: SET_UP_TABLE_ROUTE });
+
+      const panel = await screen.findByRole("region", { name: "Setup" });
+      expect(
+        within(panel).getByRole("heading", { name: "Setup" }),
+      ).toBeInTheDocument();
+      expect(within(panel).queryByRole("tab")).not.toBeInTheDocument();
+      expect(
+        within(getActiveEvent()).getByText("Any event"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Setup" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+
+    it("reruns the analysis with an active event, and keeps it in the URL", async () => {
+      const { router } = setup({ initialRoute: SET_UP_TABLE_ROUTE });
+      await waitFor(() => expect(getRunRequests()).toHaveLength(1));
+
+      await userEvent.click(
+        within(await screen.findByRole("region", { name: "Setup" })).getByText(
+          "Any event",
+        ),
+      );
+      await userEvent.click(await screen.findByText("Created At"));
+      await userEvent.click(await screen.findByText("Today"));
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      expect(
+        within(getActiveEvent()).getByText("Created At is today"),
+      ).toBeInTheDocument();
+      await waitFor(() => expect(getRunRequests()).toHaveLength(2));
+      const event = readEventDefinition(
+        getStoredSettings(router)["habit.active"],
+      );
+      expect(event?.name).toBeNull();
+      expect(event?.conditions).toHaveLength(1);
+    });
+
+    it("opens with the active event in the URL, and removes it", async () => {
+      const activeEvent = toJsEventDefinition(
+        getQueryEventDefinition(getUserQuery(["u1"]), "Signed up"),
+      );
+      const { router } = setup({
+        initialRoute: `${SET_UP_TABLE_ROUTE}#${encodeSettings({ "habit.active": activeEvent })}`,
+      });
+      await screen.findByRole("region", { name: "Setup" });
+      await waitFor(() => expect(getRunRequests()).toHaveLength(1));
+      expect(
+        within(getActiveEvent()).getByText("Signed up"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        within(getActiveEvent()).getByRole("button", { name: "Remove" }),
+      );
+
+      expect(
+        within(getActiveEvent()).getByText("Any event"),
+      ).toBeInTheDocument();
+      expect(getStoredSettings(router)["habit.active"]).toBeNull();
+      await waitFor(() => expect(getRunRequests()).toHaveLength(2));
+    });
+
+    it("closes, and reopens from the toolbar", async () => {
+      setup({ initialRoute: SET_UP_TABLE_ROUTE });
+      const panel = await screen.findByRole("region", { name: "Setup" });
+
+      await userEvent.click(
+        within(panel).getByRole("button", { name: "Close" }),
+      );
+      expect(
+        screen.queryByRole("region", { name: "Setup" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Setup" })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Setup" }));
+      expect(screen.getByRole("region", { name: "Setup" })).toBeInTheDocument();
+    });
+
+    it("resizes between 240 and 640 pixels from its right edge", async () => {
+      // jsdom doesn't implement pointer capture.
+      Element.prototype.setPointerCapture = jest.fn<void, [number]>();
+      Element.prototype.releasePointerCapture = jest.fn<void, [number]>();
+      setup({ initialRoute: SET_UP_TABLE_ROUTE });
+      const panel = await screen.findByRole("region", { name: "Setup" });
+      const handle = within(panel).getByRole("separator");
+      const drag = (toX: number) =>
+        userEvent.pointer([
+          {
+            keys: "[MouseLeft>]",
+            target: handle,
+            coords: { x: 0, clientX: 0 },
+          },
+          { target: handle, coords: { x: toX, clientX: toX } },
+          { keys: "[/MouseLeft]", target: handle },
+        ]);
+
+      await drag(100);
+      expect(panel).toHaveStyle({ width: "460px" });
+      await drag(1000);
+      expect(panel).toHaveStyle({ width: "640px" });
+      await drag(-1000);
+      expect(panel).toHaveStyle({ width: "240px" });
+    });
+
+    it("isn't there without a table", async () => {
+      setup({ initialRoute: "/product-analysis/new?kind=habit" });
+
+      expect(
+        await screen.findByRole("button", { name: "Setup" }),
+      ).toBeDisabled();
+      expect(
+        screen.queryByRole("region", { name: "Setup" }),
+      ).not.toBeInTheDocument();
     });
   });
 });

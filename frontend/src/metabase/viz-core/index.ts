@@ -470,6 +470,7 @@ export type {
 export type { ComputedVisualizationSettings } from "./types/computed-settings";
 export type {
   ColumnSettingDefinition,
+  CompleteSettingDefinition,
   CompleteSettingDefinitions,
   FormattableColumn,
   SettingsExtra,

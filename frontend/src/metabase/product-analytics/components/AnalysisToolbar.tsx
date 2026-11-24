@@ -1,4 +1,6 @@
-import { Button, Group } from "metabase/ui";
+import { t } from "ttag";
+
+import { Button, Group, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Table, TableId } from "metabase-types/api";
 
@@ -23,10 +25,12 @@ type AnalysisToolbarProps = {
   /** The query the analysis's filters are on. Undefined until it's known. */
   baseQuery: Lib.Query | undefined;
   areFiltersExpanded: boolean;
+  isSetupOpen: boolean;
   onTableChange: (tableId: TableId) => void;
   onChangeSettings: (changes: Partial<CommonSettings>) => void;
   onToggleFilters: () => void;
   onAddFirstFilter: (baseQuery: Lib.Query) => void;
+  onToggleSetup: () => void;
 };
 
 /** The controls every analysis shares. */
@@ -39,10 +43,12 @@ export const AnalysisToolbar = ({
   query,
   baseQuery,
   areFiltersExpanded,
+  isSetupOpen,
   onTableChange,
   onChangeSettings,
   onToggleFilters,
   onAddFirstFilter,
+  onToggleSetup,
 }: AnalysisToolbarProps) => (
   <Group justify="space-between" gap="sm">
     <Group gap="sm">
@@ -61,6 +67,15 @@ export const AnalysisToolbar = ({
         />
       </Button.Group>
       {settings !== undefined && <CountingMenu value={settings.counting} />}
+      <Button
+        variant="default"
+        leftSection={<Icon name="sliders" aria-hidden />}
+        aria-pressed={isSetupOpen}
+        disabled={settings === undefined}
+        onClick={onToggleSetup}
+      >
+        {t`Setup`}
+      </Button>
     </Group>
     <Group gap="sm">
       {settings !== undefined && (
