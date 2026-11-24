@@ -1,19 +1,27 @@
 import type * as Lib from "metabase-lib";
 
-import type { SummaryQueryChangeOptions, SummaryWellId } from "../types";
+import type {
+  SummaryDimensionWellId,
+  SummaryQueryChangeOptions,
+  SummaryWellId,
+} from "../types";
 
 export type SummaryFormulaClause = Lib.AggregationClause | Lib.ExpressionClause;
 
 /** The formula of a chip in a `Summarize by` or `Group by` well. */
 export type SummaryFormula = {
-  wellId: SummaryWellId;
-  /** An aggregation, or the custom column of one or more groupings. */
-  clause: SummaryFormulaClause;
   /** Position among the stage's aggregations, or its custom columns. */
   index: number;
   /** Absent for an unnamed aggregation, which takes its name from the formula. */
   name?: string;
-};
+} & (
+  | { wellId: "values"; clause: Lib.AggregationClause }
+  | {
+      wellId: SummaryDimensionWellId;
+      /** The custom column of one or more groupings. */
+      clause: Lib.ExpressionClause;
+    }
+);
 
 export type SummaryFormulaBarOptions = {
   query: Lib.Query;

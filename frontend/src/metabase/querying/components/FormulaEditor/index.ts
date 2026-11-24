@@ -3,5 +3,6 @@ export type {
   FormulaEditorProps,
   FormulaSourceStatus,
   NamedExpression,
+  StageExpression,
 } from "./types";
-export { isDefaultFormulaName } from "./utils";
+export { editExpression, findExpression, isDefaultFormulaName } from "./utils";

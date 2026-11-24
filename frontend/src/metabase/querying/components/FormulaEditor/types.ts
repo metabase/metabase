@@ -3,6 +3,12 @@ import type { EditorView } from "@codemirror/view";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+/** A custom column of a stage, with its position among the stage's custom columns. */
+export type StageExpression = {
+  clause: Lib.ExpressionClause;
+  index: number;
+};
+
 export type NamedExpression = {
   name: string;
   clause: Lib.ExpressionClause;

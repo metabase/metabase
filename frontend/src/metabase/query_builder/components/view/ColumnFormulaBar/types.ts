@@ -40,9 +40,3 @@ export type ColumnFormulaDraft = { key: number } & (
       sourceStatus: FormulaSourceStatus;
     }
 );
-
-export type ColumnExpression = {
-  clause: Lib.ExpressionClause;
-  /** Position among the stage's custom columns. */
-  index: number;
-};

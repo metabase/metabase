@@ -8,6 +8,9 @@ import {
   FormulaEditor,
   type FormulaSourceStatus,
   type NamedExpression,
+  editExpression,
+  findExpression,
+  isDefaultFormulaName,
 } from "metabase/querying/components/FormulaEditor";
 import { format } from "metabase/querying/expressions";
 import { isNotNull } from "metabase/utils/types";
@@ -27,10 +30,8 @@ import type {
   ColumnFormulaDraft,
 } from "./types";
 import {
-  editExpression,
-  findClickedExpression,
-  findClickedSummaryFormula,
-  findExpression,
+  findColumnExpression,
+  findColumnLastStageExpression,
   withEditFormulaAction,
 } from "./utils";
 
@@ -170,18 +171,24 @@ export function useColumnFormulaBar({
   );
 
   const mapClickActions = useCallback(
-    (actions: ClickAction[], clicked: ClickObject) => {
-      const expression = findClickedExpression(query, stageIndex, clicked);
+    (actions: ClickAction[], { column, value }: ClickObject) => {
+      // only header clicks: a click on a cell or a chart point has a value
+      if (!column || value !== undefined) {
+        return actions;
+      }
+      const expression = findColumnExpression(query, stageIndex, column);
       if (expression) {
         return withEditFormulaAction(actions, () => edit(expression));
       }
-      const summaryFormula = findClickedSummaryFormula(
+      // On a summarized question, `query` ends with an empty stage after the summary,
+      // so a Group by formula is in the last stage of the question's own query.
+      const groupingExpression = findColumnLastStageExpression(
         question.query(),
-        clicked,
+        column,
       );
-      if (summaryFormula && onEditSummaryFormula) {
+      if (groupingExpression && onEditSummaryFormula) {
         return withEditFormulaAction(actions, () =>
-          onEditSummaryFormula(summaryFormula),
+          onEditSummaryFormula(groupingExpression),
         );
       }
       return actions;
@@ -200,12 +207,17 @@ export function useColumnFormulaBar({
       const isChanged =
         openDraft.source !== viewRef.current?.state.doc.toString().trim();
       if (isChanged) {
-        const nextQuery = editExpression(
+        const { displayName } = Lib.displayInfo(
           query,
           stageIndex,
           editedExpression.clause,
-          openDraft.source,
+        );
+        const { query: nextQuery } = editExpression(
+          query,
+          stageIndex,
+          editedExpression.clause,
           expression,
+          !isDefaultFormulaName(displayName, openDraft.source),
         );
         onQuestionChange(question.setQuery(nextQuery), { isNewColumn: false });
       }
