@@ -112,7 +112,9 @@ export const updateQuestion = (
     newQuestion = computedPivotQuestion.question;
 
     if (computedPivotQuestion.shouldRun !== null) {
-      run = computedPivotQuestion.shouldRun;
+      run =
+        computedPivotQuestion.shouldRun ||
+        (run && computedPivotQuestion.hasStaleResults);
     }
 
     const isNewQuestionNative = Lib.queryDisplayInfo(

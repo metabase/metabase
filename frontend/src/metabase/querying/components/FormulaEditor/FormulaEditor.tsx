@@ -21,6 +21,7 @@ export function FormulaEditor(props: FormulaEditorProps) {
   const {
     source,
     hasFormula,
+    isSubmitting,
     errorMessage,
     extensions,
     completionTooltipPortal,
@@ -85,7 +86,7 @@ export function FormulaEditor(props: FormulaEditorProps) {
             variant="subtle"
             color="positive"
             aria-label={submitLabel}
-            disabled={!hasFormula}
+            disabled={!hasFormula || isSubmitting}
             onClick={handleSubmit}
           >
             <Icon name="check" />

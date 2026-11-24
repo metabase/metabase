@@ -1,95 +1,139 @@
-import type { EditorView } from "@codemirror/view";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
-import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { hasFeature } from "metabase/databases";
 import {
-  FormulaEditor,
   type NamedExpression,
+  isDefaultFormulaName,
 } from "metabase/querying/components/FormulaEditor";
+import { format } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
-import {
-  FormulaBarFrame,
-  useFormulaBarOwnership,
-  useFormulaBarSlot,
-} from "../../../FormulaBar";
+import { FormulaBarFrame, useFormulaBarSlot } from "../../../FormulaBar";
 import type { DraftFormulaChipHandle } from "../SummaryWells/DraftFormulaChip";
 import type { SummaryWellId } from "../types";
 
+import { SummaryFormulaEditor } from "./SummaryFormulaEditor";
 import type {
   SummaryFormulaBarOptions,
-  SummaryFormulaDraft,
+  SummaryFormulaClause,
   SummaryFormulaInput,
 } from "./types";
-import { addSummaryFormula } from "./utils";
+import { useEditorSource } from "./use-editor-source";
+import { useSummaryFormulaDraft } from "./use-summary-formula-draft";
+import {
+  addSummaryFormula,
+  editSummaryFormula,
+  findSummaryFormula,
+} from "./utils";
 
 export function useSummaryFormulaBar({
   query,
   stageIndex,
+  isPivotMode,
   onAdd,
+  onEdit,
 }: SummaryFormulaBarOptions) {
   const slot = useFormulaBarSlot();
-  const ownership = useFormulaBarOwnership();
-  const [draft, setDraft] = useState<SummaryFormulaDraft | null>(null);
   const draftChipRef = useRef<DraftFormulaChipHandle>(null);
-  const viewRef = useRef<EditorView | null>(null);
-  const nextKey = useRef(0);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const pendingInput = useRef<{
-    wellId: SummaryWellId;
-    source: string;
-    onReady: () => void;
-  } | null>(null);
+  const editorSource = useEditorSource();
+  const { draft, isActive, open, close, isCurrent, updateEditOriginal } =
+    useSummaryFormulaDraft(editorSource.detach);
   const databaseId = Lib.databaseID(query);
   const { data: database } = useGetDatabaseQuery(
     slot && databaseId != null ? { id: databaseId } : skipToken,
   );
+  const editedFormula = useMemo(
+    () =>
+      draft?.kind === "edit"
+        ? findSummaryFormula(query, stageIndex, draft.wellId, draft.clause)
+        : null,
+    [query, stageIndex, draft],
+  );
+  // The edited chip can go away under the bar, from its remove button or Clear all.
+  const isEditedFormulaGone =
+    isActive && draft?.kind === "edit" && !editedFormula;
+  const isRowsWellGone = isActive && draft?.wellId === "rows" && !isPivotMode;
+  const isDraftTargetGone = isEditedFormulaGone || isRowsWellGone;
+  const openDraft = isActive && !isDraftTargetGone ? draft : null;
+  const openFormula = openDraft?.kind === "edit" ? editedFormula : null;
 
   useEffect(() => {
-    if (!ownership.isActive) {
-      setDraft(null);
-      viewRef.current = null;
-      pendingInput.current?.onReady();
-      pendingInput.current = null;
-    }
-  }, [ownership.isActive]);
-
-  const close = () => {
-    viewRef.current = null;
-    pendingInput.current?.onReady();
-    pendingInput.current = null;
-    setDraft(null);
-    ownership.close();
-    if (inputRef.current?.isConnected) {
-      inputRef.current.focus();
-    }
-  };
-
-  const handleSubmit = (expression: NamedExpression) => {
-    if (draft) {
-      onAdd(
-        addSummaryFormula(query, stageIndex, draft.wellId, expression),
-        draft.wellId,
-      );
+    if (isDraftTargetGone) {
       close();
     }
+  }, [isDraftTargetGone, close]);
+
+  const handleDraftNameChange = useCallback(
+    (name: string, source: string) =>
+      draftChipRef.current?.setFormula(name, source),
+    [],
+  );
+
+  const handleSubmit = (expression: NamedExpression) => {
+    if (openDraft?.kind === "new") {
+      onAdd(
+        addSummaryFormula(query, stageIndex, openDraft.wellId, expression),
+        openDraft.wellId,
+      );
+    } else if (
+      openDraft?.kind === "edit" &&
+      openDraft.original.status === "ready" &&
+      openFormula
+    ) {
+      // Replacing an unchanged formula still rewrites the clauses that refer to it, so skip it.
+      const { original } = openDraft;
+      if (expression.source !== original.source) {
+        const result = editSummaryFormula(
+          query,
+          stageIndex,
+          openFormula,
+          expression,
+          original.hasCustomName,
+        );
+        onEdit(result.query, result.options);
+      }
+    }
+    close();
   };
 
-  const handleEditorCreate = (view: EditorView) => {
-    viewRef.current = view;
-    const pending = pendingInput.current;
-    pendingInput.current = null;
-    if (pending) {
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: pending.source },
-        selection: { anchor: pending.source.length },
-        userEvent: "input.type",
-      });
-      pending.onReady();
+  const editFormula = (
+    wellId: SummaryWellId,
+    clause: SummaryFormulaClause,
+    input: HTMLInputElement | null,
+  ) => {
+    if (openFormula && Lib.isSameClause(openFormula.clause, clause)) {
+      editorSource.focus();
+      return;
     }
+    const formula = findSummaryFormula(query, stageIndex, wellId, clause);
+    if (!formula) {
+      return;
+    }
+    const key = open(input, {
+      kind: "edit",
+      wellId,
+      clause,
+      source: "",
+      original: { status: "loading" },
+    });
+    // the bar holds one line, so the printer must not wrap
+    format(formula.clause, { query, stageIndex, printWidth: Infinity }).then(
+      (source) => {
+        // a formula opened since, new or edited, has taken the bar
+        if (isCurrent(key)) {
+          const { name } = formula;
+          updateEditOriginal(key, {
+            status: "ready",
+            source,
+            hasCustomName: name != null && !isDefaultFormulaName(name, source),
+          });
+          editorSource.showEditedSource(source);
+        }
+      },
+      () => updateEditOriginal(key, { status: "failed" }),
+    );
   };
 
   const getFormulaInput = (
@@ -102,16 +146,15 @@ export function useSummaryFormulaBar({
     }
     return {
       start: (source, input, onReady) => {
-        pendingInput.current = { wellId, source, onReady };
-        inputRef.current = input;
-        nextKey.current += 1;
-        setDraft({ key: nextKey.current, wellId, source });
-        ownership.open();
+        open(input, { kind: "new", wellId, source });
+        editorSource.startNew(wellId, source, onReady);
       },
-      isPending: () => pendingInput.current?.wellId === wellId,
-      update: (source) => {
-        if (pendingInput.current?.wellId === wellId) {
-          pendingInput.current.source = source;
+      isPending: () => editorSource.isNewPending(wellId),
+      update: (source) => editorSource.updateNew(wellId, source),
+      edit: (clause, input) => editFormula(wellId, clause, input),
+      cancelEdit: (clause) => {
+        if (openFormula && Lib.isSameClause(openFormula.clause, clause)) {
+          close();
         }
       },
     };
@@ -121,21 +164,15 @@ export function useSummaryFormulaBar({
     slot &&
     createPortal(
       <FormulaBarFrame>
-        {ownership.isActive && draft ? (
-          <FormulaEditor
-            key={draft.key}
+        {openDraft ? (
+          <SummaryFormulaEditor
             query={query}
             stageIndex={stageIndex}
             database={database}
-            expressionMode={
-              draft.wellId === "values" ? "aggregation" : "expression"
-            }
-            initialSource={draft.source}
-            submitLabel={t`Add`}
-            onEditorCreate={handleEditorCreate}
-            onNameChange={(name, source) =>
-              draftChipRef.current?.setFormula(name, source)
-            }
+            draft={openDraft}
+            formula={openFormula}
+            onEditorCreate={editorSource.handleEditorCreate}
+            onNameChange={handleDraftNameChange}
             onSubmit={handleSubmit}
             onCancel={close}
           />
@@ -147,18 +184,20 @@ export function useSummaryFormulaBar({
   return {
     bar,
     draftFormula:
-      ownership.isActive && draft
+      openDraft?.kind === "new"
         ? {
-            wellId: draft.wellId,
-            draftKey: draft.key,
+            wellId: openDraft.wellId,
+            draftKey: openDraft.key,
             handleRef: draftChipRef,
-            onFocus: () => viewRef.current?.focus(),
+            onFocus: editorSource.focus,
             onCancel: close,
           }
         : null,
+    editingFormulaClause: openFormula?.clause,
     formulaInputs: {
       values: getFormulaInput("values"),
       columns: getFormulaInput("columns"),
+      rows: getFormulaInput("rows"),
     },
   };
 }

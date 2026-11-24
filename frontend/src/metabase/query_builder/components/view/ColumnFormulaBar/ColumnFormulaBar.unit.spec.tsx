@@ -191,7 +191,7 @@ describe("column formula bar", () => {
 
     fireEvent.keyDown(textbox, { key: "Enter", ctrlKey: true });
 
-    expect(onQuestionChange).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onQuestionChange).toHaveBeenCalledTimes(1));
     const [question] = onQuestionChange.mock.calls[0];
     const query = question.query();
     const expressions = Lib.expressions(query, -1);
@@ -304,7 +304,7 @@ describe("column formula bar", () => {
     const { textbox } = await openFormula("[Total] * 2");
     fireEvent.keyDown(textbox, { key: "Enter", ctrlKey: true });
 
-    expect(onQuestionChange).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onQuestionChange).toHaveBeenCalledTimes(1));
     const [nextQuestion] = onQuestionChange.mock.calls[0];
     expect(Lib.toLegacyQuery(nextQuestion.query())).toMatchObject({
       query: {

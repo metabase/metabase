@@ -29,6 +29,7 @@ type SummaryWellProps = {
   wellId: SummaryWellId;
   title: string;
   dropState: WellDropState | null;
+  action?: ReactNode;
   children: ReactNode;
 };
 
@@ -36,6 +37,7 @@ export function SummaryWell({
   wellId,
   title,
   dropState,
+  action,
   children,
 }: SummaryWellProps) {
   const fieldRef = useRef<HTMLInputElement>(null);
@@ -75,6 +77,7 @@ export function SummaryWell({
       >
         <Flex className={S.wellHeader}>
           <Text className={S.wellTitle}>{title}</Text>
+          {action}
         </Flex>
         {children}
       </Card>

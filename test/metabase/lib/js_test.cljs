@@ -767,3 +767,21 @@
               (js->clj (lib.js/xray-cell-query query))))))
   (testing "returns nil without filter"
     (is (nil? (lib.js/xray-cell-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
+
+(deftest ^:parallel same-clause?-test
+  (let [query (-> (lib.tu/venues-query)
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
+        [first-count second-count sum] (lib/aggregations query)]
+    (testing "tells apart clauses that are otherwise equal"
+      (is (true? (lib.js/same-clause? first-count first-count)))
+      (is (false? (lib.js/same-clause? first-count second-count))))
+    (testing "finds a clause again after another clause is removed"
+      (let [[second-count' sum'] (lib/aggregations (lib/remove-clause query -1 first-count))]
+        (is (true? (lib.js/same-clause? second-count second-count')))
+        (is (true? (lib.js/same-clause? sum sum')))))
+    (testing "a replaced clause is a different clause"
+      (let [renamed (lib.js/with-expression-name sum "Total price")
+            [_ _ sum'] (lib/aggregations (lib/replace-clause query -1 sum renamed))]
+        (is (false? (lib.js/same-clause? sum sum')))))))

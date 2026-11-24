@@ -18,6 +18,15 @@ type Options = SummaryQueryChangeOptions & {
   generatedExpressions: SummaryGeneratedExpression[];
 };
 
+function isSameFormula(
+  formula: SummaryGeneratedExpression | undefined,
+  otherFormula: SummaryGeneratedExpression,
+) {
+  return (
+    isNotNull(formula) && Lib.isSameClause(formula.clause, otherFormula.clause)
+  );
+}
+
 export function updateSummaryFormula({
   query,
   nextQuery,
@@ -25,19 +34,19 @@ export function updateSummaryFormula({
   generatedExpressions,
   isFormulaCreated,
   renamedFormula,
+  editedFormula,
 }: Options) {
   const index =
     stageIndex < 0 ? Lib.stageCount(query) + stageIndex : stageIndex;
   const owned = reconcileSummaryFormulas(query, generatedExpressions).map(
     (formula) => {
-      const isRenamedStage =
-        isNotNull(renamedFormula) && formula.stageIndex === index;
-      if (!isRenamedStage) {
+      const isRewrite = isNotNull(renamedFormula) || editedFormula === true;
+      if (!isRewrite || formula.stageIndex !== index) {
         return formula;
       }
-      // a rename also rewrites the formulas that refer to the renamed one
+      // a rename or an edit replaces the changed formula with a new clause
       const name =
-        formula.name === renamedFormula.name
+        formula.name === renamedFormula?.name
           ? renamedFormula.nextName
           : formula.name;
       return makeSummaryFormula(nextQuery, index, name) ?? formula;
@@ -66,8 +75,10 @@ export function updateSummaryFormula({
     (formula) =>
       formula.stageIndex === index &&
       !groupingNames.includes(formula.name) &&
-      makeSummaryFormula(nextQuery, index, formula.name)?.expression ===
-        formula.expression,
+      isSameFormula(
+        makeSummaryFormula(nextQuery, index, formula.name),
+        formula,
+      ),
   );
   const cleanedQuery = removed.reduce((currentQuery, formula) => {
     const expression = Lib.expressions(currentQuery, index).find(

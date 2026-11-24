@@ -19,7 +19,10 @@ import {
 } from "metabase-lib/test-helpers";
 import type { DatabaseFeature } from "metabase-types/api";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { FormulaEditor } from "./FormulaEditor";
 import type { FormulaEditorProps, NamedExpression } from "./types";
@@ -27,7 +30,14 @@ import type { FormulaEditorProps, NamedExpression } from "./types";
 jest.unmock("@uiw/react-codemirror");
 
 type SetupOpts = Partial<
-  Pick<FormulaEditorProps, "initialSource" | "database" | "expressionMode">
+  Pick<
+    FormulaEditorProps,
+    | "initialSource"
+    | "database"
+    | "expressionMode"
+    | "query"
+    | "expressionIndex"
+  >
 >;
 
 type FeatureCase = Required<Pick<SetupOpts, "expressionMode">> & {
@@ -107,6 +117,29 @@ async function setup(options: SetupOpts = {}) {
   return { view, onSubmit, onCancel };
 }
 
+function createDoubledTotalQuery() {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        expressions: [
+          {
+            name: "Doubled",
+            value: {
+              type: "operator",
+              operator: "*",
+              args: [
+                { type: "column", name: "TOTAL" },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  });
+}
+
 async function replaceFormula(view: EditorView, source: string) {
   await act(async () => {
     view.dispatch({
@@ -146,7 +179,46 @@ describe("FormulaEditor", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("textbox", { name: "Formula" }));
     await userEvent.keyboard("{Enter}");
-    expect(onSubmit).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+  });
+
+  it.each([
+    ["total*2", "Total * 2"],
+    ["([Total] + 1) + 2", "Total + 1 + 2"],
+    ["[Total] * (2)", "Total * 2"],
+    ["1e3 + [Total]", "1000 + Total"],
+    ["[Product.Category]", "Product → Category"],
+  ])("names the formula %s after its formatted text", async (source, name) => {
+    const { onSubmit } = await setup({ initialSource: source });
+
+    await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0].name).toBe(name);
+  });
+
+  it("lets a new formula refer to an existing custom column", async () => {
+    const { onSubmit } = await setup({
+      query: createDoubledTotalQuery(),
+      initialSource: "[Doubled] + 1",
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+  });
+
+  it("does not let the edited custom column refer to itself", async () => {
+    const { onSubmit } = await setup({
+      query: createDoubledTotalQuery(),
+      expressionIndex: 0,
+      initialSource: "[Doubled] + 1",
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/.+/);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it.each(["/", "{Tab}", "{Shift>}{Tab}{/Shift}"])(
@@ -186,7 +258,7 @@ describe("FormulaEditor", () => {
     await userEvent.paste("coalesce(\r\n[Total],\r0\n)");
     expect(view.state.doc.toString()).toBe("coalesce( [Total], 0 )");
     await userEvent.click(screen.getByRole("button", { name: "Add column" }));
-    expect(onSubmit).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
 
     await userEvent.click(screen.getByRole("textbox", { name: "Formula" }));
     const source = view.state.doc.toString();
@@ -315,7 +387,7 @@ describe("FormulaEditor", () => {
       const { view, onSubmit } = await setup({ initialSource: "[Total]" });
       await openCompletion(view, 3);
       await user.keyboard("{Control>}{Enter}{/Control}");
-      expect(onSubmit).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     });
   });
 });

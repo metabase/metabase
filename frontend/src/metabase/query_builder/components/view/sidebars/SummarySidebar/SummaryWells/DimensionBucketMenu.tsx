@@ -1,14 +1,15 @@
 import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
-import { Icon, Menu, UnstyledButton } from "metabase/ui";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 
 import S from "../SummarySidebar.module.css";
 import type { SummaryBucketOption, SummaryDimensionItem } from "../types";
 
 type DimensionBucketMenuProps = {
   item: SummaryDimensionItem;
-  children: ReactNode;
+  /** The selected bucket, shown before the chevron. */
+  children?: ReactNode;
   onSelect: (option: SummaryBucketOption) => void;
 };
 
@@ -35,15 +36,19 @@ export function DimensionBucketMenu({
   return (
     <Menu position="bottom-start" onClose={() => setIsExpanded(false)}>
       <Menu.Target>
-        <UnstyledButton
-          className={S.chipButton}
+        <ActionIcon
+          className={S.chipBucketButton}
+          classNames={{ icon: S.chipBucketContent }}
+          size="sm"
+          variant="subtle"
+          c="inherit"
           aria-label={t`Change how ${item.label} is grouped`}
         >
           {children}
           <Icon name="chevrondown" size={10} />
-        </UnstyledButton>
+        </ActionIcon>
       </Menu.Target>
-      <Menu.Dropdown>
+      <Menu.Dropdown style={{ overflowY: "auto" }}>
         {visibleOptions.map((option) => (
           <Menu.Item
             key={option.displayName}

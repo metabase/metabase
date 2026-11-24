@@ -5,7 +5,10 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
 
-import { getQuestionWithDefaultVisualizationSettings } from "../../utils/viz-settings";
+import {
+  getQuestionWithDefaultVisualizationSettings,
+  hasResultsOfQuestion,
+} from "../../utils/viz-settings";
 
 interface Options {
   question: Question;
@@ -21,10 +24,12 @@ export function computeQuestionPivotTable(options: Options) {
   const isPivot = question.display() === "pivot";
   const wasPivot = currentQuestion?.display() === "pivot";
   let shouldRun = null;
+  let hasStaleResults = false;
 
   const isQuestionNative = Lib.queryDisplayInfo(question.query()).isNative;
 
   if (wasPivot || isPivot) {
+    hasStaleResults = !hasResultsOfQuestion(question, rawSeries);
     const hasBreakouts =
       !isQuestionNative && Lib.breakouts(question.query(), -1).length > 0;
 
@@ -32,7 +37,7 @@ export function computeQuestionPivotTable(options: Options) {
     if (isPivot && hasBreakouts) {
       const key = "pivot_table.column_split";
 
-      if (rawSeries) {
+      if (rawSeries && !hasStaleResults) {
         const series = assocIn(rawSeries, [0, "card"], question.card());
         const setting = getQuestionWithDefaultVisualizationSettings(
           question,
@@ -53,7 +58,7 @@ export function computeQuestionPivotTable(options: Options) {
     });
   }
 
-  return { shouldRun, question };
+  return { shouldRun, question, hasStaleResults };
 }
 
 function checkShouldRerunPivotTableQuestion({

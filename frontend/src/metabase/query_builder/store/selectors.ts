@@ -57,7 +57,10 @@ import type {
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
 import { isLegacyTimelineEventsSource } from "../utils/timeline-events";
-import { getQuestionWithDefaultVisualizationSettings } from "../utils/viz-settings";
+import {
+  getQuestionWithDefaultVisualizationSettings,
+  keepPivotColumnSplitOfChangedQuery,
+} from "../utils/viz-settings";
 
 import {
   getCard,
@@ -1085,9 +1088,10 @@ export const getSubmittableQuestion = (
   let submittableQuestion = question;
 
   if (series) {
-    submittableQuestion = getQuestionWithDefaultVisualizationSettings(
-      submittableQuestion,
-      series,
+    submittableQuestion = keepPivotColumnSplitOfChangedQuery(
+      question,
+      getQuestionWithDefaultVisualizationSettings(submittableQuestion, series),
+      rawSeries,
     );
   }
 

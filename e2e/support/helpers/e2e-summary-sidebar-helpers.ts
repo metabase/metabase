@@ -1,10 +1,10 @@
-type SummaryWellId = "values" | "columns";
+type SummaryWellId = "values" | "columns" | "rows";
 
 export function summarySidebar() {
   return cy.findByTestId("summary-sidebar");
 }
 
-/** Summarize by (`values`) or Group by (`columns`). */
+/** Summarize by (`values`), Group by (`columns`), or the Rows well of the pivot mode (`rows`). */
 export function summaryWell(wellId: SummaryWellId) {
   return cy.findByTestId(`summary-well-${wellId}`);
 }
@@ -47,9 +47,10 @@ export function clickSummaryField(
   summaryField(name, { section }).click({ altKey: add });
 }
 
+/** A closed typeahead keeps its options in the page, so the option is looked for among the visible ones. */
 function pickSummaryOption(wellId: SummaryWellId, label: string, name: string) {
   summaryWell(wellId).findByLabelText(label).type(name);
-  cy.contains('[role="option"]', name).click();
+  cy.contains('[role="option"]:visible', name).click();
 }
 
 export function addSummaryValue(name: string) {
@@ -58,6 +59,10 @@ export function addSummaryValue(name: string) {
 
 export function addSummaryGrouping(name: string) {
   pickSummaryOption("columns", "Add a grouping by name", name);
+}
+
+export function addSummaryRow(name: string) {
+  pickSummaryOption("rows", "Add a row by name", name);
 }
 
 export function removeSummaryItem(name: string) {

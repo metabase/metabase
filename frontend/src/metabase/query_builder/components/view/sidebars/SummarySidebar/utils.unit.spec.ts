@@ -24,6 +24,7 @@ import {
 
 import type {
   SummaryDimensionItem,
+  SummaryDimensionWellId,
   SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
@@ -45,6 +46,7 @@ import {
 } from "./utils";
 
 const STAGE_INDEX = -1;
+const GROUPING_WELL_IDS: SummaryDimensionWellId[] = ["columns", "rows"];
 
 function createOrdersQuery(spec: TestQuerySpec = DEFAULT_TEST_QUERY) {
   return Lib.createTestQuery(SAMPLE_PROVIDER, spec);
@@ -433,13 +435,16 @@ describe("getWellFieldSections", () => {
     ]);
   });
 
-  it("offers the table columns to Group by", () => {
-    expect(getSectionNames(getWellFieldSections(sections, "columns"))).toEqual([
-      "Orders",
-      "Product",
-      "User",
-    ]);
-  });
+  it.each(GROUPING_WELL_IDS)(
+    "offers the table columns to the %s well",
+    (wellId) => {
+      expect(getSectionNames(getWellFieldSections(sections, wellId))).toEqual([
+        "Orders",
+        "Product",
+        "User",
+      ]);
+    },
+  );
 });
 
 describe("filterFieldSections", () => {
@@ -804,14 +809,18 @@ describe("addField", () => {
     );
   }
 
-  it("groups by a column with its default bucket", () => {
-    expect(getDimensionLabels(addTimes(query, "Created At", 1))).toEqual([
-      "Created At: Month",
-    ]);
-    expect(getDimensionLabels(addTimes(query, "Total", 1))).toEqual([
-      "Total: Auto binned",
-    ]);
-  });
+  it.each(GROUPING_WELL_IDS)(
+    "groups by a column that is added to the %s well with its default bucket",
+    (wellId) => {
+      const add = (fieldName: string) =>
+        addField(query, STAGE_INDEX, wellId, findField(sections, fieldName));
+
+      expect(getDimensionLabels(add("Created At"))).toEqual([
+        "Created At: Month",
+      ]);
+      expect(getDimensionLabels(add("Total"))).toEqual(["Total: Auto binned"]);
+    },
+  );
 
   it("groups by a date again with the next unused unit: coarser, then finer, then the parts of a date", () => {
     const labels = getDimensionLabels(addTimes(query, "Created At", 15));
@@ -1020,6 +1029,63 @@ describe("replaceWellWithField", () => {
       getDimensionLabels(clearWell(query, STAGE_INDEX, "columns")),
     ).toEqual([]);
   });
+
+  describe("with groupings in Rows", () => {
+    const ROW_KEYS = ["CATEGORY"];
+    const query = createOrdersQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count" }],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "month" },
+            {
+              type: "column",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+              name: "CATEGORY",
+            },
+          ],
+        },
+      ],
+    });
+    const sections = getFieldSections(query, STAGE_INDEX);
+
+    it("swaps only the Columns groupings for the column", () => {
+      const next = replaceWellWithField(
+        query,
+        STAGE_INDEX,
+        "columns",
+        findField(sections, "Vendor"),
+        ROW_KEYS,
+      );
+
+      expect(getDimensionLabels(next)).toEqual([
+        "Product → Category",
+        "Product → Vendor",
+      ]);
+    });
+
+    it("leaves the query alone when the column is in Rows and can't be grouped again", () => {
+      const next = replaceWellWithField(
+        query,
+        STAGE_INDEX,
+        "columns",
+        findField(sections, "Category"),
+        ROW_KEYS,
+      );
+
+      expect(next).toBe(query);
+    });
+
+    it("clears the groupings of one well", () => {
+      expect(
+        getDimensionLabels(clearWell(query, STAGE_INDEX, "columns", ROW_KEYS)),
+      ).toEqual(["Product → Category"]);
+      expect(
+        getDimensionLabels(clearWell(query, STAGE_INDEX, "rows", ROW_KEYS)),
+      ).toEqual(["Created At: Month"]);
+    });
+  });
 });
 
 describe("drag and drop", () => {
@@ -1055,9 +1121,12 @@ describe("drag and drop", () => {
     }
     return { kind: "value", item };
   };
-  const dimensionDrag = (): SummaryDragItem => ({
+  const dimensionDrag = (
+    wellId: SummaryDimensionWellId = "columns",
+  ): SummaryDragItem => ({
     kind: "dimension",
     item: getDimensionItems(query, STAGE_INDEX)[0],
+    wellId,
   });
 
   it("lets a column field drop on either well, a metric or measure only on Summarize by", () => {
@@ -1142,6 +1211,50 @@ describe("drag and drop", () => {
       "Revenue",
       "Distinct values of Created At",
     ]);
+  });
+
+  it("lets Rows take what Group by takes", () => {
+    expect(
+      canDropOnWell(query, STAGE_INDEX, fieldDrag("Quantity"), "rows"),
+    ).toBe(true);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, fieldDrag("Order count"), "rows"),
+    ).toBe(false);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, valueDrag("Sum of Total"), "rows"),
+    ).toBe(true);
+    expect(canDropOnWell(query, STAGE_INDEX, valueDrag("Count"), "rows")).toBe(
+      false,
+    );
+
+    const grouped = dropOnWell(
+      query,
+      STAGE_INDEX,
+      fieldDrag("Quantity"),
+      "rows",
+    );
+    expect(getDimensionLabels(grouped)).toEqual([
+      "Created At: Month",
+      "Quantity: Auto binned",
+    ]);
+  });
+
+  it("lets a grouping chip move to the other grouping well without a change of the query", () => {
+    expect(
+      canDropOnWell(query, STAGE_INDEX, dimensionDrag("columns"), "rows"),
+    ).toBe(true);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, dimensionDrag("rows"), "columns"),
+    ).toBe(true);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, dimensionDrag("rows"), "rows"),
+    ).toBe(false);
+    expect(
+      dropOnWell(query, STAGE_INDEX, dimensionDrag("columns"), "rows"),
+    ).toBe(query);
+    expect(
+      dropOnWell(query, STAGE_INDEX, dimensionDrag("rows"), "columns"),
+    ).toBe(query);
   });
 
   it("keeps a chip on its own well and keeps non-column values out of Group by", () => {

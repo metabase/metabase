@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
-import type { SummaryWellId } from "../types";
+import * as Lib from "metabase-lib";
+
+import type { SummaryDimensionItem, SummaryWellId } from "../types";
 
 export const DROPDOWN_GAP_PX = 4;
 export const DROPDOWN_MAX_HEIGHT_PX = 320;
@@ -42,6 +44,13 @@ export function getFieldTexts(wellId: SummaryWellId, hasItems: boolean) {
       noMatches: t`No matching metrics or columns`,
     };
   }
+  if (wellId === "rows") {
+    return {
+      label: t`Add a row by name`,
+      placeholder: hasItems ? t`Add a column…` : t`Drag or type a column`,
+      noMatches: t`No matching columns`,
+    };
+  }
   return {
     label: t`Add a grouping by name`,
     placeholder: hasItems ? t`Add a column…` : t`Type a column`,
@@ -51,4 +60,29 @@ export function getFieldTexts(wellId: SummaryWellId, hasItems: boolean) {
 
 export function getOptionValue(sectionKey: string, itemKey: string) {
   return `${sectionKey}/${itemKey}`;
+}
+
+export function splitBucketLabel(
+  query: Lib.Query,
+  stageIndex: number,
+  { clause, label }: SummaryDimensionItem,
+): { name: string; bucket: string } | null {
+  const column = Lib.breakoutColumn(query, stageIndex, clause);
+  if (column == null) {
+    return null;
+  }
+  const unbucketedColumn = Lib.withTemporalBucket(
+    Lib.withBinning(column, null),
+    null,
+  );
+  const { longDisplayName } = Lib.displayInfo(
+    query,
+    stageIndex,
+    unbucketedColumn,
+  );
+  const name = `${longDisplayName}: `;
+  if (!label.startsWith(name) || label.length === name.length) {
+    return null;
+  }
+  return { name, bucket: label.slice(name.length) };
 }

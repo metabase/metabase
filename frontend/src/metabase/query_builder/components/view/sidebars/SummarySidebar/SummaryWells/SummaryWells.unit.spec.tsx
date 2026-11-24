@@ -13,6 +13,7 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TestQuerySpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
+import { NO_PIVOT_LAYOUT, getPivotLayout, getWellItems } from "../pivot-layout";
 import type {
   SummaryField,
   SummaryQueryChangeOptions,
@@ -43,18 +44,35 @@ const SUMMARIZED_QUERY: TestQuerySpec = {
 
 type SetupOpts = {
   spec?: TestQuerySpec;
+  isPivotMode?: boolean;
+  rowKeys?: string[];
 };
 
-function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
+function setup({
+  spec = SUMMARIZED_QUERY,
+  isPivotMode = false,
+  rowKeys = [],
+}: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, spec);
   const onPick = jest.fn<void, [SummaryWellId, SummaryField]>();
   const onChange = jest.fn<void, [Lib.Query, SummaryQueryChangeOptions?]>();
+  const { valueItems, columnItems, rowItems } = getWellItems(
+    query,
+    STAGE_INDEX,
+    getPivotLayout(query, STAGE_INDEX, { ...NO_PIVOT_LAYOUT, rows: rowKeys }),
+  );
   renderWithProviders(
     <SummaryWells
       query={query}
       stageIndex={STAGE_INDEX}
       sections={getFieldSections(query, STAGE_INDEX)}
       draggedItem={null}
+      canPivot
+      isPivotMode={isPivotMode}
+      valueItems={valueItems}
+      columnItems={columnItems}
+      rowItems={rowItems}
+      onPivotToggle={jest.fn<void, []>()}
       onPick={onPick}
       onChange={onChange}
     />,
@@ -108,7 +126,7 @@ describe("SummaryWells", () => {
   });
 
   it("shows the full formula in the tooltip without changing its shortened name", async () => {
-    const name = "Sum(Total) + 100 + 100 + 100 + 100 +…";
+    const name = "Sum(Total) + 100 + 100 + 100 + 100 + 10…";
     setup({
       spec: {
         stages: [
@@ -147,7 +165,7 @@ describe("SummaryWells", () => {
   });
 
   it("shows full grouping formulas in tooltips and keeps their bucket menus", async () => {
-    const name = "Total + 100 + 100 + 100 + 100 +…";
+    const name = "Total + 100 + 100 + 100 + 100 + 100 + 1…";
     const dateName = "coalesce(Created At, Created At)";
     const { getLastChange } = setup({
       spec: {
@@ -197,7 +215,7 @@ describe("SummaryWells", () => {
       "[Total] + 100 + 100 + 100 + 100 + 100 + 100",
     );
     await userEvent.unhover(groupBy.getByText(name));
-    await userEvent.hover(groupBy.getByText(`${dateName}: Month`));
+    await userEvent.hover(groupBy.getByText(`${dateName}:`));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "coalesce([Created At], [Created At])",
     );
@@ -417,6 +435,33 @@ describe("SummaryWells", () => {
       ]);
     });
 
+    it.each([
+      { breakout: { name: "CREATED_AT", unit: "month" }, bucket: "Month" },
+      {
+        breakout: { name: "TOTAL", binning: { strategy: "default" } },
+        bucket: "Auto binned",
+      },
+    ] as const)(
+      "opens the bucket menu from the $bucket text of a grouping",
+      async ({ breakout, bucket }) => {
+        setup({
+          spec: {
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
+                aggregations: [{ type: "operator", operator: "count" }],
+                breakouts: [{ type: "column", ...breakout }],
+              },
+            ],
+          },
+        });
+
+        await userEvent.click(screen.getByText(bucket));
+
+        expect(await screen.findAllByRole("menuitem")).not.toHaveLength(0);
+      },
+    );
+
     it("changes a number grouping's bins from its menu", async () => {
       const { getLastChange } = setup({
         spec: {
@@ -559,6 +604,49 @@ describe("SummaryWells", () => {
     expect(getChipLabels("columns")).toEqual(["Product → Category"]);
   });
 
+  describe("pivot mode", () => {
+    const PIVOT_QUERY: TestQuerySpec = {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count" }],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "month" },
+            {
+              type: "column",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+              name: "CATEGORY",
+            },
+          ],
+        },
+      ],
+    };
+    const getRowsField = () => screen.getByLabelText("Add a row by name");
+
+    it("splits the groupings between Columns and Rows", () => {
+      setup({ spec: PIVOT_QUERY, isPivotMode: true, rowKeys: ["CATEGORY"] });
+
+      expect(getChipLabels("columns")).toEqual(["Created At: Month"]);
+      expect(getChipLabels("rows")).toEqual(["Product → Category"]);
+    });
+
+    it("takes off the last chip of the well on Backspace in an empty field", async () => {
+      const { getLastChange } = setup({
+        spec: PIVOT_QUERY,
+        isPivotMode: true,
+        rowKeys: ["CREATED_AT"],
+      });
+
+      await userEvent.click(getGroupingField());
+      await userEvent.keyboard("{Backspace}");
+      expect(getLastChange().dimensions).toEqual(["Created At: Month"]);
+
+      await userEvent.click(getRowsField());
+      await userEvent.keyboard("{Backspace}");
+      expect(getLastChange().dimensions).toEqual(["Product → Category"]);
+    });
+  });
+
   describe("renaming", () => {
     const spec: TestQuerySpec = {
       stages: [
@@ -649,7 +737,7 @@ describe("SummaryWells", () => {
     it("renames a custom column grouping with its unit and hands the new name over", async () => {
       const { onChange, getLastChange } = setup({ spec });
 
-      await renameChip("Next day: Month", "Next day", "{Enter}");
+      await renameChip("Next day:", "Next day", "{Enter}");
 
       expect(getLastChange().dimensions).toEqual([
         "Created At: Month",
@@ -663,7 +751,7 @@ describe("SummaryWells", () => {
     it("offers no renaming to a column grouping", async () => {
       setup({ spec });
 
-      await userEvent.dblClick(screen.getByText("Created At: Month"));
+      await userEvent.dblClick(screen.getByText("Created At:"));
 
       expect(
         screen.queryByRole("textbox", { name: /^Rename/ }),
@@ -701,18 +789,21 @@ describe("SummaryWells", () => {
     });
 
     it.each([
-      "Count",
-      "Sum of Total",
-      "Created At: Month",
-      "Product → Category",
-    ])("shows the cut-off %s chip label in full on hover", async (label) => {
-      mockTextOverflow();
-      setup({ spec });
+      ["Count", "Count"],
+      ["Sum of Total", "Sum of Total"],
+      ["Created At:", "Created At: Month"],
+      ["Product → Category", "Product → Category"],
+    ])(
+      "shows the cut-off %s chip label in full on hover",
+      async (text, label) => {
+        mockTextOverflow();
+        setup({ spec });
 
-      await userEvent.hover(screen.getByText(label));
+        await userEvent.hover(screen.getByText(text));
 
-      expect(await screen.findByRole("tooltip")).toHaveTextContent(label);
-    });
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(label);
+      },
+    );
 
     it("shows the full name of a renamed formula instead of its formula", async () => {
       mockTextOverflow();

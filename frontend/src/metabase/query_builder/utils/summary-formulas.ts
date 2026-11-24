@@ -1,7 +1,5 @@
 import type { SummaryGeneratedExpression } from "metabase/redux/store";
-import { stableStringify } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
-import { isObject } from "metabase-types/guards";
 
 export function makeSummaryFormula(
   query: Lib.Query,
@@ -17,25 +15,16 @@ export function makeSummaryFormula(
   ) {
     return;
   }
-  const legacyQuery: unknown = Lib.toLegacyQuery(query);
-  if (!isObject(legacyQuery) || !isObject(legacyQuery.query)) {
-    return;
-  }
-  let stage = legacyQuery.query;
-  for (let stageNumber = stageCount - 1; stageNumber > index; stageNumber--) {
-    const source = stage["source-query"];
-    if (!isObject(source)) {
-      return;
-    }
-    stage = source;
-  }
-  if (!isObject(stage.expressions) || !Object.hasOwn(stage.expressions, name)) {
+  const expression = Lib.expressions(query, index).find(
+    (clause) => Lib.displayInfo(query, index, clause).displayName === name,
+  );
+  if (!expression) {
     return;
   }
   return {
     stageIndex: index,
     name,
-    expression: stableStringify(stage.expressions[name]),
+    clause: expression,
   };
 }
 
@@ -45,7 +34,7 @@ export function reconcileSummaryFormulas(
 ): SummaryGeneratedExpression[] {
   return formulas.filter((formula) => {
     const current = makeSummaryFormula(query, formula.stageIndex, formula.name);
-    if (!current || current.expression !== formula.expression) {
+    if (!current || !Lib.isSameClause(current.clause, formula.clause)) {
       return false;
     }
     return Lib.breakouts(query, formula.stageIndex).some((breakout) => {
