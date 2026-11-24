@@ -496,8 +496,10 @@
   "The `:error-code` of each exception for a request that Metabot sent and that got no response from the provider:
   the provider is unreachable, or the connection timed out or broke.
 
-  [[core/rethrow-api-error!]] sets `:provider-request-failed`. The Ollama and vLLM adapters set their own codes."
+  [[core/rethrow-api-error!]] sets `:provider-request-failed`. The Ollama and vLLM adapters set their own codes, and
+  the Google adapter sets one for its token request."
   #{:provider-request-failed
+    :google-token-request-failed
     :ollama-unreachable :ollama-timeout :ollama-stream-interrupted
     :vllm-unreachable :vllm-timeout :vllm-stream-interrupted})
 
