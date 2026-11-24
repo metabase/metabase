@@ -163,7 +163,7 @@
 (deftest analyze-native-query-step-queries-with-the-macaw-backend-test
   ;; The drivers Macaw's options were tuned for.
   (mt/test-drivers #{:h2 :postgres}
-    (mt/with-temporary-setting-values [sql-tools-parser-backend :macaw]
+    (mt/with-temporary-setting-values [sql-tools-parser-backend "macaw"]
       (testing "with the Macaw backend, a LEFT JOIN with a compound condition still counts both"
         (check-widget-left-join-steps)))))
 
