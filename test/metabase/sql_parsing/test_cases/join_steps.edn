@@ -300,6 +300,14 @@
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN (b JOIN c ON b.x = c.x) ON a.x = b.x",
    :expected {:status "unsupported", :reason "nested-join"}}
+  {:name "an unbracketed nested join is refused, since the outer join's step would run both",
+   :dialect "postgres",
+   :sql "SELECT * FROM a JOIN b JOIN c ON b.id = c.id ON a.id = b.id",
+   :expected {:status "unsupported", :reason "nested-join"}}
+  {:name "a ClickHouse ANY join is refused, since its INNER form keeps one row per key on both sides",
+   :dialect "clickhouse",
+   :sql "SELECT * FROM a LEFT ANY JOIN b ON a.x = b.x",
+   :expected {:status "unsupported", :reason "unsupported-join"}}
   {:name "a placeholder in a clause the steps leave out does not matter",
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN b ON a.x = b.x WHERE a.y = ?",

@@ -473,11 +473,14 @@ def _join_step_source(node, cte_names, dialect):
     """A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its table parts or None, and its alias.
 
     Anything that is not a plain named table is `derived`.
-    Raises `_JoinStepsUnsupported` for a parenthesized join tree or a LATERAL or APPLY source.
+    Raises `_JoinStepsUnsupported` for a nested join tree or a LATERAL or APPLY source.
     """
     # Step queries copy the node whole, so what it carries (a table hint, a PIVOT) stays in them.
     if isinstance(node, exp.Lateral):
         raise _JoinStepsUnsupported("unsupported-source")
+    # In `JOIN b JOIN c ON ... ON ...` the join to `c` hangs off `b`, so the step of `b` would run both.
+    if node.args.get("joins"):
+        raise _JoinStepsUnsupported("nested-join")
     if isinstance(node, exp.Table) and isinstance(node.this, exp.Identifier):
         parts = table_parts(node)
         if parts is not None:
@@ -505,13 +508,14 @@ def _join_step_strategy(join):
 
 
 def _unsupported_join(join):
-    """Whether `join` is of a type whose step counts would be wrong: a POSITIONAL, ANTI or Snowflake ASOF join."""
+    """Whether `join` is of a type whose step counts would be wrong: a POSITIONAL, ANTI, ANY or Snowflake ASOF join."""
     # DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
     # An ANTI join keeps the left rows that found no match, so its one count would be read as the matched rows.
+    # ClickHouse's ANY join keeps one match per left row, but its INNER form keeps one row per key on both sides.
     # Snowflake's ASOF join keeps unmatched left rows like a LEFT join, and has no INNER form to count its matches.
     return (
         (join.method or "").upper() == "POSITIONAL"
-        or (join.kind or "").upper() == "ANTI"
+        or (join.kind or "").upper() in ("ANTI", "ANY")
         or bool(join.args.get("match_condition"))
     )
 

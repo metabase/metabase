@@ -48,12 +48,15 @@
 (defn- step-source
   "A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its `[catalog schema table]` or nil, and its alias.
   Anything that is not a plain named table is `derived`.
-  Throws a refusal for a parenthesized join tree or a LATERAL or APPLY source.
+  Throws a refusal for a nested join tree or a LATERAL or APPLY source.
   Port of `_join_step_source`."
   [node cte-names dialect]
   ;; Step queries copy the node whole, so what it carries (a table hint, a PIVOT) stays in them.
   (when (instance? Expressions$Lateral node)
     (throw (unsupported "unsupported-source")))
+  ;; In `JOIN b JOIN c ON ... ON ...` the join to `c` hangs off `b`, so the step of `b` would run both.
+  (when (contains? (set-args node) "joins")
+    (throw (unsupported "nested-join")))
   (let [parts (when (and (instance? Expressions$Table node)
                          (instance? Expressions$Identifier (ast/this node)))
                 (references/table-parts node))]
@@ -100,14 +103,15 @@
       (get {"LEFT" "left", "RIGHT" "right", "FULL" "full"} side "inner"))))
 
 (defn- unsupported-join?
-  "Whether `join` is of a type whose step counts would be wrong: a POSITIONAL, ANTI or Snowflake ASOF join.
+  "Whether `join` is of a type whose step counts would be wrong: a POSITIONAL, ANTI, ANY or Snowflake ASOF join.
   Port of `_unsupported_join`."
   [join]
   ;; DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
   ;; An ANTI join keeps the left rows that found no match, so its one count would be read as the matched rows.
+  ;; ClickHouse's ANY join keeps one match per left row, but its INNER form keeps one row per key on both sides.
   ;; Snowflake's ASOF join keeps unmatched left rows like a LEFT join, and has no INNER form to count its matches.
   (or (= "POSITIONAL" (upper-arg join "method"))
-      (= "ANTI" (upper-arg join "kind"))
+      (#{"ANTI" "ANY"} (upper-arg join "kind"))
       (some? (ast/arg join "match_condition"))))
 
 (defn- with-clause
