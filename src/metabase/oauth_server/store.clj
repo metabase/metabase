@@ -70,37 +70,46 @@
   [:user_id :client_id :redirect_uri :scope :nonce :expiry
    :code_challenge :code_challenge_method :resource])
 
+(defn- resource-or-nil
+  "A stored `resource` as a vector, or nil when it names none."
+  [resource]
+  ;; oidc-provider checks a refresh's `resource` against the token's whenever the token has one, and `[]` would count
+  ;; as one that contains nothing.
+  (not-empty (vec resource)))
+
 (defn- db-row->auth-code
   "Convert a DB row from :model/OAuthAuthorizationCode to the protocol's map shape.
    Converts user-id to a string since the oidc-provider library expects string user IDs.
-   Ensures :resource is a vector (JSON deserialization may return a list)."
+   Gives :resource as for [[resource-or-nil]]."
   [row]
   (when row
     (-> (select-and-kebab-keys row auth-code-db-columns)
         (update :user-id #(some-> % str))
-        (u/update-if-exists :resource vec))))
+        (u/update-if-exists :resource resource-or-nil))))
 
 (def ^:private access-token-db-columns
   [:user_id :client_id :scope :expiry :resource])
 
 (defn- db-row->access-token
-  "Convert a DB row from :model/OAuthAccessToken to the protocol's map shape."
+  "Convert a DB row from :model/OAuthAccessToken to the protocol's map shape, with :resource as for
+   [[resource-or-nil]]."
   [row]
   (when row
     (-> (select-and-kebab-keys row access-token-db-columns)
         (update :user-id #(some-> % str))
-        (u/update-if-exists :resource vec))))
+        (u/update-if-exists :resource resource-or-nil))))
 
 (def ^:private refresh-token-db-columns
   [:user_id :client_id :scope :expiry :resource])
 
 (defn- db-row->refresh-token
-  "Convert a DB row from :model/OAuthRefreshToken to the protocol's map shape."
+  "Convert a DB row from :model/OAuthRefreshToken to the protocol's map shape, with :resource as for
+   [[resource-or-nil]]."
   [row]
   (when row
     (-> (select-and-kebab-keys row refresh-token-db-columns)
         (update :user-id #(some-> % str))
-        (u/update-if-exists :resource vec))))
+        (u/update-if-exists :resource resource-or-nil))))
 
 ;;; ------------------------------------------------ ClientStore -------------------------------------------------------
 
@@ -155,7 +164,7 @@
               :expiry       expiry}
        code-challenge        (assoc :code_challenge code-challenge)
        code-challenge-method (assoc :code_challenge_method code-challenge-method)
-       resource              (assoc :resource (vec resource))))
+       (seq resource)        (assoc :resource (vec resource))))
     true)
 
   (get-authorization-code [_ code]
@@ -183,7 +192,7 @@
               :client_id client-id
               :scope     (vec scope)
               :expiry    expiry}
-       resource (assoc :resource (vec resource))))
+       (seq resource) (assoc :resource (vec resource))))
     true)
 
   (get-access-token [_ token]
@@ -196,8 +205,8 @@
               :user_id   (parse-user-id user-id)
               :client_id client-id
               :scope     (vec scope)}
-       expiry   (assoc :expiry expiry)
-       resource (assoc :resource (vec resource))))
+       expiry         (assoc :expiry expiry)
+       (seq resource) (assoc :resource (vec resource))))
     true)
 
   (get-refresh-token [_ token]
