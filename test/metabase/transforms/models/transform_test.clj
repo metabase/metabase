@@ -699,11 +699,11 @@
           (is (zero? (t2/count :model/Transform :collection_id [:in [regular-id transforms-id missing-id]]))))))))
 
 (defn- statements-outside-query-analysis!
-  "The number of app-DB statements `thunk` runs on the calling thread, leaving out the reads of group memberships and
-  table remappings that the query processor makes each time it analyzes a query."
+  "The number of app-DB statements `thunk` runs on the calling thread and on threads that inherit its bindings, such as
+  futures, leaving out the reads of group memberships and table remappings the query processor makes on each analysis."
   [thunk]
-  ;; A thread-local redefinition, so statements other threads run meanwhile, such as those of the consumers of the
-  ;; events the transforms' creation published, are not counted.
+  ;; A thread-local redefinition, so statements other threads run meanwhile are not counted, such as the search index
+  ;; worker reading back the transforms created just before.
   (let [statements (atom [])
         reduce-fn  (mt/original-fn #'t2.jdbc.query/reduce-jdbc-query)
         recording  (fn [& args]
