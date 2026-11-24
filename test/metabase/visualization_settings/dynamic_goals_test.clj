@@ -397,3 +397,12 @@
              :visualization    {:settings {:progress.goal {:id 3 :type "card" :column "d"}}}}))))
   (testing "literal goals reference nothing"
     (is (= #{} (dynamic-goals/goal-references {:graph.goal_value 100})))))
+
+(deftest ^:parallel swap-goal-source-skips-measure-goal-test
+  (testing "a card swap leaves a measure goal with the old card's id as it is"
+    (let [card-goal    {:id 1 :type "card" :column "count"}
+          measure-goal {:id 1 :type "measure" :column "count"}]
+      (is (= {:gauge.segments [{:min (assoc card-goal :id 2) :max measure-goal :color "red"}]}
+             (dynamic-goals/swap-goal-source {:gauge.segments [{:min card-goal :max measure-goal :color "red"}]}
+                                             [:card 1]
+                                             [:card 2]))))))

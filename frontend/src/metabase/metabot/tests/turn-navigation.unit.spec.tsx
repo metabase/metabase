@@ -184,6 +184,7 @@ describe("metabot > where a sidebar turn leaves the user", () => {
 
   afterEach(() => {
     fetchMock.removeRoutes();
+    setBasename("");
   });
 
   it("opens only the dashboard that saved the turn's charts", async () => {
@@ -278,7 +279,6 @@ describe("metabot > where a sidebar turn leaves the user", () => {
     );
 
     await streamTurn({ parts: [dashboardSavedPart()] });
-    setBasename("");
 
     expect(mockedNavigate).not.toHaveBeenCalled();
   });
@@ -346,6 +346,27 @@ describe("metabot > where a sidebar turn leaves the user", () => {
     });
 
     expect(mockedNavigate).not.toHaveBeenCalled();
+  });
+
+  it("still opens a saved dashboard after a later save that only links to it", async () => {
+    const linkedPart = dashboardSavedPart({ action: "updated", open: false });
+
+    await streamTurn({ parts: [dashboardSavedPart(), linkedPart] });
+
+    expect(mockedNavigate).toHaveBeenCalledTimes(1);
+    expect(mockedNavigate).toHaveBeenCalledWith("/dashboard/43");
+  });
+
+  it("opens a chart made after the turn trashed its saved dashboard", async () => {
+    const card = createCard();
+    const trashedPart = dashboardSavedPart({ action: "trashed", open: false });
+
+    await streamTurn({
+      parts: [dashboardSavedPart(), cardPart(card), trashedPart],
+    });
+
+    expect(mockedNavigate).toHaveBeenCalledTimes(1);
+    expect(mockedNavigate).toHaveBeenCalledWith(Urls.generatedEntity(card));
   });
 
   it("hands a chart to the embedding SDK as it arrives", async () => {

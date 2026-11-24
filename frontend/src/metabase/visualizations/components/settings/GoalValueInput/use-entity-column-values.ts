@@ -1,36 +1,27 @@
-import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
-import { resolveGoalValue, toReferencedEntity } from "metabase/viz-core";
-import type {
-  DatasetData,
-  DatasetQuery,
-  GoalForeignEntityRef,
-} from "metabase-types/api";
+import { useGoalSourceResults } from "metabase/visualizations/hooks/use-goal-source-results";
+import { resolveForeignColumnRef } from "metabase/viz-core";
+import type { GoalForeignEntityRef } from "metabase-types/api";
 
+// Returns null when value is loading, or when it can't load
 type ResolveColumnValue = (column: string) => number | null;
 
 export function useEntityColumnValues(
-  datasetQuery: DatasetQuery | undefined,
-  data: DatasetData,
   entity: GoalForeignEntityRef | null,
   { enabled }: { enabled: boolean },
 ): ResolveColumnValue {
-  const { currentData: freshDataset } = useReferencedEntitiesQuery(
-    datasetQuery,
-    enabled && entity != null ? [toReferencedEntity(entity)] : [],
+  const state = useGoalSourceResults(
+    enabled && entity != null ? [{ type: entity.type, id: entity.id }] : [],
   );
 
-  const freshData = freshDataset?.data;
-  const sourceData =
-    entity != null &&
-    freshData?.referenced_entities?.[entity.type]?.[entity.id]?.data != null
-      ? freshData
-      : data;
-
   return (column) => {
-    if (entity == null) {
+    if (entity == null || state.status === "loading") {
       return null;
     }
 
-    return resolveGoalValue(sourceData, { ...entity, column }).value;
+    return resolveForeignColumnRef(state.sourceResults, {
+      type: entity.type,
+      id: entity.id,
+      column,
+    }).value;
   };
 }

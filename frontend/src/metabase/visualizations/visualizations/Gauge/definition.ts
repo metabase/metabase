@@ -51,6 +51,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       getDefault(series, vizSettings) {
         const segments = resolveGoalSegments(
           series[0].data,
+          {}, // dynamic goals resolve in the chart, not here
           vizSettings["gauge.segments"],
         );
         return getSegmentsRange(segments) ?? DEFAULT_GAUGE_RANGE;
@@ -84,7 +85,6 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
 
         return {
           data,
-          datasetQuery: card.dataset_query,
           display: card.display,
           formatOptions: column && settings.column?.(column),
         };

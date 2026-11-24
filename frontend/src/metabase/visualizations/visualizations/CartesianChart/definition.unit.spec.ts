@@ -1,7 +1,6 @@
 import { DYNAMIC_GOAL_CARTESIAN_DISPLAYS } from "__support__/dynamic-goals";
 import { SERIES_SETTING_KEY } from "metabase/viz-core";
 import type {
-  DatasetData,
   Series,
   VisualizationDisplay,
   VisualizationSettings,
@@ -9,7 +8,6 @@ import type {
 import {
   createMockColumn,
   createMockDatasetData,
-  createMockFailedReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -35,10 +33,8 @@ describe("definition", () => {
     describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       "goal line of a %s chart",
       (display) => {
-        it("renders when the referenced query failed", () => {
-          const series = createSeries(display, {
-            referenced_entities: createMockFailedReferencedEntitiesResults(),
-          });
+        it("renders with a goal that reads another entity", () => {
+          const series = createSeries(display);
 
           expect(() =>
             checkRenderable(series, REFERENCED_GOAL_SETTINGS),
@@ -103,10 +99,7 @@ describe("definition", () => {
   });
 });
 
-function createSeries(
-  display: VisualizationDisplay,
-  data: Partial<DatasetData> = {},
-): Series {
+function createSeries(display: VisualizationDisplay): Series {
   return [
     createMockSingleSeries(
       { display },
@@ -120,7 +113,6 @@ function createSeries(
             ["Jan", 10],
             ["Feb", 20],
           ],
-          ...data,
         }),
       },
     ),

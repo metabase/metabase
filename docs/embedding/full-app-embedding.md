@@ -42,6 +42,8 @@ If you have your app running locally, and you're using the Pro Cloud version, or
 2. Toggle on **Full-app embedding**.
 3. Under **Authorized origins for full-app embedding** (it appears once you flip the toggle), add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
 
+On self-hosted Metabases, you can also turn on full app embedding and set authorized origins with the environment variables [`MB_ENABLE_EMBEDDING_INTERACTIVE`](../configuring-metabase/environment-variables.md#mb_enable_embedding_interactive) and [`MB_EMBEDDING_APP_ORIGINS_INTERACTIVE`](../configuring-metabase/environment-variables.md#mb_embedding_app_origins_interactive), or in the [config file](../configuring-metabase/config-file.md).
+
 ## Setting up embedding on your website
 
 1. Create an iframe with a `src` attribute set to:

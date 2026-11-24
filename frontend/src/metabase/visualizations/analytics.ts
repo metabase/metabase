@@ -1,11 +1,8 @@
 import { match } from "ts-pattern";
 
 import { trackSimpleEvent } from "metabase/analytics";
-import type { ReferencedEntityKind } from "metabase/viz-core";
-import type {
-  ReferencedEntityType,
-  VisualizationDisplay,
-} from "metabase-types/api";
+import type { GoalSourceKind } from "metabase/viz-core";
+import type { GoalSourceType, VisualizationDisplay } from "metabase-types/api";
 
 import type { RegularClickAction } from "./types";
 
@@ -42,10 +39,7 @@ export const trackTableFreezeRowsEnabled = () => {
   });
 };
 
-export type DynamicGoalSource =
-  | ReferencedEntityKind
-  | ReferencedEntityType
-  | "self_column";
+export type DynamicGoalSource = GoalSourceKind | GoalSourceType | "self_column";
 
 export function trackDynamicGoalSet(
   display: VisualizationDisplay,

@@ -6,17 +6,13 @@ import { Button, Icon, Stack, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
-import {
-  getGoalSegmentBounds,
-  getUnansweredGoalEntities,
-} from "metabase/viz-core";
+import { getGoalSegmentBounds, getGoalSources } from "metabase/viz-core";
 import type { GoalSegment } from "metabase-types/api";
 
 import { SegmentEditor } from "./SegmentEditor";
 
 export const ChartSettingSegmentsEditor = ({
   data,
-  datasetQuery,
   display,
   formatOptions,
   value: segments,
@@ -33,10 +29,7 @@ export const ChartSettingSegmentsEditor = ({
   const canRemove = segments.length > 1 || canRemoveAll;
   const colors = getColorPalette();
 
-  const referencedEntities =
-    data !== undefined
-      ? getUnansweredGoalEntities(data, getGoalSegmentBounds(segments))
-      : [];
+  const goalSources = getGoalSources(getGoalSegmentBounds(segments));
 
   return (
     <Stack gap="lg">
@@ -48,11 +41,10 @@ export const ChartSettingSegmentsEditor = ({
               canRemove={canRemove}
               colors={colors}
               data={data}
-              datasetQuery={datasetQuery}
               display={display}
               formatOptions={formatOptions}
+              goalSources={goalSources}
               index={index}
-              referencedEntities={referencedEntities}
               segment={segment}
               onChange={(changes) => updateSegment(index, changes)}
               onRemove={() => {

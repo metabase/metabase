@@ -138,13 +138,13 @@
                   dash)))))
 
 (defn write!
-  "Creates or updates a dashboard with the attributes `attrs` and the ops `ops`, and returns it.
-   It returns a dashboard hydrated with `[:dashcards :series :card] :tabs` whether or not it saved.
+  "Creates or updates a dashboard with the attributes `attrs` and the ops `ops`, and returns `{:dashboard :effects}`.
+   The dashboard is hydrated with `[:dashcards :series :card] :tabs` whether or not it saved.
    With a `dashboard`, hydrated the same way and already read-checked by the caller, it updates that one.
    Without one it creates a dashboard.
    With `validate-only?` it writes nothing, and returns the dashboard the save would produce.
-   Either way the dashboard's metadata says which stored cards the ops pushed down, read by
-   [[dashboard-ops/pushed-dashcard-ids]].
+   Either way `:effects` is what [[dashboard-ops/effects]] describes, empty when there are no ops.
+   A saved update also puts the subscriptions it archived, if any, in `:effects` under `:archived-subscriptions`.
    It checks write permission on the dashboard, or create permission on the collection, first after the ops' shape.
    A dry run skips the save's other permission checks, such as moving to a collection and per-field mapping checks.
    Ops edit the layout and parameters, so `attrs` must not carry `:dashcards`, `:tabs` or `:parameters`.
@@ -167,13 +167,18 @@
         {:keys [payload cards]} (when (seq ops)
                                   (compile-write dash ops))]
     (validate-write! (nil? dashboard) attrs payload)
-    (vary-meta (cond
-                 validate-only?
-                 (dry-run-dashboard dash attrs payload cards)
+    (let [effects (or (dashboard-ops/effects payload) {})]
+      (cond
+        validate-only?
+        {:dashboard (dry-run-dashboard dash attrs payload cards), :effects effects}
 
-                 (nil? dashboard)
-                 (create-dashboard! attrs payload)
+        (nil? dashboard)
+        ;; A new dashboard has no subscriptions to archive.
+        {:dashboard (create-dashboard! attrs payload), :effects effects}
 
-                 :else
-                 (hydrated (dashboards.write/update-dashboard! (u/the-id dashboard) (merge attrs payload))))
-               assoc ::dashboard-ops/pushed-dashcard-ids (dashboard-ops/pushed-dashcard-ids payload))))
+        :else
+        (let [saved    (dashboards.write/update-dashboard! (u/the-id dashboard) (merge attrs payload))
+              archived (dashboards.write/archived-subscriptions saved)]
+          {:dashboard (hydrated saved)
+           :effects   (cond-> effects
+                        archived (assoc :archived-subscriptions archived))})))))

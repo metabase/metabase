@@ -425,3 +425,8 @@
   don't carry."
   [collection-ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Collection :id :type :namespace :location :is_remote_synced] :id [:in collection-ids]))
+
+(mu/defn document-exploration-ids
+  "A map of the id of each Document in `document-ids` to its `:exploration_id`, nil for a Document in no Exploration."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pk->fn :exploration_id [:model/Document :id :exploration_id] :id [:in document-ids]))

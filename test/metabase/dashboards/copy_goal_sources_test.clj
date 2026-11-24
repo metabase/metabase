@@ -1,13 +1,12 @@
 (ns metabase.dashboards.copy-goal-sources-test
   "Copying a dashboard or a document copies the cards its dynamic goals read by the same rule as the cards it shows,
   and points the copy's goals at those copies."
-  {:clj-kondo/config '{:linters {:deprecated-var
-                                 {:exclude {metabase.test.data/mbql-query
-                                            {:namespaces [metabase.dashboards.copy-goal-sources-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -24,7 +23,9 @@
   (get-in viz-settings [:graph.goal_value :id]))
 
 (defn- count-query []
-  (mt/mbql-query venues {:aggregation [[:count]]}))
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
 
 (defn- card-props [card-name collection-id & {:as more}]
   (merge {:name card-name :collection_id collection-id :display :line :dataset_query (count-query)} more))

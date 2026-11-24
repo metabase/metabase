@@ -20,6 +20,7 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { useQuestionFromCardBuilder } from "metabase/metadata-store";
+import { prefetchGoalSourceResults } from "metabase/querying/goal-source-results";
 import { useDispatch, useSelector } from "metabase/redux";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
@@ -49,6 +50,7 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { GoalSourcesScopeProvider } from "metabase/visualizations/components/GoalSourcesScope";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -61,6 +63,8 @@ import {
 } from "metabase/viz-core";
 import type {
   CardDisplayType,
+  CardId,
+  GoalSourcesScope,
   StoredResultSort,
   TimelineEvent,
 } from "metabase-types/api";
@@ -306,6 +310,10 @@ export const CardEmbedComponent = memo(
         : undefined;
 
     const isExternalDocument = externalCardData != null;
+    const goalSourcesScope = useMemo(
+      () => getGoalSourcesScope(externalCardData?.documentUuid, id),
+      [externalCardData?.documentUuid, id],
+    );
     const regularCardData = host.useCardData({
       id,
       skip: !shouldLoadData,
@@ -320,6 +328,12 @@ export const CardEmbedComponent = memo(
     const { card, dataset, isLoading, series, error } = isExternalDocument
       ? externalCardDataResult
       : regularCardData;
+
+    useEffect(() => {
+      if (shouldLoadData && card != null) {
+        prefetchGoalSourceResults(dispatch, goalSourcesScope, card);
+      }
+    }, [card, dispatch, goalSourcesScope, shouldLoadData]);
 
     const highlighted = host.useHighlighted(
       commentChildTargetId,
@@ -823,44 +837,46 @@ export const CardEmbedComponent = memo(
               <>
                 <Box className={styles.questionResults}>
                   <ExplicitSizeRefreshModeContext.Provider value="layout">
-                    <Visualization
-                      rawSeries={series}
-                      mode={visualizationMode}
-                      hasColumnReordering
-                      highlighted={highlighted}
-                      onChangeCardAndRun={
-                        isStatic
-                          ? // A defined mode needs a truthy handler so the click-actions popover mounts
-                            visualizationMode != null
-                            ? noop
-                            : undefined
-                          : isExternalDocument
+                    <GoalSourcesScopeProvider scope={goalSourcesScope}>
+                      <Visualization
+                        rawSeries={series}
+                        mode={visualizationMode}
+                        hasColumnReordering
+                        highlighted={highlighted}
+                        onChangeCardAndRun={
+                          isStatic
+                            ? // A defined mode needs a truthy handler so the click-actions popover mounts
+                              visualizationMode != null
+                              ? noop
+                              : undefined
+                            : isExternalDocument
+                              ? undefined
+                              : handleChangeCardAndRun
+                        }
+                        onUpdateQuestion={
+                          isStatic || isExternalDocument
                             ? undefined
-                            : handleChangeCardAndRun
-                      }
-                      onUpdateQuestion={
-                        isStatic || isExternalDocument
-                          ? undefined
-                          : handleUpdateQuestion
-                      }
-                      onUpdateVisualizationSettings={
-                        isExternalDocument
-                          ? undefined
-                          : handleUpdateVisualizationSettings
-                      }
-                      onOpenTimelines={handleOpenTimelines}
-                      onSelectTimelineEvents={handleSelectTimelineEvents}
-                      onDeselectTimelineEvents={handleDeselectTimelineEvents}
-                      selectedTimelineEventIds={selectedTimelineEventIds}
-                      getExtraDataForClick={() => ({})}
-                      isEditing={false}
-                      isDashboard={false}
-                      isDocument={true}
-                      customVizLoadingView={<CardEmbedLoadingState />}
-                      showTitle={false}
-                      error={datasetError?.message}
-                      errorIcon={datasetError?.icon}
-                    />
+                            : handleUpdateQuestion
+                        }
+                        onUpdateVisualizationSettings={
+                          isExternalDocument
+                            ? undefined
+                            : handleUpdateVisualizationSettings
+                        }
+                        onOpenTimelines={handleOpenTimelines}
+                        onSelectTimelineEvents={handleSelectTimelineEvents}
+                        onDeselectTimelineEvents={handleDeselectTimelineEvents}
+                        selectedTimelineEventIds={selectedTimelineEventIds}
+                        getExtraDataForClick={() => ({})}
+                        isEditing={false}
+                        isDashboard={false}
+                        isDocument={true}
+                        customVizLoadingView={<CardEmbedLoadingState />}
+                        showTitle={false}
+                        error={datasetError?.message}
+                        errorIcon={datasetError?.icon}
+                      />
+                    </GoalSourcesScopeProvider>
                   </ExplicitSizeRefreshModeContext.Provider>
                 </Box>
               </>
@@ -928,3 +944,12 @@ export const CardEmbedComponent = memo(
 );
 
 CardEmbedComponent.displayName = "CardEmbedComponent";
+
+function getGoalSourcesScope(
+  documentUuid: string | undefined,
+  cardId: CardId,
+): GoalSourcesScope {
+  return documentUuid != null
+    ? { type: "public-document-card", uuid: documentUuid, cardId }
+    : { type: "signed-in" };
+}

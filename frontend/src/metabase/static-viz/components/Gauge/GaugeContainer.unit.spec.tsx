@@ -3,11 +3,7 @@ import ReactDOMServer from "react-dom/server";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import type { GoalData } from "metabase/viz-core";
 import type { GoalSegment, VisualizationSettings } from "metabase-types/api";
-import {
-  createMockColumn,
-  createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
-} from "metabase-types/api/mocks";
+import { createMockColumn } from "metabase-types/api/mocks";
 
 import GaugeContainer from "./GaugeContainer";
 import { GAUGE_INNER_RADIUS, GAUGE_OUTER_RADIUS } from "./constants";
@@ -73,40 +69,10 @@ describe("GaugeContainer", () => {
     expect(root).toHaveTextContent("250");
   });
 
-  it("resolves a reference to another entity's column from referenced_entities", () => {
+  it("formats a bound with this chart's column settings", () => {
     const root = setup({
-      data: {
-        ...DATA,
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: { cols: [GOAL_COL], rows: [[250]] },
-            },
-          },
-        },
-      },
-      segments: [
-        { min: 0, max: { type: "card", id: 9, column: "goal" }, color: GREEN },
-      ],
-    });
-
-    expect(getSegmentFills(root)).toEqual([GREEN]);
-    expect(root).toHaveTextContent("250");
-  });
-
-  it("formats a bound from another entity with this chart's column settings", () => {
-    const root = setup({
-      data: {
-        ...DATA,
-        referenced_entities: createMockReferencedEntitiesResults({
-          value: 2500,
-        }),
-      },
       columnSettings: { '["name","count"]': { prefix: "$" } },
-      segments: [
-        { min: 0, max: { type: "card", id: 9, column: "goal" }, color: GREEN },
-      ],
+      segments: [{ min: 0, max: 2500, color: GREEN }],
     });
 
     expect(root).toHaveTextContent("$2,500");
@@ -213,43 +179,13 @@ describe("GaugeContainer", () => {
       expect(getSegmentPaths(root)).toEqual(getSegmentPaths(expected));
     }
 
-    it("runs a segment bound to a reference nothing has answered yet to the end of the gauge (metabase#86183)", () => {
+    // the backend resolves references before rendering, so one left over couldn't resolve
+    it("runs a segment bound to a reference to another entity to the end of the gauge (metabase#86183)", () => {
       const root = setupUnresolvableSegment(DATA, {
         type: "card",
         id: 9,
         column: "goal",
       });
-
-      expectSegmentRunToGaugeEnd(root);
-    });
-
-    it("runs a segment bound to a reference whose query failed to the end of the gauge (metabase#86183)", () => {
-      const root = setupUnresolvableSegment(
-        {
-          ...DATA,
-          referenced_entities: createMockFailedReferencedEntitiesResults(),
-        },
-        { type: "card", id: 9, column: "goal" },
-      );
-
-      expectSegmentRunToGaugeEnd(root);
-    });
-
-    it("runs a segment bound to a referenced column that does not exist to the end of the gauge (metabase#86183)", () => {
-      const root = setupUnresolvableSegment(
-        {
-          ...DATA,
-          referenced_entities: {
-            card: {
-              9: {
-                status: "completed",
-                data: { cols: [GOAL_COL], rows: [[250]] },
-              },
-            },
-          },
-        },
-        { type: "card", id: 9, column: "missing" },
-      );
 
       expectSegmentRunToGaugeEnd(root);
     });

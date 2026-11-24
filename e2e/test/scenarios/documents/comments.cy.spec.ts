@@ -10,6 +10,7 @@ const { Comments } = H;
 
 const IS_MAC = Cypress.platform === "darwin";
 const META_KEY = IS_MAC ? "Meta" : "Control";
+const baseUrl = Cypress.config("baseUrl");
 
 const HEADING_1_ID = "c2187a62-1093-61ee-3174-0bbe64c8bbfa";
 const HEADING_2_ID = "82999d0b-d7a7-c0f8-aedf-6ddf737edf78";
@@ -401,8 +402,8 @@ describe("document comments", () => {
                   subject: "Comment on Lorem ipsum",
                   heading: "Robert Tableton left a comment on a document",
                   documentTitle: "Lorem ipsum",
-                  documentHref: `http://localhost:4000/document/${documentId}`,
-                  commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
+                  documentHref: `${baseUrl}/document/${documentId}`,
+                  commentHref: `${baseUrl}/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
                 },
               });
             });
@@ -455,8 +456,8 @@ describe("document comments", () => {
                         subject: "Comment on Lorem ipsum",
                         heading: "Robert Tableton replied to a thread",
                         documentTitle: "Lorem ipsum",
-                        documentHref: `http://localhost:4000/document/${documentId}`,
-                        commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${normalUserReply.id}`,
+                        documentHref: `${baseUrl}/document/${documentId}`,
+                        commentHref: `${baseUrl}/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${normalUserReply.id}`,
                       },
                     });
 
@@ -470,8 +471,8 @@ describe("document comments", () => {
                         subject: "Comment on Lorem ipsum",
                         heading: "User Impersonated replied to a thread",
                         documentTitle: "Lorem ipsum",
-                        documentHref: `http://localhost:4000/document/${documentId}`,
-                        commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${impersonatedUserReply.id}`,
+                        documentHref: `${baseUrl}/document/${documentId}`,
+                        commentHref: `${baseUrl}/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${impersonatedUserReply.id}`,
                       },
                     });
 
@@ -485,8 +486,8 @@ describe("document comments", () => {
                         subject: "Comment on Lorem ipsum",
                         heading: "User Impersonated replied to a thread",
                         documentTitle: "Lorem ipsum",
-                        documentHref: `http://localhost:4000/document/${documentId}`,
-                        commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${impersonatedUserReply.id}`,
+                        documentHref: `${baseUrl}/document/${documentId}`,
+                        commentHref: `${baseUrl}/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${impersonatedUserReply.id}`,
                       },
                     });
                   });
@@ -542,8 +543,8 @@ describe("document comments", () => {
                 subject: "Comment on Lorem ipsum",
                 heading: "Bobby Tables left a comment on a document",
                 documentTitle: "Lorem ipsum",
-                documentHref: `http://localhost:4000/document/${documentId}`,
-                commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
+                documentHref: `${baseUrl}/document/${documentId}`,
+                commentHref: `${baseUrl}/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
               },
             });
           });
@@ -928,9 +929,9 @@ function verifyEmail({
   ).to.contain.text("Open in Metabase");
 
   cy.log("link to the instance");
-  expect(
-    document.querySelector('a[href="http://localhost:4000"]'),
-  ).to.contain.text("http://localhost:4000");
+  expect(document.querySelector(`a[href="${baseUrl}"]`)).to.contain.text(
+    `${baseUrl}`,
+  );
 
   cy.log("Metabase company name");
   const hasCompanyName = [...document.querySelectorAll("*")].some((element) => {

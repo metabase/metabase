@@ -124,10 +124,16 @@
     (let [entity    (entity-of (parent-links (into #{} (keep parent-ref) events)))
           by-entity (group-by entity events)
           rows      (into [] (keep #(revision-row % (get by-entity %))) (remove nil? (keys by-entity)))]
-      (when (seq rows)
+      (when (and (seq rows)
+                 (try
+                   (revisions.db/insert-revisions! rows)
+                   true
+                   (catch Throwable e
+                     (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e))
+                     false)))
         (try
-          (revisions.db/insert-revisions! rows)
+          (run! revision/publish-created! rows)
           (catch Throwable e
-            (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e))))))))
+            (log/warnf "Failed to publish the creation of %d revisions: %s" (count rows) (ex-message e))))))))
 
 (events/register-owned-consumer! ::revisions owner push!)

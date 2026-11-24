@@ -164,7 +164,7 @@
                  :native {:query (format "SELECT * FROM {{%s}} AS x" tag-name)
                           :template-tags {tag-name
                                           {:id tag-name, :name tag-name, :display-name tag-name,
-                                           :type "card", :card card-id}}}}))))))))
+                                           :type "card", :card-id card-id}}}}))))))))
 
 (deftest template-tags-referenced-queries-test-2
   (testing "...but it should work if user has perms [template tag referenced query]"
@@ -215,7 +215,7 @@
                  :native {:query (format "SELECT * FROM {{%s}} AS x" tag-name)
                           :template-tags {tag-name
                                           {:id tag-name, :name tag-name, :display-name tag-name,
-                                           :type "card", :card card-id}}}}))))))))
+                                           :type "card", :card-id card-id}}}}))))))))
 
 (deftest template-tags-referenced-queries-test-4
   (testing "...but it should work if user has perms [template tag referenced query]"

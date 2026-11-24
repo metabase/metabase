@@ -5,6 +5,7 @@ import { scaleLinear } from "@visx/scale";
 import { useMemo } from "react";
 import { c } from "ttag";
 
+import { STATIC_VIZ_GOAL_SOURCE_RESULTS } from "metabase/static-viz/lib/resolve-goal-settings";
 import { formatValue } from "metabase/value-formatting";
 import {
   calculateProgressMetrics,
@@ -62,7 +63,11 @@ export const ProgressBar = ({
       : -1;
 
     const value = extractProgressValue(rows, columnIndex);
-    const goal = getGoalValue(goalSetting, seriesData);
+    const goal = getGoalValue(
+      goalSetting,
+      seriesData,
+      STATIC_VIZ_GOAL_SOURCE_RESULTS,
+    );
 
     const metrics = calculateProgressMetrics(value, goal);
 
