@@ -256,15 +256,9 @@ describe("TransformSectionLayout", () => {
         expect(
           await screen.findByRole("menuitem", { name: /Query builder/ }),
         ).toBeInTheDocument();
-        if (showsPython) {
-          expect(
-            screen.getByRole("menuitem", { name: /Python/ }),
-          ).toBeInTheDocument();
-        } else {
-          expect(
-            screen.queryByRole("menuitem", { name: /Python/ }),
-          ).not.toBeInTheDocument();
-        }
+        expect(
+          screen.queryAllByRole("menuitem", { name: /Python/ }),
+        ).toHaveLength(showsPython ? 1 : 0);
       },
     );
   });

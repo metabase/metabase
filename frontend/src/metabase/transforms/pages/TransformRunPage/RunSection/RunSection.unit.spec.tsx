@@ -278,7 +278,6 @@ describe("RunSection run list link", () => {
   const MBQL_TRANSFORM = createMockTransform({ id: 1, name: "MBQL transform" });
   const MBQL_RUN = createMockTransformRun({
     id: 101,
-    transform_id: MBQL_TRANSFORM.id,
     transform: MBQL_TRANSFORM,
     status: "succeeded",
     run_method: "manual",
@@ -290,7 +289,6 @@ describe("RunSection run list link", () => {
   });
   const SQL_RUN = createMockTransformRun({
     id: 102,
-    transform_id: SQL_TRANSFORM.id,
     transform: SQL_TRANSFORM,
     status: "succeeded",
     run_method: "manual",
@@ -308,7 +306,7 @@ describe("RunSection run list link", () => {
       const runs = [MBQL_RUN, SQL_RUN].filter(
         (run) =>
           transformIds.length === 0 ||
-          transformIds.includes(run.transform_id ?? -1),
+          transformIds.includes(run.transform?.id ?? -1),
       );
       return createMockListTransformRunsResponse({
         data: runs,

@@ -205,15 +205,9 @@ describe("GroupsPermissionsPage", () => {
         expect(
           screen.getByRole("columnheader", { name: /Manage database/ }),
         ).toBeInTheDocument();
-        if (showsColumn) {
-          expect(
-            screen.getByRole("columnheader", { name: /Transforms/ }),
-          ).toBeInTheDocument();
-        } else {
-          expect(
-            screen.queryByRole("columnheader", { name: /Transforms/ }),
-          ).not.toBeInTheDocument();
-        }
+        expect(
+          screen.queryAllByRole("columnheader", { name: /Transforms/ }),
+        ).toHaveLength(showsColumn ? 1 : 0);
       },
     );
   });

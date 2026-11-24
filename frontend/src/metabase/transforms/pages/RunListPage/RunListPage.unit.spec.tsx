@@ -192,7 +192,6 @@ const SQL_TRANSFORM = createMockTransform({
 
 const MBQL_RUN = createMockTransformRun({
   id: 101,
-  transform_id: MBQL_TRANSFORM.id,
   transform: MBQL_TRANSFORM,
   status: "succeeded",
   run_method: "manual",
@@ -201,7 +200,6 @@ const MBQL_RUN = createMockTransformRun({
 });
 const SQL_RUN = createMockTransformRun({
   id: 102,
-  transform_id: SQL_TRANSFORM.id,
   transform: SQL_TRANSFORM,
   status: "failed",
   run_method: "manual",
@@ -260,8 +258,9 @@ function listRuns(searchParams: URLSearchParams): ListTransformRunsResponse {
   const runs = ALL_RUNS.filter(
     (run) =>
       (transformIds.length === 0 ||
-        transformIds.includes(run.transform_id ?? -1)) &&
-      (statuses.length === 0 || statuses.includes(run.status)) &&
+        transformIds.includes(run.transform?.id ?? -1)) &&
+      (statuses.length === 0 ||
+        (run.status != null && statuses.includes(run.status))) &&
       (tagIds.length === 0 ||
         (run.transform?.tag_ids ?? []).some((tagId) =>
           tagIds.includes(tagId),
