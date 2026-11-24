@@ -504,6 +504,18 @@ def _join_step_strategy(join):
     return {"LEFT": "left", "RIGHT": "right", "FULL": "full"}.get(side, "inner")
 
 
+def _unsupported_join(join):
+    """Whether `join` is of a type whose step counts would be wrong: a POSITIONAL, ANTI or Snowflake ASOF join."""
+    # DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
+    # An ANTI join keeps the left rows that found no match, so its one count would be read as the matched rows.
+    # Snowflake's ASOF join keeps unmatched left rows like a LEFT join, and has no INNER form to count its matches.
+    return (
+        (join.method or "").upper() == "POSITIONAL"
+        or (join.kind or "").upper() == "ANTI"
+        or bool(join.args.get("match_condition"))
+    )
+
+
 def _inner_variant(join):
     """A copy of the outer `join` made an INNER join."""
     inner = join.copy()
@@ -565,7 +577,7 @@ def _count_select(from_, joins, with_=None):
     return _select([_count_star()], from_, joins, with_)
 
 
-def _two_counts(first, second, with_=None):
+def _two_counts(first, second, with_):
     """Both one-row counts in one row: `SELECT w.n, m.n FROM (<first>) AS w CROSS JOIN (<second>) AS m`."""
     # Each count is a derived table rather than a scalar subquery so the query has a FROM clause, which some databases
     # (Oracle before 23c) require.
@@ -595,11 +607,6 @@ def _conjuncts(node):
     return [node]
 
 
-def _sources(from_, joins):
-    """The FROM source of a SELECT and the source of each of its `joins`."""
-    return [from_.this, *(join.this for join in joins)]
-
-
 def _source_name(node, dialect):
     """The effective name a column calls the source `node` by, or None for a source with no name."""
     alias = node.args.get("alias")
@@ -615,7 +622,7 @@ def _on_counts_matches(from_, joins, strategy, dialect):
     It must also compare a column from each side that can be NULL-extended, so an unmatched row cannot satisfy it.
     """
     on = joins[-1].args.get("on")
-    names = [_source_name(node, dialect) for node in _sources(from_, joins)]
+    names = [_source_name(node, dialect) for node in [from_.this, *(join.this for join in joins)]]
     # ClickHouse fills unmatched columns with defaults rather than NULL, so an unmatched row can satisfy the clause.
     if on is None or dialect == "clickhouse" or None in names or len(names) != len(set(names)):
         return False
@@ -663,8 +670,6 @@ def _statement_refusal(stmt, with_):
     from_ = stmt.args.get("from_")
     if from_ is None or from_.this is None:
         return "no-from"
-    if from_.expressions:
-        return "comma-join"
     joins = stmt.args.get("joins") or []
     kept = [node for node in [from_, *joins, with_] if node is not None]
     # A placeholder is a value the step queries would have to be handed again, and nothing passes them on. One in a
@@ -674,14 +679,7 @@ def _statement_refusal(stmt, with_):
     # A sample in anything the steps keep would pick different rows in each step query.
     if any(node.find(exp.TableSample) for node in kept):
         return "unsupported-source"
-    # DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
-    if any((join.method or "").upper() == "POSITIONAL" for join in joins):
-        return "unsupported-join"
-    # An ANTI join keeps the left rows that found no match, so its one count would be read as the matched rows.
-    if any((join.kind or "").upper() == "ANTI" for join in joins):
-        return "unsupported-join"
-    # Snowflake's ASOF join keeps unmatched left rows like a LEFT join, and has no INNER form to count its matches.
-    if any(join.args.get("match_condition") for join in joins):
+    if any(_unsupported_join(join) for join in joins):
         return "unsupported-join"
     return None
 
@@ -706,8 +704,8 @@ def join_steps(sql: str, dialect: str = None) -> str:
     A source is `{"source": "table" | "cte" | "derived", "table": [catalog, schema, table] or null, "alias": ...}`.
     A step is a source with a `strategy` (`inner`, `left`, `right`, `full` or `cross`) and its `sql`.
     Otherwise it is `{"status": "unsupported", "reason": ...}`, with one of these reasons: `unparseable`,
-    `set-operation`, `not-a-select`, `no-from`, `comma-join`, `unsupported-join`, `unsupported-source`, `nested-join`
-    and `parameters`.
+    `set-operation`, `not-a-select`, `no-from`, `unsupported-join`, `unsupported-source`, `nested-join` and
+    `parameters`.
     Of several statements, only the first is read.
 
     Examples:

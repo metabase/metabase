@@ -99,6 +99,17 @@
       :else
       (get {"LEFT" "left", "RIGHT" "right", "FULL" "full"} side "inner"))))
 
+(defn- unsupported-join?
+  "Whether `join` is of a type whose step counts would be wrong: a POSITIONAL, ANTI or Snowflake ASOF join.
+  Port of `_unsupported_join`."
+  [join]
+  ;; DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
+  ;; An ANTI join keeps the left rows that found no match, so its one count would be read as the matched rows.
+  ;; Snowflake's ASOF join keeps unmatched left rows like a LEFT join, and has no INNER form to count its matches.
+  (or (= "POSITIONAL" (upper-arg join "method"))
+      (= "ANTI" (upper-arg join "kind"))
+      (some? (ast/arg join "match_condition"))))
+
 (defn- with-clause
   "The query `select`, given a copy of `with-node` as its WITH clause when there is one.
   Port of `_with`."
@@ -179,12 +190,6 @@
     (when (instance? Expressions$Identifier identifier)
       (effective-name identifier dialect))))
 
-(defn- source-nodes
-  "The FROM source of a SELECT and the source of each of its `joins`.
-  Port of `_sources`."
-  [from-node joins]
-  (cons (ast/this from-node) (map ast/this joins)))
-
 (defn- operand-column
   "The source an operand of a join comparison names, `::literal` for a literal, or nil for anything else."
   [operand names dialect]
@@ -208,7 +213,7 @@
   Port of `_on_counts_matches`."
   [from-node chain strategy dialect]
   (let [on    (ast/arg (peek chain) "on")
-        names (mapv #(source-name % dialect) (source-nodes from-node chain))]
+        names (mapv #(source-name % dialect) (cons (ast/this from-node) (map ast/this chain)))]
     ;; ClickHouse fills unmatched columns with defaults rather than NULL, so an unmatched row can satisfy the clause.
     (when (and on
                (not= "clickhouse" dialect)
@@ -300,9 +305,6 @@
       (not (and from-node (ast/this from-node)))
       "no-from"
 
-      (seq (ast/expressions from-node))
-      "comma-join"
-
       ;; A placeholder is a value the step queries would have to be handed again, and nothing passes them on. One in a
       ;; clause the steps leave out does not matter.
       (some #(seq (ast/find-all % Expressions$Placeholder Expressions$Parameter)) kept)
@@ -312,16 +314,7 @@
       (some #(seq (ast/find-all % Expressions$TableSample)) kept)
       "unsupported-source"
 
-      ;; DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
-      (some #(= "POSITIONAL" (upper-arg % "method")) joins)
-      "unsupported-join"
-
-      ;; An ANTI join keeps the left rows that found no match, so its one count would be read as the matched rows.
-      (some #(= "ANTI" (upper-arg % "kind")) joins)
-      "unsupported-join"
-
-      ;; Snowflake's ASOF join keeps unmatched left rows like a LEFT join, and has no INNER form to count its matches.
-      (some #(ast/arg % "match_condition") joins)
+      (some unsupported-join? joins)
       "unsupported-join")))
 
 (defn- statement-refusal
