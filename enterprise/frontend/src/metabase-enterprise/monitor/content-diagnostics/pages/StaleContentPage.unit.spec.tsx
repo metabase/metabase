@@ -913,7 +913,10 @@ describe("StaleContentPage", () => {
     const { router } = setup({
       findings: FINDINGS,
       urlParams: { "entity-types": ["dashboard"] },
-      lastUsedParams: { entity_types: ["model"] },
+      // The opposite of the URL: every type except dashboards.
+      lastUsedParams: {
+        entity_types: ["question", "model", "metric", "document", "transform"],
+      },
     });
 
     await waitForListToLoad();
@@ -924,6 +927,21 @@ describe("StaleContentPage", () => {
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
       "dashboard",
     ]);
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+    const popover = await screen.findByRole("dialog");
+    expect(
+      within(popover).getByRole("checkbox", { name: "Dashboards" }),
+    ).toBeChecked();
+    ["Questions", "Models", "Metrics", "Documents", "Transforms"].forEach(
+      (label) => {
+        expect(
+          within(popover).getByRole("checkbox", { name: label }),
+        ).not.toBeChecked();
+      },
+    );
   });
 
   it("lets an explicit default-valued URL win over the last-used filter", async () => {
