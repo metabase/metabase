@@ -368,8 +368,16 @@
            api-scope
            batch-processing
            models
+           serialization
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Field
+                    :model/Table
+                    :model/User}}
 
   app-db
   {:team "UX West"
@@ -2825,6 +2833,7 @@
            api
            api-keys
            api-scope
+           api.eid-translation
            app-db
            appearance
            core.initialization-status

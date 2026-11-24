@@ -10,6 +10,7 @@
    [metabase.server.middleware.body-limit :as mw.body-limit]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
    [metabase.server.middleware.data-app-scope :as mw.data-app-scope]
+   [metabase.server.middleware.entity-ids :as mw.entity-ids]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.isolated-origin :as mw.isolated-origin]
    [metabase.server.middleware.json :as mw.json]
@@ -96,6 +97,7 @@
         #(#'mw.security/add-security-headers % cors) ; Add HTTP headers to API responses to prevent them from being cached
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
         #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
+        #'mw.entity-ids/wrap-entity-ids              ; names rows by entity ids in the response to an `X-Metabase-Ids: entity` request; inside the JSON middleware, so it sees the body as data
         #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
         #'mw.mp-cache/wrap-metadata-provider-cache   ; initializes the Lib-BE metadata provider cache
         #'wrap-keyword-params                        ; converts string keys in :params to keyword keys

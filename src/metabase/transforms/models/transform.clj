@@ -787,4 +787,5 @@
   {:candidates transforms.staleness/stale-transform-candidates})
 
 (defmethod eid-translation/spec :model/Transform [_model]
-  {:names [:transform]})
+  {:names      [:transform]
+   :references {:target_db_id :model/Database :target_table_id :model/Table}})

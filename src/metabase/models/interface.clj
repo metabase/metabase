@@ -905,10 +905,24 @@
    :dispatch-value-spec (some-fn keyword? symbol?)} ; dispatch value should be either keyword model name or symbol
   t2.u/dispatch-on-first-arg)
 
+(defn with-json-replacements
+  "`instance` whose JSON encoding by [[to-json]] carries the values of `replacements` for those of its keys instead of
+  its own. The replacements apply last, so each model's [[to-json]] method still reads the instance as it is: a key
+  that a method removes stays removed."
+  [instance replacements]
+  (vary-meta instance update ::json-replacements merge replacements))
+
+(defn- apply-json-replacements
+  "`instance` with the values of its [[with-json-replacements]] for the keys it has."
+  [instance]
+  (if-let [replacements (::json-replacements (meta instance))]
+    (reduce-kv (fn [m k v] (cond-> m (contains? m k) (assoc k v))) instance replacements)
+    instance))
+
 (methodical/defmethod to-json :default
-  "Default method for encoding instances of a Toucan model to JSON."
+  "Default method for encoding instances of a Toucan model to JSON, with their [[with-json-replacements]]."
   [instance json-generator]
-  (json/generate-map instance json-generator))
+  (json/generate-map (apply-json-replacements instance) json-generator))
 
 (json/add-encoder
  Instance

@@ -1,6 +1,8 @@
 (ns metabase.eid-translation.spec
   "The entity-id translation spec of a model, a map of `:names`, the names by which the API asks to translate the entity
-  ids of the model."
+  ids of the model, and, optionally, `:references`, the map from each column that holds the ids of other rows but that
+  the model's serialization spec skips, deriving it on import, to the model of those rows. A response with entity ids
+  (see [[metabase.eid-translation.responses]]) names those rows by their refs too."
   (:require
    [toucan2.model :as t2.model]))
 

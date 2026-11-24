@@ -295,7 +295,8 @@
    :update!            #(do (update-segments! % {:writer :replacement}) %)})
 
 (defmethod eid-translation/spec :model/Segment [_model]
-  {:names [:segment]})
+  {:names      [:segment]
+   :references {:table_id :model/Table}})
 
 (defmethod xrays/spec :model/Segment [_model]
   {:related    segments.xrays/related

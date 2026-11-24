@@ -297,4 +297,5 @@
    :update!            #(do (update-measures! % {:writer :replacement}) %)})
 
 (defmethod eid-translation/spec :model/Measure [_model]
-  {:names [:measure]})
+  {:names      [:measure]
+   :references {:table_id :model/Table}})

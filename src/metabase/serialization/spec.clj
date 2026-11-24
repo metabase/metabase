@@ -9,7 +9,9 @@
   - `:transform`, a map from a column to its transform, `{:export f :import g}`, where `f` and `g` are fns of the
     store, the batch (rows on export, entities on import), the column's values in that batch, and the import options
     (empty on export), returning the transformed values in the same order. An `:as` key exports the column under
-    another key. A transform with no `:export` is never exported. A transform with `:validates-query?` imports a query
+    another key. A `:model` key names the model whose rows the column's database ids are, as
+    [[metabase.serialization.transform/fk-transform]] sets it. A transform with no `:export` is never exported. A
+    transform with `:validates-query?` imports a query
     that it validates against the query schema itself, so an import leaves its column out of the check of the entity
     against `:schema`.
   - `:defaults`, the default `true` or `false` of boolean columns. An export leaves out the columns that are nil or at
@@ -78,6 +80,7 @@
    [:export           {:optional true} ifn?]
    [:import           {:optional true} ifn?]
    [:as               {:optional true} :keyword]
+   [:model            {:optional true} :keyword]
    [:validates-query? {:optional true} :boolean]])
 
 (mr/def ::parent
