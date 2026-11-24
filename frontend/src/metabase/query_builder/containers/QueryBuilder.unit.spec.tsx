@@ -1524,4 +1524,176 @@ describe("QueryBuilder", () => {
       ).not.toBeInTheDocument();
     });
   });
+  describe("chart settings after removing query clauses", () => {
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    const countByMonthStage = {
+      source: { type: "table" as const, id: ORDERS_ID },
+      aggregations: [
+        { type: "operator" as const, operator: "count", args: [] },
+      ],
+      breakouts: [
+        { type: "column" as const, name: "CREATED_AT", unit: "month" },
+      ],
+    };
+
+    const WATERFALL_CARD = createMockCard({
+      id: 36027,
+      name: "Waterfall",
+      display: "waterfall",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            countByMonthStage,
+            {
+              joins: [
+                {
+                  source: { type: "table", id: ORDERS_ID },
+                  strategy: "left-join",
+                  conditions: [
+                    {
+                      operator: "<=",
+                      left: { type: "column", name: "CREATED_AT" },
+                      right: { type: "column", name: "CREATED_AT" },
+                    },
+                  ],
+                },
+              ],
+              aggregations: [
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [{ type: "column", name: "count" }],
+                },
+              ],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+              ],
+            },
+          ],
+        }),
+      ),
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["sum"],
+      },
+    });
+
+    const createMonthColumn = () =>
+      createOrdersCreatedAtDatasetColumn({
+        source: "breakout",
+        unit: "month",
+        display_name: "Created At: Month",
+        field_ref: [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      });
+
+    const createNumberColumn = (name: string, displayName: string) =>
+      createMockColumn({
+        name,
+        display_name: displayName,
+        source: "aggregation",
+        base_type: "type/BigInteger",
+        effective_type: "type/BigInteger",
+        field_ref: ["aggregation", 0],
+      });
+
+    // 48 months from April 2025 that add up to 18,760 orders
+    const MONTHLY_ROWS = Array.from({ length: 48 }, (_, index) => [
+      new Date(Date.UTC(2025, 3 + index, 1)).toISOString(),
+      index < 40 ? 400 : 345,
+    ]);
+
+    const WATERFALL_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMonthColumn(), createNumberColumn("sum", "Sum of Count")],
+        rows: MONTHLY_ROWS,
+      }),
+      row_count: MONTHLY_ROWS.length,
+    });
+
+    const COUNT_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMonthColumn(), createNumberColumn("count", "Count")],
+        rows: MONTHLY_ROWS,
+      }),
+      row_count: MONTHLY_ROWS.length,
+    });
+
+    const isCountByMonthQuery = (call: CallLog) => {
+      const body: unknown = JSON.parse(String(call.options.body));
+      const stages: unknown[] = _.get(body, ["stages"]) ?? [];
+      return (
+        stages.length === 1 &&
+        _.get(body, ["stages", 0, "aggregation", 0, 0]) === "count" &&
+        _.get(body, ["stages", 0, "breakout", 0, 1, "temporal-unit"]) ===
+          "month" &&
+        _.get(body, ["stages", 0, "joins"]) == null
+      );
+    };
+
+    const removeStep = async (testId: string) => {
+      const step = await screen.findByTestId(testId);
+      await userEvent.click(within(step).getByLabelText("Remove step"));
+      await waitFor(() =>
+        expect(screen.queryByTestId(testId)).not.toBeInTheDocument(),
+      );
+    };
+
+    it("should use default metrics and dimensions if they are missing after removing some query clauses (metabase#36027)", async () => {
+      await setup({
+        card: WATERFALL_CARD,
+        dataset: WATERFALL_DATASET,
+        database: createSampleDatabase({ auto_run_queries: true }),
+      });
+      fetchMock.modifyRoute("dataset-post", {
+        response: (call: CallLog) =>
+          isCountByMonthQuery(call) ? COUNT_DATASET : WATERFALL_DATASET,
+      });
+
+      await userEvent.click(screen.getByTestId("notebook-button"));
+      await removeStep("step-summarize-1-0");
+      await removeStep("step-join-1-0");
+      await userEvent.click(screen.getByRole("button", { name: "Visualize" }));
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory
+            .calls("path:/api/dataset", { method: "POST" })
+            .some(isCountByMonthQuery),
+        ).toBe(true),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+
+      const chart = await screen.findByTestId("chart-container");
+      await waitFor(() =>
+        expect(
+          within(chart).getByText("Created At: Month"),
+        ).toBeInTheDocument(),
+      );
+      expect(within(chart).getByText("Count")).toBeInTheDocument();
+      for (const month of [
+        "April 2025",
+        "April 2026",
+        "April 2027",
+        "April 2028",
+      ]) {
+        expect(within(chart).getByText(month)).toBeInTheDocument();
+      }
+      for (const tick of [
+        "0",
+        "3,000",
+        "6,000",
+        "9,000",
+        "12,000",
+        "15,000",
+        "18,000",
+        "21,000",
+      ]) {
+        expect(within(chart).getByText(tick)).toBeInTheDocument();
+      }
+    });
+  });
 });
