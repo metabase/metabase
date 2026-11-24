@@ -622,6 +622,7 @@
 (api.macros/defendpoint :post "/metabot/retrieve" :- [:map {:closed true} [:output :string]]
   "Run one of Metabot's read-only retrieval tools with fixed arguments and no model, for search evals.
   Admins only, because the testing routes are not behind the authentication middleware.
+  The selected tool validates `arguments`, so they pass through as they arrived.
   Answers 400 when the tool rejects the arguments, and 502 when the call or any of its queries fails.
   That way a caller can tell a failed or partial search from one that found nothing.
   The 502 for a partial search still carries the other queries' `output`, for debugging."
@@ -629,19 +630,13 @@
    _query-params
    {:keys [retriever arguments]} :- [:map {:closed true}
                                      [:retriever (into [:enum] metabot.tools/retriever-names)]
-                                     [:arguments [:map {:closed true}
-                                                  [:database_id {:optional true} :int]
-                                                  [:entity_types {:optional true} [:sequential :string]]
-                                                  [:keyword_queries {:optional true} [:sequential :string]]
-                                                  [:limit {:optional true} :int]
-                                                  [:semantic_queries {:optional true} [:sequential :string]]
-                                                  [:user_search_prompt {:optional true} :string]]]]]
+                                     [:arguments [:map {:closed false}]]]]
   (api/check-superuser)
   (let [{:keys [output error failed-queries]} (metabot.tools/run-retriever retriever arguments
                                                                            (metabot.config/resolve-metabot nil))]
     (cond
       error
-      (throw (ex-info output {:status-code   (if (= :validation (:class error)) 400 502)
+      (throw (ex-info output {:status-code   (if (metabot.tools/retriever-caller-error? error) 400 502)
                               :error-code    (u/qualified-name (:code error))
                               :error-class   (:class error)
                               :response/keys #{:error-class}}))

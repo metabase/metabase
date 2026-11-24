@@ -185,6 +185,20 @@
   "The names [[run-retriever]] accepts."
   (sort (keys retrievers)))
 
+(def ^:private retriever-caller-error-codes
+  "Codes of the recoverable errors the retrieval tools raise for arguments that pass their schema but name nothing
+  to search."
+  #{::tools.entity-retrieval/blank-search-prompt
+    ::tools.search/missing-query
+    ::tools.search/unavailable-database})
+
+(defn retriever-caller-error?
+  "Whether `error`, the `:error` of a [[run-retriever]] outcome, is the caller's mistake rather than a failure to
+  search."
+  [{:keys [class code]}]
+  (or (= :validation class)
+      (contains? retriever-caller-error-codes code)))
+
 (defn run-retriever
   "Run the named retrieval tool once with `args`, as `metabot` and the current user, with no model.
   Returns the `metabase.metabot.tools.runtime/invoke` outcome, which carries `:error` when the call failed.

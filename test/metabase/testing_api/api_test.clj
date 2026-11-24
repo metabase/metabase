@@ -231,9 +231,26 @@
     (is (some? (:errors (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
                                               {:retriever "run_sql", :arguments {}})))))
   (testing "arguments the tool rejects are the caller's mistake"
-    (is (=? {:error-class "validation"}
-            (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
-                                  {:retriever "sql", :arguments {:keyword_queries ["orders"]}})))))
+    (doseq [[retriever arguments] [["sql"     {:keyword_queries ["orders"]}]
+                                   ["general" {:keyword_queries ["orders"], :entity_typo ["table"]}]]]
+      (is (=? {:error-class "validation"}
+              (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                    {:retriever retriever, :arguments arguments})))))
+  (testing "arguments that pass the tool's schema but name nothing to search are the caller's mistake too"
+    (doseq [[retriever arguments code] [["general" {:keyword_queries [" "]}
+                                         "metabase.metabot.tools.search/missing-query"]
+                                        ["sql"     {:keyword_queries ["orders"], :database_id Integer/MAX_VALUE}
+                                         "metabase.metabot.tools.search/unavailable-database"]]]
+      (is (=? {:error-code code, :error-class "recoverable"}
+              (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                    {:retriever retriever, :arguments arguments}))))))
+
+(deftest metabot-retrieve-passes-arguments-through-test
+  (testing "a null the tool accepts reaches the tool"
+    (mt/with-dynamic-fn-redefs [metabot.search/search (constantly [])]
+      (is (string? (:output (mt/user-http-request :crowberto :post 200 "testing/metabot/retrieve"
+                                                  {:retriever "general"
+                                                   :arguments {:keyword_queries ["orders"], :limit nil}})))))))
 
 (deftest metabot-retrieve-reports-a-failed-call-test
   (mt/with-premium-features #{}
