@@ -492,7 +492,7 @@
     (let [kept?    (fn [{:keys [card_id]}] (or (contains? copy card_id) (contains? reference card_id)))
           decided? (into (set (concat (keys copy) (keys reference))) (map :id) discard)
           goal-ids (into #{}
-                         (comp (mapcat dynamic-goals/goal-card-ids) (remove decided?))
+                         (comp (mapcat dynamic-goals/goal-card-ids) (filter pos-int?) (remove decided?))
                          (concat (map :visualization_settings (vals copy))
                                  (map :visualization_settings (filter kept? dashcards))))]
       (update cards :copy merge (m/index-by :id (filter copyable-goal-source?

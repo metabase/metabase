@@ -2402,7 +2402,6 @@
                     :model/Document
                     :model/Exploration
                     :model/Field
-                    :model/Measure
                     :model/ModerationReview
                     :model/NativeQuerySnippet
                     :model/Notification

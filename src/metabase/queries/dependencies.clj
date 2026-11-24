@@ -24,6 +24,12 @@
   [card]
   (dependencies/query-errors (card-query card)))
 
+(defn goal-dependencies
+  "The entities the dynamic goals in stored `viz-settings` read."
+  [viz-settings]
+  (dynamic-goals/goal-dependencies
+   (some->> viz-settings (lib/normalize ::lib.schema.visualization/visualization-settings))))
+
 (defn dependencies
   "The dependencies of the hydrated `card`: what its query reads, the tables of its dimension mappings, the cards its
   parameters take their values from, and the entities its dynamic goals read."
@@ -32,5 +38,4 @@
    (dependencies/query-dependencies card (card-query card))
    {:table (into #{} (keep :table-id) dimension-mappings)}
    (dependencies/parameters-dependencies parameters)
-   (dynamic-goals/goal-dependencies
-    (lib/normalize ::lib.schema.visualization/visualization-settings visualization_settings))))
+   (goal-dependencies visualization_settings)))

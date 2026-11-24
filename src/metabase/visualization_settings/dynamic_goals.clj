@@ -49,6 +49,11 @@
   "The entity `:type`s a dynamic goal can reference."
   (set (keys goal-entity-models)))
 
+(defn model-source?
+  "Whether `entity`, of goal entity type `entity-type`, is a model, which can't be a goal source."
+  [entity-type entity]
+  (and (= "card" entity-type) (= :model (some-> (:type entity) keyword))))
+
 (mr/def ::source-result
   "The result of running one goal source."
   [:map {:closed true}

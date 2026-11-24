@@ -376,15 +376,20 @@
        (testing "a goal source card outside the app's collection, Library metrics included, fails without running"
          (doseq [card-id [metric-id native-id outside-id]]
            (is (= (refused-goal (card-error card-id)) (goal response card-id)))))
-       (testing "the app's card and any measure run"
-         (is (= "completed" (:status (goal response app-id))))
-         (is (= "completed" (get-in response [:measure measure-id :status]))))
-       (testing "a dev preview runs no goal source card"
+       (testing "the app's card runs"
+         (is (= "completed" (:status (goal response app-id)))))
+       (testing "an app runs no measure, as on POST /api/dataset"
+         (is (= (refused-goal (format "A data app cannot use measures, not the measure %d." measure-id))
+                (get-in response [:measure measure-id]))))
+       (testing "a dev preview runs no goal source card, but runs a measure"
          (let [response (run-goals sources as-preview)]
            (doseq [card-id [app-id metric-id native-id outside-id]]
              (is (= (refused-goal (format "A data app's dev preview cannot run saved cards, not the card %d."
                                           card-id))
-                    (goal response card-id))))))
+                    (goal response card-id))))
+           (is (= "completed" (get-in response [:measure measure-id :status])))))
+       (testing "a request that is not a data app's runs a measure"
+         (is (= "completed" (get-in (run-goals sources {:request-options {}}) [:measure measure-id :status]))))
        (testing "a request that is not a data app's runs every goal source card"
          (let [response (run-goals sources {:request-options {}})]
            (is (= [[4242]] (get-in (goal response native-id) [:data :rows])))

@@ -1052,18 +1052,17 @@
                                     reads-parameter-tag?))
                           (lib/all-source-card-ids-recursive query))))))))
 
-(def ^:private goal-reference-models
-  {"card" :model/Card, "measure" :model/Measure})
-
 (defn- resolvable-goal-references
   [viz-settings]
   ;; goals of any other type are dropped at run time too, so they reach nothing
-  (into #{} (filter (comp goal-reference-models first)) (dynamic-goals/goal-references viz-settings)))
+  (into #{} (filter (comp dynamic-goals/goal-entity-types first)) (dynamic-goals/goal-references viz-settings)))
 
 (defn- check-goal-reference!
   [[entity-type id]]
   (api/check-400 (pos-int? id) (tru "A goal must reference an entity by its integer ID."))
-  (let [entity (api/read-check (goal-reference-models entity-type) id)]
+  (let [entity (api/read-check (dynamic-goals/goal-entity-models entity-type) id)]
+    (api/check-400 (not (dynamic-goals/model-source? entity-type entity))
+                   (tru "A model can''t be a goal."))
     ;; a measure's value is its table's data, while reading a Table only takes metadata access
     (when (= "measure" entity-type)
       (api/check (query-perms/can-query-table? (get-in entity [:definition :database]) (:table_id entity))
@@ -1396,11 +1395,13 @@
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-settings card)
-  ;; a public Document shows its cards' goals to anyone, so a copy into one doesn't inherit its source's references
-  (check-new-goal-references! (:visualization_settings card)
-                              (when (and *copy-source-card*
-                                         (not (some-> (:document_id card) queries.db/public-document?)))
-                                (:visualization_settings *copy-source-card*)))
+  ;; a public Document shows its cards' goals to anyone, so a copy into one doesn't inherit its source's references.
+  ;; Most cards carry no goals, so the Document lookup waits for one
+  (when (seq (resolvable-goal-references (:visualization_settings card)))
+    (check-new-goal-references! (:visualization_settings card)
+                                (when (and *copy-source-card*
+                                           (not (some-> (:document_id card) queries.db/public-document?)))
+                                  (:visualization_settings *copy-source-card*))))
   (let [card   (-> card
                    (assoc :metabase_version config/mb-version-string
                           :card_schema current-card-schema-version)
@@ -2027,9 +2028,11 @@
    :dependencies queries.dependencies/dependencies
    :analysis     queries.dependencies/analysis
 
-   :dependency-columns #{:type :dataset_query :dimension_mappings :parameters :visualization_settings}
-   :analysis-columns   #{:type :dataset_query}
-   :output-columns     #{:type :result_metadata}})
+   :dependency-columns       #{:type :dataset_query :dimension_mappings :parameters :visualization_settings}
+   ;; the dynamic goal sources are the only dependencies viz settings hold
+   :dependency-column-values {:visualization_settings queries.dependencies/goal-dependencies}
+   :analysis-columns         #{:type :dataset_query}
+   :output-columns           #{:type :result_metadata}})
 
 (defmethod replacement/spec :model/Card [_model]
   {:source-database-id :database_id

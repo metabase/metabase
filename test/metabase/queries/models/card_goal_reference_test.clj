@@ -11,6 +11,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.models.card :as card]
    [metabase.revisions.core :as revisions]
    [metabase.revisions.models.revision :as revision]
@@ -142,6 +143,19 @@
              (mt/with-test-user :rasta
                (card/with-copy-source-card source
                  (is (= 403 (save-card-status (assoc copy-props :document_id document-id)))))))))))))
+
+(deftest goal-less-copy-skips-document-lookup-test
+  (testing "a copy with no goals doesn't look up whether its document is public"
+    (mt/with-temp [:model/Card     source            {:dataset_query (count-query)}
+                   :model/Document {document-id :id} {:name     "Doc"
+                                                      :document (documents.test-util/text->prose-mirror-ast "x")}]
+      (let [lookups (atom 0)]
+        (mt/with-dynamic-fn-redefs [queries.db/public-document? (fn [_] (swap! lookups inc) false)]
+          (mt/with-test-user :rasta
+            (card/with-copy-source-card source
+              (is (= :no-error (save-card-status (assoc (select-keys source [:dataset_query])
+                                                        :document_id document-id)))))))
+        (is (zero? @lookups))))))
 
 (deftest public-document-card-copy-goal-reference-test
   (testing "PUT /api/document/:id re-checks the goals of a card it copies into a public document"
@@ -404,3 +418,16 @@
         (is (= :no-error (status-of #(t2/update! :model/Card :id card-id
                                                  {:visualization_settings (assoc (gauge-viz (card-goal source-id))
                                                                                  :card.title "renamed")}))))))))
+
+(deftest model-goal-reference-test
+  (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (count-query)}
+                 :model/Card {card-id :id} {:dataset_query (count-query)}]
+    (mt/with-test-user :crowberto
+      (testing "a goal reading a model is refused even for an admin"
+        (is (= 400 (save-card-status {:visualization_settings (gauge-viz (card-goal model-id))})))
+        (is (= 400 (status-of #(t2/update! :model/Card :id card-id
+                                           {:visualization_settings (gauge-viz (card-goal model-id))}))))))
+    (testing "the API says why"
+      (is (= "A model can't be a goal."
+             (mt/user-http-request :crowberto :put 400 (format "card/%d" card-id)
+                                   {:visualization_settings (gauge-viz (card-goal model-id))}))))))

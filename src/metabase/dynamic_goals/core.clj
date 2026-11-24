@@ -43,6 +43,10 @@
   "How many sources one call runs at most. A chart needs a handful; past this is a client bug or a fan-out attempt."
   20)
 
+(def ^:private max-requested-sources
+  "A sanity cap on the sources one request lists; past [[max-sources]] distinct ones, a source fails on its own."
+  1000)
+
 (def ^:private max-rows
   "A goal is a single value, so its source must produce one row."
   1)
@@ -54,7 +58,7 @@
 
 (def sources-schema
   "Schema for the sources a client asks [[goal-values]] for."
-  [:sequential {:max max-sources}
+  [:sequential {:max max-requested-sources}
    [:map {:closed true}
     [:type (into [:enum] (sort (keys source-models)))]
     [:id pos-int?]
@@ -138,12 +142,20 @@
     (try
       ;; passes for anything under an anonymous route's `as-admin`: there saving the goal is the gate
       (let [source (api/read-check model id)]
-        ;; it runs with no parameter values, so each would get its default or none at all
-        (if (queries/card-reads-parameters? source)
+        (cond
+          (viz.dynamic-goals/model-source? source-type source)
+          (do
+            (log/warnf "Goal source %s %s is a model, so it can't be a goal" source-type id)
+            (failed nil (tru "Goal source {0} {1} is a model, so it can''t be a goal." source-type id)))
+
+          ;; it runs with no parameter values, so each would get its default or none at all
+          (queries/card-reads-parameters? source)
           (do
             (log/warnf "Goal source %s %s reads parameters, so it can't run on its own" source-type id)
             (failed "has-parameters"
                     (tru "Goal source {0} {1} uses variables, so it can''t run on its own." source-type id)))
+
+          :else
           (let [query          (source-query (runnable-query source query-key) source-type id opts)
                 ;; measures have no cache config. Computed on the final query: its hash keys the average run time
                 cache-strategy (when card?
