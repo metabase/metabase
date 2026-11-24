@@ -178,7 +178,7 @@ describe("ConversationsPage", () => {
         "Messages",
         "Input tokens",
         "Output tokens",
-        "Cached input tokens",
+        "Cached tokens",
         "Queries",
         "Searches",
         "IP",
@@ -258,7 +258,7 @@ describe("ConversationsPage", () => {
       { headerLabel: /^Messages\b/, sortBy: "message_count" },
       { headerLabel: /^Input tokens\b/, sortBy: "input_tokens" },
       { headerLabel: /^Output tokens\b/, sortBy: "output_tokens" },
-      { headerLabel: /^Cached input tokens\b/, sortBy: "cache_read_tokens" },
+      { headerLabel: /^Cached tokens\b/, sortBy: "cache_read_tokens" },
       { headerLabel: /^IP\b/, sortBy: "ip_address" },
     ])("sorts by $sortBy", async ({ headerLabel, sortBy }) => {
       setup();

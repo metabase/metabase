@@ -263,12 +263,12 @@ function getColumns(): TreeTableColumnDef<ConversationRow>[] {
           label={t`Input tokens served from the provider cache. Not part of Input tokens.`}
         >
           <SortableHeaderPill
-            name={t`Cached input tokens`}
+            name={t`Cached tokens`}
             sort={column.getIsSorted() || undefined}
           />
         </Tooltip>
       ),
-      minWidth: 190,
+      minWidth: 130,
       width: "auto",
       enableSorting: true,
       sortDescFirst: false,

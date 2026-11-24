@@ -149,7 +149,7 @@ describe("ConversationDetailPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the input, output and cached input tokens, and no total", async () => {
+  it("shows the input, output and cached tokens, and no total", async () => {
     setup({
       ...createConversation([userMessage("u1", null, "hello")]),
       total_tokens: 12345,
@@ -162,7 +162,7 @@ describe("ConversationDetailPage", () => {
     expect(screen.getByText("4,321")).toBeInTheDocument();
     expect(screen.getByText("Output tokens")).toBeInTheDocument();
     expect(screen.getByText("1,235")).toBeInTheDocument();
-    expect(screen.getByText("Cached input tokens")).toBeInTheDocument();
+    expect(screen.getByText("Cached tokens")).toBeInTheDocument();
     expect(screen.getByText("6,789")).toBeInTheDocument();
     expect(screen.queryByText("Total tokens")).not.toBeInTheDocument();
     expect(screen.queryByText("12,345")).not.toBeInTheDocument();

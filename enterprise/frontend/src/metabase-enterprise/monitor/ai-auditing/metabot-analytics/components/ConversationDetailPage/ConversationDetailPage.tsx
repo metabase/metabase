@@ -184,7 +184,7 @@ export function ConversationDetailPage() {
                 value={formatNumber(output_tokens)}
               />
               <StatCard
-                label={t`Cached input tokens`}
+                label={t`Cached tokens`}
                 value={formatNumber(cache_read_tokens)}
               />
             </SimpleGrid>
