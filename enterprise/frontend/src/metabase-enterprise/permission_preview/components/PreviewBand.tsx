@@ -12,6 +12,7 @@ interface PreviewBandProps {
   target: PreviewTarget;
   isStarted: boolean;
   linkText: string;
+  frameKey: string | null;
   onOpenLink: (item: string, linkText: string) => void;
   onGoHome: () => void;
   isExplainOpen: boolean;
@@ -22,6 +23,7 @@ export function PreviewBand({
   target,
   isStarted,
   linkText,
+  frameKey,
   onOpenLink,
   onGoHome,
   isExplainOpen,
@@ -52,7 +54,11 @@ export function PreviewBand({
             onClick={onGoHome}
           />
         </Tooltip>
-        <AddressBox linkText={linkText} onOpen={onOpenLink} />
+        <AddressBox
+          linkText={linkText}
+          frameKey={frameKey}
+          onOpen={onOpenLink}
+        />
         <Button
           className={S.bandButton}
           variant={isExplainOpen ? "light" : "default"}
