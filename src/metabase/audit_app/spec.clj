@@ -30,8 +30,8 @@
     whose id its `column` holds, a parent that has a `:parent` of its own passing it on up, all the writes of a batch
     to one such row being one update of the topmost parent.
   - `:moments`, a vector of `{:topic topic :when f}` and optionally `:details`, each a row that an update or a create
-    records beside its own when the fn of the event is true, with the details that the fn of the event returns, none by
-    default.
+    records beside its own when the fn of the event is true, with the details that the fn of the matching events
+    returns, one map per event in their order, none by default.
   - `:subject`, a fn of the event returning the `[model id]` under which its row is recorded, the model and the id of
     its row by default.
   - `:context-details?`, true for a model whose rows take the `:details` that the context of the write carries.

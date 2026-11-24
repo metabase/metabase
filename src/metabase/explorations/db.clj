@@ -115,14 +115,7 @@
   "The rows of `model` with the ids `ids`."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (if (seq ids)
-    (t2/select model :id [:in ids])
-    []))
-
-(mu/defn thread-exploration-id-row
-  "The `:exploration_id` row of the ExplorationThread with `thread-id`, or nil."
-  [thread-id :- ms/PositiveInt]
-  (t2/select-one [:model/ExplorationThread :exploration_id] :id thread-id))
+  (mdb/select-batched #(t2/select model :id [:in %]) ids))
 
 (mu/defn thread-terminal-state
   "The ID, cancel time, and completion time of the ExplorationThread with `thread-id`."
@@ -163,21 +156,39 @@
 (mu/defn threads-for-explorations
   "The ExplorationThreads of the Explorations with `exploration-ids`, in position order."
   [exploration-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ExplorationThread
-             :exploration_id [:in exploration-ids]
-             {:order-by [[:position :asc] [:id :asc]]}))
+  (vec (sort-by (juxt :position :id)
+                (mdb/select-batched #(t2/select :model/ExplorationThread
+                                                :exploration_id [:in %]
+                                                {:order-by [[:position :asc] [:id :asc]]})
+                                    exploration-ids))))
 
 (mu/defn thread-ids-for-exploration
   "The IDs of the ExplorationThreads of the Exploration with `exploration-id`."
   [exploration-id :- ms/PositiveInt]
   (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id))
 
+(mu/defn thread-ids-by-exploration-id
+  "A map of each of `exploration-ids` that has threads to the set of the ids of its ExplorationThreads."
+  [exploration-ids :- [:set ms/PositiveInt]]
+  (reduce (fn [m {:keys [id exploration_id]}] (update m exploration_id (fnil conj #{}) id))
+          {}
+          (mdb/select-batched #(t2/select [:model/ExplorationThread :id :exploration_id] :exploration_id [:in [:auto/param %]])
+                              exploration-ids)))
+
+(mu/defn exploration-ids-by-document-id
+  "A map of the id of each Document with `document-ids` to its Exploration id, nil for one outside an Exploration."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (into {}
+        (map (juxt :id :exploration_id))
+        (mdb/select-batched #(t2/select [:model/Document :id :exploration_id] :id [:in [:auto/param %]]) document-ids)))
+
 (mu/defn lens-stamped-threads
   "The ExplorationThreads among `thread-ids` that carry a data-access token, with what the content gate reads."
   [thread-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/ExplorationThread :id :data_access_token :resolved_source_ids]
-             :id [:in thread-ids]
-             :data_access_token [:not= nil]))
+  (mdb/select-batched #(t2/select [:model/ExplorationThread :id :data_access_token :resolved_source_ids]
+                                  :id [:in %]
+                                  :data_access_token [:not= nil])
+                      thread-ids))
 
 (mu/defn lock-thread
   "The `:id` row of the ExplorationThread with `thread-id`, locked for update."
@@ -244,11 +255,6 @@
   [block-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationBlock :id block-id))
 
-(mu/defn block-thread-id-row
-  "The `:exploration_thread_id` row of the ExplorationBlock with `block-id`, or nil."
-  [block-id :- ms/PositiveInt]
-  (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id block-id))
-
 (mu/defn block-metrics
   "The metric selections of the ExplorationBlock with `block-id`."
   [block-id :- ms/PositiveInt]
@@ -270,17 +276,22 @@
 (mu/defn blocks-for-threads
   "The ExplorationBlocks of the ExplorationThreads with `thread-ids`, in position order."
   [thread-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ExplorationBlock
-             :exploration_thread_id [:in thread-ids]
-             {:order-by [[:position :asc] [:id :asc]]}))
+  (vec (sort-by (juxt :position :id)
+                (mdb/select-batched #(t2/select :model/ExplorationBlock
+                                                :exploration_thread_id [:in %]
+                                                {:order-by [[:position :asc] [:id :asc]]})
+                                    thread-ids))))
 
 (mu/defn block-metrics-for-threads-newest-first
   "The thread ID and metric selections of the ExplorationBlocks of the ExplorationThreads with `thread-ids`, in
   reverse position order."
   [thread-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/ExplorationBlock :exploration_thread_id :metrics]
-             :exploration_thread_id [:in thread-ids]
-             {:order-by [[:position :desc] [:id :desc]]}))
+  (->> (mdb/select-batched #(t2/select [:model/ExplorationBlock :exploration_thread_id :metrics :position :id]
+                                       :exploration_thread_id [:in %]
+                                       {:order-by [[:position :desc] [:id :desc]]})
+                           thread-ids)
+       (sort-by (juxt :position :id) #(compare %2 %1))
+       (mapv #(dissoc % :position :id))))
 
 (mu/defn block-ids-for-thread
   "The IDs of the ExplorationBlocks of the ExplorationThread with `thread-id`."
@@ -302,9 +313,7 @@
 (mu/defn pages-by-ids
   "The ExplorationPages with `page-ids`."
   [page-ids :- [:sequential ms/PositiveInt]]
-  (if (seq page-ids)
-    (t2/select :model/ExplorationPage :id [:in page-ids])
-    []))
+  (mdb/select-batched #(t2/select :model/ExplorationPage :id [:in %]) page-ids))
 
 (mu/defn page-block-id-row
   "The `:exploration_block_id` row of the ExplorationPage with `page-id`, or nil."
@@ -316,40 +325,29 @@
   [page-id :- ms/PositiveInt]
   (t2/select-one-fn :exploration_block_id :model/ExplorationPage :id page-id))
 
-(mu/defn page-id-for-key
-  "The ID of the ExplorationPage of the given block, Card, dimension, and query type, or nil."
-  [block-id     :- ms/PositiveInt
-   card-id      :- [:maybe ::lib.schema.id/card]
-   dimension-id :- [:or :string :int]
-   query-type   :- [:maybe :string]]
-  (t2/select-one-pk :model/ExplorationPage
-                    :exploration_block_id block-id
-                    :card_id              card-id
-                    :dimension_id         dimension-id
-                    :query_type           query-type))
-
 (mu/defn pages-for-blocks
   "The ExplorationPages of the ExplorationBlocks with `block-ids`."
   [block-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ExplorationPage :exploration_block_id [:in block-ids]))
+  (mdb/select-batched #(t2/select :model/ExplorationPage :exploration_block_id [:in %]) block-ids))
 
 (mu/defn page-ids-for-blocks
   "The IDs of the ExplorationPages of the ExplorationBlocks with `block-ids`."
   [block-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pks-vec :model/ExplorationPage :exploration_block_id [:in block-ids]))
+  (not-empty (mdb/select-batched #(t2/select-pks-vec :model/ExplorationPage :exploration_block_id [:in %]) block-ids)))
 
 (mu/defn starred-page-ids
   "The IDs of the starred ExplorationPages among `page-ids`."
   [page-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pks-set :model/ExplorationPage :id [:in page-ids] :starred true))
+  (mdb/select-batched-set #(t2/select-pks-set :model/ExplorationPage :id [:in %] :starred true) page-ids))
 
 (mu/defn page-thread-ids
   "Rows of ExplorationPage `:id` and the `:thread_id` of its block, for the ExplorationThreads with `thread-ids`."
   [thread-ids :- [:sequential ms/PositiveInt]]
-  (t2/query {:select [[:p.id :id] [:b.exploration_thread_id :thread_id]]
-             :from   [[:exploration_page :p]]
-             :join   [[:exploration_block :b] [:= :b.id :p.exploration_block_id]]
-             :where  [:in :b.exploration_thread_id thread-ids]}))
+  (mdb/select-batched #(t2/query {:select [[:p.id :id] [:b.exploration_thread_id :thread_id]]
+                                  :from   [[:exploration_page :p]]
+                                  :join   [[:exploration_block :b] [:= :b.id :p.exploration_block_id]]
+                                  :where  [:in :b.exploration_thread_id %]})
+                      thread-ids))
 
 ;;; ------------------------------------------------- Queries -------------------------------------------------
 
@@ -357,6 +355,11 @@
   "The ExplorationQuery with `query-id`, or nil."
   [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQuery :id query-id))
+
+(mu/defn queries-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/ExplorationQuery)]
+  "The ExplorationQueries with `query-ids`, by id."
+  [query-ids :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/ExplorationQuery :id [:in [:auto/param %]]) query-ids))
 
 (mu/defn query-thread-id-row
   "The `:exploration_thread_id` row of the ExplorationQuery with `query-id`, or nil."
@@ -389,19 +392,23 @@
 (mu/defn queries-for-threads
   "The ExplorationQueries of the ExplorationThreads with `thread-ids`, in position order."
   [thread-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ExplorationQuery
-             :exploration_thread_id [:in thread-ids]
-             {:order-by [[:position :asc] [:id :asc]]}))
+  (vec (sort-by (juxt :position :id)
+                (mdb/select-batched #(t2/select :model/ExplorationQuery
+                                                :exploration_thread_id [:in %]
+                                                {:order-by [[:position :asc] [:id :asc]]})
+                                    thread-ids))))
 
 (mu/defn lens-stamped-queries
   "The ExplorationQueries with a query on the ExplorationThreads with `thread-ids`, with what the content gate reads,
   in ID order."
   [thread-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/ExplorationQuery :id :exploration_thread_id :database_id :dataset_query :data_access_token
-              :resolved_source_ids]
-             :exploration_thread_id [:in thread-ids]
-             :dataset_query [:not= nil]
-             {:order-by [[:id :asc]]}))
+  (vec (sort-by :id
+                (mdb/select-batched #(t2/select [:model/ExplorationQuery :id :exploration_thread_id :database_id :dataset_query :data_access_token
+                                                 :resolved_source_ids]
+                                                :exploration_thread_id [:in %]
+                                                :dataset_query [:not= nil]
+                                                {:order-by [[:id :asc]]})
+                                    thread-ids))))
 
 (mu/defn thread-has-queries?
   "Whether the ExplorationThread with `thread-id` has any ExplorationQuery."
@@ -412,13 +419,16 @@
   "The number of ExplorationQueries among `query-ids` belonging to the Exploration with `exploration-id`."
   [exploration-id :- ms/PositiveInt
    query-ids      :- [:sequential ms/PositiveInt]]
-  (t2/count :model/ExplorationQuery
-            {:where [:and
-                     [:in :id query-ids]
-                     [:in :exploration_thread_id
-                      ^:allow-subquery {:select [:id]
-                                        :from   [:exploration_thread]
-                                        :where  [:= :exploration_id exploration-id]}]]}))
+  (transduce (map #(t2/count :model/ExplorationQuery
+                             {:where [:and
+                                      [:in :id %]
+                                      [:in :exploration_thread_id
+                                       ^:allow-subquery {:select [:id]
+                                                         :from   [:exploration_thread]
+                                                         :where  [:= :exploration_id exploration-id]}]]}))
+             +
+             0
+             (mdb/select-partitions query-ids)))
 
 (mu/defn pending-query-count
   "The number of pending ExplorationQueries."
@@ -452,7 +462,7 @@
 (mu/defn page-ids-with-queries
   "The subset of `page-ids` that some ExplorationQuery points at."
   [page-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :page_id :model/ExplorationQuery :page_id [:in page-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :page_id :model/ExplorationQuery :page_id [:in %]) page-ids))
 
 (mu/defn update-queries!
   "Apply `changes` to the ExplorationQueries with `query-ids`, returning the number updated."
@@ -462,7 +472,7 @@
                                   [:dataset_query :name :data_access_token :resolved_source_ids
                                    :status :started_at :finished_at])
                  ::explorations.schema/exploration-query.update.stamped-together]]
-  (t2/update! :model/ExplorationQuery :id [:in query-ids] changes))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/ExplorationQuery :id [:in %] changes) query-ids))
 
 (mu/defn fail-pending-query!
   "Mark the pending ExplorationQuery with `query-id` as errored with `message` at `finished-at`, returning the number
@@ -486,9 +496,9 @@
 (mu/defn cancel-queries!
   "Mark the ExplorationQueries with `query-ids` canceled, returning the affected-row count in a one-element vector."
   [query-ids :- [:sequential ms/PositiveInt]]
-  (t2/query {:update (t2/table-name :model/ExplorationQuery)
-             :set    {:status "canceled"}
-             :where  [:in :id query-ids]}))
+  [(mdb/sum-batched mdb/update-partition-size #(first (t2/query {:update (t2/table-name :model/ExplorationQuery)
+                                                                 :set    {:status "canceled"}
+                                                                 :where  [:in :id %]})) query-ids)])
 
 (mu/defn delete-queries-for-thread!
   "Delete the ExplorationQueries of the ExplorationThread with `thread-id`."
@@ -497,10 +507,12 @@
 
 ;;; ---------------------------------------------- Query results ----------------------------------------------
 
-(mu/defn query-result
-  "The ExplorationQueryResult of the ExplorationQuery with `query-id`, or nil."
-  [query-id :- ms/PositiveInt]
-  (t2/select-one :model/ExplorationQueryResult :exploration_query_id query-id))
+(mu/defn query-results-by-query-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/ExplorationQueryResult)]
+  "The ExplorationQueryResults of the ExplorationQueries with `query-ids`, by query id."
+  [query-ids :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched-map #(t2/select-fn->fn :exploration_query_id identity :model/ExplorationQueryResult
+                                             :exploration_query_id [:in [:auto/param %]])
+                          query-ids))
 
 (mu/defn query-result-stored-result-id
   "The stored result ID of the ExplorationQueryResult of the ExplorationQuery with `query-id`."
@@ -516,17 +528,19 @@
   "The query ID and `score-column` of the ExplorationQueryResults of the ExplorationQueries with `query-ids`."
   [score-column :- :keyword
    query-ids    :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/ExplorationQueryResult :exploration_query_id score-column]
-             :exploration_query_id [:in query-ids]))
+  (mdb/select-batched #(t2/select [:model/ExplorationQueryResult :exploration_query_id score-column]
+                                  :exploration_query_id [:in %])
+                      query-ids))
 
 (mu/defn query-result-row-counts
   "The query ID and stored row count of the ExplorationQueryResults of the ExplorationQueries with `query-ids`."
   [query-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/ExplorationQueryResult
-              :exploration_query_result.exploration_query_id
-              [:stored_result.row_count :row_count]]
-             {:join  [:stored_result [:= :stored_result.id :exploration_query_result.stored_result_id]]
-              :where [:in :exploration_query_result.exploration_query_id query-ids]}))
+  (mdb/select-batched #(t2/select [:model/ExplorationQueryResult
+                                   :exploration_query_result.exploration_query_id
+                                   [:stored_result.row_count :row_count]]
+                                  {:join  [:stored_result [:= :stored_result.id :exploration_query_result.stored_result_id]]
+                                   :where [:in :exploration_query_result.exploration_query_id %]})
+                      query-ids))
 
 (mu/defn insert-query-results!
   "Insert the ExplorationQueryResult `rows` and return the new instances."
@@ -539,6 +553,11 @@
   "The StoredResult with `stored-result-id`, or nil."
   [stored-result-id :- ms/PositiveInt]
   (t2/select-one :model/StoredResult :id stored-result-id))
+
+(mu/defn stored-results-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/StoredResult)]
+  "The StoredResults with `stored-result-ids`, by id."
+  [stored-result-ids :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/StoredResult :id [:in [:auto/param %]]) stored-result-ids))
 
 (mu/defn orphaned-stored-result-ids
   "Up to `limit` `:id` rows of the StoredResults created before `created-before` that no ExplorationQueryResult or
@@ -565,14 +584,16 @@
 (mu/defn timelines
   "The Timelines with `timeline-ids`."
   [timeline-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/Timeline :id [:in timeline-ids]))
+  (mdb/select-batched #(t2/select :model/Timeline :id [:in %]) timeline-ids))
 
 (mu/defn thread-timelines-for-threads
   "The ExplorationThreadTimelines of the ExplorationThreads with `thread-ids`, in position order."
   [thread-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ExplorationThreadTimeline
-             :exploration_thread_id [:in thread-ids]
-             {:order-by [[:position :asc] [:id :asc]]}))
+  (vec (sort-by (juxt :position :id)
+                (mdb/select-batched #(t2/select :model/ExplorationThreadTimeline
+                                                :exploration_thread_id [:in %]
+                                                {:order-by [[:position :asc] [:id :asc]]})
+                                    thread-ids))))
 
 (mu/defn thread-timeline-ids
   "The Timeline IDs selected on the ExplorationThread with `thread-id`, in position order."
@@ -629,21 +650,18 @@
 (mu/defn summary-documents-for-explorations
   "The wire-shape columns of the Summary Documents of the Explorations with `exploration-ids`, oldest first."
   [exploration-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Document
-              :id :name :exploration_id :creator_id :content_type
-              :created_at :updated_at :archived :is_placeholder]
-             :exploration_id [:in exploration-ids]
-             {:order-by [[:created_at :asc] [:id :asc]]}))
+  (vec (sort-by (juxt :created_at :id)
+                (mdb/select-batched #(t2/select [:model/Document
+                                                 :id :name :exploration_id :creator_id :content_type
+                                                 :created_at :updated_at :archived :is_placeholder]
+                                                :exploration_id [:in %]
+                                                {:order-by [[:created_at :asc] [:id :asc]]})
+                                    exploration-ids))))
 
 (mu/defn unarchived-summary-document
   "The unarchived Summary Document of the Exploration with `exploration-id`, or nil."
   [exploration-id :- ms/PositiveInt]
   (t2/select-one :model/Document :exploration_id exploration-id :archived false))
-
-(mu/defn document-exploration-id
-  "The Exploration ID of the Document with `document-id`."
-  [document-id :- ms/PositiveInt]
-  (t2/select-one-fn :exploration_id :model/Document :id document-id))
 
 (defn- summary-document-conditions
   "The conditions of the Summary Documents of an Exploration that an archive of it, when `archive?`, or a restore of it
@@ -653,19 +671,12 @@
     [:archived false]
     [:archived true :archived_directly false]))
 
-(mu/defn summary-documents-following
-  "The Summary Documents of the Exploration with `exploration-id` that an archive of it, when `archive?`, or a restore
-  of it archives or restores along with it."
-  [exploration-id :- ms/PositiveInt
-   archive?       :- :boolean]
-  (apply t2/select :model/Document :exploration_id exploration-id (summary-document-conditions archive?)))
-
 (mu/defn summary-documents-following-explorations
   "The Summary Documents of the Explorations with `exploration-ids` that an archive of them, when `archive?`, or a
   restore of them archives or restores along with them."
   [exploration-ids :- [:sequential ms/PositiveInt]
    archive?        :- :boolean]
-  (apply t2/select :model/Document :exploration_id [:in exploration-ids] (summary-document-conditions archive?)))
+  (mdb/select-batched #(apply t2/select :model/Document :exploration_id [:in %] (summary-document-conditions archive?)) exploration-ids))
 
 (mu/defn summary-document-ids
   "The ids of the Summary Documents of the Exploration with `exploration-id`."
@@ -682,14 +693,12 @@
 (mu/defn cards-by-ids
   "The Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (if (seq card-ids)
-    (t2/select :model/Card :id [:in card-ids])
-    []))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %]) card-ids))
 
 (mu/defn card-names
   "The ID and name of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name] :id [:in card-ids]))
+  (mdb/select-batched #(t2/select [:model/Card :id :name] :id [:in %]) card-ids))
 
 (mu/defn card-description
   "The description of the Card with `card-id`."
@@ -734,12 +743,12 @@
 (mu/defn metric-cards-for-explorations
   "The exploration-relevant columns of the metric Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids] :type "metric"))
+  (mdb/select-batched #(t2/select (into [:model/Card] exploration-card-columns) :id [:in %] :type "metric") card-ids))
 
 (mu/defn cards-for-explorations
   "The exploration-relevant columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids]))
+  (mdb/select-batched #(t2/select (into [:model/Card] exploration-card-columns) :id [:in %]) card-ids))
 
 (mu/defn library-metrics-root-collection
   "The ID and location of the library metrics Collection of `type`, or nil."
@@ -749,7 +758,7 @@
 (mu/defn segment-names
   "A map of ID to name for the Segments with `segment-ids`."
   [segment-ids :- [:set ::lib.schema.id/segment]]
-  (t2/select-pk->fn :name [:model/Segment :id :name] :id [:in segment-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :name [:model/Segment :id :name] :id [:in %]) segment-ids))
 
 (mu/defn segment-name
   "The name of the Segment with `segment-id`."
@@ -759,15 +768,15 @@
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in %]) user-ids))
 
 (mu/defn live-comment-targets
   "The child target IDs of the live exploration Comments anchored to one of `child-target-ids`."
   [child-target-ids :- [:sequential :string]]
-  (t2/select-fn-set :child_target_id :model/Comment
-                    :target_type     "exploration"
-                    :child_target_id [:in child-target-ids]
-                    :deleted_at      nil))
+  (mdb/select-batched-set #(t2/select-fn-set :child_target_id :model/Comment
+                                             :target_type     "exploration"
+                                             :child_target_id [:in %]
+                                             :deleted_at      nil) child-target-ids))
 
 (defn- exploration-recent-edits-subquery
   "The latest edit of each exploration listed under `collection`, taking the newest of the revisions of the Exploration

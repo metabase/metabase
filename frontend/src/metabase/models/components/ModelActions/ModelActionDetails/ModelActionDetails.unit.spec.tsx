@@ -29,9 +29,7 @@ const TEST_DATABASE_WITH_ACTIONS = createSampleDatabase({
 
 const TEST_MODEL = createMockCard({
   type: "model",
-  dataset_query: Lib.toLegacyQuery(
-    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
-  ),
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
 });
 
 const TEST_ACTION = createMockQueryAction({ model_id: TEST_MODEL.id });

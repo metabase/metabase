@@ -172,6 +172,10 @@ export function uploadsSettings() {
   return "/admin/settings/uploads";
 }
 
+export function publicSharingSettings() {
+  return "/admin/settings/public-sharing";
+}
+
 export function adminLicense() {
   return "/admin/settings/license";
 }

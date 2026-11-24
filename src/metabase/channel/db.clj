@@ -65,9 +65,10 @@
 (mu/defn active-user-emails
   "The emails of the active Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-fn-set :email :model/User {:where [:and
-                                                [:= :is_active true]
-                                                [:in :id user-ids]]}))
+  (app-db/select-batched-set #(t2/select-fn-set :email :model/User {:where [:and
+                                                                            [:= :is_active true]
+                                                                            [:in :id %]]})
+                             user-ids))
 
 (mu/defn user-ids-with-permission
   "The ids of the Users belonging to a PermissionsGroup that holds `permission-path`."

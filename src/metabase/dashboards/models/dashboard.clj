@@ -220,22 +220,37 @@
            (boolean (mi/superuser?)))))
 
 (defn- following-questions
-  "The Cards internal to the Dashboard with `dashboard-id` that archiving it, when `archive?`, or restoring it takes
-  along."
-  [dashboard-id archive?]
+  "The Cards internal to the Dashboards with `dashboard-ids` that archiving them, when `archive?`, or restoring them
+  takes along."
+  [dashboard-ids archive?]
   (if archive?
-    (dashboards.db/questions-archived-with-dashboard dashboard-id)
-    (dashboards.db/questions-restored-with-dashboard dashboard-id)))
+    (dashboards.db/questions-archived-with-dashboards dashboard-ids)
+    (dashboards.db/questions-restored-with-dashboards dashboard-ids)))
+
+(defn- writable-for?
+  "Whether the current user writes `dashboard` as far as `changes` need: a change of its public link alone needs no
+  write access."
+  [dashboard changes]
+  (or (changes-only-public-link? dashboard changes)
+      (mi/can-write? dashboard)))
+
+(defn- can-share?
+  "Whether the current user may do what `changes` do to the embedding and the public link of `dashboard`."
+  [dashboard changes]
+  (and (can-change-embedding? dashboard changes)
+       (can-change-public-link? dashboard changes)))
 
 (defmethod mi/can-update? :model/Dashboard
   [dashboard changes]
+  (mi/can-update-all? :model/Dashboard [dashboard] changes))
+
+(defmethod mi/can-update-all? :model/Dashboard
+  [_model dashboards changes]
   (boolean
-   (and (or (changes-only-public-link? dashboard changes)
-            (mi/can-write? dashboard))
-        (mi/archive-followers-updatable? dashboard changes :model/Card (partial following-questions (:id dashboard)))
-        (collection/can-move? dashboard changes)
-        (can-change-embedding? dashboard changes)
-        (can-change-public-link? dashboard changes))))
+   (and (every? #(writable-for? % changes) dashboards)
+        (mi/archive-followers-updatable? dashboards changes :model/Card following-questions)
+        (collection/can-move-all-or-404? dashboards changes)
+        (every? #(can-share? % changes) dashboards))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -452,14 +467,18 @@
                            (update event :changes into (:changes (events/touch-event touched))))))
 
 (defn- publish-cards!
-  "Publish the audit events of the dashcards `added` to and `removed` from the Dashboards of `dashboards`, a map from id
-  to the instance, one for each Dashboard and each of them."
+  "Publish the audit event of the dashcards `added` to and of those `removed` from the Dashboards of `dashboards`, a
+  map from id to the instance, one event for each of them holding an entry `:object` with its `:dashcards` for each
+  Dashboard."
   [dashboards added removed]
   (doseq [[topic dashcards] [[:event/dashboard-add-cards added] [:event/dashboard-remove-cards removed]]
-          [dashboard-id group] (group-by :dashboard_id dashcards)]
-    (events/publish-event! topic {:object    (get dashboards dashboard-id)
-                                  :user-id   (mi/current-user-id)
-                                  :dashcards (vec group)})))
+          :when (seq dashcards)]
+    (events/publish-event! topic {:objects (into []
+                                                 (map (fn [[dashboard-id group]]
+                                                        {:object    (get dashboards dashboard-id)
+                                                         :dashcards (vec group)}))
+                                                 (group-by :dashboard_id dashcards))
+                                  :user-id (mi/current-user-id)})))
 
 (defn- replace-parts!
   "Replace the tabs, for each Dashboard of `parts`, a map from its id to the part lists it gives, when it holds
@@ -764,6 +783,14 @@
   [_model collection-id positions direction]
   (dashboards.db/shift-dashboard-positions! collection-id positions direction))
 
+(defmethod collection/positioned-rows-in-collections :model/Dashboard
+  [_model collection-ids]
+  (dashboards.db/positioned-dashboards-in-collections (vec collection-ids)))
+
+(defmethod collection/update-positions! :model/Dashboard
+  [_model id->position]
+  (update-dashboards! (mapv (fn [[id position]] {:id id :collection_position position}) id->position)))
+
 (defmethod card/update-followers! :model/Dashboard
   [_model rows]
   (write-updates! (vec rows) nil))
@@ -807,6 +834,35 @@
   [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-in-collections model collection-ids))]
     (delete-dashboards! ids opts)))
+
+;; An anonymous user who can open a dashboard reaches a database in three ways:
+;; - a dashcard whose Card runs against it,
+;; - a dashcard with a series Card that runs against it, and
+;; - a filter whose value list comes from a Card that runs against it.
+;; The first two are returned by `shown-card-ids`, the last is returned by `value-list-sources`.
+(defmethod public-sharing/shown-card-ids :model/Dashboard
+  [_model dashboard-ids]
+  (->> (concat (dashboards.db/dashcard-cards-for-dashboards dashboard-ids)
+               (dashboards.db/dashcard-series-cards-for-dashboards dashboard-ids))
+       ;; text, link and action dashcards have no Card
+       (filter :card_id)
+       (reduce (fn [acc {:keys [dashboard_id card_id]}]
+                 (update acc dashboard_id (fnil conj #{}) card_id))
+               {})))
+
+(defmethod public-sharing/value-list-sources :model/Dashboard
+  [_model dashboard-ids]
+  (->> (dashboards.db/parameters-for-dashboards dashboard-ids)
+       (map (fn [{:keys [id parameters]}]
+              [id (vec (for [parameter parameters
+                             :let  [card-id (queries/values-source-card-id parameter)]
+                             :when card-id]
+                         {:parameter parameter, :card-id card-id}))]))
+       (into {})))
+
+(defmethod public-sharing/embedding-params :model/Dashboard
+  [_model dashboard-ids]
+  (into {} (map (juxt :id :embedding_params)) (dashboards.db/parameters-for-dashboards dashboard-ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -889,7 +945,7 @@
                    :updated-at     true
                    :collection-type :collection.type
                    :collection-location :collection.location
-                   :root-collection-type {:fn collection/root-collection-type}}
+                   :root-collection-type {:batch-fn collection/root-collection-types}}
     :search-terms [:name :description]
     :render-terms {:archived-directly          true
                    :collection-authority_level :collection.authority_level

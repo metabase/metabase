@@ -8,6 +8,7 @@
    [metabase.app-db.query :as app-db.query]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.events.test-util :as events.tu]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -152,3 +153,60 @@
                (is (= 3 @calls)))
              (is (= (set ids)
                     (t2/select-fn-set :model_id :model/AuditLog :model "ApiKey" :model_id [:in ids] :topic "api-key-update"))))))))))
+
+(defn- key-user-groups
+  "The ids of the groups of the User of each ApiKey with an id among `key-ids`, by key id."
+  [key-ids]
+  (into {}
+        (for [key-id key-ids
+              :let   [user-id (t2/select-one-fn :user_id :model/ApiKey :id key-id)]]
+          [key-id (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)])))
+
+(deftest update-api-keys-moves-each-key-to-its-own-group-test
+  (mt/with-temp [:model/User             {admin-id :id} {:is_superuser true}
+                 :model/PermissionsGroup {group-1 :id}  {}
+                 :model/PermissionsGroup {group-2 :id}  {}
+                 :model/PermissionsGroup {group-3 :id}  {}]
+    (mt/with-model-cleanup [:model/ApiKey :model/User]
+      (let [all-users   (:id (perms/all-users-group))
+            key!        (fn [group-id]
+                          (:id (mt/with-current-user admin-id
+                                 (api-key/create-api-key-with-new-user! {:key-name (mt/random-name) :group-id group-id}))))
+            [k-1 k-2 k-3] [(key! group-1) (key! group-2) (key! group-1)]
+            kept        (t2/select-one-pk :model/PermissionsGroupMembership
+                                          :user_id  (t2/select-one-fn :user_id :model/ApiKey :id k-3)
+                                          :group_id group-1)]
+        (api-key/update-api-keys! [{:id k-1 ::api-keys/group-id group-2}
+                                   {:id k-2 ::api-keys/group-id group-1}
+                                   {:id k-3 ::api-keys/group-id group-1}])
+        (testing "keys that swap groups and a key that stays each end in exactly All Users and their new group"
+          (is (= {k-1 #{all-users group-2} k-2 #{all-users group-1} k-3 #{all-users group-1}}
+                 (key-user-groups [k-1 k-2 k-3]))))
+        (testing "a key that stays in its group keeps its membership row"
+          (is (= kept (t2/select-one-pk :model/PermissionsGroupMembership
+                                        :user_id  (t2/select-one-fn :user_id :model/ApiKey :id k-3)
+                                        :group_id group-1))))
+        (testing "a batch where one key moves to a group no key may join writes nothing"
+          (mt/with-premium-features #{}
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)data analyst"
+                                  (api-key/update-api-keys! [{:id k-1 ::api-keys/group-id group-3}
+                                                             {:id k-2 ::api-keys/group-id (:id (perms/data-analyst-group))}])))
+            (is (= {k-1 #{all-users group-2} k-2 #{all-users group-1}}
+                   (key-user-groups [k-1 k-2])))))))))
+
+(deftest update-api-keys-moving-keys-to-distinct-groups-statement-count-does-not-grow-test
+  (mt/with-temp [:model/User             {admin-id :id} {:is_superuser true}
+                 :model/PermissionsGroup {start-id :id} {}]
+    (mt/with-model-cleanup [:model/ApiKey :model/User :model/PermissionsGroup]
+      (let [run (fn [n]
+                  (let [key-ids   (mt/with-current-user admin-id
+                                    (vec (repeatedly n #(:id (api-key/create-api-key-with-new-user!
+                                                              {:key-name (mt/random-name) :group-id start-id})))))
+                        group-ids (t2/insert-returning-pks! :model/PermissionsGroup
+                                                            (for [i (range n)] {:name (format "key move %d %d" n i)}))]
+                    (t2/with-call-count [call-count]
+                      (api-key/update-api-keys! (mapv (fn [key-id group-id] {:id key-id ::api-keys/group-id group-id})
+                                                      key-ids group-ids))
+                      (call-count))))]
+        (run 2)
+        (is (= (run 4) (run 16)))))))

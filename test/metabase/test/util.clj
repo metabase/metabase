@@ -1,7 +1,6 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -504,22 +503,6 @@
              :input_schemas    []
              :output_namespace ""
              :status           :unprovisioned}))})
-
-;; A Personal Collection created within `with-temp` is rolled back, but the production cache assumes it cannot be
-;; deleted. Evicting only the temporary User's entry is insufficient: a committed User's collection may be created
-;; inside another User's `with-temp` scope. Clear the cache whenever a `with-temp` scope exits.
-;; Use a unique method key because [[metabase.test.redefs]] already defines `:around :default`. Methods with the same
-;; key overwrite one another, which would disable either this eviction or the rollback-only transaction wrapper.
-(methodical/add-aux-method-with-unique-key!
- #'t2.with-temp/do-with-temp* :around :default
- (fn [next-method model explicit-attributes f]
-   (next-method model explicit-attributes
-                (fn [temp-object]
-                  (try
-                    (f temp-object)
-                    (finally
-                      (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
- ::evict-personal-collection-cache)
 
 (def ^:private dimension-lock
   "Serialises temporary Dimensions against each other.

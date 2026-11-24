@@ -16,7 +16,9 @@
   (case kind
     nil                 nil
     :tenant-manager     ["Tenant users cannot be made group managers" {:user-id user-id :status-code 400}]
-    :admin-manager      ["Admin cannot be a group manager." {:user-id user-id :status-code 400}]
+    :admin-manager      [(str "Admin cannot be a group manager of "
+                              (t2/select-one-fn :name :model/PermissionsGroup :id group-id) ".")
+                         {:user-id user-id, :group-id group-id, :status-code 400}]
     (:tenant-in-ordinary
      :ordinary-in-tenant) ["Cannot add non-tenant user to tenant-group or vice versa"
                            {:bad-user-group-pairs [{:user-id          user-id
@@ -130,7 +132,7 @@
                 (fn [ids]
                   (perms-group-membership/update-permissions-group-memberships! (mapv #(assoc changes :id %) ids)))
                 #(t2/select-fn-set (juxt :id :is_group_manager) :model/PermissionsGroupMembership :id [:in %])
-                (refusal kind refused-user-id nil)
+                (refusal kind refused-user-id (some #(when (= refused-user-id (:user_id %)) (:group_id %)) memberships))
                 (constantly true))))
 
 (deftest update-permissions-group-memberships-refusals-test

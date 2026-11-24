@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.events.test-util :as events.tu]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -138,3 +139,17 @@
                        #(python-library/update-python-libraries! (mapv (fn [row-id] (assoc {:source "a = 9"} :id row-id)) (mapv :id libraries))))))]
       (counted 1)
       (is (= (counted 2) (counted 6))))))
+
+(deftest permission-hydration-statements-do-not-grow-with-rows-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [hydrate (fn [n]
+                    (t2/with-call-count [call-count]
+                      (let [rows (doall (t2/hydrate (mapv #(t2/instance :model/PythonLibrary {:id %}) (range 1 (inc n)))
+                                                    :can_read :can_write))]
+                        {:statements (call-count)
+                         :values     (mapv (juxt mi/can-read? :can_write) rows)})))]
+      (hydrate 1)
+      (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+      (testing "each row gets the answer the per-row check gave"
+        (let [answer (#'python-library/can-access?)]
+          (is (= (repeat 6 [answer answer]) (:values (hydrate 6)))))))))

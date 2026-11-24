@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase.versions :as versions]
+   [metabase.app-db.query :as mdb.query]
    [metabase.driver.test-util :as driver.tu]
    [metabase.global-system.test-util :as global-system.tu]
    [metabase.test.util.timezone :as test.tz]
@@ -84,6 +85,16 @@
   "Execute `body` with the system time zone of the app db temporarily changed to the time zone named by `timezone-id`."
   [timezone-id & body]
   `(do-with-app-db-timezone-id! ~timezone-id (fn [] ~@body)))
+
+(defmacro with-partition-size
+  "Run `body` with every read, create, update and delete partition size of the app DB set to `n`."
+  [n & body]
+  `(let [n# ~n]
+     (with-redefs [mdb.query/select-partition-size n#
+                   mdb.query/create-partition-size n#
+                   mdb.query/update-partition-size n#
+                   mdb.query/delete-partition-size n#]
+       ~@body)))
 
 (defn liquibase-file->included-ids
   "Read a liquibase migration file and returns all the migration id that is applied to `db-type`.

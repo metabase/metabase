@@ -9,41 +9,42 @@
 (events/derive! :event/card-update.notification-deleted.card-archived ::event)
 (events/derive! :event/card-update.notification-deleted.card-changed ::event)
 
-(methodical/defmethod events/publish-event! ::event
-  "Emails the recipients of the alerts that the save of a Card deleted."
-  [topic {:keys [notifications card actor], :as _event}]
+(defn- recipient-emails
+  "The email address of each recipient of the email handlers of `notifications`."
+  [notifications]
+  (->> notifications
+       (mapcat :handlers)
+       (filter #(= :channel/email (:channel_type %)))
+       (mapcat :recipients)
+       (keep (fn [recipient]
+               (case (:type recipient)
+                 :notification-recipient/user
+                 (-> recipient :user :email)
+                 :notification-recipient/raw-value
+                 (-> recipient :details :value)
+                 (throw (ex-info "Unknown recipient type" {:recipient recipient})))))))
+
+(defn- send-alert-deleted-email!
+  "Emails the recipients of `notifications`, the alerts of `card` that its save deleted."
+  [topic card notifications actor]
   (try
-    (let [send-message! (case topic
-                          :event/card-update.notification-deleted.card-archived
-                          messages/send-alert-stopped-because-archived-email!
+    (let [send-message!            (case topic
+                                     :event/card-update.notification-deleted.card-archived
+                                     messages/send-alert-stopped-because-archived-email!
 
-                          :event/card-update.notification-deleted.card-changed
-                          messages/send-alert-stopped-because-changed-email!)
-          recipients (->> notifications
-                          (filter #((complement true?) (get-in % [:payload :disable_links])))
-                          (mapcat :handlers)
-                          (filter #(= :channel/email (:channel_type %)))
-                          (mapcat :recipients)
-                          (keep (fn [recipient]
-                                  (case (:type recipient)
-                                    :notification-recipient/user
-                                    (-> recipient :user :email)
-                                    :notification-recipient/raw-value
-                                    (-> recipient :details :value)
-                                    (throw (ex-info "Unknown recipient type" {:recipient recipient}))))))
-
-          recipients-with-no-links (->> notifications
-                                        (filter #(true? (get-in % [:payload :disable_links])))
-                                        (mapcat :handlers)
-                                        (filter #(= :channel/email (:channel_type %)))
-                                        (mapcat :recipients)
-                                        (keep (fn [recipient]
-                                                (case (:type recipient)
-                                                  :notification-recipient/user
-                                                  (-> recipient :user :email)
-                                                  :notification-recipient/raw-value
-                                                  (-> recipient :details :value)
-                                                  (throw (ex-info "Unknown recipient type" {:recipient recipient}))))))]
+                                     :event/card-update.notification-deleted.card-changed
+                                     messages/send-alert-stopped-because-changed-email!)
+          recipients               (recipient-emails (filter #((complement true?) (get-in % [:payload :disable_links]))
+                                                             notifications))
+          recipients-with-no-links (recipient-emails (filter #(true? (get-in % [:payload :disable_links]))
+                                                             notifications))]
       (send-message! card recipients recipients-with-no-links actor))
     (catch Throwable e
       (log/errorf "Error sending notification email: %s" (ex-message e)))))
+
+(methodical/defmethod events/publish-event! ::event
+  "Emails the recipients of the alerts that the save of Cards deleted, for each Card of the event's `:objects`, or for
+  the event itself when it has none."
+  [topic {:keys [objects actor], :as event}]
+  (doseq [{:keys [card notifications]} (or objects [event])]
+    (send-alert-deleted-email! topic card notifications actor)))

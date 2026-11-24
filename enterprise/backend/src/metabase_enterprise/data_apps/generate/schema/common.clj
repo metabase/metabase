@@ -130,11 +130,12 @@
   on the audit database would be listed without its table."
   [cards]
   (let [destination-ids (data-apps.db/destination-database-ids (into #{} (keep :database_id) cards))
-        audit-off?      (not (premium-features/enable-audit-app?))]
+        audit-off?      (not (premium-features/enable-audit-app?))
+        audit-ids       (when audit-off? (audit/audit-collection-ids))]
     (cond->> cards
       (seq destination-ids) (remove #(contains? destination-ids (:database_id %)))
       audit-off?            (remove #(or (= audit/audit-db-id (:database_id %))
-                                         (some-> (:collection_id %) audit/is-collection-id-audit?))))))
+                                         (some->> (:collection_id %) (audit/is-collection-id-audit? audit-ids)))))))
 
 (defn aggregation-result-column-with-metadata-provider
   "Returns an aggregation result column using an existing metadata provider."

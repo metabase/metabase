@@ -27,6 +27,8 @@ function setup({ advisories = [], initialRoute = "/" }: SetupOpts = {}) {
 
   fetchMock.get("path:/api/ee/security-center/advisories", {
     last_checked_at: null,
+    last_sync_attempted_at: null,
+    last_sync_error: null,
     advisories,
   });
 

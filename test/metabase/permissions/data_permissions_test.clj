@@ -107,6 +107,33 @@
       (testing "an empty seq does not throw"
         (is (nil? (data-permissions/assert-no-destination-db-permissions! [])))))))
 
+(deftest destination-check-follows-database-created-after-earlier-check-test
+  (testing "a Database id checked before it exists is refused once a destination Database takes it"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}     {}
+                   :model/Database         {router-db-id :id} {}]
+      (let [db-id (+ 1000000 (t2/select-one-fn :max-id [:model/Database [:%max.id :max-id]]))
+            row   {:db_id db-id :group_id group-id :perm_type :perms/view-data :perm_value :unrestricted}]
+        (is (nil? (data-permissions/assert-no-destination-db-permissions! [row])))
+        (mt/with-temp [:model/Database _ {:id db-id :router_database_id router-db-id}]
+          (is (thrown-with-msg? ExceptionInfo #"destination database"
+                                (data-permissions/assert-no-destination-db-permissions! [row]))))))))
+
+(deftest create-data-permissions-statement-count-test
+  (testing "rows on fresh Databases are checked for routing destinations in as many statements for 2 Databases as for 6"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+      (mt/with-model-cleanup [:model/Database :model/DataPermissions]
+        (let [counted (fn [n]
+                        (let [db-ids (vec (t2/insert-returning-pks! :model/Database
+                                                                    (repeatedly n #(mt/with-temp-defaults :model/Database))))]
+                          (t2/delete! :model/DataPermissions :group_id group-id)
+                          (t2/with-call-count [call-count]
+                            (data-permissions/create-data-permissions!
+                             (for [db-id db-ids]
+                               {:db_id db-id :group_id group-id :perm_type :perms/view-data :perm_value :unrestricted}))
+                            (call-count))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6))))))))
+
 (deftest admin-permission-graph-excludes-destination-dbs-test
   (testing "the admin permission graph covers routers but not their destinations"
     (mt/with-temp [:model/Database {router-db-id :id}      {}

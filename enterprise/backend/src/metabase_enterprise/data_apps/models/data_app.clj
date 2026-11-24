@@ -94,38 +94,37 @@
   (cond-> app
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 
-(methodical/defmethod t2/simple-hydrate [:model/DataApp :can_read]
-  [_model k app]
-  (vary-meta app assoc k
-             (boolean
-              (and (premium-features/has-feature? :data-apps)
-                   (or api/*is-superuser?*
-                       (and api/*current-user-id*
-                            (data-apps.db/data-app-readable? api/*current-user-id* (:id app))))))))
+(methodical/defmethod t2/batched-hydrate [:model/DataApp :can_read]
+  "Whether the current user can read each of `apps`, the apps a non-superuser reads loaded once."
+  [_model k apps]
+  (let [feature?  (premium-features/has-feature? :data-apps)
+        readable  (when (and feature? (not api/*is-superuser?*) api/*current-user-id* (some some? apps))
+                    (into #{} (map :id) (data-apps.db/readable-data-apps api/*current-user-id* false)))]
+    (for [app apps]
+      (when app
+        (vary-meta app assoc k (boolean (and feature?
+                                             (or api/*is-superuser?*
+                                                 (contains? readable (:id app))))))))))
 
-(methodical/defmethod t2/simple-hydrate [:model/DataApp :can_write]
-  [_model k app]
-  (assoc app k
-         (boolean
-          (and api/*is-superuser?*
-               (not (remote-sync/read-only?))))))
+(methodical/defmethod t2/batched-hydrate [:model/DataApp :can_write]
+  "Whether the current user can write each of `apps`, one answer for all of them: a superuser on an instance that is not
+  read-only."
+  [_model k apps]
+  (let [writable? (boolean (and api/*is-superuser?* (not (remote-sync/read-only?))))]
+    (for [app apps]
+      (when app
+        (assoc app k writable?)))))
 
-(defmethod mi/can-create? :model/DataApp
-  [_model _instance]
-  (and api/*is-superuser?*
-       (not (remote-sync/read-only?))))
-
-(defn- unsynced-change-writable?
-  "Whether the current user can apply `changes` that touch no synced column of `app`, which a read-only instance still
-  accepts."
-  [app changes]
+(defn- enabled-change-writable?
+  "Whether the current user can apply `changes` that only enable or disable an app, which a read-only instance still
+  accepts as `enabled` is not synced."
+  [changes]
   (boolean (and api/*is-superuser?*
-                (not (remote-sync/synced-changes? :model/DataApp app changes)))))
+                (every? #{:enabled} (keys changes)))))
 
 (defmethod mi/can-update? :model/DataApp
-  [app changes]
-  (or (mi/can-write? app)
-      (unsynced-change-writable? app changes)))
+  [_app changes]
+  (enabled-change-writable? changes))
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."

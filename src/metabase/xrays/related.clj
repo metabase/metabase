@@ -70,7 +70,8 @@
 (defn dashboard-cards
   "The Cards on `dashboard`."
   [dashboard]
-  (map xrays.db/card (xrays.db/card-ids-for-dashboard (:id dashboard))))
+  (when-let [card-ids (not-empty (disj (xrays.db/card-ids-for-dashboard (:id dashboard)) nil))]
+    (xrays.db/cards card-ids)))
 
 (defn similarity
   "How similar are entities `a` and `b` based on a structural comparison of their
@@ -126,23 +127,26 @@
   [table]
   (filter-visible (xrays.db/unarchived-segments-for-table (:id table))))
 
+(defn- tables-in-order
+  "The Tables with `table-ids`, in their order, loaded together."
+  [table-ids]
+  (let [id->table (when (seq table-ids) (m/index-by :id (xrays.db/tables (set table-ids))))]
+    (keep id->table table-ids)))
+
 (defn linking-to
   "The visible tables that `table` has foreign keys to, at most a few."
   [table]
-  (->> (xrays.db/fk-target-field-ids-for-table (:id table))
-       (map (comp xrays.db/table
-                  :table_id
-                  xrays.db/field))
-       distinct
-       filter-visible
-       (take max-matches)))
+  (let [field-ids        (vec (xrays.db/fk-target-field-ids-for-table (:id table)))
+        field-id->table  (when (seq field-ids) (xrays.db/field-id->table-id (set field-ids)))]
+    (->> (tables-in-order (into [] (comp (keep field-id->table) (distinct)) field-ids))
+         filter-visible
+         (take max-matches))))
 
 (defn linked-from
   "The visible tables that have foreign keys to `table`, at most a few."
   [table]
   (if-let [fields (not-empty (xrays.db/active-field-ids-for-table (:id table)))]
-    (->> (xrays.db/table-ids-of-fields-targeting fields)
-         (map xrays.db/table)
+    (->> (tables-in-order (vec (xrays.db/table-ids-of-fields-targeting fields)))
          filter-visible
          (take max-matches))
     []))
@@ -151,10 +155,11 @@
   "The visible cards on the dashboards of `card`, at most a few."
   [card]
   (if-let [dashboards (some-> (:id card) xrays.db/dashboard-ids-for-card not-empty)]
-    (->> (xrays.db/other-card-ids-on-dashboards dashboards (:id card))
-         (map xrays.db/card)
-         filter-visible
-         (take max-matches))
+    (let [card-ids (vec (xrays.db/other-card-ids-on-dashboards dashboards (:id card)))
+          id->card (when (seq card-ids) (m/index-by :id (xrays.db/cards (set card-ids))))]
+      (->> (keep id->card card-ids)
+           filter-visible
+           (take max-matches)))
     []))
 
 (defn similar-questions
@@ -164,6 +169,19 @@
        filter-visible
        (rank-by-similarity card)
        (filter (comp pos? :similarity))))
+
+(defn similar-questions-for-cards
+  "The visible questions and models on the tables of `cards`, similar to the card of their table, most similar first
+  for each card."
+  [cards]
+  (let [table-id->candidates (->> (xrays.db/unarchived-cards-for-tables-of-types (map :table_id cards) [:model :question])
+                                  filter-visible
+                                  (group-by :table_id))]
+    (mapcat (fn [card]
+              (->> (get table-id->candidates (:table_id card))
+                   (rank-by-similarity card)
+                   (filter (comp pos? :similarity))))
+            cards)))
 
 (defn similar-metrics
   "The visible metrics on the table of `card`, similar to it, most similar first."

@@ -12,8 +12,8 @@
 
 (defn- set-status!
   "The status code setting the MetabotPermissions `row` throws, or `:set`."
-  [{:keys [group_id perm_type perm_value]}]
-  (try (metabot-perms/set-metabot-permission! group_id perm_type perm_value)
+  [row]
+  (try (metabot-perms/set-metabot-permissions! [row])
        :set
        (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))
 

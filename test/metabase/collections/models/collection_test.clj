@@ -2,19 +2,18 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.collections.models.collection-test]}}}}}}
   (:refer-clojure :exclude [descendants])
   (:require
-   [clojure.core.cache :as cache]
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as app-db.query]
    [metabase.audit-app.impl :as audit]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -61,20 +60,30 @@
     (is (= "Lucky Pigeon's Personal Collection"
            (collection/user->personal-collection-name (mt/user->id :lucky) :user)))))
 
-(deftest with-temp-user-evicts-personal-collection-id-cache-test
-  (testing "a temporary User cannot leave its deleted Personal Collection id in the production cache"
-    (let [user-id       (atom nil)
-          collection-id (atom nil)]
-      (mt/with-temp [:model/User {id :id}]
-        (reset! user-id id)
-        (reset! collection-id (@#'collection/user->personal-collection-id id))
-        (is (t2/exists? :model/Collection :id @collection-id)))
-      (is (not (t2/exists? :model/Collection :id @collection-id))
-          "with-temp removed the Personal Collection")
-      (is (not (cache/has? @(-> @#'collection/user->personal-collection-id
-                                meta :clojure.core.memoize/cache)
-                           [(mdb/unique-identifier) @user-id]))
-          "with-temp evicted the stale cache entry"))))
+(deftest personal-collection-id-follows-recreated-collection-test
+  (testing "hydrating `:personal_collection_id` right after a User's Personal Collection is deleted gives a new one"
+    (binding [collection/*allow-deleting-personal-collections* true]
+      (mt/with-temp [:model/User user]
+        (let [old-id (:personal_collection_id (t2/hydrate user :personal_collection_id))]
+          (t2/delete! :model/Collection :id old-id)
+          (let [new-id (:personal_collection_id (t2/hydrate user :personal_collection_id))]
+            (is (not= old-id new-id))
+            (is (t2/exists? :model/Collection :id new-id :personal_owner_id (:id user)))))))))
+
+(deftest user->personal-collection-skips-api-key-users-test
+  (testing "API key users get no Personal Collection, whether given by id or by row, and others get theirs"
+    (mt/with-temp [:model/User {api-key-user-id :id :as api-key-user} {:type :api-key}
+                   :model/User {user-id :id}                          {}]
+      (is (nil? (collection/user->personal-collection api-key-user-id)))
+      (is (nil? (collection/user->personal-collection api-key-user)))
+      (is (= user-id (:personal_owner_id (collection/user->personal-collection user-id))))))
+  (testing "the `:type` of a given row decides without the query an id needs"
+    (mt/with-temp [:model/User {user-id :id :as user} {}]
+      (let [counted #(t2/with-call-count [call-count]
+                       (is (some? (collection/user->personal-collection %)))
+                       (call-count))]
+        (counted user-id)
+        (is (< (counted (assoc user :type :personal)) (counted user-id)))))))
 
 (deftest user->personal-collection-names-test
   (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"
@@ -521,13 +530,13 @@
                 (t2/delete! :model/Permissions :collection_id [:in [a b c]])
                 (with-current-user-perms-for-collections! visible-ids
                   (is (= expected
-                         (collection/effective-location-path {:location path}))))))))))
+                         (:effective_location (t2/hydrate {:location path} :effective_location)))))))))))
     (testing "invalid input"
       (doseq [path [nil [10 20]]]
         (testing (format "path '%s'" path)
           (is (thrown?
                Exception
-               (collection/effective-location-path {:location path}))))))))
+               (:effective_location (t2/hydrate {:location path} :effective_location)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Nested Collections: CRUD Constraints & Behavior                                 |
@@ -639,6 +648,62 @@
     (testing "`nil` and the root collection should get `[]` as their effective_ancestors"
       (is (= [[] []]
              (map :effective_ancestors (t2/hydrate [nil collection/root-collection] :effective_ancestors)))))))
+
+(deftest effective-ancestors-batch-matches-single-test
+  (testing "hydrating a mix of collections together gives each one the ancestors it gets alone"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection a  {:name "A"}
+                     :model/Collection b  {:name "B" :location (collection/location-path a)}
+                     :model/Collection c  {:name "C" :location (collection/location-path a b)}
+                     :model/Collection d  {:name "D" :location (collection/location-path a b c)}
+                     :model/Collection sa {:name "SA" :namespace "snippets"}
+                     :model/Collection sb {:name "SB" :namespace "snippets" :location (collection/location-path sa)}
+                     :model/Collection sc {:name "SC" :namespace "snippets" :location (collection/location-path sa sb)}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) a)
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) c)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) sb)
+        (let [collections [d c b a sc sb nil collection/root-collection]
+              ancestors   (fn [hydrated]
+                            (for [collection hydrated]
+                              (for [ancestor (:effective_ancestors collection)]
+                                [(:name ancestor) (:can_write ancestor) (mi/can-read? ancestor)])))]
+          (doseq [user [:rasta :crowberto]]
+            (testing user
+              (mt/with-test-user user
+                (is (= (ancestors (map #(when % (t2/hydrate % :effective_ancestors)) collections))
+                       (ancestors (t2/hydrate collections :effective_ancestors))))))))
+        (testing "a non-superuser sees only the ancestors it can read, each with its own write access"
+          (mt/with-test-user :rasta
+            (is (= [["A" false] ["C" true]]
+                   (map (juxt :name :can_write) (:effective_ancestors (t2/hydrate d :effective_ancestors)))))))))))
+
+(deftest effective-ancestors-statement-count-test
+  (testing "hydrating ancestors costs as many statements for 10 collections as for 40, each in its own parent"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (doseq [collection-namespace [nil "snippets"]
+              user                 [:crowberto :rasta]]
+        (testing [collection-namespace user]
+          (let [statements (fn [n]
+                             (mt/with-model-cleanup [:model/Collection]
+                               (let [parent-ids (t2/insert-returning-pks! :model/Collection
+                                                                          (for [i (range n)]
+                                                                            {:name      (str "Parent " i)
+                                                                             :namespace collection-namespace}))
+                                     child-ids  (t2/insert-returning-pks! :model/Collection
+                                                                          (for [[i parent-id] (map-indexed vector parent-ids)]
+                                                                            {:name      (str "Child " i)
+                                                                             :namespace collection-namespace
+                                                                             :location  (collection/location-path parent-id)}))
+                                     hydrate!   #(mt/with-test-user user
+                                                   (doall (t2/hydrate (t2/select :model/Collection :id [:in child-ids])
+                                                                      :effective_ancestors)))]
+                                 (doseq [parent-id (take-nth 2 parent-ids)]
+                                   (perms/grant-collection-read-permissions! (perms/all-users-group) parent-id))
+                                 (hydrate!)
+                                 (t2/with-call-count [call-count]
+                                   (hydrate!)
+                                   (call-count)))))]
+            (is (= (statements 10) (statements 40)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Nested Collections: Descendants & Effective Children                              |
@@ -889,7 +954,7 @@
          (collection/collection-ids-for-archiving collection/root-collection))))
   (testing "Let's make sure we get an Exception when we try to archive the Custom Reports Collection"
     (mt/with-temp [:model/Collection cr-collection {}]
-      (mt/with-dynamic-fn-redefs [audit/default-custom-reports-collection (constantly cr-collection)]
+      (mt/with-dynamic-fn-redefs [audit/audit-collection-ids (constantly {:custom-reports-collection-id (:id cr-collection)})]
         (is (thrown-with-msg?
              Exception
              #"You cannot operate on the Custom Reports Collection."
@@ -1375,6 +1440,23 @@
       (is (malli= [:map [:personal_collection_id ms/PositiveInt]]
                   (t2/hydrate temp-user :personal_collection_id))))))
 
+(deftest personal-collection-id-backfill-statement-count-test
+  (testing "Hydrating `:personal_collection_id` creates the missing Personal Collections of 8 Users in as many statements as of 2"
+    (binding [collection/*allow-deleting-personal-collections* true]
+      (mt/with-model-cleanup [:model/User :model/Collection]
+        (let [counts (fn [n]
+                       (let [users (t2/select :model/User :id [:in (t2/insert-returning-pks!
+                                                                    :model/User
+                                                                    (repeatedly n #(mt/with-temp-defaults :model/User)))])]
+                         (is (not-any? (collections.db/personal-collection-ids-by-owner (set (map :id users)))
+                                       (map :id users)))
+                         (t2/with-call-count [call-count]
+                           (is (every? (comp pos-int? :personal_collection_id)
+                                       (t2/hydrate users :personal_collection_id)))
+                           (call-count))))]
+          (counts 1)
+          (is (= (counts 2) (counts 8))))))))
+
 (deftest hydrate-is-personal-test
   (binding [collection/*allow-deleting-personal-collections* true]
     (mt/with-temp [:model/User {user-id :id} {}]
@@ -1796,8 +1878,8 @@
                    :model/Collection cr-collection    {}
                    :model/Card       cr-card          {:collection_id (:id cr-collection)}
                    :model/Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
-      (mt/with-dynamic-fn-redefs [audit/default-audit-collection          (constantly audit-collection)
-                                  audit/default-custom-reports-collection (constantly cr-collection)]
+      (mt/with-dynamic-fn-redefs [audit/audit-collection-ids (constantly {:audit-collection-id          (:id audit-collection)
+                                                                          :custom-reports-collection-id (:id cr-collection)})]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-additional-premium-features #{:audit-app}
             (is (not (mi/can-write? (t2/hydrate audit-collection :can_write)))
@@ -2243,6 +2325,138 @@
                    :model/User {d :id} {} :model/User {e :id} {}]
       (let [ids [a b c d e]]
         (t2/delete! :model/Collection :personal_owner_id [:in ids])
-        (with-redefs [app-db.query/delete-partition-size 2]
+        (mt/with-partition-size 2
           (collection/create-personal-collections! ids))
         (is (= (set ids) (t2/select-fn-set :personal_owner_id :model/Collection :personal_owner_id [:in ids])))))))
+
+(defn- do-with-audit-collection!
+  "Calls `f` with the Collection with `entity-id`, the stored one or a temporary one, while audit content counts as
+  loaded."
+  [entity-id f]
+  (mt/with-temporary-setting-values [last-analytics-checksum 1]
+    (if-let [stored (t2/select-one :model/Collection :entity_id entity-id)]
+      (f stored)
+      (mt/with-temp [:model/Collection collection {:entity_id entity-id :name "Audit Collection" :location "/"}]
+        (f collection)))))
+
+(deftest custom-reports-collection-rule-after-edit-test
+  (testing "archiving the Custom Reports Collection is refused, also after its description changes"
+    (do-with-audit-collection!
+     @#'audit/default-custom-reports-entity-id
+     (fn [{collection-id :id}]
+       (is (thrown-with-msg? Exception #"You cannot operate on the Custom Reports Collection."
+                             (collection/collection-ids-for-archiving (t2/select-one :model/Collection :id collection-id))))
+       (mt/with-temp-vals-in-db :model/Collection collection-id {:description "Edited description"}
+         (is (thrown-with-msg? Exception #"You cannot operate on the Custom Reports Collection."
+                               (collection/collection-ids-for-archiving
+                                (t2/select-one :model/Collection :id collection-id)))))))))
+
+(deftest audit-collection-access-test
+  (mt/when-ee-evailable
+   (do-with-audit-collection!
+    audit/default-audit-collection-entity-id
+    (fn [{collection-id :id}]
+      (let [audit-collection #(t2/select-one :model/Collection :id collection-id)]
+        (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                       :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+          (mt/with-non-admin-groups-no-collection-perms (audit-collection)
+            (perms/grant-collection-read-permissions! group-id collection-id)
+            (mt/with-additional-premium-features #{:audit-app}
+              (testing "with the audit app a user with read permission reads the audit Collection"
+                (mt/with-test-user :rasta
+                  (is (true? (mi/can-read? (t2/hydrate (audit-collection) :can_read))))))
+              (testing "with the audit app a user without read permission does not read the audit Collection"
+                (mt/with-test-user :lucky
+                  (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read))))))
+              (testing "an admin does not write the audit Collection"
+                (mt/with-test-user :crowberto
+                  (is (false? (mi/can-write? (t2/hydrate (audit-collection) :can_write)))))))
+            (mt/with-premium-features #{}
+              (testing "without the audit app neither an admin nor a user with read permission reads it"
+                (mt/with-test-user :crowberto
+                  (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read)))))
+                (mt/with-test-user :rasta
+                  (is (false? (mi/can-read? (t2/hydrate (audit-collection) :can_read)))))))))))))
+  (defn- collection-permissions-call-count!
+    "The number of statements hydrating the permissions of `n` fresh Collections issues for rasta while the audit app is
+  off."
+    [n]
+    (mt/with-model-cleanup [:model/Collection]
+      (let [ids         (t2/insert-returning-pks! :model/Collection (for [i (range n)]
+                                                                      {:name (str "Fresh " i) :location "/"}))
+            collections (t2/select :model/Collection :id [:in ids])]
+        (mt/with-premium-features #{}
+          (mt/with-test-user :rasta
+            (t2/with-call-count [call-count]
+              (is (= n (count (doall (t2/hydrate collections :can_read :can_write)))))
+              (call-count))))))))
+
+(deftest collection-permissions-call-count-test
+  (testing "hydrating the permissions of more fresh Collections issues no more statements"
+    (do-with-audit-collection!
+     audit/default-audit-collection-entity-id
+     (fn [_]
+       (collection-permissions-call-count! 1)
+       (is (= (collection-permissions-call-count! 2)
+              (collection-permissions-call-count! 6)))))))
+
+(deftest move-to-missing-collection-test
+  (testing "a move to a Collection that does not exist is a 404 for can-move? and can-move-all-or-404?, and false for can-move-all?"
+    (mt/with-temp [:model/Collection {from-id :id} {}]
+      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) from-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [rows    [{:collection_id from-id}]
+              changes {:collection_id Integer/MAX_VALUE}
+              status  (fn [f] (try (f) nil (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))]
+          (is (= 404 (status #(collection/can-move? (first rows) changes))))
+          (is (= 404 (status #(collection/can-move-all-or-404? rows changes))))
+          (is (false? (collection/can-move-all? rows changes))))))))
+
+(deftest archive-several-roots-statement-count-test
+  (testing "archiving 6 Collections in one call runs at most 2 more statements for each additional root than archiving 2"
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (mt/with-test-user :crowberto
+        (let [archive! (fn [n]
+                         (let [roots (t2/insert-returning-pks! :model/Collection
+                                                               (for [i (range n)] {:name (str "Archived root " i) :location "/"}))
+                               below (t2/insert-returning-pks! :model/Collection
+                                                               (for [id roots] {:name "Archived child" :location (str "/" id "/")}))]
+                           (t2/insert! :model/Card
+                                       (for [id below]
+                                         {:name "Archived card" :collection_id id :display :table :type :question
+                                          :database_id (mt/id) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                                          :visualization_settings {} :creator_id (mt/user->id :crowberto)}))
+                           {:count (events.tu/real-statement-count!
+                                    #(collection/update-collections! (mapv (fn [id] {:id id :archived true}) roots) nil))
+                            :rows  (t2/select [:model/Collection :id :archived :archived_directly :archive_operation_id]
+                                              :id [:in (concat roots below)])
+                            :roots (set roots)}))]
+          (archive! 2)
+          (let [small (archive! 2)
+                large (archive! 6)]
+            (is (<= (- (:count large) (:count small)) (* 2 (- 6 2))))
+            (testing "rows get an archive operation and their cause"
+              (let [{:keys [rows roots]} large]
+                (is (every? :archived rows))
+                (is (every? :archive_operation_id rows))
+                (is (every? #(= (contains? roots (:id %)) (:archived_directly %)) rows))))))))))
+
+(deftest root-collection-permissions-statements-do-not-grow-with-rows-test
+  (mt/with-premium-features #{}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-test-user :rasta
+        (let [roots   (vec (for [i (range 6)]
+                             (collection/root-collection-with-ui-details (when (odd? i) "snippets"))))
+              hydrate (fn [n]
+                        (t2/with-call-count [call-count]
+                          (let [hydrated (doall (t2/hydrate (vec (take n roots)) :can_read :can_write))]
+                            {:statements (call-count)
+                             :values     (mapv (juxt mi/can-read? :can_write) hydrated)})))]
+          (hydrate 1)
+          (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+          (is (= (map #(vector % %) [false true false true false true]) (:values (hydrate 6))))
+          (testing "each root gets the answer the per-root check gave"
+            (is (= (mapv (fn [root] [(#'collection/root-collection-permission-at-least? root :read)
+                                     (#'collection/root-collection-permission-at-least? root :read-and-write)])
+                         roots)
+                   (:values (hydrate 6))))))))))

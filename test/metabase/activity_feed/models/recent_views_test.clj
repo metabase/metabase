@@ -3,11 +3,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.activity-feed.db :as activity-feed.db]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
@@ -383,6 +386,11 @@
         (t2/update! :model/Dashboard :id dash-id-3 {:archived true})
         (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))))))
 
+(defn- rasta-view-rows
+  "The recent views of rasta in the view context, as the pruning reads them."
+  []
+  (activity-feed.db/recent-views-for-users-contexts [(mt/user->id :rasta)] ["view"]))
+
 (deftest id-pruning-test
   (mt/with-temp [:model/Database a-db     {}
                  :model/Table a-table     {:db_id (:id a-db)}
@@ -410,7 +418,7 @@
     (let [query-result (mt/with-test-user :rasta (recent-views (mt/user->id :rasta)))]
       (is (apply t/after? (map (comp t/zoned-date-time :timestamp) query-result))
           "recent-views/get-list should be in chronological order, newest first:"))
-    (let [ids-to-prune (#'recent-views/duplicate-model-ids (mt/user->id :rasta) :view)]
+    (let [ids-to-prune (#'recent-views/duplicate-model-ids (rasta-view-rows))]
       (is (= #{(:id rv1)                                         ;; dupe cards
                (:id rv3) (:id rv4) (:id rv5) (:id rv6) (:id rv7) ;; dupe tables
                (:id rv9)                                         ;; dupe collections
@@ -443,7 +451,7 @@
         (testing (str "Bucket size: " bucket-size)
           (is (= ids-to-prune
                  (vec (sort (map #(- % 1337000)
-                                 (#'recent-views/overflowing-model-buckets (mt/user->id :rasta) :view)))))))))))
+                                 (#'recent-views/overflowing-model-buckets (rasta-view-rows))))))))))))
 
 (deftest recent-views-for-non-existent-entity-test
   (testing "If a user views a model that doesn't exist, it should not be added to recent views"
@@ -556,7 +564,7 @@
                   (is (= 2 (:table freqs))))
                 (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
                   (is (= 5
-                         (count (set (recent-views/ids-to-prune (mt/user->id :rasta) :view)))))
+                         (count (set (recent-views/ids-to-prune [[(mt/user->id :rasta) :view]])))))
                   (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-4 :view)
                   (is (= {:card 2, :dataset 2, :dashboard 2, :collection 2, :table 1}
                          ;; The table with :active false should be pruned, but also won't be returned, hence 1 for table.
@@ -690,3 +698,71 @@
           (testing "with include-metadata? true, result_metadata is included"
             (is (contains? (first (recent-views (mt/user->id :rasta) [:views] {:include-metadata? true}))
                            :result_metadata))))))))
+
+(deftest ids-to-prune-for-several-users-test
+  (testing "ids-to-prune answers for each user and context on its own"
+    (mt/with-temp [:model/Card a-card {:type "question"}
+                   :model/Card b-card {:type "question"}
+                   :model/Card c-card {:type "question"}
+                   :model/RecentViews {rasta-oldest :id} {:user_id (mt/user->id :rasta), :context "view", :model "card", :model_id (:id a-card), :timestamp #t "2000-01-01T00:00Z"}
+                   :model/RecentViews _ {:user_id (mt/user->id :rasta), :context "view", :model "card", :model_id (:id b-card), :timestamp #t "2001-01-01T00:00Z"}
+                   :model/RecentViews _ {:user_id (mt/user->id :rasta), :context "view", :model "card", :model_id (:id c-card), :timestamp #t "2002-01-01T00:00Z"}
+                   :model/RecentViews {crowberto-oldest :id} {:user_id (mt/user->id :crowberto), :context "view", :model "card", :model_id (:id a-card), :timestamp #t "2000-01-01T00:00Z"}
+                   :model/RecentViews _ {:user_id (mt/user->id :crowberto), :context "view", :model "card", :model_id (:id b-card), :timestamp #t "2001-01-01T00:00Z"}
+                   :model/RecentViews _ {:user_id (mt/user->id :crowberto), :context "view", :model "card", :model_id (:id c-card), :timestamp #t "2002-01-01T00:00Z"}
+                   :model/RecentViews {lucky-duplicate :id} {:user_id (mt/user->id :lucky), :context "view", :model "card", :model_id (:id a-card), :timestamp #t "2000-01-01T00:00Z"}
+                   :model/RecentViews _ {:user_id (mt/user->id :lucky), :context "view", :model "card", :model_id (:id a-card), :timestamp #t "2001-01-01T00:00Z"}
+                   :model/RecentViews _ {:user_id (mt/user->id :lucky), :context "view", :model "card", :model_id (:id b-card), :timestamp #t "2002-01-01T00:00Z"}
+                   :model/RecentViews _ {:user_id (mt/user->id :trashbird), :context "selection", :model "card", :model_id (:id a-card), :timestamp #t "2000-01-01T00:00Z"}
+                   :model/RecentViews _ {:user_id (mt/user->id :trashbird), :context "selection", :model "card", :model_id (:id b-card), :timestamp #t "2001-01-01T00:00Z"}
+                   :model/RecentViews _ {:user_id (mt/user->id :trashbird), :context "selection", :model "card", :model_id (:id c-card), :timestamp #t "2002-01-01T00:00Z"}]
+      (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
+        (is (= #{rasta-oldest crowberto-oldest lucky-duplicate}
+               (recent-views/ids-to-prune [[(mt/user->id :rasta) :view]
+                                           [(mt/user->id :crowberto) :view]
+                                           [(mt/user->id :lucky) :view]])))
+        (testing "a pair that is not asked for is left alone"
+          (is (= #{lucky-duplicate}
+                 (recent-views/ids-to-prune [[(mt/user->id :lucky) :view]
+                                             [(mt/user->id :trashbird) :view]]))))))))
+
+(deftest flush-statement-count-test
+  (testing "flushing the views of 10 users runs as many statements as flushing the views of 40"
+    (mt/with-temp [:model/Card {card-id :id} {:type "question"}]
+      (let [flush! (fn [n]
+                     (let [user-ids (t2/insert-returning-pks! :model/User
+                                                              (for [i (range n)]
+                                                                (merge (mt/with-temp-defaults :model/User)
+                                                                       {:email (str "recent-views-" n "-" i "@example.com")})))]
+                       (try
+                         (t2/insert! :model/RecentViews
+                                     (for [user-id user-ids]
+                                       {:user_id user-id, :context "view", :model "card", :model_id card-id
+                                        :timestamp #t "2000-01-01T00:00Z"}))
+                         (events.tu/real-statement-count!
+                          (fn []
+                            (#'recent-views/update-users-recent-views!*
+                             (for [user-id user-ids]
+                               {:user-id user-id, :model :model/Card, :model-id card-id, :context :view
+                                :timestamp (t/offset-date-time)}))))
+                         (finally
+                           (t2/delete! :model/RecentViews :user_id [:in user-ids])
+                           (t2/delete! :model/User :id [:in user-ids])))))]
+        (flush! 2)
+        (is (= (flush! 10) (flush! 40)))))))
+
+(deftest collection-moves-recent-views-statement-count-test
+  (testing "moving 10 collections in one update runs as many statements as moving 40, recording views of them"
+    (mt/with-model-cleanup [:model/Collection]
+      (let [move! (fn [n]
+                    (let [parent-id (t2/insert-returning-pk! :model/Collection {:name (str "Parent " n) :location "/"})
+                          ids       (t2/insert-returning-pks! :model/Collection (for [i (range n)]
+                                                                                  {:name (str "Moved " n " " i) :location "/"}))]
+                      (mt/with-current-user (mt/user->id :rasta)
+                        (u/prog1 (events.tu/real-statement-count!
+                                  #(collection/update-collections! (for [id ids] {:id id :location (str "/" parent-id "/")})))
+                          (is (= (min n recent-views/*recent-views-stored-per-user-per-model*)
+                                 (t2/count :model/RecentViews :user_id (mt/user->id :rasta)
+                                           :model "collection" :model_id [:in ids])))))))]
+        (move! recent-views/*recent-views-stored-per-user-per-model*)
+        (is (= (move! 10) (move! 40)))))))

@@ -19,7 +19,7 @@ export function PublishedTableBreadcrumbs({
   tableListUrl,
 }: PublishedTableBreadcrumbsProps) {
   const { path, isLoadingPath } = useCollectionPath({
-    collectionId: table.collection_id,
+    collectionId: table.collection?.id ?? null,
   });
 
   return (

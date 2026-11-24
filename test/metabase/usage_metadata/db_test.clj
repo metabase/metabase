@@ -81,3 +81,10 @@
       (let [ids (set (map :id (usage-metadata.db/unarchived-segments (mt/id :venues))))]
         (is (contains? ids in-table))
         (is (not (contains? ids other-table)))))))
+
+(deftest ^:synchronized reads-over-partitions-test
+  (let [field-ids (vec (take 5 (t2/select-pks-vec :model/Field :table_id (mt/id :venues) {:order-by [[:id :asc]]})))
+        f         #(usage-metadata.db/raw-field-fingerprints field-ids)]
+    (testing "maps hold every row"
+      (is (= (set field-ids) (set (keys (f)))))
+      (is (= (f) (mt/with-partition-size 2 (f)))))))
