@@ -25,8 +25,11 @@ import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { Dataset, DatasetQuery } from "metabase-types/api";
-import type { Dataset, TestStageWithSourceSpec } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetQuery,
+  TestStageWithSourceSpec,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -38,8 +41,8 @@ import {
 import {
   ORDERS,
   ORDERS_ID,
-  PRODUCTS_ID,
   PEOPLE_ID,
+  PRODUCTS_ID,
   createOrdersCreatedAtDatasetColumn,
   createOrdersIdDatasetColumn,
   createPeopleStateDatasetColumn,
