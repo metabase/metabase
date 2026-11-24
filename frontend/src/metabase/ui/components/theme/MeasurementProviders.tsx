@@ -36,10 +36,10 @@ function readCurrentColorScheme(): ResolvedColorScheme {
 
 export function MeasurementProviders({ children }: MeasurementProvidersProps) {
   const resolvedColorScheme = readCurrentColorScheme();
-  // Scope variable creation to the measurement container to prevent overriding main app vars
   return (
     <ThemeProvider
       resolvedColorScheme={resolvedColorScheme}
+      // Scope variable creation to the measurement container to prevent overriding main app vars
       cssVariablesSelector={`.${MEASUREMENT_ROOT_CLASSNAME}`}
     >
       {children}

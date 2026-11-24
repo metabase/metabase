@@ -2,7 +2,6 @@
   "Application database queries for the login history module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.login-history.schema :as login-history.schema]
@@ -30,7 +29,7 @@
 
 (mu/defn insert-login-history!
   "Insert the LoginHistory `row`, returning the number of rows inserted."
-  [row :- (mut/select-keys ::login-history.schema/login-history.update [:user_id :session_id :device_id :device_description :ip_address])]
+  [row :- ::login-history.schema/login-history.create]
   (t2/insert! :model/LoginHistory row))
 
 (mu/defn login-history-ids-for-user

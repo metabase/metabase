@@ -1,15 +1,17 @@
 (ns metabase.actions.schema
   (:require
+   [malli.util :as mut]
    [metabase.actions.types :as actions.types]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.users.schema :as users.schema]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -97,13 +99,36 @@
    :row/update
    :row/delete])
 
+(defn- native-query-on-database?
+  "Whether `query`, legacy or MBQL 5, is a native query that names its Database."
+  [query]
+  (and (some? (:database query))
+       (if (contains? query :stages)
+         (and (= 1 (count (:stages query)))
+              (= "mbql.stage/native" (some-> (get-in query [:stages 0 :lib/type]) u/qualified-name)))
+         (= "native" (some-> (:type query) name)))))
+
+(mr/def ::query-action.native-dataset-query
+  "A native query that names its Database, the `:dataset_query` every write of a QueryAction gives."
+  [:and
+   ::lib-be.schema/maybe-legacy-query
+   [:fn {:error/message "an action's query must be a native query on a database"}
+    native-query-on-database?]])
+
+(mr/def ::query-action.dataset-query
+  "The `:dataset_query` column of a QueryAction, decoded: an empty query, which stored rows may hold, or a native query
+  that names its Database."
+  [:multi {:dispatch (fn [query] (boolean (and (map? query) (empty? query))))}
+   [true  ::lib-be.schema/empty-query]
+   [false ::query-action.native-dataset-query]])
+
 (def ^:private implicit-action-entries
-  [[:kind     {:optional true} [:maybe ::implicit-action.kind]]
+  [[:kind     {:optional true} ::implicit-action.kind]
    [:table_id {:optional true} [:maybe ::lib.schema.id/table]]])
 
 (def ^:private query-action-entries
   [[:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]])
+   [:dataset_query {:optional true} ::query-action.dataset-query]])
 
 (mr/def ::action.parameter
   "One entry of an Action's `:parameters`. An implicit action's are computed from the model's Fields rather than
@@ -148,7 +173,7 @@
                                [:description            {:optional true}    [:maybe :string]]
                                [:parameters             {:optional true}    [:maybe [:sequential ::action.parameter]]]
                                [:parameter_mappings     {:optional true}    [:maybe ::parameters.schema/parameter-mappings]]
-                               [:visualization_settings {:optional true}    [:maybe ::lib.schema.visualization-settings/visualization-settings]]]
+                               [:visualization_settings {:optional true}    [:maybe ::lib.schema.visualization/visualization-settings]]]
                               (when-not request?
                                 [[:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
                                  [:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
@@ -168,7 +193,14 @@
 (mu/defn- action-schema [schema-type :- [:enum :select :update :insert]
                          request?    :- :boolean]
   (let [query-entries (cond->> query-action-entries
-                        request? (remove (comp #{:database_id} first)))]
+                        request?                     (remove (comp #{:database_id} first))
+                        (not= schema-type :select)   (map (fn [[k opts schema]]
+                                                            (if (= k :dataset_query)
+                                                              [k opts ::query-action.native-dataset-query]
+                                                              [k opts schema])))
+                        (and request? (= schema-type :insert))
+                        (map (fn [[k opts schema]]
+                               (if (= k :dataset_query) [k (dissoc opts :optional) schema] [k opts schema]))))]
     [:merge
      (action-columns schema-type request?)
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
@@ -206,23 +238,83 @@
   "Schema for the REST API body that updates an Action, without the columns the server populates."
   (action-schema :update true))
 
+(def ^:private action-write-entries
+  "The Action columns a caller gives when it writes the Action row alone, without its QueryAction or ImplicitAction."
+  [[:model_id               {:optional true} [:maybe ::lib.schema.id/card]]
+   [:collection_id          {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:archived               {:optional true} :boolean]
+   [:archived_directly      {:optional true} :boolean]
+   [:description            {:optional true} [:maybe :string]]
+   [:parameters             {:optional true} [:maybe [:sequential ::action.parameter]]]
+   [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
+   [:public_uuid            {:optional true} [:maybe ms/UUIDString]]
+   [:made_public_by_id      {:optional true} [:maybe ::lib.schema.id/user]]
+   [:creator_id             {:optional true} [:maybe ::lib.schema.id/user]]
+   [:entity_id              {:optional true} [:maybe :string]]
+   [:public_uuid_prefix     {:optional true} [:maybe :string]]
+   [:created_at             {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
+   [:updated_at             {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]])
+
+(def ^:private action-detail-entries
+  "The columns of the QueryAction or ImplicitAction of an Action that a caller gives with the Action."
+  [[:dataset_query {:optional true} ::query-action.dataset-query]
+   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
+   [:legacy_query  {:optional true} [:maybe :string]]
+   [:kind          {:optional true} ::implicit-action.kind]
+   [:table_id      {:optional true} [:maybe ::lib.schema.id/table]]])
+
+(mr/def ::action.update
+  "An Action by its `id` with the columns to change: those of the Action and those of its QueryAction or
+  ImplicitAction, each optional."
+  (-> [:map {:closed true}
+       [:id   ::id]
+       [:name {:optional true} :string]
+       [:type {:optional true} ::type]]
+      (into action-write-entries)
+      (into action-detail-entries)))
+
+(mr/def ::action.create
+  "What a caller gives to create an Action: the columns of an update without the `:id`, and the name and type."
+  [:merge
+   (mut/dissoc ::action.update :id)
+   [:map {:closed true}
+    [:name :string]
+    [:type ::type]]])
+
+(mr/def ::query-action.update
+  "A QueryAction by the id of its Action with the columns to change, each optional."
+  [:map {:closed true}
+   [:action_id     ::lib.schema.id/action]
+   [:dataset_query {:optional true} ::query-action.dataset-query]
+   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
+   [:legacy_query  {:optional true} [:maybe :string]]])
+
+(mr/def ::query-action.create
+  "What a caller gives to create a QueryAction: the columns of an update, and the query."
+  [:map {:closed true}
+   [:action_id     ::lib.schema.id/action]
+   [:dataset_query ::query-action.dataset-query]
+   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
+   [:legacy_query  {:optional true} [:maybe :string]]])
+
+(mr/def ::implicit-action.update
+  "An ImplicitAction by the id of its Action with the columns to change, each optional."
+  [:map {:closed true}
+   [:action_id ::lib.schema.id/action]
+   [:kind      {:optional true} ::implicit-action.kind]
+   [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
+
+(mr/def ::implicit-action.create
+  "What a caller gives to create an ImplicitAction: the columns of an update."
+  ::implicit-action.update)
+
 (mr/def ::implicit-action
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
   [:map {:closed true}
    [:action_id ::lib.schema.id/action]
-   [:kind      ::lib.schema.common/keyword]
+   [:kind      ::implicit-action.kind]
    [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
-
-(mr/def ::implicit-action.update
-  "What an update (or insert) of a ImplicitAction accepts: every column of `:implicit_action` except `id`, all optional."
-  [:map {:closed true}
-   [:action_id {:optional true} [:maybe ::lib.schema.id/action]]
-   [:kind      {:optional true} [:maybe ::lib.schema.common/keyword]]
-   [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
-
-(mr/def ::query-action.dataset-query
-  "The `:dataset_query` column of a QueryAction, decoded."
-  ::lib-be.schema/maybe-legacy-or-empty-query)
 
 (mr/def ::query-action
   "A QueryAction as selected from the app DB: every column of `:query_action`."
@@ -231,14 +323,6 @@
    [:database_id   ::lib.schema.id/database]
    [:dataset_query ::query-action.dataset-query]
    [:legacy_query  [:maybe :string]]])
-
-(mr/def ::query-action.update
-  "What an update (or insert) of a QueryAction accepts: every column of `:query_action` except `id`, all optional."
-  [:map {:closed true}
-   [:action_id     {:optional true} [:maybe ::lib.schema.id/action]]
-   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query {:optional true} [:maybe ::query-action.dataset-query]]
-   [:legacy_query  {:optional true} [:maybe :string]]])
 
 (mr/def ::execution.row-diff
   "One effect recorded against the `:effects` key of [[::execution-context]]: the before/after state of a row a

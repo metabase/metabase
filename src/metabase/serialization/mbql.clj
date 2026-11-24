@@ -48,7 +48,7 @@
 
 (mr/def ::mbql-node
   "Any node reached while walking an MBQL form, which may or may not be an MBQL clause."
-  [:schema {::mr/deliberately-open true, :description "an MBQL form node"} :any])
+  :metabase.util.malli/value)
 
 (mu/defn mbql-clause-tag :- [:maybe [:enum :field :field-id :dimension :metric :segment :measure]]
   "The tag of `form` when it is an MBQL entity reference clause, else nil."
@@ -110,7 +110,7 @@
        (:source_table :source-table :table-id)
        (cond-> m (pos-int? v) (assoc k (visit :model/Table v)))
 
-       (:source-field :field-id :metabase.models.visualization-settings/param-mapping-source)
+       (:source-field :field-id)
        (cond-> m (pos-int? v) (assoc k (visit :model/Field v)))
 
        :segment
@@ -398,6 +398,8 @@
   (resolve/import-in-bulk store xs opts walk-import))
 
 (def mbql-transform
-  "A spec transform of forms that may hold MBQL, by [[export-mbql]] and [[import-mbql]]."
-  {:export (fn [store _ xs _] (export-mbql store xs))
+  "A spec transform of forms that may hold MBQL, by [[export-mbql]] and [[import-mbql]], whose import validates a query
+  against this instance's query schema, so an import need not check the column against the schema of the spec."
+  {:validates-query? true
+   :export (fn [store _ xs _] (export-mbql store xs))
    :import (fn [store _ xs opts] (import-mbql store xs opts))})

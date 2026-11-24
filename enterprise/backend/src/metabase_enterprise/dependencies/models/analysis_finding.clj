@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -62,6 +63,21 @@
   "The errors an analysis found, as `lib/find-bad-refs-with-source` returns them."
   [:maybe [:set ::lib.schema.validate/error-with-source]])
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn upsert-analyses!
+  "Given the `result` and `finding-details` that `id->analysis` maps the ids of entities of `entity-type` to, upsert
+  the AnalysisFindings and replace their errors, for all of them together."
+  [entity-type  :- :keyword
+   id->analysis :- [:map-of ms/PositiveInt [:map {:closed true}
+                                            [:result          :boolean]
+                                            [:finding-details FindingDetails]]]]
+  (t2/with-transaction [_conn]
+    (dependencies.db/upsert-findings! entity-type (update-vals id->analysis :result))
+    (deps.analysis-finding-error/replace-errors-for-entities!
+     entity-type
+     (update-vals id->analysis #(mapv error->finding-error-row (:finding-details %))))))
+
 (mu/defn upsert-analysis!
   "Given the details of an AnalysisFinding row, upsert the data into the actual db.
    Also writes individual errors to the analysis_finding_error table with source information."
@@ -69,9 +85,9 @@
    entity-id       :- ms/PositiveInt
    result          :- :boolean
    finding-details :- FindingDetails]
-  (t2/with-transaction [_conn]
-    (dependencies.db/upsert-finding! entity-type entity-id result)
-    (deps.analysis-finding-error/replace-errors-for-entity!
-     entity-type
-     entity-id
-     (map error->finding-error-row finding-details))))
+  (upsert-analyses! entity-type {entity-id {:result result :finding-details finding-details}}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/AnalysisFinding [_model]
+  {:skip? true})

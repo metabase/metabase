@@ -6,24 +6,25 @@
 
 (deftest document-cards-do-not-appear-in-collection-items
   (testing "GET /api/collection/:id/items excludes cards with document_id"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Document {doc-id :id} {}
-                   :model/Card {normal-card-id :id} {:collection_id coll-id}
-                   :model/Card _ {:collection_id coll-id
-                                  :document_id doc-id}
-                   :model/Dashboard {dash-id :id} {:collection_id coll-id}]
-      (testing "Normal cards and dashboards appear, but in_document cards do not"
-        (is (= #{[normal-card-id "card"]
-                 [dash-id "dashboard"]}
-               (set (map (juxt :id :model)
-                         (:data (mt/user-http-request :rasta :get 200
-                                                      (str "collection/" coll-id "/items"))))))))
-      (testing "Even with show-dashboard-questions=true, in_document cards do not appear"
-        (is (= #{[normal-card-id "card"]
-                 [dash-id "dashboard"]}
-               (set (map (juxt :id :model)
-                         (:data (mt/user-http-request :rasta :get 200
-                                                      (str "collection/" coll-id "/items?show-dashboard-questions=true")))))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Document {doc-id :id} {}
+                       :model/Card {normal-card-id :id} {:collection_id coll-id}
+                       :model/Card _ {:collection_id coll-id
+                                      :document_id doc-id}
+                       :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+          (testing "Normal cards and dashboards appear, but in_document cards do not"
+            (is (= #{[normal-card-id "card"]
+                     [dash-id "dashboard"]}
+                   (set (map (juxt :id :model)
+                             (:data (mt/user-http-request :rasta :get 200
+                                                          (str "collection/" coll-id "/items"))))))))
+          (testing "Even with show-dashboard-questions=true, in_document cards do not appear"
+            (is (= #{[normal-card-id "card"]
+                     [dash-id "dashboard"]}
+                   (set (map (juxt :id :model)
+                             (:data (mt/user-http-request :rasta :get 200
+                                                          (str "collection/" coll-id "/items?show-dashboard-questions=true")))))))))))))
 
 (deftest document-cards-do-not-appear-in-root-items
   (testing "GET /api/collection/root/items excludes cards with document_id"
@@ -64,18 +65,19 @@
 
 (deftest documents-appear-in-collection-items
   (testing "GET /api/collection/:id/items includes documents"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Document {doc-id :id} {:collection_id coll-id
-                                                 :name "Test Document"}
-                   :model/Card {card-id :id} {:collection_id coll-id}
-                   :model/Dashboard {dash-id :id} {:collection_id coll-id}]
-      (testing "Documents appear alongside cards and dashboards"
-        (is (= #{[doc-id "document"]
-                 [card-id "card"]
-                 [dash-id "dashboard"]}
-               (set (map (juxt :id :model)
-                         (:data (mt/user-http-request :rasta :get 200
-                                                      (str "collection/" coll-id "/items")))))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Document {doc-id :id} {:collection_id coll-id
+                                                     :name "Test Document"}
+                       :model/Card {card-id :id} {:collection_id coll-id}
+                       :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+          (testing "Documents appear alongside cards and dashboards"
+            (is (= #{[doc-id "document"]
+                     [card-id "card"]
+                     [dash-id "dashboard"]}
+                   (set (map (juxt :id :model)
+                             (:data (mt/user-http-request :rasta :get 200
+                                                          (str "collection/" coll-id "/items")))))))))))))
 
 (deftest documents-appear-in-root-items
   (testing "GET /api/collection/root/items includes documents"
@@ -154,83 +156,86 @@
 
 (deftest exploration-documents-stay-hidden-in-collections
   (testing "Non-archived exploration documents are hidden from a regular collection's items by default"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Exploration {expl-id :id} {:creator_id (mt/user->id :rasta)
-                                                     :name "Coll Exploration"}
-                   :model/Document {plain-doc-id :id} {:collection_id coll-id
-                                                       :name "Plain Doc"}
-                   :model/Document {expl-doc-id :id} {:collection_id coll-id
-                                                      :name "Exploration Doc"
-                                                      :exploration_id expl-id}]
-      (testing "Without the flag, only the plain document is listed"
-        (let [items (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))
-              ids   (set (map :id (:data items)))]
-          (is (contains? ids plain-doc-id))
-          (is (not (contains? ids expl-doc-id)))))
-      (testing "With show-exploration-documents=true, both are listed"
-        (let [items (mt/user-http-request :rasta :get 200
-                                          (format "collection/%d/items?show-exploration-documents=true" coll-id))
-              ids   (set (map :id (:data items)))]
-          (is (contains? ids plain-doc-id))
-          (is (contains? ids expl-doc-id)))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Exploration {expl-id :id} {:creator_id (mt/user->id :rasta)
+                                                         :name "Coll Exploration"}
+                       :model/Document {plain-doc-id :id} {:collection_id coll-id
+                                                           :name "Plain Doc"}
+                       :model/Document {expl-doc-id :id} {:collection_id coll-id
+                                                          :name "Exploration Doc"
+                                                          :exploration_id expl-id}]
+          (testing "Without the flag, only the plain document is listed"
+            (let [items (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))
+                  ids   (set (map :id (:data items)))]
+              (is (contains? ids plain-doc-id))
+              (is (not (contains? ids expl-doc-id)))))
+          (testing "With show-exploration-documents=true, both are listed"
+            (let [items (mt/user-http-request :rasta :get 200
+                                              (format "collection/%d/items?show-exploration-documents=true" coll-id))
+                  ids   (set (map :id (:data items)))]
+              (is (contains? ids plain-doc-id))
+              (is (contains? ids expl-doc-id)))))))))
 
 (deftest exploration-documents-metadata-test
   (testing "GET /api/collection/:id/items/metadata"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Exploration {expl-id :id} {:creator_id (mt/user->id :rasta)
-                                                     :name "Metadata Exploration"}
-                   :model/Document _ {:collection_id coll-id
-                                      :name "Plain Doc"}
-                   :model/Document _ {:collection_id coll-id
-                                      :name "Exploration Doc"
-                                      :exploration_id expl-id}]
-      (let [url (format "collection/%d/items/metadata" coll-id)]
-        (testing "hides exploration documents by default, like the items list does"
-          (is (= {:available_models ["document"] :total_items 1}
-                 (mt/user-http-request :rasta :get 200 url))))
-        (testing "counts them when show-exploration-documents is set"
-          (is (= {:available_models ["document"] :total_items 2}
-                 (mt/user-http-request :rasta :get 200 url :show-exploration-documents true))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Exploration {expl-id :id} {:creator_id (mt/user->id :rasta)
+                                                         :name "Metadata Exploration"}
+                       :model/Document _ {:collection_id coll-id
+                                          :name "Plain Doc"}
+                       :model/Document _ {:collection_id coll-id
+                                          :name "Exploration Doc"
+                                          :exploration_id expl-id}]
+          (let [url (format "collection/%d/items/metadata" coll-id)]
+            (testing "hides exploration documents by default, like the items list does"
+              (is (= {:available_models ["document"] :total_items 1}
+                     (mt/user-http-request :rasta :get 200 url))))
+            (testing "counts them when show-exploration-documents is set"
+              (is (= {:available_models ["document"] :total_items 2}
+                     (mt/user-http-request :rasta :get 200 url :show-exploration-documents true))))))))))
 
 (deftest document-pinning-collection-items
   (testing "GET /api/collection/:id/items supports pinned-state parameter for documents"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Document {pinned-doc-id :id} {:collection_id coll-id
-                                                        :name "Pinned Document"
-                                                        :collection_position 1}
-                   :model/Document {unpinned-doc-id :id} {:collection_id coll-id
-                                                          :name "Unpinned Document"
-                                                          :collection_position nil}
-                   :model/Card {pinned-card-id :id} {:collection_id coll-id
-                                                     :name "Pinned Card"
-                                                     :collection_position 2}
-                   :model/Card {unpinned-card-id :id} {:collection_id coll-id
-                                                       :name "Unpinned Card"
-                                                       :collection_position nil}]
-      (testing "pinned-state=is_pinned returns only pinned documents and cards"
-        (let [items (:data (mt/user-http-request :rasta :get 200
-                                                 (str "collection/" coll-id "/items?pinned-state=is_pinned")))
-              item-ids (set (map (juxt :model :id) items))]
-          (is (contains? item-ids ["document" pinned-doc-id]))
-          (is (contains? item-ids ["card" pinned-card-id]))
-          (is (not (contains? item-ids ["document" unpinned-doc-id])))
-          (is (not (contains? item-ids ["card" unpinned-card-id])))))
-      (testing "pinned-state=is_not_pinned returns only unpinned documents and cards"
-        (let [items (:data (mt/user-http-request :rasta :get 200
-                                                 (str "collection/" coll-id "/items?pinned-state=is_not_pinned")))
-              item-ids (set (map (juxt :model :id) items))]
-          (is (not (contains? item-ids ["document" pinned-doc-id])))
-          (is (not (contains? item-ids ["card" pinned-card-id])))
-          (is (contains? item-ids ["document" unpinned-doc-id]))
-          (is (contains? item-ids ["card" unpinned-card-id]))))
-      (testing "pinned-state=all returns all documents and cards"
-        (let [items (:data (mt/user-http-request :rasta :get 200
-                                                 (str "collection/" coll-id "/items?pinned-state=all")))
-              item-ids (set (map (juxt :model :id) items))]
-          (is (contains? item-ids ["document" pinned-doc-id]))
-          (is (contains? item-ids ["card" pinned-card-id]))
-          (is (contains? item-ids ["document" unpinned-doc-id]))
-          (is (contains? item-ids ["card" unpinned-card-id])))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Document {pinned-doc-id :id} {:collection_id coll-id
+                                                            :name "Pinned Document"
+                                                            :collection_position 1}
+                       :model/Document {unpinned-doc-id :id} {:collection_id coll-id
+                                                              :name "Unpinned Document"
+                                                              :collection_position nil}
+                       :model/Card {pinned-card-id :id} {:collection_id coll-id
+                                                         :name "Pinned Card"
+                                                         :collection_position 2}
+                       :model/Card {unpinned-card-id :id} {:collection_id coll-id
+                                                           :name "Unpinned Card"
+                                                           :collection_position nil}]
+          (testing "pinned-state=is_pinned returns only pinned documents and cards"
+            (let [items (:data (mt/user-http-request :rasta :get 200
+                                                     (str "collection/" coll-id "/items?pinned-state=is_pinned")))
+                  item-ids (set (map (juxt :model :id) items))]
+              (is (contains? item-ids ["document" pinned-doc-id]))
+              (is (contains? item-ids ["card" pinned-card-id]))
+              (is (not (contains? item-ids ["document" unpinned-doc-id])))
+              (is (not (contains? item-ids ["card" unpinned-card-id])))))
+          (testing "pinned-state=is_not_pinned returns only unpinned documents and cards"
+            (let [items (:data (mt/user-http-request :rasta :get 200
+                                                     (str "collection/" coll-id "/items?pinned-state=is_not_pinned")))
+                  item-ids (set (map (juxt :model :id) items))]
+              (is (not (contains? item-ids ["document" pinned-doc-id])))
+              (is (not (contains? item-ids ["card" pinned-card-id])))
+              (is (contains? item-ids ["document" unpinned-doc-id]))
+              (is (contains? item-ids ["card" unpinned-card-id]))))
+          (testing "pinned-state=all returns all documents and cards"
+            (let [items (:data (mt/user-http-request :rasta :get 200
+                                                     (str "collection/" coll-id "/items?pinned-state=all")))
+                  item-ids (set (map (juxt :model :id) items))]
+              (is (contains? item-ids ["document" pinned-doc-id]))
+              (is (contains? item-ids ["card" pinned-card-id]))
+              (is (contains? item-ids ["document" unpinned-doc-id]))
+              (is (contains? item-ids ["card" unpinned-card-id])))))))))
 
 (deftest document-pinning-root-items
   (testing "GET /api/collection/root/items supports pinned-state parameter for documents"
@@ -263,31 +268,32 @@
 
 (deftest mixed-pinned-unpinned-documents-collection-view
   (testing "Integration test for mixed pinned/unpinned documents in collection view"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Document {doc1-id :id} {:collection_id coll-id
-                                                  :name "Document A"
-                                                  :collection_position 1}
-                   :model/Document _ {:collection_id coll-id
-                                      :name "Document B"
-                                      :collection_position nil}
-                   :model/Document {doc3-id :id} {:collection_id coll-id
-                                                  :name "Document C"
-                                                  :collection_position 3}]
-      (testing "Default view includes all documents with collection_position field"
-        (let [items (:data (mt/user-http-request :rasta :get 200
-                                                 (str "collection/" coll-id "/items")))
-              docs (filter #(= "document" (:model %)) items)
-              doc-positions (map :collection_position docs)]
-          (is (= 3 (count docs)))
-          ;; Verify collection_position is included in the response
-          (is (some #(= 1 %) doc-positions))
-          (is (some nil? doc-positions))
-          (is (some #(= 3 %) doc-positions))))
-      (testing "Pinned documents have higher collection_position values and appear before unpinned"
-        (let [items (:data (mt/user-http-request :rasta :get 200
-                                                 (str "collection/" coll-id "/items?pinned-state=is_pinned")))
-              pinned-docs (filter #(= "document" (:model %)) items)]
-          (is (= 2 (count pinned-docs)))
-          ;; Verify all pinned docs have non-nil collection_position
-          (is (every? #(some? (:collection_position %)) pinned-docs))
-          (is (= #{doc1-id doc3-id} (set (map :id pinned-docs)))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Document {doc1-id :id} {:collection_id coll-id
+                                                      :name "Document A"
+                                                      :collection_position 1}
+                       :model/Document _ {:collection_id coll-id
+                                          :name "Document B"
+                                          :collection_position nil}
+                       :model/Document {doc3-id :id} {:collection_id coll-id
+                                                      :name "Document C"
+                                                      :collection_position 3}]
+          (testing "Default view includes all documents with collection_position field"
+            (let [items (:data (mt/user-http-request :rasta :get 200
+                                                     (str "collection/" coll-id "/items")))
+                  docs (filter #(= "document" (:model %)) items)
+                  doc-positions (map :collection_position docs)]
+              (is (= 3 (count docs)))
+              ;; Verify collection_position is included in the response
+              (is (some #(= 1 %) doc-positions))
+              (is (some nil? doc-positions))
+              (is (some #(= 3 %) doc-positions))))
+          (testing "Pinned documents have higher collection_position values and appear before unpinned"
+            (let [items (:data (mt/user-http-request :rasta :get 200
+                                                     (str "collection/" coll-id "/items?pinned-state=is_pinned")))
+                  pinned-docs (filter #(= "document" (:model %)) items)]
+              (is (= 2 (count pinned-docs)))
+              ;; Verify all pinned docs have non-nil collection_position
+              (is (every? #(some? (:collection_position %)) pinned-docs))
+              (is (= #{doc1-id doc3-id} (set (map :id pinned-docs)))))))))))

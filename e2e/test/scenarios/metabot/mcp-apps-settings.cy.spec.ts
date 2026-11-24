@@ -11,9 +11,10 @@ describe("admin > MCP apps settings > Cursor install link", () => {
 
     H.main().within(() => {
       cy.findByText("Show inline charts in these MCP clients").scrollIntoView();
-      cy.findByRole("switch", { name: /cursor and vs code/i }).click({
-        force: true,
-      });
+      // The switches stay disabled until the setting details load, and a forced click on a disabled switch does nothing.
+      cy.findByRole("switch", { name: /cursor and vs code/i })
+        .should("be.enabled")
+        .click({ force: true });
 
       const hoverState = { mouseEntered: false };
       cy.findByRole("link", { name: "Install in Cursor" })

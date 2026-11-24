@@ -1,6 +1,6 @@
 ---
 name: dashboard-filters
-description: Dashboard parameters via dashboard_write — add_parameter types and value sources, the wire_parameter target grammar (target_field vs target_tag vs raw target), autowire, linked filters, inline parameters, tab visibility. Read before your first add_parameter or wire_parameter. Triggers — "add a filter to this dashboard", "wire a filter to these cards", "make a filter cascade", "filter dropdown values", "why isn't my filter showing / doing anything".
+description: Dashboard parameters via dashboard_write — add_parameter types and value sources, the wire_parameter target grammar (target_field vs target_tag vs raw target), autowire, linked filters, inline parameters, tab visibility. Read before your first add_parameter, remove_parameter or wire_parameter. Triggers — "add a filter to this dashboard", "wire a filter to these cards", "make a filter cascade", "filter dropdown values", "why isn't my filter showing / doing anything".
 ---
 
 # Dashboard filters
@@ -60,10 +60,12 @@ Two hard constraints: linked filters read **table-metadata foreign keys only** �
 - Parameters live in the header. `move_parameter` with `index` reorders; with `dashcard_id` it renders the widget **on that card** (inline). `add_card`'s `inline_parameters` does this at add time.
 - **Tabs:** a header filter appears on a tab only where it is wired to a card on *that* tab — a filter that "won't show" is usually wired only to another tab's cards.
 - A `temporal-unit` parameter binds only to a datetime column in the card query's **last** stage — after a time-bucketed summary it can't attach.
+- Two ops can drop connections: `replace_card`, and `wire_parameter` on a card with series. The write response lists them in `dropped_connections`, by filter, dashcard and card. An entry with `series: true` is a series card's connection, which only `patch_dashcard`'s `parameter_mappings` can restore. That patch replaces the dashcard's whole list, so send every mapping it keeps, the card's own included. Connections a patch leaves out are not listed in `dropped_connections`.
 
 ## Don't
 
 - Don't add a parameter without wiring it — the widget renders and filters nothing.
+- Don't remove a filter a subscription sets a value for without telling the user. The save archives that subscription, and restoring the dashboard from its history doesn't bring it back. The write response gives the number archived in `archived_subscription_count`, and lists the ones the caller can read in `archived_subscriptions`, with their filter names, creator, channels and recipient count. An entry with `already_broken: true` had lost its filter before this save, so this edit didn't break it. The count also covers ones the caller can't read, which aren't listed, and this edit may or may not have broken them.
 - Don't set `required: true` without a `default` — viewers are blocked until they pick a value.
 - Don't link a child filter that has a static-list/card source, or across a question/model join — the cascade silently doesn't apply.
 - Don't pass null to clear a default or link — it reads as omitted; use `clear`.

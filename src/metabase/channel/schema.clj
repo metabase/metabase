@@ -56,6 +56,14 @@
            :channel/email ::email-details}
     config/is-test? (assoc :channel/metabase-test ::test-details)))
 
+(mr/def ::channel.type
+  "The `:type` column of a Channel: one of the registered channel types, as a keyword or its string."
+  [:fn {:decode/normalize keyword
+        :decode/string    keyword
+        :json-schema      {:type "string"}
+        :error/message    "must be a registered channel type"}
+   #(and (or (keyword? %) (string? %)) (contains? channel-type->details-schema (keyword %)))])
+
 (mr/def ::channel.details
   "The `:details` column of a Channel, decoded, when the channel's `:type` is not at hand to pick the schema by. Decoding
   an `:or` keeps the first branch the value satisfies once decoded, and the request decoder strips undeclared keys, so
@@ -90,7 +98,7 @@
    [:id          ms/PositiveInt]
    [:name        :string]
    [:description {:optional true} [:maybe :string]]
-   [:type        ::lib.schema.common/keyword]
+   [:type        ::channel.type]
    [:active      {:optional true} :boolean]
    [:created_at  ms/TemporalInstant]
    [:updated_at  ms/TemporalInstant]])
@@ -102,15 +110,25 @@
    ::channel.details-by-type])
 
 (mr/def ::channel.update
-  "What an update (or insert) of a Channel accepts: every column of `:channel` except `id`, all optional."
+  "What an update of a Channel takes: its `:id` and the columns to change, every column of `:channel`."
   [:map {:closed true}
+   [:id          ms/PositiveInt]
    [:name        {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
-   [:type        {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:type        {:optional true} [:maybe ::channel.type]]
    [:details     {:optional true} [:maybe ::channel.details]]
    [:active      {:optional true} [:maybe :boolean]]
    [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at  {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::channel.create
+  "What a caller gives to create a Channel."
+  [:map {:closed true}
+   [:name                         :string]
+   [:type                         ::channel.type]
+   [:description {:optional true} [:maybe :string]]
+   [:details     {:optional true} [:maybe ::channel.details]]
+   [:active      {:optional true} [:maybe :boolean]]])
 
 (def channel-template-details-types
   "The `:type`s an email template's details can have: a Handlebars template written inline, or one shipped as a resource."
@@ -165,6 +183,13 @@
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::channel-template.create
+  "What a caller gives to create a ChannelTemplate."
+  [:map {:closed true}
+   [:channel_type                  [:or :keyword :string]]
+   [:name         {:optional true} [:maybe :string]]
+   [:details      {:optional true} [:maybe ::channel-template.details]]])
+
 (mr/def ::external-channel
   "A Channel as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}
@@ -173,3 +198,7 @@
     ::channel.details-by-type
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::bug-report.object
+  "A JSON object of diagnostic information in a bug report, forwarded as it arrived."
+  [:map {:closed false, :description "bug report diagnostic information"}])

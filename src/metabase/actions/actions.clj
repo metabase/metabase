@@ -29,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -202,6 +203,11 @@
    ctx       :- ActionContext
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
    inputs    :- [:sequential ::actions.args/any-arg-map]]
+  ;; writes here skip the QP's workspace SQL remapping, so they would hit production table names. Every implicit
+  ;; and data-grid entry point comes through here; data-grid editing never reaches
+  ;; [[metabase.actions.execution/execute-action!]]. Saved query actions never come through here: the check in
+  ;; `execute-action!` is their only gate, so do not remove it as a duplicate of this one.
+  (workspaces/check-not-in-workspace-mode! "Editing table data")
   (driver.conn/with-write-connection
     (lib-be/with-metadata-provider-cache
       (let [invocation-id  (u/generate-nano-id)
@@ -262,6 +268,24 @@
   (assert table-id "Id cannot be nil")
   (cached-database (cached-value [:table-by-db-ids table-id] #(actions.db/table-database-id table-id))))
 
+(defn- assoc-table-databases
+  "`arg-maps` of a table or data-grid row action, each with the Database id of its Table as `:database`, read for all
+  the distinct Tables together, an unknown Table being left to the normalizer to refuse."
+  [action-kw arg-maps]
+  (let [data-grid? (isa? actions.hierarchy/hierarchy action-kw :data-grid.row/common)
+        table?     (isa? actions.hierarchy/hierarchy action-kw :table.row/common)]
+    (if-not (or data-grid? table?)
+      arg-maps
+      (let [id->db (actions.db/table-database-ids (into #{} (comp (keep #(when (map? %) (:table-id %))) (filter pos-int?)) arg-maps))]
+        (for [arg-map arg-maps
+              :let [db-id (when (map? arg-map) (id->db (:table-id arg-map)))]]
+          (cond
+            (not (map? arg-map))                        arg-map
+            (and data-grid? db-id)                      (assoc arg-map :database db-id)
+            data-grid?                                  (dissoc arg-map :database)
+            (and db-id (not (:database arg-map)))       (assoc arg-map :database db-id)
+            :else                                       arg-map))))))
+
 (mu/defn- check-permissions
   [policy   :- :keyword
    arg-maps :- [:sequential [:or
@@ -312,7 +336,9 @@
                           (= "data-editing" (namespace action-kw))  :data-editing
                           :else                                     :ad-hoc-invocation))
           spec      (actions.args/action-arg-map-schema action-kw)
-          arg-maps  (map (partial actions.args/normalize-action-arg-map action-kw) arg-maps)
+          arg-maps  (->> arg-maps
+                         (assoc-table-databases action-kw)
+                         (map (partial actions.args/normalize-action-arg-map action-kw)))
           _        (actions.args/validate-inputs! action-kw arg-maps)
           errors   (for [arg-map arg-maps
                          :when (not (mr/validate spec arg-map))]
@@ -340,11 +366,7 @@
           :model-action
           (check-actions-enabled-for-database db)
           :data-editing
-          (do
-            ;; TODO more granular controls
-            (when-not (api/check-superuser)
-              (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
-            (check-data-editing-enabled-for-database db))))
+          (check-data-editing-enabled-for-database db)))
       (log/with-context {:db-id (:id db)}
         (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
           (let [context  (-> existing-context

@@ -191,8 +191,7 @@
 (deftest ^:parallel source-root-segment-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"
     (testing "The source of a segment is its underlying table."
-      (mt/with-temp [:model/Segment segment {:table_id   (mt/id :venues)
-                                             :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
+      (mt/with-temp [:model/Segment segment {:definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (let [{:keys [entity source]} (#'magic/->root segment)]
           (is (= entity segment))
           (is (= source (t2/select-one :model/Table :id (mt/id :venues)))))))))
@@ -782,7 +781,6 @@
           measure-definition (-> (lib/query mp venues-table)
                                  (lib/aggregate (lib/sum price-field)))]
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Price"
-                                                      :table_id   (mt/id :venues)
                                                       :definition measure-definition}]
         (let [mp' (lib-be/application-database-metadata-provider (mt/id))
               measure-meta (lib.metadata/measure mp' measure-id)
@@ -806,7 +804,6 @@
           measure-definition (-> (lib/query mp venues-table)
                                  (lib/aggregate (lib/sum price-field)))]
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Price"
-                                                      :table_id   (mt/id :venues)
                                                       :definition measure-definition}]
         (let [mp' (lib-be/application-database-metadata-provider (mt/id))
               measure-meta (lib.metadata/measure mp' measure-id)
@@ -838,14 +835,14 @@
 (deftest test-table-title-test
   (testing "Given the current automagic_dashboards/field/GenericTable.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Table {table-name :name :as table} {:name "FOO"}]
+      (mt/with-temp [:model/Table {table-name :name :as table} {:name "FOO" :display_name "Foo"}]
         (is (= (format "A look at %s" (u/capitalize-en table-name))
                (:name (mt/with-test-user :rasta (magic/automagic-analysis table nil)))))))))
 
 (deftest test-field-title-test
   (testing "Given the current automagic_dashboards/field/GenericField.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Field {field-name :name :as field} {:name "TOTAL"}]
+      (mt/with-temp [:model/Field {field-name :name :as field} {:name "TOTAL" :display_name "Total"}]
         (is (= (format "A look at the %s fields" (u/capitalize-en field-name))
                (:name (mt/with-test-user :rasta (magic/automagic-analysis field nil)))))))))
 
@@ -855,8 +852,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Segment {table-id    :table_id
                                      segment-name :name
-                                     :as          segment} {:table_id   (mt/id :venues)
-                                                            :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
+                                     :as          segment} {:definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (is (= (format "A look at %s in the %s segment"
                        (u/capitalize-en (t2/select-one-fn :name :model/Table :id table-id))
                        segment-name)
@@ -1095,19 +1091,30 @@
           (is (=? [{:tables [{:table {:id table-id}}]}]
                   (magic/candidate-tables (t2/select-one :model/Database :id db-id)))))))))
 
-(deftest ^:parallel call-count-test
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table    {table-id :id} {:db_id db-id}
-                 :model/Field    _ {:table_id table-id}
-                 :model/Field    _ {:table_id table-id}]
-    (mt/with-test-user :rasta
-      (automagic-dashboards.test/with-rollback-only-transaction
-        (let [database (t2/select-one :model/Database :id db-id)]
-          (t2/with-call-count [call-count]
-            (magic/candidate-tables database)
-            ;; 1. load the tables, 2. their permissions in one primed load however many there are, 3. the databases'
-            ;; own grants, which `table-permission-for-user` coalesces in and which loads once per request.
-            (is (<= (call-count) 3))))))))
+(deftest call-count-test
+  (testing "finding the candidate Tables of a Database takes the same number of queries for 2 Tables and for 6"
+    (mt/with-temp [:model/Database database {}]
+      (mt/with-test-user :rasta
+        (automagic-dashboards.test/with-rollback-only-transaction
+          (let [counted (fn [n]
+                          (let [table-ids (t2/insert-returning-pks! :model/Table
+                                                                    (for [i (range n)]
+                                                                      (assoc (mt/with-temp-defaults :model/Table)
+                                                                             :db_id (:id database)
+                                                                             :name (str "T" n "_" i))))]
+                            (t2/insert! :model/Field (for [table-id table-ids
+                                                           field-name ["A" "B"]]
+                                                       (assoc (mt/with-temp-defaults :model/Field)
+                                                              :table_id table-id
+                                                              :name field-name)))
+                            (t2/with-call-count [call-count]
+                              (let [candidates (magic/candidate-tables database)]
+                                [(count (mapcat :tables candidates)) (call-count)]))))
+                _                          (counted 1)
+                [small-tables small-calls] (counted 2)
+                [large-tables large-calls] (counted 6)]
+            (is (= [3 9] [small-tables large-tables]))
+            (is (= small-calls large-calls))))))))
 
 (deftest ^:parallel empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"
@@ -1636,7 +1643,7 @@
                                                                   :name            "15655"})
          ;; a wrong table_id used to be part of this repro (set by the FE, see #15655); table_id is now always
          ;; derived from the query, so this card gets table_id nil (its source is a native card)
-         :model/Card card {:table_id      (mt/id :orders) ; ignored: cleared since the query has no source table
+         :model/Card card {:table_id      nil
                            :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
                                                       :aggregation  [[:count]]
                                                       :breakout     [[:field "SOURCE" {:base-type :type/Text}]]}

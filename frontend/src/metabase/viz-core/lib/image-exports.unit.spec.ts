@@ -27,10 +27,10 @@ describe("getSaveDomImageStyles", () => {
     );
 
     expect(selectors).toHaveLength(5);
-    expect(
-      selectors.every((selector) =>
-        selector.startsWith(".mb-wrapper .saving-dom-image "),
+    expect(selectors).toEqual(
+      selectors.map(() =>
+        expect.stringMatching(/^\.mb-wrapper \.saving-dom-image /),
       ),
-    ).toBe(true);
+    );
   });
 });

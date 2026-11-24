@@ -14,7 +14,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -570,3 +571,25 @@
           (is (some? (channel.render/render-pulse-card-for-display
                       (channel.render/defaulted-timezone card) card result
                       {:channel.render/include-title? true}))))))))
+
+(deftest detect-pulse-chart-type-series-results-test
+  (let [data {:cols [{:base_type :type/Text :name "state"}
+                     {:base_type :type/Number :name "count"}]
+              :rows [["CA" 2] ["NY" 4]]}]
+    (mt/with-temp [:model/Card                {card-id :id}   {:display :line}
+                   :model/Card                {series-id :id} {:display :line}
+                   :model/Dashboard           {dash-id :id}   {}
+                   :model/DashboardCard       {dashcard-id :id :as dashcard} {:dashboard_id dash-id :card_id card-id}
+                   :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id :card_id series-id :position 0}]
+      (let [card (t2/select-one :model/Card :id card-id)]
+        (testing "a dashcard carrying its series results is detected from them without a statement"
+          (t2/with-call-count [call-count]
+            (is (= :javascript_visualization
+                   (channel.render/detect-pulse-chart-type card (assoc dashcard :series-results [{:card {:id series-id}}]) data)))
+            (is (zero? (call-count)))))
+        (testing "a dashcard carrying no series results is detected from its stored series"
+          (is (= :javascript_visualization
+                 (channel.render/detect-pulse-chart-type card dashcard data))))
+        (testing "a dashcard carrying an empty series results has no series"
+          (is (not= :javascript_visualization
+                    (channel.render/detect-pulse-chart-type (assoc card :display :table) (assoc dashcard :series-results []) data))))))))

@@ -5,7 +5,8 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,11 +43,11 @@
             nil))
 
 (defn- permitted-table-ids
-  [k pred table-ids]
+  [k pred hydration table-ids]
   (->> (memoized k table-ids
                  (fn [ids]
-                   (let [tables (into [] (keep (table-rows ids)) ids)]
-                     (perms/prime-table-perms-cache {:table-ids (into #{} (map :id) tables)})
+                   (let [tables (cond-> (into [] (keep (table-rows ids)) ids)
+                                  hydration (t2/hydrate hydration))]
                      (into {} (comp (filter pred) (map (juxt :id (constantly true)))) tables)))
                  false)
        (into #{} (keep (fn [[id permitted?]] (when permitted? id))))))
@@ -54,18 +55,24 @@
 (defn queryable-table-ids
   "Returns the subset of `table-ids` the current user may run queries against."
   [table-ids]
-  (permitted-table-ids :queryable-table mi/can-query? table-ids))
-
-(defn- data-accessible?
-  [table]
-  (perms/user-has-permission-for-table? api/*current-user-id*
-                                        :perms/view-data :unrestricted
-                                        (:db_id table) (:id table)))
+  (permitted-table-ids :queryable-table mi/can-query? :can_query table-ids))
 
 (defn data-accessible-table-ids
-  "Returns the subset of `table-ids` the current user has unrestricted view-data access to."
+  "Returns the subset of `table-ids` the current user has unrestricted view-data access to, read for all of them at
+  once."
   [table-ids]
-  (permitted-table-ids :data-accessible-table data-accessible? table-ids))
+  (->> (memoized :data-accessible-table table-ids
+                 (fn [ids]
+                   (let [tables (into [] (keep (table-rows ids)) ids)
+                         values (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                  :perms/view-data
+                                                                  (into {} (map (juxt :id :db_id)) tables))]
+                     (into {}
+                           (map (fn [{:keys [id]}]
+                                  [id (perms/at-least-as-permissive? :perms/view-data (get values id) :unrestricted)]))
+                           tables)))
+                 false)
+       (into #{} (keep (fn [[id permitted?]] (when permitted? id))))))
 
 (defn- row-restricted-by-db
   "`{table-id restricted?}` for one database's `tables`, computed from a single

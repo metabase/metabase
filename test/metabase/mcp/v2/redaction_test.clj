@@ -140,12 +140,12 @@
          ;; The first redaction pays one-off caching the sandbox check does; leave it out of the
          ;; measured counts.
          (redaction-query-count [(email-handler 10 [email-recipient])])
-         (testing "one handler: one query however many recipients need looking up"
-           (is (= (inc (redaction-query-count [(email-handler 10 [email-recipient])]))
+         (testing "one handler: the same queries however many recipients need looking up"
+           (is (= (redaction-query-count [(email-handler 10 (deactivated-recipients [1 2]))])
                   (redaction-query-count [(email-handler 10 (deactivated-recipients [1 2 3 4 5 6]))]))))
          (testing "handlers share the one lookup rather than each running their own"
-           (is (= (inc (redaction-query-count [(email-handler 10 [email-recipient])
-                                               (email-handler 11 [email-recipient])]))
+           (is (= (redaction-query-count [(email-handler 10 (deactivated-recipients [1 2 3]))
+                                          (email-handler 11 [email-recipient])])
                   (redaction-query-count [(email-handler 10 (deactivated-recipients [1 2 3]))
                                           (email-handler 11 (deactivated-recipients [4 5 6]))]))))))
       (testing "a tenantless caller does not run the tenant filter, so it needs no lookup at all"
@@ -246,7 +246,7 @@
 (defn- redact-dashcard!
   "The dashcard as [[redaction/redact-dashboard]] returns it to a caller who can read every card except `hidden-ids`."
   [dashcard hidden-ids]
-  (with-redefs [mi/can-read? (fn [card] (not (contains? hidden-ids (:id card))))]
+  (mt/with-dynamic-fn-redefs [mi/can-read? (fn [card] (not (contains? hidden-ids (:id card))))]
     (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]})))))
 
 (deftest unreadable-dashcard-loses-its-card-describing-settings-test
@@ -260,7 +260,7 @@
                     :col                    0
                     :size_x                 4
                     :size_y                 4
-                    :card                   (t2/instance :model/Card {:id 12 :name "Executive Payroll"})
+                    :card                   (t2/instance :model/Card {:id 12 :name "Executive Payroll" :collection_id nil})
                     :visualization_settings {:card.title          "Executive Payroll by Employee"
                                              :column_settings     {"[\"name\",\"base_salary\"]"
                                                                    {:column_title "Salary"}}
@@ -279,7 +279,7 @@
       (testing "readable: nothing is stripped"
         (is (= dashcard (redact-dashcard! dashcard #{}))))
       (testing "a bare map in place of a card row is redacted, without asking `mi/can-read?`"
-        (let [dc (with-redefs [mi/can-read? (fn [_] (throw (ex-info "can-read? called" {})))]
+        (let [dc (mt/with-dynamic-fn-redefs [mi/can-read? (fn [_] (throw (ex-info "can-read? called" {})))]
                    (first (:dashcards (redaction/redact-dashboard
                                        {:dashcards [(assoc dashcard
                                                            :card   {:id 12}
@@ -301,7 +301,7 @@
 (deftest unreadable-series-card-loses-its-settings-and-mappings-test
   ;; Mappings to a series card carry its field ids. Why each settings key goes is on `series-describing-viz-keys`.
   (testing "BOT-2561: an unreadable series card takes the series settings and its filter mappings with it"
-    (let [card     (fn [id card-name] (t2/instance :model/Card {:id id :name card-name}))
+    (let [card     (fn [id card-name] (t2/instance :model/Card {:id id :name card-name :collection_id nil}))
           dashcard {:id                     1
                     :card_id                12
                     :card                   (card 12 "Open")

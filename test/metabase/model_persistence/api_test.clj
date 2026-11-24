@@ -8,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (org.quartz.impl StdSchedulerFactory)))
@@ -69,6 +70,16 @@
                  :id      (u/the-id pinfo)
                  :state   "persisted"}
                 (mt/user-http-request :crowberto :get 200 (format "persist/%d" (u/the-id pinfo)))))))))
+
+(deftest persisted-info-list-test
+  (with-setup! db
+    (mt/with-temp
+      [:model/Card          model {:database_id (u/the-id db), :type :model}
+       :model/PersistedInfo pinfo {:database_id (u/the-id db), :card_id (u/the-id model)}]
+      (testing "GET /api/persist lists the persisted models of the databases with persisted models"
+        (is (=? [{:id (u/the-id pinfo) :card_id (u/the-id model) :database_id (u/the-id db)}]
+                (filter #(= (u/the-id db) (:database_id %))
+                        (:data (mt/user-http-request :crowberto :get 200 "persist")))))))))
 
 (deftest persisted-info-by-card-id-test
   (with-setup! db
@@ -201,6 +212,38 @@
       (mt/with-premium-features #{:cache-granular-controls}
         (testing "Does not return error status when unpersisting a card that is not persisted"
           (mt/user-http-request :crowberto :post 204 (format "persist/card/%d/unpersist" (u/the-id notmodel))))))))
+
+(deftest workspace-mode-refuses-persistence-writes-test
+  (testing "a workspace instance refuses each endpoint that leads to a write of a persisted-model table, with `persisted-models-enabled` on"
+    (with-persistence-setup! db
+      (mt/with-premium-features #{:cache-granular-controls}
+        (mt/with-temp
+          [:model/Card          model      {:type :model :database_id (u/the-id db)}
+           :model/PersistedInfo pmodel     {:card_id (u/the-id model) :database_id (u/the-id db) :state "off"}
+           :model/Database      unpersisted {:engine :postgres}]
+          (let [refused "Model persistence is not supported on a workspace instance."
+                state   #(t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))]
+            (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
+              (testing "persisting a card"
+                (is (= refused
+                       (mt/user-http-request :crowberto :post 400 (format "persist/card/%d/persist" (u/the-id model))))))
+              (testing "refreshing a card"
+                (is (= refused
+                       (mt/user-http-request :crowberto :post 400 (format "persist/card/%d/refresh" (u/the-id model))))))
+              (testing "enabling persistence for a database"
+                (is (= refused
+                       (mt/user-http-request :crowberto :post 400 (format "persist/database/%d/persist" (u/the-id unpersisted))))))
+              (testing "nothing is scheduled and no row changes"
+                (is (= "off" (state)))
+                (is (not (contains? (job-info-for-individual-refresh) (u/the-id pmodel))))
+                (is (nil? (t2/select-one-fn (comp :persist-models-enabled :settings) :model/Database
+                                            :id (u/the-id unpersisted)))))
+              (testing "unpersisting a card changes the app DB only, so it still works"
+                (mt/user-http-request :crowberto :post 204 (format "persist/card/%d/unpersist" (u/the-id model)))))
+            (testing "outside workspace mode, the same requests schedule the work"
+              (mt/user-http-request :crowberto :post 204 (format "persist/card/%d/persist" (u/the-id model)))
+              (is (= "creating" (state)))
+              (is (contains? (job-info-for-individual-refresh) (u/the-id pmodel))))))))))
 
 ;;;
 ;;; Database tests

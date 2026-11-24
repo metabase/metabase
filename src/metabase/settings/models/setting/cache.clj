@@ -6,10 +6,12 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.config.core :as config]
    [metabase.settings.db :as settings.db]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util.concurrent.atomic AtomicLong)
    (java.util.concurrent.locks ReentrantLock)))
@@ -173,12 +175,21 @@
    (log/debug "Refreshing Settings cache...")
    (reset! (cache* state) (settings.db/setting-values-by-key))))
 
+(defn- restore-if-out-of-date!
+  "Reloads the cache in `state` when it is out of date, returning true when it did."
+  [state]
+  (when (cache-out-of-date? state)
+    (restore-cache! state)
+    true))
+
 (defn restore-cache-if-needed!
   "Check whether the settings cache is out of date by reading the DB value of `settings-last-updated`, and reload the
   cache if so. Called on every Setting read, so the check is throttled to run at most once per
   `cache-update-check-interval-ms`; pass `:force-check? true` to skip that throttle and check now. Returns truthy when
   a reload happened.
-  Pass `:state` to check a state the caller already holds, instead of the one for the application DB this thread sees."
+  Pass `:state` to check a state the caller already holds, instead of the one for the application DB this thread sees.
+  In dev and test its statements are left out of `t2/with-call-count`, so a hook that reads a Setting passes the hook
+  statement guard of [[metabase.models.interface]]."
   [& {:keys [force-check? state]}]
   (let [{:keys [^AtomicLong last-update-check ^ReentrantLock restore-lock] :as state} (or state (current-state))]
     (when (or force-check? (time-for-another-update-check? last-update-check))
@@ -190,8 +201,9 @@
         (when (.tryLock restore-lock)
           (try
             (.set last-update-check (System/nanoTime))
-            (when (cache-out-of-date? state)
-              (restore-cache! state)
-              true)
+            (if config/is-prod?
+              (restore-if-out-of-date! state)
+              (binding [t2.pipeline/*call-count-thunk* nil]
+                (restore-if-out-of-date! state)))
             (finally
               (.unlock restore-lock))))))))

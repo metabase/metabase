@@ -133,8 +133,7 @@
     :archived_at false
     :deactivated_at false
     :updated_at  true
-    :owner_user_id false
-    :transform_id false}))
+    :owner_user_id false}))
 
 (defn- field-defaults []
   (merge
@@ -232,8 +231,7 @@
           :display_name        "Movie"
           :initial_sync_status "complete"
           :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]
-          :description         nil
-          :collection_id       false}))
+          :description         nil}))
 
 (defn- expected-studio-table []
   (merge (table-defaults)
@@ -242,8 +240,7 @@
           :display_name        "Studio"
           :initial_sync_status "complete"
           :fields              [(field:studio-name) (field:studio-studio)]
-          :description         ""
-          :collection_id       false}))
+          :description         ""}))
 
 (deftest sync-database-test
   (doseq [supports-schemas? [true false]]
@@ -273,14 +270,16 @@
       (binding [*supports-schemas?*                      supports-schemas?
                 sync-util/*log-exceptions-and-continue?* false]
         (mt/with-temp [:model/Database db     {:engine ::sync-test}
-                       :model/Table    movie  {:name        "movie"
-                                               :schema      (when *supports-schemas?* "default")
-                                               :db_id       (u/the-id db)
-                                               :description nil}
-                       :model/Table    studio {:name        "studio"
-                                               :schema      (when *supports-schemas?* "public")
-                                               :db_id       (u/the-id db)
-                                               :description ""}]
+                       :model/Table    movie  {:name         "movie"
+                                               :display_name "Movie"
+                                               :schema       (when *supports-schemas?* "default")
+                                               :db_id        (u/the-id db)
+                                               :description  nil}
+                       :model/Table    studio {:name         "studio"
+                                               :display_name "Studio"
+                                               :schema       (when *supports-schemas?* "public")
+                                               :db_id        (u/the-id db)
+                                               :description  ""}]
           (sync/sync-table! studio)
           (sync/sync-table! movie)
           (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))]
@@ -312,7 +311,7 @@
                  :fv {:values ["a" "b" "c"] :has_more_values false}}
                 (query-field-and-values))))
       (testing "After clearing and querying use long field values"
-        (field-values/clear-field-values-for-field! field)
+        (field-values/delete-field-values! (field-values/ids-of-fields [(u/the-id field)]))
         (get-or-create-vals ["a" "b" "c" (apply str (map str (range 100000)))])
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["a" "b" "c"] :has_more_values true}}

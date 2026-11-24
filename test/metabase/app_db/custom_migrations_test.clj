@@ -30,7 +30,7 @@
    [metabase.driver :as driver]
    [metabase.global-system.test-util :as global-system.tu]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
@@ -219,8 +219,7 @@
                      json/decode))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings)
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_card]
@@ -229,15 +228,13 @@
                      json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings)))
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
                      json/decode
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings)))))))))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))))))))))
 
 (deftest ^:mb/old-migrations-test migrate-legacy-result-metadata-field-refs-test
   (testing "Migrations v47.00-027: update report_card.result_metadata legacy field refs"
@@ -672,8 +669,7 @@
                      (get "visualization_settings")))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings)
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
@@ -683,16 +679,14 @@
                      (get "visualization_settings")))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings)))
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings)))))))))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))))))))))
 
 (deftest ^:mb/old-migrations-test revision-add-join-alias-to-column-settings-field-refs-test
   (testing "Migrations v47.00-034: update visualization_settings.column_settings legacy field refs"
@@ -818,8 +812,7 @@
                      json/decode))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings)
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_dashboardcard]
@@ -828,15 +821,13 @@
                      json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings)))
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_dashboardcard]
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
                      json/decode
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings)))))))))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))))))))))
 
 (deftest ^:mb/old-migrations-test add-join-alias-to-dashboard-card-visualization-settings-field-refs-test
   (testing "Migrations v47.00-044: update report_dashboardcard.visualization_settings.column_settings legacy field refs"
@@ -960,8 +951,7 @@
                      (get-in ["cards" 0 "visualization_settings"])))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings)
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
@@ -971,16 +961,14 @@
                      (get-in ["cards" 0 "visualization_settings"])))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings)))
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
                                     :where  [:= :id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])
-                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                     (#'mi/migrate-viz-settings)))))))))
+                     (->> (lib/normalize ::lib.schema.visualization/visualization-settings))))))))))
 
 (deftest ^:mb/old-migrations-test revision-add-join-alias-to-dashboard-card-column-settings-field-refs-test
   (testing "Migrations v47.00-046: update dashboard cards' visualization_settings.column_settings legacy field refs"
@@ -1069,80 +1057,75 @@
 (deftest ^:mb/old-migrations-test migrate-database-options-to-database-settings-test
   (let [do-test
         (fn [encrypted?]
-          ;; set-new-database-permissions! relies on the data_permissions table, which was added after the migrations
-          ;; we're testing here, so let's override it to be a no-op. Other tests add DBs using the table name instead of
-          ;; model name, so they don't hit the post-insert hook, but here we're relying on the transformations being
-          ;; applied so we can't do that.
-          (mt/with-dynamic-fn-redefs [database/set-new-database-permissions! (constantly nil)]
-            (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
-              (let [default-db                {:name       "DB"
-                                               :engine     "postgres"
-                                               :created_at :%now
-                                               :updated_at :%now}
-                    success-id                (first (t2/insert-returning-pks!
-                                                      :model/Database
-                                                      (merge default-db
-                                                             {:options  (json/encode {:persist-models-enabled true})
-                                                              :settings {:database-enable-actions true}})))
-                    options-nil-settings-id   (first (t2/insert-returning-pks!
-                                                      :model/Database
-                                                      (merge default-db
-                                                             {:options  (json/encode {:persist-models-enabled true})
-                                                              :settings nil})))
-                    options-empty-settings-id (first (t2/insert-returning-pks!
-                                                      :model/Database
-                                                      (merge default-db
-                                                             {:options  (json/encode {:persist-models-enabled true})
-                                                              :settings {}})))
-                    nil-options-id            (first (t2/insert-returning-pks!
-                                                      :model/Database
-                                                      (merge default-db
-                                                             {:options  nil
-                                                              :settings {:database-enable-actions true}})))
-                    empty-options-id          (first (t2/insert-returning-pks!
-                                                      :model/Database
-                                                      (merge default-db
-                                                             {:options  "{}"
-                                                              :settings {:database-enable-actions true}})))]
-                (testing "fowward migration\n"
-                  (when encrypted?
-                    (testing "make sure the settings is encrypted before the migration"
-                      (is (true? (encryption/possibly-encrypted-string?
-                                  (:settings (t2/query-one {:select [:settings]
-                                                            :from [:metabase_database]
-                                                            :where [[:= :id success-id]]})))))))
-                  (migrate!)
-                  (when encrypted?
-                    (testing "make sure the settings is encrypted after the migration"
-                      (is (true? (encryption/possibly-encrypted-string?
-                                  (:settings (t2/query-one {:select [:settings]
-                                                            :from [:metabase_database]
-                                                            :where [[:= :id success-id]]})))))))
-                  (testing "the options is merged into settings correctly"
-                    (is (= {:persist-models-enabled true
-                            :database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database :id success-id)))
-                    (testing "even when settings is nil"
-                      (is (= {:persist-models-enabled true}
-                             (t2/select-one-fn :settings :model/Database :id options-nil-settings-id))))
-                    (testing "even when settings is empty"
-                      (is (= {:persist-models-enabled true}
-                             (t2/select-one-fn :settings :model/Database :id options-empty-settings-id)))))
-                  (testing "nil or empty options doesn't break migration"
-                    (is (= {:database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database :id nil-options-id)))
-                    (is (= {:database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database :id empty-options-id)))))
-                (testing "rollback migration"
-                  (migrate! :down 46)
-                  (testing "the persist-models-enabled is assoced back to options"
-                    (is (= {:options  "{\"persist-models-enabled\":true}"
-                            :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] :id success-id))))
-                  (testing "if settings doesn't have :persist-models-enabled, then options is empty map"
-                    (is (= {:options  nil
-                            :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] :id empty-options-id)))))))))]
+          (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
+            (let [default-db                {:name       "DB"
+                                             :engine     "postgres"
+                                             :created_at :%now
+                                             :updated_at :%now}
+                  success-id                (first (t2/insert-returning-pks!
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  (json/encode {:persist-models-enabled true})
+                                                            :settings {:database-enable-actions true}})))
+                  options-nil-settings-id   (first (t2/insert-returning-pks!
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  (json/encode {:persist-models-enabled true})
+                                                            :settings nil})))
+                  options-empty-settings-id (first (t2/insert-returning-pks!
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  (json/encode {:persist-models-enabled true})
+                                                            :settings {}})))
+                  nil-options-id            (first (t2/insert-returning-pks!
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  nil
+                                                            :settings {:database-enable-actions true}})))
+                  empty-options-id          (first (t2/insert-returning-pks!
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  "{}"
+                                                            :settings {:database-enable-actions true}})))]
+              (testing "fowward migration\n"
+                (when encrypted?
+                  (testing "make sure the settings is encrypted before the migration"
+                    (is (true? (encryption/possibly-encrypted-string?
+                                (:settings (t2/query-one {:select [:settings]
+                                                          :from [:metabase_database]
+                                                          :where [[:= :id success-id]]})))))))
+                (migrate!)
+                (when encrypted?
+                  (testing "make sure the settings is encrypted after the migration"
+                    (is (true? (encryption/possibly-encrypted-string?
+                                (:settings (t2/query-one {:select [:settings]
+                                                          :from [:metabase_database]
+                                                          :where [[:= :id success-id]]})))))))
+                (testing "the options is merged into settings correctly"
+                  (is (= {:persist-models-enabled true
+                          :database-enable-actions true}
+                         (t2/select-one-fn :settings :model/Database :id success-id)))
+                  (testing "even when settings is nil"
+                    (is (= {:persist-models-enabled true}
+                           (t2/select-one-fn :settings :model/Database :id options-nil-settings-id))))
+                  (testing "even when settings is empty"
+                    (is (= {:persist-models-enabled true}
+                           (t2/select-one-fn :settings :model/Database :id options-empty-settings-id)))))
+                (testing "nil or empty options doesn't break migration"
+                  (is (= {:database-enable-actions true}
+                         (t2/select-one-fn :settings :model/Database :id nil-options-id)))
+                  (is (= {:database-enable-actions true}
+                         (t2/select-one-fn :settings :model/Database :id empty-options-id)))))
+              (testing "rollback migration"
+                (migrate! :down 46)
+                (testing "the persist-models-enabled is assoced back to options"
+                  (is (= {:options  "{\"persist-models-enabled\":true}"
+                          :settings {:database-enable-actions true}}
+                         (t2/select-one [:model/Database :settings :options] :id success-id))))
+                (testing "if settings doesn't have :persist-models-enabled, then options is empty map"
+                  (is (= {:options  nil
+                          :settings {:database-enable-actions true}}
+                         (t2/select-one [:model/Database :settings :options] :id empty-options-id))))))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))

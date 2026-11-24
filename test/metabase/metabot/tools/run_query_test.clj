@@ -980,7 +980,7 @@
                                         (t2/update! :model/NativeQuerySnippet :id snippet-id
                                                     {:content "SELECT 2 AS N FOR UPDATE"})))]
           (binding [qp.pipeline/*execute* (fn [_driver query respond]
-                                            (swap! driver-ran-sql conj (get-in query [:native :query]))
+                                            (swap! driver-ran-sql conj (:native (lib/query-stage query -1)))
                                             (respond {:cols [{:name "N"}]} []))]
             (is (= (not-read-only "It writes, takes a lock, or advances a sequence.")
                    (run-sql-tool! {"q1" query} {:query_id "q1"})))))
@@ -1504,3 +1504,15 @@
            "SELECT X, 10 / (X - 4) AS Y FROM SYSTEM_RANGE(1, 10)"
            [1 -3]
            "Division by zero"))))))
+
+(deftest saved-questions-read-statements-do-not-grow-test
+  (testing "reading the saved questions a query references takes as many statements for many as for few"
+    (mt/with-temp [:model/Card c1 {} :model/Card c2 {} :model/Card c3 {} :model/Card c4 {} :model/Card c5 {} :model/Card c6 {}]
+      (let [ids   (mapv :id [c1 c2 c3 c4 c5 c6])
+            read! (fn [n]
+                    (mt/with-dynamic-fn-redefs [lib/all-referenced-entity-ids-recursive (fn [_] {:card (take n ids)})]
+                      (t2/with-call-count [call-count]
+                        (is (= (take n ids) (map :id (#'run-query/saved-questions-read nil))))
+                        (call-count))))]
+        (read! 2)
+        (is (= (read! 2) (read! 6)))))))

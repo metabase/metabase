@@ -60,7 +60,7 @@
         models   (into #{}
                        (remove nil?)
                        (for [search-model (:models search-ctx)
-                             :let [spec (search.spec/spec search-model)]]
+                             :let [spec (search.spec/search-model-spec search-model)]]
                          (when (and (visible-to? search-ctx spec)
                                     (every? (spec-supported-attr-keys spec) required))
                            (:name spec))))]

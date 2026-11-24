@@ -21,7 +21,7 @@ import {
 } from "__support__/ui";
 import type { SearchFilters } from "metabase/common/search/types";
 import { reinitialize } from "metabase/plugins";
-import { Route } from "metabase/router";
+import { Route, useParams } from "metabase/router";
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -157,7 +157,10 @@ const setup = async ({
   const initialRoute = searchParams ? `/search?${searchParams}` : `/search`;
 
   const { router } = renderWithProviders(
-    <Route path="search" element={<SearchApp />} />,
+    <>
+      <Route path="search" element={<SearchApp />} />
+      <Route path="metric/:slug" element={<MetricPage />} />
+    </>,
     {
       withRouter: true,
       initialRoute,
@@ -171,6 +174,11 @@ const setup = async ({
     router: checkNotNull(router),
   };
 };
+
+function MetricPage() {
+  const { slug } = useParams();
+  return <h1>{`Metric page ${slug}`}</h1>;
+}
 
 const getSearchRequestUrls = () =>
   fetchMock.callHistory
@@ -240,6 +248,31 @@ describe("SearchApp", () => {
       expect(screen.queryByLabelText("pagination")).not.toBeInTheDocument();
     });
 
+    it("links to the parent dashboard inside a dashboard question's result row", async () => {
+      await setup({
+        searchText: "Total Orders",
+        searchItems: [
+          createMockSearchResult({
+            model: "card",
+            name: "Total Orders Dashboard Question",
+            dashboard: {
+              id: 5,
+              name: "Orders in a dashboard",
+              moderation_status: null,
+            },
+          }),
+        ],
+      });
+
+      const row = within(screen.getByTestId("search-result-item"));
+      expect(row.getByTestId("search-result-item-name")).toHaveTextContent(
+        "Total Orders Dashboard Question",
+      );
+      expect(
+        row.getByRole("link", { name: "Orders in a dashboard" }),
+      ).toHaveAttribute("href", "/dashboard/5-orders-in-a-dashboard");
+    });
+
     it("renders search results and pagination when there is more than PAGE_SIZE results", async () => {
       await setup({ searchText: "Test" });
       const getPaginationTotal = () => screen.getByTestId("pagination-total");
@@ -285,6 +318,12 @@ describe("SearchApp", () => {
       const params = new URL(searchRequests[0].url).searchParams;
       expect(params.get("context")).toBe("search-app");
       expect(params.get("q")).toBe("orders");
+    });
+
+    it("should include dashboard questions in the search request", async () => {
+      await setup({ searchText: "orders" });
+
+      expectLastSearchRequestParam("include_dashboard_questions", ["true"]);
     });
   });
 
@@ -526,6 +565,55 @@ describe("SearchApp", () => {
       expect(
         getFilter("type").queryByLabelText("close icon"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("metrics", () => {
+    it("should filter the results to metrics and open a metric", async () => {
+      const { router } = await setup({
+        searchText: "Count of orders",
+        searchItems: [
+          createMockSearchResult({
+            id: 1,
+            model: "card",
+            name: "Count of orders by month",
+          }),
+          createMockSearchResult({
+            id: 2,
+            model: "metric",
+            name: "Count of orders",
+          }),
+        ],
+      });
+
+      const searchApp = within(screen.getByTestId("search-app"));
+      expect(searchApp.getByText("Count of orders")).toBeInTheDocument();
+      expect(searchApp.getByText("2 results")).toBeInTheDocument();
+
+      await userEvent.click(
+        within(screen.getByTestId("type-search-filter")).getByTestId(
+          "sidebar-filter-dropdown-button",
+        ),
+      );
+      await waitForLoaderToBeRemoved();
+      const popover = within(screen.getByTestId("popover"));
+      await userEvent.click(popover.getByRole("checkbox", { name: "Metric" }));
+      await userEvent.click(popover.getByRole("button", { name: "Apply" }));
+
+      expectLocationParam(router, "type", ["metric"]);
+      await waitFor(() => expectLastSearchRequestParam("models", ["metric"]));
+      expect(await searchApp.findByText("1 result")).toBeInTheDocument();
+      expect(
+        searchApp.queryByText("Count of orders by month"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(searchApp.getByText("Count of orders"));
+      expect(
+        await screen.findByRole("heading", {
+          name: "Metric page 2",
+        }),
+      ).toBeInTheDocument();
+      expect(router.location.pathname).toBe("/metric/2");
     });
   });
 

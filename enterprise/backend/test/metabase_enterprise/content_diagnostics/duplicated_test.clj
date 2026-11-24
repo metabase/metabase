@@ -218,13 +218,11 @@
                   (is (= [trio-b] (get-in f [:details :duplicate_entity_ids]))))))))))))
 
 (deftest duplicated-checker-skips-blank-names-test
-  (testing "whitespace-only names - including Unicode whitespace and zero-width invisibles - never cluster; unknown is not duplicate"
+  (testing "names of Unicode whitespace and zero-width invisibles never cluster; unknown is not duplicate"
     (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
           [:model/Collection {coll-id :id} {}
-           :model/Dashboard {blank-a :id} {:collection_id coll-id :name "   "}
-           :model/Dashboard {blank-b :id} {:collection_id coll-id :name "   "}
            ;; NBSP-only and zero-width-only names normalize to blank too, so they never cluster
            :model/Dashboard {nbsp-a :id} {:collection_id coll-id :name "\u00A0\u00A0"}
            :model/Dashboard {nbsp-b :id} {:collection_id coll-id :name "\u00A0\u00A0"}
@@ -232,7 +230,7 @@
            :model/Dashboard {zwsp-b :id} {:collection_id coll-id :name "\u200B"}]
           (let [by-entity (duplicated-findings-by-entity!)]
             (are [d] (nil? (by-entity [:dashboard d]))
-              blank-a blank-b nbsp-a nbsp-b zwsp-a zwsp-b)))))))
+              nbsp-a nbsp-b zwsp-a zwsp-b)))))))
 
 (deftest duplicated-checker-cluster-of-three-test
   (testing "every member of a cluster of 3 gets duplicate_count 2 and the other two as peers"

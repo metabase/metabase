@@ -43,7 +43,6 @@
 ;;
 ;; <hr />
 
-
 (ns dev
   "Put everything needed for REPL development within easy reach"
   (:require
@@ -64,7 +63,6 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [malli.dev :as malli-dev]
-   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.env :as mdb.env]
    [metabase.channel.email :as email]
@@ -227,12 +225,6 @@
   session"
   [model-sym]
   `(require [(symbol (str "metabase.models." (quote ~model-sym))) :as (quote ~model-sym)]))
-
-(defmacro with-permissions
-  "Execute the body with the given permissions."
-  [permissions & body]
-  `(binding [api/*current-user-permissions-set* (delay ~permissions)]
-     ~@body))
 
 (defn query-jdbc-db
   "Execute a SQL query against a JDBC database. Useful for testing SQL syntax locally.

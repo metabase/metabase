@@ -67,7 +67,9 @@
    "nativequerysnippet" ::native-query-snippets.schema/native-query-snippet
    "pythonlibrary"      ::transforms-python.schema/python-library
    "segment"            ::segments.schema/segment
+   "segmenttest"        ::data-testing.schema/segment-test
    "tableusersettings"  ::warehouse-schema.schema/table-user-settings
+   "testsuite"          ::data-testing.schema/test-suite.synced-item
    "timeline"           ::timeline.schema/timeline
    "transform"          ::transforms.schema/transform
    "transformtag"       ::transforms.schema/transform-tag

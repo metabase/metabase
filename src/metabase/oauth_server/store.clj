@@ -2,6 +2,10 @@
   "Database-backed implementations of OAuth provider storage protocols."
   (:require
    [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.oauth-server.models.oauth-access-token :as oauth-access-token]
+   [metabase.oauth-server.models.oauth-authorization-code :as oauth-authorization-code]
+   [metabase.oauth-server.models.oauth-client :as oauth-client]
+   [metabase.oauth-server.models.oauth-refresh-token :as oauth-refresh-token]
    [metabase.util :as u]
    [oidc-provider.protocol :as proto]
    [toucan2.core :as t2]))
@@ -70,37 +74,46 @@
   [:user_id :client_id :redirect_uri :scope :nonce :expiry
    :code_challenge :code_challenge_method :resource])
 
+(defn- resource-or-nil
+  "A stored `resource` as a vector, or nil when it names none."
+  [resource]
+  ;; oidc-provider checks a refresh's `resource` against the token's whenever the token has one, and `[]` would count
+  ;; as one that contains nothing.
+  (not-empty (vec resource)))
+
 (defn- db-row->auth-code
   "Convert a DB row from :model/OAuthAuthorizationCode to the protocol's map shape.
    Converts user-id to a string since the oidc-provider library expects string user IDs.
-   Ensures :resource is a vector (JSON deserialization may return a list)."
+   Gives :resource as for [[resource-or-nil]]."
   [row]
   (when row
     (-> (select-and-kebab-keys row auth-code-db-columns)
         (update :user-id #(some-> % str))
-        (u/update-if-exists :resource vec))))
+        (u/update-if-exists :resource resource-or-nil))))
 
 (def ^:private access-token-db-columns
   [:user_id :client_id :scope :expiry :resource])
 
 (defn- db-row->access-token
-  "Convert a DB row from :model/OAuthAccessToken to the protocol's map shape."
+  "Convert a DB row from :model/OAuthAccessToken to the protocol's map shape, with :resource as for
+   [[resource-or-nil]]."
   [row]
   (when row
     (-> (select-and-kebab-keys row access-token-db-columns)
         (update :user-id #(some-> % str))
-        (u/update-if-exists :resource vec))))
+        (u/update-if-exists :resource resource-or-nil))))
 
 (def ^:private refresh-token-db-columns
   [:user_id :client_id :scope :expiry :resource])
 
 (defn- db-row->refresh-token
-  "Convert a DB row from :model/OAuthRefreshToken to the protocol's map shape."
+  "Convert a DB row from :model/OAuthRefreshToken to the protocol's map shape, with :resource as for
+   [[resource-or-nil]]."
   [row]
   (when row
     (-> (select-and-kebab-keys row refresh-token-db-columns)
         (update :user-id #(some-> % str))
-        (u/update-if-exists :resource vec))))
+        (u/update-if-exists :resource resource-or-nil))))
 
 ;;; ------------------------------------------------ ClientStore -------------------------------------------------------
 
@@ -127,7 +140,7 @@
                           (-> (assoc :client-secret-hash (:client-secret client-config))
                               (dissoc :client-secret))))
           row       (client-config->db-row config)]
-      (oauth-server.db/insert-oauth-client! row)
+      (oauth-client/create-oauth-client! row)
       config))
 
   (update-client [_ client-id updated-config]
@@ -137,7 +150,7 @@
               merged          (-> (merge existing-config updated-config)
                                   (assoc :client-id client-id))
               row             (client-config->db-row merged)]
-          (oauth-server.db/update-oauth-client! (:id existing) row)
+          (oauth-client/update-oauth-clients! [(assoc row :id (:id existing))])
           merged)))))
 
 ;;; ----------------------------------------- AuthorizationCodeStore ---------------------------------------------------
@@ -145,7 +158,7 @@
 (defrecord DbAuthorizationCodeStore []
   proto/AuthorizationCodeStore
   (save-authorization-code [_ code user-id client-id redirect-uri scope nonce expiry code-challenge code-challenge-method resource]
-    (oauth-server.db/insert-authorization-code!
+    (oauth-authorization-code/create-oauth-authorization-code!
      (cond-> {:code         code
               :user_id      (parse-user-id-or-throw user-id)
               :client_id    client-id
@@ -155,7 +168,7 @@
               :expiry       expiry}
        code-challenge        (assoc :code_challenge code-challenge)
        code-challenge-method (assoc :code_challenge_method code-challenge-method)
-       resource              (assoc :resource (vec resource))))
+       (seq resource)        (assoc :resource (vec resource))))
     true)
 
   (get-authorization-code [_ code]
@@ -163,13 +176,13 @@
         db-row->auth-code))
 
   (delete-authorization-code [_ code]
-    (oauth-server.db/delete-authorization-code! code)
+    (oauth-authorization-code/delete-oauth-authorization-codes! (oauth-server.db/authorization-code-ids-with-code code))
     true)
 
   (consume-authorization-code [_ code]
     (t2/with-transaction [_conn]
       (when-let [row (oauth-server.db/lock-authorization-code code)]
-        (oauth-server.db/delete-authorization-code! code)
+        (oauth-authorization-code/delete-oauth-authorization-codes! [(:id row)])
         (db-row->auth-code row)))))
 
 ;;; ------------------------------------------------ TokenStore --------------------------------------------------------
@@ -177,13 +190,13 @@
 (defrecord DbTokenStore []
   proto/TokenStore
   (save-access-token [_ token user-id client-id scope expiry resource]
-    (oauth-server.db/insert-access-token!
+    (oauth-access-token/create-oauth-access-token!
      (cond-> {:token     token
               :user_id   (parse-user-id user-id)
               :client_id client-id
               :scope     (vec scope)
               :expiry    expiry}
-       resource (assoc :resource (vec resource))))
+       (seq resource) (assoc :resource (vec resource))))
     true)
 
   (get-access-token [_ token]
@@ -191,13 +204,13 @@
         db-row->access-token))
 
   (save-refresh-token [_ token user-id client-id scope expiry resource]
-    (oauth-server.db/insert-refresh-token!
+    (oauth-refresh-token/create-oauth-refresh-token!
      (cond-> {:token     token
               :user_id   (parse-user-id user-id)
               :client_id client-id
               :scope     (vec scope)}
-       expiry   (assoc :expiry expiry)
-       resource (assoc :resource (vec resource))))
+       expiry         (assoc :expiry expiry)
+       (seq resource) (assoc :resource (vec resource))))
     true)
 
   (get-refresh-token [_ token]
@@ -205,8 +218,8 @@
         db-row->refresh-token))
 
   (revoke-token [_ token]
-    (oauth-server.db/revoke-access-token! token)
-    (oauth-server.db/revoke-refresh-token! token)
+    (oauth-access-token/revoke-oauth-access-token! token)
+    (oauth-refresh-token/revoke-oauth-refresh-token! token)
     true))
 
 ;;; ------------------------------------------------ Constructors ------------------------------------------------------

@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.content-verification.core :as moderation]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -30,4 +31,4 @@
     (api/check-404 (case (get moderation/moderated-item-type->model moderated_item_type)
                      :model/Card      (content-verification.db/card-exists? moderated_item_id)
                      :model/Dashboard (content-verification.db/dashboard-exists? moderated_item_id)))
-    (moderation/create-review! review-data)))
+    (first (moderation-review/create-moderation-reviews! [review-data]))))

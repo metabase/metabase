@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
@@ -17,7 +18,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp.core]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
@@ -1208,47 +1209,48 @@
               ;; Collection inherits Root Collection perms when created
               ;;
               ;; allowing `with-temp` here since we need it to make a Collection
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (mt/with-temp [:model/Collection collection {}
-                             :model/Card       card {:collection_id (u/the-id collection), :dataset_query query}]
-                (is (=? {:status "completed"}
-                        (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
-                (testing "... with the pivot-table endpoints"
-                  (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
+              (mt/with-model-cleanup [:model/Collection]
+                (let [[collection] (collection/create-collections! [{:name "Test Collection"}])]
+                  #_{:clj-kondo/ignore [:discouraged-var]}
+                  (mt/with-temp [:model/Card       card {:collection_id (u/the-id collection), :dataset_query query}]
                     (is (=? {:status "completed"}
-                            result))
-                    (is (= [["Doohickey" "Affiliate" 0 783]
-                            ["Doohickey" "Facebook" 0 816]
-                            ["Doohickey" "Google" 0 844]
-                            ["Doohickey" "Organic" 0 738]
-                            ["Doohickey" "Twitter" 0 795]
-                            ["Gadget" "Affiliate" 0 899]
-                            ["Gadget" "Facebook" 0 1041]
-                            ["Gadget" "Google" 0 971]
-                            ["Gadget" "Organic" 0 1038]
-                            ["Gadget" "Twitter" 0 990]
-                            ["Gizmo" "Affiliate" 0 876]
-                            ["Gizmo" "Facebook" 0 994]
-                            ["Gizmo" "Google" 0 956]
-                            ["Gizmo" "Organic" 0 972]
-                            ["Gizmo" "Twitter" 0 986]
-                            ["Widget" "Affiliate" 0 962]
-                            ["Widget" "Facebook" 0 1055]
-                            ["Widget" "Google" 0 1027]
-                            ["Widget" "Organic" 0 1016]
-                            ["Widget" "Twitter" 0 1001]
-                            [nil "Affiliate" 1 3520]
-                            [nil "Facebook" 1 3906]
-                            [nil "Google" 1 3798]
-                            [nil "Organic" 1 3764]
-                            [nil "Twitter" 1 3772]
-                            ["Doohickey" nil 2 3976]
-                            ["Gadget" nil 2 4939]
-                            ["Gizmo" nil 2 4784]
-                            ["Widget" nil 2 5061]
-                            [nil nil 3 18760]]
-                           (mt/rows (qp.pivot/run-pivot-query query))
-                           (mt/rows result)))))))))))))
+                            (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
+                    (testing "... with the pivot-table endpoints"
+                      (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
+                        (is (=? {:status "completed"}
+                                result))
+                        (is (= [["Doohickey" "Affiliate" 0 783]
+                                ["Doohickey" "Facebook" 0 816]
+                                ["Doohickey" "Google" 0 844]
+                                ["Doohickey" "Organic" 0 738]
+                                ["Doohickey" "Twitter" 0 795]
+                                ["Gadget" "Affiliate" 0 899]
+                                ["Gadget" "Facebook" 0 1041]
+                                ["Gadget" "Google" 0 971]
+                                ["Gadget" "Organic" 0 1038]
+                                ["Gadget" "Twitter" 0 990]
+                                ["Gizmo" "Affiliate" 0 876]
+                                ["Gizmo" "Facebook" 0 994]
+                                ["Gizmo" "Google" 0 956]
+                                ["Gizmo" "Organic" 0 972]
+                                ["Gizmo" "Twitter" 0 986]
+                                ["Widget" "Affiliate" 0 962]
+                                ["Widget" "Facebook" 0 1055]
+                                ["Widget" "Google" 0 1027]
+                                ["Widget" "Organic" 0 1016]
+                                ["Widget" "Twitter" 0 1001]
+                                [nil "Affiliate" 1 3520]
+                                [nil "Facebook" 1 3906]
+                                [nil "Google" 1 3798]
+                                [nil "Organic" 1 3764]
+                                [nil "Twitter" 1 3772]
+                                ["Doohickey" nil 2 3976]
+                                ["Gadget" nil 2 4939]
+                                ["Gizmo" nil 2 4784]
+                                ["Widget" nil 2 5061]
+                                [nil nil 3 18760]]
+                               (mt/rows (qp.pivot/run-pivot-query query))
+                               (mt/rows result)))))))))))))))
 
 (deftest ^:parallel pivot-with-order-by-test
   (testing "Pivot queries should work if there is an `:order-by` clause (#17198)"

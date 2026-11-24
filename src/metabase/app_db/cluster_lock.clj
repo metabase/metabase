@@ -9,7 +9,7 @@
     and vice versa.
 
   This lets callers build intent-lock patterns (shared on a root + exclusive on
-  a leaf) — see [[metabase.permissions.models.data-permissions/with-db-scoped-permissions-lock]]
+  a leaf) — see [[metabase.permissions.data-permissions/with-db-scoped-permissions-lock]]
   for an example.
 
   Lock ordering rule: if you acquire multiple cluster locks, always acquire them

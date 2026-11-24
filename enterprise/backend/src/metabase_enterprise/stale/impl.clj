@@ -2,8 +2,7 @@
   (:require
    [metabase-enterprise.stale.db :as stale.db]
    [metabase.staleness.core :as staleness]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,13 +22,12 @@
     [:set {:doc "Extra union columns to return on each row (rows carry only :id and :model by default)."}
      [:enum :name :last_used_at :collection_id]]]])
 
-(defn- queries [{:keys [models] :or {models #{:model/Card :model/Dashboard}} :as args}]
-  ;; Ensure each model's namespace is loaded so its `find-stale-query` method is registered before we
-  ;; dispatch — passing the `:model/X` keyword alone does not trigger Toucan model resolution.
-  (run! t2/resolve-model models)
-  (when-let [unsupported (seq (remove #(get-method staleness/find-stale-query %) models))]
-    (throw (ex-info (str "No staleness method registered for: " (vec unsupported)) {})))
-  (map #(staleness/find-stale-query % args) models))
+(defn- queries [{:keys [models] :as args}]
+  (let [models  (or models (staleness/rendered-models))
+        options (select-keys args [:collection-ids :cutoff-date])]
+    (when-let [unsupported (seq (remove staleness/candidates-fn models))]
+      (throw (ex-info (str "No staleness spec registered for: " (vec unsupported)) {})))
+    (map #((staleness/candidates-fn %) options) models)))
 
 (mu/defn find-candidates :- [:map
                              [:rows [:sequential [:map

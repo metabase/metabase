@@ -109,6 +109,7 @@
    [:output            :string]
    [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
    [:data-parts        {:optional true} [:sequential DataPart]]
+   [:non-terminal?     {:optional true} :boolean]
    [:error             {:optional true} [:map {:closed true}
                                          [:class        [:enum :validation :recoverable :unrecoverable]]
                                          [:code         :keyword]
@@ -133,8 +134,7 @@
 
   `{:query {\"stages\" []}}` passes. `{\"query\" {\"stages\" []}}` and `{:query {:stages []}}` do not: the argument
   names are keywords, and the values are `::decoded-json`, with string keys."
-  [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   :keyword ::decoded-json])
+  [:map-of :keyword ::decoded-json])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
@@ -225,8 +225,7 @@
 (def ^:private JSONSchemaProperties
   "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
   string keys off the wire, keyword keys when built in Clojure."
-  [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
-   [:or :string :keyword] JSONSchemaLeaf])
+  [:map-of [:or :string :keyword] JSONSchemaLeaf])
 
 (def ^:private JSONSchemaNode
   "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
@@ -503,6 +502,15 @@
                args)
     args))
 
+(defn error-chunk
+  "The AI SDK `:error` chunk for `error-text`, with the provider's `error` object when it sent one.
+
+  The object keeps fields that the text loses, such as OpenRouter's `metadata.error_type` or an error code, so that
+  Metabot can classify the failure. Its `:message` is `error-text`."
+  [error error-text]
+  (cond-> {:type :error :errorText error-text}
+    (map? error) (assoc :error (assoc error :message error-text))))
+
 (defn- aisdk-chunks->part [[chunk :as chunks]]
   (case (:type chunk)
     :start                 {:type :start
@@ -511,8 +519,8 @@
     ;; Provider adapters emit AI SDK v5 error chunks (`{:type :error :errorText "..."}`). The rest of the
     ;; pipeline — `format-error-line` and `metabot.persistence`'s turn finalize — keys off an internal
     ;; `{:error {:message ...}}` part instead, so translate here. Internally-generated error parts (usage
-    ;; limits, agent-loop exceptions) and the error chunks of Claude and Chat Completions, which keep the
-    ;; provider's own error object, already carry an `:error` map; pass those through unchanged.
+    ;; limits, agent-loop exceptions) and the error chunks that keep the provider's own error object (Claude's, and
+    ;; [[error-chunk]]'s), already carry an `:error` map; pass those through unchanged.
     :error                 (if (:error chunk)
                              chunk
                              {:type :error :error {:message (:errorText chunk)}})
@@ -814,7 +822,7 @@
     :tool-input       -> tool-input-available
     :tool-output      -> tool-output-available | tool-output-error
     :data             -> data-<data-type>
-    :error            -> [start + start-step]? error
+    :error            -> [start + start-step]? error (`:provider-failure` sets finish.messageMetadata.providerFailure)
     :usage            -> (accumulated; emitted as finish.message_metadata)
     :finish           -> (recorded — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
@@ -823,6 +831,7 @@
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
+           provider-failure  (volatile! nil)
            finish-reason     (volatile! nil)
            loop-finish-reason (volatile! nil)
            started?          (volatile! false)
@@ -864,7 +873,8 @@
          ([] (rf))
          ([result]
           (let [metadata (merge (->message-metadata @usage-by-model @last-call context-window-tokens)
-                                (when @finish-error-code {:errorCode @finish-error-code}))
+                                (when @finish-error-code {:errorCode @finish-error-code})
+                                (when @provider-failure {:providerFailure @provider-failure}))
                 finish   (cond-> {:type         "finish"
                                   :finishReason (completion-finish-reason @finish-reason @error? @loop-finish-reason)}
                            (seq metadata) (assoc :messageMetadata metadata))]
@@ -953,6 +963,8 @@
                 (vreset! error? true)
                 (when-let [code (some-> (:error-code (:error part)) name)]
                   (vreset! finish-error-code code))
+                (when-let [kind (:provider-failure part)]
+                  (vreset! provider-failure (u/kebab->snake (name kind))))
                 (rf (ensure-started result) (format-error-line part)))
 
               :finish
@@ -1397,14 +1409,27 @@
   otherwise surface raw instead of in the provider-friendly error shape.
 
   Takes the reducible first so adapters can thread it straight off
-  [[sse-reducible]]/`capture-stream` with `->`."
+  [[sse-reducible]]/`capture-stream` with `->`.
+
+  An exception that `rf` throws comes from Metabot's own code downstream (the adapter's chunk translation, the agent
+  loop), so it is rethrown as it is, without the provider tag. The chunk translation counts as Metabot's code also
+  when it throws because the provider sent a stream that is wrong, such as an event with no type: nothing here can
+  tell that case from a fault in the translation."
   [reducible provider res->message]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
-      (try
-        (reduce rf init reducible)
-        (catch Exception e
-          (rethrow-api-error! provider res->message e))))))
+      (let [downstream (volatile! nil)
+            guarded-rf (fn [acc x]
+                         (try
+                           (rf acc x)
+                           (catch Exception e
+                             (vreset! downstream e)
+                             (throw e))))]
+        (try
+          (reduce guarded-rf init reducible)
+          (catch Exception e
+            ;; A wrapper between here and the provider stream may have translated the exception, so check the record.
+            (throw (or @downstream (rethrow-api-error! provider res->message e)))))))))
 
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."

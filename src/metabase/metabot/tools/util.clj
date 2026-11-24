@@ -535,8 +535,8 @@
   [card-ids]
   (when (seq card-ids)
     (into {}
-          (comp (filter mi/can-read?) (u/index-by :id))
-          (metabot.db/card-source-rows card-ids))))
+          (u/index-by :id)
+          (mi/readable (metabot.db/card-source-rows card-ids)))))
 
 (defn card-source-table-id
   "Return the ID of the table that the card with `card-id` reads from, following its source cards.

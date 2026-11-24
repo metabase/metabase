@@ -36,8 +36,6 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-
-    H.mockEmbedJsToDevServer();
   });
 
   Object.entries(DATA_BY_EMBEDDING_TYPE).forEach(([key, value]) => {
@@ -179,8 +177,6 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
       if (token) {
         H.activateToken(token);
       }
-
-      H.mockEmbedJsToDevServer();
     });
 
     const openNewGuestEmbed = () => {

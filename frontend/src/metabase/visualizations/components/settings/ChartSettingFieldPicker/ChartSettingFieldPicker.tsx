@@ -36,6 +36,7 @@ type ChartSettingFieldPickerProps = {
   dragHandleListeners?: Partial<ComponentPropsWithoutRef<typeof Icon>>;
   dragHandleRef?: Ref<HTMLElement>;
   fieldSettingWidget?: string | null;
+  hasDefaultInputStyle?: boolean;
   onChange?: (value: string) => void;
   onChangeSeriesColor?: (
     seriesKey: string,
@@ -61,6 +62,7 @@ export const ChartSettingFieldPicker = ({
   dragHandleListeners,
   dragHandleRef,
   fieldSettingWidget = null,
+  hasDefaultInputStyle,
   onChange,
   onChangeSeriesColor,
   onRemove,
@@ -125,9 +127,12 @@ export const ChartSettingFieldPicker = ({
 
   return (
     <Group
-      className={cx(S.root, className)}
+      className={cx(
+        S.root,
+        { [S.defaultInputStyle]: hasDefaultInputStyle },
+        className,
+      )}
       data-testid="chartsettings-field-picker"
-      bg="background_page-primary"
       align="center"
     >
       <ChartSettingSelect
@@ -210,3 +215,11 @@ export const ChartSettingFieldPicker = ({
     </Group>
   );
 };
+
+/**
+ * The picker as a single field of the chart settings, styled like the other inputs,
+ * e.g. the Metric field of a map.
+ */
+export const ChartSettingSingleFieldPicker = (
+  props: ChartSettingFieldPickerProps,
+) => <ChartSettingFieldPicker {...props} hasDefaultInputStyle />;

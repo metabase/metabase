@@ -1,6 +1,6 @@
 ---
 title: "IP allowlist"
-summary: Limit access to your Metabase Cloud instance to approved IP addresses, covering the API, embeds, and public links too.
+summary: Limit access to your Metabase Cloud instance, including its API, embeds, and public links, to approved IP addresses.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

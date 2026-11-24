@@ -62,7 +62,7 @@
 
 (defn- raw-template-tags
   "The stored template-tags of a native `dataset-query`, keyed by tag name — read from whichever
-   slot the query keeps them in: the legacy `[:native :template-tags]` map, or a pMBQL native
+   slot the query keeps them in: the legacy `[:native :template-tags]` map, or a MBQL 5 native
    stage's tag vector."
   [dataset-query]
   (or (not-empty (get-in dataset-query [:native :template-tags]))
@@ -84,9 +84,9 @@
   (try
     (let [ids (lib/all-source-card-ids-recursive query)]
       (or (empty? ids)
-          (let [cards (mcp.db/select-by-ids :model/Card ids)]
+          (let [cards (t2/hydrate (mcp.db/select-by-ids :model/Card ids) :can_read)]
             (and (= (count cards) (count ids))
-                 (every? mi/can-read? cards)))))
+                 (every? mi/can-read? (t2/hydrate cards :can_read))))))
     (catch Exception _ false)))
 
 (def ^:private max-native-summary-length
@@ -286,7 +286,7 @@
   (mapv (fn [node]
           (u/remove-nils {:type    (:type node)
                           :card_id (when (= (:type node) prose-mirror/card-embed-type)
-                                     (get-in node [:attrs "id"]))
+                                     (get-in node [:attrs :id]))
                           :text    (not-empty (prose-mirror/ast->text node))}))
         (get-in row [::document :document :content])))
 
@@ -308,7 +308,7 @@
    in one, while their `supportingText` children are emitted verbatim and do have spans."
   [row]
   (letfn [(walk [node ancestors]
-            (let [id       (get-in node [:attrs "_id"])
+            (let [id       (get-in node [:attrs :_id])
                   inherited (cond->> ancestors id (cons id))]
               (concat (when id [[id ancestors]])
                       (mapcat #(walk % inherited) (:content node)))))]
@@ -414,7 +414,7 @@
     (common/throw-teaching-error
      (message/msg ["%s take a numeric id — they have no entity_id."] plural)))
   (let [notification (mcp.db/notification-by-payload-type id-or-eid payload-type)]
-    (when-not (and notification (mi/can-read? notification))
+    (when-not (and notification (mi/can-read? (t2/hydrate notification :can_read)))
       (common/throw-not-found (keyword tool-type) id-or-eid))
     (projections/notification-row
      (redaction/hydrate-and-redact-notification notification))))
@@ -441,12 +441,12 @@
   (let [pulse-id (subscription-pulse-id id-or-eid)]
     (if (and pulse-id (mcp.db/subscription-pulse-exists? pulse-id))
       (let [pulse-row (pulse/retrieve-pulse pulse-id)]
-        (if (and pulse-row (mi/can-read? pulse-row))
+        (if (and pulse-row (mi/can-read? (t2/hydrate pulse-row :can_read)))
           (projections/subscription-row (redaction/redact-pulse pulse-row))
           (common/throw-not-found :subscription id-or-eid)))
       (or (when (int? id-or-eid)
             (let [notification (mcp.db/notification-by-payload-type id-or-eid :notification/dashboard)]
-              (when (and notification (mi/can-read? notification))
+              (when (and notification (mi/can-read? (t2/hydrate notification :can_read)))
                 (projections/notification-row
                  (redaction/hydrate-and-redact-notification notification)))))
           (common/throw-not-found :subscription id-or-eid)))))

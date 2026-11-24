@@ -1401,3 +1401,15 @@
   "Transducer that collects items into an atom while passing them through unchanged."
   [atom]
   (map (fn [x] (swap! atom conj x) x)))
+
+(defn map-by-key-set
+  "Call `f` with each group of the map `rows` that have the same keys, and return what the calls return, one result per
+  row, in the order of `rows`. An insert of rows with different keys puts NULL in the columns that a row leaves out,
+  which a NOT NULL column with a default refuses."
+  [f rows]
+  (->> (map-indexed vector rows)
+       (group-by (comp set keys second))
+       vals
+       (mapcat (fn [group] (map vector (map first group) (f (mapv second group)))))
+       (sort-by first)
+       (mapv second)))

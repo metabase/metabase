@@ -498,8 +498,8 @@
   [card-id]
   (let [mp (mt/metadata-provider)]
     {:id            card-id
-     :dataset_query (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                           (lib/aggregate (lib/count))))}))
+     :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                        (lib/aggregate (lib/count)))}))
 
 (defn- products-category-sandbox
   "A GTAP def filtering PRODUCTS to rows whose `category` equals the user's `cat` login attribute."

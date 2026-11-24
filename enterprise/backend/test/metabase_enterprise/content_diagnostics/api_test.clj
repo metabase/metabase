@@ -219,8 +219,9 @@
                          :model/Dashboard {personal-dash :id} {:collection_id personal-id}
                          :model/Collection {nested-personal :id} {:location (str "/" personal-id "/")}
                          :model/Dashboard {nested-dash :id} {:collection_id nested-personal}
-                         :model/Collection {archived-folder :id} {:archived true}
+                         :model/Collection {archived-folder :id} {}
                          :model/Dashboard {folder-dash :id} {:collection_id archived-folder}]
+            (t2/update! :collection :id archived-folder {:archived true})
             (doseq [id [first-id second-id archived-id personal-dash nested-dash folder-dash Integer/MAX_VALUE]]
               (insert-counted-findings! :dashboard id finding-types))
             ;; A partial new scan can leave two active rows. Only the newest may count.

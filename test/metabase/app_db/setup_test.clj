@@ -367,17 +367,16 @@
                                       [:= :field.table_id :table.id]]
                           :where     [:= :table.db_id [:inline 0]]}))))))
 
-;; `delete!` below is ok in a parallel test since it's not actually executing anything
 (deftest ^:parallel build-before-delete-query-test
   (testing "before-delete's select query should remove `:delete`/`:delete-from` (workaround for https://github.com/camsaul/toucan2/issues/203)"
     (is (= {:select [:*], :from [[:metabase_field :field]], :where [:= :field.id 0]}
            (t2/build
-             (t2/select :model/Field
+             (t2/select :toucan2.tools.before-delete/before-delete
                         {:delete-from [:metabase_field :field]
                          :where       [:= :field.id 0]}))))
     (is (= {:select [:*], :from [[:metabase_field :field]], :where [:= :field.id 0]}
            (t2/build
-             (t2/select :model/Field
+             (t2/select :toucan2.tools.before-delete/before-delete
                         {:delete [:field]
                          :from   [[:metabase_field :field]]
                          :where  [:= :field.id 0]}))))))

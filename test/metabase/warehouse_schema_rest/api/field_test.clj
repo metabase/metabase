@@ -6,7 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -132,7 +132,7 @@
 (deftest update-field-test
   (testing "PUT /api/field/:id"
     (testing "test that we can do basic field update work, including unsetting some fields such as semantic-type"
-      (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
+      (mt/with-temp [:model/Field {field-id :id} {:name "Field Test" :display_name "Field Test"}]
         (let [original-field (simple-field-details (field-row field-id))]
           (testing "orignal value"
             (is (= {:name               "Field Test"
@@ -347,7 +347,9 @@
     (testing "target should be hydrated"
       (mt/with-temp [:model/Field fk-field-1 {}
                      :model/Field fk-field-2 {}
-                     :model/Field field {:semantic_type :type/FK :fk_target_field_id (:id fk-field-1)}]
+                     :model/Field field {:display_name       "Test Field"
+                                         :semantic_type      :type/FK
+                                         :fk_target_field_id (:id fk-field-1)}]
         (is (= (:id fk-field-2)
                (:id (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (-> field
                                                                                                            (dissoc :has_field_values)
@@ -531,9 +533,9 @@
   (testing "POST /api/field/:id/values"
     (testing "attempting to updated values should throw when human readable values are present but not for every value"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test", :base_type :type/Integer, :has_field_values "list"}]
-        (is (= "If remapped values are specified, they must be specified for all field values"
-               (mt/user-http-request :crowberto :post 400 (format "field/%d/values" field-id)
-                                     {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
+        (is (=? {:specific-errors {:values [#".*must be specified for all field values.*"]}}
+                (mt/user-http-request :crowberto :post 400 (format "field/%d/values" field-id)
+                                      {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
 
 (defn- dimension-for-field [field-id]
   (-> (t2/select-one :model/Field :id field-id)
@@ -640,7 +642,7 @@
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test 1"}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 (format "field/%d/dimension" field-id)
-                                     {:name "some dimension name", :type "external"})))))))
+                                     {:name "some dimension name", :type "internal"})))))))
 
 (deftest fk-target-field-cross-database-test
   (testing "PUT /api/field/:id rejects fk_target_field_id from a different database"

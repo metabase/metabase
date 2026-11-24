@@ -80,7 +80,7 @@
              (mt/user-http-request :crowberto :get 200 "channel" {:include_inactive true}))))))
 
 (deftest list-channels-permissions-test
-  (mt/with-temp [:model/Channel {chn-1 :id} (assoc default-test-channel :type :channel/http)]
+  (mt/with-temp [:model/Channel {chn-1 :id} default-test-channel]
     (let [get-channel  (fn [user status]
                          (mt/user-http-request user :get status (format "channel/%s" chn-1)))
           get-channels (fn [user]

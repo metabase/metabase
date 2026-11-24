@@ -11,9 +11,12 @@ import {
 } from "./tests/setup";
 
 import { render, screen, waitFor } from "__support__/ui";
+import { getSdkStore } from "embedding-sdk-bundle/store";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 
 import { DataAppEmbed } from "./DataAppEmbed";
+
+const store = getSdkStore();
 
 describe("DataAppEmbed", () => {
   beforeEach(setup);
@@ -22,7 +25,7 @@ describe("DataAppEmbed", () => {
   it("waits for SSO initialization before mounting the bundle loader", () => {
     mockUseSdkSelector.mockReturnValue({ status: "loading" });
 
-    render(<DataAppEmbed />);
+    render(<DataAppEmbed store={store} />);
 
     expect(mockUseDataAppBundle).not.toHaveBeenCalled();
   });
@@ -38,7 +41,7 @@ describe("DataAppEmbed", () => {
       },
     });
 
-    render(<DataAppEmbed />);
+    render(<DataAppEmbed store={store} />);
 
     expect(await screen.findByText("Orders app")).toBeInTheDocument();
 
@@ -60,38 +63,33 @@ describe("DataAppEmbed", () => {
   it.each([
     [{ isGuest: true }, "Guest embeds are not supported for data apps."],
     [
-      { useExistingUserSession: true },
-      "Embedded data apps require SSO authentication.",
+      { guestEmbedProviderUri: "/guest" },
+      "Guest embeds are not supported for data apps.",
     ],
-  ])("rejects non-SSO settings: %p", (overrides, message) => {
-    setupSettings(overrides);
-    render(<DataAppEmbed />);
+    [
+      { useExistingUserSession: true },
+      "Existing browser sessions are not supported for data apps.",
+    ],
+  ])(
+    "rejects guest and existing-session settings: %p",
+    (overrides, message) => {
+      setupSettings(overrides);
+      render(<DataAppEmbed store={store} />);
 
-    expect(screen.getByText(message)).toBeInTheDocument();
-    expect(mockUseDataAppBundle).not.toHaveBeenCalled();
-  });
-
-  // TODO(DAT-18): add api key support for local development
-  it.each([true, false])("rejects API keys on localhost: %s", (isLocalhost) => {
-    setupSettings({ apiKey: "development-key", _isLocalhost: isLocalhost });
-    render(<DataAppEmbed />);
-
-    expect(
-      screen.getByText("Embedded data apps require SSO authentication."),
-    ).toBeInTheDocument();
-
-    expect(mockComponentProvider).not.toHaveBeenCalled();
-    expect(mockUseDataAppBundle).not.toHaveBeenCalled();
-  });
+      expect(screen.getByText(message)).toBeInTheDocument();
+      expect(mockUseDataAppBundle).not.toHaveBeenCalled();
+    },
+  );
 
   it("waits for settings to arrive before starting auth", () => {
     mockUseSdkIframeEmbedEventBus.mockReturnValue({
       embedSettings: null,
       dataAppPathNavigationRequest: null,
       sendMessage: jest.fn(),
+      parentOrigin: null,
     });
 
-    render(<DataAppEmbed />);
+    render(<DataAppEmbed store={store} />);
 
     expect(mockComponentProvider).not.toHaveBeenCalled();
     expect(mockUseDataAppBundle).not.toHaveBeenCalled();
@@ -101,7 +99,7 @@ describe("DataAppEmbed", () => {
     "rejects mismatched and invalid app paths: %s",
     (path) => {
       setupSettings({ path });
-      render(<DataAppEmbed />);
+      render(<DataAppEmbed store={store} />);
 
       expect(
         screen.getByText(
@@ -117,7 +115,7 @@ describe("DataAppEmbed", () => {
   it("requires the embedding license before starting auth", () => {
     jest.spyOn(PLUGIN_EMBEDDING_IFRAME_SDK, "isEnabled").mockReturnValue(false);
 
-    render(<DataAppEmbed />);
+    render(<DataAppEmbed store={store} />);
 
     expect(
       screen.getByText("A valid license is required for embedding."),
@@ -133,7 +131,7 @@ describe("DataAppEmbed", () => {
       error: { message: "SSO failed" },
     });
 
-    render(<DataAppEmbed />);
+    render(<DataAppEmbed store={store} />);
     expect(screen.getByText("SSO failed")).toBeInTheDocument();
     expect(mockUseDataAppBundle).not.toHaveBeenCalled();
   });
@@ -145,7 +143,39 @@ describe("DataAppEmbed", () => {
       error: "Access denied",
     });
 
-    render(<DataAppEmbed />);
+    render(<DataAppEmbed store={store} />);
     expect(screen.getByText("Access denied")).toBeInTheDocument();
+  });
+
+  it("refuses an API key from a production domain", () => {
+    jest.spyOn(PLUGIN_EMBEDDING_IFRAME_SDK, "isEnabled").mockReturnValue(false);
+    setupSettings({ apiKey: "development-key" }, "https://host.example.com");
+
+    render(<DataAppEmbed store={store} />);
+
+    expect(
+      screen.getByText("Using an API key in production is not allowed."),
+    ).toBeInTheDocument();
+
+    expect(mockComponentProvider).not.toHaveBeenCalled();
+    expect(mockUseDataAppBundle).not.toHaveBeenCalled();
+  });
+
+  it("allows API keys on localhost without an embedding license", () => {
+    jest.spyOn(PLUGIN_EMBEDDING_IFRAME_SDK, "isEnabled").mockReturnValue(false);
+    setupSettings({ apiKey: "development-key" }, "http://localhost:3000");
+
+    render(<DataAppEmbed store={store} />);
+
+    expect(mockComponentProvider.mock.lastCall?.[0]).toMatchObject({
+      authConfig: {
+        metabaseInstanceUrl: window.location.origin,
+        apiKey: "development-key",
+      },
+    });
+
+    expect(mockUseDataAppBundle).toHaveBeenCalledWith("sales", {
+      embedded: true,
+    });
   });
 });

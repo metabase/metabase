@@ -5,7 +5,7 @@ import type { DatasetData } from "./dataset";
 import type { Field, FieldId } from "./field";
 import type { Measure } from "./measure";
 import type { Segment } from "./segment";
-import type { Transform, TransformId } from "./transform";
+import type { Transform } from "./transform";
 import type { UserId, UserInfo } from "./user";
 
 export type TableEntityType = string;
@@ -68,13 +68,10 @@ export type Table = {
   owner_user_id: UserId | null;
   owner?: TableOwner | { email: string } | null;
   estimated_row_count?: number | null;
-  transform_id: TransformId | null; // readonly
   view_count: number;
   transform?: Transform | null;
 
-  collection_id: CollectionId | null;
-  is_published: boolean;
-  collection?: Collection;
+  collection?: Collection | null;
   can_write?: boolean;
 };
 
@@ -278,6 +275,7 @@ export interface PublishTablesResponse {
 }
 
 export type TableUserSettings = {
+  id: number;
   table_id: TableId;
   display_name: string | null;
   description: string | null;

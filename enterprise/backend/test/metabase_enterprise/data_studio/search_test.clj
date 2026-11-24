@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
@@ -28,10 +28,13 @@
          :model/Collection {child-coll :id}  {:name     "Child Collection"
                                               :location (collection/location-path parent-coll)
                                               :type     "library-data"}
-         :model/Table      {table-1 :id}     {:name "Published Table" :is_published true :collection_id parent-coll}
-         :model/Table      {table-2 :id}     {:name "Child Published Table" :is_published true :collection_id child-coll}
-         :model/Table      {table-3 :id}     {:name "Unpublished Table" :is_published false}
-         :model/Table      {table-4 :id}     {:name "Root Published Table" :is_published true :collection_id nil}]
+         :model/Table      {table-1 :id}     {:name "Published Table"}
+         :model/TableUserSettings _ {:table_id table-1 :is_published true :collection_id parent-coll}
+         :model/Table      {table-2 :id}     {:name "Child Published Table"}
+         :model/TableUserSettings _ {:table_id table-2 :is_published true :collection_id child-coll}
+         :model/Table      {table-3 :id}     {:name "Unpublished Table"}
+         :model/Table      {table-4 :id}     {:name "Root Published Table"}
+         :model/TableUserSettings _ {:table_id table-4 :is_published true}]
         ;; Initialize search index for appdb engine
         (search/reindex! {:async? false :in-place? true})
         (doseq [engine (test-engines)]
@@ -91,7 +94,8 @@
                     "Unpublished table should not be in results")))))))
     (testing "Published tables in root collection (collection_id=nil) appear in unfiltered search"
       (mt/with-temp
-        [:model/Table {root-table :id} {:name "Root Published Searchable" :is_published true :collection_id nil}]
+        [:model/Table {root-table :id} {:name "Root Published Searchable"}
+         :model/TableUserSettings _ {:table_id root-table :is_published true}]
         (search/reindex! {:async? false :in-place? true})
         (doseq [engine (test-engines)]
           (testing (str "with engine " engine)
@@ -105,12 +109,10 @@
                                               :type     "library-data"
                                               :location "/"}
          :model/Table      {pub-table :id}   {:name "ContextTestTablePub"
-                                              :db_id db-id
-                                              :is_published true
-                                              :collection_id coll-id}
+                                              :db_id db-id}
+         :model/TableUserSettings _ {:table_id pub-table :is_published true :collection_id coll-id}
          :model/Table      {unpub-table :id} {:name "ContextTestTableUnpub"
-                                              :db_id db-id
-                                              :is_published false}]
+                                              :db_id db-id}]
         (search/reindex! {:async? false :in-place? true})
         (doseq [engine (test-engines)]
           (testing (str "with engine " engine)
@@ -135,8 +137,9 @@
             name-1 (str search-term " 1")
             name-2 (str search-term " 2")]
         (mt/with-no-data-perms-for-all-users!
-          (mt/with-temp [:model/Table {unpub-table :id} {:collection_id nil :is_published false :name name-1}
-                         :model/Table {pub-table :id} {:collection_id nil :is_published true :name name-2}]
+          (mt/with-temp [:model/Table {unpub-table :id} {:name name-1}
+                         :model/Table {pub-table :id} {:name name-2}
+                         :model/TableUserSettings _ {:table_id pub-table :is_published true}]
             ;; Explicitly deny both view and query perms so this assertion doesn't depend on global defaults.
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
@@ -161,7 +164,8 @@
           (mt/with-temp [:model/Collection {coll-id :id} {:name     "No Access Collection"
                                                           :location "/"
                                                           :type     "library-data"}
-                         :model/Table      {pub-table :id} {:name table-name :is_published true :collection_id coll-id}]
+                         :model/Table      {pub-table :id} {:name table-name}
+                         :model/TableUserSettings _ {:table_id pub-table :is_published true :collection_id coll-id}]
             ;; Grant data permissions on the table
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
@@ -192,12 +196,10 @@
          :model/Collection {data-sub :id}        {:name "Data Sub"
                                                   :type collection/library-data-collection-type
                                                   :location (collection/location-path lib-id data-coll)}
-         :model/Table      {pub-table :id}       {:name          (str search-term " Published Table")
-                                                  :is_published  true
-                                                  :collection_id data-coll}
-         :model/Table      {sub-table :id}       {:name          (str search-term " Sub Table")
-                                                  :is_published  true
-                                                  :collection_id data-sub}
+         :model/Table      {pub-table :id}       {:name          (str search-term " Published Table")}
+         :model/TableUserSettings _ {:table_id pub-table :is_published true :collection_id data-coll}
+         :model/Table      {sub-table :id}       {:name          (str search-term " Sub Table")}
+         :model/TableUserSettings _ {:table_id sub-table :is_published true :collection_id data-sub}
          :model/Card       {metric :id}          {:name          (str search-term " My Metric")
                                                   :type          :metric
                                                   :collection_id metrics-coll}
@@ -225,7 +227,7 @@
     (let [search-term (random-name)
           table-name  (str search-term " unpublished")]
       (mt/with-no-data-perms-for-all-users!
-        (mt/with-temp [:model/Table {unpub-table :id} {:collection_id nil :is_published false :name table-name}]
+        (mt/with-temp [:model/Table {unpub-table :id} {:name table-name}]
           ;; Explicitly grant data/query perms so this does not rely on global test defaults.
           (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
           (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
@@ -282,9 +284,8 @@
     (testing "Table results have `can_write` from the table metadata permission"
       (let [search-term (random-name)]
         (mt/with-temp [:model/Collection {coll-id :id} {:type "library-data"}
-                       :model/Table      {table-id :id} {:name          (str search-term " published")
-                                                         :is_published  true
-                                                         :collection_id coll-id}]
+                       :model/Table      {table-id :id} {:name          (str search-term " published")}
+                       :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id coll-id}]
           (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
           (doseq [engine (test-engines)]
             (search/reindex! {:async? false :in-place? true})

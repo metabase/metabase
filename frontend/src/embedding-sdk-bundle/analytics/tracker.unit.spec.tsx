@@ -3,7 +3,7 @@ jest.mock("embedding-sdk-bundle/analytics/component-events", () => ({
   useIsTrackingEnabled: jest.fn(),
 }));
 
-jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
+jest.mock("embedding-sdk-bundle/analytics/event", () => ({
   initSdkTracker: jest.fn(),
   trackSdkSimpleEvent: jest.fn(),
   getSdkAuthMethod: jest.fn(),
@@ -24,7 +24,7 @@ import { useIsTrackingEnabled } from "embedding-sdk-bundle/analytics/component-e
 import {
   initSdkTracker,
   trackSdkSimpleEvent,
-} from "embedding-sdk-bundle/analytics/snowplow";
+} from "embedding-sdk-bundle/analytics/event";
 import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
