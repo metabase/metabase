@@ -4939,7 +4939,7 @@
                (mt/user-http-request :crowberto :get 200 (url list-param-id "A   sian"))))))))
 
 (defn- test-handle-broken-subscription-notification!
-  [{:keys [disable-links? email-body-pattern match-email-body-pattern?]}]
+  [{:keys [dash-creator-id pulse-creator-id expected-email-pulse-recipients expected-slack-pulse-recipients disable-links?]}]
   (let [param {:name "Source"
                :slug "source"
                :id   "_SOURCE_PARAM_ID_"
@@ -4961,7 +4961,7 @@
                                     :type          :model}
          :model/Dashboard {dash-id        :id
                            dashboard-name :name} {:name       "My Awesome Dashboard"
-                                                  :creator_id (mt/user->id :rasta)
+                                                  :creator_id dash-creator-id
                                                   :parameters [param]}
          :model/DashboardCard {dash-card-id :id} {:dashboard_id       dash-id
                                                   :card_id            card-id
@@ -4973,7 +4973,7 @@
          ;; Broken email pulse
          :model/Pulse {bad-pulse-id :id} {:name          "Bad Pulse"
                                           :dashboard_id  dash-id
-                                          :creator_id    (mt/user->id :trashbird)
+                                          :creator_id    pulse-creator-id
                                           :parameters    [(assoc param :value ["Twitter", "Facebook"])]
                                           :disable_links disable-links?}
          :model/PulseCard _ {:pulse_id          bad-pulse-id
@@ -4990,7 +4990,7 @@
          ;; Broken slack pulse
          :model/Pulse {bad-slack-pulse-id :id} {:name          "Bad Slack Pulse"
                                                 :dashboard_id  dash-id
-                                                :creator_id    (mt/user->id :trashbird)
+                                                :creator_id    pulse-creator-id
                                                 :parameters    [(assoc param :value ["LinkedIn"])]
                                                 :disable_links disable-links?}
          :model/PulseCard _ {:pulse_id          bad-slack-pulse-id
@@ -5003,7 +5003,7 @@
          ;; Non broken pulse
          :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
                                            :dashboard_id dash-id
-                                           :creator_id   (mt/user->id :trashbird)}
+                                           :creator_id   pulse-creator-id}
          :model/PulseCard _ {:pulse_id          good-pulse-id
                              :card_id           card-id
                              :dashboard_card_id dash-card-id}
@@ -5028,15 +5028,7 @@
                 inbox            (update-vals
                                   @mt/inbox
                                   (fn [messages]
-                                    (filterv (comp #{title} :subject) messages)))
-                email-pulse-email-received? (fn [recipient-email]
-                                              (testing "Email about broken email pulse was received"
-                                                (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
-                                                                   (str/includes? title))))))
-                slack-pulse-email-received? (fn [recipient-email]
-                                              (testing "Email about broken slack pulse was received"
-                                                (is (= match-email-body-pattern? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
-                                                                                         (str/includes? email-body-pattern))))))]
+                                    (filterv (comp #{title} :subject) messages)))]
             (testing "The dashboard parameters were removed"
               (is (empty? parameters)))
             (testing "The broken pulses were archived"
@@ -5045,34 +5037,32 @@
             (testing "The unbroken pulse is still active"
               (is (false? (t2/select-one-fn :archived :model/Pulse :id good-pulse-id))))
             (testing "The dashboard creator, pulse creator, and recipients were emailed about the removed pulse"
-              (is (= #{"trashbird@metabase.com" "rasta@metabase.com" "crowberto@metabase.com" "lucky@metabase.com" "yo@broken.sub"}
+              (is (= (set/union expected-email-pulse-recipients expected-slack-pulse-recipients)
                      (set (keys inbox)))))
-            (testing "Notification emails were sent to the dashboard and pulse creators"
-              (email-pulse-email-received? "trashbird@metabase.com")
-              (slack-pulse-email-received? "trashbird@metabase.com")
-              (email-pulse-email-received? "rasta@metabase.com")
-              (slack-pulse-email-received? "rasta@metabase.com"))
-            (testing "Notification emails were sent to email subscribers"
-              (email-pulse-email-received? "lucky@metabase.com")
-              (email-pulse-email-received? "crowberto@metabase.com")
-              (email-pulse-email-received? "yo@broken.sub"))))))))
+            (testing "Notification emails were sent about the broken email pulse"
+              (doseq [recipient-email expected-email-pulse-recipients]
+                (testing (str "Email about broken email pulse was received by " recipient-email)
+                  (let [email-content (get-in inbox [recipient-email 0 :body 0 :content])]
+                    (is (true? (some-> email-content (str/includes? title))))
+                    (is (not= disable-links? (some-> email-content (str/includes? "href="))))))))
+            (testing "Notification emails were sent about the broken slack pulse"
+              (doseq [recipient-email expected-slack-pulse-recipients]
+                (testing (str "Email about broken slack pulse was received by " recipient-email)
+                  (let [email-content (get-in inbox [recipient-email 1 :body 0 :content])]
+                    (is (true? (some-> email-content (str/includes? title))))
+                    (is (true? (some-> email-content (str/includes? "#my-channel"))))
+                    (is (not= disable-links? (some-> email-content (str/includes? "href="))))))))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify affected users (#30100)"
-    (test-handle-broken-subscription-notification!
-     {:disable-links?            false
-      :email-body-pattern        "#my-channel"
-      :match-email-body-pattern? true}))
-  (testing "When a subscriptions is broken, archive it and notify affected users (#30100) with email links when disable_links: false"
-    (test-handle-broken-subscription-notification!
-     {:disable-links?            false
-      :email-body-pattern        "href="
-      :match-email-body-pattern? true}))
-  (testing "When a subscriptions is broken, archive it and notify affected users (#30100) without email links when disable_links: true"
-    (test-handle-broken-subscription-notification!
-     {:disable-links?            true
-      :email-body-pattern        "href="
-      :match-email-body-pattern? false})))
+    (let [params {:dash-creator-id (mt/user->id :rasta)
+                  :pulse-creator-id (mt/user->id :trashbird)
+                  :expected-email-pulse-recipients #{"trashbird@metabase.com" "rasta@metabase.com" "crowberto@metabase.com" "lucky@metabase.com" "yo@broken.sub"}
+                  :expected-slack-pulse-recipients #{"trashbird@metabase.com" "rasta@metabase.com"}}]
+      (testing "Send emails links when disable_links: false"
+        (test-handle-broken-subscription-notification! (assoc params :disable-links? false)))
+      (testing "Do not include linsk in emails when disable_links: true"
+        (test-handle-broken-subscription-notification! (assoc params :disable-links? true))))))
 
 (deftest update-response-leaves-out-archived-subscriptions-test
   (testing "a REST save that archives a subscription doesn't return what the archive reports"
