@@ -6,9 +6,9 @@ import _ from "underscore";
 
 import {
   setupCardQueryMetadataEndpoint,
-  setupFieldValuesEndpoint,
   setupCardsEndpoints,
   setupCollectionItemsEndpoint,
+  setupFieldValuesEndpoint,
   setupLastDownloadFormatEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
