@@ -348,7 +348,9 @@ databaseChangeLog:
       id: 0hsxh4
       author: metatyb
       comment: Add facets to metabase_field
-      validCheckSum: 9:6b2c6cde03d5e4ee4a606c96340bf4f1
+      validCheckSum:
+        - 9:6b2c6cde03d5e4ee4a606c96340bf4f1
+        - 9:c97e2dcd28cf47f2b490202fc6991222
       changes:
         - addColumn:
             tableName: metabase_field
