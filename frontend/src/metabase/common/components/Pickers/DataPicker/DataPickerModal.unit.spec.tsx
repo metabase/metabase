@@ -13,6 +13,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -20,6 +21,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { TableVisibilityToggle } from "metabase/metadata/pages/DataModelV1/components/TablePicker/components/TableVisibilityToggle";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -684,6 +686,7 @@ describe("DataPickerModal", () => {
         }),
     );
     const [ORDERS_TABLE] = TABLES;
+    const SCHEMA_TABLES_URL = "path:/api/database/1/schema/PUBLIC";
     const SAMPLE_DATABASE = createMockDatabase({
       id: 1,
       name: "Sample Database",
@@ -697,7 +700,7 @@ describe("DataPickerModal", () => {
      */
     function setupStatefulTables() {
       const hiddenTableIds = new Set<number>();
-      fetchMock.get("path:/api/database/1/schema/PUBLIC", (call) => {
+      fetchMock.get(SCHEMA_TABLES_URL, (call) => {
         const includeHidden =
           new URL(call.url).searchParams.get("include_hidden") === "true";
         return TABLES.filter(
@@ -719,6 +722,7 @@ describe("DataPickerModal", () => {
         <>
           <button onClick={() => setIsPickerOpen(true)}>Open picker</button>
           <TableVisibilityToggle table={ORDERS_TABLE} onUpdate={jest.fn()} />
+          <UndoListing />
           {isPickerOpen && (
             <DataPickerModal
               title="Pick your starting data"
@@ -760,15 +764,24 @@ describe("DataPickerModal", () => {
       );
 
       await userEvent.click(screen.getByLabelText("eye icon"));
-      await waitFor(() =>
-        expect(
-          fetchMock.callHistory.calls(`path:/api/table/${ORDERS_TABLE.id}`, {
-            method: "PUT",
-          }),
-        ).toHaveLength(1),
-      );
+      // the toast shows once the hide mutation has finished
+      expect(
+        await within(await screen.findByTestId("undo-list")).findByText(
+          "Hid Orders",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.calls(`path:/api/table/${ORDERS_TABLE.id}`, {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
 
       await openSampleDatabase();
+      // the picker refetches the tables instead of showing the cached list
+      await waitFor(() =>
+        expect(fetchMock.callHistory.calls(SCHEMA_TABLES_URL)).toHaveLength(2),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
       for (const table of ["People", "Products", "Reviews"]) {
         expect(await screen.findByText(table)).toBeInTheDocument();
       }
