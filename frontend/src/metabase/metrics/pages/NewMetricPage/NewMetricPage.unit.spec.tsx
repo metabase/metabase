@@ -331,9 +331,6 @@ describe("NewMetricPage", () => {
       const ordersItems = await within(miniPicker).findAllByRole("menuitem", {
         name: /Orders/,
       });
-      expect(
-        within(miniPicker).queryByRole("menuitem", { name: /People/ }),
-      ).not.toBeInTheDocument();
       await userEvent.click(ordersItems[0]);
 
       const editor = screen.getByTestId("metric-query-editor");

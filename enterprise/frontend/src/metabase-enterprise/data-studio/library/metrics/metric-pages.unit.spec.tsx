@@ -485,11 +485,13 @@ describe("metric pages (EE)", () => {
           ],
         },
       });
-      expect(trackSimpleEvent).toHaveBeenCalledWith({
-        event: "metric_created",
-        triggered_from: "data_studio",
-        result: "success",
-        target_id: NEW_CARD_ID,
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "metric_created",
+          triggered_from: "data_studio",
+          result: "success",
+          target_id: NEW_CARD_ID,
+        });
       });
 
       const aboutPage = within(await screen.findByTestId("metric-about-page"));
@@ -643,9 +645,12 @@ describe("metric pages (EE)", () => {
       const reopenedModal = within(
         await screen.findByRole("dialog", { name: "Caching" }),
       );
-      expect(
-        await reopenedModal.findByTestId("cache-strategy-select"),
-      ).toHaveValue("Duration");
+      const reopenedStrategySelect = await reopenedModal.findByTestId(
+        "cache-strategy-select",
+      );
+      await waitFor(() => {
+        expect(reopenedStrategySelect).toHaveValue("Duration");
+      });
       await userEvent.keyboard("{Escape}");
       await waitFor(() => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
