@@ -102,9 +102,17 @@
     background-color: var(--mb-color-background_surface-disabled);
   }
 
-  /* the normal focus ring stays: the field is still focusable (WCAG 2.4.7) */
-  &:not([data-error], :focus-within) {
+  &:not([data-error]) {
     --input-border-color: transparent;
+  }
+
+  /*
+   * The normal focus ring stays: the field is still focusable (WCAG 2.4.7).
+   * A separate rule, not `:not(:focus-within)` above, because Storybook's
+   * pseudo-states addon breaks a pseudo-class inside `:not()`.
+   */
+  &:focus-within {
+    --input-border-color: var(--mb-color-border-highlight);
   }
 }
 
