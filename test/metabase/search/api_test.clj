@@ -1355,39 +1355,46 @@
 ;; OSS builds ignore premium features, so search keeps the audit app's analytics content hidden there.
 (mt/when-ee-evailable
  (deftest analytics-collection-card-search-test
-   (mt/with-temp [:model/Collection {id :id} {:name "Analytics Tree", :namespace "analytics"}
-                  :model/Card       _        {:name "Abandoned alerts", :type :question, :collection_id id}
-                  :model/Card       _        {:name "Abandoned alerts", :type :model,    :collection_id id}
-                  :model/Card       _        {:name "Abandoned alerts", :type :metric,   :collection_id id}]
-     (let [found       (fn [& params]
-                         (into #{}
-                               (map (juxt :model :name))
-                               (apply search-request-data :crowberto :q "Abandoned alerts" params)))
-           all-cards   #{["card"    "Abandoned alerts"]
-                         ["dataset" "Abandoned alerts"]
-                         ["metric"  "Abandoned alerts"]}
-           model-count (fn [context]
-                         (:total (make-search-request :crowberto [:q       "Abandoned alerts"
-                                                                  :models  "dataset"
-                                                                  :limit   0
-                                                                  :context context])))]
-       (mt/with-premium-features #{:audit-app}
-         (testing "Broad search returns questions, models and metrics in the analytics namespace (#79819)"
-           (doseq [context ["command-palette" "search-app" "search-bar"]]
-             (testing context
-               (is (= all-cards (found :context context))))))
-         (testing "Pickers, other contexts and requests without one leave them out"
-           (doseq [context ["data-picker" "entity-picker" "embedding-setup" "model-migration"]]
-             (testing context
-               (is (= #{} (found :context context)))))
-           (is (= #{} (found))))
-         (testing "Counts leave them out too, as the embedding setup's model count relies on them"
-           (is (= {:command-palette 1, :embedding-setup 0}
-                  {:command-palette (model-count "command-palette")
-                   :embedding-setup (model-count "embedding-setup")}))))
-       (mt/with-premium-features #{}
-         (testing "Without the audit app, broad search leaves them out as well"
-           (is (= #{} (found :context "command-palette")))))))))
+   (mt/with-temp [:model/Collection {id :id} {:name "Analytics Tree", :namespace "analytics"}]
+     (mt/with-model-cleanup [:model/Card]
+       (card/create-cards! (for [card-type [:question :model :metric]]
+                             {:creator_id             (mt/user->id :rasta)
+                              :database_id            (mt/id)
+                              :display                :table
+                              :visualization_settings {}
+                              :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")
+                              :name                   "Abandoned alerts"
+                              :type                   card-type
+                              :collection_id          id}))
+       (let [found       (fn [& params]
+                           (into #{}
+                                 (map (juxt :model :name))
+                                 (apply search-request-data :crowberto :q "Abandoned alerts" params)))
+             all-cards   #{["card"    "Abandoned alerts"]
+                           ["dataset" "Abandoned alerts"]
+                           ["metric"  "Abandoned alerts"]}
+             model-count (fn [context]
+                           (:total (make-search-request :crowberto [:q       "Abandoned alerts"
+                                                                    :models  "dataset"
+                                                                    :limit   0
+                                                                    :context context])))]
+         (mt/with-premium-features #{:audit-app}
+           (testing "Broad search returns questions, models and metrics in the analytics namespace (#79819)"
+             (doseq [context ["command-palette" "search-app" "search-bar"]]
+               (testing context
+                 (is (= all-cards (found :context context))))))
+           (testing "Pickers, other contexts and requests without one leave them out"
+             (doseq [context ["data-picker" "entity-picker" "embedding-setup" "model-migration"]]
+               (testing context
+                 (is (= #{} (found :context context)))))
+             (is (= #{} (found))))
+           (testing "Counts leave them out too, as the embedding setup's model count relies on them"
+             (is (= {:command-palette 1, :embedding-setup 0}
+                    {:command-palette (model-count "command-palette")
+                     :embedding-setup (model-count "embedding-setup")}))))
+         (mt/with-premium-features #{}
+           (testing "Without the audit app, broad search leaves them out as well"
+             (is (= #{} (found :context "command-palette"))))))))))
 
 (deftest no-dashboard-subscription-pulses-test
   (testing "Pulses used for Dashboard subscriptions should not be returned by search results (#14190)"
