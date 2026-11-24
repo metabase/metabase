@@ -5,9 +5,10 @@ import { t } from "ttag";
 import {
   ActionIcon,
   Ellipsified,
-  Group,
   Icon,
+  Input,
   Loader,
+  Pill,
   Stack,
   Tooltip,
   UnstyledButton,
@@ -17,6 +18,8 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatValue } from "metabase/value-formatting";
 import type { GoalValueResult } from "metabase/viz-core";
 import type { ColumnSettings } from "metabase-types/api";
+
+import { RIGHT_SECTION_WIDTH } from "../../constants";
 
 import S from "./GoalValuePill.module.css";
 
@@ -67,17 +70,29 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
     };
 
     return (
-      <Group
-        bdrs="sm"
-        bg="background_page-primary"
+      <Input
         className={cx(S.root, className)}
-        gap="sm"
-        h={40}
-        px="sm"
+        classNames={{ input: S.input }}
+        component="div"
         ref={ref}
+        rightSection={
+          <Tooltip label={t`Remove value source`}>
+            <ActionIcon
+              aria-label={t`Remove value source`}
+              className={S.trigger}
+              data-open={isMenuOpen}
+              size="sm"
+              variant="subtle"
+              onClick={onRemove}
+            >
+              <Icon name="close" />
+            </ActionIcon>
+          </Tooltip>
+        }
+        rightSectionPointerEvents="all"
+        rightSectionWidth={RIGHT_SECTION_WIDTH}
         role="group"
         tabIndex={0}
-        wrap="nowrap"
         {...props}
       >
         <Tooltip
@@ -93,43 +108,32 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
         >
           <UnstyledButton
             aria-label={t`Change value source`}
-            bdrs="1rem"
-            className={S.pill}
+            bdrs="md"
             display="flex"
             miw={0}
-            pl="0.75rem"
-            pr="0.5rem"
-            py="0.25rem"
             onAuxClick={handleAuxClick}
             onClick={handleClick}
           >
-            <Icon c="text-secondary" flex="0 0 auto" name="hexagon" size={12} />
-            {resolved.isLoading ? (
-              <Loader size="xs" />
-            ) : (
-              <Ellipsified fw={500} showTooltip={false}>
-                {resolved.value != null
-                  ? formatValue(resolved.value, formatOptions)
-                  : EMPTY_CELL_PLACEHOLDER}
-              </Ellipsified>
-            )}
+            <Pill classNames={{ label: S.pillLabel }} flex="0 1 auto" miw={0}>
+              <Icon
+                c="text-secondary"
+                flex="0 0 auto"
+                name="hexagon"
+                size={12}
+              />
+              {resolved.isLoading ? (
+                <Loader size="xs" />
+              ) : (
+                <Ellipsified showTooltip={false}>
+                  {resolved.value != null
+                    ? formatValue(resolved.value, formatOptions)
+                    : EMPTY_CELL_PLACEHOLDER}
+                </Ellipsified>
+              )}
+            </Pill>
           </UnstyledButton>
         </Tooltip>
-
-        <Tooltip label={t`Remove value source`}>
-          <ActionIcon
-            aria-label={t`Remove value source`}
-            className={S.trigger}
-            data-open={isMenuOpen}
-            ml="auto"
-            size="sm"
-            variant="subtle"
-            onClick={onRemove}
-          >
-            <Icon name="close" />
-          </ActionIcon>
-        </Tooltip>
-      </Group>
+      </Input>
     );
   },
 );

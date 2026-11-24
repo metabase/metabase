@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
-import { ActionIcon, Box, Group, Icon, Stack, Tooltip } from "metabase/ui";
+import { ActionIcon, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import { trackDynamicGoalUnset } from "metabase/visualizations/analytics";
 import { getSegmentColor } from "metabase/viz-core";
 import type {
@@ -14,6 +14,7 @@ import type {
 
 import { ChartSettingInput } from "../ChartSettingInput";
 import { useDynamicGoalSource } from "../GoalValueInput";
+import { INPUT_HEIGHT } from "../constants";
 
 import { SegmentBoundInput } from "./SegmentBoundInput";
 
@@ -103,9 +104,9 @@ export function SegmentEditor({
           onChange={(min) => onChange({ min })}
         />
 
-        <Box pt={12}>
+        <Flex align="center" h={INPUT_HEIGHT}>
           <Icon name="arrow_right" size={12} c="text-secondary" />
-        </Box>
+        </Flex>
 
         <SegmentBoundInput
           aria-label={t`Range ${index + 1} maximum`}

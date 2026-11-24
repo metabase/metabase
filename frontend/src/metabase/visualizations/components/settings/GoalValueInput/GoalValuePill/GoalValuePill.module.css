@@ -1,12 +1,7 @@
-.root {
-  border: 1px solid var(--mb-color-border-neutral);
+.root .input {
+  display: flex;
+  align-items: center;
   cursor: default;
-
-  &:focus-within,
-  &:focus {
-    border-color: var(--mb-color-core-brand);
-    outline: none;
-  }
 }
 
 .root:hover .trigger,
@@ -19,14 +14,6 @@
   visibility: hidden;
 }
 
-.pill {
-  align-items: center;
-  background-color: var(--mb-color-background_page-primary);
-  box-shadow: var(--mantine-shadow-xs);
-  cursor: pointer;
-  gap: 6px;
-
-  &:hover {
-    background-color: var(--mb-color-background_surface-hover);
-  }
+.pillLabel {
+  gap: var(--mantine-spacing-xxs);
 }
