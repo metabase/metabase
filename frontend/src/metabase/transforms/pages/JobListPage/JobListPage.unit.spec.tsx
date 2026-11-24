@@ -351,7 +351,7 @@ async function clickRowMenuItem(jobId: number, name: string) {
 }
 
 async function openBulkActionsMenu() {
-  await userEvent.click(screen.getByLabelText("More job options"));
+  await userEvent.click(await screen.findByLabelText("More job options"));
 }
 
 describe("JobListPage active flag", () => {
@@ -369,8 +369,8 @@ describe("JobListPage active flag", () => {
       ]),
     );
     await findToast("Job disabled");
-    await expectDisabledBadges({ [jobA.id]: false, [jobB.id]: true });
     expect(router?.location.pathname).toBe(Urls.transformJobList());
+    await expectDisabledBadges({ [jobA.id]: false, [jobB.id]: true });
 
     // re-enable Job B from the row menu
     await clickRowMenuItem(jobB.id, "Re-enable");
