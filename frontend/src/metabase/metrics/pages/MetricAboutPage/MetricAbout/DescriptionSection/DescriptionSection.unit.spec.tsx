@@ -97,7 +97,10 @@ function setup({
       is_data_analyst: role === "analyst",
     }),
     settings: mockSettings({
-      "token-features": createMockTokenFeatures({ dependencies: true }),
+      "token-features": createMockTokenFeatures({
+        advanced_permissions: true,
+        dependencies: true,
+      }),
     }),
   });
   // Enable the dependencies plugin via real EE init (reads the mocked settings).
@@ -118,7 +121,7 @@ describe("DescriptionSection", () => {
   it("renders the About heading and last-updated subline", async () => {
     setup();
     expect(screen.getByText("About")).toBeInTheDocument();
-    expect(await screen.findByTestId("metric-last-updated")).toHaveTextContent(
+    expect(await screen.findByTestId("about-last-updated")).toHaveTextContent(
       /Last updated/,
     );
   });

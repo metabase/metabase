@@ -3,7 +3,6 @@
    #?(:cljs [metabase.test-runner.assert-exprs.approximately-equal])
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field.util :as lib.field.util]
@@ -464,6 +463,8 @@
                           (lib/breakout (lib/with-temporal-bucket column :year))
                           (lib/breakout (lib/with-temporal-bucket column :month)))
           query       (->> query
+                           ;; existing usage -- do not use going forward
+                           #_{:clj-kondo/ignore [:deprecated-var]}
                            lib/->legacy-MBQL
                            (lib/query meta/metadata-provider))]
       (is (= query
@@ -555,8 +556,7 @@
                                        :dataset-query
                                        (-> (lib.tu/venues-query)
                                            (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
-                                           (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
-                                           lib.convert/->legacy-MBQL)
+                                           (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
                                        :description "Number of toucans plus number of pelicans"
                                        :type :metric}]})
           query (-> (lib/query metadata-provider (lib.metadata/card metadata-provider 100))
@@ -586,12 +586,14 @@
                              meta/metadata-provider
                              {:segments  [{:id          100
                                            :name        "Price is 4"
-                                           :definition  {:filter
+                                           :definition  {:source-table (meta/id :venues)
+                                                         :filter
                                                          [:= [:field (meta/id :venues :price) nil] 4]}
                                            :table-id    (meta/id :venues)}
                                           {:id          200
                                            :name        "Price is 5"
-                                           :definition  {:filter
+                                           :definition  {:source-table (meta/id :venues)
+                                                         :filter
                                                          [:= [:field (meta/id :venues :price) nil] 5]}
                                            :table-id    (meta/id :venues)}]})
           query (-> (lib/query metadata-provider (meta/table-metadata :venues))
@@ -617,13 +619,18 @@
     (is (not= expressions replaced-expressions))
     (is (= 2 (count replaced-expressions)))
     (is (= expr-b repl-expr-b))
-    (testing "replacing with dependent should cascade"
+    (testing "replacing with an aggregation dependent should drop the aggregation"
       (is (=? {:stages [{:aggregation (symbol "nil #_\"key is not present.\"")
                          :expressions [[:field {:lib/expression-name "a"} (meta/id :venues :price)]
+                                       expr-b]}]}
+              (-> query
+                  (as-> <> (lib/aggregate <> (lib/sum (lib/expression-ref <> "a"))))
+                  (lib/replace-clause 0 expr-a (meta/field-metadata :venues :price))))))
+    (testing "replacing with a later-stage dependent should drop the later-stage reference"
+      (is (=? {:stages [{:expressions [[:field {:lib/expression-name "a"} (meta/id :venues :price)]
                                        expr-b]}
                         (complement :filters)]}
               (-> query
-                  (as-> <> (lib/aggregate <> (lib/sum (lib/expression-ref <> "a"))))
                   (as-> <> (lib/with-fields <> [(lib/expression-ref <> "a")]))
                   (lib/append-stage)
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "a"] 1))

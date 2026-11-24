@@ -1,8 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { Meta, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
-import { merge } from "icepick";
-import { type ComponentProps, useEffect } from "react";
+import { type ComponentProps, type ComponentType, useEffect } from "react";
 
 import { getPublicStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
@@ -13,7 +12,6 @@ import type { State } from "metabase/redux/store";
 import { Box, Popover } from "metabase/ui";
 
 import { DatePicker } from "./DatePicker";
-
 import "metabase/embedding/theme.module.css";
 
 const storeInitialState = createMockState({
@@ -23,7 +21,7 @@ const storeInitialState = createMockState({
 // Unjustified type cast. FIXME
 const store = getPublicStore(storeInitialState, []) as unknown as Store<State>;
 
-const ReduxDecorator = (Story: StoryFn) => {
+const ReduxDecorator = (Story: ComponentType) => {
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
@@ -50,7 +48,7 @@ const MockedDate: DateConstructor = new Proxy(OriginalDate, {
       : Reflect.get(target, property, receiver),
 });
 
-function WithMockDate(StoryFn: StoryFn) {
+function WithMockDate(StoryFn: ComponentType) {
   window.Date = MockedDate;
 
   useEffect(() => {
@@ -104,11 +102,10 @@ export const AllOptions = {
     yesterday.classList.add("pseudo-hover");
   },
 };
-export const AllOptionsDarkTheme = merge(AllOptions, {
-  args: {
-    theme: "dark",
-  },
-});
+export const AllOptionsDarkTheme = {
+  ...AllOptions,
+  args: { theme: "dark" },
+};
 
 export const Exclude = {
   render: Template,
@@ -124,11 +121,10 @@ export const Exclude = {
       .classList.add("pseudo-hover");
   },
 };
-export const ExcludeDarkTheme = merge(Exclude, {
-  args: {
-    theme: "dark",
-  },
-});
+export const ExcludeDarkTheme = {
+  ...Exclude,
+  args: { theme: "dark" },
+};
 
 export const ExcludeDayOfWeek = {
   render: Template,
@@ -141,11 +137,10 @@ export const ExcludeDayOfWeek = {
     },
   },
 };
-export const ExcludeDayOfWeekDarkTheme = merge(ExcludeDayOfWeek, {
-  args: {
-    theme: "dark",
-  },
-});
+export const ExcludeDayOfWeekDarkTheme = {
+  ...ExcludeDayOfWeek,
+  args: { ...ExcludeDayOfWeek.args, theme: "dark" },
+};
 
 export const RelativeCurrent = {
   render: Template,
@@ -154,21 +149,19 @@ export const RelativeCurrent = {
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
-    const week = canvas.getByRole("button", {
-      name: "Week",
-    });
-    week.classList.add("pseudo-hover");
+    // Chip's hover styles live on its label, not the hidden radio input
+    const week = canvas.getByText("Week").closest("label");
+    week?.classList.add("pseudo-hover");
     const next = canvas.getByRole("tab", {
       name: "Next",
     });
     next.classList.add("pseudo-hover");
   },
 };
-export const RelativeCurrentDarkTheme = merge(RelativeCurrent, {
-  args: {
-    theme: "dark",
-  },
-});
+export const RelativeCurrentDarkTheme = {
+  ...RelativeCurrent,
+  args: { ...RelativeCurrent.args, theme: "dark" },
+};
 
 export const RelativePrevious = {
   render: Template,
@@ -189,11 +182,10 @@ export const RelativePrevious = {
   },
   decorators: [WithMockDate],
 };
-export const RelativePreviousDarkTheme = merge(RelativePrevious, {
-  args: {
-    theme: "dark",
-  },
-});
+export const RelativePreviousDarkTheme = {
+  ...RelativePrevious,
+  args: { ...RelativePrevious.args, theme: "dark" },
+};
 
 export const RelativeNext = {
   render: Template,
@@ -214,11 +206,10 @@ export const RelativeNext = {
   },
   decorators: [WithMockDate],
 };
-export const RelativeNextDarkTheme = merge(RelativeNext, {
-  args: {
-    theme: "dark",
-  },
-});
+export const RelativeNextDarkTheme = {
+  ...RelativeNext,
+  args: { ...RelativeNext.args, theme: "dark" },
+};
 
 export const SpecificBetween = {
   render: Template,
@@ -239,8 +230,7 @@ export const SpecificBetween = {
   },
 };
 
-export const SpecificBetweenDarkTheme = merge(SpecificBetween, {
-  args: {
-    theme: "dark",
-  },
-});
+export const SpecificBetweenDarkTheme = {
+  ...SpecificBetween,
+  args: { ...SpecificBetween.args, theme: "dark" },
+};

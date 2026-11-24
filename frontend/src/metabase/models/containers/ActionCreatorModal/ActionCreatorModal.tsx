@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import { skipToken, useGetActionQuery, useGetCardQuery } from "metabase/api";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useQuestionFromCard } from "metabase/metadata-store";
@@ -8,6 +9,7 @@ import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useNavigate } from "metabase/router";
+import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
@@ -84,23 +86,25 @@ function ActionCreatorModalLoader({ params, onClose }: ModalComponentProps) {
     isLoading,
     error,
   } = useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
-  const buildQuestion = useQuestionFromCard();
-  const model = useMemo(
-    () => (card != null ? buildQuestion(card) : undefined),
-    [card, buildQuestion],
-  );
-
-  if (isLoading || error != null || !model) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
+  const model = useQuestionFromCard(card);
 
   return (
-    <ActionCreatorModal
-      params={params}
+    <Modal
+      {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
+      opened
       onClose={onClose}
-      model={model}
-      loading={isLoading}
-    />
+      size="95%"
+      withCloseButton={false}
+      padding={0}
+    >
+      {modelId == null ? (
+        <NotFound />
+      ) : isLoading || error != null || !model ? (
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      ) : (
+        <ActionCreatorModal params={params} onClose={onClose} model={model} />
+      )}
+    </Modal>
   );
 }
 

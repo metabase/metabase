@@ -2,27 +2,35 @@
   "Application database queries for the sso module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [metabase.app-db.core :as mdb]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn session-user-email-and-source
-  "The email and SSO source of the User owning the Session with `session-key-hashed`, or nil."
+  "The email and SSO source of the Session with `session-key-hashed`, plus the identifiers the IdP
+  used for it, or nil.
+
+  The `saml_*` columns are NULL for non-SAML sessions and for SAML sessions created before we
+  started recording them."
   [session-key-hashed :- :string]
-  (t2/query-one {:select [:u.email :u.sso_source]
+  (t2/query-one {:select [:u.email :u.sso_source :session.saml_session_index
+                          :session.saml_name_id :session.saml_name_id_format]
                  :from   [[:core_user :u]]
                  :join   [[:core_session :session] [:= :u.id :session.user_id]]
                  :where  [:= :key_hashed session-key-hashed]}))
-
-(mu/defn delete-session!
-  "Delete the Session with `session-key-hashed`, returning the number deleted."
-  [session-key-hashed :- :string]
-  (t2/delete! :model/Session :key_hashed session-key-hashed))
 
 (mu/defn group-ids-by-name
   "The IDs of the PermissionsGroups named one of `group-names`."
   [group-names :- [:set :string]]
   (t2/select-pks-set :model/PermissionsGroup :name [:in group-names]))
+
+(mu/defn expires-at-clause
+  "A HoneySQL form for the database's now plus `seconds`, the expiry the before-insert hook gives a new SsoRelayState."
+  [seconds :- ms/PositiveInt]
+  (let [db-type (mdb/db-type)]
+    (h2x/add-interval-honeysql-form db-type (h2x/current-datetime-honeysql-form db-type) seconds :second)))
 
 (mu/defn insert-relay-state!
   "Insert the SsoRelayState `row`, returning the number inserted."
@@ -31,14 +39,13 @@
            [:continue_url [:maybe :string]]
            [:origin       [:maybe :string]]
            [:embedding    :boolean]
-           [:expires_at   ms/TemporalInstant]]]
+           [:expires_at   {:optional true} ms/TemporalInstant]]]
   (t2/insert! :model/SsoRelayState row))
 
 (mu/defn unexpired-relay-state
-  "The SsoRelayState with `hashed-key` expiring after `now`, or nil."
-  [hashed-key :- :string
-   now        :- ms/TemporalInstant]
-  (t2/select-one :model/SsoRelayState :id hashed-key :expires_at [:> now]))
+  "The SsoRelayState with `hashed-key` expiring after the database's now, the clock its expiry is set by, or nil."
+  [hashed-key :- :string]
+  (t2/select-one :model/SsoRelayState :id hashed-key :expires_at [:> (h2x/current-datetime-honeysql-form (mdb/db-type))]))
 
 (mu/defn delete-relay-state!
   "Delete the SsoRelayState with `hashed-key`, returning the number deleted."

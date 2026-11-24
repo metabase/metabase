@@ -3,19 +3,20 @@ import {
   type AlertProps as MantineAlertProps,
 } from "@mantine/core";
 
-import type { AlertColor } from "./Alert.config";
+import { type AlertColor, getAlertColorVars } from "./Alert.config";
 
 export { alertOverrides } from "./Alert.config";
 
-export type AlertProps = MantineAlertProps & {
+export type AlertProps = Omit<MantineAlertProps, "color"> & {
   color?: AlertColor;
   size?: "default" | "compact";
 };
 
-export const Alert = ({ size = "default", ...props }: AlertProps) => (
+export const Alert = ({ size = "default", color, ...props }: AlertProps) => (
   <MantineAlert
     data-size={size}
-    data-color={props.color ?? "default"}
+    data-color={color ?? "default"}
+    vars={() => ({ root: getAlertColorVars(props.variant, color) })}
     {...props}
   />
 );

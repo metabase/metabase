@@ -84,4 +84,11 @@
      [:dashcard-id                    ms/PositiveInt]
      [:dashboard-id                   ::fk-or-missing-id]
      [:collection-id                  ::fk-or-missing-id]]]
-   [:unknown any?]])
+   [:unknown
+    [:map {:closed true}
+     [:type          [:enum :unknown]]
+     [:unknown       {:optional true} [:enum :model-action]]
+     [:card-id       {:optional true} ms/PositiveInt]
+     [:webhook-id    {:optional true} ms/PositiveInt]
+     [:collection-id {:optional true} ::fk-or-missing-id]
+     [:database-id   {:optional true} ::fk-or-missing-id]]]])

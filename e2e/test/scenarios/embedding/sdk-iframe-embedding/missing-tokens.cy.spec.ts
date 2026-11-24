@@ -7,13 +7,11 @@ describe("scenarios > embedding > sdk iframe embedding > without token features"
 
       // JWT requires a valid license to use, so we expect customers to use API keys when testing.
       enabledAuthMethods: ["api-key"],
-
-      signOut: true,
     });
   });
 
   it("shows an error if the token features are missing and the parent page is not localhost", () => {
-    cy.visit("http://localhost:4000");
+    cy.visit("/");
 
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
@@ -53,6 +51,7 @@ describe("scenarios > embedding > sdk iframe embedding > without token features"
         },
       });
 
+      frame.findByText("Pick your starting data").should("be.visible");
       frame
         .findByText("A valid license is required for embedding.")
         .should("not.exist");

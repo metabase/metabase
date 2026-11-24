@@ -1,10 +1,15 @@
 (ns metabase-enterprise.dependencies.models.dependency-status
   (:require
-   [java-time.api :as t]
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,78 +20,63 @@
 (t2/deftransforms :model/DependencyStatus
   {:entity_type mi/transform-keyword})
 
-(defn mark-stale!
-  "Mark entities of `entity-type` with ids in `entity-ids` as stale for dependency recalculation.
-  Creates entries if they don't exist, or sets stale=true if they do.
-  Resets retry state so previously-failed entities get a fresh chance."
-  [entity-type entity-ids]
-  (doseq [id entity-ids]
-    (dependencies.db/mark-dependency-status-stale! entity-type id)))
-
-(defn upsert-status!
-  "Upsert a dependency_status entry, setting stale=false, version to current,
-  and clearing any failure state."
-  [entity-type entity-id]
-  (dependencies.db/upsert-dependency-status!
-   entity-type entity-id models.dependency/current-dependency-analysis-version))
-
-(defmulti hydrate-for-deps
-  "Hydrate a batch of instances with data needed for dependency calculation.
-  Dispatches on entity-type keyword. Default is identity (no hydration needed)."
-  {:arglists '([entity-type instances])}
-  (fn [entity-type _instances] entity-type))
-
-(defmethod hydrate-for-deps :default [_ instances] instances)
-
-(defmethod hydrate-for-deps :dashboard [_ instances]
-  (t2/hydrate instances [:dashcards :series]))
-
-(defn instances-for-dependency-calculation
-  "Find a batch of instances of type `entity-type` and maximum size `batch-size` that need
-  dependency calculation: no status row yet, stale=true, OR version < current.
-  Excludes terminal entities and entities whose retry delay hasn't elapsed.
-  Returns full entity objects. Prioritizes stale over outdated.
-  Uses Java time (not DB time) so tests with [[mt/with-clock]] work correctly."
-  [entity-type batch-size]
-  (dependencies.db/instances-for-dependency-calculation entity-type
-                                                        batch-size
-                                                        models.dependency/current-dependency-analysis-version
-                                                        (t/offset-date-time)))
-
-(defn has-pending-retries?
-  "Returns true if there are any entities waiting to be retried (not terminal, with a set retry time)."
-  []
-  (dependencies.db/pending-retry-exists?))
-
-(defn has-stale-or-outdated?
-  "Returns true if there are any entities needing dependency calculation: no status row yet,
-  stale=true, OR version < current (not terminal, retry delay elapsed). Defined in terms of
-  [[instances-for-dependency-calculation]] so it stays consistent with what the backfill processes."
+(mu/defn has-pending-entities? :- :boolean
+  "Returns true if there are any entities whose dependencies are stale, not computed yet or computed by an older
+  analysis, or deleted entities whose status the dependency job has yet to clean up."
   []
   (boolean
    (some (fn [entity-type]
-           (seq (instances-for-dependency-calculation entity-type 1)))
-         deps.dependency-types/backfillable-dependency-types)))
+           (or (dependencies.db/dependency-pending?
+                entity-type models.dependency/current-dependency-analysis-version)
+               (seq (dependencies.db/dependency-deleted-entity-ids entity-type 1))))
+         (deps.calculation/computed-types))))
 
-(defn record-failure!
-  "Record a failed dependency calculation attempt for an entity.
-  Increments fail_count and sets next_retry_at based on exponential backoff.
-  If max retries exceeded, marks the entity as terminal.
-  Creates the entry if it doesn't exist, since entities with no row yet are exactly the ones
-  [[instances-for-dependency-calculation]] picks up first."
-  [entity-type entity-id max-retries delay-minutes]
-  (dependencies.db/record-dependency-status-failure!
-   entity-type entity-id
-   (fn [existing]
-     ;; An inserted row takes the column defaults for `stale` (false) and `dependency_analysis_version` (0). 0 is
-     ;; below `current-dependency-analysis-version`, which is what keeps the entity eligible for the retry once
-     ;; `next_retry_at` has elapsed.
-     (let [new-fail-count (inc (:fail_count existing 0))]
-       (if (> new-fail-count max-retries)
-         {:fail_count new-fail-count
-          :terminal true
-          :next_retry_at nil}
-         (let [retry-minutes (* new-fail-count delay-minutes)]
-           {:fail_count new-fail-count
-            :next_retry_at (when (pos? retry-minutes)
-                             (t/plus (t/offset-date-time) (t/minutes retry-minutes)))}))))))
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn take-pending-statuses! :- [:sequential ::dependencies.schema/pending-status]
+  "Up to `batch-size` entities of `entity-type` whose dependencies a write changed, are not computed yet, or were
+  computed by an older analysis, those last, with the `stale` count the job clears afterwards."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   batch-size  :- ms/PositiveInt]
+  (dependencies.db/take-pending-dependency-statuses!
+   entity-type batch-size models.dependency/current-dependency-analysis-version))
+
+(mu/defn clear-status! :- :boolean
+  "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id`, clearing its
+  `stale` count unless a write raised it."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity-id   :- ms/PositiveInt
+   stale       :- ms/IntGreaterThanOrEqualToZero]
+  (dependencies.db/clear-dependency-status!
+   entity-type entity-id stale models.dependency/current-dependency-analysis-version))
+
+(mu/defn mark-dependency-statuses-stale!
+  "Mark the DependencyStatuses of the entities `type->ids` stale, so the dependency job computes their dependencies
+  again."
+  [type->ids :- ::dependencies.schema/type->ids]
+  (dependencies.db/mark-dependency-statuses-stale! type->ids))
+
+(mu/defn mark-data-app-dependency-statuses-stale!
+  "Mark the DependencyStatuses of the DataApps whose resource collection is one of the Collections with
+  `collection-ids` stale, in one UPDATE."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (dependencies.db/mark-data-app-dependency-statuses-stale! collection-ids))
+
+(mu/defn delete-dependency-statuses!
+  "Delete the DependencyStatuses of the entities `entity-type` `entity-ids`, returning the number deleted."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (dependencies.db/delete-dependency-statuses! entity-type entity-ids))
+
+(mu/defn record-dependency-failure! :- :boolean
+  "Record that the dependency job failed to compute the dependencies of the entity `entity-type` `entity-id`, giving up on it until a write changes it once it failed
+  `max-failures` times in a row, returning whether it gave up."
+  [entity-type  :- ::dependencies.schema/entity-type
+   entity-id    :- ms/PositiveInt
+   max-failures :- ms/PositiveInt]
+  (dependencies.db/record-dependency-failure! entity-type entity-id max-failures))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/DependencyStatus [_model]
+  {:skip? true})

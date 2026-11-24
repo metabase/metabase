@@ -68,7 +68,6 @@ describe("scenarios > embedding > sdk iframe embedding > content-translations", 
     it("should translate content with read-only='true'", () => {
       H.prepareSdkIframeEmbedTest({
         withToken: "bleeding-edge",
-        signOut: false,
       });
 
       setupContentTranslations();
@@ -104,7 +103,6 @@ describe("scenarios > embedding > sdk iframe embedding > content-translations", 
     it("should translate content with read-only='false'", () => {
       H.prepareSdkIframeEmbedTest({
         withToken: "bleeding-edge",
-        signOut: false,
       });
 
       setupContentTranslations();

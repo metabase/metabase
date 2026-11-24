@@ -1,10 +1,9 @@
-import { type ReactElement, useMemo } from "react";
+import type { ReactElement } from "react";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { SourceModelBreadcrumbs } from "./SourceModelBreadcrumbs";
 
@@ -19,17 +18,12 @@ export function SourceQuestionBreadcrumbs({
   variant,
   ...props
 }: Props) {
-  const query = question.query();
-  const sourceTableId = Lib.sourceTableOrCardId(query);
-  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTableId);
+  const sourceQuestionId = Lib.primarySourceCardId(question.query());
 
   const { data: sourceCard } = useGetCardQuery(
     sourceQuestionId != null ? { id: sourceQuestionId } : skipToken,
   );
-  const buildQuestion = useQuestionFromCard();
-  const sourceQuestion = useMemo(() => {
-    return sourceCard ? buildQuestion(sourceCard) : undefined;
-  }, [sourceCard, buildQuestion]);
+  const sourceQuestion = useQuestionFromCard(sourceCard);
 
   if (!sourceQuestion) {
     return null;

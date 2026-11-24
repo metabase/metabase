@@ -6,8 +6,10 @@
   paired with the card being read-checked, and by [[assert-can-view-card-snapshots!]] to enumerate
   every snapshot a Card renders from. Lives in the queries module alongside `:model/StoredResult`."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.queries.cached-result :as cached-result]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -27,6 +29,24 @@
                     {:card_id (:card_id row) :exploration_id (:exploration_id row)})))
   row)
 
+(mu/defn assert-can-view-card-snapshots!
+  "Throw a 403 unless the current user may be served *every* `stored_result` Card `card-id` renders
+  from."
+  [card-id :- ms/PositiveInt]
+  (let [snapshots (queries.db/stored-result-gate-inputs-for-card card-id)]
+    (when (empty? snapshots)
+      (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
+    (doseq [snapshot snapshots]
+      (cached-result/assert-can-view-cached-result! snapshot))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-stored-result-uses! :- [:sequential ms/PositiveInt]
+  "Record that the Card or Exploration of each of `rows` uses the StoredResult of that row, and return the ids of the
+  new rows, in order."
+  [rows :- [:sequential ::queries.schema/stored-result-use.create]]
+  (queries.db/insert-stored-result-uses! rows))
+
 (mu/defn carry-pairings-for-document!
   "Copy `(card_id, stored_result_id)` pairings onto newly created Cards for a document save.
 
@@ -44,16 +64,11 @@
           reachable      (if (seq doc-card-ids)
                            (queries.db/stored-result-ids-used-by-cards doc-card-ids sr-ids)
                            #{})]
-      (doseq [[new-card-id sr-id] distinct-pairs
-              :when (contains? reachable sr-id)]
-        (queries.db/insert-stored-result-use! sr-id new-card-id)))))
+      (create-stored-result-uses! (for [[new-card-id sr-id] distinct-pairs
+                                        :when               (contains? reachable sr-id)]
+                                    {:stored_result_id sr-id :card_id new-card-id})))))
 
-(mu/defn assert-can-view-card-snapshots!
-  "Throw a 403 unless the current user may be served *every* `stored_result` Card `card-id` renders
-  from."
-  [card-id :- ms/PositiveInt]
-  (let [snapshots (queries.db/stored-results-for-card card-id)]
-    (when (empty? snapshots)
-      (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
-    (doseq [snapshot snapshots]
-      (cached-result/assert-can-view-cached-result! snapshot))))
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/StoredResultUse [_model]
+  {:skip? true})

@@ -51,6 +51,57 @@ function compare({
 }
 
 describe("type comparison", () => {
+  it("should ignore unconsumed response fields throughout nested arrays", () => {
+    expect(
+      compare({
+        frontend: "{ items: { id: number }[] }",
+        backend:
+          "{ items: { id: number; metadata: unknown }[]; extra: unknown }",
+      }).status,
+    ).toBe("compatible");
+  });
+
+  it("should diagnose a definite response mismatch alongside a consumed unknown", () => {
+    const result = compare({
+      frontend: "{ id: number; label: string }",
+      backend: "{ id: string; label: unknown; extra: unknown }",
+    });
+    expect(result.status).toBe("mismatch");
+    expect(result.message).toContain("$.id");
+    expect(result.message).toContain("$.label");
+    expect(result.message).not.toContain("$.extra");
+  });
+
+  it("should keep a discriminated union unverified when the matching variant contains an unknown", () => {
+    const result = compare({
+      frontend:
+        '{ kind: "ok"; id: string } | { kind: "error"; message: string }',
+      backend:
+        '{ kind: "ok"; id: unknown } | { kind: "error"; message: string }',
+    });
+    expect(result.status).toBe("unverified");
+    expect(result.message).toContain("$.id");
+  });
+
+  it("should accept an omitted optional request field with an unconstrained backend type", () => {
+    expect(
+      compare({
+        kind: "request",
+        frontend: "{ id: number }",
+        backend: "{ id: number; metadata?: unknown }",
+      }).status,
+    ).toBe("compatible");
+  });
+
+  it("should check each backend tuple element against the consumed array fields", () => {
+    const result = compare({
+      frontend: "{ id: number; nickname?: string }[]",
+      backend: "[{ id: number; nickname: string }, { id: number }]",
+    });
+    expect(result.status).toBe("mismatch");
+    expect(result.message).toContain("$[1].nickname");
+  });
+
   it.each([
     {
       name: "should reject optional frontend fields absent from the backend schema",

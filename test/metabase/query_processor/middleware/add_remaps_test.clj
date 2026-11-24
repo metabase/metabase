@@ -77,6 +77,8 @@
                            %categories.name
                            {:source-field                                         %category-id
                             ::qp.add-remaps/new-field-dimension-id pos-int?}]]})
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib/->legacy-MBQL query))))))
 
 (deftest ^:parallel add-fk-remaps-do-not-add-duplicate-fields-test
@@ -107,6 +109,8 @@
                                %categories.name
                                (assoc category-name-options ::qp.add-remaps/new-field-dimension-id pos-int?)]
                               $longitude]})
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   (lib/->legacy-MBQL query)))
           (testing "Preprocessing query again should not result in duplicate columns being added"
             (is (=? query
@@ -136,6 +140,8 @@
                                    %categories.name
                                    {:source-field                                %category-id
                                     ::qp.add-remaps/new-field-dimension-id pos-int?}]]]})
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib/->legacy-MBQL query))))))
 
 (deftest ^:parallel add-fk-remaps-replace-breakouts-test
@@ -157,6 +163,8 @@
                                 %category-id
                                 {::qp.add-remaps/original-field-dimension-id pos-int?}]]
                  :aggregation [[:count]]})
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib/->legacy-MBQL query))))))
 
 (deftest ^:parallel add-fk-remaps-nested-queries-test
@@ -180,6 +188,8 @@
                                                 %categories.name
                                                 {:source-field %category-id
                                                  ::qp.add-remaps/new-field-dimension-id pos-int?}]]}})
+              ;; existing usage -- do not use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (lib/->legacy-MBQL query))))))
 
 (deftest ^:parallel add-remapped-columns-with-previous-stage-test
@@ -200,18 +210,21 @@
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
 (defn- remap-results [query metadata rows]
-  (let [rff (qp.add-remaps/remap-results query qp.reducible/default-rff)
+  (let [query (merge (lib/query (qp.store/metadata-provider) (lib.metadata/table (qp.store/metadata-provider) (meta/id :venues)))
+                     query)
+        rff   (qp.add-remaps/remap-results query qp.reducible/default-rff)
         rf  (rff metadata)]
     (transduce identity rf rows)))
 
 (defn venues-column-metadata []
-  (lib.metadata/bulk-metadata-or-throw
-   (qp.store/metadata-provider)
-   :metadata/column
-   [(meta/id :venues :id)
-    (meta/id :venues :name)
-    (meta/id :venues :category-id)
-    (meta/id :venues :price)]))
+  (mapv lib/lib-metadata-column->legacy-metadata-column
+        (lib.metadata/bulk-metadata-or-throw
+         (qp.store/metadata-provider)
+         :metadata/column
+         [(meta/id :venues :id)
+          (meta/id :venues :name)
+          (meta/id :venues :category-id)
+          (meta/id :venues :price)])))
 
 (deftest ^:parallel remap-human-readable-values-test
   (testing "remapping columns with `human_readable_values`"
@@ -333,6 +346,8 @@
                                     (range nesting-level))]]
         (testing (format "nesting level = %d" nesting-level)
           (is (= (-> query
+                     ;; existing usage -- do not use going forward
+                     #_{:clj-kondo/ignore [:deprecated-var]}
                      lib/->legacy-MBQL
                      (assoc-in
                       (concat [:query] (repeat nesting-level :source-query) [:fields])
@@ -355,6 +370,8 @@
                                                               :field-name                "PRODUCT_ID"
                                                               :human-readable-field-name "TITLE"}]))
                  (-> (#'qp.add-remaps/add-remapped-columns query)
+                     ;; existing usage -- do not use going forward
+                     #_{:clj-kondo/ignore [:deprecated-var]}
                      lib/->legacy-MBQL))))))))
 
 (deftest ^:parallel fk-remaps-with-multiple-columns-with-same-name-test
@@ -384,6 +401,8 @@
                                                           ::qp.add-remaps/new-field-dimension-id pos-int?}]]
                      :order-by [[:asc $name]]
                      :limit    4})
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   (lib/->legacy-MBQL preprocessed)))))
       (testing "Post-processing"
         (let [dimension-id (get-in (lib.metadata/field category-id-remap-metadata-provider (meta/id :venues :category-id))
@@ -392,13 +411,16 @@
               metadata     (lib.tu.macros/$ids venues
                              {:cols [{:name         "NAME"
                                       :id           %name
+                                      :base_type    :type/Text
                                       :display_name "Name"}
                                      {:name         "CATEGORY_ID"
                                       :id           %category-id
+                                      :base_type    :type/Integer
                                       :display_name "Category ID"
                                       :options      {::qp.add-remaps/original-field-dimension-id dimension-id}}
                                      {:name         "NAME_2"
                                       :id           %categories.name
+                                      :base_type    :type/Text
                                       :display_name "Category → Name"
                                       :fk_field_id  %category-id
                                       :options      {::qp.add-remaps/new-field-dimension-id dimension-id}}]})]
@@ -467,28 +489,35 @@
                              %categories.name
                              {:source-field                                         %id
                               ::qp.add-remaps/new-field-dimension-id id-dimension-id}]]})
+                ;; existing usage -- do not use going forward
+                #_{:clj-kondo/ignore [:deprecated-var]}
                 (lib/->legacy-MBQL preprocessed))
             "should have 5 fields: CATEGORY_ID, ID, and NAME from the original query; then CATEGORY_ID->NAME and ID->NAME remaps"))
       (testing "Post-processing"
         (let [metadata (lib.tu.macros/$ids venues
                          {:cols [{:name         "CATEGORY_ID"
                                   :id           %category-id
+                                  :base_type    :type/Integer
                                   :display_name "Category ID"
                                   :options      {::qp.add-remaps/original-field-dimension-id category-id-dimension-id}}
                                  {:name         "ID"
                                   :id           %id
+                                  :base_type    :type/BigInteger
                                   :display_name "ID"
                                   :options      {::qp.add-remaps/original-field-dimension-id id-dimension-id}}
                                  {:name         "NAME"
                                   :id           %name
+                                  :base_type    :type/Text
                                   :display_name "Name"}
                                  {:name         "NAME_2"
                                   :id           %categories.name
+                                  :base_type    :type/Text
                                   :display_name "Categories → Name"
                                   :fk_field_id  %category-id
                                   :options      {::qp.add-remaps/new-field-dimension-id category-id-dimension-id}}
                                  {:name         "NAME_3"
                                   :id           %categories.name
+                                  :base_type    :type/Text
                                   :display_name "Categories → Name"
                                   :fk_field_id  %id
                                   :options      {::qp.add-remaps/new-field-dimension-id id-dimension-id}}]})]
@@ -639,6 +668,8 @@
                              :fields       :all}]}))
           preprocessed (-> query
                            qp.preprocess/preprocess
+                           ;; existing usage -- do not use going forward
+                           #_{:clj-kondo/ignore [:deprecated-var]}
                            lib/->legacy-MBQL)]
       (testing ":query => :joins"
         (let [joins (get-in preprocessed [:query :joins])]
@@ -753,6 +784,8 @@
                        :fields #(= (count %) 20)}}
               (-> query
                   qp.preprocess/preprocess
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   lib/->legacy-MBQL))))))
 
 (deftest ^:parallel multiple-fk-remaps-test-in-joins-e2e-test
@@ -807,6 +840,8 @@
                                 [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :category-id)}]]}}
               (-> query
                   qp.preprocess/preprocess
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   lib/->legacy-MBQL
                   (select-keys [:query])))))))
 

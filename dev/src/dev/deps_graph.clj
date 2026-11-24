@@ -7,11 +7,14 @@
    [clojure.tools.namespace.file :as ns.file]
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.namespace.parse :as ns.parse]
-   [clojure.walk :as walk]
+   [dev.module-graph :as module-graph]
+   [dev.module-source :as module-source]
    [hooks.common.modules :as modules]
    [lambdaisland.deep-diff2 :as ddiff]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
    [rewrite-clj.zip :as z]))
@@ -20,7 +23,14 @@
 
 ;; Many functions in this namespace re-parse the same files over and over again during testing, so introduce a
 ;; mechanism for bounded caching of those parsed files.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parsed-file-cache* nil)
+
+(def ^:private File
+  "A path string or `java.io.File`, as accepted by `rewrite-clj.parser/parse-file-all` and friends."
+  [:or
+   string?
+   [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]])
 
 (defn- parse-file-all
   "Calls `rewrite-.clj.parser/parse-file-all`, but first checks in `*parsed-file-cache*` if it is bound."
@@ -29,26 +39,6 @@
     (or (@*parsed-file-cache* file)
         (get (swap! *parsed-file-cache* assoc file (r.parser/parse-file-all file)) file))
     (r.parser/parse-file-all file)))
-
-(defn- skip-node? [node]
-  (let [tag (n/tag node)]
-    (or (#{:uneval :comment :newline :whitespace} tag)
-        (and (= tag :list)
-             (when-let [fst (first (n/children node))]
-               (and (= (n/tag fst) :token)
-                    (= (:value fst) 'comment)))))))
-
-(defn- walk-parsed-ignore-comments!
-  "Simple fast recursive walker over `tree` which should be a file parsed with rewrite-clj. The passed consumer function
-  `f` should use side-effects to accumulate the results."
-  [f tree]
-  (letfn [(walk [node]
-            (when-not (skip-node? node)
-              ;; Don't descend into comments
-              (f node)
-              (when-let [children (:children node)]
-                (run! walk children))))]
-    (walk tree)))
 
 (mu/defn- project-root-directory :- (ms/InstanceOfClass java.io.File)
   ^java.io.File []
@@ -85,43 +75,14 @@
   (mapcat ns.find/find-sources-in-dir
           (list* (source-root) (enterprise-source-root) (plugin-source-roots))))
 
-(def ^:private require-symbols
-  '#{require
-     clojure.core/require
-     classloader/require
-     metabase.classloader.core/require
-     metabase.classloader.impl/require
-     requiring-resolve
-     clojure.core/requiring-resolve})
-
 (defn- find-required-namespaces
   "Find all `(require ...)` forms in a file and return symbols it they load."
   [file]
-  (let [acc (atom #{})]
-    (walk-parsed-ignore-comments!
-     (fn [node]
-       (when (= (n/tag node) :list)
-         (when-let [[first-child & other :as children] (remove skip-node? (n/children node))]
-           (when (and first-child
-                      (= (n/tag first-child) :token)
-                      ;; Check all child symbols on the line since `require` might be called in a threading macro
-                      ;; like (-> 'ns require)
-                      (some #(and (= (n/tag %) :token)
-                                  (require-symbols (n/sexpr %)))
-                            children))
-             (run! #(when (and (= (n/tag %) :quote))
-                      (when-let [in (some-> (n/children %) first n/sexpr)]
-                        (when (symbol? in)
-                          (swap! acc conj (if (qualified-symbol? in)
-                                            (symbol (namespace in))
-                                            in)))))
-                   other)))))
-     (parse-file-all file))
-    @acc))
+  (module-source/dynamic-requires (parse-file-all file)))
 
 (mu/defn- find-dynamically-loaded-namespaces :- [:set simple-symbol?]
   "Find the set of namespace symbols for namespaces loaded by `require` and friends in a `file`."
-  [file]
+  [file :- File]
   (try
     (find-required-namespaces file)
     (catch Throwable e
@@ -142,39 +103,25 @@
 
 (mu/defn find-defenterprises
   "using rewrite-clj, find and return all the namespaces 'required' by defenterprise forms in a file."
-  [file]
+  [file :- :string]
   ;; We want to know what namespace defendpoint 'requires': so do not need to parse anything in the enterprise dir.
   (if (str/includes? file "/metabase_enterprise/")
     []
-    (let [defentz (atom #{})]
-      (walk/postwalk
-       (fn [x]
-         (when-let [target-ns (and (= (:tag x) :list)
-                                   (= (:string-value (first (:children x))) "defenterprise")
-                                   ;; grabbing it naeivly should be OK, since the linter enforces there's a docstring
-                                   (some->> x z/of-node z/down z/right z/right z/right z/sexpr))]
-           (swap! defentz conj target-ns))
-         x)
-       (z/of-node (parse-file-all file)))
-      @defentz)))
+    (set (match/match-all (z/of-node (parse-file-all file))
+           {:tag :list, :children (cs :guard (= "defenterprise" (:string-value (first cs))))}
+           ;; grabbing it naeivly should be OK, since the linter enforces there's a docstring
+           (some->> &match z/of-node z/down z/right z/right z/right z/sexpr)))))
 
 (mu/defn find-defenterprise-schemas
   "using rewrite-clj, find and return all the namespaces 'required' by defenterprise-schema forms in a file."
-  [file]
+  [file :- :string]
   ;; We want to know what namespace defendpoint 'requires': so do not need to parse anything in the enterprise dir.
   (if (str/includes? file "/metabase_enterprise/")
     []
-    (let [defentz (atom #{})]
-      (walk/postwalk
-       (fn [x]
-         (when-let [target-ns (and (= (:tag x) :list)
-                                   (= (:string-value (first (:children x))) "defenterprise-schema")
-                                   ;; grabbing it naeivly should be OK, since the linter enforces there's a docstring
-                                   (some->> x z/of-node z/down z/right z/right z/right z/right z/right z/sexpr))]
-           (swap! defentz conj target-ns))
-         x)
-       (z/of-node (parse-file-all file)))
-      @defentz)))
+    (set (match/match-all (z/of-node (parse-file-all file))
+           {:tag :list, :children [{:string-value "defenterprise-schema"} & _]}
+           ;; grabbing it naeivly should be OK, since the linter enforces there's a docstring
+           (some->> &match z/of-node z/down z/right z/right z/right z/right z/right z/sexpr)))))
 
 (comment
   ;; has 2 defenterprises
@@ -202,53 +149,84 @@
   "Technically `config` 'uses' `enterprise/core` and `test` since it tries to load them to see if they exist so we know
   if EE/test code is available; however we can ignore them since they're not 'real' usages. So add them here so we
   don't include them in our deps tree."
-  '{metabase.config.core #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}})
+  ;; Older commits, which [[dev.module-history]] measures, name this namespace `metabase.config`.
+  '{metabase.config      #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}
+    metabase.config.core #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}})
 
-(mu/defn- file-dependencies :- [:map
-                                [:namespace simple-symbol?]
-                                [:filename  string?] ; filename is relative to [[project-root]]
-                                [:module    symbol?]
-                                [:deps      [:sequential
-                                             [:map
-                                              [:namespace simple-symbol?]
-                                              [:module    symbol?]
-                                              [:dynamic {:optional true} :keyword]]]]]
-  [prefix->module :- map?
-   file :- [:or
-            string?
-            [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
+(def ^:private ModuleConfig
+  [:map {:closed true}
+   [:team           {:optional true} :string]
+   [:ns-prefix      {:optional true} :string]
+   [:api            {:optional true} [:or [:= :any] [:set :symbol]]]
+   [:uses           {:optional true} [:or [:= :any] [:set :symbol]]]
+   [:friends        {:optional true} [:set :symbol]]
+   [:model-exports  {:optional true} [:or [:= :any] [:set :keyword]]]
+   [:model-imports  {:optional true} [:or [:= :bypass] [:set :keyword]]]
+   [:module-exports {:optional true} [:set :symbol]]
+   [:codeowners     {:optional true} [:= true]]])
+
+(def ^:private ModulesConfig
+  [:map-of :symbol ModuleConfig])
+
+(def ^:private PrefixToModule
+  [:map-of :string :symbol])
+
+(def ^:private FileDependencies
+  [:map {:closed true}
+   [:namespace {:optional true} [:maybe simple-symbol?]]
+   [:filename  string?] ; filename is relative to [[project-root]]
+   [:module    symbol?]
+   [:deps      [:sequential
+                [:map {:closed true}
+                 [:namespace simple-symbol?]
+                 [:module    symbol?]
+                 [:dynamic {:optional true} :keyword]]]]])
+
+(def ^:private SourceRequires
+  [:map {:closed true}
+   [:namespace [:maybe simple-symbol?]]
+   [:static    [:set simple-symbol?]]
+   [:dynamic   [:set simple-symbol?]]])
+
+(mu/defn resolve-requires :- FileDependencies
+  "The dependency row for one source file at `filename`, resolving its namespace and each namespace it requires to a
+  module through `prefix->module`.
+  The third argument has the shape [[module-source/source-requires]] returns.
+  A namespace required both statically and dynamically counts as static."
+  [prefix->module :- PrefixToModule
+   filename       :- :string
+   {ns-symb :namespace, :keys [static dynamic]} :- SourceRequires]
+  {:namespace ns-symb
+   :filename  filename
+   :module    (modules/resolve-module prefix->module ns-symb)
+   :deps      (sort-by pr-str
+                       (keep (fn [required-ns]
+                               (when-let [module (modules/resolve-module prefix->module required-ns)]
+                                 (when-not (some-> ignored-dependencies ns-symb required-ns)
+                                   (merge
+                                    {:namespace required-ns
+                                     :module    module}
+                                    (when-not (contains? static required-ns)
+                                      {:dynamic :require-and-friends})))))
+                             (into (sorted-set) cat [static dynamic])))})
+
+(mu/defn- file-dependencies :- FileDependencies
+  [prefix->module :- PrefixToModule
+   file :- File]
   (try
-    (let [decl         (ns.file/read-file-ns-decl file)
-          ns-symb      (ns.parse/name-from-ns-decl decl)
-          static-deps  (ns.parse/deps-from-ns-decl decl)
-          dynamic-deps (for [symb (find-dynamically-loaded-namespaces file)]
-                         (vary-meta symb assoc ::dynamic :require-and-friends))
-          ;;
-          ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
-          ;; rationale.
-          ;;
-          ;; defenterprise-deps (for [symb (find-defenterprises file)]
-          ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
-          ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
-          ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
-          deps         (into (sorted-set) cat
-                             [static-deps
-                              dynamic-deps
-                              #_defenterprise-deps
-                              #_defenterprise-schema-deps])]
-      {:namespace ns-symb
-       :filename  (file->path-relative-to-project-root file)
-       :module    (modules/resolve-module prefix->module ns-symb)
-       :deps      (sort-by pr-str
-                           (keep (fn [required-ns]
-                                   (when-let [module (modules/resolve-module prefix->module required-ns)]
-                                     (when-not (some-> ignored-dependencies ns-symb required-ns)
-                                       (merge
-                                        {:namespace required-ns
-                                         :module    module}
-                                        (when-let [dynamic-type (::dynamic (meta required-ns))]
-                                          {:dynamic dynamic-type})))))
-                                 deps))})
+    (let [decl (ns.file/read-file-ns-decl file)]
+      ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
+      ;; rationale.
+      ;;
+      ;; defenterprise-deps (for [symb (find-defenterprises file)]
+      ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
+      ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
+      ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
+      (resolve-requires prefix->module
+                        (file->path-relative-to-project-root file)
+                        {:namespace (ns.parse/name-from-ns-decl decl)
+                         :static    (set (ns.parse/deps-from-ns-decl decl))
+                         :dynamic   (find-dynamically-loaded-namespaces file)}))
     (catch Throwable e
       (throw (ex-info (format "Error calculating dependencies for %s" file)
                       {:file file}
@@ -436,23 +414,13 @@
       ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
       (dissoc 'connection-pool)))
 
-(defn module-team
-  "Team owning `module`: its own `:team`, else its nearest ancestor's."
-  [config module]
-  (some #(get-in config [% :team])
-        (take-while some? (iterate #(modules/parent-module config %) module))))
-
 (defn- kondo-config-diff-ignore-any
   "Ignore entries in the config that use `:any`."
   [diff]
-  (walk/postwalk
-   (fn [x]
-     (when-not (and (instance? lambdaisland.deep_diff2.diff_impl.Mismatch x)
-                    (= (:- x) :any)
-                    (set? (:+ x))
-                    (seq (:+ x)))
-       x))
-   diff))
+  (match/replace-all diff
+    (:and (m :guard (instance? lambdaisland.deep_diff2.diff_impl.Mismatch m))
+          {:- :any, :+ (added :guard (and (set? added) (seq added)))})
+    nil))
 
 (defn kondo-config-diff
   ([]
@@ -461,7 +429,8 @@
   ([deps]
    (let [kondo-config (kondo-config)]
      (-> (ddiff/diff
-          (update-vals kondo-config #(dissoc % :team :friends :model-imports :model-exports :module-exports :ns-prefix))
+          (update-vals kondo-config
+                       #(dissoc % :team :codeowners :friends :model-imports :model-exports :module-exports :ns-prefix))
           (generate-config deps kondo-config))
          ddiff/minimize
          kondo-config-diff-ignore-any
@@ -570,8 +539,6 @@
   (let [deps        (dependencies)
         all-modules (into (sorted-set) (map :module) deps)
         module-deps (set (keys (all-module-deps-paths deps module)))]
-    ;; dev REPL tool; the summary line is for the human at the console
-    #_{:clj-kondo/ignore [:discouraged-var]}
     (printf "Module %s depends on %d/%d (%.1f%%) other modules.\n"
             module
             (count module-deps)
@@ -618,7 +585,8 @@
 
 (mu/defn- module->source-files :- [:set :string]
   "Return the set of all *source* filenames (relative to the [[project-root]] directory) for a `module`."
-  [deps module]
+  [deps :- [:sequential FileDependencies]
+   module :- symbol?]
   (into
    (sorted-set)
    (comp (filter #(= (:module %) module))
@@ -711,12 +679,6 @@
 (def ^:private test-source-file-extensions
   [".clj" ".cljc" ".cljs" ".bb"])
 
-(defn- module->test-path-prefix [modules-config module]
-  (let [ns-prefix (modules/module-ns-prefix modules-config module)]
-    (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
-         "test/"
-         (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
-
 (defn- existing-test-file-paths [path-prefix]
   (into (sorted-set)
         (keep (fn [extension]
@@ -727,13 +689,13 @@
 
 (mu/defn- module->test-files :- [:set :string]
   "Return the set of test filenames associated with a `module`."
-  ([modules-config :- map?
+  ([modules-config :- ModulesConfig
     module-sym :- :symbol]
    (module->test-files modules-config (modules/build-prefix->module modules-config) module-sym))
-  ([modules-config :- map?
-    prefix->module :- map?
+  ([modules-config :- ModulesConfig
+    prefix->module :- PrefixToModule
     module-sym :- :symbol]
-   (let [path-prefix  (module->test-path-prefix modules-config module-sym)
+   (let [path-prefix  (modules/module-dir modules-config module-sym "test")
          test-dir     (io/file path-prefix)
          nested-tests (when (.isDirectory test-dir)
                         (into
@@ -773,10 +735,10 @@
 
 (mu/defn find-model-keywords :- [:set :keyword]
   "Find all `:model/X` keywords referenced in a source file, ignoring comments."
-  [file]
+  [file :- File]
   (try
     (let [models (atom #{})]
-      (walk-parsed-ignore-comments!
+      (module-source/walk-parsed-ignore-comments!
        (fn [node]
          (when (= (n/tag node) :token)
            (let [sexpr (n/sexpr node)]
@@ -793,12 +755,12 @@
 
 (mu/defn find-model-definitions :- [:set :keyword]
   "Find all models with their `t2/table-name` defined in this file."
-  [file]
+  [file :- File]
   (let [models (atom #{})]
-    (walk-parsed-ignore-comments!
+    (module-source/walk-parsed-ignore-comments!
      (fn [node]
        (when (= (n/tag node) :list)
-         (let [[fst snd trd :as children] (remove skip-node? (n/children node))]
+         (let [[fst snd trd] (remove module-source/skip-node? (n/children node))]
            (when (and fst (= (n/tag fst) :token)
                       (some-> (n/string fst) (str/ends-with? "/defmethod")))
              (when (and fst snd trd
@@ -933,102 +895,101 @@
 
 ;;;; Module boundary analysis
 
-(defn- graph-nodes [graph]
-  (into (set (keys graph)) (mapcat val) graph))
+(defn module-cycles
+  "Each module cycle with its members and [[module-graph/cycle-metrics]], largest first.
+  The strong bridges are the single dependency edges whose removal splits a cycle."
+  ([]
+   (module-cycles (dependencies)))
+  ([deps]
+   (module-graph/cycles (module-dependencies deps))))
 
-(defn strongly-connected-components
-  "Return the strongly connected components of `graph` as a vector of sets.
-  A node outside every cycle comes back as a singleton set."
-  [graph]
-  ;; Tarjan's algorithm, kept recursive because that reads better than an explicit stack of frames.
-  ;; Each node on the search path costs a level of recursion, so the worst case is one level per node.
-  ;; As of 2026-09-11 the 206-module graph peaks at 40 levels; the default 2 MB thread stack fits about 2,600.
-  (letfn [(pop-component [state root]
-            (loop [state state, component #{}]
-              (let [node      (peek (:stack state))
-                    state     (-> state
-                                  (update :stack pop)
-                                  (update :on-stack disj node))
-                    component (conj component node)]
-                (if (= node root)
-                  (update state :components conj component)
-                  (recur state component)))))
-          (visit [state node]
-            (let [node-index (:next-index state)
-                  state      (-> state
-                                 (assoc-in [:index node] node-index)
-                                 (assoc-in [:lowlink node] node-index)
-                                 (update :next-index inc)
-                                 (update :stack conj node)
-                                 (update :on-stack conj node))
-                  state      (reduce (fn [state successor]
-                                       (cond
-                                         (not (contains? (:index state) successor))
-                                         (let [state (visit state successor)]
-                                           (update-in state [:lowlink node]
-                                                      min
-                                                      (get-in state [:lowlink successor])))
+(defn- enterprise-companion?
+  "Whether `module` is the `enterprise/X` companion of OSS module `ancestor`."
+  [module ancestor]
+  (and (= "enterprise" (namespace module))
+       (= ancestor (symbol (name module)))))
 
-                                         (contains? (:on-stack state) successor)
-                                         (update-in state [:lowlink node]
-                                                    min
-                                                    (get-in state [:index successor]))
+(defn- upward-references*
+  "The [[upward-references]] of `deps`, given the [[module-cycles]] of the same `deps` as `cycles`."
+  [deps config cycles]
+  ;; A nested module may use its ancestors' internals, and a parent usually requires its children, so one
+  ;; require back up is enough to make a cycle.
+  ;; The linter allows these requires, so nothing else reports them.
+  (let [module->cycle-members (u/for-map [{:keys [modules]} cycles
+                                          :let              [members (set modules)]
+                                          module            modules]
+                                [module members])]
+    (vec (for [{:keys [module], :as file} deps
+               dep   (:deps file)
+               :let  [ancestor (:module dep)]
+               :when (and (not= module ancestor)
+                          (modules/descendant-of? config module ancestor)
+                          (not (enterprise-companion? module ancestor)))
+               :let  [api (modules/module-api-namespaces config ancestor)]]
+           {:namespace          (:namespace file)
+            :module             module
+            :required-namespace (:namespace dep)
+            :ancestor           ancestor
+            ;; A nil API means `:api :any`, where every namespace is public.
+            :api?               (or (nil? api) (contains? api (:namespace dep)))
+            :cycle?             (contains? (module->cycle-members module) ancestor)}))))
 
-                                         :else
-                                         state))
-                                     state
-                                     (get graph node))]
-              (cond-> state
-                (= (get-in state [:lowlink node]) (get-in state [:index node]))
-                (pop-component node))))]
-    (:components
-     (reduce (fn [state node]
-               (cond-> state
-                 (not (contains? (:index state) node)) (visit node)))
-             {:components []
-              :index      {}
-              :lowlink    {}
-              :next-index 0
-              :on-stack   #{}
-              :stack      []}
-             (sort (graph-nodes graph))))))
+(defn upward-references
+  "Requires from a module into one of its ancestors.
+  An `enterprise/X` module requiring OSS `X` is expected and left out.
 
-(defn cyclic-components
-  "Non-singleton [[strongly-connected-components]], largest first; ties sort by first member."
-  [graph]
-  (->> (strongly-connected-components graph)
-       (filter #(> (count %) 1))
-       (sort-by (fn [component] [(- (count component)) (str (first (sort component)))]))
-       vec))
+  Returns one map per require:
 
-(defn- cyclic-component-sizes
-  "Module and namespace counts for each [[cyclic-components]] cluster."
-  [graph node->namespace-count]
-  (mapv (fn [component]
-          {:modules    (count component)
-           :namespaces (transduce (map #(get node->namespace-count % 0)) + 0 component)})
-        (cyclic-components graph)))
+  - `:namespace`, `:module`            the requiring side
+  - `:required-namespace`, `:ancestor` the required side
+  - `:api?`                            whether the required namespace is in the ancestor's `:api`
+  - `:cycle?`                          whether the ancestor also reaches the module, closing a cycle"
+  ([]
+   (upward-references (dependencies) (kondo-config)))
+  ([deps config]
+   (upward-references* deps config (module-cycles deps))))
 
 (defn module-boundary-stats
   "REPL diagnostics for the module graph:
 
-  - `:api-any-namespaces`  namespaces exposed by `:api :any` modules
-  - `:module-count`        configured modules
-  - `:scc-module-sizes`    modules per cycle, largest first
-  - `:scc-namespace-sizes` namespaces per cycle, in the same order
+  - `:api-any-namespaces`       namespaces exposed by `:api :any` modules
+  - `:module-count`             configured modules
+  - `:scc-module-sizes`         modules per cycle, largest first
+  - `:scc-namespace-sizes`      namespaces per cycle, in the same order
+  - `:scc-densities`            edges per cycle over the most it could have, in the same order
+  - `:scc-cycle-ranks`          independent cycles per cycle, in the same order
+  - `:upward-requires`          requires from a module into an ancestor, see [[upward-references]]
+  - `:upward-module-edges`      distinct module and ancestor pairs behind them
+  - `:upward-internal-requires` upward requires that reach past the ancestor's `:api`
+  - `:upward-cycle-requires`    upward requires that close a cycle
 
   These values are not ratcheted because any source change can move them. Use namespace sizes to track
-  cycle reduction: splitting a module can grow a cycle's module count without removing namespaces."
+  cycle reduction: splitting a module can grow a cycle's module count without removing namespaces.
+  Density compares how tangled cycles of different sizes are.
+  Cycle rank is an upper bound on the edges to cut.
+  Pass `cycles` from [[module-cycles]] for the same `deps` to reuse them."
   ([]
    (module-boundary-stats (dependencies) (kondo-config)))
   ([deps config]
+   (module-boundary-stats deps config (module-cycles deps)))
+  ([deps config cycles]
    (let [any-modules (into #{} (keep (fn [[module cfg]] (when (= :any (:api cfg)) module))) config)
-         sizes       (cyclic-component-sizes (module-dependencies deps)
-                                             (frequencies (keep :module deps)))]
-     {:api-any-namespaces  (count (filter #(contains? any-modules (:module %)) deps))
-      :module-count        (count config)
-      :scc-module-sizes    (mapv :modules sizes)
-      :scc-namespace-sizes (mapv :namespaces sizes)})))
+         ns-counts   (frequencies (keep :module deps))
+         upward      (upward-references* deps config cycles)]
+     {:api-any-namespaces       (count (filter #(contains? any-modules (:module %)) deps))
+      :module-count             (count config)
+      :scc-module-sizes         (mapv :size cycles)
+      :scc-namespace-sizes      (mapv (fn [{:keys [modules]}]
+                                        (transduce (map #(get ns-counts % 0)) + 0 modules))
+                                      cycles)
+      :scc-densities            (mapv #(u/round-to-decimals 2 (:density %)) cycles)
+      :scc-cycle-ranks          (mapv :cycle-rank cycles)
+      :upward-requires          (count upward)
+      :upward-module-edges      (count (into #{} (map (juxt :module :ancestor)) upward))
+      :upward-internal-requires (count (remove :api? upward))
+      :upward-cycle-requires    (count (filter :cycle? upward))})))
 
 (comment
-  (module-boundary-stats))
+  (module-boundary-stats)
+  (frequencies (map (juxt :module :ancestor) (upward-references)))
+  (module-cycles))

@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -23,14 +25,14 @@ jest.mock("metabase/nav/components/AppSwitcher", () => ({
   AppSwitcher: () => null,
 }));
 
-const TAB_LABELS = [
-  "Get started",
-  "Security",
-  "Authentication",
-  "Permissions",
-  "Tenancy",
-  "Appearance",
-  "Localization",
+const TABS = [
+  { label: "Get started", href: "/embedding/get-started" },
+  { label: "Security", href: "/embedding/security" },
+  { label: "Authentication", href: "/embedding/authentication" },
+  { label: "Permissions", href: "/embedding/permissions" },
+  { label: "Tenancy", href: "/embedding/tenancy" },
+  { label: "Appearance", href: "/embedding/appearance" },
+  { label: "Localization", href: "/embedding/localization" },
 ];
 
 type SetupOptions = {
@@ -87,25 +89,22 @@ describe("EmbeddingHubLayout", () => {
     const nav = await findNav();
     const links = within(nav).getAllByRole("link");
 
-    expect(links.map((link) => link.getAttribute("aria-label"))).toEqual(
-      TAB_LABELS,
-    );
     expect(
-      await within(nav).findByRole("link", { name: "Get started" }),
-    ).toHaveAttribute("href", "/embedding/get-started");
+      links.map((link) => ({
+        label: link.getAttribute("aria-label"),
+        href: link.getAttribute("href"),
+      })),
+    ).toEqual(TABS);
   });
 
-  it("shows a gem on the paid tabs, none on Permissions", async () => {
+  it("shows a gem on the paid tabs, none on Get started, Security or Permissions", async () => {
     setup();
 
     const nav = await findNav();
+    const gemTabs = ["Authentication", "Tenancy", "Appearance", "Localization"];
+    const freeTabs = ["Get started", "Security", "Permissions"];
 
-    for (const label of [
-      "Authentication",
-      "Tenancy",
-      "Appearance",
-      "Localization",
-    ]) {
+    for (const label of gemTabs) {
       expect(
         within(
           await within(nav).findByRole("link", { name: label }),
@@ -113,11 +112,26 @@ describe("EmbeddingHubLayout", () => {
       ).toBeInTheDocument();
     }
 
-    expect(
-      within(
-        await within(nav).findByRole("link", { name: "Permissions" }),
-      ).queryByTestId("upsell-gem"),
-    ).not.toBeInTheDocument();
+    for (const label of freeTabs) {
+      expect(
+        within(
+          await within(nav).findByRole("link", { name: label }),
+        ).queryByTestId("upsell-gem"),
+      ).not.toBeInTheDocument();
+    }
+  });
+
+  it("opens Get started from the Security tab", async () => {
+    const { router } = setup({ initialRoute: "/embedding/security" });
+
+    expect(await screen.findByText("Security body")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(await findNav()).getByRole("link", { name: "Get started" }),
+    );
+
+    expect(await screen.findByText("Get started body")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/embedding/get-started");
   });
 
   it("keeps Get started current on the setup wizard sub-pages", async () => {

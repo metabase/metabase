@@ -2,26 +2,12 @@
   "Application database queries for the metabot module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [metabase-enterprise.metabot.schema :as metabot-ee.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.metabot.schema :as metabot.schema]
-   [metabase.permissions.core :as perms]
-   [metabase.util :as u]
+   [metabase.metabot.usage-controls :as usage-controls]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(defn- default-group-ids
-  "The IDs of the groups visible only in simple mode: All Users and, on tenant instances, All tenant users."
-  []
-  [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
-
-(defn- visible-groups-expr
-  "Matches the groups the admin UI shows in the mode selected by `advanced?`: Administrators, All Users, and All
-  tenant users in simple mode, every other group in group-level mode."
-  [advanced?]
-  (if advanced?
-    [:not-in :group_id (default-group-ids)]
-    [:in :group_id (conj (default-group-ids) (u/the-id (perms/admin-group)))]))
 
 (mu/defn all-groups
   "Every PermissionsGroup, in ID order."
@@ -44,34 +30,31 @@
                        {:select [:group_id]
                         :from   [(t2/table-name :model/PermissionsGroupMembership)]
                         :where  [:= :user_id user-id]}]
-                      (visible-groups-expr advanced?)]}))
+                      (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
-(mu/defn permission-exists?
-  "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
+(mu/defn permission :- [:maybe ::metabot-ee.schema/metabot-permissions]
+  "The MetabotPermissions row of `perm-type` of the group with `group-id`, or nil."
   [group-id  :- ms/PositiveInt
    perm-type :- :keyword]
-  (t2/exists? :model/MetabotPermissions :group_id group-id :perm_type perm-type))
+  (t2/select-one :model/MetabotPermissions :group_id group-id :perm_type perm-type))
 
 (mu/defn update-permission-value!
   "Set the value of the MetabotPermissions row of `perm-type` for the group with `group-id`."
   [group-id   :- ms/PositiveInt
-   perm-type  :- :keyword
-   perm-value :- :keyword]
+   perm-type  :- ::metabot-ee.schema/metabot-permissions.perm-type
+   perm-value :- ::metabot-ee.schema/metabot-permissions.perm-value]
   (t2/update! :model/MetabotPermissions {:group_id group-id :perm_type perm-type} {:perm_value perm-value}))
 
 (mu/defn insert-permission!
   "Insert the MetabotPermissions `row`."
-  [row :- [:map {:closed true}
-           [:id         {:optional true} ms/PositiveInt]
-           [:group_id   {:optional true} [:maybe ms/PositiveInt]]
-           [:perm_type  {:optional true} [:maybe [:or :keyword :string]]]
-           [:perm_value {:optional true} [:maybe [:or :keyword :string]]]]]
+  [row :- ::metabot-ee.schema/metabot-permissions.update]
   (t2/insert! :model/MetabotPermissions row))
 
 (mu/defn delete-hidden-group-permissions!
   "Delete the MetabotPermissions rows of the groups the mode selected by `advanced?` hides."
   [advanced? :- :boolean]
-  (t2/delete! :model/MetabotPermissions {:where [:not (visible-groups-expr advanced?)]}))
+  (t2/delete! :model/MetabotPermissions
+              {:where [:not (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (mu/defn group-limits
   "Every MetabotGroupLimit, in group order."
@@ -100,14 +83,14 @@
   [row :- [:map {:closed true}
            [:id        {:optional true} ms/PositiveInt]
            [:group_id  {:optional true} [:maybe ms/PositiveInt]]
-           [:max_usage {:optional true} [:maybe :int]]]]
+           [:max_usage {:optional true} ::metabot-ee.schema/metabot-limit.max-usage]]]
   (t2/insert! :model/MetabotGroupLimit row))
 
 (mu/defn update-group-limit!
   "Set the maximum usage of the MetabotGroupLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
-   max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotGroupLimit limit-id {:max_usage max-usage}))
+   max-usage :- ::metabot-ee.schema/metabot-limit.max-usage]
+  (t2/update! :model/MetabotGroupLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-group-limit!
   "Delete the MetabotGroupLimit of the group with `group-id`."
@@ -129,24 +112,19 @@
   [row :- [:map {:closed true}
            [:id        {:optional true} ms/PositiveInt]
            [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
-           [:max_usage {:optional true} [:maybe :int]]]]
+           [:max_usage {:optional true} ::metabot-ee.schema/metabot-limit.max-usage]]]
   (t2/insert! :model/MetabotInstanceLimit row))
 
 (mu/defn update-instance-limit!
   "Set the maximum usage of the MetabotInstanceLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
-   max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotInstanceLimit limit-id {:max_usage max-usage}))
+   max-usage :- ::metabot-ee.schema/metabot-limit.max-usage]
+  (t2/update! :model/MetabotInstanceLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-instance-limit!
   "Delete the MetabotInstanceLimit of the Tenant with `tenant-id`."
   [tenant-id :- [:maybe ms/PositiveInt]]
   (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id))
-
-(mu/defn insert-usage-log!
-  "Insert the AiUsageLog `row`."
-  [row :- ::metabot.schema/ai-usage-log.update]
-  (t2/insert! :model/AiUsageLog row))
 
 (defn- usage-window-expr
   [period-start user-id tenant-id]
@@ -165,30 +143,19 @@
                  :where  (usage-window-expr period-start user-id tenant-id)}))
 
 (mu/defn usage-message-count
-  "The `:cnt` row of messages logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
+  "The `:cnt` row of messages sent since `period-start`, narrowed by the optional `user-id` and `tenant-id`.
+
+  A message is one agent loop. The LLM calls of a loop log one `ai_usage_log` row each, under the loop's
+  `request_id`, so the count is the number of distinct ids among the rows from `sources`. The loop that asks,
+  `request-id`, is left out, so a turn's earlier calls do not count against its later ones; nil leaves every loop
+  in. Rows without a `request_id` do not count."
   [period-start :- ms/TemporalInstant
+   sources      :- [:set :string]
+   request-id   :- [:maybe :string]
    user-id      :- [:maybe ::lib.schema.id/user]
    tenant-id    :- [:maybe ms/PositiveInt]]
-  (t2/query-one {:select [[[:count :*] :cnt]]
+  (t2/query-one {:select [[[:count [:distinct :request_id]] :cnt]]
                  :from   [:ai_usage_log]
-                 :where  (usage-window-expr period-start user-id tenant-id)}))
-
-(mu/defn delete-usage-logs-created-before!
-  "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))
-
-(mu/defn transform
-  "The Transform with `transform-id`, or nil."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform :id transform-id))
-
-(mu/defn transforms
-  "The Transforms with `transform-ids`."
-  [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (t2/select :model/Transform :id [:in transform-ids]))
-
-(mu/defn cards
-  "The Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids]))
+                 :where  (cond-> (usage-window-expr period-start user-id tenant-id)
+                           (seq sources) (conj [:in :source sources])
+                           request-id    (conj [:not= :request_id request-id]))}))

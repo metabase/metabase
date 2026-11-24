@@ -1,10 +1,9 @@
 import { getDataFromClicked } from "metabase/value-formatting";
 import type { EChartsSeriesMouseEvent } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import {
-  createMockCard,
-  createMockNativeCard,
-} from "metabase-types/api/mocks/card";
+import { createMockCard } from "metabase-types/api/mocks/card";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -17,21 +16,25 @@ describe("createSankeyClickData", () => {
     createMockColumn({
       name: "Source",
       display_name: "Source",
+      source: "breakout",
       base_type: "type/Text",
     }),
     createMockColumn({
       name: "Target",
       display_name: "Target",
+      source: "breakout",
       base_type: "type/Text",
     }),
     createMockColumn({
       name: "Amount",
       display_name: "Amount",
+      source: "aggregation",
       base_type: "type/Number",
     }),
     createMockColumn({
       name: "Raw Vendor",
       display_name: "Raw Vendor",
+      source: "fields",
       base_type: "type/Text",
     }),
   ];
@@ -262,10 +265,23 @@ describe("createSankeyClickData", () => {
       seriesType: "sankey",
     };
 
+    const nativeColumns = columns.map((column) => ({
+      ...column,
+      source: "native",
+    }));
     const nativeRawSeries = [
       {
         ...rawSeries[0],
-        card: createMockNativeCard(),
+        card: createMockCard({
+          dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: "",
+          }),
+          query_type: "native",
+        }),
+        data: createMockDatasetData({
+          rows: rawSeries[0].data.rows,
+          cols: nativeColumns,
+        }),
       },
     ];
 
@@ -280,10 +296,10 @@ describe("createSankeyClickData", () => {
       event: mockEvent.event,
       settings,
       data: expect.arrayContaining([
-        expect.objectContaining({ col: columns[0], value: "A" }),
-        expect.objectContaining({ col: columns[1], value: "B" }),
-        expect.objectContaining({ col: columns[2], value: 10 }),
-        expect.objectContaining({ col: columns[3], value: "Vendor 1" }),
+        expect.objectContaining({ col: nativeColumns[0], value: "A" }),
+        expect.objectContaining({ col: nativeColumns[1], value: "B" }),
+        expect.objectContaining({ col: nativeColumns[2], value: 10 }),
+        expect.objectContaining({ col: nativeColumns[3], value: "Vendor 1" }),
       ]),
     });
     expect(clickData?.data).toHaveLength(columns.length);

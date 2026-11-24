@@ -5,11 +5,23 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.namespace.find :as ns.find]
+   [malli.error :as me]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.classloader.core :as classloader]
    [metabase.cmd.copy :as copy]
+   [metabase.config.core :as config]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(deftest ^:parallel transform-testing-tables-are-ee-only-test
+  (let [entities (set copy/entities)]
+    (doseq [model [:model/TransformTest :model/CardTest :model/SegmentTest :model/DataTestRun :model/TestSuite
+                   :model/TestSuiteMember :model/TestSuiteRun]]
+      (is (= config/ee-available? (contains? entities model))))
+    (is (not-any? entities [:transform_test :card_test :segment_test :data_test_run :test_suite :test_suite_member
+                            :test_suite_run]))))
 
 (deftest ^:parallel sql-for-selecting-instances-from-source-db-test
   (is (= "SELECT * FROM metabase_field ORDER BY id ASC"
@@ -68,64 +80,67 @@
         (finally
           (run! shutdown! [source target]))))))
 
-(def ^:private models-to-exclude
-  "Models that should *not* be migrated in `load-from-h2`."
-  #{:model/AgentApiCallLog
-    :model/AiUsageLog
-    :model/AnalysisFinding
-    :model/AnalysisFindingError
-    :model/ApiKey
-    :model/CacheConfig
-    :model/CardFavorite
-    :model/CloudMigration
-    :model/ContentTranslation
-    :model/DashboardFavorite
-    :model/DataApp
-    :model/DataComplexityScore
-    :model/DatabaseRouter
-    :model/Dependency
-    :model/DependencyStatus
-    :model/ExplorationQueryResult
-    :model/McpQueryHandle
-    :model/McpSessionLog
-    :model/McpToolCallLog
-    :model/MetabotConversation
-    :model/MetabotGroupLimit
-    :model/MetabotInstanceLimit
-    :model/MetabotMessage
-    :model/MetabotPermissions
-    :model/PremiumFeaturesCache
-    :model/PythonLibrary
-    :model/Query
-    :model/QueryCache
-    :model/QueryExecution
-    :model/QueryField
-    :model/QueryTable
-    :model/RemoteSyncObject
-    :model/RemoteSyncTask
-    :model/ReplacementRun
-    :model/SearchIndexMetadata
-    :model/SecurityAdvisory
-    :model/SemanticSearchTokenTracking
-    :model/SourceDimensionDaily
-    :model/SourceDimensionProfileDaily
-    :model/SourceMetricDaily
-    :model/SourceSegmentCompositeDaily
-    :model/SourceSegmentDaily
-    :model/SsoRelayState
-    :model/StoredResult
-    :model/StoredResultUse
-    :model/SupportAccessGrantLog
-    :model/TableIndex
-    :model/TaskHistory
-    :model/TaskRun
-    :model/Undo
-    :model/UserKeyValue})
+(deftest copy-login-history-with-orphaned-session-id-test
+  (testing "copying a login history row whose session was deleted mid-dump clears the dangling session_id (UXW-5258)"
+    (let [source (h2-data-source)
+          target (h2-data-source)]
+      (try
+        (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
+        (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY FALSE"])
+        (jdbc/execute! {:datasource source}
+                       ["INSERT INTO core_user (
+                           id, email, first_name, last_name, password, password_salt, date_joined,
+                           is_superuser, is_active, entity_id
+                         )
+                         VALUES (
+                           1, 'nobody@nowhere.test', 'No', 'Body', 'nopassword', 'nosalt', NOW(),
+                           FALSE, TRUE, 'loginhistoryuser00001'
+                         )"])
+        (jdbc/execute! {:datasource source}
+                       ["INSERT INTO login_history (
+                           timestamp, user_id, session_id, device_id, device_description, ip_address
+                         )
+                         VALUES (
+                           NOW(), 1, 'deleted-session-id', 'device', 'browser', '127.0.0.1'
+                         )"])
+        (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY TRUE"])
+        (copy/copy! :h2 source :h2 target)
+        (is (= [{:user_id 1, :session_id nil}]
+               (jdbc/query {:datasource target} ["SELECT user_id, session_id FROM login_history"])))
+        (finally
+          (run! shutdown! [source target]))))))
 
-(defn- all-model-names []
+(deftest copy-does-not-copy-sessions-test
+  ;; Check that `copy/copy!` excludes :model/Session. For the rest of the models whose spec skips them, we just verify
+  ;; they are not present in `copy/entities` (see `all-models-accounted-for-test`).
+  (testing "copy! leaves the target's core_session table empty"
+    (let [source (h2-data-source)
+          target (h2-data-source)]
+      (try
+        (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
+        (jdbc/execute! {:datasource source}
+                       ["INSERT INTO core_user (
+                           id, email, first_name, last_name, password, password_salt, date_joined,
+                           is_superuser, is_active, entity_id
+                         )
+                         VALUES (
+                           1, 'nobody@nowhere.test', 'No', 'Body', 'nopassword', 'nosalt', NOW(),
+                           FALSE, TRUE, 'sessioncopyuser000001'
+                         )"])
+        (jdbc/execute! {:datasource source}
+                       ["INSERT INTO core_session (id, user_id, created_at, key_hashed)
+                         VALUES ('session-id', 1, NOW(), 'hashed-key')"])
+        (is (= [{:count 1}]
+               (jdbc/query {:datasource source} ["SELECT COUNT(*) AS count FROM core_session"])))
+        (copy/copy! :h2 source :h2 target)
+        (is (= [{:count 0}]
+               (jdbc/query {:datasource target} ["SELECT COUNT(*) AS count FROM core_session"])))
+        (finally
+          (run! shutdown! [source target]))))))
+
+(defn- all-models []
   (into (sorted-set)
-        (comp (filter #(= (namespace %) "model"))
-              (remove models-to-exclude))
+        (filter #(= (namespace %) "model"))
         (descendants :metabase/model)))
 
 (deftest ^:parallel all-models-accounted-for-test
@@ -134,16 +149,33 @@
           :when   (and (str/starts-with? ns-symb "metabase")
                        (not (str/includes? ns-symb "test")))]
     (classloader/require ns-symb))
-  (doseq [model (all-model-names)
-          :let  [copy-models (set copy/entities)]]
-    (is (contains? copy-models model)
-        (format "%s should be added to %s, or to %s" model `copy/entities `models-to-exclude)))
+  (testing "every model has a valid copy spec"
+    (doseq [model (all-models)]
+      (testing (str model)
+        (is (contains? (methods app-db-copy/spec) model)
+            (format "%s should define %s with an explicit :skip?" model `app-db-copy/spec))
+        (when (contains? (methods app-db-copy/spec) model)
+          (is (nil? (me/humanize (mr/explain app-db-copy/schema (app-db-copy/spec model)))))))))
+  (testing "copy/entities lists exactly the models whose copy spec does not skip them"
+    (is (= (into (sorted-set) (remove (comp :skip? app-db-copy/spec)) (all-models))
+           (into (sorted-set) (filter #(= (namespace %) "model")) copy/entities))))
   (is (apply distinct? (map t2/table-name copy/entities))))
+
+(deftest ^:parallel entities-are-not-skipped-test
+  (doseq [entity copy/entities]
+    (testing (str entity)
+      (is (false? (:skip? (#'copy/entity-spec entity)))))))
+
+(deftest ^:parallel spec-of-model-without-one-throws-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has no app-db copy spec"
+                        (app-db-copy/spec :model/ModelWithoutCopySpec))))
 
 (def ^:private foreign-key-coverage-exceptions
   "Known exceptions to foreign-key coverage."
   ;; OSS cannot create tenants and does not copy them, so only EE-created dumps are affected.
-  #{{:child_table "core_user", :parent_table "tenant"}})
+  #{{:child_table "core_user", :parent_table "tenant"}
+    ;; Sessions aren't copied and the LoginHistory copy spec clears `login_history.session_id`.
+    {:child_table "login_history", :parent_table "core_session"}})
 
 (def ^:private fk-graph-sql
   "Foreign keys from the test's H2 database."
@@ -181,17 +213,16 @@
      FROM INFORMATION_SCHEMA.COLUMNS
     WHERE COLUMN_NAME = 'ID' AND IS_IDENTITY = 'YES'")
 
-(deftest entities-without-autoinc-ids-covers-every-copied-table-test
-  (testing "entities-without-autoinc-ids names exactly the copied tables whose id does not auto-increment"
+(deftest autoinc-ids-cover-every-copied-table-test
+  (testing "the copy specs say :sequence false for exactly the copied tables whose id does not auto-increment"
     (let [source (h2-data-source)]
       (try
         (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
         (let [autoinc (into #{} (map :table_name) (jdbc/query {:datasource source} [autoinc-id-tables-sql]))]
           (testing "the metadata query includes app tables"
             (is (contains? autoinc "metabase_table")))
-          (is (= (into #{} (remove (comp autoinc name t2/table-name)) copy/entities)
-                 @#'copy/entities-without-autoinc-ids)
-              (format "%s decides which tables get their id sequence reset after a load"
-                      `copy/entities-without-autoinc-ids)))
+          (is (= (into (sorted-set) (remove (comp autoinc name t2/table-name)) copy/entities)
+                 (into (sorted-set) (remove #'copy/autoinc-id?) copy/entities))
+              "the :sequence of a copy spec decides which tables get their id sequence reset after a load"))
         (finally
           (shutdown! source))))))

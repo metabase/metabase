@@ -1,4 +1,5 @@
 (ns metabase.lib.convert
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.lib.convert/->legacy-MBQL {:namespaces [metabase.lib.convert]}}}}}}
   (:refer-clojure :exclude [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)])
   (:require
    #?@(:cljs [[clojure.data :as data]])
@@ -16,8 +17,10 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
@@ -27,9 +30,11 @@
    [metabase.util.performance :refer [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)]])
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *mbql5-uuid->legacy-index*
   {})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *legacy-index->mbql5-uuid*
   {})
 
@@ -96,12 +101,14 @@
       clean-stage-schema-errors
       clean-stage-ref-errors))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *clean-query*
   "If true (this is the default), the query is cleaned.
   When converting queries at later stages of the preprocessing pipeline, this cleaning might not be desirable."
   true)
 
 #?(:clj
+   #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
    (def ^:dynamic *card-clean-hook*
      "Set by [[metabase.lib-be.models.transforms]] to a function which expects to be called like
      `(f pre-cleaning-query post-cleaning-query)`, when [[clean]] makes material changes.
@@ -309,7 +316,7 @@
 
 (defmethod ->mbql5 :mbql.stage/native
   [stage]
-  (m/update-existing stage :template-tags update-vals (fn [tag] (m/update-existing tag :dimension ->mbql5))))
+  (m/update-existing stage :template-tags update-vals lib.schema.template-tag/normalize-dimension))
 
 (defmethod ->mbql5 :mbql/join
   [join]
@@ -464,13 +471,26 @@
            {:query inner-query
             :type  :query})))
 
-;; TODO (Cam 2026-07-17) Deprecate this in 64
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
-  not already legacy MBQL."
-  {:arglists '([x])}
+  not already legacy MBQL.
+
+  DEPRECATED: conversion of entire queries to legacy MBQL is no longer supported and will be removed in the immediate
+  future. Update your code to use only MBQL 5.
+
+  If you are instead converting a column ref (which we will begrudgingly support for the foreseeable future) update
+  your code to use [[->legacy-MBQL-ref]] instead."
+  {:arglists '([x]), :deprecated "0.64.0"}
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
+
+(mu/defn ->legacy-MBQL-ref :- ::mbql.s/Reference
+  "Convert an MBQL `:field`/`:expression`/`:aggregation` ref to Legacy MBQL. Note that `:aggregation` refs need to
+  UUID => index mapping and thus cannot be converted outside of a [[with-aggregation-list]] context."
+  ;; TODO (Cam 2026-11-16) we should add a schema for this trio of ref types, see my note on
+  ;; `:metabase.lib.schema.ref/ref`.
+  [a-ref :- [:or :mbql.clause/field :mbql.clause/expression :mbql.clause/aggregation]]
+  (->legacy-MBQL a-ref))
 
 (defn- metabase-lib-keyword?
   "Does keyword `k` have a`:lib/`, `:lib.columns/` or a `:metabase.lib.*/` namespace?"
@@ -494,7 +514,7 @@
 (mu/defn- options->legacy-MBQL :- [:maybe [:map {:min 1}]]
   "Convert an options map in an MBQL clause to the equivalent shape for legacy MBQL. Remove `:lib/*` keys and
   `:effective-type`, which is not used in options maps in legacy MBQL."
-  [m :- [:maybe :map]]
+  [m :- [:maybe ::lib.schema.common/clause-options]]
   (->> (cond-> m
          ;; Following construct ensures that transformation MBQL 4 -> MBQL 5 -> MBQL 4, does not add base-type where
          ;; those were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
@@ -605,12 +625,12 @@
         (:columns stage-metadata)))
 
 (mu/defn- chain-stages
-  ([m]
-   (chain-stages m nil))
+  ([stages :- [:sequential ::lib.util/query-like]]
+   (chain-stages stages nil))
 
-  ([{:keys [stages]}                                       :- [:map [:stages [:sequential :map]]]
+  ([stages                                                 :- [:sequential ::lib.util/query-like]
     {:keys [top-level?], :or {top-level? true}, :as _opts} :- [:maybe
-                                                               [:map
+                                                               [:map {:closed true}
                                                                 [:top-level? [:maybe :boolean]]]]]
    ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
    ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
@@ -701,7 +721,7 @@
            (when (seq (:columns metadata))
              {:source-metadata (stage-metadata->legacy-metadata metadata)})
            (let [inner-query (chain-stages
-                              (dissoc base :fields :conditions)
+                              (:stages base)
                               {:top-level? false})]
              ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
              ;; it all in `:source-query` (QUE-1566, QUE-1603)
@@ -761,15 +781,17 @@
     (let [base        (merge (disqualify (dissoc query :info))
                              (select-keys query [:info]))
           parameters  (:parameters base)
-          inner-query (chain-stages base)
+          inner-query (chain-stages (:stages base))
           query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
                         :native
                         :query)]
-      (->> (merge (dissoc base :stages :parameters :lib.convert/converted?)
-                  (cond-> {:type query-type}
-                    (seq inner-query) (assoc query-type inner-query)
-                    (seq parameters)  (assoc :parameters parameters)))
-           (lib.normalize/normalize ::mbql.s/Query)))
+      (lib.normalize/normalize ::mbql.s/Query
+                               (merge (dissoc base :stages :parameters :lib.convert/converted?)
+                                      (cond-> {:type query-type}
+                                        (seq inner-query) (assoc query-type inner-query)
+                                        (seq parameters)  (assoc :parameters parameters)))
+                               ;; MBQL 5 has no raw-int Field IDs, so any raw int here is a literal
+                               {:legacy-int-field-ids? false}))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (lib.util/format "Error converting MBQL 5 query to legacy MBQL query: %s" (ex-message e))
                       {:query query}
@@ -777,15 +799,21 @@
 
 ;; TODO: Look into whether this function can be refactored away - it's called from several places but I (Braden) think
 ;; legacy refs shouldn't make it out of `lib.js`.
+(mr/def ::unnormalized-legacy-ref
+  "A legacy MBQL reference that may not be normalized yet, e.g. with string tags from JSON, or a JS array in CLJS."
+  #?(:clj  ::lib.schema.common/any-clause
+     :cljs [:or ::lib.schema.common/any-clause [:fn {:error/message "JS array"} array?]]))
+
 (mu/defn legacy-ref->mbql5 :- ::lib.schema.ref/ref
   "Convert a legacy MBQL `:field`/`:aggregation`/`:expression` reference to MBQL 5. Normalizes the reference if needed,
   and handles JS -> Clj conversion as needed."
-  ([query legacy-ref]
+  ([query      :- ::lib.schema/query
+    legacy-ref :- ::unnormalized-legacy-ref]
    (legacy-ref->mbql5 query -1 legacy-ref))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    legacy-ref   :- some?]
+    legacy-ref   :- ::unnormalized-legacy-ref]
    (let [legacy-ref                  (->> #?(:clj legacy-ref :cljs (js->clj legacy-ref :keywordize-keys true))
                                           ;; input is a legacy ref; normalize as legacy MBQL before conversion
                                           #_{:clj-kondo/ignore [:deprecated-var]}

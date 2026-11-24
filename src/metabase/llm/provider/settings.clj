@@ -10,9 +10,10 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.current :as request.current]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.startup.core :as startup]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.net MalformedURLException URL)
@@ -64,25 +65,18 @@
 
 ;;; ------------------------------------------------- Network policy ---------------------------------------------
 
-(def ^:private network-policies
-  "The `llm-allowed-networks` policies, loosest last."
-  [:external-only :allow-private :allow-all])
-
 (def ^:private network-policy-rank
-  (zipmap network-policies (range)))
-
-(defonce ^:private warned-network-policy-values
-  (atom #{}))
+  (zipmap u.http/configurable-network-policies (range)))
 
 (defsetting llm-allowed-networks
-  (deferred-tru (str "Controls which networks Metabase may connect to for LLM provider base URLs. "
-                     "Set through the environment only; on Metabase Cloud the default applies.\n"
-                     "Options:\n"
-                     "- external-only (default; only globally reachable public addresses)\n"
-                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
-                     "- allow-all (no restrictions).\n"
-                     "The Metabase AI service and LLM proxy are deployment configuration and may always use "
-                     "private addresses."))
+  (str "Controls which networks Metabase may connect to for LLM provider base URLs. "
+       "Set through the environment only; on Metabase Cloud the default applies.\n"
+       "Options:\n"
+       "- external-only (default; only globally reachable public addresses)\n"
+       "- allow-private (external + private networks but NOT loopback or link-local)\n"
+       "- allow-all (no restrictions).\n"
+       "The Metabase AI service and LLM proxy are deployment configuration and may always use "
+       "private addresses.")
   :type       :keyword
   ;; Environment only. A settings manager is who this policy defends against, and on Cloud a customer admin
   ;; loosening it would be reaching for our own infrastructure, so nobody sets it through the API, and a value
@@ -98,17 +92,14 @@
                    "its outbound connections. Proxy-only DNS is supported. Metabase enforces destination addresses "
                    "at connection time for direct requests.")
   :getter     (fn []
-                (let [value (some-> (setting/env-var-value :llm-allowed-networks) keyword)]
-                  (cond
-                    (nil? value)                          :external-only
-                    (contains? network-policy-rank value) value
-                    ;; fail closed on a typo, and say so once rather than on every request
-                    :else
-                    (do (when-not (contains? @warned-network-policy-values value)
-                          (swap! warned-network-policy-values conj value)
-                          (log/warnf "Ignoring MB_LLM_ALLOWED_NETWORKS=%s: expected one of %s; using external-only"
-                                     (name value) (str/join ", " (map name network-policies))))
-                        :external-only)))))
+                (let [[env-var-name raw-value] (setting/env-var-source :llm-allowed-networks)]
+                  (or (u.http/env-network-policy env-var-name raw-value)
+                      :external-only))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first LLM request.
+(defmethod startup/def-startup-validation! ::llm-allowed-networks [_]
+  (llm-allowed-networks))
 
 (defn network-policy
   "The network policy for an LLM request.
@@ -234,12 +225,13 @@
 
 ;;; ---------------------------------------------- Provider connections ------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-llm-provider-write*
   "Whether a trusted provider API operation may persist [[llm-providers]] during an HTTP request."
   false)
 
 (defsetting llm-providers
-  (deferred-tru "JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type''s credential fields.")
+  "JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type's credential fields."
   :type       :json
   :default    []
   :encryption :when-encryption-key-set
@@ -273,7 +265,7 @@ Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting llm-proxy-base-url
-  (deferred-tru "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key. Harbormaster adds /llm component into the url.")
+  "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key. Harbormaster adds /llm component into the url."
   ;; For details on llm component see the https://github.com/metabase/metabase/pull/74526#discussion_r3282553435.
   :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
                          (premium-features/has-feature? :offer-metabase-ai-managed)

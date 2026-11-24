@@ -20,6 +20,8 @@
   ([metadata-provider query]
    (-> (lib/query metadata-provider query)
        fix-bad-field-id-refs/fix-bad-field-id-refs
+       ;; existing usage -- do not use going forward
+       #_{:clj-kondo/ignore [:deprecated-var]}
        lib/->legacy-MBQL)))
 
 (deftest ^:parallel wrap-fields-in-joined-field-test
@@ -312,7 +314,8 @@
         (is (=? {:stages [{} {:expressions [[:field {:lib/expression-name "My Date"} "DATE_COL"]]}]}
                 result)))
       (testing "->legacy-MBQL :expressions must have string keys, not nil"
-        (let [mbql4 (lib/->legacy-MBQL result)
+        ;; existing usage -- do not use going forward
+        (let [mbql4 #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL result)
               exprs (get-in mbql4 [:query :expressions])]
           (is (every? string? (keys exprs))
               (str "Assert failed: :expressions should always use string keys, got: " (pr-str exprs))))))))
@@ -341,6 +344,20 @@
               (-> query
                   qp.add-remaps/add-remapped-columns
                   fix-bad-field-id-refs/fix-bad-field-id-refs))))))
+
+(deftest ^:parallel preserve-lib-uuid-when-fixing-field-id-ref-test
+  (testing "rewriting bad ID refs preserves :lib/uuid so other clauses that reference the ref by uuid stay resolvable"
+    (let [mp       (-> meta/metadata-provider
+                       (lib.tu/metadata-provider-with-cards-for-queries
+                        [(lib/query meta/metadata-provider (meta/table-metadata :venues))]))
+          card1    (lib.metadata/card mp 1)
+          fk-id    (meta/id :venues :category-id)
+          pre-uuid (str (random-uuid))
+          bad-ref  [:field {:lib/uuid pre-uuid :base-type :type/Integer} fk-id]
+          query    (-> (lib/query mp card1)
+                       (assoc-in [:stages 0 :fields] [bad-ref]))]
+      (is (=? {:stages [{:fields [[:field {:lib/uuid pre-uuid} "CATEGORY_ID"]]}]}
+              (fix-bad-field-id-refs/fix-bad-field-id-refs query))))))
 
 (deftest ^:parallel resolve-join-conditions-test
   (testing "Resolve fields in join :conditions"

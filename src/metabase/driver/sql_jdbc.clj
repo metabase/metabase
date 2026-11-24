@@ -1,6 +1,6 @@
 (ns metabase.driver.sql-jdbc
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
-  (:refer-clojure :exclude [mapv select-keys])
+  (:refer-clojure :exclude [mapv not-empty select-keys])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
@@ -19,10 +19,12 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv select-keys]]
+   [metabase.util.performance :refer [mapv not-empty select-keys]]
    [next.jdbc])
   (:import
    (java.sql Connection SQLException SQLTimeoutException)))
@@ -53,24 +55,36 @@
 ;;; |                                     Default SQL JDBC metabase.driver impls                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private disallowed-additional-opts
-  "JDBC connection properties that are not needed to connect to a warehouse and are rejected for every
-  SQL-JDBC driver. Matched case-insensitively against the raw `additional-options` string."
-  #"(?i)(?:socketFactory|sslfactory|sslhostnameverifier|sslpasswordcallback|xmlFactoryFactory|loggerFile)")
+;; JDBC connection properties that are not needed to connect to a warehouse and are rejected for every SQL-JDBC driver.
+;; Matched as substrings, so a token here also catches its longer spellings (`socketFactory` covers
+;; `socketFactoryClass`, `socketfactoryname`, `sslsocketfactoryname`; `hostnameverifier` covers `sslhostnameverifier`).
+(defmethod driver/disallowed-connection-parameters :sql-jdbc
+  [_driver]
+  [;; Instantiates an arbitrary class
+   "socketFactory"
+   ;; Instantiates an arbitrary class
+   "sslfactory"
+   ;; Instantiates an arbitrary class
+   "hostnameverifier"
+   ;; Instantiates an arbitrary class
+   "sslpasswordcallback"
+   ;; Instantiates an arbitrary class
+   "xmlFactoryFactory"
+   ;; Writes the driver log to a chosen local file (older pgjdbc; current versions ignore it)
+   "loggerFile"
+   ;; Instantiates an arbitrary class
+   "queryInterceptors"
+   ;; Instantiates an arbitrary class
+   "dnsResolver"])
 
 (defmethod driver/validate-db-details! :sql-jdbc
-  [_driver details]
-  (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
+  [driver details]
+  (driver.u/validate-connection-parameters! driver details))
 
 (defmethod driver/can-connect? :sql-jdbc
   [driver details]
   (driver/validate-db-details! driver details)
   (sql-jdbc.conn/can-connect? driver details))
-
-(defmethod driver/validate-impersonated-query :sql-jdbc
-  [driver query]
-  (driver.sql/validate-impersonated-query* driver query))
 
 (defmethod driver/table-rows-seq :sql-jdbc
   [driver database table]
@@ -88,8 +102,13 @@
   [driver _feature _db]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
-(defmethod driver/database-supports? [:sql-jdbc :jdbc/statements] [_driver _feature _db] true)
-(defmethod driver/database-supports? [:sql-jdbc :jdbc/set-query-timeout] [_driver _feature _db] true)
+(doseq [feature [:jdbc/statements
+                 :jdbc/set-query-timeout
+                 :jdbc/set-max-rows
+                 :mbql-5-native-query-execution]]
+  (defmethod driver/database-supports? [:sql-jdbc feature]
+    [_driver _feature _db]
+    true))
 
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
@@ -106,12 +125,19 @@
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
-  (sql-jdbc.conn/invalidate-pool-for-db! database)
+  (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id database))
   (memoize/memo-clear! driver-api/secret-value-as-file!))
 
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]
   (sql-jdbc.sync/dbms-version driver (sql-jdbc.conn/db->pooled-connection-spec database)))
+
+(defmethod driver.sql/default-schema :sql-jdbc
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^Connection conn]
+     (not-empty (.getSchema conn)))))
 
 (defmethod driver/describe-database* :sql-jdbc
   [driver database]
@@ -172,7 +198,7 @@
 (defmethod driver/create-table! :sql-jdbc
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
   (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database database-id))]
       (jdbc/execute! conn sql))))
 
 (defn- drop-table-sql [driver table-name]
@@ -183,7 +209,7 @@
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
   (let [sql (drop-table-sql driver table-name)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
       (jdbc/execute! conn sql))))
 
 (defmulti create-index-sql
@@ -211,7 +237,7 @@
 (defmethod driver/create-index! :sql-jdbc
   [driver database-id schema table-name index-name column-names & {:as opts}]
   (let [sql (create-index-sql driver schema table-name index-name column-names opts)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database database-id))]
       (jdbc/execute! conn sql))
     nil))
 
@@ -230,7 +256,7 @@
 (defmethod driver/drop-index! :sql-jdbc
   [driver database-id schema table-name index-name & _]
   (let [sql (drop-index-sql driver schema table-name index-name)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database database-id))]
       (jdbc/execute! conn sql))
     nil))
 
@@ -240,7 +266,7 @@
         sql        (sql/format {:truncate table-name}
                                :quoted true
                                :dialect (sql.qp/quote-style driver))]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
       (jdbc/execute! conn sql))))
 
 (defn- lift-boolean [v] (if (boolean? v) [:lift v] v))
@@ -276,7 +302,7 @@
 
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
     (doseq [sql (insert-into!-sqls driver table-name column-names values false)]
       (jdbc/execute! conn sql))))
 
@@ -300,7 +326,7 @@
                                                                    column-definitions)}
                                                 :quoted true
                                                 :dialect (sql.qp/quote-style driver)))]
-      (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
         (jdbc/execute! conn sql)))))
 
 ;; kept for get-method driver compatibility
@@ -371,6 +397,22 @@
    (sql-jdbc.conn/db->pooled-connection-spec database)
    args))
 
+(defn do-with-unpooled-default-connection
+  "Calls `f` with a new `java.sql.Connection` opened from the primary `:details` of `database`, outside the connection
+  pools, and returns what `f` returns. `database` needs `:engine` and `:details`. Ignores the connection type and
+  workspace swaps, and skips routing: a router connects to itself, and a destination passes with no
+  [[driver-api/check-allowed-access!]]. Throws before it connects when the network policy does not allow a host of the
+  details. `f` must realize its result: the connection closes when `f` returns."
+  [{driver :engine, :keys [details], :as database} f]
+  ;; a pooled connection gets this check when its pool is created, and a connection test before it connects; the
+  ;; details of a stored database can come from an import, or be older than the policy
+  (driver.u/with-database-network-policy database
+    (driver.u/validate-connection-hosts! driver details))
+  (sql-jdbc.conn/do-with-unpooled-connection-spec
+   driver details
+   (fn [spec]
+     (sql-jdbc.execute/do-with-connection-with-options driver spec nil f))))
+
 (defmethod driver/query-result-metadata :sql-jdbc
   [driver query]
   (sql-jdbc.metadata/query-result-metadata driver query))
@@ -434,3 +476,9 @@
      (->> (.getMetaData conn)
           sql-jdbc.describe-database/all-schemas
           (m/find-first #(= % schema))))))
+
+(defmethod driver/workspace-isolation-details :sql-jdbc
+  [_driver _database workspace]
+  {:schema           (driver.u/workspace-isolation-namespace-name workspace)
+   :database_details {:user     (driver.u/workspace-isolation-user-name workspace)
+                      :password (driver.u/random-workspace-password)}})

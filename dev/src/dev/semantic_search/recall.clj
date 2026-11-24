@@ -19,9 +19,9 @@
   Requires `init-semantic-search!` to have run (active index) and a superuser id to bind for permission checks."
   (:require
    [clojure.pprint :as pprint]
-   [metabase-enterprise.semantic-search.env :as semantic.env]
-   [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
-   [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.search.semantic.env :as semantic.env]
+   [metabase-enterprise.search.semantic.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.search.semantic.settings :as semantic.settings]
    [metabase.request.core :as request]))
 
 (set! *warn-on-reflection* true)

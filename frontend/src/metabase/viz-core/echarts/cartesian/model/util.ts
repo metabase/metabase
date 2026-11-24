@@ -23,6 +23,20 @@ export function getFormattingOptionsWithoutScaling(options: ColumnSettings) {
   return { ...options, scale: undefined };
 }
 
+export function getLabelValueFormatting(
+  formatting: "auto" | "compact" | "full" | undefined,
+  useCompactFormatting: boolean,
+) {
+  if (
+    useCompactFormatting &&
+    (formatting === undefined || formatting === "auto")
+  ) {
+    return "compact";
+  }
+
+  return formatting;
+}
+
 export function getColumnScaling(
   column: RemappingHydratedDatasetColumn,
   settings: ComputedVisualizationSettings,

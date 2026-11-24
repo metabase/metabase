@@ -8,6 +8,7 @@ import {
   assertDashboard,
   assertRecentItemName,
   getEmbedSidebar,
+  getResourceSelectorButton,
   visitNewEmbedPage,
 } from "./helpers";
 
@@ -54,6 +55,11 @@ describe(suiteTitle, () => {
       embedModalEnableEmbedding();
 
       getEmbedSidebar().within(() => {
+        cy.findByText("Select a dashboard to embed").should("be.visible");
+
+        cy.log("a default dashboard is preselected");
+        getResourceSelectorButton().should("contain", dashboardName);
+
         cy.findByText("Next").click();
       });
 
@@ -61,6 +67,11 @@ describe(suiteTitle, () => {
         event: "embed_wizard_experience_completed",
         event_detail:
           "authType=guest-embed,experience=dashboard,isDefaultExperience=true",
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_resource_selection_completed",
+        event_detail: "isDefaultResource=true,experience=dashboard",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -105,7 +116,7 @@ describe(suiteTitle, () => {
       });
     });
 
-    it("shows browser template when selected", () => {
+    it("shows browser template when selected and can pick a collection", () => {
       visitNewEmbedPage();
 
       getEmbedSidebar().within(() => {
@@ -135,6 +146,40 @@ describe(suiteTitle, () => {
         cy.log("collection is visible in browser");
         cy.findAllByText("Orders in a dashboard").should("be.visible");
       });
+
+      cy.log("a different collection can be selected via the picker");
+      getEmbedSidebar().within(() => {
+        cy.findByText("Back").click();
+        cy.findByText("Select initial collection").should("be.visible");
+        getResourceSelectorButton().click();
+      });
+
+      H.entityPickerModal().within(() => {
+        cy.findByText("Select initial collection").should("be.visible");
+
+        cy.findByTestId("item-picker-level-0")
+          .findByText("Our analytics")
+          .click();
+        cy.findByTestId("item-picker-level-1")
+          .findByText("First collection")
+          .click();
+        cy.findByText("Select").click();
+      });
+
+      cy.log("button reflects the newly selected collection");
+      getEmbedSidebar().within(() => {
+        getResourceSelectorButton().should("contain", "First collection");
+      });
+
+      cy.log("collection is shown in the breadcrumbs and preview");
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.findByTestId("sdk-breadcrumbs")
+          .findAllByText("First collection")
+          .first()
+          .should("be.visible");
+
+        cy.findByText("Second collection").should("be.visible");
+      });
     });
   });
 
@@ -156,7 +201,7 @@ describe(suiteTitle, () => {
 
     it("shows dashboard of id=1 when activity log is empty", () => {
       visitNewEmbedPage();
-      assertDashboard({ id: 1, name: "Person overview" });
+      assertDashboard({ id: 1, name: "Content with cobwebs" });
       cy.wait("@emptyRecentItems");
 
       cy.log("dashboard title and card of id=1 should be visible");
@@ -164,8 +209,8 @@ describe(suiteTitle, () => {
       H.waitForSimpleEmbedIframesToLoad();
 
       H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByText("Person overview").should("be.visible");
-        cy.findByText("Person detail").should("be.visible");
+        cy.findByText("Content with cobwebs").should("be.visible");
+        cy.findByText("Dashboards without recent views").should("be.visible");
       });
     });
   });
@@ -206,7 +251,7 @@ describe(suiteTitle, () => {
     cy.wait("@getRecents");
 
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("Person overview").should("not.exist");
+      cy.findByText("Content with cobwebs").should("not.exist");
       cy.findByText("Orders in a dashboard").should("be.visible");
     });
   });
@@ -238,29 +283,5 @@ describe(suiteTitle, () => {
     cy.wait("@emptyRecentItems");
 
     cy.findByAltText("No results").should("be.visible");
-  });
-
-  it("shows Metabot experience when selected", () => {
-    visitNewEmbedPage();
-
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Metabase account (SSO)").click();
-    });
-
-    embedModalEnableEmbedding();
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Metabot").click();
-      cy.findByText("Next").click();
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_experience_completed",
-      event_detail: "authType=sso,experience=metabot,isDefaultExperience=false",
-    });
-
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("Ask questions to AI.").should("be.visible");
-    });
   });
 });

@@ -26,7 +26,7 @@ export function assertQuestionIsBasedOnModel({
   cy.findByText(table).should("not.exist");
 }
 
-export function saveQuestionBasedOnModel({ modelId, name }) {
+export function saveQuestionBasedOnModel({ name }) {
   cy.intercept("POST", "/api/card").as("createCard");
 
   cy.findByText("Save").click();
@@ -38,10 +38,7 @@ export function saveQuestionBasedOnModel({ modelId, name }) {
     }
     cy.findByText("Save").click();
   });
-}
-
-export function selectDimensionOptionFromSidebar(name) {
-  cy.get("[data-testid=dimension-list-item]").contains(name).click();
+  cy.wait("@createCard");
 }
 
 export function openDetailsSidebar() {

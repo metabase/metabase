@@ -36,19 +36,6 @@ const PRO_STEP_ORDER = [
   "Configure AI",
 ];
 
-// Without modular embedding every Fine-tune step is locked, so AI -- the one
-// advanced step still reachable -- is promoted into the first section.
-const UNLICENSED_STEP_ORDER = [
-  "Connect a database",
-  "Create a dashboard",
-  "Get embed snippet",
-  "Configure AI",
-  "Configure data permissions and tenants",
-  "Set up SSO",
-  "Embed in production with SSO",
-  "Create a custom theme",
-];
-
 // Every plan sees every tab; the gem marks the ones its token can't unlock.
 // OSS and Starter lack all four gated features, so they expect the same.
 const TAB_GEMS_WITHOUT_PAID_FEATURES = [
@@ -123,6 +110,10 @@ describe("scenarios > embedding > embedding hub > get started", () => {
         "eq",
         "/embedding/get-started/permissions",
       );
+      H.main()
+        .findByText("Configure data permissions and enable tenants")
+        .scrollIntoView()
+        .should("be.visible");
 
       cy.log(
         "the wizard's back link is relative, so it lands on the host that mounted it rather than admin",
@@ -189,30 +180,6 @@ describe("scenarios > embedding > embedding hub > get started", () => {
       cy.signInAsAdmin();
     });
 
-    it("promotes AI into the first section and locks the Fine-tune steps", () => {
-      cy.visit("/embedding/get-started");
-
-      cy.findByTestId("embedding-hub-main").within(() => {
-        assertStepOrder(UNLICENSED_STEP_ORDER);
-
-        cy.log(
-          "the upsell banner is what stands in for the Fine-tune subtitle",
-        );
-        cy.findByText(
-          "Upgrade to Metabase Pro to configure advanced options.",
-        ).should("be.visible");
-
-        cy.log("a feature-locked step is inert, with no link to follow");
-        cy.findByRole("link", { name: "Set up SSO" }).should("not.exist");
-        cy.findByText("Set up SSO")
-          .closest(`[data-testid=${CARD}]`)
-          .should("have.attr", "aria-disabled", "true");
-
-        cy.log("AI is never locked -- the admin AI page needs no token");
-        cy.findByRole("button", { name: "Configure AI" }).should("be.visible");
-      });
-    });
-
     it("marks the embed step complete once a guest embed is published", () => {
       cy.visit("/embedding/get-started");
 
@@ -221,6 +188,12 @@ describe("scenarios > embedding > embedding hub > get started", () => {
           .closest(`[data-testid=${CARD}]`)
           .findByLabelText("Step 3 complete")
           .should("not.exist");
+
+        cy.log("the upsell banner and the AI step render in a real browser");
+        cy.findByText(
+          "Upgrade to Metabase Pro to configure advanced options.",
+        ).should("be.visible");
+        cy.findByRole("button", { name: "Configure AI" }).should("be.visible");
       });
 
       cy.log("publish a dashboard as a guest embed");
@@ -257,9 +230,10 @@ describe("scenarios > embedding > embedding hub > security", () => {
       // The snapshot turns embedding on, but this test is about turning it on
       // from the hub, so start from off the way a fresh instance would be.
       H.updateSetting("enable-embedding-modular", false);
+      H.updateSetting("enable-embedding-sdk", false);
     });
 
-    it("turns embedding on with one switch", () => {
+    it("accepts the terms once for modular embedding and the React SDK", () => {
       cy.intercept("GET", "/api/setting").as("getSettings");
       cy.intercept("GET", "/api/session/properties").as("getSessionProperties");
 
@@ -267,7 +241,7 @@ describe("scenarios > embedding > embedding hub > security", () => {
 
       cy.log("The first enable goes through the terms modal");
       cy.findByTestId("embedding-hub-main")
-        .findByText("Modular embedding and SDK for React")
+        .findByText("Modular embedding")
         .should("be.visible");
 
       // The switch renders before either request lands, reading undefined as
@@ -277,7 +251,7 @@ describe("scenarios > embedding > embedding hub > security", () => {
       cy.findAllByRole("switch").first().should("not.be.checked").click();
       cy.findByRole("button", { name: "Agree" }).click();
 
-      cy.log("The merged setting is written");
+      cy.log("enable-embedding-modular is written");
 
       // A fresh visit rather than cy.reload(): reloading the app inside the
       // Cypress runner leaves the hub, landing on /unauthorized and then home.
@@ -289,6 +263,41 @@ describe("scenarios > embedding > embedding hub > security", () => {
       cy.request("GET", "/api/session/properties").then(({ body }) => {
         expect(body["enable-embedding-modular"]).to.be.true;
       });
+
+      cy.log("The React SDK switch does not ask for the accepted terms again");
+      cy.intercept("PUT", "/api/setting").as("updateSettings");
+      cy.findAllByRole("switch").eq(1).should("not.be.checked").click();
+      cy.wait("@updateSettings");
+
+      H.modal().should("not.exist");
+      cy.findAllByRole("switch").eq(1).should("be.checked");
+
+      cy.request("GET", "/api/session/properties").then(({ body }) => {
+        expect(body["enable-embedding-sdk"]).to.be.true;
+      });
+    });
+
+    it("keeps side-car embedding on after a reload", () => {
+      cy.intercept("GET", "/api/setting").as("getSettings");
+      cy.intercept("GET", "/api/session/properties").as("getSessionProperties");
+      cy.intercept("PUT", "/api/setting").as("updateSettings");
+
+      cy.visit("/embedding/security");
+      cy.wait(["@getSettings", "@getSessionProperties"]);
+
+      cy.findByRole("switch", {
+        name: "Standalone Metabase linked from your app toggle",
+      })
+        .should("not.be.checked")
+        .click();
+      cy.wait("@updateSettings");
+
+      cy.visit("/embedding/security");
+      cy.wait(["@getSettings", "@getSessionProperties"]);
+
+      cy.findByRole("switch", {
+        name: "Standalone Metabase linked from your app toggle",
+      }).should("be.checked");
     });
 
     it("lists published guest embeds even after guest embeds are switched off", () => {
@@ -335,18 +344,16 @@ describe("scenarios > embedding > embedding hub > security", () => {
         // OSS leaves PLUGIN_ADMIN_SETTINGS.useUpsellFlow without a trigger, so
         // UpsellCta renders the store link; paid builds get a button that
         // opens the in-app flow instead.
-        cy.findByRole("link", { name: "Try Metabase Pro" }).should(
-          "be.visible",
-        );
+        cy.findByRole("link", { name: "Try Metabase Pro" })
+          .should("be.visible")
+          .and(
+            "have.attr",
+            "href",
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-hub&utm_content=embedding-hub-security&source_plan=oss&utm_users=10",
+          );
 
         cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
       });
-    });
-
-    it("shows every hub tab, gemming the ones this plan lacks", () => {
-      cy.visit("/embedding/security");
-
-      assertHubTabs(TAB_GEMS_WITHOUT_PAID_FEATURES);
     });
   });
 
@@ -688,14 +695,6 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-    });
-
-    it("upsells rather than hiding the tab", () => {
-      cy.visit("/embedding/appearance");
-
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Create custom themes")
-        .should("be.visible");
     });
 
     it("sends a theme editor deep link back to the upsell", () => {

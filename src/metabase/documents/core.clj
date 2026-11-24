@@ -5,6 +5,7 @@
    [metabase.documents.models.document]
    [metabase.documents.prose-mirror]
    [metabase.documents.recent-views]
+   [metabase.documents.schema]
    [potemkin :as p]))
 
 (comment
@@ -17,6 +18,7 @@
 (p/import-vars
  [metabase.documents.api.document
   add-card-to-document!
+  add-card-to-document-row!
   copy-document!]
  [metabase.documents.markdown
   contains-table?
@@ -26,13 +28,11 @@
   splice]
  [metabase.documents.models.document
   clone-cards-in-document!
-  create-document!
-  DocumentName
   get-document
   register-doc-content-visibility-fn!
-  update-document!
-  validate-collection-move-permissions
   with-content-gate-cache]
  [metabase.documents.prose-mirror
   insert-card-embed
-  prose-mirror-content-type])
+  prose-mirror-content-type]
+ [metabase.documents.schema
+  DocumentName])

@@ -1,24 +1,32 @@
 (ns metabase.xrays.domain-entities.core
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [medley.core :as m]
    ;; legacy usage, do not use legacy MBQL stuff in new code.
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
+   [metabase.warehouse-schema.schema]
    [metabase.xrays.domain-entities.hierarchy :as domain-entities.hierarchy]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]
    [toucan2.core :as t2]))
+
+(mr/def ::field-or-column
+  "A Field row, or the column metadata of a Card's `:result_metadata` or a query's expected columns."
+  [:multi {:dispatch t2/model}
+   [:model/Field :metabase.warehouse-schema.schema/field]
+   [::mc/default :metabase.lib.schema.metadata/lib-or-legacy-column]])
 
 (mu/defn field-type :- [:or
                         ::lib.schema.common/base-type
                         ::lib.schema.common/semantic-or-relation-type]
   "Return the most specific type of a given field."
-  [field :- [:map
-             [:base_type ::lib.schema.common/base-type]]]
+  [field :- ::field-or-column]
   ((some-fn :semantic_type :base_type) field))
 
 (def SourceName
@@ -40,9 +48,18 @@
   `DimensionBindings`."
   [:map-of
    SourceName
-   [:map
+   [:map {:closed true}
     [:dimensions DimensionBindings]
     [:entity {:optional true} SourceEntity]]])
+
+(def ^:private MetricOrSegmentEntry
+  "The value half of a domain-entity spec's `:metrics`/`:segments` map entries."
+  [:map {:closed true}
+   [:name        :string]
+   [:aggregation {:optional true} MBQL]
+   [:breakout    {:optional true} [:sequential MBQL]]
+   [:filter      {:optional true} MBQL]
+   [:description {:optional true} :string]])
 
 (mu/defn- get-dimension-binding :- MBQL
   [bindings            :- Bindings
@@ -61,7 +78,7 @@
   "Instantiate all dimension reference in given (nested) structure"
   [bindings :- Bindings
    source   :- SourceName
-   obj]
+   obj      :- [:maybe [:or MBQL [:tuple :string MetricOrSegmentEntry]]]]
   (match/replace obj
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
@@ -69,8 +86,7 @@
 
 (mu/defn mbql-reference :- MBQL
   "Return MBQL clause for a given field-like object."
-  [{:keys [id name base_type]} :- [:map
-                                   [:base_type ::lib.schema.common/base-type]]]
+  [{:keys [id name base_type]} :- ::field-or-column]
   (if id
     [:field id nil]
     [:field name {:base-type base_type}]))

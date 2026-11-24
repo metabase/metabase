@@ -1,6 +1,5 @@
 .documentHeader {
   align-items: flex-start;
-  background-color: var(--mb-color-background-primary);
   gap: var(--mantine-spacing-lg);
   justify-content: space-between;
   margin-bottom: var(--mantine-spacing-lg);
@@ -13,6 +12,8 @@
 
 .titleInput {
   border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
   padding: 0 !important;
   font-size: 2rem !important;
   font-weight: bold !important;
@@ -25,11 +26,6 @@
 
 .actionsContainer {
   flex-shrink: 0;
-
-  .commentsIcon:hover {
-    color: var(--mb-color-text-brand-hover);
-    background-color: var(--mb-color-background_surface-hover);
-  }
 }
 
 @media print {

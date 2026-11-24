@@ -4,7 +4,10 @@
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.startup.core :as startup]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.string :as u.str]))
 
 ;; NOTE: uuid-nonce-base sets :setter :none, so this secret is not rotatable via the normal settings API.
@@ -15,7 +18,7 @@
 ;; logs, or audit events — only a masked form is exposed. Internal callers that actually need to
 ;; HMAC with the secret must use `unobfuscated-mcp-embedding-signing-secret`.
 (defsetting mcp-embedding-signing-secret
-  (deferred-tru "Instance-wide secret used to derive embedding session keys for MCP sessions.")
+  "Instance-wide secret used to derive embedding session keys for MCP sessions."
   :encryption :when-encryption-key-set
   :visibility :internal
   :sensitive? true
@@ -41,8 +44,34 @@
   {"claude"  ["https://*.claudemcpcontent.com"]
    "chatgpt" ["https://*.web-sandbox.oaiusercontent.com"]
 
-   ;; vscode-webview:// handled by mcp-sandbox-origin? in security middleware
+   ;; vscode-webview:// handled by metabase.mcp.core/sandbox-origin?
    "cursor-vscode"  []})
+
+(def ^:private client-key-aliases
+  "Other names accepted for a client key in [[mcp-apps-cors-enabled-clients]].
+   Cursor and VS Code share one key: both render MCP Apps in a vscode-webview, so CORS can't tell them apart."
+  {"cursor" "cursor-vscode"
+   "vscode" "cursor-vscode"})
+
+(defn- canonical-client-key
+  "The client key that `entry` names, ignoring case and surrounding spaces and resolving aliases, or nil when it
+   names no client."
+  [entry]
+  (let [k (u/lower-case-en (str/trim (str entry)))]
+    (if (contains? mcp-client-apps-sandbox-domains k)
+      k
+      (client-key-aliases k))))
+
+(defn- accepted-client-names-text []
+  (str/join ", " (concat (keys mcp-client-apps-sandbox-domains) (keys client-key-aliases))))
+
+(defn- parse-enabled-clients
+  "Splits `entries` into `:keys`, the distinct client keys they name, and `:unknown`, the entries that name none.
+   Blank entries are ignored."
+  [entries]
+  (let [entries (remove (comp str/blank? str) entries)]
+    {:keys    (into [] (comp (keep canonical-client-key) (distinct)) entries)
+     :unknown (into [] (remove canonical-client-key) entries)}))
 
 ;;; ------------------------------------------------ Settings ------------------------------------------------
 
@@ -56,23 +85,13 @@
   :export?    true
   :doc        false)
 
-(defsetting mcp-v2-disabled-tools
-  (deferred-tru "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call.")
-  :type       :csv
-  :default    []
-  :visibility :admin
-  :export?    false
-  :encryption :no
-  :audit      :getter
-  :doc        false)
-
 (def ^:private ^:const default-query-handle-ttl-hours
   "Default for [[mcp-query-handle-ttl-hours]]. One source, referenced by both the setting's `:default`
    and its getter's fallback, so the two can't drift."
   24)
 
 (defsetting mcp-query-handle-ttl-hours
-  (deferred-tru "Hours a stored MCP query handle is kept before the scheduled GC task deletes it.")
+  "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
   ;; `:positive-integer` rather than `:integer`: the GC deletes handles created before `now - ttl`,
   ;; so 0 puts the cutoff at *now* and clears the whole table on the next run, and a negative takes
   ;; handles minted seconds ago. The type guards the read path too, which a `:setter` cannot —
@@ -94,14 +113,70 @@
                       (catch Exception _ nil))
                     default-query-handle-ttl-hours)))
 
+(defn- bad-request [message]
+  (ex-info message {:status-code 400}))
+
+(defn- setter-entries
+  "The entries in `new-value`, a list of names or a CSV string of one line.
+   Throws a 400 for any other value."
+  [new-value]
+  (cond
+    (or (nil? new-value) (sequential? new-value))
+    new-value
+
+    ;; The API and config.yml can both pass a CSV string. Parse it as the :csv type will, to check its names first.
+    (string? new-value)
+    (setting/csv-string-entries new-value)
+
+    :else
+    (throw (bad-request (tru "MCP clients must be a list of names, or a comma-separated string.")))))
+
+(defn- -mcp-apps-cors-enabled-clients!
+  "The setter for [[mcp-apps-cors-enabled-clients]].
+   Stores the canonical keys.
+   Throws a 400 when the value is malformed or an entry names no client."
+  [new-value]
+  (let [{client-keys :keys, unknown :unknown} (parse-enabled-clients (setter-entries new-value))]
+    (when (seq unknown)
+      (throw (bad-request (tru "Unknown MCP clients: {0}. Accepted values: {1}."
+                               (str/join ", " unknown)
+                               (accepted-client-names-text)))))
+    (setting/set-value-of-type! :csv :mcp-apps-cors-enabled-clients (not-empty client-keys))))
+
 (defsetting mcp-apps-cors-enabled-clients
-  (deferred-tru "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).")
+  (deferred-tru "MCP clients whose MCP Apps may call Metabase across origins, as comma-separated keys: claude, chatgpt, and cursor-vscode (for both Cursor and VS Code).")
   :type       :csv
   :default    []
   :visibility :admin
   :export?    false
   :encryption :when-encryption-key-set
-  :audit      :getter)
+  :audit      :getter
+  :setter     #'-mcp-apps-cors-enabled-clients!
+  ;; Env vars skip the setter, so the getter normalizes too. It drops unknown entries rather than keeping them:
+  ;; the admin page writes back the whole list, and the setter would reject every save. The startup logic below
+  ;; logs what was dropped. Reads happen on every HTTP response, so an unparsable value means no clients
+  ;; rather than a throw.
+  :getter     (fn []
+                (try
+                  (:keys (parse-enabled-clients (setting/get-value-of-type :csv :mcp-apps-cors-enabled-clients)))
+                  (catch Exception _ []))))
+
+(defmethod startup/def-startup-logic! ::warn-about-unknown-mcp-apps-cors-enabled-clients [_]
+  (let [source (or (first (setting/env-var-source :mcp-apps-cors-enabled-clients))
+                   "mcp-apps-cors-enabled-clients")]
+    (try
+      (when-let [unknown (not-empty (:unknown (parse-enabled-clients
+                                               (setting/get-value-of-type :csv :mcp-apps-cors-enabled-clients))))]
+        (log/warnf "Ignoring unknown MCP clients in %s: %s. Accepted values: %s."
+                   source
+                   (str/join ", " unknown)
+                   (accepted-client-names-text)))
+      ;; Startup skips settings with a custom getter. This one reads the value as :csv, so it ignores later lines too.
+      (setting/warn-about-ignored-csv-lines! :mcp-apps-cors-enabled-clients)
+      (catch Exception _
+        ;; The getter already treats this value as no clients; say so once, without a stack trace.
+        (log/warnf "Could not parse %s as comma-separated MCP clients, so all MCP clients are disabled."
+                   source)))))
 
 (defn- strip-scheme
   [s]
@@ -158,3 +233,12 @@
          (map str/trim)
          (keep not-empty)
          (str/join " "))))
+
+(defn inline-ui-enabled-for-client?
+  "Whether `client-key`, from [[metabase.mcp.usage/detect-client]], may render MCP Apps UI.
+   Clients without a toggle are not gated."
+  [client-key]
+  ;; An iframe from a client the admin switched off fails its CORS preflight, so it would show a broken card.
+  (if-let [setting-key (some-> client-key canonical-client-key)]
+    (boolean (some #{setting-key} (mcp-apps-cors-enabled-clients)))
+    true))

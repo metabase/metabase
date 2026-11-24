@@ -1,15 +1,11 @@
 import { jt, t } from "ttag";
 
-import { Loader } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Box, Loader } from "metabase/ui";
 import { duration } from "metabase/utils/formatting";
 import type { CardSlownessStatus } from "metabase/visualizations/types";
 
-import {
-  Duration,
-  Root,
-  ShortMessage,
-  SlowQueryMessageContainer,
-} from "./LoadingView.styled";
+import { StateView } from "../StateView";
 
 export interface LoadingViewProps {
   isSlow: CardSlownessStatus | undefined;
@@ -18,14 +14,16 @@ export interface LoadingViewProps {
 
 function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
   return (
-    <SlowQueryMessageContainer>
-      <ShortMessage>{t`Still Waiting…`}</ShortMessage>
+    <Box c="text-secondary">
+      <Box component="span" fw="bold" fz="1.12em">
+        {t`Still Waiting…`}
+      </Box>
       {isSlow === "usually-slow" ? (
         <div>
           {jt`This usually takes an average of ${(
-            <Duration key="duration">
+            <span key="duration" className={CS.textNoWrap}>
               {duration(expectedDuration ?? 0)}
-            </Duration>
+            </span>
           )}, but is currently taking longer.`}
         </div>
       ) : (
@@ -33,19 +31,19 @@ function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
           {t`This usually loads immediately, but is currently taking longer.`}
         </div>
       )}
-    </SlowQueryMessageContainer>
+    </Box>
   );
 }
 
 function LoadingView({ expectedDuration, isSlow }: LoadingViewProps) {
   return (
-    <Root>
+    <StateView pt="sm" c="core-brand">
       {isSlow ? (
         <SlowQueryView expectedDuration={expectedDuration} isSlow={isSlow} />
       ) : (
         <Loader size="lg" color="text-secondary" />
       )}
-    </Root>
+    </StateView>
   );
 }
 

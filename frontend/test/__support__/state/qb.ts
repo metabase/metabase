@@ -31,7 +31,6 @@ export const createMockQueryBuilderUIControlsState = (
   notebookNativePreviewSidebarWidth: null,
   showSidebarTitle: false,
   modal: null,
-  modalContext: null,
   dataReferenceStack: null,
   highlightedNativeQueryLineNumbers: [],
   isShowingListViewConfiguration: false,
@@ -54,6 +53,8 @@ export const createMockQueryBuilderState = (
   opts?: Partial<QueryBuilderState>,
 ): QueryBuilderState => ({
   uiControls: createMockQueryBuilderUIControlsState(),
+  pendingMetabotCard: null,
+  metabotCardBaselines: [],
   loadingControls: {
     showLoadCompleteFavicon: false,
     documentTitle: "",
@@ -78,7 +79,6 @@ export const createMockQueryBuilderState = (
   selectedTimelineEventIds: [],
 
   metadataDiff: {},
-  visibleTimelineEventIds: [],
 
   currentState: null,
 

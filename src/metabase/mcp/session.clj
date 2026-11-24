@@ -12,11 +12,13 @@
   query-handle lifecycle management."
   (:require
    [clojure.string :as str]
-   [metabase.api.macros.scope :as scope]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.mcp.db :as mcp.db]
-   [metabase.mcp.models.mcp-query-handle]
+   [metabase.mcp.models.mcp-query-handle :as mcp-query-handle]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
+   [metabase.session.models.session :as models.session]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr])
@@ -65,7 +67,7 @@
      plenty for the ~2^61 birthday bound the rest of the session model already
      relies on.
    - Some older UUID inspection tools predate RFC 9562 and may render v8 as
-     \"unknown version\". `java.util.UUID/fromString` and our `valid-uuid?` are
+     \"unknown version\". `java.util.UUID/fromString` and our `u/uuid-string?` are
      format-only, so nothing in Metabase breaks.
    - The output is deterministic in `mcp-session-id` and the signing secret. That's
      intentional (so any webserver can recompute it) — don't treat two of these as
@@ -118,23 +120,17 @@
 (declare valid-id?)
 
 (defn- encode-token-scopes
-  "Serialize `token-scopes` into credential claims.
-
-  Named scope strings go in `:scp`; the `::scope/unrestricted` sentinel gets its own boolean claim `:unr`. They are
-  kept in separate claims deliberately: JSON has no keywords, so folding the sentinel into `:scp` would turn it into
-  a string that a granted scope could be equal to. Nothing that can appear in `:scp` can appear in `:unr`."
+  "Serialize the scope strings of `token-scopes` into the `:scp` credential claim."
   [token-scopes]
-  (cond-> {:scp (vec (sort (filter string? token-scopes)))}
-    (contains? token-scopes ::scope/unrestricted) (assoc :unr true)))
+  {:scp (vec (sort (filter string? token-scopes)))})
 
 (defn- decode-token-scopes
   "Rebuild the scope set from credential `claims`, reversing [[encode-token-scopes]].
 
-  Absent claims read as the empty set rather than as unrestricted, so a credential minted by a node that predates
-  the claim fails closed for the five minutes it stays valid."
-  [{:keys [scp unr]}]
-  (cond-> (into #{} (filter string?) scp)
-    (true? unr) (conj ::scope/unrestricted)))
+  An absent claim reads as the empty set, so a credential minted by a node that predates the claim fails closed for
+  the five minutes it stays valid."
+  [{:keys [scp]}]
+  (into #{} (filter string?) scp))
 
 (defn- sign-ui-credential
   "Sign the standard credential claims plus `extra-claims` into a `<payload>.<signature>` string."
@@ -156,8 +152,12 @@
 
   Passing the caller's real scopes is what subjects the credential to the native-SQL gate. (v1's frozen
   surface used to mint claimless, gate-exempt `:legacy` credentials through a 2-arity of this fn; that shim
-  retired with v1.)"
+  retired with v1.)
+
+  Throws a 403 when `token-scopes` holds no MCP scope (see [[mcp.scope/valid-scope?]])."
   [session-id user-id token-scopes]
+  (when-not (some mcp.scope/valid-scope? token-scopes)
+    (throw (ex-info "A session with no MCP scope cannot mint an MCP UI credential." {:status-code 403})))
   (sign-ui-credential session-id user-id (encode-token-scopes token-scopes)))
 
 (defn resolve-ui-credential
@@ -317,7 +317,7 @@
 
 (defn valid-id?
   "Return true if `session-id` has a UUID correlator (the format `create!` produces).
-  Format check only — authentication is handled separately by cookie or bearer token, not by the session ID itself."
+  Format check only — authentication is handled separately by bearer token, not by the session ID itself."
   [session-id]
   (some? (session-parts session-id)))
 
@@ -375,7 +375,9 @@
     ;; colliding rows arbitrarily. Cross-user UUID collisions are an unaddressed risk
     ;; across the whole session model (cookie sessions included) — it belongs in the
     ;; auth layer, not here, and no constraint shape at this call site can fix it.
-    (mcp.db/get-or-create-core-session! key-hashed user-id)))
+    (models.session/get-or-create-mcp-session!
+     key-hashed user-id
+     (:id (models.auth-identity/get-or-create-auth-identity! user-id session/mcp-provider)))))
 
 (defn owned-by-user?
   "Return true if no `core_session` has been materialized for this session yet (i.e. no ownership to violate), or if
@@ -414,7 +416,7 @@
    ;; filters on for cross-session ownership.
    (let [core-session-id (:id (get-or-create-embedding-session! mcp-session-id user-id))
          handle-id       (str (UUID/randomUUID))]
-     (mcp.db/insert-query-handle!
+     (mcp-query-handle/create-mcp-query-handle!
       handle-id
       (cond-> {:mcp_session_id  mcp-session-id
                :core_session_id core-session-id
@@ -481,5 +483,5 @@
   [session-id user-id]
   (assert-session-id! session-id)
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
-    (mcp.db/delete-query-handles-for-user-session! session-id key-hashed user-id)
-    (mcp.db/delete-session-for-user! key-hashed user-id)))
+    (mcp-query-handle/delete-mcp-query-handles-for-session! session-id key-hashed user-id)
+    (models.session/delete-mcp-session! key-hashed user-id)))

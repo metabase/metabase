@@ -5,11 +5,10 @@ import type {
 import type { FinishReason } from "metabase/api/ai-streaming/sse-types";
 import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
+  DashboardId,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
-  MetabotSuggestedTransform,
-  MetabotTransformInfo,
 } from "metabase-types/api";
 
 export type MetabotDataPart = Exclude<
@@ -27,8 +26,6 @@ export type MetabotSearchResults = {
 
 export type MetabotDataPartMetadata = {
   codeEditBuffer?: MetabotCodeEditorBufferContext;
-  editorTransform?: MetabotTransformInfo;
-  suggestionId?: string;
 };
 
 export type MetabotAgentTurnError = {
@@ -75,7 +72,7 @@ export type MetabotDebugToolCallMessage = {
 };
 
 export type MetabotAgentTurnDisplayError = {
-  type: "alert" | "locked" | "message";
+  type: "alert" | "locked" | "message" | "aborted";
   message: string;
 };
 
@@ -113,6 +110,25 @@ export type MetabotMessageStatus =
       serverStarted?: boolean;
     };
 
+export type MetabotIncompleteMessageStatus = Extract<
+  MetabotMessageStatus,
+  { type: "incomplete" }
+>;
+
+export type MetabotIncompleteReason =
+  | "step-limit"
+  | "max-length"
+  | "context-window-full"
+  | "content-filter"
+  | "other";
+
+export type MetabotIncompleteTurn = {
+  reason: MetabotIncompleteReason;
+  message: string;
+  /** Prompt that resumes the turn; absent when the turn cannot be continued. */
+  resumePrompt?: string;
+};
+
 export type MetabotMessagePart =
   | MetabotUserTextChatMessage
   | MetabotAgentTextChatMessage
@@ -149,16 +165,23 @@ export type MetabotChainStep =
       name: string;
       title?: string;
       searchResults?: MetabotSearchResults;
-      status: "started" | "ended";
+      status: "started" | "ended" | "errored";
       startedAtMs?: number;
     };
 
+// A dashboard Metabot saved. `saveId` tells two saves of the same dashboard apart.
+export type MetabotSavedDashboard = {
+  dashboardId: DashboardId;
+  saveId: string;
+};
+
 export type MetabotReactionsState = {
   navigateToPath: string | null;
+  // The latest save of each dashboard Metabot saved, by dashboard
+  dashboardSaveIds: Partial<Record<DashboardId, string>>;
   suggestedCodeEdits: Partial<
     Record<MetabotCodeEdit["buffer_id"], MetabotCodeEdit>
   >;
-  suggestedTransforms: MetabotSuggestedTransform[];
 };
 
 export interface MetabotConversationState {

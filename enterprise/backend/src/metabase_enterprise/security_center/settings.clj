@@ -49,7 +49,7 @@
   {:critical 1 :high 3 :medium 7 :low 7})
 
 (defsetting security-center-severity-repeat-days
-  (deferred-tru "Number of days between repeat notifications for each severity level.")
+  "Number of days between repeat notifications for each severity level."
   :type       :json
   :default    default-severity-repeat-days
   :encryption :no
@@ -63,9 +63,23 @@
                         (update-keys keyword))))
 
 (defsetting security-center-last-synced-at
-  (deferred-tru "Timestamp of the last successful Security Center advisory sync.")
+  "Timestamp of the last successful Security Center advisory sync."
   :type               :timestamp
   :default            nil
+  :encryption         :no
+  :feature            :admin-security-center
+  :visibility         :internal
+  :export?            false
+  :doc                false
+  :audit              :never
+  :include-in-list?   false
+  :can-read-from-env? false)
+
+(defsetting security-center-health-check-results
+  "The last result of each background health check, keyed by check id: what its refresh returned, and when."
+  :type               :json
+  :default            nil
+  ;; holds statuses and database ids and names only, no secrets
   :encryption         :no
   :feature            :admin-security-center
   :visibility         :internal

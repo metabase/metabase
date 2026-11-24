@@ -1,8 +1,8 @@
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type {
@@ -65,7 +65,7 @@ export function getTemplateTagParameter(
   };
 }
 
-// NOTE: this should mirror `template-tag-parameters` in src/metabase/queries/models/card.clj
+// NOTE: this should mirror `template-tag-parameters` in src/metabase/query_processor/card.clj
 // If this function moves you should update the comment that links to this one
 export function getTemplateTagParameters(
   tags: TemplateTag[],
@@ -81,7 +81,7 @@ export function getTemplateTagParameters(
         tag.type !== "table" &&
         tag.type !== "snippet" &&
         ((tag.type !== "dimension" && tag.type !== "temporal-unit") ||
-          tag.dimension != null ||
+          tag["field-id"] != null ||
           (tag["widget-type"] && tag["widget-type"] !== "none")),
     )
     .map((tag) => getTemplateTagParameter(tag, parametersById[tag.id]));
@@ -89,7 +89,7 @@ export function getTemplateTagParameters(
 
 export function getTemplateTags(
   card: SeriesCard,
-  metadata: Metadata,
+  metadata: JsMetadata,
 ): TemplateTag[] {
   const question = new Question(card, metadata);
   // this code path is used by the last audit v1 query, `bad_table`
@@ -98,12 +98,12 @@ export function getTemplateTags(
   }
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
-  return isNative ? Object.values(Lib.templateTags(question.query())) : [];
+  return isNative ? Lib.templateTags(question.query()) : [];
 }
 
 export function getParametersFromCard(
   card: SeriesCard,
-  metadata: Metadata,
+  metadata: JsMetadata,
 ): Parameter[] | ParameterWithTarget[] {
   if (!card) {
     return [];
@@ -118,7 +118,7 @@ export function getParametersFromCard(
 
 export function getTemplateTagParametersFromCard(
   card: SeriesCard,
-  metadata: Metadata,
+  metadata: JsMetadata,
 ) {
   const tags = getTemplateTags(card, metadata);
   return getTemplateTagParameters(tags, card.parameters);

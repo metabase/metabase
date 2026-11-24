@@ -1,14 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 // This file contains plugins that are needed to make the sdk bundle work.
 
 import type { AsyncThunkAction } from "@reduxjs/toolkit";
 
 import { EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
 import {
-  connectToInstanceAuthSso,
-  jwtDefaultRefreshTokenFunction,
-  openSamlLoginPopup,
-  validateSession,
-} from "embedding/auth-common";
+  recordSdkPageMark,
+  recordSdkSsoLogin,
+} from "embedding-sdk-bundle/analytics/sdk-first-component-performance/event";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import {
   PLUGIN_EMBEDDING_SDK_AUTH,
@@ -28,15 +27,18 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
+import {
+  connectToInstanceAuthSso,
+  jwtDefaultRefreshTokenFunction,
+  openSamlLoginPopup,
+  validateSession,
+} from "embedding/auth-common";
 import { PLUGIN_API } from "metabase/api/client";
 import {
   currentUserApi,
   loadCurrentUser,
   refetchCurrentUser,
 } from "metabase/current-user";
-import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
-import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
-import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,
@@ -44,6 +46,9 @@ import {
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
+import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
+import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
+import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { refetchSiteSettings, settingsApi } from "metabase/settings";
 import MetabaseSettings from "metabase/utils/settings";
@@ -128,6 +133,13 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       // call, renewing the token when it expires.
       PLUGIN_API.onBeforeRequestHandlers.getOrRefreshSessionHandler =
         sessionTokenHandler;
+
+      // Auth was done in the bootstrap, so we use the values from the auth state.
+      recordSdkPageMark("init_end", authState.completedAtMs);
+      recordSdkSsoLogin({
+        method: "jwt",
+        isJwtProviderUriPassed: authState.isJwtProviderUriPassed === true,
+      });
 
       return;
     }
@@ -259,6 +271,9 @@ export const getOrRefreshSession = createAsyncThunk(
   },
 );
 
+PLUGIN_EMBEDDING_SDK_AUTH.getOrRefreshSession = (config, store) =>
+  store.dispatch(getOrRefreshSession(config)).unwrap();
+
 const getRefreshToken = async ({
   metabaseInstanceUrl,
   preferredAuthMethod,
@@ -285,6 +300,7 @@ const getRefreshToken = async ({
   } = urlResponseJson || {};
 
   if (method === "saml") {
+    recordSdkSsoLogin({ method: "saml" });
     const sessionToken = await openSamlLoginPopup(
       responseUrl,
       metabaseInstanceUrl,
@@ -296,6 +312,10 @@ const getRefreshToken = async ({
     return sessionToken;
   }
   if (method === "jwt" && responseUrl) {
+    recordSdkSsoLogin({
+      method: "jwt",
+      isJwtProviderUriPassed: shouldSkipSsoDiscovery,
+    });
     return jwtDefaultRefreshTokenFunction(
       responseUrl,
       metabaseInstanceUrl,

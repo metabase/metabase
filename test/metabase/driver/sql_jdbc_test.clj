@@ -5,8 +5,12 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.quoting :as quoting]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -31,14 +35,14 @@
                                      "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
                           {:name table, :schema "PUBLIC",
                            :description nil, :is_writable true}))
-                   (into #{} (:tables (driver/describe-database :h2 (mt/db)))))))
+                   (into #{} (:tables (driver/describe-database :h2 (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest describe-fields-sync-with-composite-pks-test
   (testing "Make sure syncing a table that has a composite pks works"
     (mt/test-driver (mt/normal-drivers-with-feature :describe-fields)
       (mt/dataset dataset-definition-test/composite-pk
-        (let [songs (t2/select-one :model/Table (mt/id :songs))
-              fk-metadata (driver/describe-fields driver/*driver* (mt/db)
+        (let [songs (t2/select-one :model/Table :id (mt/id :songs))
+              fk-metadata (driver/describe-fields driver/*driver* (lib.metadata/database (mt/metadata-provider))
                                                   :table-names [(:name songs)]
                                                   :schema-names [(:schema songs)])]
           (is (= #{{:name "song_id", :pk? true} {:name "artist_id", :pk? true}}
@@ -68,7 +72,7 @@
             {:name "Wurstküche", :price 2, :category_id 29, :id 4}
             {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
            (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
-                                                                 (mt/db)
+                                                                 (lib.metadata/database (mt/metadata-provider))
                                                                  (t2/select-one :model/Table :id (mt/id :venues)))))]
              ;; different DBs use different precisions for these
              (-> (dissoc row :latitude :longitude)
@@ -115,7 +119,17 @@
                  "sslhostnameverifier=a.b.C"
                  "sslpasswordcallback=a.b.C"
                  "xmlFactoryFactory=a.b.C"
-                 "loggerFile=a/b"]]
+                 "loggerFile=a/b"
+                 ;; class-instantiation sinks on drivers that inherit this method:
+                 "queryInterceptors=a.b.C"   ; presto-jdbc
+                 "dnsResolver=a.b.C"         ; starburst / trino
+                 "hostnameverifier=a.b.C"    ; vertica (bare, not just the ssl-prefixed form)
+                 "socketfactoryname=a.b.C"   ; vertica
+                 "sslsocketfactoryname=a.b.C" ; vertica
+                 "socketFactoryClass=a.b.C"  ; sqlserver-style spelling
+                 ;; matching is case-insensitive
+                 "SOCKETFACTORY=a.b.C"
+                 "DnsResolver=a.b.C"]]
       (testing opt
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"dangerous"
@@ -125,6 +139,29 @@
                      {:additional-options nil}
                      {:additional-options "prepareThreshold=5&tcpKeepAlive=true"}]]
       (is (nil? (driver/validate-db-details! :sql-jdbc details))))))
+
+(deftest validate-db-details-detail-keys-test
+  ;; several drivers (postgres, mysql, redshift, vertica, snowflake, ...) hand detail keys they do not recognize to the
+  ;; client as connection properties, so a disallowed property sent as a detail key is as dangerous as one written
+  ;; into `:additional-options`
+  (testing "validate-db-details! rejects disallowed connection properties sent as detail keys"
+    (doseq [details [{:host "h" :socketFactory "a.b.C"}
+                     {:host "h" :sslfactory "a.b.C"}
+                     {:host "h" :queryInterceptors "a.b.C"}
+                     {:host "h" "dnsResolver" "a.b.C"}
+                     ;; matching is case-insensitive
+                     {:host "h" :SOCKETFACTORY "a.b.C"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (driver/validate-db-details! :sql-jdbc details))))))
+  (testing "Metabase's own detail keys are allowed"
+    (is (nil? (driver/validate-db-details! :sql-jdbc {:host                  "h"
+                                                      :ssl                   true
+                                                      :ssl-root-cert-options "uploaded"
+                                                      :ssl-root-cert-value   "..."
+                                                      :tunnel-enabled        false
+                                                      :additional-options    "tcpKeepAlive=true"})))))
 
 (defn- test-spliced-count-of [table filter-clause expected]
   (let [query        (mt/mbql-query nil
@@ -200,12 +237,12 @@
                                              :+features   [:actions]
                                              :+conn-props ["schema-filters"]})
     (let [fake-schema-name (u/qualified-name ::fake-schema)]
-      (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
-                                                             (fn [metadata]
-                                                               (eduction
-                                                                cat
-                                                                [(orig metadata) [fake-schema-name]])))]
-        (let [syncable (driver/syncable-schemas driver/*driver* (mt/db))]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/all-schemas (let [orig (mt/original-fn #'sql-jdbc.describe-database/all-schemas)]
+                                                                           (fn [metadata]
+                                                                             (eduction
+                                                                              cat
+                                                                              [(orig metadata) [fake-schema-name]])))]
+        (let [syncable (driver/syncable-schemas driver/*driver* (lib.metadata/database (mt/metadata-provider)))]
           (is (contains? syncable "public"))
           (is (contains? syncable fake-schema-name))))
       (let [driver             (driver.u/database->driver (mt/db))
@@ -218,14 +255,14 @@
                                   (update :details assoc filter-type-prop "inclusion", patterns-type-prop "public")
                                   ;; so we don't stomp on the connection pool for the normal test DB.
                                   (assoc :id Integer/MAX_VALUE))
-                  syncable    (driver/syncable-schemas driver/*driver* db-filtered)]
+                  syncable    (driver/syncable-schemas driver/*driver* (driver.u/ensure-lib-database db-filtered))]
               (is      (contains? syncable "public"))
               (is (not (contains? syncable fake-schema-name)))))
           (testing "with an exclusion filter"
             (let [db-filtered (-> (mt/db)
                                   (update :details assoc filter-type-prop "exclusion", patterns-type-prop "public")
                                   (assoc :id Integer/MAX_VALUE))
-                  syncable (driver/syncable-schemas driver/*driver* db-filtered)]
+                  syncable (driver/syncable-schemas driver/*driver* (driver.u/ensure-lib-database db-filtered))]
               (is (not (contains? syncable "public")))
               (is (not (contains? syncable fake-schema-name))))))))))
 
@@ -290,7 +327,7 @@
                                 %))]
                   (sql.qp/->honeysql
                    driver/*driver*
-                   [:= {} col-ref [:value {:base-type :type/UUID} (str uuid)]])))
+                   [:= {} col-ref (lib/normalize [:value {:base-type :type/UUID} (str uuid)])])))
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
                             #(= [:metabase.util.honey-sql-2/typed
@@ -315,8 +352,8 @@
 (defn- table-rows
   "Helper function to get table rows for testing"
   [qualified-table-name]
-  (->> (driver/table-rows-seq driver/*driver* (mt/db) {:name (name qualified-table-name)
-                                                       :schema (namespace qualified-table-name)})
+  (->> (driver/table-rows-seq driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:name (name qualified-table-name)
+                                                                                              :schema (namespace qualified-table-name)})
        (map #(vector (:id %) (:name %)))
        sort))
 
@@ -348,10 +385,10 @@
               (driver/rename-tables! driver db-id
                                      {qualified-table-1 qualified-temp-1
                                       qualified-table-2 qualified-temp-2})
-              (is (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema}))
-              (is (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))
-              (is (not (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema})))
-              (is (not (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
+              (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name temp-table-1 :schema schema}))
+              (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name temp-table-2 :schema schema}))
+              (is (not (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table-1 :schema schema})))
+              (is (not (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table-2 :schema schema})))
               (is (= test-data-1 (table-rows qualified-temp-1)))
               (is (= test-data-2 (table-rows qualified-temp-2)))
               (driver/rename-tables! driver db-id
@@ -367,11 +404,11 @@
                                                       {qualified-table-1 qualified-temp-1
                                                        qualified-table-2 qualified-conflict})))
                   (testing "original tables should still exist after failed atomic rename"
-                    (is (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema}))
-                    (is (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
+                    (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table-1 :schema schema}))
+                    (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table-2 :schema schema})))
                   (testing "temp tables should not exist after failed atomic rename"
-                    (is (not (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema})))
-                    (is (not (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))))
+                    (is (not (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name temp-table-1 :schema schema})))
+                    (is (not (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name temp-table-2 :schema schema}))))
                   (testing "original data should be intact after failed atomic rename"
                     (is (= test-data-1 (table-rows qualified-table-1)))
                     (is (= test-data-2 (table-rows qualified-table-2))))
@@ -398,14 +435,14 @@
           (try
             (testing "single table rename works correctly"
               (driver/rename-table! driver db-id qualified-table qualified-renamed)
-              (is (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
+              (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name renamed-table :schema schema})
                   "Renamed table should exist")
-              (is (not (driver/table-exists? driver (mt/db) {:name test-table :schema schema}))
+              (is (not (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table :schema schema}))
                   "Original table should not exist"))
             (finally
-              (when (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
+              (when (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name renamed-table :schema schema})
                 (driver/drop-table! driver db-id qualified-renamed))
-              (when (driver/table-exists? driver (mt/db) {:name test-table :schema schema})
+              (when (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table :schema schema})
                 (driver/drop-table! driver db-id qualified-table)))))))))
 
 (defn- sql-jdbc-drivers
@@ -423,6 +460,55 @@
                                                                          [[1 true] [2 false]] false))]
           (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
           (is (= [1 true 2 false] params)))))))
+
+(deftest do-with-unpooled-default-connection-test
+  ;; the drivers with a method of their own: a driver that only inherits one, as Redshift does, may not support it
+  (mt/test-drivers (set (keys (methods sql-jdbc.sync/current-user-table-privileges)))
+    (testing "a new connection opened from the details returns the rows that a pooled connection returns"
+      (let [privileges (fn [conn]
+                         (vec (sql-jdbc.sync/current-user-table-privileges driver/*driver* {:connection conn})))]
+        (is (= (set (sql-jdbc.execute/do-with-connection-with-options driver/*driver* (mt/id) nil privileges))
+               (set (driver.sql-jdbc/do-with-unpooled-default-connection (mt/db) privileges))))))))
+
+(deftest do-with-unpooled-default-connection-checks-hosts-first-test
+  (testing "the host check runs on the details before a connection is opened, and its refusal is thrown"
+    (let [checked (atom nil)
+          opened  (atom 0)
+          details {:db "mem:birds"}]
+      (mt/with-dynamic-fn-redefs [driver.u/validate-connection-hosts!
+                                  (fn [driver details]
+                                    (reset! checked [driver details])
+                                    (throw (ex-info "Cannot connect to a private or internal network address." {})))
+                                  sql-jdbc.conn/do-with-unpooled-connection-spec
+                                  (fn [& _] (swap! opened inc) [])]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"private or internal network"
+                              (driver.sql-jdbc/do-with-unpooled-default-connection {:engine :h2, :details details}
+                                                                                   identity)))
+        (is (= [:h2 details] @checked))
+        (is (zero? @opened))))))
+
+(deftest do-with-unpooled-default-connection-uses-primary-details-test
+  (testing "inside a write connection context the connection still uses the primary details, not the write details"
+    (let [used (atom nil)]
+      (mt/with-dynamic-fn-redefs [driver.u/validate-connection-hosts! (fn [_driver _details] nil)
+                                  sql-jdbc.conn/do-with-unpooled-connection-spec
+                                  (fn [_driver details _f] (reset! used details) [])]
+        (driver.conn/with-write-connection
+          (driver.sql-jdbc/do-with-unpooled-default-connection {:engine             :h2
+                                                                :details            {:db "mem:sparrows"}
+                                                                :write-data-details {:db "mem:hawks"}}
+                                                               identity))
+        (is (= {:db "mem:sparrows"} @used))))))
+
+(deftest do-with-unpooled-default-connection-skips-testing-connection-test
+  (testing "the connection does not go through the function of Test connection, so a change made there for testing only
+            does not reach it"
+    (mt/with-dynamic-fn-redefs [sql-jdbc.conn/do-with-connection-spec-for-testing-connection
+                                (fn [& _] (throw (ex-info "Test connection path" {})))]
+      (is (false? (driver.sql-jdbc/do-with-unpooled-default-connection
+                   (mt/db)
+                   (fn [^java.sql.Connection conn] (.isClosed conn))))))))
 
 (deftest ^:parallel dot-qualified-test
   (testing "the whole dotted path lands in the keyword's name, which HoneySQL leaves alone"

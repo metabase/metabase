@@ -13,7 +13,7 @@
 
 (deftest get-or-create-field-values!-test
   (mt/with-premium-features #{:advanced-permissions}
-    (let [field (t2/select-one :model/Field :id (mt/id :categories :id))]
+    (let [field (assoc (t2/select-one :model/Field :id (mt/id :categories :id)) :has_field_values :list)]
       (try
         (testing "creates new field values for user using impersonation"
           (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
@@ -34,10 +34,10 @@
               (testing "and a warm hit is served without a detached fetch — it is one SELECT, so
                         handing it to a background thread costs more than it saves (GHY-2937)"
                 (let [detached (atom 0)
-                      real     field-values/detached-fetch!]
-                  (with-redefs [field-values/detached-fetch! (fn [& args]
-                                                               (swap! detached inc)
-                                                               (apply real args))]
+                      real     (mt/original-fn #'field-values/detached-fetch!)]
+                  (mt/with-dynamic-fn-redefs [field-values/detached-fetch! (fn [& args]
+                                                                             (swap! detached inc)
+                                                                             (apply real args))]
                     (params.field-values/get-or-create-field-values! field)
                     (is (zero? @detached)))))
               (testing "changing the impersonation role creates new FieldValues"
@@ -56,3 +56,11 @@
                     (is (= 2 (t2/count :model/FieldValues :field_id (u/the-id field) :type :advanced)))))))))
         (finally
           (t2/delete! :model/FieldValues :field_id (u/the-id field) :type :advanced))))))
+
+(deftest hash-input-without-advanced-permissions-test
+  (testing "an impersonated user gets no FieldValues cache key while advanced permissions are unavailable"
+    (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                   :attributes     {"impersonation_attr" "impersonation_role"}}
+      (mt/with-premium-features #{}
+        (is (nil? (params.field-values/hash-input-for-field-values
+                   (t2/select-one :model/Field :id (mt/id :categories :id)))))))))

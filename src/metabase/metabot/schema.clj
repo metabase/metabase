@@ -4,6 +4,10 @@
    [malli.transform :as mtx]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
+   [metabase.metabot.query-repair :as query-repair]
+   [metabase.metabot.schema.v2 :as schema.v2]
+   [metabase.models.schema :as models.schema]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -29,18 +33,141 @@
 
 (mr/def ::state-map-key
   "A dynamic state-map key, normalized to its canonical string representation."
-  [:or {:decode/normalize lib.schema.common/normalize-string-key}
-   :string
-   :keyword])
+  [:string {:decode/normalize lib.schema.common/normalize-string-key}])
+
+(mr/def ::query
+  "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn
+  state. Normalizing repairs a structured query that lost its `:lib/*` keys, so every tool reads a valid MBQL 5 query;
+  see [[query-repair/repair-stripped-query]]."
+  [:schema {:decode/normalize query-repair/repair-stripped-query}
+   ::lib.util/query-like])
+
+(mr/def ::todo
+  "A todo item in conversation state persisted while Metabot had todo tools. `:todos` stays in [[::state]], a
+  closed map, so those conversations still validate."
+  [:map {:closed true}
+   [:id :string]
+   [:content  {:optional true} [:maybe :string]]
+   [:status   {:optional true} [:maybe [:enum "pending" "in_progress" "completed" "cancelled"]]]
+   [:priority {:optional true} [:maybe [:enum "high" "medium" "low"]]]])
+
+(mr/def ::chart-timeline-event
+  [:map {:closed true}
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:timestamp :string]])
+
+(mr/def ::column-info
+  "A chart column's name and inferred type, as sent for chart analysis. Mirrors
+  `metabase.metabot.context/ColumnInfoSchema`."
+  [:map {:closed true}
+   [:name :string]
+   [:type {:optional true} [:maybe (into [:enum] #{"number" "string" "date" "datetime" "time" "boolean" "null"})]]])
+
+(mr/def ::row-value.object
+  "An object cell value in a chart series, forwarded as it arrived."
+  [:map {:closed false, :description "an object cell value"}])
+
+(mr/def ::references
+  "The references a client attaches to a Metabot request, forwarded as they arrived."
+  [:map {:closed false, :description "Metabot request references"}])
+
+(mr/def ::row-value
+  "One cell value in a chart series. The `object` arm is never read by this code -- it's forwarded to the
+  interestingness stats/repr code as-is -- so it's opaque rather than typed. Mirrors
+  `metabase.metabot.context/RowValueSchema`."
+  [:maybe [:or :string number? :boolean ::row-value.object]])
+
+(mr/def ::chart-data
+  "One pre-materialized table of raw chart data (columns + rows). Mirrors
+  `metabase.metabot.context/ChartDataSchema`."
+  [:map {:closed true}
+   [:columns [:sequential ::column-info]]
+   [:rows [:sequential [:sequential [:or :string number?]]]]])
+
+(mr/def ::series-config
+  "One series of a chart, pre-materialized by the frontend for `analyze_chart`. Mirrors
+  `metabase.metabot.context/SeriesConfigSchema`."
+  [:map {:closed true}
+   [:x ::column-info]
+   [:y {:optional true} [:maybe ::column-info]]
+   [:x_values {:optional true} [:maybe [:sequential ::row-value]]]
+   [:y_values {:optional true} [:maybe [:sequential ::row-value]]]
+   [:display_name :string]
+   [:chart_type [:or :string :keyword]]
+   [:stacked {:optional true} [:maybe :boolean]]])
+
+(mr/def ::chart-config
+  "A `chart_configs` entry: a chart's title, pre-materialized series data, and the query that produced it.
+  Mirrors `metabase.metabot.context/ChartConfigSchema`."
+  [:map {:closed true}
+   [:title {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:data {:optional true} [:maybe [:sequential ::chart-data]]]
+   [:series {:optional true} [:maybe (ms/string-keyed-map ::series-config)]]
+   [:timeline_events {:optional true} [:maybe [:sequential ::chart-timeline-event]]]
+   [:query {:optional true} [:maybe ::query]]
+   [:display_type {:optional true} [:maybe [:or :string :keyword]]]])
+
+(mr/def ::chart
+  [:map {:closed true}
+   [:chart_id {:optional true} [:maybe :string]]
+   [:query_id {:optional true} [:maybe :string]]
+   [:queries {:optional true} [:maybe [:sequential [:maybe ::query]]]]
+   [:visualization_settings {:optional true}
+    [:maybe [:map {:closed true}
+             [:chart_type {:optional true} [:maybe [:or :string :keyword]]]]]]
+   [:timeline_events {:optional true} [:maybe [:sequential ::chart-timeline-event]]]
+   [:chart_config {:optional true} [:maybe ::chart-config]]])
+
+(mr/def ::transform.target
+  [:map {:closed true}
+   [:type [:or [:= :table] [:= "table"]]]
+   [:name {:optional true} [:maybe :string]]
+   [:database {:optional true} [:maybe :int]]
+   [:schema {:optional true} [:maybe :string]]])
+
+(mr/def ::transform.source-table
+  "One entry of a Python transform's `source-tables`. Mirrors
+  `metabase.metabot.context/TransformSourceTableSchema`."
+  [:map {:closed true}
+   [:alias :string]
+   [:table_id {:optional true} [:maybe :int]]
+   [:schema {:optional true} [:maybe :string]]
+   [:database_id {:optional true} [:maybe :int]]])
+
+(mr/def ::transform.source
+  [:multi {:dispatch (comp keyword :type)}
+   [:query [:map {:closed true}
+            [:type [:or [:= :query] [:= "query"]]]
+            [:query {:optional true} [:maybe ::query]]]]
+   [:python [:map {:closed true}
+             [:type [:or [:= :python] [:= "python"]]]
+             [:body {:optional true} [:maybe :string]]
+             [:source-database {:optional true} [:maybe :int]]
+             [:source-tables {:optional true} [:maybe [:sequential ::transform.source-table]]]]]])
+
+(mr/def ::transform
+  [:map {:closed true}
+   [:id {:optional true} [:maybe :string]]
+   [:name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:target {:optional true} [:maybe ::transform.target]]
+   [:source {:optional true} [:maybe ::transform.source]]])
 
 (mr/def ::state
-  [:map
-   [:queries {:optional true} [:map-of ::state-map-key :map]]
-   [:charts {:optional true} [:map-of ::state-map-key :map]]
-   [:chart-configs {:optional true} [:map-of ::state-map-key :map]]
-   [:todos {:optional true} [:sequential :map]]
-   [:transforms {:optional true} [:map-of ::state-map-key :map]]
-   [:link-registry {:optional true} [:map-of ::state-map-key :string]]])
+  [:map {:closed true}
+   [:queries {:optional true} [:map-of ::state-map-key ::query]]
+   [:charts {:optional true} [:map-of ::state-map-key ::chart]]
+   [:chart-configs {:optional true} [:map-of ::state-map-key ::chart-config]]
+   [:todos {:optional true} [:sequential ::todo]]
+   [:transforms {:optional true} [:map-of ::state-map-key ::transform]]
+   [:link-registry {:optional true} [:map-of ::state-map-key :string]]
+   ;; JSON has no sets, so a state read back out of metabot_message arrives as a vector here and
+   ;; is validated before [[normalize-state]] gets a chance to turn it back into one
+   [:client-ids {:optional true} [:or {:decode/normalize set}
+                                  [:set ::state-map-key]
+                                  [:sequential ::state-map-key]]]])
 
 (defn normalize-state
   "Normalize dynamic state-map keys to strings according to [[::state]]."
@@ -85,10 +212,17 @@
    ["done" [:map [:type [:= "done"]]]]
    ["aborted" [:map [:type [:= "aborted"]]]]
    ["in_progress" [:map [:type [:= "in_progress"]]]]
+   ["incomplete"
+    [:map
+     [:type         [:= "incomplete"]]
+     ;; why the model stopped before finishing; the client turns it into its own copy
+     [:finishReason [:enum "length" "content-filter" "tool-calls"]]
+     ;; the turn stopped at `length` because the context window was full
+     [:contextWindowFull {:optional true} :boolean]]]
    ["errored"
     [:map
      [:type  [:= "errored"]]
-     ;; the decoded `error` column, or its raw text when it isn't JSON
+     ;; the decoded `error` column, or its raw text when it isn't JSON; a stored error-code is also its type
      [:error [:or
               :string
               [:map
@@ -110,22 +244,10 @@
 
 (mr/def ::ai-usage-log
   "A AiUsageLog as selected from the app DB: every column of `:ai_usage_log`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:created_at            ms/TemporalInstant]
-   [:source                [:or :keyword :string]]
-   [:model                 [:or :keyword :string]]
-   [:prompt_tokens         :int]
-   [:completion_tokens     :int]
-   [:total_tokens          :int]
-   [:user_id               [:maybe ::lib.schema.id/user]]
-   [:tenant_id             [:maybe ms/PositiveInt]]
-   [:conversation_id       [:maybe :string]]
-   [:profile_id            [:maybe :string]]
-   [:request_id            [:maybe :string]]
-   [:ai_proxied            [:maybe :boolean]]
-   [:cache_creation_tokens [:maybe :int]]
-   [:cache_read_tokens     [:maybe :int]]])
+  [:merge
+   ::ai-usage-log.update
+   [:map {:closed true}
+    [:id                    ms/PositiveInt]]])
 
 (mr/def ::ai-usage-log.update
   "What an update (or insert) of a AiUsageLog accepts: every column of `:ai_usage_log` except `id`, all optional."
@@ -133,6 +255,8 @@
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:source                {:optional true} [:maybe [:or :keyword :string]]]
    [:model                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:provider              {:optional true} [:maybe :string]]
+   [:model_name            {:optional true} [:maybe :string]]
    [:prompt_tokens         {:optional true} [:maybe :int]]
    [:completion_tokens     {:optional true} [:maybe :int]]
    [:total_tokens          {:optional true} [:maybe :int]]
@@ -145,21 +269,33 @@
    [:cache_creation_tokens {:optional true} [:maybe :int]]
    [:cache_read_tokens     {:optional true} [:maybe :int]]])
 
+(mr/def ::ai-usage-log.create
+  "What recording an AiUsageLog takes: the source, model and token counts of one LLM call, and who it was made for."
+  [:map {:closed true}
+   [:source                [:maybe [:or :keyword :string]]]
+   [:model                 [:maybe [:or :keyword :string]]]
+   [:provider              [:maybe :string]]
+   [:model_name            [:maybe :string]]
+   [:prompt_tokens         [:maybe :int]]
+   [:completion_tokens     [:maybe :int]]
+   [:total_tokens          [:maybe :int]]
+   [:user_id               [:maybe ::lib.schema.id/user]]
+   [:tenant_id             [:maybe ms/PositiveInt]]
+   [:conversation_id       [:maybe :string]]
+   [:profile_id            [:maybe :string]]
+   [:request_id            [:maybe :string]]
+   [:ai_proxied            [:maybe :boolean]]
+   [:cache_creation_tokens [:maybe :int]]
+   [:cache_read_tokens     [:maybe :int]]])
+
 (mr/def ::metabot
   "A Metabot as selected from the app DB: every column of `:metabot`."
-  [:map {:closed true}
-   [:id                   ms/PositiveInt]
-   [:name                 :string]
-   [:description          [:maybe :string]]
-   [:entity_id            :string]
-   [:created_at           ms/TemporalInstant]
-   [:updated_at           ms/TemporalInstant]
-   [:use_verified_content [:maybe :boolean]]
-   [:collection_id        [:maybe ::lib.schema.id/collection]]])
+  ::metabot.update)
 
 (mr/def ::metabot.update
-  "What an update (or insert) of a Metabot accepts: every column of `:metabot` except `id`, all optional."
+  "What an update of a Metabot takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
+   [:id                   ms/PositiveInt]
    [:name                 {:optional true} [:maybe :string]]
    [:description          {:optional true} [:maybe :string]]
    [:entity_id            {:optional true} [:maybe :string]]
@@ -170,20 +306,10 @@
 
 (mr/def ::metabot-conversation
   "A MetabotConversation as selected from the app DB: every column of `:metabot_conversation`."
-  [:map {:closed true}
-   [:id                          :string]
-   [:created_at                  ms/TemporalInstant]
-   [:user_id                     ::lib.schema.id/user]
-   [:title                       [:maybe :string]]
-   [:ip_address                  [:maybe :string]]
-   [:slack_team_id               [:maybe :string]]
-   [:slack_channel_id            [:maybe :string]]
-   [:slack_thread_ts             [:maybe :string]]
-   [:embedding_hostname          [:maybe :string]]
-   [:embedding_path              [:maybe :string]]
-   [:user_agent                  [:maybe :string]]
-   [:sanitized_user_agent        [:maybe :string]]
-   [:forked_from_conversation_id [:maybe :string]]])
+  [:merge
+   ::metabot-conversation.update
+   [:map {:closed true}
+    [:id                          :string]]])
 
 (mr/def ::metabot-conversation.update
   "What an update (or insert) of a MetabotConversation accepts: every column of `:metabot_conversation` except `id`, all optional."
@@ -201,17 +327,20 @@
    [:sanitized_user_agent        {:optional true} [:maybe :string]]
    [:forked_from_conversation_id {:optional true} [:maybe :string]]])
 
+(mr/def ::metabot-conversation.create
+  "What creating a MetabotConversation takes: its client-generated id, its user, and the conversation it was forked
+  from."
+  [:map {:closed true}
+   [:id                                           :string]
+   [:user_id                                      ::lib.schema.id/user]
+   [:forked_from_conversation_id {:optional true} [:maybe :string]]])
+
 (mr/def ::metabot-feedback
   "A MetabotFeedback as selected from the app DB: every column of `:metabot_feedback`."
-  [:map {:closed true}
-   [:message_id        ms/PositiveInt]
-   [:positive          :boolean]
-   [:issue_type        [:maybe [:or :keyword :string]]]
-   [:freeform_feedback [:maybe :string]]
-   [:created_at        ms/TemporalInstant]
-   [:updated_at        ms/TemporalInstant]
-   [:id                ms/PositiveInt]
-   [:user_id           ::lib.schema.id/user]])
+  [:merge
+   ::metabot-feedback.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
 
 (mr/def ::metabot-feedback.update
   "What an update (or insert) of a MetabotFeedback accepts: every column of `:metabot_feedback` except `id`, all optional."
@@ -226,44 +355,27 @@
 
 (mr/def ::metabot-message.data-part
   "One entry of the `:data` column of a MetabotMessage, decoded."
-  :map)
+  ::schema.v2/ui-message-part)
 
 (mr/def ::metabot-message.usage
   "The `:usage` column of a MetabotMessage, decoded."
-  :map)
+  (ms/string-keyed-map [:map {:closed true}
+                        [:prompt :int]
+                        [:completion :int]]))
+
+(defn normalize-usage
+  "Normalize the model keys of a MetabotMessage `:usage` value to strings according to [[::metabot-message.usage]]."
+  [usage]
+  (mc/decode ::metabot-message.usage usage (mtx/transformer {:name :normalize})))
 
 (mr/def ::metabot-message.state
   "The `:state` column of a MetabotMessage, decoded."
-  :map)
+  ::state)
 
 (mr/def ::metabot-message
   "A MetabotMessage as selected from the app DB: every column of `:metabot_message`."
   [:map {:closed true}
    [:id                     ms/PositiveInt]
-   [:created_at             ms/TemporalInstant]
-   [:profile_id             :string]
-   [:role                   [:or :keyword :string]]
-   [:data                   [:sequential ::metabot-message.data-part]]
-   [:usage                  [:maybe ::metabot-message.usage]]
-   [:total_tokens           :int]
-   [:conversation_id        :string]
-   [:slack_msg_id           [:maybe :string]]
-   [:channel_id             [:maybe :string]]
-   [:deleted_at             [:maybe ms/TemporalInstant]]
-   [:deleted_by_user_id     [:maybe ::lib.schema.id/user]]
-   [:user_id                [:maybe ::lib.schema.id/user]]
-   [:ai_proxied             [:maybe :boolean]]
-   [:external_id            [:maybe :string]]
-   [:finished               [:maybe :boolean]]
-   [:error                  [:maybe :string]]
-   [:data_version           :int]
-   [:state                  [:maybe ::metabot-message.state]]
-   [:forked_from_message_id [:maybe ms/PositiveInt]]
-   [:context_tokens         [:maybe :int]]])
-
-(mr/def ::metabot-message.update
-  "What an update (or insert) of a MetabotMessage accepts: every column of `:metabot_message` except `id`, all optional."
-  [:map {:closed true}
    [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:profile_id             {:optional true} [:maybe :string]]
    [:role                   {:optional true} [:maybe [:or :keyword :string]]]
@@ -283,24 +395,57 @@
    [:data_version           {:optional true} [:maybe :int]]
    [:state                  {:optional true} [:maybe ::metabot-message.state]]
    [:forked_from_message_id {:optional true} [:maybe ms/PositiveInt]]
-   [:context_tokens         {:optional true} [:maybe :int]]])
+   [:context_tokens         {:optional true} [:maybe :int]]
+   [:finish_reason          {:optional true} [:maybe :string]]
+   [:context_window_full    {:optional true} [:maybe :boolean]]])
+
+(mr/def ::metabot-message.update
+  "What an update of a MetabotMessage takes: its `:id` and the columns to set."
+  ::metabot-message)
+
+(mr/def ::metabot-message.soft-delete-conditions
+  "Which MetabotMessages a soft delete matches: at least one of an id or ids, a channel, a Slack message and a role."
+  [:and
+   [:map {:closed true}
+    [:id           {:optional true} [:maybe [:or ms/PositiveInt [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
+    [:channel_id   {:optional true} [:maybe :string]]
+    [:slack_msg_id {:optional true} [:maybe :string]]
+    [:role         {:optional true} [:maybe [:or :keyword :string]]]]
+   [:fn {:error/message "must have at least one condition"} seq]])
+
+(mr/def ::metabot-message.create
+  "What creating a MetabotMessage takes: its conversation and role, and any of its other columns but its timestamps
+  and deletion."
+  [:map {:closed true}
+   [:profile_id             {:optional true} [:maybe :string]]
+   [:role                                    [:or :keyword :string]]
+   [:data                   {:optional true} [:maybe [:sequential ::metabot-message.data-part]]]
+   [:usage                  {:optional true} [:maybe ::metabot-message.usage]]
+   [:total_tokens           {:optional true} [:maybe :int]]
+   [:conversation_id                         :string]
+   [:slack_msg_id           {:optional true} [:maybe :string]]
+   [:channel_id             {:optional true} [:maybe :string]]
+   [:user_id                {:optional true} [:maybe ::lib.schema.id/user]]
+   [:ai_proxied             {:optional true} [:maybe :boolean]]
+   [:external_id            {:optional true} [:maybe :string]]
+   [:finished               {:optional true} [:maybe :boolean]]
+   [:error                  {:optional true} [:maybe :string]]
+   [:data_version           {:optional true} [:maybe :int]]
+   [:state                  {:optional true} [:maybe ::metabot-message.state]]
+   [:forked_from_message_id {:optional true} [:maybe ms/PositiveInt]]
+   [:context_tokens         {:optional true} [:maybe :int]]
+   [:finish_reason          {:optional true} [:maybe :string]]
+   [:context_window_full    {:optional true} [:maybe :boolean]]])
 
 (mr/def ::metabot-prompt
   "A MetabotPrompt as selected from the app DB: every column of `:metabot_prompt`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:model      [:or :keyword :string]]
-   [:card_id    ::lib.schema.id/card]
-   [:entity_id  :string]
-   [:prompt     :string]
-   [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]
-   [:metabot_id ms/PositiveInt]])
+  ::metabot-prompt.update)
 
 (mr/def ::metabot-prompt.update
-  "What an update (or insert) of a MetabotPrompt accepts: every column of `:metabot_prompt` except `id`, all optional."
+  "What an update of a MetabotPrompt takes: its `:id` and the columns to set, each optional."
   [:map {:closed true}
-   [:model      {:optional true} [:maybe [:or :keyword :string]]]
+   [:id         ms/PositiveInt]
+   [:model      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:card_id    {:optional true} [:maybe ::lib.schema.id/card]]
    [:entity_id  {:optional true} [:maybe :string]]
    [:prompt     {:optional true} [:maybe :string]]
@@ -308,17 +453,22 @@
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:metabot_id {:optional true} [:maybe ms/PositiveInt]]])
 
+(mr/def ::metabot-prompt.create
+  "What creating a MetabotPrompt takes: its Metabot, its Card and its text, and for an import its entity id and model. Its
+  model follows the type of its Card."
+  [:map {:closed true}
+   [:metabot_id ms/PositiveInt]
+   [:card_id    ::lib.schema.id/card]
+   [:prompt     :string]
+   [:model      {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:entity_id  {:optional true} [:maybe :string]]])
+
 (mr/def ::metabot-source-feedback
   "A MetabotSourceFeedback as selected from the app DB: every column of `:metabot_source_feedback`."
-  [:map {:closed true}
-   [:id          ms/PositiveInt]
-   [:message_id  ms/PositiveInt]
-   [:user_id     ::lib.schema.id/user]
-   [:source_id   ms/PositiveInt]
-   [:source_type [:or :keyword :string]]
-   [:positive    :boolean]
-   [:created_at  ms/TemporalInstant]
-   [:updated_at  ms/TemporalInstant]])
+  [:merge
+   ::metabot-source-feedback.update
+   [:map {:closed true}
+    [:id          ms/PositiveInt]]])
 
 (mr/def ::metabot-source-feedback.update
   "What an update (or insert) of a MetabotSourceFeedback accepts: every column of `:metabot_source_feedback` except `id`, all optional."
@@ -333,11 +483,10 @@
 
 (mr/def ::metabot-used-table
   "A MetabotUsedTable as selected from the app DB: every column of `:metabot_used_table`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:message_id ms/PositiveInt]
-   [:table_id   ::lib.schema.id/table]
-   [:created_at ms/TemporalInstant]])
+  [:merge
+   ::metabot-used-table.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::metabot-used-table.update
   "What an update (or insert) of a MetabotUsedTable accepts: every column of `:metabot_used_table` except `id`, all optional."
@@ -345,3 +494,26 @@
    [:message_id {:optional true} [:maybe ms/PositiveInt]]
    [:table_id   {:optional true} [:maybe ::lib.schema.id/table]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::metabot-used-table.create
+  "What recording a MetabotUsedTable takes: the message that used the table, and the table."
+  [:map {:closed true}
+   [:message_id ms/PositiveInt]
+   [:table_id   ::lib.schema.id/table]])
+
+(mr/def ::external-metabot
+  "A Metabot as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::metabot [:name :description :entity_id :use_verified_content :collection_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:prompts {:optional true} [:maybe [:sequential [:ref ::external-metabot-prompt]]]]]]])
+
+(mr/def ::external-metabot-prompt
+  "A MetabotPrompt as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::metabot-prompt [:entity_id :prompt :model :card_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

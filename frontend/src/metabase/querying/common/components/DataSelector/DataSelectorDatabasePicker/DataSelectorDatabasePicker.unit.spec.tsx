@@ -1,10 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockState } from "__support__/state";
-import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
-import { checkNotNull } from "metabase/utils/types";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { DataSelectorDatabasePicker } from "./DataSelectorDatabasePicker";
@@ -12,19 +8,9 @@ import { DataSelectorDatabasePicker } from "./DataSelectorDatabasePicker";
 const TEST_DATABASE = createMockDatabase();
 
 const setup = (mockDatabases = [TEST_DATABASE]) => {
-  const state = createMockState({
-    entities: createMockEntitiesState({
-      databases: mockDatabases,
-    }),
-  });
-  const metadata = getMetadata(state);
-  const databases = mockDatabases.map((db) =>
-    checkNotNull(metadata.database(db.id)),
-  );
-
   renderWithProviders(
     <DataSelectorDatabasePicker
-      databases={databases}
+      databases={mockDatabases}
       onChangeDatabase={jest.fn()}
       onChangeSchema={jest.fn()}
     />,

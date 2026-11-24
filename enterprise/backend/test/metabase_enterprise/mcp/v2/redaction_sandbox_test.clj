@@ -9,10 +9,13 @@
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.metabot.metadata-perms :as metadata-perms]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -51,12 +54,12 @@
 (defn- get-content-fields
   "`get_content` on `card-id` with the `fields` include, as the current test user."
   [card-id]
-  (let [{:keys [result error]} (registry/call-tool nil "test-session" "get_content"
+  (let [{:keys [result error]} (registry/call-tool v2.tu/all-scopes "test-session" "get_content"
                                                    {:items [{:type "question" :id card-id}]
                                                     :include ["fields"]})]
     (when error
-      (throw (ex-info (str "get_content rejected: " (:message error)) {:error error})))
-    (first (:results (json/decode+kw (-> result :content first :text))))))
+      (throw (ex-info (str "get_content rejected: " (message/render (:message error))) {:error error})))
+    (first (:results (json/decode+kw (v2.tu/strip-data-boundary (-> result :content first :text)))))))
 
 (deftest sandboxed-caller-does-not-receive-fingerprints-test
   (testing "a fingerprint is computed over every row of its table — `:min`/`:max` are individual cell
@@ -69,21 +72,26 @@
       ;; The card is created inside the fixture so its stored `result_metadata` carries the
       ;; sandboxed database's table ids — the ones `row-restricted-table-ids` answers about.
       (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id} {:type          :question
-                                                  :creator_id    (mt/user->id :crowberto)
-                                                  :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
-          (testing "unsandboxed, the fingerprints are present — otherwise this test could pass vacuously"
-            (mt/with-test-user :crowberto
-              (is (seq (fingerprinted-columns (get-content-fields card-id)))
-                  "an admin with no row restriction still sees fingerprints")))
-          (mt/with-test-user :rasta
-            (testing "precondition: the sandbox really does narrow rasta's rows on VENUES"
-              (is (contains? (metadata-perms/row-restricted-table-ids #{(mt/id :venues)})
-                             (mt/id :venues))
-                  "if this fails the strip has nothing to key off and the rest is vacuous"))
-            (let [row (get-content-fields card-id)]
-              (is (nil? (:error row)) "the read still succeeds — this redacts, it does not refuse")
-              (is (seq (:result_metadata row)) "column metadata is still returned")
-              (is (= #{} (fingerprinted-columns row))
-                  (str "no column may carry a :fingerprint for a sandboxed caller; got "
-                       (pr-str (fingerprinted-columns row)))))))))))
+        (mt/with-model-cleanup [:model/Card]
+          (let [[{card-id :id}] (card/create-cards! [{:type                   :question
+                                                      :name                   "Venues"
+                                                      :display                :table
+                                                      :visualization_settings {}
+                                                      :database_id            (mt/id)
+                                                      :creator_id             (mt/user->id :crowberto)
+                                                      :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id :venues)))}])]
+            (testing "unsandboxed, the fingerprints are present — otherwise this test could pass vacuously"
+              (mt/with-test-user :crowberto
+                (is (seq (fingerprinted-columns (get-content-fields card-id)))
+                    "an admin with no row restriction still sees fingerprints")))
+            (mt/with-test-user :rasta
+              (testing "precondition: the sandbox really does narrow rasta's rows on VENUES"
+                (is (contains? (metadata-perms/row-restricted-table-ids #{(mt/id :venues)})
+                               (mt/id :venues))
+                    "if this fails the strip has nothing to key off and the rest is vacuous"))
+              (let [row (get-content-fields card-id)]
+                (is (nil? (:error row)) "the read still succeeds — this redacts, it does not refuse")
+                (is (seq (:result_metadata row)) "column metadata is still returned")
+                (is (= #{} (fingerprinted-columns row))
+                    (str "no column may carry a :fingerprint for a sandboxed caller; got "
+                         (pr-str (fingerprinted-columns row))))))))))))

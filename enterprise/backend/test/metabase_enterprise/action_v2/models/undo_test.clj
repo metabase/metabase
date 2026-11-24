@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.models.undo :as undo]
    [metabase-enterprise.action-v2.test-util :as action-v2.tu]
+   [metabase.events.test-util :as events.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -10,17 +11,18 @@
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
-(deftest ^:parallel diff-keys-test
-  (testing "Detect which keys have changes"
-    (is (= [:a :b :c] (#'undo/diff-keys
-                       nil
-                       (zipmap [:a :b :c] (range)))))
-    (is (= [:a :b :c] (#'undo/diff-keys
-                       (zipmap [:a :b :c] (range))
-                       nil)))
-    (is (= [:b :c :d] (#'undo/diff-keys
-                       (zipmap [:a :b :c] (range))
-                       (zipmap [:a :c :d] (range)))))))
+;; TODO: uncomment when diff-keys is used
+#_(deftest ^:parallel diff-keys-test
+    (testing "Detect which keys have changes"
+      (is (= [:a :b :c] (#'undo/diff-keys
+                         nil
+                         (zipmap [:a :b :c] (range)))))
+      (is (= [:a :b :c] (#'undo/diff-keys
+                         (zipmap [:a :b :c] (range))
+                         nil)))
+      (is (= [:b :c :d] (#'undo/diff-keys
+                         (zipmap [:a :b :c] (range))
+                         (zipmap [:a :c :d] (range)))))))
 
 (defn- table-rows [table-id]
   (mt/rows
@@ -56,7 +58,7 @@
           [false false] nil
           [false true] (action-v2.tu/create-rows! table-id user-id 200 [(merge pk value)])
           [true false] (action-v2.tu/delete-rows! table-id user-id 200 [pk])
-          [true true] (action-v2.tu/update-rows! table-id user-id 200 [(merge pk value)]))
+          [true true] (action-v2.tu/update-grouped! table-id user-id 200 [(merge pk value)]))
         (recur value (rest states))))))
 
 ;; I'm OK reducing this scenario's scope once we have e2e tests.
@@ -352,3 +354,14 @@
                 (is (= before-batch-num (next-batch-num :undo user-id test-scope)))))
             ;; Table should remain unchanged
             (is (= [[1 "Undoable change"]] (table-rows table-id)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-empty-h2-app-db!
+    (mt/with-premium-features #{:table-data-editing}
+      (action-v2.tu/with-test-tables! [table-1 [{:id [:int]} {:primary-key [:id]}]]
+        (let [user-id (mt/user->id :crowberto)
+              track!  (fn [n]
+                        (let [changes {table-1 (into {} (map (fn [i] [{:id i} {:raw_before (when (odd? i) {}) :raw_after (when (even? i) {})}])) (range n))}]
+                          (events.tu/statement-count! #(undo/track-change! user-id {:table-id table-1} changes))))]
+          (track! 1)
+          (is (= (track! 2) (track! 6))))))))

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { P, match } from "ts-pattern";
 
 import type { EngineKey } from "metabase-types/api/settings";
@@ -30,6 +31,10 @@ function mapRedshiftValues(parsedValues: RegexFields) {
       objectToString(parsedValues.params, ["UID", "PWD"]),
     ],
   ]);
+
+  if (parsedValues.protocol === "redshift:iam") {
+    fieldsMap.set("details.auth-mode", "iam-instance-profile");
+  }
 
   if (fieldsMap.get("details.additional-options")) {
     fieldsMap.set("details.advanced-options", true);
@@ -103,6 +108,10 @@ function mapDatabricksValues(parsedValues: RegexFields) {
     ]),
   );
 
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+
   return fieldsMap;
 }
 
@@ -127,9 +136,14 @@ function mapMysqlValues(parsedValues: RegexFields) {
     ["details.ssl", parsedValues.params?.ssl],
     [
       "details.additional-options",
-      objectToString(parsedValues.params, ["ssl"]),
+      objectToString(parsedValues.params, ["ssl"], "&"),
     ],
   ]);
+
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+
   return fieldsMap;
 }
 
@@ -140,6 +154,19 @@ function mapOracleValues(parsedValues: RegexFields) {
     ["details.service-name", parsedValues.database],
     ["details.user", parsedValues.username],
     ["details.password", parsedValues.password],
+  ]);
+
+  return fieldsMap;
+}
+
+// The string names no host, since that depends on the account's region. Other params configure DuckDB's own
+// client, so they would break the Postgres connection if copied into the additional options.
+function mapMotherDuckValues(parsedValues: RegexFields) {
+  const database = parsedValues.database || undefined;
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.dbname", database],
+    ["name", database],
+    ["details.password", parsedValues.params?.motherduck_token],
   ]);
 
   return fieldsMap;
@@ -156,9 +183,13 @@ function mapPostgresValues(parsedValues: RegexFields) {
     ["details.ssl", parsedValues.params?.ssl],
     [
       "details.additional-options",
-      objectToString(parsedValues.params, ["ssl"]),
+      objectToString(parsedValues.params, ["ssl"], "&"),
     ],
   ]);
+
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
 
   return fieldsMap;
 }
@@ -200,6 +231,7 @@ export function mapSnowflakeValues(parsedValues: RegexFields) {
   ]);
 
   if (parsedValues.password) {
+    fieldsMap.set("details.auth-mode", "password");
     fieldsMap.set("details.use-password", true);
     fieldsMap.set("details.password", parsedValues.password);
   }
@@ -327,6 +359,7 @@ export function mapDatabaseValues(
       mapAthenaValues(parsedValues),
     )
     .with(["redshift", "redshift"], () => mapRedshiftValues(parsedValues))
+    .with(["redshift:iam", "redshift"], () => mapRedshiftValues(parsedValues))
     .with(["bigquery", "bigquery-cloud-sdk"], () =>
       mapBigQueryValues(parsedValues),
     )
@@ -335,6 +368,7 @@ export function mapDatabaseValues(
     .with([P.union("druid", "avatica"), P.union("druid", "druid-jdbc")], () =>
       mapDruidValues(parsedValues),
     )
+    .with(["md", "motherduck"], () => mapMotherDuckValues(parsedValues))
     .with(["mysql", "mysql"], () => mapMysqlValues(parsedValues))
     .with(["oracle", "oracle"], () => mapOracleValues(parsedValues))
     .with([P.union("postgres", "postgresql"), "postgres"], () =>
@@ -388,14 +422,16 @@ export function mapFieldsToNestedObject(
 }
 
 /**
- * Converts an object to a semicolon-separated string.
+ * Converts an object to a string of key=value pairs.
  * @param obj - The object to convert.
  * @param filterProperties - The properties to filter out.
- * @returns The semicolon-separated string.
+ * @param separator - The string between pairs.
+ * @returns The joined string.
  */
 function objectToString(
   obj: Record<string, string | undefined> | undefined,
   filterProperties: Array<string> = [],
+  separator = ";",
 ) {
   if (!obj) {
     return "";
@@ -404,5 +440,5 @@ function objectToString(
   return Object.entries(obj)
     .filter(([key]) => !filterProperties.includes(key))
     .map(([key, value]) => `${key}=${value}`)
-    .join(";");
+    .join(separator);
 }

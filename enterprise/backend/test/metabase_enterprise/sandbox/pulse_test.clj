@@ -48,7 +48,6 @@
          :model/Dashboard             dashboard {:name "Test Dashboard"}
          :model/Pulse                 pulse {:creator_id (mt/user->id :crowberto)
                                              :name "Test Pulse"
-                                             :alert_condition "rows"
                                              :dashboard_id (:id dashboard)}
          :model/PulseCard             _ {:pulse_id (:id pulse)
                                          :card_id (:id pulse-card)}
@@ -59,7 +58,7 @@
                                          :user_id          (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
-            (mt/with-dynamic-fn-redefs [notification.send/channel-send-retrying!  (fn [_ _ _ _] :noop)]
+            (mt/with-dynamic-fn-redefs [notification.send/channel-send-retrying!  (fn [_ _ _ _] nil)]
               (mt/with-test-user :lucky
                 (pulse.send/send-pulse! pulse)))
             (is (= {:topic    :subscription-send
@@ -207,7 +206,7 @@
                                                        :alert_condition "rows"}
                    :model/PulseChannel {pc-id :id :as pc} {:pulse_id     pulse-id
                                                            :channel_type :email
-                                                           :details      {:emails "asdf@metabase.com"}}
+                                                           :details      {:emails ["asdf@metabase.com"]}}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
       (mt/with-test-user :rasta

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { dayjs } from "metabase/dayjs";
@@ -21,7 +23,6 @@ import type {
   ColumnSettings,
   DatasetColumn,
   DateTimeAbsoluteUnit,
-  LegacyDatasetQuery,
   RowValue,
   RowValues,
   Series,
@@ -74,7 +75,7 @@ interface DateUnitSettings {
   dateColumn: DatasetColumn;
   dateColumnSettings: ColumnSettings;
   dateUnit?: DateTimeAbsoluteUnit;
-  queryType: LegacyDatasetQuery["type"];
+  isNative: boolean;
 }
 
 interface MetricData {
@@ -340,7 +341,7 @@ function getCurrentMetricData({
     dateColumn: dateColumnWithUnit,
     dateColumnSettings: displaySettings,
     dateUnit: displayUnit ?? dateUnit,
-    queryType: isNative ? "native" : "query",
+    isNative,
   };
 
   const formatOptions = {
@@ -706,12 +707,15 @@ function computeComparisonStrPreviousValue({
   prevDate: string;
   nextDate: string | undefined;
 }) {
-  const isSameDay = dayjs.parseZone(prevDate).isSame(nextDate, "day");
-  const isSameYear = dayjs.parseZone(prevDate).isSame(nextDate, "year");
+  const prevDateTime = dayjs.parseZone(prevDate);
+  const nextDateTime = dayjs.parseZone(nextDate);
 
+  // isSame checks whether nextDate falls inside prevDate's day as worked out in prevDate's offset,
+  // so it gives the wrong answer when the two timestamps carry different offsets.
   const options = {
-    removeDay: isSameDay,
-    removeYear: isSameYear,
+    removeDay:
+      prevDateTime.format("YYYY-MM-DD") === nextDateTime.format("YYYY-MM-DD"),
+    removeYear: prevDateTime.format("YYYY") === nextDateTime.format("YYYY"),
   };
 
   const formattedDateStr = formatDateStr({
@@ -732,10 +736,10 @@ function formatDateStr({
   dateUnitSettings: DateUnitSettings;
   options?: ColumnSettings;
 }) {
-  const { dateColumn, dateColumnSettings, dateUnit, queryType } =
+  const { dateColumn, dateColumnSettings, dateUnit, isNative } =
     dateUnitSettings;
 
-  if (!dateUnit || queryType === "native") {
+  if (!dateUnit || isNative) {
     return formatValue(date, {
       ...dateColumnSettings,
       column: dateColumn,

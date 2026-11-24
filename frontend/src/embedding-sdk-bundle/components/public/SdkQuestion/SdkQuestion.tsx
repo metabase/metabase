@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
@@ -18,6 +18,7 @@ import {
   QuestionSettings,
   QuestionSettingsDropdown,
   QuestionVisualization,
+  RefreshButton,
   SaveButton,
   SdkSaveQuestionForm,
   SqlParametersList,
@@ -73,9 +74,16 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
  */
 export type DrillThroughQuestionProps = Omit<
   BaseSdkQuestionProps,
-  "questionId"
+  "questionId" | "initialSqlParameters"
 > &
-  SdkQuestionDefaultViewProps;
+  SdkQuestionDefaultViewProps & {
+    /**
+     * Initial values for SQL parameters, slug-keyed, applied to every SQL question that opens from the dashboard.
+     *
+     * To control a SQL question opened by a click behavior, use the dashboard's `navigatedEntityParameters` and `onNavigatedEntityParametersChange`.
+     */
+    initialSqlParameters?: BaseSdkQuestionProps["initialSqlParameters"];
+  };
 
 /**
  * @interface
@@ -101,6 +109,7 @@ export type SdkQuestionComponents = {
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
   ResetButton: typeof QuestionResetButton;
+  RefreshButton: typeof RefreshButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeDropdown: typeof SummarizeDropdown;
@@ -154,6 +163,7 @@ export const _SdkQuestion = ({
   clickActionMode,
   navigateToNewCard,
   onDrillThrough,
+  navigatedEntity,
 
   height,
   width,
@@ -217,6 +227,7 @@ export const _SdkQuestion = ({
         clickActionMode={clickActionMode}
         navigateToNewCard={navigateToNewCard}
         onDrillThrough={onDrillThrough}
+        navigatedEntity={navigatedEntity}
         onVisualizationChange={onVisualizationChange}
       >
         {children ?? (
@@ -240,6 +251,7 @@ const subComponents: SdkQuestionComponents = {
   Filter: Filter,
   FilterDropdown: FilterDropdown,
   ResetButton: QuestionResetButton,
+  RefreshButton: RefreshButton,
   Title: Title,
   Summarize: Summarize,
   SummarizeDropdown: SummarizeDropdown,

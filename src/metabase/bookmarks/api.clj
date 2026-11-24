@@ -9,12 +9,12 @@
    [metabase.api.macros :as api.macros]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.bookmarks.models.bookmark :as bookmark]
+   [metabase.bookmarks.schema :as bookmarks.schema]
    [metabase.util.malli.schema :as ms]))
 
 (def Models
   "Schema enumerating bookmarkable models."
-  (into [:enum]
-        ["card" "dashboard" "collection" "document"]))
+  ::bookmarks.schema/bookmark-ordering.type)
 
 (def BookmarkOrderings
   "Schema for an ordered of bookmark orderings"
@@ -53,26 +53,18 @@
   (api/read-check (item-model model) id)
   (api/check (not (bookmarks.db/bookmark-exists? model id api/*current-user-id*))
              [400 "Bookmark already exists"])
-  (bookmarks.db/insert-bookmark! model id api/*current-user-id*))
+  (first (bookmark/create-bookmarks! [{:type model :item_id id :user_id api/*current-user-id*}])))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:model/:id"
+(api.macros/defendpoint :delete "/:model/:id" :- ::api/generic-204-no-content
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."
   [{:keys [model id]} :- [:map {:closed true}
                           [:model Models]
                           [:id    ms/PositiveInt]]]
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
-  (bookmarks.db/delete-bookmark! model id api/*current-user-id*)
+  (bookmark/delete-bookmarks! [{:type model :item_id id :user_id api/*current-user-id*}])
   api/generic-204-no-content)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/ordering"
+(api.macros/defendpoint :put "/ordering" :- ::api/generic-204-no-content
   "Sets the order of bookmarks for user."
   [_route-params
    _query-params

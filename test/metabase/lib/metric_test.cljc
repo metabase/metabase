@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metric :as lib.metric]
@@ -19,8 +18,7 @@
 (def ^:private metric-definition
   (-> (lib.tu/venues-query)
       (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
-      (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
-      lib.convert/->legacy-MBQL))
+      (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))))
 
 (def ^:private metrics-db
   {:cards [{:id            metric-id
@@ -88,7 +86,7 @@
                (lib/display-name query-with-metric metric)))))))
 
 (deftest ^:parallel unknown-display-name-test
-  (let [metric [:metric {} 1]]
+  (let [metric [:metric {:lib/uuid (str (random-uuid))} 1]]
     (doseq [style [nil
                    :default
                    :long]]
@@ -121,7 +119,7 @@
   (is (=? {:effective-type    :type/*
            :display-name      "[Unknown Metric]"
            :long-display-name "[Unknown Metric]"}
-          (lib/display-info query-with-metric [:metric {} 1]))))
+          (lib/display-info query-with-metric [:metric {:lib/uuid (str (random-uuid))} 1]))))
 
 (deftest ^:parallel type-of-test
   (are [metric] (= :type/Integer
@@ -152,7 +150,7 @@
 
 (deftest ^:parallel unknown-type-of-test
   (is (= :type/*
-         (lib/type-of query-with-metric [:metric {} 1]))))
+         (lib/type-of query-with-metric [:metric {:lib/uuid (str (random-uuid))} 1]))))
 
 (deftest ^:parallel display-info-unselected-metric-test
   (testing "Include `:selected false` in display info for Metrics not in aggregations"
@@ -204,7 +202,7 @@
                        {:cards [{:id 1
                                  :name "metric"
                                  :database-id (meta/id)
-                                 :dataset-query (lib.convert/->legacy-MBQL metric-card-query)
+                                 :dataset-query metric-card-query
                                  :type :metric}]})
         metric-based-query (lib/query meta-provider (lib.metadata/card meta-provider 1))]
     (testing "Metric aggregation added and breakouts copied on query creation"

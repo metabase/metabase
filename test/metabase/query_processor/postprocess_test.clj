@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel row-type-agnostic-test
-  (let [metadata                  {:cols [{:base_type :type/Integer}]}
+  (let [metadata                  {:cols [{:name "ID", :base_type :type/Integer}]}
         api-qp-middleware-options (delay (-> (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1}))
                                              :json_query
                                              :middleware))]

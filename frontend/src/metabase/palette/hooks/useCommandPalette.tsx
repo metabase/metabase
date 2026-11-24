@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { Priority, VisualState, useKBar, useRegisterActions } from "kbar";
 import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
@@ -8,7 +9,11 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getCollection } from "metabase/common/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { trackSearchClick } from "metabase/common/search/analytics";
-import { canAccessSettings, getUserIsAdmin } from "metabase/current-user";
+import {
+  canAccessSettings,
+  getUserIsAdmin,
+  isSettingsManagerPath,
+} from "metabase/current-user";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
 import { queryToSearch } from "metabase/router";
@@ -283,12 +288,12 @@ export const useCommandPalette = ({
     }
 
     return Object.entries(getAdminSettingsSections(settingValues))
-      .filter(([_slug, section]) => {
+      .filter(([slug, section]) => {
         if (section.hidden) {
           return false;
         }
 
-        if (section.adminOnly && !isAdmin) {
+        if (!isAdmin && !isSettingsManagerPath(slug)) {
           return false;
         }
 
@@ -361,6 +366,9 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
         <SubtitleText>{wrappedSearchResult.dashboard.name}</SubtitleText>
       </>
     );
+  } else if (wrappedSearchResult.model === "data-app") {
+    // A data app is in no collection, which getCollection would name as the root one.
+    return <SubtitleText>{t`Data app`}</SubtitleText>;
   } else {
     return (
       <SubtitleText>{getCollection(wrappedSearchResult)?.name}</SubtitleText>

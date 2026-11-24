@@ -30,6 +30,13 @@ import {
 
 import { StrategyEditorForQuestionsAndDashboards } from "./StrategyEditorForQuestionsAndDashboards";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
+
 const ROOT_STRATEGY: CacheStrategy = {
   type: "duration",
   duration: 1,
@@ -101,10 +108,9 @@ const setup = ({
   configs = getDefaultConfigs(),
 }: { configs?: CacheConfig[] } = {}) => {
   mockGetBoundingClientRect({ height: 800, width: 1000 });
-  setupEnterprisePlugins();
-  setupTokenStatusEndpoint({ valid: true });
-  setupPerformanceEndpoints(configs);
 
+  // The settings must be in place before the plugins initialize: the caching
+  // plugin reads the token features to register the EE strategies
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({}),
     settings: mockSettings(
@@ -115,6 +121,10 @@ const setup = ({
       }),
     ),
   });
+
+  setupEnterprisePlugins();
+  setupTokenStatusEndpoint({ valid: true });
+  setupPerformanceEndpoints(configs);
 
   renderWithProviders(
     <Route path="*" element={<StrategyEditorForQuestionsAndDashboards />} />,
@@ -183,10 +193,14 @@ describe("StrategyEditorForQuestionsAndDashboards", () => {
 
     await userEvent.clear(searchInput);
     await userEvent.type(searchInput, "Bananas");
-    // Even-numbered items live in "Collection Bananas"
-    expect(await screen.findByText("Item 2")).toBeInTheDocument();
+    // Even-numbered items live in "Collection Bananas". Wait for both conditions
+    // together: "Item 2" alone also shows while the cleared (empty) query is
+    // briefly committed, and "Item 1" alone is also absent before it commits.
+    await waitFor(() => {
+      expect(screen.getByText("Item 2")).toBeInTheDocument();
+      expect(screen.queryByText("Item 1")).not.toBeInTheDocument();
+    });
     expect(screen.getByText("Item 4")).toBeInTheDocument();
-    expect(screen.queryByText("Item 1")).not.toBeInTheDocument();
   });
 
   it("filters by caching policy and type", async () => {
@@ -238,6 +252,71 @@ describe("StrategyEditorForQuestionsAndDashboards", () => {
     expect(
       within(sidesheet).getByTestId("cache-strategy-select"),
     ).toBeInTheDocument();
+  });
+
+  it("opens the form of the clicked row, not of another row", async () => {
+    setup({
+      configs: [
+        createMockCacheConfig({
+          model: "root",
+          model_id: 0,
+          strategy: ROOT_STRATEGY,
+        }),
+        createItemConfig({
+          model: "question",
+          id: 1,
+          name: "Orders",
+          collectionName: "Our analytics",
+          strategy: {
+            type: "duration",
+            duration: 99,
+            unit: CacheDurationUnit.Hours,
+            refresh_automatically: false,
+          },
+        }),
+        createItemConfig({
+          model: "question",
+          id: 2,
+          name: "Orders, Count",
+          collectionName: "Our analytics",
+          strategy: { type: "ttl", min_duration_ms: 1000, multiplier: 10 },
+        }),
+      ],
+    });
+
+    const table = await screen.findByTestId("cache-config-table");
+
+    expect(await within(table).findByText("Duration: 99h")).toBeInTheDocument();
+    expect(within(table).getByText("Adaptive")).toBeInTheDocument();
+
+    await userEvent.click(within(table).getByText("Duration: 99h"));
+    let sidesheet = await screen.findByTestId("cache-policy-panel");
+    expect(within(sidesheet).getByText("Orders")).toBeInTheDocument();
+    expect(within(sidesheet).getByTestId("cache-strategy-select")).toHaveValue(
+      "Duration",
+    );
+    expect(
+      within(sidesheet).getByRole("spinbutton", { name: /Cache duration/ }),
+    ).toHaveValue(99);
+
+    // The panel stays open: the next row click must swap in that row's
+    // config, not keep the form of the row clicked before
+    await userEvent.click(within(table).getByText("Adaptive"));
+    sidesheet = await screen.findByTestId("cache-policy-panel");
+    expect(
+      await within(sidesheet).findByText("Orders, Count"),
+    ).toBeInTheDocument();
+    expect(within(sidesheet).getByTestId("cache-strategy-select")).toHaveValue(
+      "Adaptive",
+    );
+    expect(
+      within(sidesheet).getByRole("spinbutton", {
+        name: /minimum query duration/i,
+      }),
+    ).toHaveValue(1);
+    expect(
+      within(sidesheet).getByRole("spinbutton", { name: /multiplier/i }),
+    ).toHaveValue(10);
   });
 
   it("does not ask to discard after saving an item back to the default policy", async () => {

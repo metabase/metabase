@@ -3,10 +3,12 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [clojure.string :as str]
-   [metabase.collections.models.collection :as collection]
+   [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [toucan2.core :as t2]))
 
 (def ^:private TableSelectors
@@ -86,7 +88,14 @@
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection collection-id))
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
+
+(mu/defn collections
+  "The Collections with `collection-ids`."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (if (seq collection-ids)
+    (t2/select :model/Collection :id [:in collection-ids])
+    []))
 
 (mu/defn latest-table-publishing-event
   "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
@@ -100,18 +109,25 @@
 (mu/defn user-name-and-email
   "The id, first name, last name, and email of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :first_name :last_name :email] user-id))
+  (t2/select-one [:model/User :id :first_name :last_name :email] :id [:auto/param user-id]))
 
 (mu/defn publish-tables!
   "Publish the Tables with `table-ids` into the Collection with `collection-id`, returning the number updated."
   [table-ids     :- [:set ::lib.schema.id/table]
    collection-id :- ::lib.schema.id/collection]
-  (t2/update! :model/Table :id [:in table-ids] {:collection_id collection-id, :is_published true}))
+  (schema.table-user-settings/upsert-table-user-settings-for-tables!
+   table-ids {:collection_id collection-id, :is_published true}))
 
 (mu/defn unpublish-tables!
   "Unpublish the Tables with `table-ids` and detach them from their Collection, returning the number updated."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/update! :model/Table :id [:in table-ids] {:collection_id nil, :is_published false}))
+  (schema.table-user-settings/upsert-table-user-settings-for-tables!
+   table-ids {:collection_id nil, :is_published false}))
+
+(mu/defn published-table-collection-ids :- [:map-of ::lib.schema.id/table [:maybe ::lib.schema.id/collection]]
+  "The Collection id of each published Table among `table-ids`, as `{table-id collection-id}`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select-pk->fn :collection_id [:model/Table :id :collection_id] :id [:in table-ids] :is_published true))
 
 (mu/defn published-table-visible-to-user?
   "Whether the Table with `table-id` is published in a Collection the User with `user-id` can read."
@@ -122,9 +138,9 @@
               {:where [:and
                        [:= :id table-id]
                        [:= :is_published true]
-                       (collection/visible-collection-filter-clause
-                        :collection_id {} {:current-user-id user-id
-                                           :is-superuser?   superuser?})]}))
+                       (perms/visible-collections-filter-clause :metabase_table.collection_id {:user-id          user-id
+                                                                                               :is-superuser?    superuser?
+                                                                                               :is-data-analyst? false} {:root-namespace nil})]}))
 
 (mu/defn any-published-table-visible?
   "Whether the current user can read the Collection of any published Table."
@@ -132,7 +148,7 @@
   (t2/exists? :model/Table
               {:where [:and
                        [:= :is_published true]
-                       (collection/visible-collection-filter-clause :collection_id)]}))
+                       (perms/visible-collections-filter-clause :metabase_table.collection_id (api/current-user-info) {:root-namespace nil})]}))
 
 (mu/defn published-table-visible-in-database?
   "Whether the current user can read the Collection of any published Table in the Database with `database-id`."
@@ -141,4 +157,4 @@
               {:where [:and
                        [:= :db_id database-id]
                        [:= :is_published true]
-                       (collection/visible-collection-filter-clause :collection_id)]}))
+                       (perms/visible-collections-filter-clause :metabase_table.collection_id (api/current-user-info) {:root-namespace nil})]}))

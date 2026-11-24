@@ -1,7 +1,7 @@
 (ns metabase.metabot.tools.shared.content-store
-  "Permission-aware wrappers around [[resolve.mp/ContentStore]].
+  "Permission-aware wrappers around [[serialization.protocol.mp/ContentStore]].
 
-  The resolver in `resolve.mp` is permission-agnostic so serdes import and background tasks can
+  The store in `protocol.mp` is permission-agnostic so serdes import and background tasks can
   use it with no authenticated user. HTTP and agent-tool paths run under a current user and must
   layer a check on top; this namespace is that chokepoint.
 
@@ -14,7 +14,7 @@
   What varies is whether a refusal is audited: [[api/read-check]] leaves an ERROR log line and an
   `:event/read-permission-failure`, [[api/check-403]] throws the same bare 403 without them.
   [[default-store]] audits the `-by-entity-id` methods only, [[audited-store]] audits all six,
-  and [[resolve.mp/*audit-refusals?*]] suppresses auditing for a caller that discards the
+  and [[*audit-refusals?*]] suppresses auditing for a caller that discards the
   refusal."
   (:require
    [metabase.api.common :as api]
@@ -23,12 +23,21 @@
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.shared :as shared]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.util.log :as log]))
+   [metabase.serialization.protocol.mp :as serialization.protocol.mp]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *audit-refusals?*
+  "Whether a permission-aware [[serialization.protocol.mp/ContentStore]] audits a refusal, i.e. leaves the ERROR log
+  line and `:event/read-permission-failure` that `api/read-check` does, rather than throwing a bare 403. Bind to false
+  around a lookup whose refusal you catch and discard; the permission check itself is unaffected."
+  true)
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *last-lookup-refused?*
   "Set to `true` by [[read-checked]] when a lookup was refused on permissions rather than simply
   missing.
@@ -72,9 +81,9 @@
   (cond
     (nil? row)              nil
     api/*current-user-id*   (try
-                              (if (and audited? resolve.mp/*audit-refusals?*)
+                              (if (and audited? *audit-refusals?*)
                                 (api/read-check row)
-                                (do (api/check-403 (mi/can-read? row)) row))
+                                (do (api/check-403 (mi/can-read? (t2/hydrate row :can_read))) row))
                               (catch clojure.lang.ExceptionInfo e
                                 (if (= 403 (:status-code (ex-data e)))
                                   (do (reset! *last-lookup-refused?* true)
@@ -90,23 +99,23 @@
   ([store audited-by-id?]
    (let [by-eid {:audited? true            :collapse-denial? false}
          by-id  {:audited? audited-by-id?  :collapse-denial? true}]
-     (reify resolve.mp/ContentStore
-       (card-by-entity-id    [_ eid] (permission-checked by-eid (resolve.mp/card-by-entity-id    store eid)))
-       (measure-by-entity-id [_ eid] (permission-checked by-eid (resolve.mp/measure-by-entity-id store eid)))
-       (segment-by-entity-id [_ eid] (permission-checked by-eid (resolve.mp/segment-by-entity-id store eid)))
-       (card-by-id           [_ id]  (permission-checked by-id  (resolve.mp/card-by-id           store id)))
-       (measure-by-id        [_ id]  (permission-checked by-id  (resolve.mp/measure-by-id        store id)))
-       (segment-by-id        [_ id]  (permission-checked by-id  (resolve.mp/segment-by-id        store id)))))))
+     (reify serialization.protocol.mp/ContentStore
+       (card-by-entity-id    [_ eid] (permission-checked by-eid (serialization.protocol.mp/card-by-entity-id    store eid)))
+       (measure-by-entity-id [_ eid] (permission-checked by-eid (serialization.protocol.mp/measure-by-entity-id store eid)))
+       (segment-by-entity-id [_ eid] (permission-checked by-eid (serialization.protocol.mp/segment-by-entity-id store eid)))
+       (card-by-id           [_ id]  (permission-checked by-id  (serialization.protocol.mp/card-by-id           store id)))
+       (measure-by-id        [_ id]  (permission-checked by-id  (serialization.protocol.mp/measure-by-id        store id)))
+       (segment-by-id        [_ id]  (permission-checked by-id  (serialization.protocol.mp/segment-by-id        store id)))))))
 
 (def default-store
-  "[[resolve.mp/unchecked-app-db-content-store]] under [[read-checked]]. The store for any agent
+  "[[serialization.protocol.mp/unchecked-app-db-content-store]] under [[read-checked]]. The store for any agent
   or tool path running under an authenticated request, over a query loaded from the app DB."
-  (read-checked resolve.mp/unchecked-app-db-content-store))
+  (read-checked serialization.protocol.mp/unchecked-app-db-content-store))
 
 (def audited-store
   "[[default-store]] with `-by-id` refusals audited too. For a query the client supplied rather
   than one loaded from the app DB, where the numeric ids in it are the caller's own."
-  (read-checked resolve.mp/unchecked-app-db-content-store true))
+  (read-checked serialization.protocol.mp/unchecked-app-db-content-store true))
 
 ;;; The stores gate the content *inside* an export. Exporting also resolves table and field ids
 ;;; to names through an unfiltered provider, so the query's database and referenced tables need
@@ -129,7 +138,7 @@
   [:source-card :source_card :card-id :card_id])
 
 (def ^:private exported-field-id-keys
-  [:source-field :metabase.models.visualization-settings/param-mapping-source])
+  [:source-field])
 
 (defn- exported-entity-ids
   [normalized]
@@ -162,19 +171,23 @@
                 true))
             field-id->table-id)))
 
-(defn- readable?
-  "Whether the current user can read the row; with `audited?` a refusal leaves the
-  [[api/read-check]] audit trail."
-  [audited? model id]
+(defn- every-readable?
+  "Whether the current user can read every Card with `card-ids`, in order, throwing a 404 for a missing one; with
+  `audited?` a refusal leaves the [[api/read-check]] audit trail."
+  [audited? card-ids]
   (if audited?
-    (try
-      (api/read-check model id)
-      true
-      (catch clojure.lang.ExceptionInfo e
-        (if (= 403 (:status-code (ex-data e)))
-          false
-          (throw e))))
-    (mi/can-read? model id)))
+    (every? #(try
+               (api/read-check :model/Card %)
+               true
+               (catch clojure.lang.ExceptionInfo e
+                 (if (= 403 (:status-code (ex-data e)))
+                   false
+                   (throw e))))
+            card-ids)
+    (let [id->card (into {}
+                         (map (juxt :id identity))
+                         (t2/hydrate (metabot.db/cards-with-ids (into [] (distinct) card-ids)) :can_read))]
+      (every? #(mi/can-read? (api/check-404 (id->card %))) card-ids))))
 
 (defn- runnable-normalized-query
   "`resolved` normalized, when the current user may run it and see every table and field it
@@ -185,16 +198,21 @@
   refuses them without a trail. Measure / segment refs are not checked here; the stores gate
   those with the caller's audit polarity.
 
-  Nil when they may not. Normalizing is the first thing the check does, so the result comes back
-  rather than leaving the export to repeat it."
+  Nil when they may not, and `::unchecked` when the check could not be made at all - a query that
+  will not normalize, permissions that will not calculate. That is not a denial, so the caller
+  still renders the query, just without resolving anything in it. Normalizing is the first thing
+  the check does, so the result comes back rather than leaving the export to repeat it."
   [audited? resolved]
   (try
-    (let [normalized                 (lib-be/normalize-query resolved)
+    ;; strict, or a query that will not parse degrades to {} and reads as a denial instead of
+    ;; reaching the catch below (it also logs at ERROR on the way past)
+    (let [normalized                 (lib-be/normalize-query nil resolved {:strict? true})
           database-id                (:database normalized)
           {:keys [table card field]} (exported-entity-ids normalized)]
       (when (and (pos-int? database-id)
-                 (every? #(readable? audited? :model/Card %) card)
-                 ;; throw on a calculation failure so only a denial reads as false
+                 (every-readable? audited? card)
+                 ;; throw on a calculation failure, so it lands in the catch below as a check we
+                 ;; could not make rather than reading as a denial
                  (query-perms/can-run-query? normalized false true))
         (let [field-table (metabot.perms/field-id->table-id field)
               table-ids   (into (set table) (vals field-table))]
@@ -202,8 +220,9 @@
                      (sandbox-visible-fields? field-table))
             normalized))))
     (catch Exception e
-      (log/debugf "Omitting a query that could not be permission-checked: %s" (ex-message e))
-      nil)))
+      (log/debugf "Rendering a query unresolved, since it could not be permission-checked: %s"
+                  (ex-message e))
+      ::unchecked)))
 
 (defn- cached-pass
   "Memoize an allowed gate result on the agent's memory for the rest of the turn: the check
@@ -220,22 +239,37 @@
     (f)))
 
 (defn query-for-export
-  "`[query mp]` for [[metabase.metabot.tools.shared.llm-shape/export-query-for-llm]] when the
-  current user may run `query`, else nil. The query comes back normalized with a provider over
-  its database; one carrying no `:database` passes through untouched and without a provider,
-  since it only ever pprints. With `audited?` the saved-question refusals are audited; for
-  client-supplied queries, where the ids are the caller's own. Run permission is the whole rule:
-  reading the database is not enough, and a saved question the user can read authorizes a query
-  over a database they cannot. A database that no longer exists passes, since there is no
-  metadata behind it to leak; one we can't resolve does not."
+  "How the caller should render `query`, or nil when the current user may not see it at all.
+  Run permission is the whole rule: reading the database is not enough, and a saved question the
+  user can read authorizes a query over a database they cannot. With `audited?` the saved-question
+  refusals are audited, for client-supplied queries where the ids are the caller's own.
+
+  Three shapes come back, because a check that was never needed and a check that could not be made
+  are not the same thing:
+
+    `{:query q :mp mp}`       cleared. `q` is normalized and exports through `mp`, resolving its
+                              ids to names.
+    `{:query q}`              there was nothing to check. The query carries no `:database`, or its
+                              database is gone and the metadata with it, so rendering it in full
+                              reveals nothing. This is what master did.
+    `{:query q :unchecked? true}`
+                              the check could not be made at all: a database id that will not
+                              resolve, a query that will not parse, permissions that will not
+                              calculate. Not a refusal, so the caller may still render the query,
+                              but nothing in it may be resolved to a name."
   [query audited?]
   (if-not (and (map? query) (:database query))
-    [query nil]
+    {:query query}
     (cached-pass
      [query audited?]
      (fn []
-       (when-let [resolved (resolve-effective-database query)]
+       (if-let [resolved (resolve-effective-database query)]
          (if (metabot.db/database-exists? (:database resolved))
-           (when-let [normalized (runnable-normalized-query audited? resolved)]
-             [normalized (lib-be/application-database-metadata-provider (:database normalized))])
-           [resolved nil]))))))
+           (let [normalized (runnable-normalized-query audited? resolved)]
+             (cond
+               (= ::unchecked normalized) {:query resolved :unchecked? true}
+               (some? normalized)         {:query normalized
+                                           :mp    (lib-be/application-database-metadata-provider
+                                                   (:database normalized))}))
+           {:query resolved})
+         {:query query :unchecked? true})))))

@@ -25,10 +25,10 @@
   (search/diagnose
    (search/search-context
     (merge {:current-user-id       api/*current-user-id*
-            :current-user-perms    @api/*current-user-permissions-set*
             :is-superuser?         api/*is-superuser?*
             :is-impersonated-user? (perms-util/impersonated-user?)
             :is-sandboxed-user?    (perms-util/sandboxed-user?)
+            :is-routed-user?       (perms-util/routed-user?)
             :archived              false
             :context               :default
             :search-string         nil

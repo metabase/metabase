@@ -38,7 +38,14 @@ describe("CollectionTypeFilter", () => {
 
   it("shows every type in display order, disabling those without items", async () => {
     setup({
-      availableModels: ["metric", "card", "collection", "dataset", "dashboard"],
+      availableModels: [
+        "metric",
+        "card",
+        "collection",
+        "dataset",
+        "dashboard",
+        "exploration",
+      ],
     });
 
     const filterButton = screen.getByTestId("collection-type-filter-button");
@@ -56,6 +63,7 @@ describe("CollectionTypeFilter", () => {
       "Question",
       "Metric",
       "Document",
+      "Research",
       "Table",
     ];
     expect(checkboxes).toHaveLength(TYPE_FILTER_MODELS.length);
@@ -65,7 +73,7 @@ describe("CollectionTypeFilter", () => {
     for (const label of labels) {
       expect(screen.getByLabelText(label)).not.toBeChecked();
     }
-    for (const label of ["Collection", "Dashboard", "Metric"]) {
+    for (const label of ["Collection", "Dashboard", "Metric", "Research"]) {
       expect(screen.getByLabelText(label)).toBeEnabled();
     }
     expect(screen.getByLabelText("Document")).toBeDisabled();

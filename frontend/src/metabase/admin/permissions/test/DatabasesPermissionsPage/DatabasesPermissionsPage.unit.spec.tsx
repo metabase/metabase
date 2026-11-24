@@ -1,15 +1,18 @@
 import { userEvent } from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { callMockEvent } from "__support__/events";
 import {
   setupDatabasesEndpoints,
   setupGroupsEndpoint,
   setupPermissionsGraphEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -19,6 +22,12 @@ import { DatabasesPermissionsPage } from "metabase/admin/permissions/pages/Datab
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
+import type { Database } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 const TEST_DATABASE = createSampleDatabase();
@@ -32,14 +41,28 @@ const TEST_GROUPS = [
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
 ];
 
-const setup = async () => {
-  setupDatabasesEndpoints([TEST_DATABASE]);
-  setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
+const setup = async ({
+  shouldWaitForLoader = true,
+  showUpdatedPermissionModal = false,
+  deferDatabaseMetadata = false,
+  initialRoute = `/admin/permissions/data/database/${TEST_DATABASE.id}`,
+  databases = [TEST_DATABASE],
+}: {
+  shouldWaitForLoader?: boolean;
+  showUpdatedPermissionModal?: boolean;
+  deferDatabaseMetadata?: boolean;
+  initialRoute?: string;
+  databases?: Database[];
+} = {}) => {
+  setupDatabasesEndpoints(databases);
+  setupPermissionsGraphEndpoints(TEST_GROUPS, databases);
   setupGroupsEndpoint(TEST_GROUPS);
+
+  const databaseMetadata = defer<Database>();
 
   fetchMock.get(
     `path:/api/database/${TEST_DATABASE.id}/metadata`,
-    TEST_DATABASE,
+    deferDatabaseMetadata ? () => databaseMetadata.promise : TEST_DATABASE,
   );
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
@@ -64,13 +87,25 @@ const setup = async () => {
     </Route>,
     {
       withRouter: true,
-      initialRoute: `/admin/permissions/data/database/${TEST_DATABASE.id}`,
+      initialRoute,
+      storeInitialState: {
+        settings: mockSettings({
+          "show-updated-permission-modal": showUpdatedPermissionModal,
+        }),
+      },
     },
   );
 
-  await waitForLoaderToBeRemoved();
+  if (shouldWaitForLoader) {
+    await waitForLoaderToBeRemoved();
+  } else {
+    // The page is still loading on purpose here, so there is nothing to wait
+    // on. Flush the updates it is about to make, which the caller cannot do
+    // once this has returned.
+    await waitFor(() => {});
+  }
 
-  return { mockEventListener };
+  return { mockEventListener, databaseMetadata };
 };
 
 const editDatabasePermission = async () => {
@@ -90,6 +125,37 @@ describe("DatabasesPermissionsPage", () => {
   });
 
   describe("rendering", () => {
+    it("should keep the permissions tabs visible while data is loading", async () => {
+      await setup({ shouldWaitForLoader: false });
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Data" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: "Collections" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should open the split permissions modal only after data has loaded", async () => {
+      const { databaseMetadata } = await setup({
+        shouldWaitForLoader: false,
+        showUpdatedPermissionModal: true,
+        deferDatabaseMetadata: true,
+      });
+
+      await delay(0);
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      databaseMetadata.resolve(TEST_DATABASE);
+
+      await waitForLoaderToBeRemoved();
+      expect(
+        await screen.findByRole("dialog", {
+          name: "Your data permissions may look different, but the access hasn’t changed.",
+        }),
+      ).toBeInTheDocument();
+    });
+
     it("should show 'Cancel' and 'Save Changes' when user makes changes to permissions", async () => {
       await setup();
 
@@ -116,6 +182,37 @@ describe("DatabasesPermissionsPage", () => {
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(mockEvent.returnValue).toBe(undefined);
+    });
+  });
+
+  // Initializing the plugin is global for this file, so this block runs last
+  describe("instance analytics database (metabase#44856)", () => {
+    const AUDIT_DATABASE = createMockDatabase({
+      id: 13371337,
+      name: "Internal Metabase database",
+      is_audit: true,
+    });
+
+    beforeEach(() => {
+      mockSettings({
+        "token-features": createMockTokenFeatures({ audit_app: true }),
+      });
+      setupEnterpriseOnlyPlugin("audit_app");
+    });
+
+    it("does not list the instance analytics database in the databases sidebar", async () => {
+      await setup({
+        initialRoute: "/admin/permissions/data/database",
+        databases: [AUDIT_DATABASE, TEST_DATABASE],
+      });
+
+      const sidebar = await screen.findByRole("complementary");
+      expect(
+        await within(sidebar).findByText(TEST_DATABASE.name),
+      ).toBeInTheDocument();
+      expect(
+        within(sidebar).queryByText(AUDIT_DATABASE.name),
+      ).not.toBeInTheDocument();
     });
   });
 });

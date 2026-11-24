@@ -20,7 +20,7 @@
 (def ^:private StaleSpec
   "A single staleness cutoff: a `model` row is stale under this spec when `column` is older than `age`
   `unit`s ago."
-  [:map
+  [:map {:closed true}
    [:column :keyword]
    [:age pos-int?]
    [:unit StaleUnit]])
@@ -44,15 +44,16 @@
       (first clauses)
       (into [:or] clauses))))
 
-(mu/defn heartbeat!
-  "Set `heartbeat-column` to now on the `model` rows in `ids` matching `active`, returning the number updated."
+(mu/defn heartbeat-statement :- :map
+  "The Honey SQL statement setting `heartbeat-column` to now on the `model` rows in `ids` matching `active`, which the
+  module that owns `model` runs."
   [model            :- :keyword
    active           :- ActivePredicate
    heartbeat-column :- :keyword
    ids              :- [:sequential ms/PositiveInt]]
-  (t2/query {:update (t2/table-name model)
-             :set    {heartbeat-column :%now}
-             :where  [:and (active-clause active) [:in :id ids]]}))
+  {:update (t2/table-name model)
+   :set    {heartbeat-column :%now}
+   :where  [:and (active-clause active) [:in :id ids]]})
 
 (mu/defn active-ids
   "The ids among `ids` of the `model` rows matching `active`."
@@ -68,8 +69,9 @@
    stale  :- [:sequential {:min 1} StaleSpec]]
   (t2/select model {:where [:and (active-clause active) (stale-clause stale)] :for :update}))
 
-(mu/defn set-terminal!
-  "Apply the `terminal` column values to the `model` rows in `ids` matching `active`, returning the number updated.
+(mu/defn terminal-statement :- :map
+  "The Honey SQL statement applying the `terminal` column values to the `model` rows in `ids` matching `active`, which
+  the module that owns `model` runs.
 
   `terminal` is typed as a generic column -> value map rather than a closed schema because the columns are
   model-specific (TaskRun, TransformRun, TransformJobRun, TransformDagRun each have their own terminal-state
@@ -78,7 +80,12 @@
   [model    :- :keyword
    active   :- ActivePredicate
    ids      :- [:sequential ms/PositiveInt]
-   terminal :- [:map-of :keyword [:maybe [:or :string :keyword :boolean :int]]]]
-  (t2/query {:update (t2/table-name model)
-             :set    terminal
-             :where  [:and (active-clause active) [:in :id ids]]}))
+   terminal :- [:map {:closed true}
+                [:status    {:optional true} [:maybe [:or :string :keyword]]]
+                [:end_time  {:optional true} [:maybe [:or :string :keyword]]]
+                [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
+                [:is_active {:optional true} [:maybe :boolean]]
+                [:message   {:optional true} [:maybe :string]]]]
+  {:update (t2/table-name model)
+   :set    terminal
+   :where  [:and (active-clause active) [:in :id ids]]})

@@ -1,6 +1,11 @@
 import ts from "typescript";
 
-import { hasComputedName, member, unwrap } from "./typescript-utils";
+import {
+  hasComputedName,
+  member,
+  unionMembers,
+  unwrap,
+} from "./typescript-utils";
 
 export type UrlSlot =
   | { kind: "text"; text: string }
@@ -22,6 +27,7 @@ export interface RtkRequest {
   params: ts.Expression | undefined;
   body: ts.Expression | undefined;
   extraOptions: ts.Expression | undefined;
+  rawResponse: ts.Expression | undefined;
 }
 
 function expressionMember(object: ts.ObjectLiteralExpression, name: string) {
@@ -33,6 +39,44 @@ function expressionMember(object: ts.ObjectLiteralExpression, name: string) {
     return value.name;
   }
   return undefined;
+}
+
+/** baseQuery spreads extraOptions last, so they can override the query's response mode. */
+export function mayReturnRawResponse(
+  checker: ts.TypeChecker,
+  request: RtkRequest,
+): boolean {
+  let flag = request.rawResponse;
+  const options = request.extraOptions;
+  if (options) {
+    if (
+      !ts.isObjectLiteralExpression(options) ||
+      options.properties.some(
+        (property) =>
+          ts.isSpreadAssignment(property) || hasComputedName(property),
+      )
+    ) {
+      return true;
+    }
+    if (member(options, "rawResponse")) {
+      flag = expressionMember(options, "rawResponse");
+      if (!flag) {
+        return true;
+      }
+    }
+  }
+  if (!flag) {
+    return false;
+  }
+  return unionMembers(checker, checker.getTypeAtLocation(flag)).some(
+    (type) =>
+      !(
+        type.flags &
+        (ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Never)
+      ) &&
+      (type.flags & ts.TypeFlags.Any ||
+        !checker.isTypeAssignableTo(type, checker.getFalseType())),
+  );
 }
 
 function returnExpression(fn: ts.Node): ts.Expression | undefined {
@@ -168,5 +212,6 @@ export function resolveRtkRequest(
     params: object && expressionMember(object, "params"),
     body: object && expressionMember(object, "body"),
     extraOptions: expressionMember(config, "extraOptions"),
+    rawResponse: object && expressionMember(object, "rawResponse"),
   };
 }

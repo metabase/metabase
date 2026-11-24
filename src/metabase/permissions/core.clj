@@ -1,13 +1,14 @@
 (ns metabase.permissions.core
   "`permissions` module API namespace."
-  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:require
+   [metabase.permissions.application-permissions]
+   [metabase.permissions.collection-permissions]
    [metabase.permissions.data-access-token]
+   [metabase.permissions.data-permissions]
+   [metabase.permissions.db]
    [metabase.permissions.models.application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision]
    [metabase.permissions.models.collection.graph]
-   [metabase.permissions.models.data-permissions]
-   [metabase.permissions.models.data-permissions.sql]
    [metabase.permissions.models.permissions]
    [metabase.permissions.models.permissions-group]
    [metabase.permissions.models.permissions-group-membership]
@@ -24,8 +25,7 @@
   metabase.permissions.models.application-permissions-revision/keep-me
   metabase.permissions.models.collection-permission-graph-revision/keep-me
   metabase.permissions.models.collection.graph/keep-me
-  metabase.permissions.models.data-permissions/keep-me
-  metabase.permissions.models.data-permissions.sql/keep-me
+  metabase.permissions.data-permissions/keep-me
   metabase.permissions.models.permissions/keep-me
   metabase.permissions.models.permissions-group/keep-me
   metabase.permissions.models.permissions-group-membership/keep-me
@@ -35,93 +35,82 @@
   metabase.permissions.published-tables/keep-me
   metabase.permissions.user/keep-me
   metabase.permissions.util/keep-me
-  metabase.permissions.validation/keep-me)
+  metabase.permissions.validation/keep-me
+  metabase.permissions.collection-permissions/keep-me
+  metabase.permissions.application-permissions/keep-me)
 
 (p/import-vars
- [metabase.permissions.models.data-permissions
+ [metabase.permissions.application-permissions
+  application-permissions-for-user]
+ [metabase.permissions.collection-permissions
+  collection-permission-at-least?
+  collection-permissions-for-user
+  some-collection-permission-for-user
+  visible-collections-filter-clause]
+ [metabase.permissions.db
+  group-tenant-flags
+  groups-by-ids
+  select-tables-and-groups-granting-perm]
+ [metabase.permissions.data-permissions
   at-least-as-permissive?
-  batch-delete-permissions!
-  batch-insert-permissions!
-  data-app-group-ids
-  data-app-view-data-permission-level
-  disable-perms-cache
+  data-app-collection-ids
+  data-app-collection?
+  database-permissions-for-user
   download-perms-level
-  full-database-permission-for-user
-  full-schema-permission-for-user
-  groups-have-permission-for-table?
+  every-table-in-database-permissions-for-user
+  every-table-in-schema-permission-for-user
   index-database-permissions
   is-superuser?
   is-data-analyst?
-  most-permissive-database-permission-for-user
-  native-download-permission-for-user
+  permission-implications
   permissions-for-user
-  prime-database-perms-cache
-  prime-schema-perms-cache
-  prime-table-perms-cache
   sandboxes-for-user
-  schema-permission-for-user
+  with-sandboxes-for-user
+  some-table-in-database-permissions-for-user
+  some-table-in-schema-permission-for-user
+  some-table-permission-for-user
   set-database-permission!
   set-table-permission!
   set-table-permissions!
-  table-permission-for-user
-  table-permission-for-groups
-  user-has-any-perms-of-type?
-  user-has-permission-for-database?
-  user-has-permission-for-schema?
-  user-has-permission-for-table?
+  table-level-value
+  table-permissions-for-groups
+  table-permissions-for-user
+  user-has-highest-permission-anywhere?
+  user-has-permission-for-databases?
+  user-has-permission-for-tables?
+  user-info
   with-additional-table-permission
-  with-relevant-permissions-for-user
-  has-any-transforms-permission?
-  has-db-transforms-permission?
-  set-default-group-permissions!
+  user-has-transforms-permission-anywhere?
+  user-has-transforms-permission-for-database?
+  set-default-groups-permissions!
   set-default-database-permissions!
+  set-default-databases-permissions!
   set-default-table-permissions!
   set-default-table-permissions-bulk!
   with-global-permissions-lock
-  with-db-scoped-permissions-lock]
- [metabase.permissions.models.data-permissions.sql
-  UserInfo
-  PermissionMapping
-  visible-database-filter-select
-  visible-table-filter-select
-  visible-table-filter-with-cte
-  select-tables-and-groups-granting-perm]
+  with-db-scoped-permissions-lock
+  visible-databases-filter-clause
+  visible-tables-filter-clause]
  [metabase.permissions.models.permissions
   namespace-clause
-  can-read-audit-helper
-  can-read-via-parent-collection?
-  collection-based-visibility-search-models
-  collection-id-only-read-method
-  collection-id-only-read-models
   collection-read-access-group-ids
   current-user-has-application-permissions?
-  define-collection-based-visibility!
   grant-application-permissions!
   grant-collection-read-permissions!
   grant-collection-readwrite-permissions!
   grant-permissions!
-  perms-objects-set-for-parent-collection
   revoke-application-permissions!
-  revoke-collection-permissions!
-  set-has-application-permission-of-type?
-  set-has-full-permissions-for-set?
-  set-has-full-permissions?]
+  revoke-collection-permissions!]
  [metabase.permissions.models.permissions-group
+  group-display-name
   non-magic-groups
   all-users-magic-group-type
-  sync-data-analyst-group-for-oss!]
+  rename-order]
  [metabase.permissions.models.permissions-group-membership
-  add-users-to-groups!
-  add-user-to-groups!
-  add-user-to-group!
   allow-changing-all-users-group-members
   allow-changing-all-external-users-group-members
   fail-to-remove-last-admin-msg
-  remove-user-from-group!
-  remove-user-from-groups!
-  remove-all-users-from-group!
-  remove-user-from-all-groups!
-  throw-if-last-admin!
+  fail-to-add-data-analyst-msg
   without-is-superuser-sync-on-add-to-admin-group]
  [metabase.permissions.path
   application-perms-path
@@ -130,7 +119,6 @@
   collection-path?]
  [metabase.permissions.user
   query-creation-capabilities
-  user-permissions-set
   user->tenant-collection-and-descendant-ids]
  [metabase.permissions.util
   PathSchema
@@ -138,6 +126,7 @@
   impersonated-user?
   impersonation-enforced-for-db?
   log-permissions-changes
+  routed-user?
   sandboxed-or-impersonated-user?
   sandboxed-user?
   sandboxed-user-for-db?
@@ -147,24 +136,27 @@
   check-advanced-permissions-enabled
   check-group-manager
   check-has-application-permission
-  check-manager-of-group]
+  check-manager-of-group
+  has-application-permission?]
  [metabase.permissions.models.collection.graph
   graph
   update-graph!]
  [metabase.permissions.published-tables
   can-access-via-collection?
-  user-published-table-permission
+  published-table-permissions
   user-has-any-published-table-permission?
-  user-has-published-table-permission-for-database?
-  published-table-visible-clause])
+  user-has-published-table-permission-for-database?])
 
 (p/import-vars [metabase.permissions.settings use-tenants])
 
 (p/import-vars
  [metabase.permissions.data-access-token
   data-access-token
+  digest
   data-access-compatible?
-  data-access-token-transform])
+  data-access-token-transform
+  data-access-token-reader
+  routing-token-for-db])
 
 ;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)
@@ -173,9 +165,9 @@
 (p/import-def metabase.permissions.models.application-permissions-revision/latest-id     latest-application-permissions-revision-id)
 (p/import-def metabase.permissions.models.collection-permission-graph-revision/latest-id latest-collection-permissions-revision-id)
 (p/import-def metabase.permissions.models.permissions-revision/latest-id                 latest-permissions-revision-id)
-(p/import-def metabase.permissions.models.data-permissions/least-permissive-value        least-permissive-data-perms-value)
+(p/import-def metabase.permissions.data-permissions/least-permissive-value        least-permissive-data-perms-value)
 (p/import-def metabase.permissions.models.permissions-group/all-external-users           all-external-users-group)
 
 (p/import-vars [metabase.permissions.models.permissions-group
-                check-tenant-groups-visible!
+                check-tenant-groups-visible
                 hidden-tenant-group-ids])

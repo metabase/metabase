@@ -1,11 +1,19 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin-test
   (:require
+   [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
+   [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
    [metabase.api.common :as api]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,18 +37,18 @@
                                                     :status       :active}]
       (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
         (binding [api/*current-user-id* (mt/user->id :rasta)]
-          (is (true? (mi/can-read? plugin))))
+          (is (true? (mi/can-read? (t2/hydrate plugin :can_read)))))
         (binding [api/*current-user-id* nil]
-          (is (false? (mi/can-read? plugin)))))))
+          (is (false? (mi/can-read? (t2/hydrate plugin :can_read))))))))
   (testing "write requires superuser"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "perm-test-2"
                                                     :display_name "perm-test-2"
                                                     :status       :active}]
       (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
         (binding [api/*is-superuser?* true]
-          (is (true? (mi/can-write? plugin))))
+          (is (true? (mi/can-write? (t2/hydrate plugin :can_write)))))
         (binding [api/*is-superuser?* false]
-          (is (false? (mi/can-write? plugin)))))))
+          (is (false? (mi/can-write? (t2/hydrate plugin :can_write))))))))
   (testing "create requires superuser"
     (binding [api/*is-superuser?* true]
       (is (true? (mi/can-create? :model/CustomVizPlugin {}))))
@@ -64,67 +72,183 @@
                                                     :display_name "status-test"
                                                     :status       :active}]
       (is (= :active (:status (t2/select-one :model/CustomVizPlugin :id id))))
-      (t2/update! :model/CustomVizPlugin id {:status :error})
+      (t2/update! :model/CustomVizPlugin :id id {:status :error})
       (is (= :error (:status (t2/select-one :model/CustomVizPlugin :id id)))))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(deftest entity-id-test
-  (testing "entity-id is based on identifier"
-    (is (= "my-viz"
-           (serdes/entity-id "CustomVizPlugin" {:identifier "my-viz" :id 1})))))
-
-(deftest generate-path-test
-  (testing "generate-path uses identifier for both id and label"
-    (is (= [{:model "CustomVizPlugin" :id "my-viz" :label "my-viz"}]
-           (serdes/generate-path "CustomVizPlugin" {:identifier "my-viz"})))))
+(deftest key-test
+  (testing "ref is identifier"
+    (is (= [:model/CustomVizPlugin "my-viz"]
+           (serialization/key-of {:serdes/meta [{:model "CustomVizPlugin"}] :identifier "my-viz"})))))
 
 (deftest storage-path-test
-  (testing "storage-path places under custom_viz_plugins directory"
-    (let [entity {:identifier  "my-viz"
-                  :serdes/meta [{:model "CustomVizPlugin" :id "my-viz" :label "my-viz"}]}]
-      (is (= [{:label "custom_viz_plugins"} {:label "my-viz"}]
-             (serdes/storage-path entity nil))))))
+  (testing "storage path places plugin under custom_viz_plugins directory"
+    (is (= [[{:label "custom_viz_plugins"} {:label "my-viz"}]]
+           (serialization/batch-storage-paths [{:identifier "my-viz" :serdes/meta [{:model "CustomVizPlugin"}]}])))))
 
-(deftest load-find-local-test
-  (testing "load-find-local finds plugin by identifier"
+(deftest local-rows-test
+  (testing "local-rows finds plugin by identifier"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "find-local"
                                                     :display_name "find-local"
                                                     :status       :active}]
-      (let [found (serdes/load-find-local [{:model "CustomVizPlugin" :id "find-local"}])]
-        (is (some? found))
-        (is (= id (:id found)))))))
+      (is (=? [{:id id} nil]
+              (serialization/local-rows :model/CustomVizPlugin
+                                        [{:serdes/meta [{:model "CustomVizPlugin"}] :identifier "find-local"}
+                                         {:serdes/meta [{:model "CustomVizPlugin"}] :identifier "absent-viz"}]))))))
 
-(deftest make-spec-test
-  (testing "make-spec copies identity fields and bundle_hash, skips dev/error state"
-    (let [spec (serdes/make-spec "CustomVizPlugin" {})]
+(deftest spec-test
+  (testing "spec copies identity fields, skips dev/error state and the bundle_hash its hooks compute"
+    (let [spec (serialization/spec-of :model/CustomVizPlugin)]
       (is (contains? (set (:copy spec)) :identifier))
       (is (contains? (set (:copy spec)) :display_name))
       (is (contains? (set (:copy spec)) :manifest))
-      (is (contains? (set (:copy spec)) :bundle_hash))
+      (is (contains? (set (:skip spec)) :bundle_hash))
       (is (contains? (set (:skip spec)) :dev_bundle_url))
-      (is (contains? (set (:skip spec)) :error_message))))
-  (testing "status is always exported as skip and imported as pending"
-    (let [spec          (serdes/make-spec "CustomVizPlugin" {})
-          status-export (get-in spec [:transform :status :export])
-          status-import (get-in spec [:transform :status :import])]
-      (is (= ::serdes/skip (status-export :active)))
-      (is (= "pending" (status-import nil))))))
+      (is (contains? (set (:skip spec)) :error_message)))))
+
+(deftest bundle-hash-on-bundle-change-test
+  (testing "an update hashes the bundle only when it sets one"
+    (let [bundle (fn [s] (.getBytes ^String s "UTF-8"))]
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "hash-viz"
+                                                      :display_name "hash-viz"
+                                                      :status       :active
+                                                      :bundle       (bundle "old")}]
+        (let [hashed   (atom 0)
+              original (mt/original-fn #'cache/bytes-hash)]
+          (mt/with-dynamic-fn-redefs [cache/bytes-hash (fn [b] (swap! hashed inc) (original b))]
+            (t2/update! :model/CustomVizPlugin :id id {:enabled false})
+            (is (zero? @hashed))
+            (t2/update! :model/CustomVizPlugin :id id {:bundle (bundle "new")})
+            (is (= 1 @hashed))))
+        (is (= (cache/bytes-hash (bundle "new"))
+               (t2/select-one-fn :bundle_hash :model/CustomVizPlugin :id id)))))))
 
 (deftest bundle-b64-round-trip-test
   (testing "bundle bytes base64-encode on export and decode back to bytes on import"
-    (let [spec   (serdes/make-spec "CustomVizPlugin" {})
-          export (get-in spec [:transform :bundle :export])
-          import (get-in spec [:transform :bundle :import])
-          bytes  (.getBytes "pretend tgz bytes" "UTF-8")
-          out    (export bytes)]
-      (is (string? out))
-      (is (not= (String. bytes "UTF-8") out)
-          "exported value should be b64-encoded, not the raw string")
-      (is (= (seq bytes) (seq (import out))))))
+    (let [bytes (.getBytes "pretend tgz bytes" "UTF-8")]
+      (mt/with-temp [:model/CustomVizPlugin plugin {:identifier "b64-viz" :display_name "b64-viz" :status :active :bundle bytes}]
+        (let [[exported] (serialization/export-batch :model/CustomVizPlugin [plugin])]
+          (is (string? (:bundle exported)))
+          (is (not= (String. bytes "UTF-8") (:bundle exported))
+              "exported value should be b64-encoded, not raw string")
+          (is (= (seq bytes) (seq (:bundle (first (serialization/import :model/CustomVizPlugin [exported]))))))))))
   (testing "nil bundle round-trips as nil"
-    (let [spec   (serdes/make-spec "CustomVizPlugin" {})
-          export (get-in spec [:transform :bundle :export])
-          import (get-in spec [:transform :bundle :import])]
-      (is (nil? (export nil)))
-      (is (nil? (import nil))))))
+    (mt/with-temp [:model/CustomVizPlugin plugin {:identifier "nil-viz" :display_name "nil-viz" :status :active :bundle nil}]
+      (let [[exported] (serialization/export-batch :model/CustomVizPlugin [plugin])]
+        (is (nil? (:bundle exported)))
+        (is (nil? (:bundle (first (serialization/import :model/CustomVizPlugin [exported])))))))))
+
+(defn- ingested-plugin
+  "What serdes ingests for an export of plugin `identifier` whose bundle bytes are `bundle`."
+  [identifier ^bytes bundle]
+  {:serdes/meta  [{:model "CustomVizPlugin"}]
+   :identifier   identifier
+   :display_name identifier
+   :manifest     {:name identifier}
+   :bundle_hash  (cv.tu/bundle-hash bundle)
+   :bundle       (codecs/bytes->b64-str bundle)
+   :created_at   "2026-01-01T00:00:00Z"})
+
+(defn- active-plugin-row
+  "Columns of an active, enabled plugin `identifier` backed by `bundle`, for `mt/with-temp`."
+  [identifier ^bytes bundle]
+  {:identifier   identifier
+   :display_name identifier
+   :status       :active
+   :enabled      true
+   :manifest     {:name identifier}
+   :bundle       bundle
+   :bundle_hash  (cv.tu/bundle-hash bundle)})
+
+(deftest load-insert-validates-bundle-test
+  (testing "loading an exported plugin with a valid bundle makes it :active"
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (let [bundle (cv.tu/valid-bundle-bytes "imported-viz" {:icon "chart"})]
+        (serialization/load :model/CustomVizPlugin [(ingested-plugin "imported-viz" bundle)])
+        (is (=? {:status        :active
+                 :error_message nil
+                 :enabled       true
+                 :bundle_hash   (cv.tu/bundle-hash bundle)}
+                (t2/select-one :model/CustomVizPlugin :identifier "imported-viz"))))))
+  (testing "loading a plugin whose bundle is not a valid archive makes it :error"
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (serialization/load :model/CustomVizPlugin [(ingested-plugin "broken-viz" (.getBytes "not a tgz" "UTF-8"))])
+      (is (=? {:status        :error
+               :error_message string?}
+              (t2/select-one :model/CustomVizPlugin :identifier "broken-viz"))))))
+
+(deftest load-update-validates-bundle-test
+  (testing "re-importing over an existing plugin re-validates the new bundle"
+    (let [old-bundle (cv.tu/valid-bundle-bytes "updated-viz")
+          new-bundle (cv.tu/valid-bundle-bytes "updated-viz" {:icon "star"})]
+      (mt/with-temp [:model/CustomVizPlugin {id :id} (assoc (active-plugin-row "updated-viz" old-bundle)
+                                                            :status        :error
+                                                            :error_message "stale")]
+        (serialization/load :model/CustomVizPlugin [(ingested-plugin "updated-viz" new-bundle)])
+        (is (=? {:id            id
+                 :status        :active
+                 :error_message nil
+                 :icon          "star"
+                 :bundle_hash   (cv.tu/bundle-hash new-bundle)}
+                (t2/select-one :model/CustomVizPlugin :id id)))))))
+
+(deftest load-rejects-bundle-identifier-mismatch-test
+  (testing "a bundle whose manifest name differs from the imported identifier lands as :error, never :active"
+    (let [ingested (ingested-plugin "calendar-heatmap-viz" (cv.tu/valid-bundle-bytes "thumbs-viz"))]
+      (testing "on insert"
+        (mt/with-model-cleanup [:model/CustomVizPlugin]
+          (serialization/load :model/CustomVizPlugin [ingested])
+          (is (=? {:identifier    "calendar-heatmap-viz"
+                   :status        :error
+                   :error_message #(str/includes? % "does not match")}
+                  (t2/select-one :model/CustomVizPlugin :identifier "calendar-heatmap-viz")))))
+      (testing "on update over an active plugin"
+        (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "calendar-heatmap-viz"
+                                                                          (cv.tu/valid-bundle-bytes "calendar-heatmap-viz"))]
+          (serialization/load :model/CustomVizPlugin [ingested])
+          (is (=? {:id            id
+                   :status        :error
+                   :error_message #(str/includes? % "does not match")}
+                  (t2/select-one :model/CustomVizPlugin :id id))))))))
+
+(deftest identifier-must-not-contain-colon-test
+  (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.create {:identifier "colon:insert"})))
+  (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.create {:identifier " "})))
+  (is (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.create {:identifier "plain-identifier"})))
+
+(deftest bulk-write-statement-counts-do-not-grow-with-rows-test
+  (let [created  (atom [])
+        create!  (fn [n]
+                   (events.tu/statement-count!
+                    (fn []
+                      (swap! created into
+                             (map :id (custom-viz-plugin/create-custom-viz-plugins!
+                                       (vec (repeatedly n #(let [identifier (str "bulk-" (random-uuid))]
+                                                             {:identifier identifier :display_name identifier :status :active})))))))))]
+    (try
+      (testing "creating plugins"
+        (create! 1)
+        (is (= (create! 2) (create! 6))))
+      (let [[warm-up & ids] @created
+            update!         (fn [ids]
+                              (events.tu/statement-count!
+                               #(custom-viz-plugin/update-custom-viz-plugins! (mapv (fn [id] {:id id :enabled false}) (vec ids)))))
+            delete!         (fn [ids]
+                              (events.tu/statement-count! #(custom-viz-plugin/delete-custom-viz-plugins! ids)))]
+        (testing "updating plugins takes the same number of statements for any number of them"
+          (update! [warm-up])
+          (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids))))))
+        (testing "deleting plugins"
+          (delete! [warm-up])
+          (is (= (delete! (take 2 ids)) (delete! (take 6 (drop 2 ids)))))))
+      (finally
+        (t2/delete! :model/CustomVizPlugin :id [:in @created])))))
+
+(deftest create-custom-viz-plugins-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (let [[plain described] (custom-viz-plugin/create-custom-viz-plugins! [{:identifier "plain-plugin" :display_name "Plain" :status :active}
+                                                                           {:identifier "described-plugin" :display_name "Described" :status :active
+                                                                            :enabled true}])]
+      (is (some? (t2/select-one-fn :enabled :model/CustomVizPlugin :id (:id plain))))
+      (is (=? {:display_name "Described" :enabled true} (t2/select-one :model/CustomVizPlugin :id (:id described)))))))

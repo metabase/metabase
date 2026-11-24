@@ -1,4 +1,22 @@
-import { MultiSelect, type MultiSelectProps, Stack } from "metabase/ui";
+import type { StoryFn } from "@storybook/react";
+import { Fragment } from "react";
+
+import {
+  Box,
+  Icon,
+  Loader,
+  MultiSelect,
+  type MultiSelectProps,
+  Stack,
+  Text,
+} from "metabase/ui";
+import {
+  StoryJsx,
+  StorySection,
+  StoryShowcase,
+} from "metabase/ui/stories/showcase";
+
+import S from "./MultiSelect.module.css";
 
 const dataWithGroupsLarge = [
   {
@@ -76,7 +94,7 @@ const argTypes = {
     control: { type: "json" },
   },
   size: {
-    options: ["xs", "md"],
+    options: ["md", "lg"],
     control: { type: "inline-radio" },
   },
   label: {
@@ -127,6 +145,171 @@ export default {
 };
 
 export const Default = {};
+
+const OVERVIEW_SIZES = ["md", "lg"] as const;
+
+const OVERVIEW_VALUE = [dataWithLabels[0].value, dataWithLabels[1].value];
+
+type OverviewRow = {
+  id: string;
+  label: string;
+  props: Partial<MultiSelectProps>;
+  focus?: boolean;
+};
+
+const OVERVIEW_STATES = [
+  { id: "default-empty", label: "Default, empty", props: {} },
+  {
+    id: "default-filled",
+    label: "Default, filled",
+    props: { defaultValue: OVERVIEW_VALUE },
+  },
+  { id: "focused-empty", label: "Focused, empty", props: {}, focus: true },
+  {
+    id: "focused-filled",
+    label: "Focused, filled",
+    props: { defaultValue: OVERVIEW_VALUE },
+    focus: true,
+  },
+  {
+    id: "error-empty",
+    label: "Error, empty",
+    props: { error: sampleArgs.error },
+  },
+  {
+    id: "error-filled",
+    label: "Error, filled",
+    props: { error: sampleArgs.error, defaultValue: OVERVIEW_VALUE },
+  },
+  {
+    id: "error-focused-empty",
+    label: "Error + Focused, empty",
+    props: { error: sampleArgs.error },
+    focus: true,
+  },
+  {
+    id: "error-focused-filled",
+    label: "Error + Focused, filled",
+    props: { error: sampleArgs.error, defaultValue: OVERVIEW_VALUE },
+    focus: true,
+  },
+  {
+    id: "disabled-empty",
+    label: "Disabled, empty",
+    props: { disabled: true },
+  },
+  {
+    id: "disabled-filled",
+    label: "Disabled, filled",
+    props: { disabled: true, defaultValue: OVERVIEW_VALUE },
+  },
+  {
+    id: "clearable",
+    label: "With clear button",
+    props: { clearable: true, defaultValue: OVERVIEW_VALUE },
+  },
+  {
+    id: "clearable-focused",
+    label: "With clear button, focused",
+    props: { clearable: true, defaultValue: OVERVIEW_VALUE },
+    focus: true,
+  },
+  // TODO: use the `loading` prop instead of a Loader in `rightSection` after upgrading Mantine
+  {
+    id: "loading-focused-empty",
+    label: "Loading + Focused, empty",
+    props: { rightSection: <Loader size="xs" /> },
+    focus: true,
+  },
+  {
+    id: "loading-focused-filled",
+    label: "Loading + Focused, filled",
+    props: {
+      rightSection: <Loader size="xs" />,
+      defaultValue: OVERVIEW_VALUE,
+    },
+    focus: true,
+  },
+] satisfies OverviewRow[];
+
+const OVERVIEW_CONTENT = [
+  { id: "label-only", label: "Label only", props: {} },
+  {
+    id: "description",
+    label: "With description",
+    props: { description: "Input description" },
+  },
+  {
+    id: "left-icon",
+    label: "With left icon",
+    props: {
+      description: "Input description",
+      leftSection: <Icon name="label" />,
+    },
+  },
+] satisfies OverviewRow[];
+
+const OverviewGrid = ({ rows }: { rows: readonly OverviewRow[] }) => (
+  <Box
+    style={{
+      display: "grid",
+      gridTemplateColumns: `14rem repeat(${OVERVIEW_SIZES.length}, max-content)`,
+      columnGap: "2rem",
+      rowGap: "1rem",
+      alignItems: "center",
+    }}
+  >
+    <div />
+    {OVERVIEW_SIZES.map((size) => (
+      <StoryJsx key={size}>{`<MultiSelect size="${size}" />`}</StoryJsx>
+    ))}
+    {rows.map((state) => (
+      <Fragment key={state.id}>
+        <Text size="sm" c="text-secondary">
+          {state.label}
+        </Text>
+        {OVERVIEW_SIZES.map((size) => (
+          <Box key={size} w={256}>
+            <MultiSelect
+              wrapperProps={{ "data-state-row": state.id }}
+              data={dataWithLabels}
+              label="Label"
+              placeholder="Placeholder"
+              size={size}
+              {...state.props}
+            />
+          </Box>
+        ))}
+      </Fragment>
+    ))}
+  </Box>
+);
+
+const OverviewTemplate: StoryFn<MultiSelectProps> = () => (
+  <StoryShowcase title="MultiSelect">
+    <StorySection title="States">
+      <OverviewGrid rows={OVERVIEW_STATES} />
+    </StorySection>
+    <StorySection title="Content">
+      <OverviewGrid rows={OVERVIEW_CONTENT} />
+    </StorySection>
+  </StoryShowcase>
+);
+
+const focusSelector = (id: string) =>
+  `[data-state-row="${id}"] .${S.MultiSelectInput}`;
+
+export const Overview = {
+  render: OverviewTemplate,
+  parameters: {
+    pseudo: {
+      focusWithin: OVERVIEW_STATES.filter((state) => state.focus).map((state) =>
+        focusSelector(state.id),
+      ),
+    },
+    controls: { include: ["theme"] },
+  },
+};
 
 export const EmptyMd = {
   render: VariantTemplate,
@@ -245,109 +428,109 @@ export const CreatableMd = {
   },
 };
 
-export const EmptyXs = {
+export const EmptyLg = {
   render: VariantTemplate,
-  name: "Empty, xs",
+  name: "Empty, lg",
   args: {
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const AsteriskXs = {
+export const AsteriskLg = {
   render: VariantTemplate,
-  name: "Asterisk, xs",
+  name: "Asterisk, lg",
   args: {
     ...AsteriskMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const ClearableXs = {
+export const ClearableLg = {
   render: VariantTemplate,
-  name: "Clearable, xs",
+  name: "Clearable, lg",
   args: {
     ...ClearableMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const DescriptionXs = {
+export const DescriptionLg = {
   render: VariantTemplate,
-  name: "Description, xs",
+  name: "Description, lg",
   args: {
     ...DescriptionMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const DisabledXs = {
+export const DisabledLg = {
   render: VariantTemplate,
-  name: "Disabled, xs",
+  name: "Disabled, lg",
   args: {
     ...DisabledMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const ErrorXs = {
+export const ErrorLg = {
   render: VariantTemplate,
-  name: "Error, xs",
+  name: "Error, lg",
   args: {
     ...ErrorMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const ReadOnlyXs = {
+export const ReadOnlyLg = {
   render: VariantTemplate,
-  name: "Read only, xs",
+  name: "Read only, lg",
   args: {
     ...ReadOnlyMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const IconsXs = {
+export const IconsLg = {
   render: VariantTemplate,
-  name: "Icons, xs",
+  name: "Icons, lg",
   args: {
     ...IconsMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const GroupsXs = {
+export const GroupsLg = {
   render: VariantTemplate,
-  name: "Groups, xs",
+  name: "Groups, lg",
   args: {
     ...GroupsMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const LargeSetsXs = {
+export const LargeSetsLg = {
   render: VariantTemplate,
-  name: "Large sets, xs",
+  name: "Large sets, lg",
   args: {
     ...LargeSetsMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const SearchableXs = {
+export const SearchableLg = {
   render: VariantTemplate,
-  name: "Searchable, xs",
+  name: "Searchable, lg",
   args: {
     ...SearchableMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const CreatableXs = {
+export const CreatableLg = {
   render: VariantTemplate,
-  name: "Creatable, xs",
+  name: "Creatable, lg",
   args: {
     ...CreatableMd.args,
-    size: "xs",
+    size: "lg",
   },
 };

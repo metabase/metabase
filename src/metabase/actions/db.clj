@@ -2,25 +2,62 @@
   "Application database queries for the actions module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.actions.schema :as actions.schema]
+   [metabase.app-db.core :as app-db]
+   [metabase.collections.listing :as collections.listing]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.card-schema :as queries.card-schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(defn- action-database-joins
+  "The joins from `action` to the Database `db` of its query, or for an implicit action of its model Card or its table."
+  []
+  [[(t2/table-name :model/QueryAction) :qa]    [:= :qa.action_id :action.id]
+   [(t2/table-name :model/Card) :card]         [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
+   [(t2/table-name :model/ImplicitAction) :ia] [:= :ia.action_id :action.id]
+   [(t2/table-name :model/Table) :tbl]         [:= :tbl.id :ia.table_id]
+   [(t2/table-name :model/Database) :db]       [:= :db.id [:coalesce :qa.database_id :card.database_id :tbl.db_id]]])
+
+(mu/defn synced-action-details-clause :- [:fn vector?]
+  "The clause over an action details table aliased `alias` selecting the details of the synced actions."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :action_id :model/Action opts))
+
+(mu/defn synced-actions-clause :- [:fn vector?]
+  "The clause over the Action table aliased `alias` selecting the actions remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:and
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   [:or
+    (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)
+    [:and
+     [:= (u/qualified-key alias :collection_id) nil]
+     [:= (u/qualified-key alias :model_id) nil]]]])
+
 (mu/defn database-for-action
-  "The Database of the model Card of the Action with `action-id`, or nil."
+  "The Database the Action with `action-id` runs against: its query's, or its model's or table's for an implicit action,
+  or nil."
   [action-id :- ::lib.schema.id/action]
-  (t2/select-one :model/Database {:select [:db.*]
-                                  :from   :action
-                                  :join   [[:report_card :card] [:= :card.id :action.model_id]
-                                           [:metabase_database :db] [:= :db.id :card.database_id]]
-                                  :where  [:= :action.id action-id]}))
+  (t2/select-one :model/Database {:select    [:db.*]
+                                  :from      [[(t2/table-name :model/Action) :action]]
+                                  :left-join (action-database-joins)
+                                  :where     [:and [:= :action.id action-id] [:not= :db.id nil]]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
+  (t2/select-one-fn :db_id [:model/Table :db_id] :id table-id))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
@@ -42,14 +79,24 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
 
-(mu/defn card-type
-  "The type of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :type [:model/Card :type :card_schema] :id card-id))
+(mu/defn collection-exists?
+  "Whether the Collection with `collection-id` exists."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/exists? :model/Collection :id collection-id))
+
+(mu/defn action
+  "The Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one :model/Action :id action-id))
+
+(mu/defn action-collection-id
+  "The Collection id of the Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one-fn :collection_id [:model/Action :collection_id] :id action-id))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
 (mu/defn tables
@@ -71,76 +118,133 @@
 (mu/defn dashcard-dashboard-id
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] dashcard-id))
+  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :id [:auto/param dashcard-id]))
 
 (mu/defn dashcard-action-id
   "The Action id of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
   (t2/select-one-fn :action_id :model/DashboardCard :id dashcard-id))
 
-(mu/defn delete-dashcards-for-action!
-  "Delete the DashboardCards of the Action with `action-id`, returning the number deleted."
-  [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/DashboardCard :action_id action-id))
+(def action-columns
+  "The columns that are common to all Action types."
+  [:archived :archived_directly :collection_id :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name
+   :parameter_mappings :parameters :public_uuid :public_uuid_prefix :type :updated_at :visualization_settings])
 
-(mu/defn insert-action!
-  "Insert the Action `row` and return the inserted instance."
-  [row :- ::actions.schema/action.for-insert]
-  (t2/insert-returning-instance! :model/Action row))
+(mu/defn insert-actions!
+  "Insert the Action `rows` and return the inserted instances."
+  [rows :- [:sequential (mut/select-keys ::actions.schema/action.create action-columns)]]
+  (app-db/insert-returning-instances! :model/Action rows))
 
-(mu/defn update-action!
-  "Apply `changes` to the Action with `action-id`, returning the number updated."
-  [action-id :- ::lib.schema.id/action
-   changes   :- ::actions.schema/action.for-update]
-  (t2/update! :model/Action action-id changes))
+(mu/defn update-actions! :- :nil
+  "Apply each of `updates`, the `:id` of an Action and the columns to change, with one statement for each set of columns
+  that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/Action updates)
+  nil)
 
-(mu/defn insert-query-action!
-  "Insert the QueryAction `action`, returning the number inserted."
-  [action :- ::actions.schema/query-action.update]
-  (t2/insert! :model/QueryAction action))
+(mu/defn insert-query-actions!
+  "Insert the QueryAction `rows` and return the inserted instances."
+  [rows :- [:sequential ::actions.schema/query-action.create]]
+  (t2/insert! :model/QueryAction rows)
+  (t2/select :model/QueryAction :action_id [:in (mapv :action_id rows)]))
 
-(mu/defn insert-http-action!
-  "Insert the HTTPAction `action`, returning the number inserted."
-  [action :- ::actions.schema/httpaction.update]
-  (t2/insert! :model/HTTPAction action))
+(mu/defn insert-implicit-actions!
+  "Insert the ImplicitAction `rows` and return the inserted instances."
+  [rows :- [:sequential ::actions.schema/implicit-action.create]]
+  (t2/insert! :model/ImplicitAction rows)
+  (t2/select :model/ImplicitAction :action_id [:in (mapv :action_id rows)]))
 
-(mu/defn insert-implicit-action!
-  "Insert the ImplicitAction `action`, returning the number inserted."
-  [action :- ::actions.schema/implicit-action.update]
-  (t2/insert! :model/ImplicitAction action))
+(mu/defn update-query-actions!
+  "Apply `changes` to the QueryActions of the Actions with `action-ids`, returning the number updated."
+  [action-ids :- [:sequential ::lib.schema.id/action]
+   changes    :- (mut/dissoc ::actions.schema/query-action.update :action_id)]
+  (t2/update! :model/QueryAction :action_id [:in action-ids] changes))
 
-(mu/defn update-query-action!
-  "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
-  [action-id :- ::lib.schema.id/action
-   changes   :- ::actions.schema/query-action.update]
-  (t2/update! :model/QueryAction action-id changes))
+(mu/defn update-implicit-actions!
+  "Apply `changes` to the ImplicitActions of the Actions with `action-ids`, returning the number updated."
+  [action-ids :- [:sequential ::lib.schema.id/action]
+   changes    :- (mut/dissoc ::actions.schema/implicit-action.update :action_id)]
+  (t2/update! :model/ImplicitAction :action_id [:in action-ids] changes))
 
-(mu/defn update-http-action!
-  "Apply `changes` to the HTTPAction with `action-id`, returning the number updated."
-  [action-id :- ::lib.schema.id/action
-   changes   :- ::actions.schema/httpaction.update]
-  (t2/update! :model/HTTPAction action-id changes))
+(mu/defn delete-query-actions!
+  "Delete the QueryActions of the Actions with `action-ids`, returning the number deleted."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/delete! :model/QueryAction :action_id [:in action-ids]))
 
-(mu/defn update-implicit-action!
-  "Apply `changes` to the ImplicitAction with `action-id`, returning the number updated."
-  [action-id :- ::lib.schema.id/action
-   changes   :- ::actions.schema/implicit-action.update]
-  (t2/update! :model/ImplicitAction action-id changes))
+(mu/defn delete-implicit-actions!
+  "Delete the ImplicitActions of the Actions with `action-ids`, returning the number deleted."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/delete! :model/ImplicitAction :action_id [:in action-ids]))
 
-(mu/defn delete-query-action!
-  "Delete the QueryAction of the Action with `action-id`, returning the number deleted."
-  [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/QueryAction :action_id action-id))
+(mu/defn actions-by-ids
+  "A map of id to Action for the Actions with `action-ids`."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-pk->fn identity :model/Action :id [:in action-ids]))
 
-(mu/defn delete-http-action!
-  "Delete the HTTPAction of the Action with `action-id`, returning the number deleted."
-  [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/HTTPAction :action_id action-id))
+(mu/defn action-types-and-models
+  "A map of id to the id, type and model Card id of the Actions with `action-ids`."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-pk->fn identity [:model/Action :id :type :model_id] :id [:in action-ids]))
 
-(mu/defn delete-implicit-action!
-  "Delete the ImplicitAction of the Action with `action-id`, returning the number deleted."
-  [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/ImplicitAction :action_id action-id))
+(mu/defn card-placements
+  "A map of id to the id, type and Collection id of the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-pk->fn identity [:model/Card :id :type :collection_id] :id [:in card-ids]))
+
+(mu/defn card-queries
+  "A map of id to the query of the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+
+(mu/defn action-ids-of-models
+  "The ids of the Actions of the Cards with `model-ids`."
+  [model-ids :- [:sequential ::lib.schema.id/card]]
+  (vec (t2/select-pks-vec :model/Action :model_id [:in model-ids])))
+
+(mu/defn action-model-ids
+  "The `:id` and `:model_id` of the Actions of the Cards with `model-ids`."
+  [model-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select [:model/Action :id :model_id] :model_id [:in model-ids]))
+
+(mu/defn action-ids-of-databases :- [:vector ::lib.schema.id/action]
+  "The ids of the query Actions whose query runs against one of the Databases with `database-ids` and of the implicit
+  Actions that write to one of their Tables."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (vec (into (set (t2/select-fn-set :action_id :model/QueryAction :database_id [:in database-ids]))
+             (t2/select-fn-set :action_id :model/ImplicitAction
+                               {:join  [[(t2/table-name :model/Table) :table]
+                                        [:= :table.id :implicit_action.table_id]]
+                                :where [:in :table.db_id database-ids]}))))
+
+(mu/defn implicit-action-ids-of-tables
+  "The ids of the Actions whose ImplicitAction writes to one of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (vec (t2/select-fn-vec :action_id [:model/ImplicitAction :action_id] :table_id [:in table-ids])))
+
+(mu/defn unarchived-actions-in-collections
+  "The unarchived Actions in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Action :collection_id [:in collection-ids] :archived false))
+
+(mu/defn actions-in-collections
+  "The Actions in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Action :collection_id [:in collection-ids]))
+
+(mu/defn restorable-action-ids-in-collections
+  "The ids of the Actions in the Collections with `collection-ids` that were archived along with them and whose model,
+  if any, is not archived."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (into [] (map :id)
+        (t2/query {:select    [:action.id]
+                   :from      [[(t2/table-name :model/Action) :action]]
+                   :left-join [[(t2/table-name :model/Card) :model]
+                               [:= :model.id :action.model_id]]
+                   :where     [:and
+                               [:in :action.collection_id collection-ids]
+                               [:= :action.archived true]
+                               [:= :action.archived_directly false]
+                               [:or [:= :action.model_id nil] [:= :model.archived false]]]})))
 
 (mu/defn query-actions
   "The QueryActions of the Actions with `action-ids`."
@@ -152,10 +256,15 @@
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/QueryAction :action_id action-id))
 
-(mu/defn http-actions
-  "The HTTPActions of the Actions with `action-ids`."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select :model/HTTPAction :action_id [:in action-ids]))
+(mu/defn implicit-action-table-id
+  "The Table id of the ImplicitAction of the Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one-fn :table_id [:model/ImplicitAction :table_id] :action_id action-id))
+
+(mu/defn tables-with-fields
+  "The Tables with `table-ids`, with their Fields hydrated."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/hydrate (tables table-ids) :fields))
 
 (mu/defn implicit-actions
   "The ImplicitActions of the Actions with `action-ids`."
@@ -182,26 +291,6 @@
   [entity-id :- :string]
   (t2/select :model/Action :entity_id entity-id))
 
-(mu/defn actions-of-type
-  "The Actions of `action-type`."
-  [action-type :- :keyword]
-  (t2/select :model/Action :type action-type))
-
-(mu/defn unarchived-actions-for-models
-  "The unarchived Actions whose `:model_id` is in `model-ids`."
-  [model-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Action :model_id [:in model-ids] :archived false))
-
-(mu/defn unarchived-non-http-actions-for-model
-  "The unarchived, non-HTTP Actions of the model Card with `model-id`."
-  [model-id :- ms/PositiveInt]
-  (t2/select :model/Action :model_id model-id :archived false :type [:not= "http"]))
-
-(mu/defn unarchived-non-http-actions-for-models
-  "The unarchived, non-HTTP Actions whose `:model_id` is in `model-ids`."
-  [model-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/Action :model_id [:in model-ids] :archived false :type [:not= "http"]))
-
 (mu/defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
@@ -210,26 +299,23 @@
 (mu/defn action-database-settings
   "The id and Database settings of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/query {:select [:action.id :db.settings]
-             :from   :action
-             :join   [[:report_card :card] [:= :card.id :action.model_id]
-                      [:metabase_database :db] [:= :db.id :card.database_id]]
-             :where  [:in :action.id action-ids]}))
+  (t2/query {:select    [:action.id :db.settings]
+             :from      [[(t2/table-name :model/Action) :action]]
+             :left-join (action-database-joins)
+             :where     [:and [:in :action.id action-ids] [:not= :db.id nil]]}))
 
 (mu/defn card-scope-columns
-  "The query, Collection id, Database id, and display of the Card with `card-id`, or nil."
+  "The query-relevant columns of the Card with `card-id`, plus its Collection id and display, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :dataset_query :collection_id :database_id :display] card-id))
+  ;; Spelled out rather than calling `metabase.queries.core/card-query-info`: `queries` loads `actions` (via
+  ;; `driver-api`), so requiring its API namespace back from here is a cyclic load. `queries.card-schema` is the
+  ;; dependency-free namespace that exists for exactly this.
+  (t2/select-one (queries.card-schema/selection [:collection_id :database_id :display]) :id card-id))
 
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] dashboard-id))
-
-(mu/defn destination-database-exists-for-router?
-  "Whether the Database with `database-id` has routing destinations."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :router_database_id database-id))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
 
 (mu/defn writable-table-exists?
   "Whether the Database with `database-id` has a writable Table."
@@ -240,3 +326,72 @@
   "Whether the Database with `database-id` has a Table whose writability is unknown."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Table :db_id database-id :is_writable nil))
+
+(mu/defn synced-action-items :- [:sequential ::actions.schema/action]
+  "The Actions with `ids`, with their model and its Collection, and their own Collection, with ancestors, as remote
+  sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root         (collection.root/hydrated-root-collection)
+        actions-root (collection.root/hydrated-root-collection :data-actions)]
+    (-> (t2/select [:model/Action :id :name :type :model_id :collection_id] :id [:in ids])
+        (t2/hydrate [:model [:collection :effective_ancestors]] [:collection :effective_ancestors])
+        (->> (mapv (fn [action]
+                     (-> (collection.root/hydrate-root-collection action (if (:model_id action) root actions-root))
+                         (update :model #(some-> % (collection.root/hydrate-root-collection root))))))))))
+
+(mu/defn query-action-queries :- [:map-of ::lib.schema.id/action :map]
+  "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
+
+(mu/defn implicit-action-table-ids :- [:map-of ::lib.schema.id/action [:maybe ::lib.schema.id/table]]
+  "The `:table_id` of the ImplicitActions of the Actions with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-fn->fn :action_id :table_id :model/ImplicitAction :action_id [:in action-ids]))
+
+(mu/defn dependency-action-items :- :map
+  "The query of the Actions the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of a
+  model in the collections the user reads, and those without one in the data actions collections the user reads,
+  without those in personal collections unless `:include-personal-collections?`, located by their collection or the
+  root they sit in."
+  [{:keys [include-archived include-personal-collections?] :as opts}
+   :- :metabase.dependencies.items/items-opts]
+  (let [location [:coalesce
+                  :collection.name
+                  [:case
+                   [:= :action.model_id nil]
+                   (:name (collection.root/root-collection-with-ui-details :data-actions))
+                   :else
+                   (:name (collection.root/root-collection-with-ui-details nil))]]]
+    {:select    [[:action.id :entity_id] [:action.name :name] [location :location]]
+     :from      [:action]
+     :left-join [:collection [:= :action.collection_id :collection.id]]
+     :where     (into [:and]
+                      (remove nil?)
+                      [[:or
+                        [:and
+                         [:not= :action.model_id nil]
+                         (collections.listing/visible-in-collections-clause :action opts include-archived nil)]
+                        [:and
+                         [:= :action.model_id nil]
+                         (collections.listing/visible-in-collections-clause :action opts include-archived :data-actions)]]
+                       (collections.listing/archived-clause :action include-archived)
+                       (when-not include-personal-collections?
+                         (collections.listing/outside-personal-collections-clause :action :collection))])}))
+
+(mu/defn collection-action-items :- [:maybe :map]
+  "The query of the actions without a model in `collection` that the collection items listing of `opts` holds, nil when
+  `collection` is not in the namespace of data actions or data apps or `opts` restrict the items to those created by a user,
+  which actions do not record, and none of them when `opts` restrict the items to the pinned ones, which no action is."
+  [collection                                       :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (and (contains? #{collection/data-actions-ns collection/data-apps-ns} (some-> (:namespace collection) keyword))
+             (nil? created-by-id))
+    {:select [:action.id :action.collection_id :action.name :action.description :action.entity_id
+              :action.archived :action.archived_directly [(h2x/literal "action") :model]]
+     :from   [[:action :action]]
+     :where  [:and
+              (collections.listing/poison-when-pinned-clause pinned-state)
+              [:= :action.collection_id (:id collection)]
+              [:= :action.model_id nil]
+              [:= :action.archived (boolean archived?)]]}))

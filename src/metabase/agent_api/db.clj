@@ -2,23 +2,29 @@
   "Application database queries for the agent API module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [malli.util :as mut]
-   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn collection-breadcrumb-columns
   "The id, name, location, owner, namespace, and archival of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :id :name :location :personal_owner_id :namespace :archived_directly]
-                 collection-id))
+                 :id [:auto/param collection-id]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
+
+(mu/defn cards-with-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
@@ -34,16 +40,6 @@
   "The ids of the DashboardTabs of the Dashboard with `dashboard-id`, in position order."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-pks-vec :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc] [:id :asc]]}))
-
-(mu/defn insert-dashboard!
-  "Insert the Dashboard `row` and return the inserted instance."
-  [row :- ::dashboards.schema/dashboard.update]
-  (t2/insert-returning-instance! :model/Dashboard row))
-
-(mu/defn insert-dashcard!
-  "Insert the DashboardCard `row` and return the inserted instance."
-  [row :- ::dashboards.schema/dashboard-card.update]
-  (t2/insert-returning-instance! :model/DashboardCard row))
 
 (mu/defn dashcard-ids-in-layout-order
   "The ids of the DashboardCards of the Dashboard with `dashboard-id`, in row then column order."
@@ -61,19 +57,12 @@
    dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
 
-(mu/defn update-dashcard!
-  "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
-  [dashcard-id :- ::lib.schema.id/dashcard
-   changes     :- (mut/select-keys ::dashboards.schema/dashboard-card.update [:visualization_settings :row :col])]
-  (t2/update! :model/DashboardCard dashcard-id changes))
-
-(mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- (mut/select-keys ::dashboards.schema/dashboard.update [:name :description :collection_id :archived :archived_directly])]
-  (t2/update! :model/Dashboard dashboard-id changes))
-
 (mu/defn active-user-by-email
   "The active User with `email`, compared case-insensitively, or nil."
   [email :- :string]
   (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))
+
+(mu/defn call-log-ids-created-before :- [:sequential ms/PositiveInt]
+  "The ids of the AgentApiCallLogs created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (vec (t2/select-pks-vec :model/AgentApiCallLog {:where [:< :created_at [:auto/param cutoff]]})))

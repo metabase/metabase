@@ -5,6 +5,11 @@ set -euo pipefail
 # Optional: PR_LABELS (comma-separated, for backport handling)
 #           OLDEST_SUPPORTED_VERSION (required when PR_LABELS contains `backport`)
 
+# TODO: remove this script (and its job in .github/workflows/migrations.yml) from master once master is v67.
+# From then on lint-migrations-file rejects versioned changesets (see `first-versionless-major`), so a new
+# resources/migrations/NNN/ file fails there whatever it holds, and new files go in year directories, which this
+# script skips. Keep it on release branches that still take versioned changesets.
+
 if [[ -z "${BASE_REF:-}" ]]; then
     echo "ERROR: BASE_REF is not set." >&2
     exit 1
@@ -103,7 +108,9 @@ fi
 errors=0
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
-    dir=$(echo "$file" | sed -n 's|resources/migrations/\([0-9][0-9]*\)/.*|\1|p')
+    # Only three-digit version directories (resources/migrations/NNN/). Year directories
+    # (resources/migrations/YYYY/) hold version-less changesets, which are not tied to a release.
+    dir=$(echo "$file" | sed -n 's|resources/migrations/\([0-9]\{3\}\)/.*|\1|p')
     [[ -z "$dir" ]] && continue
     dir_version=$((10#$dir))
     dir=$(printf "%03d" "$dir_version")

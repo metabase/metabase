@@ -2,7 +2,6 @@
   "Application database queries for the data-complexity-score module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
-   [java-time.api :as t]
    [malli.util :as mut]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.app-db.core :as mdb]
@@ -54,7 +53,7 @@
   "The ID, name, type, and Collection of the unarchived metric and model Cards outside the Database with
   `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Card :id :name :type :collection_id :card_schema]
+  (t2/select [:model/Card :id :name :type :collection_id]
              :type        [:in ["metric" "model"]]
              :archived    false
              :database_id [:not= audit-database-id]))
@@ -99,7 +98,7 @@
   [score-entry :- (mut/select-keys ::data-complexity-score.schema/data-complexity-score.update [:fingerprint :source :score_data])]
   (t2/insert-returning-pk! :model/DataComplexityScore score-entry))
 
-(mu/defn delete-scores-older-than!
-  "Delete the DataComplexityScores created more than `months` months ago, returning the number deleted."
-  [months :- ms/PositiveInt]
-  (t2/delete! :model/DataComplexityScore {:where [:< :created_at (t/minus (t/offset-date-time) (t/months months))]}))
+(mu/defn score-ids-created-before :- [:sequential ms/PositiveInt]
+  "The ids of the DataComplexityScores created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (vec (t2/select-pks-vec :model/DataComplexityScore {:where [:< :created_at [:auto/param cutoff]]})))

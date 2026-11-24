@@ -1,0 +1,146 @@
+import { useMemo, useState } from "react";
+import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
+
+import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/data-apps/embedded-data-app-path";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
+import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
+import { PLUGIN_API } from "metabase/api/client";
+import {
+  SdkIframeApiKeyInProductionError,
+  SdkIframeError,
+} from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeError";
+import { useSdkIframeEmbedEventBus } from "metabase/embedding/embedding-iframe-sdk/hooks/use-sdk-iframe-embed-event-bus";
+import type { SdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
+import { isLoopbackOrigin } from "metabase/utils/dom";
+import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data-apps/sandbox/types";
+
+import { readSlugFromUrl } from "../../lib/read-slug-from-url";
+
+import { DataAppEmbedContent } from "./DataAppEmbedContent";
+
+interface DataAppEmbedProps {
+  /** The SDK store for this embedded data app. Create it once per iframe. */
+  store: SdkStore;
+}
+
+export function DataAppEmbed({ store }: DataAppEmbedProps) {
+  const slug = useMemo(() => readSlugFromUrl(), []);
+
+  const { embedSettings, parentOrigin, dataAppPathNavigationRequest } =
+    useSdkIframeEmbedEventBus({
+      store,
+      onSettingsChanged: installEmbedReferrerHeader,
+    });
+
+  // The bundle loads after auth and provides app settings,
+  // such as app themes, to the provider above it.
+  const [metabaseProviderProps, setMetabaseProviderProps] =
+    useState<DataAppMetabaseProviderProps>({});
+
+  // Auth is done on the modular embedding host app, not here.
+  // DataAppEmbed does not do SSO, so we don't need the full auth config.
+  // API keys gets forwarded to the Metabase provider.
+  const authConfig = useMemo<MetabaseAuthConfig>(() => {
+    const metabaseInstanceUrl = getCurrentMetabaseInstanceUrl();
+
+    return embedSettings?.apiKey
+      ? { metabaseInstanceUrl, apiKey: embedSettings.apiKey }
+      : { metabaseInstanceUrl, isGuest: false };
+  }, [embedSettings?.apiKey]);
+
+  useDeepCompareEffect(() => {
+    ensureMetabaseProviderPropsStore().setProps({
+      ...metabaseProviderProps,
+      authConfig,
+    });
+
+    ensureMetabaseProviderPropsStore().updateInternalProps({
+      reduxStore: store,
+      loadingState: SdkLoadingState.Loaded,
+    });
+  }, [metabaseProviderProps, authConfig]);
+
+  if (!embedSettings) {
+    return null;
+  }
+
+  // These errors cannot be localized as they are outside of the locale provider.
+  // These are configuration errors, mainly intended for embedding developers.
+
+  const isParentLocalhost = isLoopbackOrigin(parentOrigin);
+
+  if (embedSettings.apiKey && !isParentLocalhost) {
+    return <SdkIframeApiKeyInProductionError />;
+  }
+
+  if (!PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled() && !embedSettings.apiKey) {
+    return (
+      <SdkIframeError message="A valid license is required for embedding." />
+    );
+  }
+
+  if (embedSettings.isGuest || embedSettings.guestEmbedProviderUri) {
+    return (
+      <SdkIframeError message="Guest embeds are not supported for data apps." />
+    );
+  }
+
+  if (embedSettings.useExistingUserSession) {
+    return (
+      <SdkIframeError message="Existing browser sessions are not supported for data apps." />
+    );
+  }
+
+  // Parent settings must match the app loaded by this iframe.
+  // This can happen if embed.js's path state is stale due to a bug.
+  if (
+    !slug ||
+    embedSettings.componentName !== "metabase-data-app" ||
+    getEmbeddedAppSlugFromPath(embedSettings.path) !== slug
+  ) {
+    console.error(
+      "SDK component changed or data app slug does not match the path.",
+    );
+
+    return (
+      <SdkIframeError message="Something went wrong. Please refresh the page and try again." />
+    );
+  }
+
+  return (
+    <ComponentProvider
+      {...metabaseProviderProps}
+      authConfig={authConfig}
+      locale={embedSettings.locale}
+      reduxStore={store}
+      isLocalHost={isParentLocalhost}
+    >
+      <DataAppEmbedContent
+        slug={slug}
+        path={embedSettings.path}
+        navigationRequest={dataAppPathNavigationRequest}
+        onProviderPropsLoaded={setMetabaseProviderProps}
+      />
+    </ComponentProvider>
+  );
+}
+
+function installEmbedReferrerHeader(settings: SdkIframeEmbedSettings) {
+  PLUGIN_API.onBeforeRequestHandlers.embedReferrer = async (config) => {
+    if (settings._embedReferrer) {
+      return {
+        headers: {
+          ...config?.headers,
+
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- HTTP header name
+          "X-Metabase-Embed-Referrer": settings._embedReferrer,
+        },
+      };
+    }
+  };
+}

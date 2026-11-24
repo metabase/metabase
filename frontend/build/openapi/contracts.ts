@@ -5,7 +5,11 @@ import {
   type SentPart,
   modelClientRequest,
 } from "./client-request";
-import { type RtkRequest, resolveRtkRequest } from "./rtk-request";
+import {
+  type RtkRequest,
+  mayReturnRawResponse,
+  resolveRtkRequest,
+} from "./rtk-request";
 import { typeShape } from "./shape";
 import {
   type CompareContext,
@@ -258,12 +262,24 @@ function isEndpointBuilderCall(
   checker: ts.TypeChecker,
   node: ts.Node,
 ): node is ts.CallExpression {
+  if (!ts.isCallExpression(node)) {
+    return false;
+  }
+  const callee = unwrap(node.expression);
+  // A builder method can be destructured, renamed, or imported from another file.
+  // The callable type retains its original method symbol across these bindings.
+  const method = checker.getTypeAtLocation(callee).getSymbol();
   return (
-    ts.isCallExpression(node) &&
-    ts.isPropertyAccessExpression(node.expression) &&
-    ["query", "mutation"].includes(node.expression.name.text) &&
-    checker.getTypeAtLocation(node.expression.expression).aliasSymbol?.name ===
-      "EndpointBuilder"
+    !!method &&
+    ["query", "mutation", "infiniteQuery"].includes(method.name) &&
+    !!method.declarations?.some((declaration) => {
+      const owner = declaration.parent;
+      return (
+        ts.isTypeLiteralNode(owner) &&
+        ts.isTypeAliasDeclaration(owner.parent) &&
+        owner.parent.name.text === "EndpointBuilder"
+      );
+    })
   );
 }
 
@@ -406,6 +422,7 @@ function checkResponse(
     endpointId,
     node,
     config,
+    request,
     responseType,
     operation,
     route,
@@ -430,6 +447,17 @@ function checkResponse(
         kind: "response",
         status: "ignored",
         diagnostics: ["Frontend intentionally discards the response."],
+      },
+    ];
+  }
+  if (mayReturnRawResponse(checker, request)) {
+    return [
+      {
+        kind: "response",
+        status: "unverified",
+        diagnostics: [
+          "rawResponse can return a Response object before its body is decoded.",
+        ],
       },
     ];
   }

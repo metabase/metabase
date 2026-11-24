@@ -3,8 +3,10 @@ import type { Key, ReactNode } from "react";
 import { useMemo, useRef } from "react";
 import _ from "underscore";
 
-import { Box, type BoxProps, Grid, useMatches } from "metabase/ui";
+import { Box, type BoxProps, SimpleGrid, useMatches } from "metabase/ui";
 import type { BreakpointName } from "metabase/ui/theme";
+
+export type GridItemOrder = "row" | "column";
 
 type VirtualizedGridProps<T> = {
   items: T[];
@@ -12,6 +14,7 @@ type VirtualizedGridProps<T> = {
   renderItem: (item: T) => ReactNode;
   columnsPerRow: Record<BreakpointName, number>;
   estimatedRowHeight: number;
+  itemOrder?: GridItemOrder;
   overscan?: number;
 } & Omit<BoxProps, "children">;
 
@@ -21,6 +24,7 @@ export const VirtualizedGrid = <T,>({
   renderItem,
   columnsPerRow,
   estimatedRowHeight,
+  itemOrder = "row",
   overscan = 5,
   ...boxProps
 }: VirtualizedGridProps<T>) => {
@@ -39,10 +43,16 @@ export const VirtualizedGrid = <T,>({
   );
 
   // Group items into rows based on current columns
-  const rows = useMemo(
-    () => _.chunk(items, currentColumns),
-    [items, currentColumns],
-  );
+  const rows = useMemo(() => {
+    if (itemOrder === "row") {
+      return _.chunk(items, currentColumns);
+    }
+
+    const rowCount = Math.ceil(items.length / currentColumns);
+    return _.range(rowCount).map((rowIndex) =>
+      _.range(rowIndex, items.length, rowCount).map((index) => items[index]),
+    );
+  }, [items, currentColumns, itemOrder]);
 
   const virtualizer = useVirtualizer({
     count: rows.length,
@@ -52,9 +62,6 @@ export const VirtualizedGrid = <T,>({
   });
 
   const virtualRows = virtualizer.getVirtualItems();
-
-  // Calculate span for current breakpoint
-  const currentSpan = 12 / currentColumns;
 
   return (
     <Box ref={parentRef} h="100%" style={{ overflowY: "auto" }} {...boxProps}>
@@ -71,13 +78,11 @@ export const VirtualizedGrid = <T,>({
               w="100%"
               style={{ transform: `translateY(${virtualRow.start}px)` }}
             >
-              <Grid gutter="lg">
+              <SimpleGrid cols={currentColumns} spacing="lg">
                 {rowItems.map((item) => (
-                  <Grid.Col key={keyExtractor(item)} span={currentSpan}>
-                    {renderItem(item)}
-                  </Grid.Col>
+                  <Box key={keyExtractor(item)}>{renderItem(item)}</Box>
                 ))}
-              </Grid>
+              </SimpleGrid>
             </Box>
           );
         })}

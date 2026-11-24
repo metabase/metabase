@@ -1,6 +1,21 @@
 import type { ComboboxItem, ComboboxItemGroup } from "@mantine/core";
+import type { StoryFn } from "@storybook/react";
+import { Fragment } from "react";
 
-import { Select, type SelectProps, Stack } from "metabase/ui";
+import {
+  Box,
+  Icon,
+  Loader,
+  Select,
+  type SelectProps,
+  Stack,
+  Text,
+} from "metabase/ui";
+import {
+  StoryJsx,
+  StorySection,
+  StoryShowcase,
+} from "metabase/ui/stories/showcase";
 
 type ComboboxItemWithIcon = ComboboxItem & { icon: string };
 
@@ -87,7 +102,7 @@ const argTypes = {
     control: { type: "json" },
   },
   size: {
-    options: ["xs", "md"],
+    options: ["sm", "md", "lg"],
     control: { type: "inline-radio" },
   },
   label: {
@@ -131,6 +146,187 @@ export default {
 };
 
 export const Default = {};
+
+type OverviewRow = {
+  id: string;
+  label: string;
+  props: Partial<SelectProps<string>>;
+  focus?: boolean;
+};
+
+const OVERVIEW_SIZES = ["sm", "md", "lg"] as const;
+
+const OVERVIEW_STATES = [
+  { id: "default-empty", label: "Default, empty", props: {} },
+  {
+    id: "default-filled",
+    label: "Default, filled",
+    props: { defaultValue: sampleArgs.value },
+  },
+  { id: "focused-empty", label: "Focused, empty", props: {}, focus: true },
+  {
+    id: "focused-filled",
+    label: "Focused, filled",
+    props: { defaultValue: sampleArgs.value },
+    focus: true,
+  },
+  {
+    id: "error-empty",
+    label: "Error, empty",
+    props: { error: sampleArgs.error },
+  },
+  {
+    id: "error-filled",
+    label: "Error, filled",
+    props: { error: sampleArgs.error, defaultValue: sampleArgs.value },
+  },
+  {
+    id: "error-focused-empty",
+    label: "Error + Focused, empty",
+    props: { error: sampleArgs.error },
+    focus: true,
+  },
+  {
+    id: "error-focused-filled",
+    label: "Error + Focused, filled",
+    props: { error: sampleArgs.error, defaultValue: sampleArgs.value },
+    focus: true,
+  },
+  {
+    id: "disabled-empty",
+    label: "Disabled, empty",
+    props: { disabled: true },
+  },
+  {
+    id: "disabled-filled",
+    label: "Disabled, filled",
+    props: { disabled: true, defaultValue: sampleArgs.value },
+  },
+  // TODO: use the `loading` prop instead of a Loader in `rightSection` after upgrading Mantine
+  {
+    id: "loading-focused-empty",
+    label: "Loading + Focused, empty",
+    props: { rightSection: <Loader size="xs" /> },
+    focus: true,
+  },
+  {
+    id: "loading-focused-filled",
+    label: "Loading + Focused, filled",
+    props: {
+      rightSection: <Loader size="xs" />,
+      defaultValue: sampleArgs.value,
+    },
+    focus: true,
+  },
+  {
+    id: "clearable",
+    label: "With clear button",
+    props: { clearable: true, defaultValue: sampleArgs.value },
+  },
+  {
+    id: "clearable-focused",
+    label: "With clear button, focused",
+    props: { clearable: true, defaultValue: sampleArgs.value },
+    focus: true,
+  },
+  {
+    id: "clearable-error",
+    label: "With clear button, error",
+    props: {
+      clearable: true,
+      defaultValue: sampleArgs.value,
+      error: sampleArgs.error,
+    },
+  },
+  {
+    id: "clearable-error-focused",
+    label: "With clear button, error + focused",
+    props: {
+      clearable: true,
+      defaultValue: sampleArgs.value,
+      error: sampleArgs.error,
+    },
+    focus: true,
+  },
+] satisfies OverviewRow[];
+
+const OVERVIEW_CONTENT = [
+  { id: "label-only", label: "Label only", props: {} },
+  {
+    id: "description",
+    label: "With description",
+    props: { description: "Input description" },
+  },
+  {
+    id: "left-icon",
+    label: "With left icon",
+    props: {
+      description: "Input description",
+      leftSection: <Icon name="label" />,
+    },
+  },
+] satisfies OverviewRow[];
+
+const OverviewGrid = ({ rows }: { rows: readonly OverviewRow[] }) => (
+  <Box
+    style={{
+      display: "grid",
+      gridTemplateColumns: `14rem repeat(${OVERVIEW_SIZES.length}, max-content)`,
+      columnGap: "2rem",
+      rowGap: "1rem",
+      alignItems: "center",
+    }}
+  >
+    <div />
+    {OVERVIEW_SIZES.map((size) => (
+      <StoryJsx key={size}>{`<Select size="${size}" />`}</StoryJsx>
+    ))}
+    {rows.map((state) => (
+      <Fragment key={state.id}>
+        <Text size="sm" c="text-secondary">
+          {state.label}
+        </Text>
+        {OVERVIEW_SIZES.map((size) => (
+          <Box key={size} w={256}>
+            <Select
+              data-state-row={state.id}
+              data={dataWithNoGroups}
+              label="Label"
+              placeholder="Placeholder"
+              size={size}
+              {...state.props}
+            />
+          </Box>
+        ))}
+      </Fragment>
+    ))}
+  </Box>
+);
+
+const OverviewTemplate: StoryFn<SelectProps<string>> = () => (
+  <StoryShowcase title="Select">
+    <StorySection title="States">
+      <OverviewGrid rows={OVERVIEW_STATES} />
+    </StorySection>
+    <StorySection title="Content">
+      <OverviewGrid rows={OVERVIEW_CONTENT} />
+    </StorySection>
+  </StoryShowcase>
+);
+
+const focusSelector = (id: string) => `[data-state-row="${id}"]`;
+
+export const Overview = {
+  render: OverviewTemplate,
+  parameters: {
+    pseudo: {
+      focusWithin: OVERVIEW_STATES.filter((state) => state.focus).map((state) =>
+        focusSelector(state.id),
+      ),
+    },
+    controls: { include: ["theme"] },
+  },
+};
 
 export const EmptyMd = {
   render: VariantTemplate,
@@ -236,100 +432,100 @@ export const SearchableMd = {
   },
 };
 
-export const EmptyXs = {
+export const EmptySm = {
   render: VariantTemplate,
-  name: "Empty, xs",
+  name: "Empty, sm",
   args: {
-    size: "xs",
+    size: "sm",
   },
 };
 
-export const AsteriskXs = {
+export const AsteriskSm = {
   render: VariantTemplate,
-  name: "Asterisk, xs",
+  name: "Asterisk, sm",
   args: {
     ...AsteriskMd.args,
-    size: "xs",
+    size: "sm",
   },
 };
 
-export const ClearableXs = {
+export const ClearableSm = {
   render: VariantTemplate,
-  name: "Clearable, xs",
+  name: "Clearable, sm",
   args: {
     ...ClearableMd.args,
-    size: "xs",
+    size: "sm",
   },
 };
 
-export const DescriptionXs = {
+export const DescriptionSm = {
   render: VariantTemplate,
-  name: "Description, xs",
+  name: "Description, sm",
   args: {
     ...DescriptionMd.args,
-    size: "xs",
+    size: "sm",
   },
 };
 
-export const DisabledXs = {
+export const DisabledSm = {
   render: VariantTemplate,
-  name: "Disabled, xs",
+  name: "Disabled, sm",
   args: {
     ...DisabledMd.args,
-    size: "xs",
+    size: "sm",
   },
 };
 
-export const ErrorXs = {
+export const ErrorSm = {
   render: VariantTemplate,
-  name: "Error, xs",
+  name: "Error, sm",
   args: {
     ...ErrorMd.args,
-    size: "xs",
+    size: "sm",
   },
 };
 
-export const ReadOnlyXs = {
+export const ReadOnlySm = {
   render: VariantTemplate,
-  name: "Read only, xs",
+  name: "Read only, sm",
   args: {
     ...ReadOnlyMd.args,
-    size: "xs",
+    size: "sm",
   },
 };
 
-export const IconsXs = {
+export const IconsSm = {
   render: VariantTemplate,
-  name: "Icons, xs",
+  name: "Icons, sm",
   args: {
     ...IconsMd.args,
-    size: "xs",
+    size: "sm",
   },
 };
 
-export const GroupsXs = {
+export const GroupsSm = {
   render: VariantTemplate,
-  name: "Groups, xs",
+  name: "Groups, sm",
   args: {
     ...GroupsMd.args,
-    size: "xs",
+    size: "sm",
   },
 };
 
-export const LargeSetsXs = {
+export const LargeSetsSm = {
   render: VariantTemplate,
-  name: "Large sets, xs",
+  name: "Large sets, sm",
   args: {
     ...LargeSetsMd.args,
-    size: "xs",
+    size: "sm",
   },
 };
 
-export const SearchableXs = {
+export const SearchableSm = {
   render: VariantTemplate,
-  name: "Searchable, xs",
+  name: "Searchable, sm",
   args: {
     ...SearchableMd.args,
-    size: "xs",
+    size: "sm",
   },
 };

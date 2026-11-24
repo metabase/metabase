@@ -1,0 +1,656 @@
+## Serialization orders the entities it exports by entity_id, which decides the de-dup suffix of same-named files
+## (`foo.yaml`, `foo_2.yaml`). The entity_id columns used the app DB's default collation, which sorts mixed-case and
+## punctuated NanoIDs differently on Postgres (per locale) and MySQL/MariaDB (case-insensitive) than on H2, so instances
+## syncing one repo named those files differently. Byte-wise collations make every app DB sort them alike.
+##
+## One changeset per table: each runs in its own transaction, so it locks one table at a time. The change locks its
+## table until it commits (Postgres blocks reads and writes while it rebuilds the column's indexes; MySQL and MariaDB
+## block writes while they copy the whole table). A single changeset over every table would hold those locks on all
+## of them at once, blocking the nodes still serving on the old version during a rolling upgrade.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-16T12:00:00
+      author: ranquild
+      comment: Compare action.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE action ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE action MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE action ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE action MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:01
+      author: ranquild
+      comment: Compare report_card.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE report_card ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE report_card MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE report_card ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE report_card MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:02
+      author: ranquild
+      comment: Compare collection.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE collection ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE collection MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE collection ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE collection MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:03
+      author: ranquild
+      comment: Compare report_dashboard.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE report_dashboard ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE report_dashboard MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE report_dashboard ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE report_dashboard MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:04
+      author: ranquild
+      comment: Compare report_dashboardcard.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE report_dashboardcard ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE report_dashboardcard MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE report_dashboardcard ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE report_dashboardcard MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:05
+      author: ranquild
+      comment: Compare dashboard_tab.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE dashboard_tab ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE dashboard_tab MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE dashboard_tab ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE dashboard_tab MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:06
+      author: ranquild
+      comment: Compare data_app.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE data_app ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE data_app MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE data_app ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE data_app MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:07
+      author: ranquild
+      comment: Compare dimension.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE dimension ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE dimension MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE dimension ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE dimension MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:08
+      author: ranquild
+      comment: Compare document.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE document ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE document MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE document ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE document MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:09
+      author: ranquild
+      comment: Compare embedding_theme.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE embedding_theme ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE embedding_theme MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE embedding_theme ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE embedding_theme MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:10
+      author: ranquild
+      comment: Compare exploration.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE exploration ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE exploration MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE exploration ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE exploration MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:11
+      author: ranquild
+      comment: Compare exploration_page.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE exploration_page ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE exploration_page MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE exploration_page ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE exploration_page MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:12
+      author: ranquild
+      comment: Compare exploration_query.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE exploration_query ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE exploration_query MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE exploration_query ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE exploration_query MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:13
+      author: ranquild
+      comment: Compare exploration_thread.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE exploration_thread ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE exploration_thread MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE exploration_thread ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE exploration_thread MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:14
+      author: ranquild
+      comment: Compare glossary.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE glossary ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE glossary MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE glossary ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE glossary MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:15
+      author: ranquild
+      comment: Compare measure.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE measure ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE measure MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE measure ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE measure MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:16
+      author: ranquild
+      comment: Compare metabot.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE metabot ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE metabot MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE metabot ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE metabot MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:17
+      author: ranquild
+      comment: Compare metabot_prompt.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE metabot_prompt ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE metabot_prompt MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE metabot_prompt ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE metabot_prompt MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:18
+      author: ranquild
+      comment: Compare native_query_snippet.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE native_query_snippet ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE native_query_snippet MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE native_query_snippet ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE native_query_snippet MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:19
+      author: ranquild
+      comment: Compare permissions_group.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE permissions_group ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE permissions_group MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE permissions_group ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE permissions_group MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:20
+      author: ranquild
+      comment: Compare pulse.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE pulse ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE pulse MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE pulse ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE pulse MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:21
+      author: ranquild
+      comment: Compare pulse_card.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE pulse_card ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE pulse_card MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE pulse_card ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE pulse_card MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:22
+      author: ranquild
+      comment: Compare pulse_channel.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE pulse_channel ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE pulse_channel MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE pulse_channel ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE pulse_channel MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:23
+      author: ranquild
+      comment: Compare python_library.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE python_library ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE python_library MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE python_library ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE python_library MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:24
+      author: ranquild
+      comment: Compare segment.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE segment ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE segment MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE segment ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE segment MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:25
+      author: ranquild
+      comment: Compare timeline.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE timeline ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE timeline MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE timeline ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE timeline MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:26
+      author: ranquild
+      comment: Compare timeline_event.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE timeline_event ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE timeline_event MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE timeline_event ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE timeline_event MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:27
+      author: ranquild
+      comment: Compare transform.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:28
+      author: ranquild
+      comment: Compare transform_job.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform_job ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform_job MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform_job ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform_job MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:29
+      author: ranquild
+      comment: Compare transform_job_transform_tag.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform_job_transform_tag ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform_job_transform_tag MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform_job_transform_tag ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform_job_transform_tag MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:30
+      author: ranquild
+      comment: Compare transform_tag.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform_tag ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform_tag MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform_tag ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform_tag MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:31
+      author: ranquild
+      comment: Compare transform_test.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform_test ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform_test MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform_test ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform_test MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:32
+      author: ranquild
+      comment: Compare transform_transform_tag.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform_transform_tag ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform_transform_tag MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE transform_transform_tag ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE transform_transform_tag MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+  - changeSet:
+      id: v65.2026-10-16T12:00:33
+      author: ranquild
+      comment: Compare core_user.entity_id byte by byte on Postgres, MySQL, and MariaDB
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE core_user ALTER COLUMN entity_id TYPE char(21) COLLATE "C";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE core_user MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE core_user ALTER COLUMN entity_id TYPE char(21) COLLATE "default";
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE core_user MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;

@@ -12,7 +12,7 @@ import {
   isUploadCompleted,
   isUploadInProgress,
 } from "../../utils";
-import StatusLarge from "../StatusLarge";
+import { StatusLarge } from "../StatusLarge";
 
 const UPLOAD_MESSAGE_UPDATE_INTERVAL = 30 * 1000;
 
@@ -138,11 +138,8 @@ const UploadErrorDisplay = ({ upload }: { upload: FileUpload }) => {
   return (
     <>
       <Button
-        variant="subtle"
-        size="xs"
-        h="1rem"
-        p={0}
-        fz="sm"
+        variant="transparent"
+        size="compact-md"
         onClick={() => setShowErrorModal(true)}
       >
         {t`Show error details`}

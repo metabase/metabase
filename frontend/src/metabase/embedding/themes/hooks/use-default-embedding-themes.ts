@@ -8,8 +8,8 @@ import { deriveSdkThemeSettings } from "../utils/derive-sdk-theme-settings";
 
 /**
  * Returns the default `Light` and `Dark` embedding theme payloads, ready to be sent to the
- * `POST /api/embed-theme/seed-defaults` endpoint. Colors are derived from `METABASE_LIGHT_THEME`
- * / `METABASE_DARK_THEME` via `deriveFullMetabaseTheme`, with whitelabel overrides applied on top.
+ * `POST /api/embed-theme/seed-defaults` endpoint. Colors are derived from `getLightTheme`
+ * / `getDarkTheme` via `deriveFullMetabaseTheme`, with whitelabel overrides applied on top.
  */
 export function useDefaultEmbeddingThemes(): CreateEmbeddingThemeRequest[] {
   const whitelabelColors = useSetting("application-colors");

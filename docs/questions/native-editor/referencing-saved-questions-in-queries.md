@@ -1,5 +1,6 @@
 ---
 title: Referencing models and saved questions
+summary: Reuse a model or saved question inside a new SQL query, including as a common table expression (CTE).
 redirect_from:
   - /docs/latest/users-guide/referencing-saved-questions-in-queries
 ---
@@ -16,9 +17,11 @@ First, create and save a question or model that returns the result set you'd lik
 
 To reference that question or model in a SQL query, use typeahead search in a variable prefixed with `#`.
 
-Type `{% raw %}{{#your search term }} {% endraw %}` and Metabase will display a list of models and questions relevant to your search term.
+Type `{% raw %}{{#{% endraw %}` followed by part of the name or ID of a model or question, like `{% raw %}{{#orders{% endraw %}`, and Metabase will display a list of matching models and questions. Metabase won't display the list until you type at least one character after the `#`. When you select an item from the list, Metabase adds the closing `{% raw %}}}{% endraw %}` if it's missing.
 
 ![Typeahead search dropdown for referencing questions and models in SQL queries](../images/search-dropdown.png)
+
+If you're not seeing the results you expect, make sure you've selected the correct database. Search will only show items relevant to the selected database.
 
 You can also find the question or model ID by navigating in Metabase to the model or question you'd like to reference in your query. The ID is in the URL in your browser's address bar. The ID will be the number after `/model/` or `/question/`. E.g., for `https://metabase.example.com/model/12345-example-name`, the model's ID would be `12345`.
 

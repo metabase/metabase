@@ -44,36 +44,36 @@
            :model/CacheConfig _                  {:model    "database"
                                                   :model_id (mt/id)
                                                   :strategy :duration
-                                                  :config   {:unit    :hours
+                                                  :config   {:unit    "hours"
                                                              :duration 1}}]
           ;; `:cached` is not asserted here — `format-qp-result` strips it from the
           ;; notification result. The regression this test guards against is viz-settings
           ;; bleeding across two cards that share a query, independent of cache state.
           (testing "Card 1 has count hidden and sum visible"
-            (is (=? {:data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
+            (is (=? {:data {:viz-settings {:table.columns
+                                           [{:enabled false
+                                             :name "count"}
+                                            {:enabled true
+                                             :name "sum"}]}}}
                     (result-for-dashcard dashcard-1)))
-            (is (=? {:data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
+            (is (=? {:data {:viz-settings {:table.columns
+                                           [{:enabled true
+                                             :name "count"}
+                                            {:enabled false
+                                             :name "sum"}]}}}
                     (result-for-dashcard dashcard-2))))
           (testing "Card 2 has count visible and sum hidden"
-            (is (=? {:data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
+            (is (=? {:data {:viz-settings {:table.columns
+                                           [{:enabled false
+                                             :name "count"}
+                                            {:enabled true
+                                             :name "sum"}]}}}
                     (result-for-card card-1)))
-            (is (=? {:data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
+            (is (=? {:data {:viz-settings {:table.columns
+                                           [{:enabled true
+                                             :name "count"}
+                                            {:enabled false
+                                             :name "sum"}]}}}
                     (result-for-card card-2)))))))))
 
 (deftest viz-settings-reflect-card-edit-after-cache-hit-test
@@ -94,7 +94,7 @@
                                                 {:name "sum"   :enabled true}]}
           table-columns-of (fn [result]
                              (get-in result [:data :viz-settings
-                                             :metabase.models.visualization-settings/table-columns]))]
+                                             :table.columns]))]
       (t2/delete! :model/QueryCache)
       (mt/with-premium-features #{:cache-granular-controls}
         (mt/with-temp
@@ -105,7 +105,7 @@
            :model/CacheConfig   _             {:model    "database"
                                                :model_id (mt/id)
                                                :strategy :duration
-                                               :config   {:unit :hours :duration 1}}]
+                                               :config   {:unit "hours" :duration 1}}]
           (let [run-sub!         (fn [] (:result (mt/as-admin
                                                    (notification.payload.execute/execute-dashboard-subscription-card
                                                     dashcard []))))
@@ -116,7 +116,7 @@
                 (is (= 1 (t2/count :model/QueryCache))
                     "The query should have been cached exactly once")))
             (let [first-updated-at (cache-updated-at)]
-              (t2/update! :model/Card card-id {:visualization_settings edited-setting})
+              (t2/update! :model/Card :id card-id {:visualization_settings edited-setting})
               (testing "after card edit, cache-hit run reflects the two-column setting"
                 (let [result (run-sub!)]
                   (is (= 1 (t2/count :model/QueryCache))
@@ -125,5 +125,5 @@
                       "Cache entry should not have been overwritten — confirms cache hit")
                   (is (= 2 (count (table-columns-of result))))
                   (is (= ["count" "sum"]
-                         (map :metabase.models.visualization-settings/table-column-name
+                         (map :name
                               (table-columns-of result)))))))))))))

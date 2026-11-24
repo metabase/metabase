@@ -40,13 +40,13 @@
 
 (defn- permission-for-type
   [permissions-set perm-type]
-  (if (perms/set-has-full-permissions? permissions-set (perms/application-perms-path perm-type))
+  (if (some (set permissions-set) ["/" "/application/" (perms/application-perms-path perm-type)])
     :yes
     :no))
 
 (mu/defn permissions-set->application-perms :- GroupPermissionsGraph
   "Get a map of all application permissions for a group."
-  [permission-set]
+  [permission-set :- [:maybe [:set :string]]]
   {:setting      (permission-for-type permission-set :setting)
    :monitoring   (permission-for-type permission-set :monitoring)
    :subscription (permission-for-type permission-set :subscription)})

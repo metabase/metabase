@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import ReactDOMServer from "react-dom/server";
 import { t } from "ttag";
 

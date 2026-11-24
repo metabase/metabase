@@ -21,6 +21,10 @@ Metabase will print out the help text for available commands.
 
 Generates a markdown file listing the AI providers Metabase can connect to, the credentials each one needs, and the models each one offers. This is written to a file called `docs/ai/providers.md`.
 
+## `all-documentation`
+
+Runs every documentation command in one process.
+
 ## `api-documentation`
 
 Generate an HTML file and a JSON file for Scalar docs for the Metabase API.
@@ -32,6 +36,10 @@ Generates a markdown file containing documentation for all CLI commands. This is
 ## `config-template`
 
 Generates a markdown file with some documentation and an example configuration file in YAML. The YAML template includes Metabase settings and their defaults. Metabase will save the template as `docs/configuring-metabase/config-template.md`.
+
+## `driver-features-documentation`
+
+Generates `docs/databases/feature-support.md`, which shows which officially supported database supports which feature. Needs the driver modules on the classpath: `clojure -M:ee:drivers:doc driver-features-documentation`.
 
 ## `driver-methods | driver-methods _docs`
 
@@ -88,6 +96,10 @@ Options:
 ## `load-from-h2 | load-from-h2 h2-connection-string`
 
 Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars.
+
+## `mcp-tools-documentation`
+
+Generates `docs/ai/mcp-tools.md`, the reference for the tools Metabase's MCP server exposes to AI clients.
 
 ## `migrate direction`
 

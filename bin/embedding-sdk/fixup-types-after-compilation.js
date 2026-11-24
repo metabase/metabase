@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 /* eslint-env node */
-/* eslint-disable import/order */
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
@@ -50,6 +49,17 @@ const DTS_ROLLUPS = [
     entryPointPath: path.join(
       __dirname,
       "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/data-app.d.ts",
+    ),
+  },
+  {
+    name: "testing",
+    configPath: path.join(
+      __dirname,
+      "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-testing-api-extractor.json",
+    ),
+    entryPointPath: path.join(
+      __dirname,
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/testing.d.ts",
     ),
   },
   {

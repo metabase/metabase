@@ -4,9 +4,7 @@
   (:require
    [malli.util :as mut]
    [metabase-enterprise.support-access-grants.schema :as support-access-grants.schema]
-   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -73,12 +71,12 @@
   "Apply `changes` to the SupportAccessGrantLog with `grant-id`, returning the number updated."
   [grant-id :- ms/PositiveInt
    changes  :- (mut/select-keys ::support-access-grants.schema/support-access-grant-log.update [:revoked_at :revoked_by_user_id])]
-  (t2/update! :model/SupportAccessGrantLog grant-id changes))
+  (t2/update! :model/SupportAccessGrantLog :id grant-id changes))
 
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User user-id))
+  (t2/select-one :model/User :id [:auto/param user-id]))
 
 (mu/defn user-by-email
   "The User with `email`, or nil."
@@ -95,26 +93,10 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in user-ids]))
 
-(mu/defn insert-user!
-  "Insert `user` and return the new instance."
-  [user :- (mut/select-keys ::users.schema/user.update [:email :first_name :last_name :is_superuser])]
-  (t2/insert-returning-instance! :model/User user))
-
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`, returning the number updated."
-  [user-id :- ::lib.schema.id/user
-   changes :- (mut/select-keys ::users.schema/user.update [:is_active :is_superuser])]
-  (t2/update! :model/User user-id changes))
-
-(mu/defn session-exists-for-user?
-  "Whether the User with `user-id` has a Session."
+(mu/defn unended-session-exists-for-user?
+  "Whether the User with `user-id` has a Session whose ending has not been recorded."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/Session :user_id user-id))
-
-(mu/defn delete-sessions-of-user!
-  "Delete the Sessions of the User with `user-id`, returning the number deleted."
-  [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/Session :user_id user-id))
+  (t2/exists? :model/Session :user_id user-id :ended_at nil))
 
 (mu/defn auth-identity-ids-of-user
   "The IDs of the AuthIdentities of the User with `user-id`."
@@ -125,33 +107,3 @@
   "The ID of the support-access-grant AuthIdentity of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "support-access-grant"))
-
-(mu/defn insert-auth-identity!
-  "Insert the AuthIdentity `row`, returning the number inserted."
-  [row :- (mut/select-keys ::auth-identity.schema/auth-identity.update [:user_id :provider :provider_id :expires_at :credentials :metadata])]
-  (t2/insert! :model/AuthIdentity row))
-
-(mu/defn update-auth-identity!
-  "Apply `changes` to the AuthIdentity with `auth-identity-id`, returning the number updated. `changes` may be a
-  whole AuthIdentity instance re-saved after a partial edit (e.g. [[metabase.auth-identity.providers.emailed-secret/mark-token-consumed]]
-  round-trips the full row it was given), so every column is accepted."
-  [auth-identity-id :- ms/PositiveInt
-   changes          :- [:map {:closed true}
-                        [:id            {:optional true} ms/PositiveInt]
-                        [:user_id       {:optional true} ::lib.schema.id/user]
-                        [:provider      {:optional true} [:maybe [:or :keyword :string]]]
-                        [:provider_id   {:optional true} [:maybe :string]]
-                        [:expires_at    {:optional true} [:maybe ms/TemporalInstant]]
-                        [:last_used_at  {:optional true} [:maybe ms/TemporalInstant]]
-                        [:confirmed_at  {:optional true} [:maybe ms/TemporalInstant]]
-                        [:created_at    {:optional true} ms/TemporalInstant]
-                        [:updated_at    {:optional true} ms/TemporalInstant]
-                        [:credentials   {:optional true} [:maybe :map]]
-                        [:metadata      {:optional true} [:maybe :map]]]]
-  (t2/update! :model/AuthIdentity auth-identity-id changes))
-
-(mu/defn expire-auth-identities!
-  "Set the expiry of the AuthIdentities with `auth-identity-ids` to `expires-at`, returning the number updated."
-  [auth-identity-ids :- [:sequential ms/PositiveInt]
-   expires-at        :- ms/TemporalInstant]
-  (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at expires-at}))

@@ -1,89 +1,79 @@
 (ns metabase.revisions.events
+  "Handler of the lifecycle events that record a Revision of what a user changes: the update or the create event of an
+  entity that has Revisions, which the function that writes the entity and its parts publishes as its last step, so that
+  one operation on a Dashboard and its dashcards and tabs is one Revision. The parts have no spec, so their events make
+  none, and nothing is recorded without a user."
   (:require
-   [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.spec :as revisions.spec]
+   [metabase.util.events :as u.events]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
-(events/derive! ::event :metabase/event)
+(set! *warn-on-reflection* true)
 
-(defn- push-revision!
-  [model
-   {:keys [user-id] object :object :as event}
-   {:keys [is-creation?]
-    :or   {is-creation? false}
-    :as   _options}]
-  (when event
-    (try
-      (when-not (t2/instance-of? model object)
-        (throw (ex-info "object must be a model instance" {:object object :model model})))
-      (let [user-id (or user-id api/*current-user-id*)]
-        (revision/push-revision! {:entity       model
-                                  :id           (:id object)
-                                  :object       object
-                                  :user-id      user-id
-                                  :is-creation? is-creation?
-                                  :message      (:revision-message event)}))
-      (catch Throwable e
-        (log/warnf "Failed to process revision event for model %s: %s" model (ex-message e))))))
+(defn- recorded?
+  "Whether the row event `event` calls for a Revision: a create or an update of an entity that has Revisions,
+  by a user, that is not a revert or carried by the archive or restore of another entity, and that changes what its spec
+  tracks or only touches it."
+  [{:keys [operation writer context object previous-object user-id] :as event}]
+  (let [model (u.events/model-of event)
+        spec  (revisions.spec/spec model)]
+    (boolean
+     (and user-id
+          spec
+          (#{:create :update} operation)
+          (not= :revert writer)
+          (nil? (:archived-with context))
+          (or (= :create operation)
+              (u.events/touch? event)
+              (revision/changed? model previous-object object))))))
 
-(events/derive! ::card-event ::event)
-(events/derive! :event/card-create ::card-event)
-(events/derive! :event/card-update ::card-event)
+(defn- revision-info
+  "What the Revision of the entity that the row event `event` is about says."
+  [{:keys [operation object user-id context] :as event}]
+  {:entity       (u.events/model-of event)
+   :id           (:id object)
+   :object       object
+   :user-id      user-id
+   :is-creation? (= :create operation)
+   :message      (:revision-message context)})
 
-(methodical/defmethod events/publish-event! ::card-event
+(defn- revision-rows
+  "The Revision rows of the entities of `infos`, the snapshots of each model taken together."
+  [infos]
+  (into []
+        (mapcat (fn [[model infos]]
+                  (try
+                    (revision/revision-rows model (vec infos))
+                    (catch Throwable e
+                      (log/warnf "Failed to record the revisions of %d %s: %s" (count infos) model (ex-message e))
+                      []))))
+        (group-by :entity infos)))
+
+(events/derive! :metabase/lifecycle-event ::revisions)
+
+(defn- record-revisions!
+  "Records the Revisions of the entities of `infos`, one batch of an event, and publishes their creation, a failure of
+  either being logged."
+  [infos]
+  (let [rows (revision-rows infos)]
+    (when (and (seq rows)
+               (try
+                 (revision/create-revisions! rows)
+                 true
+                 (catch Throwable e
+                   (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e))
+                   false)))
+      (try
+        (revision/publish-created! rows)
+        (catch Throwable e
+          (log/warnf "Failed to publish the creation of %d revisions: %s" (count rows) (ex-message e)))))))
+
+(methodical/defmethod events/publish-event! ::revisions
   [topic event]
-  (push-revision! :model/Card event {:is-creation? (= topic :event/card-create)}))
-
-(events/derive! ::dashboard-event ::event)
-(events/derive! :event/dashboard-create ::dashboard-event)
-(events/derive! :event/dashboard-update ::dashboard-event)
-
-(methodical/defmethod events/publish-event! ::dashboard-event
-  [topic event]
-  (push-revision! :model/Dashboard event {:is-creation? (= topic :event/dashboard-create)}))
-
-(events/derive! ::transform-event ::event)
-(events/derive! :event/transform-create ::transform-event)
-(events/derive! :event/transform-update ::transform-event)
-
-(methodical/defmethod events/publish-event! ::transform-event
-  [topic event]
-  (push-revision! :model/Transform event {:is-creation? (= topic :event/transform-create)}))
-
-(events/derive! ::segment-event ::event)
-(events/derive! :event/segment-create ::segment-event)
-(events/derive! :event/segment-update ::segment-event)
-(events/derive! :event/segment-delete ::segment-event)
-
-(methodical/defmethod events/publish-event! ::segment-event
-  [topic event]
-  (push-revision! :model/Segment event {:is-creation? (= topic :event/segment-create)}))
-
-(events/derive! ::measure-event ::event)
-(events/derive! :event/measure-create ::measure-event)
-(events/derive! :event/measure-update ::measure-event)
-(events/derive! :event/measure-delete ::measure-event)
-
-(methodical/defmethod events/publish-event! ::measure-event
-  [topic event]
-  (push-revision! :model/Measure event {:is-creation? (= topic :event/measure-create)}))
-
-(events/derive! ::document-event ::event)
-(events/derive! :event/document-create ::document-event)
-(events/derive! :event/document-update ::document-event)
-(events/derive! :event/document-delete ::document-event)
-
-(methodical/defmethod events/publish-event! ::document-event
-  [topic event]
-  (push-revision! :model/Document event {:is-creation? (= topic :event/document-create)}))
-
-(events/derive! ::exploration-event ::event)
-(events/derive! :event/exploration-create ::exploration-event)
-(events/derive! :event/exploration-update ::exploration-event)
-
-(methodical/defmethod events/publish-event! ::exploration-event
-  [topic event]
-  (push-revision! :model/Exploration event {:is-creation? (= topic :event/exploration-create)}))
+  (run! record-revisions!
+        (partition-all app-db/create-partition-size
+                       (into [] (comp (filter recorded?) (map revision-info)) (u.events/row-events topic event)))))

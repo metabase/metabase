@@ -6,10 +6,11 @@
   — see [[user-id->tenant-id]]. It lives here because here is the only place that knows the value reaches
   HoneySQL."
   (:require
-   [metabase.app-db.core :as app-db]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.schema :as mcp.schema]
-   [metabase.session.core :as session]
+   [metabase.metabot.usage-controls :as usage-controls]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -132,10 +133,42 @@
              :archived (boolean archived?)
              {:order-by [[:%lower.name :asc]]}))
 
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id))
+
+(auth-identity/derive! :provider/mcp :metabase.auth-identity.provider/provider)
+
 (mu/defn insert-feedback!
   "Insert the McpFeedback `row`, returning the number inserted."
   [row :- ::mcp.schema/mcp-feedback.update]
   (t2/insert! :model/McpFeedback row))
+
+(mu/defn insert-session-log!
+  "Insert the McpSessionLog `row`."
+  [row :- ::mcp.schema/mcp-session-log.create]
+  (t2/insert! :model/McpSessionLog row))
+
+(mu/defn end-session-log!
+  "Stamp `ended_at` on the McpSessionLog with `session-id`."
+  [session-id :- :string]
+  (t2/update! :model/McpSessionLog :id [:auto/param session-id] {:ended_at :%now}))
+
+(mu/defn session-log-ids-created-before :- [:sequential :string]
+  "The ids of the McpSessionLogs created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (vec (t2/select-pks-vec :model/McpSessionLog {:where [:< :created_at [:auto/param cutoff]]})))
+
+(mu/defn insert-tool-call-log!
+  "Insert the McpToolCallLog `row`."
+  [row :- ::mcp.schema/mcp-tool-call-log.update]
+  (t2/insert! :model/McpToolCallLog row))
+
+(mu/defn tool-call-log-ids-created-before :- [:sequential ms/PositiveInt]
+  "The ids of the McpToolCallLogs created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (vec (t2/select-pks-vec :model/McpToolCallLog {:where [:< :created_at [:auto/param cutoff]]})))
 
 (defn session-user-ids
   "The ids of every User owning a `core_session` with `key-hashed`.
@@ -145,21 +178,6 @@
   locks the rest out of a session they already hold — see `metabase.mcp.session/owned-by-user?`."
   [key-hashed]
   (t2/select-fn-set :user_id :core_session :key_hashed key-hashed))
-
-(mu/defn get-or-create-core-session!
-  "The `core_session` row for `key-hashed` and `user-id`, creating one with a freshly generated session id if none
-  exists. Uses the raw `:core_session` table (not `:model/Session`) to bypass the after-insert hook, which would
-  otherwise publish a spurious `:event/user-login` event."
-  [key-hashed :- :string
-   user-id    :- ::lib.schema.id/user]
-  (app-db/select-or-insert!
-   :core_session
-   {:key_hashed key-hashed
-    :user_id    user-id}
-   (fn []
-     {:id              (session/generate-session-id)
-      :anti_csrf_token nil
-      :created_at      :%now})))
 
 (mu/defn insert-query-handle!
   "Insert the McpQueryHandle `row` under the client-generated `handle-id`, returning the number inserted."
@@ -179,19 +197,10 @@
                            [:= :mqh.id handle-id]
                            [:= :cs.user_id user-id]]}))
 
-(defn delete-query-handles-created-before!
-  "Delete every McpQueryHandle created before `cutoff`, returning the number deleted."
-  [cutoff]
-  (t2/delete! :model/McpQueryHandle {:where [:< :created_at cutoff]}))
-
-(mu/defn delete-session-for-user!
-  "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
-  [key-hashed :- :string
-   user-id    :- ::lib.schema.id/user]
-  (t2/query {:delete-from :core_session
-             :where       [:and
-                           [:= :key_hashed key-hashed]
-                           [:= :user_id user-id]]}))
+(mu/defn query-handle-ids-created-before :- [:sequential :string]
+  "The ids of every McpQueryHandle created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (vec (t2/select-pks-vec :model/McpQueryHandle {:where [:< :created_at [:auto/param cutoff]]})))
 
 (defn delete-query-handles-for-user-session!
   "Delete the McpQueryHandles of MCP session `mcp-session-id` that belong to the User with `user-id`, plus any
@@ -210,11 +219,6 @@
                                                                     :where  [:and
                                                                              [:= :key_hashed key-hashed]
                                                                              [:= :user_id user-id]]}]]]}))
-
-(defn hydrate-moderation-reviews
-  "`card` with `:moderation_reviews` hydrated, each review carrying its `:moderator_details`."
-  [card]
-  (t2/hydrate card [:moderation_reviews :moderator_details]))
 
 (defn notification-by-payload-type
   "The Notification with `id` whose `payload_type` is `payload-type`, or nil."
@@ -237,6 +241,49 @@
               :payload
               :subscriptions
               [:handlers :channel [:recipients :recipients-detail]]))
+
+(defn group-permission-exists?
+  "Whether some McpGroupPermission matches `where`, a HoneySQL condition such as `[:in :group_id ids]`."
+  [where]
+  (t2/exists? :model/McpGroupPermission {:where where}))
+
+(mu/defn group-ids-with-permission :- [:set ms/PositiveInt]
+  "The ids among `group-ids` of the groups that have an McpGroupPermission."
+  [group-ids :- [:sequential ms/PositiveInt]]
+  (or (when (seq group-ids)
+        (t2/select-fn-set :group_id [:model/McpGroupPermission :group_id] :group_id [:in group-ids]))
+      #{}))
+
+(mu/defn group-permissions
+  "The McpGroupPermissions of the groups among `group-ids`."
+  [group-ids :- [:sequential ms/PositiveInt]]
+  (when (seq group-ids)
+    (t2/select :model/McpGroupPermission :group_id [:in [:auto/param group-ids]])))
+
+(mu/defn insert-group-permissions!
+  "Insert the McpGroupPermission `rows` in one statement."
+  [rows :- [:sequential [:map {:closed true}
+                         [:group_id    ms/PositiveInt]
+                         [:mcp_enabled :boolean]
+                         [:tool_access ::mcp.perms/tool-access]]]]
+  (when (seq rows)
+    (t2/insert! :model/McpGroupPermission rows)))
+
+(mu/defn update-group-permissions!
+  "Set the McpGroupPermission of the group of each of `rows` to the values of its row, one statement per distinct
+  change."
+  [rows :- [:sequential [:map {:closed true}
+                         [:group_id    ms/PositiveInt]
+                         [:mcp_enabled {:optional true} :boolean]
+                         [:tool_access {:optional true} ::mcp.perms/tool-access]]]]
+  (doseq [[changes rows] (group-by #(dissoc % :group_id) rows)]
+    (t2/update! :model/McpGroupPermission :group_id [:in [:auto/param (mapv :group_id rows)]] changes)))
+
+(mu/defn delete-hidden-group-permissions!
+  "Delete the McpGroupPermission rows of the groups the mode selected by `advanced?` hides."
+  [advanced? :- :boolean]
+  (t2/delete! :model/McpGroupPermission
+              {:where [:not (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (defn user-id->tenant-id
   "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the
@@ -261,12 +308,3 @@
   (if (seq user-ids)
     (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids])
     {}))
-
-(defn existing-transform-tag-ids
-  "The subset of `tag-ids` that name a real TransformTag, as a set. `ids` is expected non-empty — an
-  empty `:in` is a SQL error rather than an empty result, so callers guard it.
-
-  A set rather than the select's own return: `t2/select-fn-set` answers nil when nothing matches,
-  which is exactly the all-unknown case the caller is checking for."
-  [tag-ids]
-  (into #{} (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids])))

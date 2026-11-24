@@ -6,9 +6,7 @@
                         ;; clj-kondo/ignores to all of them... so this will take care of it. We do still want to remove
                         ;; them soon.
                         :deprecated-var        {:exclude {metabase.types.core/field-is-type? {:namespaces [metabase.query-processor.cast-test]}
-                                                          metabase.test.data/mbql-query      {:namespaces [metabase.query-processor.cast-test]}}}
-                        ;; this is also ok here since this is a drivers namespace
-                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
+                                                          metabase.test.data/mbql-query      {:namespaces [metabase.query-processor.cast-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -27,6 +25,11 @@
    [metabase.util :as u])
   (:import
    (java.time LocalDate OffsetDateTime)))
+
+(defn- type-info
+  "The type keys of result column `col` that [[types/field-is-type?]] reads."
+  [col]
+  (select-keys col [:base_type :effective_type]))
 
 (set! *warn-on-reflection* true)
 
@@ -71,7 +74,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Number (last cols)))
+              (is (types/field-is-type? :type/Number (type-info (last cols))))
               (doseq [[uncasted-value casted-value] rows]
                 (is (= (biginteger (->integer uncasted-value))
                        (biginteger casted-value))
@@ -99,7 +102,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Number (last cols)))
+              (is (types/field-is-type? :type/Number (type-info (last cols))))
               (doseq [[_ uncasted-value casted-value] rows]
                 (is (= (biginteger (->integer uncasted-value))
                        (biginteger casted-value))
@@ -134,7 +137,7 @@
                   result       (-> query qp/process-query)
                   cols         (mt/cols result)
                   rows         (mt/rows result)]
-              (is (types/field-is-type? :type/Number (last cols)))
+              (is (types/field-is-type? :type/Number (type-info (last cols))))
               (doseq [[_ uncasted-value casted-value] rows]
                 (is (= (biginteger (->integer uncasted-value))
                        (biginteger casted-value))
@@ -160,7 +163,7 @@
                 result       (-> query qp/process-query)
                 cols         (mt/cols result)
                 rows         (mt/rows result)]
-            (is (types/field-is-type? :type/Number (last cols)))
+            (is (types/field-is-type? :type/Number (type-info (last cols))))
             (doseq [[uncasted-value casted-value] rows]
               (is (= (biginteger (->integer uncasted-value))
                      (biginteger casted-value))
@@ -195,7 +198,7 @@
                 result       (-> query qp/process-query)
                 cols         (mt/cols result)
                 rows         (mt/rows result)]
-            (is (types/field-is-type? :type/Number (last cols)))
+            (is (types/field-is-type? :type/Number (type-info (last cols))))
             (doseq [[_ uncasted-value casted-value] rows]
               (is (= (biginteger (->integer uncasted-value))
                      (biginteger casted-value))
@@ -223,7 +226,7 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Number (last cols)))
+            (is (types/field-is-type? :type/Number (type-info (last cols))))
             (doseq [[_ uncasted-value casted-value] rows]
               (is (= (biginteger (->integer uncasted-value))
                      (biginteger casted-value))
@@ -244,7 +247,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Number (last cols)))
+              (is (types/field-is-type? :type/Number (type-info (last cols))))
               (doseq [[uncasted-value casted-value] rows]
                 (is (= (biginteger (->integer uncasted-value))
                        (biginteger casted-value))
@@ -274,7 +277,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Number (last cols)))
+              (is (types/field-is-type? :type/Number (type-info (last cols))))
               (doseq [[_id casted-value] rows]
                 (is (= (biginteger value)
                        (biginteger casted-value))
@@ -310,7 +313,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Float (last cols)))
+              (is (types/field-is-type? :type/Float (type-info (last cols))))
               (doseq [[uncasted-value casted-value] rows]
                 (is (float= (double (Double/parseDouble uncasted-value))
                             (double casted-value))
@@ -338,7 +341,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Float (last cols)))
+              (is (types/field-is-type? :type/Float (type-info (last cols))))
               (doseq [[_ uncasted-value casted-value] rows]
                 (is (float= (double (Double/parseDouble uncasted-value))
                             (double casted-value))
@@ -364,7 +367,7 @@
                 result        (-> query qp/process-query)
                 cols          (mt/cols result)
                 rows          (mt/rows result)]
-            (is (types/field-is-type? :type/Number (last cols)))
+            (is (types/field-is-type? :type/Number (type-info (last cols))))
             (doseq [[_ uncasted-value casted-value] rows]
               (is (float= (double (Double/parseDouble uncasted-value))
                           (double casted-value))
@@ -392,7 +395,7 @@
                   result       (-> query qp/process-query)
                   cols         (mt/cols result)
                   rows         (mt/rows result)]
-              (is (types/field-is-type? :type/Number (last cols)))
+              (is (types/field-is-type? :type/Number (type-info (last cols))))
               (doseq [[uncasted-value casted-value] rows]
                 (is (float= (double (Double/parseDouble uncasted-value))
                             (double casted-value))
@@ -429,7 +432,7 @@
                 result        (-> query qp/process-query)
                 cols          (mt/cols result)
                 rows          (mt/rows result)]
-            (is (types/field-is-type? :type/Number (last cols)))
+            (is (types/field-is-type? :type/Number (type-info (last cols))))
             (doseq [[_id uncasted-value casted-value] rows]
               (is (float= (double (Double/parseDouble uncasted-value))
                           (double casted-value))
@@ -456,7 +459,7 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Number (last cols)))
+            (is (types/field-is-type? :type/Number (type-info (last cols))))
             (doseq [[_ uncasted-value casted-value] rows]
               (is (float= (double (Double/parseDouble uncasted-value))
                           (double casted-value))
@@ -476,7 +479,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Number (last cols)))
+              (is (types/field-is-type? :type/Number (type-info (last cols))))
               (doseq [[uncasted-value casted-value] rows]
                 (is (float= (double (Double/parseDouble uncasted-value))
                             (double casted-value))
@@ -502,7 +505,7 @@
                   result (-> query qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
-              (is (types/field-is-type? :type/Number (last cols)))
+              (is (types/field-is-type? :type/Number (type-info (last cols))))
               (doseq [[_id casted-value] rows]
                 (is (float= (double value)
                             (double casted-value))
@@ -554,7 +557,7 @@
                 cols (mt/cols result)
                 rows (mt/rows result)]
             (is (types/field-is-type? (date-type-expected driver/*driver*)
-                                      (last cols)))
+                                      (type-info (last cols))))
             (doseq [[_ uncasted-value casted-value] rows]
               (let [cd (parse-date casted-value)
                     ud (parse-date uncasted-value)]
@@ -597,7 +600,7 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Text (last cols)))
+            (is (types/field-is-type? :type/Text (type-info (last cols))))
             (doseq [[_id casted-value] rows]
               (is (string? casted-value))
               (is (compare casted-value expected) (str "Not equal for " msg)))))))))
@@ -616,7 +619,7 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Text (last cols)))
+            (is (types/field-is-type? :type/Text (type-info (last cols))))
             (doseq [[_id casted-value] rows]
               (is (string? casted-value))
               (is (compare casted-value expected) (str "Not equal for " msg)))))))))
@@ -639,7 +642,7 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Text (last cols)))
+            (is (types/field-is-type? :type/Text (type-info (last cols))))
             (doseq [[_field casted-value] rows]
               (is (string? casted-value)))))))))
 
@@ -664,7 +667,7 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Text (last cols)))
+            (is (types/field-is-type? :type/Text (type-info (last cols))))
             (doseq [[_id _uncasted casted-value] rows]
               (is (string? casted-value)))))))))
 
@@ -698,7 +701,7 @@
                 result       (-> query qp/process-query)
                 cols         (mt/cols result)
                 rows         (mt/rows result)]
-            (is (types/field-is-type? :type/Text (last cols)))
+            (is (types/field-is-type? :type/Text (type-info (last cols))))
             (doseq [[_id _expression casted-value] rows]
               (is (string? casted-value))
               (is (= expected casted-value)))))))))
@@ -725,7 +728,7 @@
                 result       (-> query qp/process-query)
                 cols         (mt/cols result)
                 rows         (mt/rows result)]
-            (is (types/field-is-type? :type/Text (last cols)))
+            (is (types/field-is-type? :type/Text (type-info (last cols))))
             (doseq [[_uncasted-value casted-value] rows]
               (is (string? casted-value)))))))))
 
@@ -755,7 +758,7 @@
                 result       (-> query qp/process-query)
                 cols         (mt/cols result)
                 rows         (mt/rows result)]
-            (is (types/field-is-type? :type/Text (last cols)))
+            (is (types/field-is-type? :type/Text (type-info (last cols))))
             (doseq [[_id _uncasted casted-value] rows]
               (is (string? casted-value)))))))))
 
@@ -780,7 +783,7 @@
               result (-> query qp/process-query)
               cols (mt/cols result)
               rows (mt/rows result)]
-          (is (types/field-is-type? :type/Text (last cols)))
+          (is (types/field-is-type? :type/Text (type-info (last cols))))
           (doseq [[_id _uncasted casted-value] rows]
             (is (string? casted-value))))))))
 
@@ -801,17 +804,18 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Text (last cols)))
+            (is (types/field-is-type? :type/Text (type-info (last cols))))
             (doseq [[_uncasted-value casted-value] rows]
               (is (string? casted-value)))))))))
 
 ;; datetime()
 
 (defn- datetime-type? [col]
-  (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
-                                       :type/Text ;; sqlite uses text :(
-                                       :type/* ;; Mongo
-                                       ]))
+  (let [col (type-info col)]
+    (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
+                                         :type/Text ;; sqlite uses text :(
+                                         :type/* ;; Mongo
+                                         ])))
 
 (deftest ^:parallel datetime-cast
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
@@ -859,13 +863,14 @@
               :effective-type :type/Text
               :base-type :type/Text}
              {:field-name "as_bytes"
-              :base-type {:natives {:postgres "BYTEA"
-                                    :h2       "BYTEA"
-                                    :mysql    "VARBINARY(100)"
-                                    :redshift "VARBYTE"
-                                    :presto-jdbc "VARBINARY"
-                                    :oracle "BLOB"
-                                    :sqlite "BLOB"}}}]
+              :base-type {:natives {"postgres" "BYTEA"
+                                    "h2"       "BYTEA"
+                                    "motherduck" "BLOB"
+                                    "mysql"    "VARBINARY(100)"
+                                    "redshift" "VARBYTE"
+                                    "presto-jdbc" "VARBINARY"
+                                    "oracle" "BLOB"
+                                    "sqlite" "BLOB"}}}]
     [["foo" (.getBytes "20190421164300")]
      ["bar" (.getBytes "20200421164300")]
      ["baz" (.getBytes "20210421164300")]]]])
@@ -875,13 +880,14 @@
               :effective-type :type/Text
               :base-type :type/Text}
              {:field-name "as_bytes"
-              :base-type {:natives {:postgres "BYTEA"
-                                    :h2       "BYTEA"
-                                    :mysql    "VARBINARY(100)"
-                                    :redshift "VARBYTE"
-                                    :presto-jdbc "VARBINARY"
-                                    :oracle "BLOB"
-                                    :sqlite "BLOB"}}}]
+              :base-type {:natives {"postgres" "BYTEA"
+                                    "h2"       "BYTEA"
+                                    "motherduck" "BLOB"
+                                    "mysql"    "VARBINARY(100)"
+                                    "redshift" "VARBYTE"
+                                    "presto-jdbc" "VARBINARY"
+                                    "oracle" "BLOB"
+                                    "sqlite" "BLOB"}}}]
     [["foo" (.getBytes "2019-04-21 16:43:00")]
      ["bar" (.getBytes "2020-04-21T16:43:00")]
      ["baz" (.getBytes "2021-04-21 16:43:00")]]]])
@@ -896,7 +902,7 @@
   [_driver]
   [])
 
-(doseq [driver [:h2 :postgres :databricks]]
+(doseq [driver [:h2 :postgres :databricks :motherduck]]
   (defmethod binary-dates-expected-rows-simple driver
     [_driver]
     [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
@@ -945,7 +951,7 @@
      [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
      [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
 
-(doseq [driver [:mysql :sqlserver :presto-jdbc :postgres :h2]]
+(doseq [driver [:mysql :sqlserver :presto-jdbc :postgres :h2 :motherduck]]
   (defmethod binary-dates-expected-rows-iso driver
     [_driver]
     [[1 "foo" #t "2019-04-21T16:43"]
@@ -1075,7 +1081,7 @@
             cols (mt/cols result)
             rows (mt/rows result)]
         (is (types/field-is-type? (date-type-expected driver/*driver*)
-                                  (last cols)))
+                                  (type-info (last cols))))
         (doseq [[_id today] rows]
           (is (= (parse-date today)
                  (LocalDate/now))))))))

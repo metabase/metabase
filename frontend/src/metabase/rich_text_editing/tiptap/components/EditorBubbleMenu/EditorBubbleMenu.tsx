@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import type { BubbleMenuOptions } from "@tiptap/extension-bubble-menu";
 import type { EditorState } from "@tiptap/pm/state";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
+import cx from "classnames";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
@@ -90,7 +92,6 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
 
   return (
     <BubbleMenu
-      className={className}
       editor={editor}
       options={{
         ...options,
@@ -148,7 +149,7 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
         key={contentKey}
         gap={4}
         p="2px"
-        className={S.bubbleMenu}
+        className={cx(S.bubbleMenu, className)}
         data-testid="document-formatting-menu"
       >
         {initialLinkUrl != null ? (

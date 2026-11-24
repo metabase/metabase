@@ -10,7 +10,6 @@ import { useLocation } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   useCreateCommentMutation,
   useDeleteCommentMutation,
@@ -27,6 +26,7 @@ import {
   getCommentNodeId,
   getListCommentsQuery,
 } from "metabase/comments/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { getUser } from "metabase/current-user";
@@ -190,8 +190,7 @@ export function ExplorationComments({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to send comment`,
       });
     } else {
@@ -213,7 +212,7 @@ export function ExplorationComments({
         align="center"
       >
         <Title order={3}>{t`Comments`}</Title>
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <Icon name="close" c="icon-primary" />
         </ActionIcon>
       </Group>
@@ -283,8 +282,7 @@ function ExplorationComment({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to update comment`,
       });
     }
@@ -299,8 +297,7 @@ function ExplorationComment({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to delete comment`,
       });
     }
@@ -327,8 +324,7 @@ function ExplorationComment({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: errorMessage,
       });
     }
@@ -452,13 +448,7 @@ function CommentTags({
 
   return (
     <Group gap="xxs" wrap="wrap">
-      <Icon
-        name="corner_up_right"
-        size={12}
-        c="text-secondary"
-        className={S.commentTagArrow}
-        aria-hidden
-      />
+      <Icon name="corner_down_right" size={12} c="text-secondary" aria-hidden />
       {highlightLabel && (
         <CommentBadge
           label={highlightLabel}

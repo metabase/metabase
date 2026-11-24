@@ -22,17 +22,17 @@ import {
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
-import { requestAsAdmin } from "./helpers/e2e-admin-request-tasks";
+import {
+  backendRequest,
+  requestAsAdmin,
+} from "./helpers/e2e-admin-request-tasks";
 import {
   startCustomVizDevServer,
   stopCustomVizDevServer,
 } from "./helpers/e2e-custom-viz-dev-server-tasks";
 import {
-  buildDataApp,
-  removeDataAppDeclaration,
+  copyDataAppsFixture,
   removeDataAppPaths,
-  scaffoldDataApp,
-  syncDataApp,
   writeDataAppFiles,
 } from "./helpers/e2e-data-app-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
@@ -40,6 +40,10 @@ import {
   startMockLlmServer,
   stopMockLlmServer,
 } from "./helpers/e2e-mock-llm-tasks";
+import {
+  startMockOidcServer,
+  stopMockOidcServer,
+} from "./helpers/e2e-mock-oidc-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const coverageTask = require("@cypress/code-coverage/task");
@@ -190,6 +194,8 @@ const assetsResolverPlugin = {
   },
 };
 
+const BACKEND_URL = `http://${BACKEND_HOST}:${BACKEND_PORT}`;
+
 const defaultConfig = {
   // Expose non-sensitive environment variables synchronously via Cypress.expose()
   // These are safe to expose in the browser and are used for configuration
@@ -200,6 +206,7 @@ const defaultConfig = {
     ENABLE_NETWORK_THROTTLING: !!process.env["ENABLE_NETWORK_THROTTLING"],
     SNOWPLOW_MICRO_URL: snowplowMicroUrl,
     CLIENT_PORT: process.env["CLIENT_PORT"],
+    BACKEND_URL, // component tests cannot read `baseUrl` so we expose the url here
     feHealthcheck: process.env["FE_HEALTHCHECK_URL"]
       ? { enabled: true, url: process.env["FE_HEALTHCHECK_URL"] }
       : undefined,
@@ -299,16 +306,16 @@ const defaultConfig = {
       copyDirectory,
       removeDirectory,
       signJwt,
+      backendRequest,
       requestAsAdmin,
       startMockLlmServer,
       stopMockLlmServer,
+      startMockOidcServer,
+      stopMockOidcServer,
       startCustomVizDevServer,
       stopCustomVizDevServer,
-      buildDataApp,
-      syncDataApp,
-      scaffoldDataApp,
+      copyDataAppsFixture,
       writeDataAppFiles,
-      removeDataAppDeclaration,
       removeDataAppPaths,
       ...perTestCaptureTasks,
     });
@@ -363,7 +370,12 @@ const defaultConfig = {
       // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
       if (results && results.video) {
         // Do we have test failures?
-        if (results && results.video && results.stats.failures === 0) {
+        if (
+          results &&
+          results.video &&
+          results.stats.failures === 0 &&
+          process.env.CYPRESS_KEEP_VIDEOS !== "true"
+        ) {
           // delete the video if the spec passed
           fs.unlinkSync(results.video);
         }
@@ -385,7 +397,7 @@ const defaultConfig = {
 
     return config;
   },
-  baseUrl: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
+  baseUrl: BACKEND_URL,
   defaultBrowser: process.env.CYPRESS_BROWSER ?? "chrome",
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,

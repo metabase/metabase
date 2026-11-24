@@ -11,6 +11,7 @@ Here are the different ways to use AI with Metabase:
 
 - [Metabot](#metabot)
 - [MCP server](#mcp-server)
+- [Metabase CLI](#metabase-cli)
 - [Agent-driven development workflow](#agent-driven-development-workflow)
 
 ## Metabot
@@ -36,15 +37,29 @@ See [full docs for Metabot](metabot.md) and [embedded AI chat](../embedding/ai-c
 
 Connect your favorite third-party AI tool - like Claude or Codex - to the Metabase MCP server. MCP servers are designed for answering in-the-moment questions like "hey btw what's our q3 revenue?" Metabase's MCP server is also useful when combined with other MCP servers. For example, you can ask Claude a question about your customers that combines data from Metabase, your CRM, and your support ticket platform.
 
-Compared to the built-in Metabot, MCP server has somewhat restricted functionality (for example, it can't generate code or build transforms for now). See [the ever-expanding list of MCP server tools](mcp.md#available-tools).
+Compared to the built-in Metabot, the MCP server has a narrower set of tools. See [MCP server tools](mcp-tools.md) for what it can do.
 
-**Controls**: Metabase MCP server requires people to authenticate into Metabase, and all the responses it provides will be scoped to their permissions. However, unlike built-in Metabot, MCP server doesn't come with granular control over which _tools_ people can use, or disable MCP server altogether.
+**Controls**: People log in to Metabase to use the MCP server, so the MCP server can only do what their permissions allow. Admins can [turn the MCP server off](mcp.md#turn-on-the-mcp-server) for everyone. On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can also [choose which MCP tools each group can use](usage-controls.md#mcp-tools-access).
 
 **Provider**: Requests to Metabase's MCP server are handled by the provider you choose to connect to the MCP server (e.g. Claude, Cursor, etc).
 
 **Plans**: MCP server is available on all plans.
 
 See [full docs for MCP server](mcp.md).
+
+## Metabase CLI
+
+**Best for: technical folks who want an AI coding agent to work with Metabase from the terminal.**
+
+The [Metabase CLI](../installation-and-operation/metabase-cli.md) (`mb`) is a command-line client that reads and writes Metabase content (questions, dashboards, collections, transforms, and more) over the Metabase API. You can run the CLI yourself, but it's built for AI coding agents like Claude Code. Add the [metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill) to your agent, describe what you want in plain language, and the agent works out the commands.
+
+**Controls**: The CLI logs in to Metabase as a person (through the browser) or with an [API key](../people-and-groups/api-keys.md), so it can only do what that person's or key's permissions allow. On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see who uses the CLI and what it does in [CLI analytics](../monitor/cli-analytics.md).
+
+**Provider**: Everything is handled by your coding agent of choice.
+
+**Plans**: The CLI works with Metabase 58 and later on all plans. Some command groups, like `git-sync`, need a Pro or Enterprise plan.
+
+See [full docs for the Metabase CLI](../installation-and-operation/metabase-cli.md).
 
 ## Agent-driven development workflow
 

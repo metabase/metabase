@@ -1,6 +1,12 @@
 (ns metabase.query-processor.execute
   (:require
+   [clojure.set :as set]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
@@ -26,6 +32,29 @@
                      (assoc :native_form ((some-fn :qp/compiled-inline :qp/compiled) query)))))]
       (qp query rff*))))
 
+(defn- dissoc-native-form [result]
+  (cond-> result
+    (map? result) (m/dissoc-in [:data :native_form])))
+
+(mu/defn- remove-native-form-without-native-perms :- ::qp.schema/qp
+  "Remove `:native_form` from the results unless the current user has ad-hoc native query perms for the query's
+  database. Without them, the compiled query could leak things the user can't otherwise see, e.g. a sandbox's
+  injected filter, a sandbox Card's SQL, or the login attribute values bound into it.
+
+  This runs outside the cache middleware, so cached results (which include the `:native_form` of whoever ran the query
+  originally) are stripped as well."
+  [qp :- ::qp.schema/qp]
+  (fn [query rff]
+    (if (qp.perms/current-user-has-adhoc-native-query-perms? query)
+      (qp query rff)
+      (letfn [(rff* [metadata]
+                (let [rf (rff (dissoc metadata :native_form))]
+                  (fn
+                    ([] (rf))
+                    ([result] (dissoc-native-form (rf (dissoc-native-form result))))
+                    ([acc row] (rf acc row)))))]
+        (qp query rff*)))))
+
 (def ^:private middleware
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
@@ -40,26 +69,35 @@
   ;; to execute INSIDE the `binding` blocks established by the EE postprocessing middlewares below. See
   ;; [[metabase.query-processor.middleware.process-userland-query/capture-execution-context-middleware]] for why.
   [#'qp.process-userland-query/capture-execution-context-middleware
+   #'qp.middleware.enterprise/apply-workspace-sql-remapping-middleware
    #'qp.middleware.enterprise/swap-destination-db-middleware
    #'qp.middleware.enterprise/apply-impersonation-postprocessing-middleware
    #'update-used-cards/update-used-cards!
    #'add-native-form-to-result-metadata
    #'cache/maybe-return-cached-results
+   #'remove-native-form-without-native-perms
    #'qp.perms/check-query-permissions
    #'qp.middleware.enterprise/check-download-permissions-middleware])
 
 (def ^:private execute* nil)
 
-(mu/defn- run [query :- ::qp.schema/any-query
+(mu/defn- run [query :- ::lib.schema/query
                rff   :- ::qp.schema/rff]
-  ;; if the query has a `:qp/compiled` key (i.e., this query was compiled from MBQL), rename it to `:native`, so the
-  ;; driver implementations only need to look for one key. Can't really do this any sooner because it will break schema
-  ;; checks in the middleware
-  (let [query (cond-> query
-                ;; TODO (Cam 9/15/25) -- update this and downstream code (drivers) to handle MBQL 5
-                (:lib/type query) lib/->legacy-MBQL)
-        query (cond-> query
-                (not (:native query)) (assoc :native (:qp/compiled query)))]
+  (let [query (if (driver.u/supports? driver/*driver* :mbql-5-native-query-execution (lib.metadata/database query))
+                ;; keep MBQL 5 for execution
+                (if (lib/native-only-query? query)
+                  query
+                  ;; keep any driver-specific keys in the compiled query, e.g. MongoDB's `:collection`
+                  (let [native-stage (-> (:qp/compiled query)
+                                         (set/rename-keys {:query :native})
+                                         (assoc :lib/type :mbql.stage/native))]
+                    (assoc query
+                           :stages             [native-stage]
+                           :qp/original-stages (:stages query))))
+                ;; convert to legacy (drop this code branch in 69)
+                (let [legacy-query #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL query)]
+                  (cond-> legacy-query
+                    (not (:native legacy-query)) (assoc :native (:qp/compiled legacy-query)))))]
     (qp.pipeline/*run* query rff)))
 
 (mu/defn- execute-fn :- ::qp.schema/qp

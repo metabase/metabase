@@ -1,4 +1,8 @@
 (ns metabase.sql-tools.sqlglot.core
+  "The `:sqlglot` implementations of the [[metabase.sql-tools.interface]] multimethods. They serve every backend in
+  [[metabase.sql-parsing.core/backends]]: each method hands the backend it receives to
+  [[metabase.sql-parsing.core/parser]], and the shared pipeline in [[metabase.sql-tools.common]] dispatches its
+  nested calls with that same backend."
   (:require
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
@@ -6,7 +10,9 @@
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.interface :as sql-tools]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (java.util IdentityHashMap)))
 
 (set! *warn-on-reflection* true)
 
@@ -41,6 +47,8 @@
     :presto-jdbc         "presto"
     :starburst           "trino"
     :clickhouse          "clickhouse"
+    :motherduck          "duckdb"
+    :druid-jdbc          "druid"
     :vertica             nil
     :h2                  nil
     ;; Default: try using the driver name as dialect
@@ -49,11 +57,11 @@
 ;;;; Tables
 
 (defn- referenced-tables
-  [driver query]
+  [backend driver query]
   (try
     (let [sql (lib/raw-native-query query)
-          default-schema (sql.normalize/default-schema driver)
-          query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)
+          default-schema (:default-schema (lib.metadata/database query))
+          query-tables (sql-parsing/referenced-tables (sql-parsing/parser backend) (driver->dialect driver) sql)
           specs (map (fn [[_catalog table-schema table]]
                        (sql-tools.common/normalize-table-spec
                         driver {:table table
@@ -62,9 +70,7 @@
           table-ids (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table specs))
           db-tables (lib.metadata/bulk-metadata query :metadata/table table-ids)
           db-transforms (lib.metadata/transforms query)]
-      (into #{}
-            (keep #(sql-tools.common/find-table-or-transform driver db-tables db-transforms %))
-            specs))
+      (sql-tools.common/resolve-table-specs driver (lib.metadata/database query) db-tables db-transforms specs))
     (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
       (if (sql-parsing/parse-error? e)
@@ -72,8 +78,8 @@
         (throw e)))))
 
 (defmethod sql-tools/referenced-tables-impl :sqlglot
-  [_parser driver query]
-  (referenced-tables driver query))
+  [backend driver query]
+  (referenced-tables backend driver query))
 
 ;;;; field-references
 
@@ -82,37 +88,48 @@
    Matches Macaw's col-fields which normalizes [:type :column :table :schema :database :alias]."
   #{:type :column :table :schema :database :alias})
 
+(declare normalize-field)
+
+(defn- normalize-value
+  "`v`, the value of the key `k` in a field spec, with its identifier strings normalized."
+  [driver cache k v]
+  (cond
+    (and (normalizable-keys k) (string? v)) (sql.normalize/normalize-name driver v)
+    (map? v)                                (normalize-field driver cache v)
+    (set? v)                                (into #{} (map #(normalize-field driver cache %)) v)
+    (sequential? v)                         (mapv #(normalize-field driver cache %) v)
+    :else                                   v))
+
+(defn- normalize-keys
+  "The map `field` with each of its values normalized."
+  [driver cache field]
+  (reduce-kv (fn [m k v]
+               (assoc m k (normalize-value driver cache k v)))
+             field
+             field))
+
 (defn- normalize-field
   "Normalize identifier strings in a field spec using driver-specific case rules.
-   Only normalizes specific keys (column, table, schema, etc.) to match Macaw's col-fields."
-  [driver field]
-  (if (map? field)
-    (reduce-kv (fn [m k v]
-                 (assoc m k
-                        (cond
-                          (and (normalizable-keys k) (string? v))
-                          (sql.normalize/normalize-name driver v)
+   Only normalizes specific keys (column, table, schema, etc.) to match Macaw's col-fields.
+   `cache` holds the composite fields normalized so far."
+  [driver cache field]
+  (cond
+    (not (map? field))
+    field
 
-                          (map? v)
-                          (normalize-field driver v)
+    (= :composite-field (:type field))
+    (sql-parsing/cached-by-identity! cache field #(normalize-keys driver cache field))
 
-                          (set? v)
-                          (set (map #(normalize-field driver %) v))
-
-                          (sequential? v)
-                          (mapv #(normalize-field driver %) v)
-
-                          :else v)))
-               {}
-               field)
-    field))
+    :else
+    (normalize-keys driver cache field)))
 
 (defmethod sql-tools/field-references-impl :sqlglot
-  [_parser driver sql-string]
-  (let [result (sql-parsing/field-references (driver->dialect driver) sql-string)]
+  [backend driver sql-string]
+  (let [result (sql-parsing/field-references (sql-parsing/parser backend) (driver->dialect driver) sql-string)
+        cache  (IdentityHashMap.)]
     (-> result
-        (update :used-fields #(set (map (partial normalize-field driver) %)))
-        (update :returned-fields #(mapv (partial normalize-field driver) %))
+        (update :used-fields #(set (map (partial normalize-field driver cache) %)))
+        (update :returned-fields #(mapv (partial normalize-field driver cache) %))
         (update :errors #(set (map convert-error %))))))
 
 ;;;; referenced-fields
@@ -123,20 +140,20 @@
 
 ;;;; Validation
 ;; SQLGlot validation uses the same pipeline as Macaw:
-;; field-references (dispatched to :sqlglot) → resolve-field (Macaw's logic)
+;; field-references (dispatched on the same backend) → resolve-field (Macaw's logic)
 (defmethod sql-tools/validate-query-impl :sqlglot
-  [parser driver query]
-  (sql-tools.common/validate-query parser driver query))
+  [backend driver query]
+  (sql-tools.common/validate-query backend driver query))
 
 ;;;; returned-columns
 ;; SQLGlot returned-columns uses the same pipeline as Macaw:
-;; field-references (dispatched to :sqlglot) → resolve-field (Macaw's logic)
+;; field-references (dispatched on the same backend) → resolve-field (Macaw's logic)
 (defmethod sql-tools/returned-columns-impl :sqlglot
-  [parser driver query]
-  (sql-tools.common/returned-columns parser driver query))
+  [backend driver query]
+  (sql-tools.common/returned-columns backend driver query))
 
 (defmethod sql-tools/referenced-tables-raw-impl :sqlglot
-  [_parser driver sql-str]
+  [backend driver sql-str opts]
   (try
     (let [dialect (driver->dialect driver)
           ;; sql-parsing/referenced-tables returns [[catalog schema table] ...]
@@ -146,38 +163,42 @@
           ;; via normalize-table-spec would incorrectly lowercase Snowflake identifiers, breaking
           ;; AppDB lookups where identifiers are stored in their native case.
           ;; This matches the Macaw implementation which also returns raw identifiers.
-          table-tuples (sql-parsing/referenced-tables dialect sql-str)]
+          table-tuples (sql-parsing/referenced-tables (sql-parsing/parser backend) dialect sql-str)]
       (mapv (fn [[_catalog schema table]]
               {:schema schema :table table})
             table-tuples))
     (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
-      (if (sql-parsing/parse-error? e)
+      (if (and (sql-parsing/parse-error? e) (not (:fail-on-parse-error? opts)))
         []
         (throw e)))))
 
 (defmethod sql-tools/simple-query?-impl :sqlglot
-  [_parser sql-string]
+  [backend sql-string]
   (try
     ;; No dialect available from caller, use nil for SQLGlot's default dialect
-    (sql-parsing/simple-query? nil sql-string)
+    (sql-parsing/simple-query? (sql-parsing/parser backend) nil sql-string)
     (catch Exception e
       (log/debugf "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
 (defmethod sql-tools/add-into-clause-impl :sqlglot
-  [_parser driver sql table-name]
-  (sql-parsing/add-into-clause (driver->dialect driver) sql table-name))
+  [backend driver sql table-name]
+  (sql-parsing/add-into-clause (sql-parsing/parser backend) (driver->dialect driver) sql table-name))
+
+(defmethod sql-tools/add-insert-clause-impl :sqlglot
+  [backend driver sql table-name]
+  (sql-parsing/add-insert-clause (sql-parsing/parser backend) (driver->dialect driver) sql table-name))
 
 (defmethod sql-tools/replace-names-impl :sqlglot
-  [_parser driver sql-string replacements _opts]
+  [backend driver sql-string replacements _opts]
   ;; Convert map keys to list-of-pairs for JSON serialization
   ;; {:tables {{:table "a"} "b"}} -> {:tables [[{:table "a"} "b"]]}
   (let [replacements' (-> replacements
                           (update :tables #(when % (vec %)))
                           (update :columns #(when % (vec %))))]
-    (sql-parsing/replace-names (driver->dialect driver) sql-string replacements')))
+    (sql-parsing/replace-names (sql-parsing/parser backend) (driver->dialect driver) sql-string replacements')))
 
 (defmethod sql-tools/transpile-sql-impl :sqlglot
-  [_parser sql from-dialect to-dialect]
-  (sql-parsing/transpile-sql sql from-dialect to-dialect))
+  [backend sql from-dialect to-dialect]
+  (sql-parsing/transpile-sql (sql-parsing/parser backend) sql from-dialect to-dialect))

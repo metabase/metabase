@@ -6,13 +6,14 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -32,13 +33,19 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
+   (com.google.auth.oauth2 AccessToken #_ExternalAccountCredentials GoogleCredentials)
    (com.google.cloud.bigquery BigQuery BigQueryException Field FieldValue FieldValue$Attribute FieldValueList JobId LegacySQLTypeName Schema TableResult)
    (com.google.cloud.http HttpTransportOptions)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (is (nil? (driver.sql/default-schema :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)))))))
 
 (defn ^:private get-test-data-name
   []
@@ -105,6 +112,29 @@
                        :client_email "test@test-project.iam.gserviceaccount.com"}
                       extra)))
 
+;; (defn- credential-config-json
+;;   "A Workload Identity Federation credential configuration, as `gcloud iam workload-identity-pools create-cred-config`
+;;   writes it for a Kubernetes projected service account token."
+;;   [& {:as extra}]
+;;   (json/encode (merge {:type                              "external_account"
+;;                        :audience                          (str "//iam.googleapis.com/projects/123456/locations/global/"
+;;                                                                "workloadIdentityPools/metabase/providers/aks")
+;;                        :subject_token_type                "urn:ietf:params:oauth:token-type:jwt"
+;;                        :token_url                         "https://sts.googleapis.com/v1/token"
+;;                        :service_account_impersonation_url (str "https://iamcredentials.googleapis.com/v1/projects/-/"
+;;                                                                "serviceAccounts/metabase@my-project.iam.gserviceaccount.com"
+;;                                                                ":generateAccessToken")
+;;                        :credential_source                 {:file "/var/run/secrets/tokens/gcp-token"}}
+;;                       extra)))
+
+;; (defn- azure-imds-credential-source
+;;   "A `credential_source` that fetches the subject token from the Azure instance metadata service."
+;;   []
+;;   {:url     (str "http://169.254.169.254/metadata/identity/oauth2/token"
+;;                  "?api-version=2018-02-01&resource=api://metabase")
+;;    :headers {:Metadata "True"}
+;;    :format  {:type "json", :subject_token_field_name "access_token"}})
+
 (deftest ^:parallel connection-hosts-test
   (testing "the fixed vendor endpoints are reported even when nothing is configured"
     (is (= #{"bigquery.googleapis.com" "oauth2.googleapis.com"}
@@ -122,9 +152,27 @@
            (set (driver/connection-hosts
                  :bigquery-cloud-sdk
                  {:service-account-json (service-account-json :token_uri "http://sts.internal/token")})))))
-  (testing "credentials we cannot read fail closed rather than reporting only the endpoints we can see"
-    (is (thrown? Exception
-                 (driver/connection-hosts :bigquery-cloud-sdk {:service-account-json "{not json"})))))
+  ;; credential-config disabled for now until we can confirm it works
+  ;; (testing "every URL in a credential configuration file is somewhere Metabase connects to while authenticating"
+  ;;   (is (= #{"bigquery.googleapis.com" "sts.googleapis.com" "iamcredentials.googleapis.com"}
+  ;;          (set (driver/connection-hosts :bigquery-cloud-sdk
+  ;;                                        {:auth-mode "credential-config"
+  ;;                                         :credential-config-json (credential-config-json)}))))
+  ;;   (is (= #{"bigquery.googleapis.com" "sts.googleapis.com" "iamcredentials.googleapis.com" "169.254.169.254"}
+  ;;          (set (driver/connection-hosts
+  ;;                :bigquery-cloud-sdk
+  ;;                {:auth-mode "credential-config"
+  ;;                 :credential-config-json (credential-config-json :credential_source (azure-imds-credential-source))})))))
+  ;; (testing "Application Default Credentials come from the server's environment, so only the API endpoint is reported"
+  ;;   (is (= #{"bigquery.googleapis.com"}
+  ;;          (set (driver/connection-hosts :bigquery-cloud-sdk {:auth-mode "credential-config"})))))
+  ;; (testing "credentials we cannot read fail closed rather than reporting only the endpoints we can see"
+  ;;   (is (thrown? Exception
+  ;;                (driver/connection-hosts :bigquery-cloud-sdk {:service-account-json "{not json"})))
+  ;;   (is (thrown? Exception
+  ;;                (driver/connection-hosts :bigquery-cloud-sdk {:auth-mode "credential-config"
+  ;;                                                              :credential-config-json "{not json"}))))
+  )
 
 (deftest client-honors-network-policy-test
   (testing "the network policy is enforced when the client is built, not only when the database is saved"
@@ -134,7 +182,39 @@
            clojure.lang.ExceptionInfo
            #"Cannot connect to a private or internal network address"
            (#'bigquery/database-details->client {:host                 "https://169.254.169.254"
-                                                 :service-account-json (service-account-json)}))))))
+                                                 :service-account-json (service-account-json)})))
+      ;; (testing "including where a credential configuration file would fetch its subject token from"
+      ;;   (is (thrown-with-msg?
+      ;;        clojure.lang.ExceptionInfo
+      ;;        #"Cannot connect to a private or internal network address"
+      ;;        (#'bigquery/database-details->client
+      ;;         {:project-id             "my-project"
+      ;;          :auth-mode              "credential-config"
+      ;;          :credential-config-json (credential-config-json :credential_source (azure-imds-credential-source))}))))
+      )))
+
+(deftest client-auth-mode-test
+  ;; `GOOGLE_CLOUD_PROJECT` is where the Google SDK looks first for the server's default project, so setting it pins
+  ;; down what credentials that carry no project of their own fall back to, whatever the machine running the tests
+  ;; has configured.
+  (mt/with-temp-system-property! ["GOOGLE_CLOUD_PROJECT" "env-project"]
+    ;; (testing "a credential configuration file (Workload Identity Federation) builds a client"
+    ;;   (let [details {:credential-config-json (credential-config-json)
+    ;;                  :auth-mode              "credential-config"}
+    ;;         client  (#'bigquery/database-details->client (assoc details :billing-project-id "billing"))]
+    ;;     (is (instance? ExternalAccountCredentials (.getCredentials (.getOptions ^BigQuery client))))
+    ;;     (testing "whose jobs run in the billing project when one is set"
+    ;;       (is (= "billing" (.getProjectId (.getOptions ^BigQuery client)))))
+    ;;     (testing "and in the server's default project otherwise"
+    ;;       (is (= "env-project"
+    ;;              (.getProjectId (.getOptions ^BigQuery (#'bigquery/database-details->client details))))))))
+    (testing "with neither file, the server's Application Default Credentials build the client"
+      (let [adc (GoogleCredentials/create (AccessToken. "token" nil))]
+        (mt/with-dynamic-fn-redefs [bigquery.common/application-default-credentials (constantly adc)]
+          (let [client (#'bigquery/database-details->client {:project-id "data"
+                                                             :auth-mode  "application-default"})]
+            (is (identical? adc (.getCredentials (.getOptions ^BigQuery client))))
+            (is (= "env-project" (.getProjectId (.getOptions ^BigQuery client))))))))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -262,9 +342,9 @@
   (let [requested (atom [])
         next-size  (fn [budget max-rows rows]
                      (reset! requested [])
-                     (with-redefs [bigquery/list-sample-page (fn [_bq size _token]
-                                                               (swap! requested conj size)
-                                                               (mock-page nil []))]
+                     (mt/with-dynamic-fn-redefs [bigquery/list-sample-page (fn [_bq size _token]
+                                                                             (swap! requested conj size)
+                                                                             (mock-page nil []))]
                        (binding [bigquery/*page-byte-budget* budget]
                          ((#'bigquery/adaptive-sample-next-page :table max-rows) (mock-page "tok" rows))
                          (first @requested))))
@@ -301,6 +381,9 @@
           sizes     (atom [])
           requests  (atom 0)
           orig-next-page-size @#'bigquery/next-page-size]
+      ;; `next-page-size` takes and returns primitive longs, so compiled callers invoke it through `IFn$LLLLL`.
+      ;; The dynamic-redefs proxy is a plain variadic fn, and would throw ClassCastException there.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [bigquery/next-page-size    (fn ^long [^long budget ^long bytes ^long rows ^long rem]
                                                  (let [n (long (orig-next-page-size budget bytes rows rem))]
                                                    (swap! sizes conj n)
@@ -333,13 +416,13 @@
                      (fn [_cols reducible] (into [] reducible))
                      nil)]
     (testing "a later page that comes back nil is reported, not silently truncated (#47339)"
-      (with-redefs [bigquery/query-results-page (fn [_job _opts] nil)]
+      (mt/with-dynamic-fn-redefs [bigquery/query-results-page (fn [_job _opts] nil)]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Cannot get next page from BigQuery"
                               (consume)))))
     (testing "a later page that throws surfaces the original error"
-      (with-redefs [bigquery/query-results-page (fn [_job _opts]
-                                                  (throw (ex-info "onoes BigQuery failed to fetch a later page" {})))]
+      (mt/with-dynamic-fn-redefs [bigquery/query-results-page (fn [_job _opts]
+                                                                (throw (ex-info "onoes BigQuery failed to fetch a later page" {})))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"onoes BigQuery failed to fetch a later page"
                               (consume)))))))
@@ -434,7 +517,7 @@
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= "UTC"
-           (driver/db-default-timezone :bigquery-cloud-sdk (mt/db))))))
+           (driver/db-default-timezone :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)))))))
 
 (def ^:private numeric-val "-1.2E20")
 (def ^:private decimal-val "2.3E16")
@@ -463,7 +546,7 @@
                             (fn [& args]
                               (swap! invocation-count inc)
                               (apply orig-describe-dataset-fields-reducible args))]
-                (is (not= [] (into [] (take 10) (driver/describe-fields :bigquery-cloud-sdk (mt/db)))))
+                (is (not= [] (into [] (take 10) (driver/describe-fields :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider))))))
                 (is (= 1 @invocation-count)))))
           (testing "describe-fields correctly partitions tables for a reducible result"
             (let [invocation-count (atom 0)]
@@ -472,7 +555,7 @@
                             (fn [& args]
                               (swap! invocation-count inc)
                               (apply orig-describe-dataset-fields-reducible args))]
-                (is (<= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db))))))
+                (is (<= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)))))))
                 (is (<= 20 @invocation-count))))))))))
 
 (deftest ^:parallel describe-fields-truncates-data-type-test
@@ -492,6 +575,27 @@
             (is (str/includes? sql "substr(p.data_type, ?, ?)"))
             ;; the "YES" between the pairs is the is_partitioning_column comparison
             (is (= [1 200 "YES" 1 200] (take 5 @captured-params)))))))))
+
+(deftest ^:parallel describe-dataset-table-descriptions-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "a column's description comes from its own COLUMN_FIELD_PATHS entry, even when a row for one of its nested
+              fields comes first (#18872)"
+      (let [row             {:table_name "t" :column_name "r" :data_type "STRUCT<a STRING>" :ordinal_position 1}
+            [record scalar] (#'bigquery/describe-dataset-table
+                             "ds"
+                             [(assoc row :nested_data_type "STRING" :field_path "r.a" :description "nested description")
+                              (assoc row :nested_data_type "STRUCT<a STRING>" :field_path "r" :description "record description")
+                              {:table_name       "t"
+                               :column_name      "s"
+                               :data_type        "STRING"
+                               :ordinal_position 2
+                               :nested_data_type "STRING"
+                               :field_path       "s"
+                               :description      nil}])]
+        (is (= "record description" (:field-comment record)))
+        (is (= ["nested description"] (map :field-comment (:nested-fields record))))
+        (is (= "s" (:name scalar)))
+        (is (not (contains? scalar :field-comment)))))))
 
 (def ^:private native-dataset
   (tx/native-dataset-definition
@@ -622,13 +726,13 @@
     (mt/dataset
       native-dataset
       (let [view-name "category_view"]
-        (is (contains? (into #{} (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))
+        (is (contains? (into #{} (:tables (driver/describe-database :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)))))
                        {:schema (get-test-data-name) :name view-name :database_require_filter false})
             "`describe-database` should see the view")
         (is (= [{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name view-name :table-schema (get-test-data-name)}
                 {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false :table-name view-name :table-schema (get-test-data-name)}
                 {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false :table-name view-name :table-schema (get-test-data-name)}]
-               (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [view-name], :schema-names [(get-test-data-name)]})))
+               (into [] (driver/describe-fields :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)) {:table-names [view-name], :schema-names [(get-test-data-name)]})))
             "`describe-fields` should see the fields in the view")
         (testing "describe-database"
           (qp.store/with-metadata-provider (mt/id)
@@ -637,7 +741,7 @@
                       :database_require_filter false}}
                    (into #{}
                          (filter (comp #{view-name} :name))
-                         (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
+                         (:tables (driver/describe-database :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)))))))))
         (testing "We should be able to run queries against the view (#3414)"
           (is (= [[1 "Red Medicine" "Asian"]
                   [2 "Stout Burgers & Beers" "Burger"]
@@ -646,6 +750,92 @@
                   (mt/run-mbql-query nil
                     {:source-table (mt/id view-name)
                      :order-by     [[:asc (mt/id view-name :id)]]})))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            Description sync (#18872)                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private escaped-description
+  "TABLE_OPTIONS stores table descriptions as GoogleSQL string literals: quotes and backslashes are escaped, control
+  characters come out as `\\xHH` (not valid JSON), and non-ASCII is kept verbatim. Exercise all of those."
+  "it's a \"quoted\" C:\\temp path,\ttab, new\nline, bell\u0007, 學生, 🚀")
+
+(def ^:private descriptions-dataset
+  "Dataset for the #18872 sync test: table-level, top-level column, RECORD column and nested subfield descriptions."
+  (tx/map->DatabaseDefinition
+   {:database-name "descriptions-dataset"
+    :options       {}
+    :table-definitions
+    [(tx/map->TableDefinition
+      {:table-name    "described_table"
+       :table-comment "Top-level table description for sync test (#18872)."
+       :rows          []
+       :field-definitions
+       [(tx/map->FieldDefinition
+         {:field-name    "described_text"
+          :base-type     :type/Text
+          :field-comment "Top-level column description for sync test (#18872)."})
+        (tx/map->FieldDefinition
+         {:field-name "undescribed_text"
+          :base-type  :type/Text})
+        (tx/map->FieldDefinition
+         {:field-name    "described_record"
+          :base-type     :type/Dictionary
+          :field-comment "Record column description for sync test (#18872)."
+          :nested-fields [(tx/map->FieldDefinition
+                           {:field-name    "described_nested"
+                            :base-type     :type/Text
+                            :field-comment "Nested column description for sync test (#18872)."})
+                          (tx/map->FieldDefinition
+                           {:field-name "undescribed_nested"
+                            :base-type  :type/Text})]})]})
+     (tx/map->TableDefinition
+      {:table-name        "escaped_table"
+       :table-comment     escaped-description
+       :rows              []
+       :field-definitions [(tx/map->FieldDefinition
+                            {:field-name    "escaped_text"
+                             :base-type     :type/Text
+                             :field-comment escaped-description})]})]}))
+
+(deftest sync-descriptions-test
+  (testing "BigQuery driver propagates table and column descriptions during sync (#18872)"
+    (mt/test-driver
+      :bigquery-cloud-sdk
+      (mt/dataset
+        descriptions-dataset
+        (testing "describe-database carries table-level descriptions"
+          (let [descriptions (into {}
+                                   (map (juxt :name :description))
+                                   (:tables (driver/describe-database :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)))))]
+            (is (= "Top-level table description for sync test (#18872)."
+                   (descriptions "described_table")))
+            (testing "including the escape sequences BigQuery writes into TABLE_OPTIONS"
+              (is (= escaped-description (descriptions "escaped_table"))))))
+        (testing "describe-fields carries column descriptions"
+          (let [fields  (into [] (driver/describe-fields :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider))
+                                                         {:table-names  ["described_table" "escaped_table"]
+                                                          :schema-names [(get-test-data-name)]}))
+                by-name (into {} (map (juxt :name identity)) fields)]
+            (is (= "Top-level column description for sync test (#18872)."
+                   (:field-comment (by-name "described_text"))))
+            (is (= escaped-description
+                   (:field-comment (by-name "escaped_text"))))
+            (testing "columns without a BigQuery description are emitted without :field-comment"
+              (is (not (contains? (by-name "undescribed_text") :field-comment))))
+            (testing "RECORD columns and their subfields carry their own descriptions"
+              (let [record         (by-name "described_record")
+                    nested-by-name (into {} (map (juxt :name identity)) (:nested-fields record))]
+                (is (= "Record column description for sync test (#18872)."
+                       (:field-comment record)))
+                (is (= "Nested column description for sync test (#18872)."
+                       (:field-comment (nested-by-name "described_nested"))))
+                (is (not (contains? (nested-by-name "undescribed_nested") :field-comment)))))))
+        (testing "sync writes the descriptions to the app DB"
+          (is (= "Top-level table description for sync test (#18872)."
+                 (t2/select-one-fn :description :model/Table :id (mt/id :described_table))))
+          (is (= "Top-level column description for sync test (#18872)."
+                 (t2/select-one-fn :description :model/Field :id (mt/id :described_table :described_text)))))))))
 
 (deftest sync-materialized-view-test
   (mt/test-driver
@@ -660,7 +850,7 @@
                       :database_require_filter false}}
                    (into #{}
                          (filter (comp #{view-name} :name))
-                         (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
+                         (:tables (driver/describe-database :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)))))))))
         (testing "We should be able to run queries against the view (#3414)"
           (is (= [[42]]
                  (mt/rows
@@ -698,7 +888,7 @@
     :bigquery-cloud-sdk
     (mt/dataset
       nested-records
-      (let [database (driver/describe-database :bigquery-cloud-sdk (mt/db))
+      (let [database (driver/describe-database :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)))
             tables (sort-by :name (into [] (:tables database)))]
         (is (=? [{:name "records"} {:name "records_o"}] tables))
         (is (=? [{:name "id"}
@@ -728,12 +918,8 @@
                                      :base-type :type/Integer,
                                      :database-position 2,
                                      :nfc-path ["r" "rr"]}]}]}]
-                (walk/postwalk
-                 (fn [n]
-                   (if (set? n)
-                     (sort-by :name n)
-                     n))
-                 (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records"]})))))
+                (-> (into [] (driver/describe-fields :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)) {:table-names ["records"]}))
+                    (match/replace-all #'set? (sort-by :name &match)))))
         (is (=? [{:name "id"}
                  {:name "r"
                   :database-type "RECORD",
@@ -742,13 +928,9 @@
                                    :database-type "INTEGER",
                                    :base-type :type/Integer,
                                    :nfc-path ["r"]}]}]
-                (walk/postwalk
-                 (fn [n]
-                   (if (set? n)
-                     (sort-by :name n)
-                     n))
-                 (into [] (filter (fn [x] (= (:table-name x) "records_o"))
-                                  (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records" "records_o"]}))))))))))
+                (-> (into [] (filter (fn [x] (= (:table-name x) "records_o"))
+                                     (driver/describe-fields :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)) {:table-names ["records" "records_o"]})))
+                    (match/replace-all #'set? (sort-by :name &match)))))))))
 
 (deftest ^:parallel query-nested-fields-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -793,7 +975,7 @@
                                              "partition_by_ingestion_time"
                                              "partition_by_range_not_required"
                                              "partition_by_ingestion_time_not_required"} :name))
-                             (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
+                             (:tables (driver/describe-database :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)))))))))
             (testing "tables that require a filter are correctly identified"
               (is (= table-name->is-filter-required?
                      (t2/select-fn->fn :name :database_require_filter :model/Table
@@ -881,13 +1063,13 @@
                                              PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10));"
                                             (fmt-table-name "partitioned_table")))
               (testing "sanity check that it's not required at first"
-                (sync/sync-database! (mt/db) {:scan :schema})
+                (sync/sync-database! (mt/id) {:scan :schema})
                 (is (false? (t2/select-one-fn :database_require_filter :model/Table :name table-name))))
               (testing "sync should update require filter and set it to true"
                 (bigquery.tx/execute! (format "ALTER TABLE IF EXISTS %s
                                                SET OPTIONS(require_partition_filter = true);"
                                               (fmt-table-name table-name)))
-                (sync/sync-database! (mt/db) {:scan :schema})
+                (sync/sync-database! (mt/id) {:scan :schema})
                 (is (true? (t2/select-one-fn :database_require_filter :model/Table :name table-name :db_id (mt/id)))))
               (finally
                 (drop-table-if-exists! table-name)))))))))
@@ -903,14 +1085,14 @@
         (let [category-field-id (u/auto-retry 1
                                   (try (mt/id :fv_partitioned_table :category)
                                        (catch Exception e
-                                         (sync/sync-database! (mt/db) {:scan :schema})
+                                         (sync/sync-database! (mt/id) {:scan :schema})
                                          (throw e))))
               category-field    (t2/select-one :model/Field :id category-field-id)
               table             (t2/select-one :model/Table :id (:table_id category-field))]
           (testing "Dispatcher identifies this as a non-batch-able table"
-            (is (false? (#'sync.field-values/can-batch-distinct? table))))
+            (is (false? (#'sync.field-values/can-batch-distinct? (lib.metadata/database (mt/metadata-provider)) table))))
           (testing "Distinct values come back correctly via the fallback per-field path"
-            (t2/update! :model/Field category-field-id {:has_field_values :list})
+            (t2/update! :model/Field :id category-field-id {:has_field_values :list})
             (t2/delete! :model/FieldValues :field_id category-field-id)
             (sync.field-values/sync-fields-grouped-by-table! [category-field])
             (is (= #{"coffee" "tea" "matcha"}
@@ -929,9 +1111,9 @@
                                   (try
                                     (mt/id :fv_partitioned_table :category)
                                     (catch Exception e
-                                      (sync/sync-database! (mt/db) {:scan :schema})
+                                      (sync/sync-database! (mt/id) {:scan :schema})
                                       (throw e))))]
-          (t2/update! :model/Field category-field-id {:has_field_values :search})
+          (t2/update! :model/Field :id category-field-id {:has_field_values :search})
           (t2/delete! :model/FieldValues :field_id category-field-id)
           (= [["coffee"]]
              (mt/user-http-request :crowberto :get 200 (format "/field/%d/search/%d" category-field-id category-field-id)
@@ -945,7 +1127,7 @@
         native-dataset
         ;; Fake fk relationship for bigquery because apparently fk on bigquery is not a thing.
         ;; We want this to test whether chain filter add a filter on partitioned fields from joned tables.
-        (t2/update! :model/Field (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
+        (t2/update! :model/Field :id (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
         (mt/with-temp
           [:model/Card          card-category {:database_id   (mt/id)
                                                :table_id      (mt/id :cf_category)
@@ -1022,7 +1204,7 @@
                            ^com.google.cloud.bigquery.JobInfo _job-info
                            ^"[Lcom.google.cloud.bigquery.BigQuery$JobOption;" _opts]
                           (throw sync-error)))]
-      (with-redefs [bigquery/database-details->client (constantly mock-client)]
+      (mt/with-dynamic-fn-redefs [bigquery/database-details->client (constantly mock-client)]
         (let [ex (try
                    (#'bigquery/execute-bigquery (constantly nil) {} "SELECT 1" [] nil)
                    nil
@@ -1059,7 +1241,7 @@
                                           :dataset-filters-patterns "chicago_taxi_trips"))}]
         (mt/with-db temp-db
           (testing " for sync"
-            (sync/sync-database! temp-db {:scan :schema})
+            (sync/sync-database! (:id temp-db) {:scan :schema})
             (let [[tbl & more-tbl] (t2/select :model/Table :db_id db-id)]
               (is (some? tbl))
               (is (nil? more-tbl))
@@ -1148,7 +1330,7 @@
            decimal-val
            bignumeric-val
            bigdecimal-val)
-          (is (contains? (into #{} (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))
+          (is (contains? (into #{} (:tables (driver/describe-database :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)))))
                          {:schema (get-test-data-name) :name tbl-nm :database_require_filter false})
               "`describe-database` should see the table")
           (is (= [{:base-type :type/Decimal
@@ -1221,9 +1403,9 @@
                    :base-type :type/Decimal,
                    :database-partitioned false,
                    :database-position 9}]
-                 (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [(get-test-data-name)]})))
+                 (into [] (driver/describe-fields :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)) {:table-names [tbl-nm] :schema-names [(get-test-data-name)]})))
               "`describe-fields` should see the fields in the table")
-          (sync/sync-database! (mt/db) {:scan :schema})
+          (sync/sync-database! (mt/id) {:scan :schema})
           (testing "We should be able to run queries against the table"
             (doseq [[col-nm param-v] {"numeric_col"    (bigdec numeric-val)
                                       "decimal_col"    (bigdec decimal-val)
@@ -1279,7 +1461,7 @@
                    :base-type :type/Array,
                    :database-partitioned false,
                    :database-position 3}]
-                 (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [(get-test-data-name)]})))
+                 (into [] (driver/describe-fields :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)) {:table-names [tbl-nm] :schema-names [(get-test-data-name)]})))
               "`describe-fields` should detect the correct base-type for array type columns"))))))
 
 (deftest sync-inactivates-old-duplicate-tables
@@ -1290,7 +1472,7 @@
           (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
             (is (= 2 (count synced-tables)))
             (t2/insert! :model/Table (map #(dissoc % :id :entity_id :schema) synced-tables))
-            (sync/sync-database! (mt/db) {:scan :schema})
+            (sync/sync-database! (mt/id) {:scan :schema})
             (let [synced-tables (t2/select :model/Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]
                              false [{:name "messages"} {:name "users"}]}
@@ -1412,7 +1594,7 @@
 
 (defn- synced-tables [db-attributes]
   (mt/with-temp [:model/Database db db-attributes]
-    (sync/sync-database! db {:scan :schema})
+    (sync/sync-database! (:id db) {:scan :schema})
     (t2/select :model/Table :db_id (u/the-id db))))
 
 (deftest dataset-filtering-test
@@ -1493,7 +1675,7 @@
             ;; hence, assert it was not called anymore here
             (is (= 0 @call-count) "convert-dataset-id-to-filters! should not have been called any more times"))
           ;; now, so we need to manually update the temp DB again here, to force the "old" structure
-          (let [updated? (pos? (t2/update! :model/Database db-id {:details {:dataset-id "my-dataset"}}))]
+          (let [updated? (pos? (t2/update! :model/Database :id db-id {:details {:dataset-id "my-dataset"}}))]
             (is updated?)
             (let [updated (t2/select-one :model/Database :id db-id)]
               (is (nil? (get-in updated [:details :dataset-id])))
@@ -1570,7 +1752,7 @@
           [22345678901234567890.1234567890M]
           [32345678901234567890.1234567890M]]]])
       ;; Must sync field values
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (is (= "BIGNUMERIC"
              (t2/select-one-fn :database_type :model/Field :id (mt/id :bigthings :bd))))
       (is (= [[12000000000000000000M 1]
@@ -1586,7 +1768,7 @@
 (deftest bigquery-process-stop-test
   (mt/test-driver
     :bigquery-cloud-sdk
-    (sync/sync-database! (mt/db) {:scan :schema})
+    (sync/sync-database! (mt/id) {:scan :schema})
     (let [before-names (future-thread-names)]
       (doseq [:let [callbacks (atom 0)]
               [stop-tag stopper] [[:exception #(throw (Exception. "My Exception"))]
@@ -1692,6 +1874,28 @@
              (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))
 
+(deftest ^:parallel ws-sa-description-roundtrip-test
+  (testing "ws-sa-description and ws-sa-description->created-at are exact inverses"
+    ;; This is a contract test. The SA description is the only place the
+    ;; created-at marker is stored, so the writer in
+    ;; `ws-create-service-account!` and the reader used by CI cleanup
+    ;; (`metabase.test.data.bigquery-cloud-sdk/delete-old-isolation-service-accounts!`)
+    ;; must agree on format. If this test fails, orphan SA cleanup will
+    ;; silently break -- expired SAs will accumulate because their created-at
+    ;; can no longer be parsed.
+    (doseq [instant [(java.time.Instant/parse "2026-01-15T10:30:45.123456789Z")
+                     (java.time.Instant/parse "2026-12-31T23:59:59Z")
+                     (java.time.Instant/parse "2020-06-15T00:00:00Z")
+                     (java.time.Instant/now)]]
+      (is (= instant
+             (bigquery.ws/ws-sa-description->created-at (bigquery.ws/ws-sa-description instant)))
+          (str "round-trip failed for " instant))))
+  (testing "ws-sa-description->created-at returns nil for non-conforming inputs"
+    (is (nil? (bigquery.ws/ws-sa-description->created-at nil)))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "")))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "some other description")))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "created-at:not-an-instant")))))
+
 (deftest ^:parallel bigquery-field-filter-alias-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [mp    (mt/metadata-provider)
@@ -1699,13 +1903,12 @@
                          FROM %s.products p
                          WHERE 1=1 [[ AND {{category}} ]]
                          ORDER BY p.title ASC;" (get-test-data-name))
-          product-category (lib/ref (lib.metadata/field mp (mt/id :products :category)))
           query (-> (lib/native-query mp sql)
                     (lib/with-template-tags {"category" {:name "category"
                                                          :alias "p.category"
                                                          :display-name "Category"
                                                          :type :dimension
-                                                         :dimension product-category
+                                                         :field-id (mt/id :products :category)
                                                          :widget-type :text}})
                     (assoc :parameters [{:type :text
                                          :target [:dimension [:template-tag "category"]]

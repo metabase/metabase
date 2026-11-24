@@ -10,26 +10,27 @@ import CS from "metabase/css/core/index.css";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { getQueryAndColumns } from "metabase/querying/common/utils";
 import { Box, DelayGroup, Icon } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type Table from "metabase-lib/v1/metadata/Table";
+import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type { IconName } from "metabase-types/api";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { CONTAINER_WIDTH } from "../constants";
+import type { DataSelectorField, DataSelectorTable } from "../types";
 
 import DataSelectorFieldPickerS from "./DataSelectorFieldPicker.module.css";
 
 const STAGE_INDEX = -1;
 
 type DataSelectorFieldPickerProps = {
-  fields: Field[];
+  fields: DataSelectorField[];
   hasFiltering?: boolean;
   hasInitialFocus?: boolean;
   isLoading?: boolean;
-  selectedField?: Field;
-  selectedTable?: Table;
+  selectedField?: DataSelectorField;
+  selectedTable?: DataSelectorTable;
   onBack?: () => void;
-  onChangeField: (field: Field) => void;
+  onChangeField: (field: DataSelectorField) => void;
+  getFieldDisplayName: (field: DataSelectorField) => string;
 };
 
 type HeaderProps = {
@@ -39,7 +40,7 @@ type HeaderProps = {
 
 type FieldWithName = {
   name: string;
-  field: Field;
+  field: DataSelectorField;
 };
 
 export const DataSelectorFieldPicker = ({
@@ -51,15 +52,11 @@ export const DataSelectorFieldPicker = ({
   onBack,
   hasFiltering,
   hasInitialFocus,
+  getFieldDisplayName,
 }: DataSelectorFieldPickerProps) => {
   const metadataProvider = useMetadataProvider(selectedTable?.db_id ?? null);
   const queryAndColumns = useMemo(
-    () =>
-      getQueryAndColumns(
-        metadataProvider,
-        selectedTable,
-        fields.map((field) => field.getPlainObject()),
-      ),
+    () => getQueryAndColumns(metadataProvider, selectedTable, fields),
     [metadataProvider, selectedTable, fields],
   );
 
@@ -73,7 +70,7 @@ export const DataSelectorFieldPicker = ({
     {
       name: header,
       items: fields.map((field) => ({
-        name: field.displayName(),
+        name: getFieldDisplayName(field),
         field: field,
       })),
     },
@@ -83,7 +80,7 @@ export const DataSelectorFieldPicker = ({
     item.field && selectedField && item.field.id === selectedField.id;
 
   const renderItemIcon = (item: FieldWithName) => {
-    const queryAndColumn = queryAndColumns.get(item.field.getPlainObject());
+    const queryAndColumn = queryAndColumns.get(item.field);
     return (
       queryAndColumn && (
         <QueryColumnInfoIcon
@@ -92,8 +89,9 @@ export const DataSelectorFieldPicker = ({
           column={queryAndColumn.column}
           position="top-end"
           size={18}
-          // Unjustified type cast. FIXME
-          icon={item.field.icon() as unknown as IconName}
+          // getIconForField returns one of the icon names in its own
+          // mapping, typed as a plain string.
+          icon={getIconForField(item.field) as IconName}
         />
       )
     );
@@ -111,7 +109,9 @@ export const DataSelectorFieldPicker = ({
           maxHeight={Infinity}
           width="100%"
           searchable={hasFiltering}
-          onChange={(item: { field: Field }) => onChangeField(item.field)}
+          onChange={(item: { field: DataSelectorField }) =>
+            onChangeField(item.field)
+          }
           itemIsSelected={checkIfItemIsSelected}
           itemIsClickable={(item: FieldWithName) => Boolean(item.field)}
           renderItemWrapper={renderItemWrapper}

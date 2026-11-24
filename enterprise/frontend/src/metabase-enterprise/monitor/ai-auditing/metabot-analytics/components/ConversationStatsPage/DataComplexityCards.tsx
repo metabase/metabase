@@ -6,6 +6,8 @@ import { getErrorMessage } from "metabase/api/utils";
 import {
   Accordion,
   Alert,
+  Badge,
+  type BadgeColor,
   Box,
   Card,
   Flex,
@@ -43,24 +45,17 @@ import S from "./DataComplexityCards.module.css";
 
 type RatingColorKey = DataComplexityRating | "default";
 
-const RATING_BADGE_BACKGROUND_COLORS = {
-  low: "feedback-positive-selected",
-  medium: "background_surface-warning-strong",
-  high: "background_surface-error",
-  default: "background_page-tertiary",
-} satisfies Record<RatingColorKey, MetabaseColorKey>;
-
-const RATING_BADGE_TEXT_COLORS = {
-  low: "success-secondary",
-  medium: "text-primary",
-  high: "error",
-  default: "text-secondary",
-} satisfies Record<RatingColorKey, MetabaseColorKey>;
+const RATING_BADGE_COLORS = {
+  low: "positive",
+  medium: "warning",
+  high: "negative",
+  default: "neutral",
+} satisfies Record<RatingColorKey, BadgeColor>;
 
 const RATING_TEXT_COLORS = {
-  low: "success",
-  medium: "warning",
-  high: "error",
+  low: "feedback-positive",
+  medium: "feedback-warning",
+  high: "feedback-negative",
   default: "text-secondary",
 } satisfies Record<RatingColorKey, MetabaseColorKey>;
 
@@ -91,11 +86,11 @@ function DataComplexityCard({
   const { subtitle, title } = match(catalogId)
     .with("library", () => ({
       title: t`Curated semantic layer`,
-      subtitle: t`Metrics and published tables within your Library.`,
+      subtitle: t`Metrics and published tables within your semantic layer.`,
     }))
     .with("universe", () => ({
       title: t`Full semantic layer`,
-      subtitle: t`Library entities plus every active physical table.`,
+      subtitle: t`Semantic layer entities plus every active physical table.`,
     }))
     .with("metabot", () => ({
       title: t`Metabot-visible layer`,
@@ -108,7 +103,7 @@ function DataComplexityCard({
       <Stack component={UnstyledButton} onClick={open} flex={1} gap={0}>
         <Flex align="center" justify="space-between" gap="sm">
           <Text fw={700}>{title}</Text>
-          <Icon name="expand" c="text-disabled" />
+          <Icon name="expand" c="text-secondary" />
         </Flex>
         <Text c="text-secondary">{subtitle}</Text>
         {catalog.score !== null ? (
@@ -296,7 +291,7 @@ function DataComplexityComponentItem({
             {count}
           </Text>
           <Tooltip label={description}>
-            <Icon name="info" c="text-disabled" size={14} />
+            <Icon name="info" c="text-secondary" size={14} />
           </Tooltip>
           <ScoreDisplayInline score={component} />
         </Flex>
@@ -389,28 +384,17 @@ function ScoreDisplayInline({
       </Text>
     ))
     .with({ score: P.nonNullable }, ({ score, rating }) => {
-      const ratingColorKey = rating ?? "default";
+      const formattedScore = formatNumber(score, { maximumFractionDigits: 0 });
 
       return (
-        <Flex
+        <Badge
+          size="sm"
+          color={RATING_BADGE_COLORS[rating ?? "default"]}
           ml="auto"
-          px={8}
-          py={4}
-          bdrs="xs"
-          bg={RATING_BADGE_BACKGROUND_COLORS[ratingColorKey]}
           {...rest}
-          gap="sm"
         >
-          {withTitle && (
-            <Text
-              lh="1rem"
-              c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}
-            >{t`Complexity score`}</Text>
-          )}
-          <Text fw={700} lh="1rem" c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}>
-            {formatNumber(score, { maximumFractionDigits: 0 })}
-          </Text>
-        </Flex>
+          {withTitle ? t`Complexity score ${formattedScore}` : formattedScore}
+        </Badge>
       );
     })
     .exhaustive();

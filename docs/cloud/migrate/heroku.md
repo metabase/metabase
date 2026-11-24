@@ -1,5 +1,6 @@
 ---
 title: "Migrating from Heroku to Metabase Cloud"
+summary: The extra steps for running the Metabase Cloud migration script on Heroku.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true
@@ -16,7 +17,7 @@ There are some additional steps you'll need to take to migrate from Heroku to Me
 
 ## Follow the migration guide to get the migration script
 
-You should follow along with the [migration guide](./guide.md). Once you download the migration script you'll need to get shell access to your Heroku server to execute the migration script.
+You should follow along with the [migration guide](https://www.metabase.com/docs/latest/cloud/migrate/guide). Once you download the migration script you'll need to get shell access to your Heroku server to execute the migration script.
 
 ## Install Heroku CLI for your OS
 
@@ -38,7 +39,7 @@ You may be prompted to log in to Heroku through your browser. Once logged in, yo
 
 ### Set your MB_DB_CONNECTION_URI
 
-Before running the migration script, you'll need to set the `MB_DB_CONNECTION_URI`.
+Before running the migration script, you'll need to set the [`MB_DB_CONNECTION_URI`](../../configuring-metabase/environment-variables.md#mb_db_connection_uri).
 
 To get the Config Vars, log in to Heroku and go to the **Settings** tab for your Metabase app. In the **Config vars** section, you'll see your `DATABASE_URL`. Copy the corresponding connection URL string, which you'll use to set your `MB_DB_CONNECTION_URI`. Setting this environment variable will let your new Metabase Cloud instance access data in your existing application database.
 
@@ -50,10 +51,10 @@ export MB_DB_CONNECTION_URI=YOUR_DATABASE_URL_GOES_HERE
 
 ### Run the migration script in your heroku
 
-In the same shell session, run your [migration script](./guide.md).
+In the same shell session, run your [migration script](https://www.metabase.com/docs/latest/cloud/migrate/guide).
 
 ```bash
 curl -s long-metabase-migration-script-url | bash
 ```
 
-That should be all there is to it. See the [migration guide](./guide.md) for details.
+That should be all there is to it. See the [migration guide](https://www.metabase.com/docs/latest/cloud/migrate/guide) for details.

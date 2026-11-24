@@ -28,7 +28,7 @@
 
 (mr/def ::grant-response
   "Schema for a support access grant object in API responses."
-  [:map
+  [:map {:closed true}
    [:id ms/PositiveInt]
    [:user_id ms/PositiveInt]
    [:user_name [:maybe :string]]
@@ -40,8 +40,7 @@
    [:revoked_at [:maybe ::timestamp]]
    [:revoked_by_user_id [:maybe ms/PositiveInt]]
    [:created_at ::timestamp]
-   [:updated_at ::timestamp]
-   [:token {:optional true} [:maybe :string]]])
+   [:updated_at ::timestamp]])
 
 (mr/def ::list-grants-response
   "Schema for GET /api/ee/support-access-grants response (paginated list)."
@@ -57,21 +56,13 @@
 
 (mr/def ::support-access-grant-log
   "A SupportAccessGrantLog as selected from the app DB: every column of `:support_access_grant_log`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:user_id               [:maybe ::lib.schema.id/user]]
-   [:ticket_number         [:maybe :string]]
-   [:notes                 [:maybe :string]]
-   [:grant_start_timestamp ms/TemporalInstant]
-   [:grant_end_timestamp   ms/TemporalInstant]
-   [:revoked_at            [:maybe ms/TemporalInstant]]
-   [:revoked_by_user_id    [:maybe ::lib.schema.id/user]]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]])
+  ::support-access-grant-log.update)
 
 (mr/def ::support-access-grant-log.update
-  "What an update (or insert) of a SupportAccessGrantLog accepts: every column of `:support_access_grant_log` except `id`, all optional."
+  "What an update of a SupportAccessGrantLog takes: its `:id` and every other column of `:support_access_grant_log`,
+  all optional."
   [:map {:closed true}
+   [:id                    ms/PositiveInt]
    [:user_id               {:optional true} [:maybe ::lib.schema.id/user]]
    [:ticket_number         {:optional true} [:maybe :string]]
    [:notes                 {:optional true} [:maybe :string]]
@@ -81,3 +72,12 @@
    [:revoked_by_user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::support-access-grant-log.create
+  "What creating a SupportAccessGrantLog takes: its creator, ticket number, notes, and the window it grants access for."
+  [:map {:closed true}
+   [:user_id               ::lib.schema.id/user]
+   [:ticket_number         [:maybe :string]]
+   [:notes                 [:maybe :string]]
+   [:grant_start_timestamp ms/TemporalInstant]
+   [:grant_end_timestamp   ms/TemporalInstant]])

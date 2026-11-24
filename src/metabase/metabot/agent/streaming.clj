@@ -14,11 +14,10 @@
 ;; These match the Python AI Service's AISDKDataTypes enum
 
 (def state-type "AI-SDK data type for state updates." "state")
-(def todo-list-type "AI-SDK data type for todo lists." "todo_list")
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
-(def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
 (def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
+(def dashboard-saved-type "AI-SDK data type for a dashboard that a tool saved." "dashboard_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
@@ -30,7 +29,9 @@
   ;; state is diffed separately into the row's state column
   ;; search_results and tool_title render under the client-only chain of
   ;; thought, never rehydrated
-  #{state-type search-results-type tool-title-type})
+  #{search-results-type
+    state-type
+    tool-title-type})
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -76,17 +77,6 @@
    :data-type state-type
    :data state-map})
 
-(defn todo-list-part
-  "Create a TODO_LIST data part for streaming.
-  Todos should be a vector of todo item maps with :id, :content, :status, :priority keys.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.TODO_LIST, version=1, value=todos)"
-  [todos]
-  {:type :data
-   :data-type todo-list-type
-   :data todos})
-
 (defn code-edit-part
   "Create a CODE_EDIT data part for streaming.
   Edit-data should be a map describing the code edit operation.
@@ -97,17 +87,6 @@
   {:type :data
    :data-type code-edit-type
    :data edit-data})
-
-(defn transform-suggestion-part
-  "Create a TRANSFORM_SUGGESTION data part for streaming.
-  Suggestion should be a map containing the suggested transform definition.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.TRANSFORM_SUGGESTION, version=1, value=suggestion)"
-  [suggestion]
-  {:type :data
-   :data-type transform-suggestion-type
-   :data suggestion})
 
 (defn adhoc-viz-part
   "Create an ADHOC_VIZ data part for streaming.
@@ -151,6 +130,16 @@
    :data-type entity-saved-type
    :data value})
 
+(defn dashboard-saved-part
+  "Create a DASHBOARD_SAVED data part for streaming.
+  The `value` describes a dashboard a tool created, edited, trashed or restored:
+  `{:dashboard_id :action :name :url :collection_id :open :saved_charts}`.
+  The frontend links it, reloads it when it is open, and opens it when `:open` is true."
+  [value]
+  {:type :data
+   :data-type dashboard-saved-type
+   :data value})
+
 (defn search-results-part
   "Data part carrying a search tool's hit list (`:total_count` + `:results`),
   rendered under the search step in the chain of thought."
@@ -180,9 +169,10 @@
    :data {:title title}})
 
 (defn viz-part
-  "Return the `generated_entity` card data part that surfaces a query/chart result
-  to the frontend. Embeds the (legacy) `query` so the FE runs and renders the card
-  in the conversation. The caller must supply a distinct `entity-id` (card id) and
+  "Return a `generated_entity` card data part for the frontend.
+
+  The frontend runs and renders `query` in the conversation.
+  The caller must supply a distinct `entity-id` (card ID) and
   `query-id`, plus a `title`; `display` and `description` are included when present."
   [{:keys [entity-id query-id query display title description]}]
   (generated-entity-part
@@ -216,6 +206,26 @@
                            (cond-> dp
                              (map? (:data dp)) (assoc-in [:data :tool_call_id] (:id part)))))
               [part]))))
+
+(defn combine-text-parts-xf
+  "Transducer that merges each run of consecutive `:text` parts into one `:text` part.
+
+  Other parts pass through unchanged."
+  []
+  (fn [rf]
+    (let [pending (volatile! nil)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [p @pending]
+           (rf (if p (rf result p) result))))
+        ([result part]
+         (let [prev @pending]
+           (if (and prev (= :text (:type prev) (:type part)))
+             (do (vswap! pending update :text str (:text part))
+                 result)
+             (do (vreset! pending part)
+                 (if prev (rf result prev) result)))))))))
 
 (defn post-process-xf
   "Composed transducer for post-processing agent output.

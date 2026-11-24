@@ -6,6 +6,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.cache.schema :as cache.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -35,10 +36,45 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :collection_id] :id card-id))
 
+(mu/defn dashboard-collection-ids :- [:map-of ::lib.schema.id/dashboard [:maybe ::lib.schema.id/collection]]
+  "The `:collection_id` of each of the Dashboards with `dashboard-ids`, by id."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (if (seq dashboard-ids)
+    (t2/select-fn->fn :id :collection_id [:model/Dashboard :id :collection_id] :id [:in dashboard-ids])
+    {}))
+
+(mu/defn card-collection-ids :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]
+  "The `:collection_id` of each of the Cards with `card-ids`, by id."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select-fn->fn :id :collection_id [:model/Card :id :collection_id] :id [:in card-ids])
+    {}))
+
+(mu/defn databases
+  "The Databases with `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (if (seq database-ids)
+    (t2/select :model/Database :id [:in database-ids])
+    []))
+
+(mu/defn dashboards
+  "The Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (if (seq dashboard-ids)
+    (t2/select :model/Dashboard :id [:in dashboard-ids])
+    []))
+
+(mu/defn cards
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
 (mu/defn cache-config
   "The CacheConfig with primary key `pk`, or nil."
   [pk :- ms/PositiveInt]
-  (t2/select-one :model/CacheConfig pk))
+  (t2/select-one :model/CacheConfig :id [:auto/param pk]))
 
 (mu/defn root-ttl-cache-config
   "The root TTL CacheConfig, or nil."
@@ -98,10 +134,11 @@
    limit          :- [:maybe ms/PositiveInt]
    offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/CacheConfig
-             (cond-> (base-query models collection id)
-               sort-column (assoc :order-by [[(sort-column->order-by sort-column) sort-direction]])
-               limit       (assoc :limit limit)
-               offset      (assoc :offset offset))))
+             (h2x/assert-map-or-nil!
+              (cond-> (base-query models collection id)
+                sort-column (assoc :order-by [[(sort-column->order-by sort-column) sort-direction]])
+                limit       (assoc :limit limit)
+                offset      (assoc :offset offset)))))
 
 (mu/defn cache-config-count-row
   "The `:count` row of the CacheConfigs [[cache-configs-page]] pages through."
@@ -118,13 +155,16 @@
    model-id :- ms/IntGreaterThanOrEqualToZero]
   (t2/select-one :model/CacheConfig :model model :model_id model-id {:for :update}))
 
-(mu/defn upsert-cache-config!
-  "Insert or replace the CacheConfig for `model` and `model-id` with `data`, returning its ID."
-  [model    :- :string
-   model-id :- ms/IntGreaterThanOrEqualToZero
-   data     :- (mut/select-keys ::cache.schema/cache-config.update [:model :model_id :strategy :config :refresh_automatically])]
-  (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model-id}
-                            (constantly data)))
+(mu/defn insert-cache-config!
+  "Insert the CacheConfig `data` and return the inserted instance."
+  [data :- (mut/select-keys ::cache.schema/cache-config.update [:model :model_id :strategy :config :refresh_automatically])]
+  (t2/insert-returning-instance! :model/CacheConfig data))
+
+(mu/defn update-cache-config-strategy!
+  "Apply `changes` of the strategy columns to the CacheConfig with `cache-config-id`, returning the number updated."
+  [cache-config-id :- ms/PositiveInt
+   changes         :- (mut/select-keys ::cache.schema/cache-config.update [:strategy :config :refresh_automatically])]
+  (t2/update! :model/CacheConfig :id cache-config-id changes))
 
 (mu/defn cache-configs-for
   "The CacheConfigs for `model` and `model-ids`."
@@ -132,11 +172,13 @@
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/CacheConfig :model model :model_id [:in model-ids]))
 
-(mu/defn delete-cache-configs!
-  "Delete the CacheConfigs for `model` and `model-ids`, returning the number deleted."
+(mu/defn cache-config-ids-for-targets :- [:sequential ms/PositiveInt]
+  "The ids of the CacheConfigs for `model` and `model-ids`, read `app-db/delete-partition-size` targets at a time."
   [model     :- :string
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
-  (t2/delete! :model/CacheConfig :model model :model_id [:in model-ids]))
+  (into []
+        (mapcat #(t2/select-pks-vec :model/CacheConfig :model model :model_id [:in (vec %)]))
+        (partition-all app-db/delete-partition-size model-ids)))
 
 (mu/defn card-ids-for-databases
   "The ids of the Cards of the Databases with `database-ids`."
@@ -147,12 +189,6 @@
   "The Card ids of the DashboardCards of the Dashboards with `dashboard-ids` (nil for DashboardCards without a Card)."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in dashboard-ids]))
-
-(mu/defn invalidate-cards!
-  "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, returning the number updated."
-  [card-ids       :- [:sequential ::lib.schema.id/card]
-   invalidated-at :- ms/TemporalInstant]
-  (t2/update! :model/Card :id [:in card-ids] {:cache_invalidated_at invalidated-at}))
 
 (mu/defn invalidate-cache-configs!
   "Set `invalidated_at` of the CacheConfigs identified by the `[model model-id]` pairs to `invalidated-at`, returning
@@ -168,3 +204,33 @@
   "Whether any CacheConfig exists."
   []
   (t2/exists? :model/CacheConfig))
+
+;;; ---------------------------------------------- Query cache entries ----------------------------------------------
+
+(mu/defn claim-query-cache-refresh-lease!
+  "Set `refresh_started_at` of the QueryCache entry for `query-hash` to `started-at` if its lease (defaulting to
+  `lease-free-sentinel`) is older than `lease-cutoff`, returning the number of rows updated."
+  [query-hash          :- bytes?
+   lease-free-sentinel :- ::cache.schema/temporal
+   lease-cutoff        :- ::cache.schema/temporal
+   started-at          :- ::cache.schema/temporal]
+  (t2/update! (t2/table-name :model/QueryCache)
+              {:query_hash                                         query-hash
+               [:coalesce :refresh_started_at lease-free-sentinel] [:< lease-cutoff]}
+              {:refresh_started_at started-at}))
+
+(mu/defn delete-query-caches-updated-before!
+  "Delete the QueryCache entries last updated at or before `updated-before`."
+  [updated-before :- ::cache.schema/temporal]
+  (t2/delete! (t2/table-name :model/QueryCache) :updated_at [:<= updated-before]))
+
+(mu/defn upsert-query-cache!
+  "Insert or update the QueryCache entry for `query-hash`, setting `:results` to `results` and `:updated_at` to
+  `timestamp` and clearing `:refresh_started_at`, and return its primary key, the hash bytes."
+  [query-hash :- bytes?
+   timestamp  :- ::cache.schema/temporal
+   results    :- bytes?]
+  (app-db/update-or-insert! :model/QueryCache {:query_hash query-hash}
+                            (constantly {:updated_at         timestamp
+                                         :results            results
+                                         :refresh_started_at nil})))

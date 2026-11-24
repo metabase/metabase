@@ -17,30 +17,39 @@
                                                     [:= :user_id manager-user-id]
                                                     [:= :is_group_manager true]]}]))
 
+(defn- data-analyst-visibility-clause
+  "Clause over a `permissions_group` query keeping every group except the data-analyst magic group, unless it has at least one active member."
+  []
+  [:or
+   [:= nil :magic_group_type]
+   [:not= "data-analyst" :magic_group_type]
+   [:exists ^:allow-subquery {:select [1]
+                              :from   [[:permissions_group_membership :pgm]]
+                              :join   [[:core_user :member] [:= :member.id :pgm.user_id]]
+                              :where  [:and
+                                       [:= :pgm.group_id :permissions_group.id]
+                                       [:= :member.is_active true]]}]])
+
 (mu/defn permissions-groups
   "Up to `limit` PermissionsGroups starting at `offset` (both optional), ordered by lower-cased name.
 
   `tenancy` (\"external\"/\"internal\"/nil) narrows to tenant/non-tenant groups (nil returns both); when
   `tenancy` is \"external\" and `tenants-enabled?` is false, no groups are returned. `manager-user-id`, when given,
   restricts to the groups that User manages. `advanced-permissions-enabled?` false excludes the data-analyst magic
-  group. `tenants-enabled?` false also excludes tenant groups outright, independent of `tenancy`.
-  `exclude-data-app-groups?` excludes groups that a data app manages."
+  group unless it has at least one active member. `tenants-enabled?` false also excludes tenant groups outright,
+  independent of `tenancy`."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
-   {:keys [tenancy manager-user-id tenants-enabled? advanced-permissions-enabled?
-           exclude-data-app-groups?]}
+   {:keys [tenancy manager-user-id tenants-enabled? advanced-permissions-enabled?]}
    :- [:map {:closed true}
        [:tenancy                        {:optional true} [:maybe [:enum "external" "internal"]]]
        [:manager-user-id                {:optional true} [:maybe ::lib.schema.id/user]]
        [:tenants-enabled?               {:optional true} :boolean]
-       [:advanced-permissions-enabled?  {:optional true} :boolean]
-       [:exclude-data-app-groups?       {:optional true} :boolean]]]
+       [:advanced-permissions-enabled?  {:optional true} :boolean]]]
   (let [base-where [:and
                     (managed-groups-clause :id manager-user-id)
-                    (when exclude-data-app-groups? [:not :is_data_app_group])
                     (when-not tenants-enabled? [:not :is_tenant_group])
-                    (when-not advanced-permissions-enabled?
-                      [:or [:= nil :magic_group_type] [:not= "data-analyst" :magic_group_type]])]
+                    (when-not advanced-permissions-enabled? (data-analyst-visibility-clause))]
         where (case tenancy
                 "external" (if tenants-enabled?
                              [:and base-where [:= :is_tenant_group true]]
@@ -57,72 +66,31 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroup :id id))
 
-(mu/defn permissions-group-exists?
-  "Whether a PermissionsGroup with `id` exists."
-  [id :- ms/PositiveInt]
-  (t2/exists? :model/PermissionsGroup :id id))
-
-(defn data-app-group?
-  "Whether the PermissionsGroup with `id` is managed by a data app."
-  [id]
-  (t2/exists? :model/PermissionsGroup :id id :is_data_app_group true))
-
-(mu/defn insert-permissions-group!
-  "Insert a PermissionsGroup and return the inserted instance."
-  [group-name    :- :string
-   tenant-group? :- :boolean]
-  (t2/insert-returning-instance! :model/PermissionsGroup :name group-name :is_tenant_group tenant-group?))
-
-(mu/defn rename-permissions-group!
-  "Set the name of the PermissionsGroup with `id`, returning the number updated."
-  [id         :- ms/PositiveInt
-   group-name :- :string]
-  (t2/update! :model/PermissionsGroup id {:name group-name}))
-
-(mu/defn delete-permissions-group!
-  "Delete the PermissionsGroup with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroup :id id))
-
 (mu/defn group-memberships
   "The membership id, group id, user id, and group manager flag of every PermissionsGroupMembership, optionally
-  restricted to the groups `manager-user-id` manages, excluding `excluded-group-id`, and excluding tenant groups
-  when `exclude-tenant-groups?`."
-  [{:keys [manager-user-id excluded-group-id exclude-tenant-groups?]}
+  restricted to the groups `manager-user-id` manages, and excluding tenant groups when `exclude-tenant-groups?`."
+  [{:keys [manager-user-id exclude-tenant-groups?]}
    :- [:map {:closed true}
        [:manager-user-id          {:optional true} [:maybe ::lib.schema.id/user]]
-       [:excluded-group-id        {:optional true} [:maybe ms/PositiveInt]]
        [:exclude-tenant-groups?   {:optional true} :boolean]]]
   (t2/select [:model/PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
              {:where (into [:and]
                            (keep identity)
                            [(managed-groups-clause :group_id manager-user-id)
-                            (when excluded-group-id [:not= :group_id excluded-group-id])
                             (when exclude-tenant-groups?
                               [:not-in :group_id ^:allow-subquery {:select [:id]
                                                                    :from   [:permissions_group]
                                                                    :where  [:= :is_tenant_group true]}])])}))
-
-(mu/defn non-admin-user-exists?
-  "Whether the User with `user-id` exists and is not a superuser."
-  [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id :is_superuser false))
-
-(defn active-user-exists?
-  "Whether an active User with `user-id` exists."
-  [user-id]
-  (t2/exists? :model/User :id user-id :is_active true))
 
 (mu/defn group-membership
   "The PermissionsGroupMembership with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroupMembership :id id))
 
-(mu/defn set-group-membership-manager!
-  "Set the group manager flag of the PermissionsGroupMembership with `id`, returning the number updated."
-  [id             :- ms/PositiveInt
-   group-manager? :- :boolean]
-  (t2/update! :model/PermissionsGroupMembership id {:is_group_manager group-manager?}))
+(mu/defn group-member-ids :- [:sequential ms/PositiveInt]
+  "The ids of the Users with a membership in the PermissionsGroup with `group-id`, active or not."
+  [group-id :- ms/PositiveInt]
+  (t2/select-fn-vec :user_id :model/PermissionsGroupMembership :group_id [:auto/param group-id]))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no

@@ -1,66 +1,98 @@
 (ns metabase.timeline.schema
   "Malli schemas for the timeline module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::name
+  ms/NonBlankString)
+
+(mr/def ::icon
+  [:enum "star" "cake" "mail" "mail_at" "warning" "bell" "cloud" "info" "note" "event"])
+
+(mr/def ::time-matters
+  :boolean)
+
 (mr/def ::timeline
   "A Timeline as selected from the app DB: every column of `:timeline`."
-  [:map {:closed true}
-   [:id            ms/PositiveInt]
-   [:name          :string]
-   [:description   [:maybe :string]]
-   [:icon          :string]
-   [:collection_id [:maybe ::lib.schema.id/collection]]
-   [:archived      :boolean]
-   [:creator_id    ::lib.schema.id/user]
-   [:created_at    ms/TemporalInstant]
-   [:updated_at    ms/TemporalInstant]
-   [:default       :boolean]
-   [:entity_id     :string]])
+  [:merge
+   ::timeline.update
+   [:map {:closed true}
+    [:collection    {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]]])
 
 (mr/def ::timeline.update
-  "What an update (or insert) of a Timeline accepts: every column of `:timeline` except `id`, all optional."
+  "A Timeline by its `id` with the columns to change, each optional."
   [:map {:closed true}
-   [:name          {:optional true} [:maybe :string]]
-   [:description   {:optional true} [:maybe :string]]
-   [:icon          {:optional true} [:maybe :string]]
-   [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:archived      {:optional true} [:maybe :boolean]]
-   [:creator_id    {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:default       {:optional true} [:maybe :boolean]]
-   [:entity_id     {:optional true} [:maybe :string]]])
+   [:id                ms/PositiveInt]
+   [:name              {:optional true} ::name]
+   [:description       {:optional true} [:maybe :string]]
+   [:icon              {:optional true} ::icon]
+   [:collection_id     {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:archived          {:optional true} [:maybe :boolean]]
+   [:archived_directly {:optional true} [:maybe :boolean]]
+   [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
+   [:default           {:optional true} [:maybe :boolean]]
+   [:entity_id         {:optional true} [:maybe :string]]
+   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::timeline.create
+  "What a caller gives to create a Timeline: the columns of an update without the `:id`, and the name."
+  [:merge
+   (reduce mut/dissoc ::timeline.update [:id :created_at :updated_at])
+   [:map {:closed true}
+    [:name ::name]]])
 
 (mr/def ::timeline-event
   "A TimelineEvent as selected from the app DB: every column of `:timeline_event`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:timeline_id  ms/PositiveInt]
-   [:name         :string]
-   [:description  [:maybe :string]]
-   [:timestamp    ms/TemporalInstant]
-   [:time_matters :boolean]
-   [:timezone     :string]
-   [:icon         :string]
-   [:archived     :boolean]
-   [:creator_id   ::lib.schema.id/user]
-   [:created_at   ms/TemporalInstant]
-   [:updated_at   ms/TemporalInstant]])
+  [:merge
+   ::timeline-event.update
+   [:map {:closed true}]])
 
 (mr/def ::timeline-event.update
-  "What an update (or insert) of a TimelineEvent accepts: every column of `:timeline_event` except `id`, all optional."
+  "A TimelineEvent by its `id` with the columns to change, each optional."
   [:map {:closed true}
-   [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
-   [:name         {:optional true} [:maybe :string]]
+   [:id           ms/PositiveInt]
+   [:timeline_id  {:optional true} ms/PositiveInt]
+   [:name         {:optional true} ::name]
    [:description  {:optional true} [:maybe :string]]
-   [:timestamp    {:optional true} [:maybe ms/TemporalInstant]]
-   [:time_matters {:optional true} [:maybe :boolean]]
+   [:timestamp    {:optional true} ms/TemporalInstant]
+   [:time_matters {:optional true} ::time-matters]
    [:timezone     {:optional true} [:maybe :string]]
-   [:icon         {:optional true} [:maybe :string]]
+   [:icon         {:optional true} ::icon]
    [:archived     {:optional true} [:maybe :boolean]]
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
+   [:entity_id    {:optional true} [:maybe :string]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::timeline-event.create
+  "What a caller gives to create a TimelineEvent: the columns of an update without the `:id`, and the timeline, name and
+  timestamp."
+  [:merge
+   (reduce mut/dissoc ::timeline-event.update [:id :created_at :updated_at])
+   [:map {:closed true}
+    [:timeline_id ms/PositiveInt]
+    [:name        ::name]
+    [:timestamp   ms/TemporalInstant]]])
+
+(mr/def ::external-timeline
+  "A Timeline as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::timeline [:archived :archived_directly :default :description :entity_id :icon :name :collection_id :creator_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:events {:optional true} [:maybe [:sequential [:ref ::external-timeline-event]]]]]]])
+
+(mr/def ::external-timeline-event
+  "A TimelineEvent as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::timeline-event [:archived :description :entity_id :icon :name :time_matters :timezone :creator_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:timestamp {:optional true} [:maybe ::models.schema/external-date]]]]])

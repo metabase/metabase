@@ -27,6 +27,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
 
+(set! *warn-on-reflection* true)
+
 ;;; TODO (Cam 7/18/25) -- update the tests in this namespace to use mock metadata providers instead of with-temp
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -539,7 +541,7 @@
         mp           (lib.tu/mock-metadata-provider
                       mp
                       {:cards [{:id            1
-                                :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                :dataset-query source-query
                                 :database-id   (mt/id)
                                 :name          "new_metric"
                                 :type          :metric}]})
@@ -555,7 +557,7 @@
         mp           (lib.tu/mock-metadata-provider
                       mp
                       {:cards [{:id            1
-                                :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                :dataset-query source-query
                                 :database-id   (mt/id)
                                 :name          "new_metric"
                                 :type          :metric}]})
@@ -573,7 +575,7 @@
         mp           (lib.tu/mock-metadata-provider
                       mp
                       {:cards [{:id            1
-                                :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                :dataset-query source-query
                                 :database-id   (mt/id)
                                 :name          "new_metric"
                                 :type          :metric}]})
@@ -594,7 +596,7 @@
                        (lib.tu/mock-metadata-provider
                         $mp
                         {:cards [{:id            1
-                                  :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                  :dataset-query source-query
                                   :database-id   (mt/id)
                                   :name          "new_metric"
                                   :type          :metric}]})
@@ -619,7 +621,7 @@
         mp           (lib.tu/mock-metadata-provider
                       mp
                       {:cards [{:id            1
-                                :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                :dataset-query source-query
                                 :database-id   (mt/id)
                                 :table-id      (mt/id :products)
                                 :name          "new_metric"
@@ -628,8 +630,7 @@
                                {:id            2
                                 :dataset-query (-> source-query
                                                    lib/append-stage
-                                                   (lib/aggregate (lib/count))
-                                                   lib.convert/->legacy-MBQL)
+                                                   (lib/aggregate (lib/count)))
                                 :database-id   (mt/id)
                                 :table-id      (mt/id :products)
                                 :name          "new_metric"
@@ -646,7 +647,7 @@
         mp           (lib.tu/mock-metadata-provider
                       mp
                       {:cards [{:id            1
-                                :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                :dataset-query source-query
                                 :database-id   (mt/id)
                                 :name          "new_metric"
                                 :type          :metric}]})
@@ -733,6 +734,8 @@
                                                 [:field (meta/id :venues :price) {}]]]]]
                                  {:display-name "Mock Metric"}]]}
           expand-macros (fn [mbql-query]
+                          ;; existing usage -- do not use going forward
+                          #_{:clj-kondo/ignore [:deprecated-var]}
                           (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->mbql5 mbql-query)))))]
       (comment
         (testing "nested 1 level"
@@ -832,7 +835,7 @@
                        (lib.tu/mock-metadata-provider
                         $mp
                         {:cards [{:id            1
-                                  :dataset-query (lib.convert/->legacy-MBQL model-query)
+                                  :dataset-query model-query
                                   :database-id   (mt/id)
                                   :name          "Orders model"
                                   :type          :model}]})
@@ -843,8 +846,7 @@
                                   (as-> (lib/query $mp (lib.metadata/card $mp 1)) $q
                                     (lib/breakout $q (m/find-first (comp #{"Category"} :display-name)
                                                                    (lib/breakoutable-columns $q)))
-                                    (lib/aggregate $q (lib/count))
-                                    (lib.convert/->legacy-MBQL $q))
+                                    (lib/aggregate $q (lib/count)))
                                   :database-id (mt/id)
                                   :name        "Orders model metric"
                                   :type        :metric}]}))
@@ -868,7 +870,7 @@
         mp           (lib.tu/mock-metadata-provider
                       mp
                       {:cards [{:id            1
-                                :dataset-query (lib.convert/->legacy-MBQL metric-query)
+                                :dataset-query metric-query
                                 :database-id   (mt/id)
                                 :name          "Orders Total Sum metric"
                                 :type          :metric}]})
@@ -883,7 +885,7 @@
         mp            (lib.tu/mock-metadata-provider
                        mp
                        {:cards [{:id            1
-                                 :dataset-query (lib.convert/->legacy-MBQL metric-query)
+                                 :dataset-query metric-query
                                  :database-id   (mt/id)
                                  :name          "Orders Total Sum metric"
                                  :type          :metric}]})
@@ -920,7 +922,7 @@
                                (lib/aggregate metric-agg)
                                (assoc :parameters
                                       [{:type   :string/=
-                                        :target [:dimension (lib.convert/->legacy-MBQL (lib/ref category-col))]
+                                        :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref category-col))]
                                         :value  ["Gadget"]}]))
               filter-query (-> orders-query
                                (lib/aggregate metric-agg)
@@ -937,7 +939,7 @@
         mp            (lib.tu/mock-metadata-provider
                        mp
                        {:cards [{:id            1
-                                 :dataset-query (lib.convert/->legacy-MBQL metric-query)
+                                 :dataset-query metric-query
                                  :database-id   (mt/id)
                                  :name          "Orders, Count"
                                  :type          :metric}]})
@@ -995,7 +997,7 @@
           mp           (lib.tu/mock-metadata-provider
                         mp
                         {:cards [{:id            1
-                                  :dataset-query (lib.convert/->legacy-MBQL metric-query)
+                                  :dataset-query metric-query
                                   :database-id   (mt/id)
                                   :name          "Orders, Count"
                                   :type          :metric}]})

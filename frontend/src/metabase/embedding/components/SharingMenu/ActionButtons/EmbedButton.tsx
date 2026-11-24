@@ -9,10 +9,7 @@ export function EmbedButton({ onClick }: { onClick: () => void }) {
 
   return (
     <Button
-      variant="default"
-      h="2rem"
       px="lg"
-      py="sm"
       leftSection={<Icon name="embed" aria-hidden />}
       onClick={() => {
         closeMenu();

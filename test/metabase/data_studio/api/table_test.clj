@@ -2,19 +2,26 @@
   "Tests for /api/data-studio/table endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.data-studio.api.table :as api.table]
+   [metabase.collections.models.collection :as collection]
    [metabase.data-studio.db :as data-studio.db]
+   [metabase.events.core :as events]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import (java.util.concurrent CountDownLatch Executors TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- user-table-fn
+  "The value of `column` on the Table with `table-id`."
+  [column table-id]
+  (t2/select-one-fn column :model/Table :id table-id))
 
 (deftest bulk-edit-visibility-sync-test
   (testing "POST /api/data-studio/table/edit visibility field synchronization"
@@ -26,25 +33,25 @@
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids  [table-1-id table-2-id]
                                :data_layer "internal"})
-        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))
-        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id))))
+        (is (= :internal (user-table-fn :data_layer table-1-id)))
+        (is (= nil (user-table-fn :visibility_type table-1-id)))
+        (is (= :internal (user-table-fn :data_layer table-2-id)))
+        (is (= nil (user-table-fn :visibility_type table-2-id))))
       (testing "updating data_layer to hidden syncs to hidden visibility_type"
         ;; Update one table back to hidden, which should sync to :hidden
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids  [table-1-id]
                                :data_layer "hidden"})
-        (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))
+        (is (= :hidden (user-table-fn :data_layer table-1-id)))
+        (is (= :hidden (user-table-fn :visibility_type table-1-id))))
       (testing "visibility_type is not part of this endpoint, so it is dropped and data_layer alone applies"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids       [table-1-id]
                                :visibility_type "hidden"
                                :data_layer      "final"})
         ;; had visibility_type been honoured, the model would have refused to update both at once
-        (is (= :final (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))))))
+        (is (= :final (user-table-fn :data_layer table-1-id)))
+        (is (= nil (user-table-fn :visibility_type table-1-id)))))))
 
 (deftest bulk-edit-does-not-allow-changing-data-source-away-from-transform-test
   (testing "POST /api/data-studio/table/edit cannot change a transform-created table's data_source"
@@ -53,25 +60,62 @@
       (mt/user-http-request :crowberto :post 400 "data-studio/table/edit"
                             {:table_ids   [table-id]
                              :data_source "ingested"})
-      (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id))))))
+      (is (= :metabase-transform (user-table-fn :data_source table-id))))))
+
+(deftest bulk-edit-does-not-accept-metabase-transform-data-source-test
+  (testing "POST /api/data-studio/table/edit does not accept metabase-transform as data_source"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id :data_source :ingested}]
+      (mt/user-http-request :crowberto :post 400 "data-studio/table/edit"
+                            {:table_ids   [table-id]
+                             :data_source "metabase-transform"})
+      (is (= :ingested (user-table-fn :data_source table-id))))))
 
 (deftest data-analyst-can-access-endpoints-test
-  (testing "Data analysts (members of Data Analysts group) can access data studio endpoints"
+  (testing "Data analysts (members of Data Analysts group) can access data studio endpoints with advanced-permissions"
     (let [data-analyst-group-id (:id (perms-group/data-analyst))]
       (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
                                                    :last_name "Analyst"
                                                    :email "data-analyst@metabase.com"
                                                    :is_data_analyst true}
-                     :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
                      :model/Database {db-id :id} {}
-                     :model/Table {table-id :id} {:db_id db-id}]
-        (testing "data analyst can edit tables"
-          (is (= {} (mt/user-http-request analyst-id :post 200 "data-studio/table/edit"
-                                          {:table_ids [table-id]
-                                           :data_layer "final"}))))
-        (testing "data analyst can get selection info"
-          (is (map? (mt/user-http-request analyst-id :post 200 "data-studio/table/selection"
-                                          {:table_ids [table-id]}))))))))
+                     :model/Table {table-id :id} {:db_id db-id :display_name "Test Table"}]
+        (mt/when-ee-evailable
+         (mt/with-premium-features #{:advanced-permissions}
+           (t2/insert! :model/PermissionsGroupMembership {:user_id analyst-id :group_id data-analyst-group-id})
+           (testing "data analyst can edit tables"
+             (is (= {} (mt/user-http-request analyst-id :post 200 "data-studio/table/edit"
+                                             {:table_ids [table-id]
+                                              :data_layer "final"}))))
+           (testing "data analyst can get selection info"
+             (is (map? (mt/user-http-request analyst-id :post 200 "data-studio/table/selection"
+                                             {:table_ids [table-id]}))))))
+        (mt/with-premium-features #{}
+          (testing "without advanced-permissions the data analyst is refused"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request analyst-id :post 403 "data-studio/table/selection"
+                                         {:table_ids [table-id]})))))))))
+
+(deftest bulk-endpoints-need-table-write-permission-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table {writable-id :id} {:db_id db-id}
+                 :model/Table {locked-id :id} {:db_id db-id}]
+    (mt/with-dynamic-fn-redefs [collection/remote-sync-writable-table? (fn [table] (not= locked-id (:id table)))]
+      (doseq [[endpoint body] {"edit"           {:data_layer "final"}
+                               "sync-schema"    {}
+                               "rescan-values"  {}
+                               "discard-values" {}}]
+        (testing endpoint
+          (testing "selection holding table without write permission is refused"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :crowberto :post 403 (str "data-studio/table/" endpoint)
+                                         (assoc body :table_ids [writable-id locked-id])))))))
+      (testing "nothing was written to either table"
+        (is (= #{:internal}
+               (t2/select-fn-set :data_layer :model/Table :id [:in [writable-id locked-id]]))))
+      (testing "selection of writable tables goes through"
+        (is (= {} (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
+                                        {:table_ids [writable-id] :data_layer "final"})))))))
 
 (deftest regular-user-cannot-access-data-studio-test
   (testing "Regular users (not in Data Analysts group) cannot access data studio endpoints"
@@ -168,6 +212,18 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 "data-studio/table/discard-values" {:database_ids [(mt/id)]})))))
 
+(deftest bulk-discard-values-runs-model-hooks-test
+  (testing "discarding FieldValues deletes them through the model, so their delete hooks run"
+    (mt/with-temp [:model/Table       {table-id :id} {}
+                   :model/Field       {field-id :id} {:table_id table-id}
+                   :model/FieldValues {fv-id :id}    {:field_id field-id, :values [1 2 3 4]}]
+      (let [deleted (atom #{})]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (when (= :event/field-values-delete topic)
+                                                (swap! deleted into (map (comp :id :previous-object) (:changes event)))))]
+          (field-values/delete-field-values! (field-values/ids-of-tables [table-id])))
+        (is (contains? @deleted fv-id))))))
+
 (deftest bulk-discard-values-test
   (mt/with-empty-h2-app-db!
     (testing "POST /api/data-studio/table/discard-values"
@@ -257,7 +313,7 @@
                    :model/Table    {internal-1 :id} {:db_id db-id, :data_layer :internal}
                    :model/Table    {final-1 :id}    {:db_id db-id, :data_layer :final}]
       (let [synced-ids (atom #{})]
-        (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables (fn [tables] (reset! synced-ids (set (map :id tables))))]
+        (mt/with-dynamic-fn-redefs [sync/sync-tables-in-background! (fn [tables] (reset! synced-ids (set (map :id tables))))]
           (testing "Changing from hidden to final triggers sync"
             (reset! synced-ids #{})
             (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
@@ -350,9 +406,12 @@
 (deftest selection-basic-test
   (testing "POST /api/data-studio/table/selection"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {t1 :id} {:db_id db-id :name "orders" :schema "PUBLIC" :is_published false}
-                   :model/Table    {t2 :id} {:db_id db-id :name "products" :schema "PUBLIC" :is_published true}
-                   :model/Table    _        {:db_id db-id :name "people" :schema "PUBLIC" :is_published false}]
+                   :model/Table    {t1 :id} {:db_id db-id :name "orders"
+                                             :display_name "Orders" :schema "PUBLIC" :is_published false}
+                   :model/Table    {t2 :id} {:db_id db-id :name "products"
+                                             :display_name "Products" :schema "PUBLIC" :is_published true}
+                   :model/Table    _        {:db_id db-id :name "people"
+                                             :display_name "People" :schema "PUBLIC" :is_published false}]
       (testing "returns a published table in selection with all required fields"
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                              {:table_ids [t2]})]
@@ -389,13 +448,15 @@
   (testing "POST /api/data-studio/table/selection with remapping dependencies"
     (mt/with-temp [:model/Database  {db-id :id}    {}
                    ;; Orders table with FK to Products
-                   :model/Table     {orders-id :id}   {:db_id db-id :name "orders" :schema "PUBLIC" :is_published false}
+                   :model/Table     {orders-id :id}   {:db_id db-id :name "orders"
+                                                       :display_name "Orders" :schema "PUBLIC" :is_published false}
                    :model/Field     _                 {:table_id orders-id :name "id" :semantic_type :type/PK
                                                        :base_type :type/Integer}
                    :model/Field     {product-fk :id}  {:table_id orders-id :name "product_id" :semantic_type :type/FK
                                                        :base_type :type/Integer}
                    ;; Products table
-                   :model/Table     {products-id :id} {:db_id db-id :name "products" :schema "PUBLIC" :is_published false}
+                   :model/Table     {products-id :id} {:db_id db-id :name "products"
+                                                       :display_name "Products" :schema "PUBLIC" :is_published false}
                    :model/Field     _                 {:table_id products-id :name "id" :semantic_type :type/PK
                                                        :base_type :type/Integer}
                    :model/Field     {prod-name-f :id} {:table_id products-id :name "name" :semantic_type :type/Name
@@ -419,7 +480,7 @@
                                                   :schema       "PUBLIC"}]}
                   response))))
       (testing "if products is already published, it appears in published_downstream when selecting it"
-        (t2/update! :model/Table products-id {:is_published true})
+        (t2/update! :model/Table :id products-id {:is_published true})
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                              {:table_ids [products-id]})]
           (is (=? {:selected_table               {:id           products-id
@@ -434,8 +495,8 @@
           ;; but orders is already unpublished, so published_downstream_tables should be empty
           (is (= [] (:published_downstream_tables response)))))
       (testing "when orders is published and we select products, orders appears in published_downstream"
-        (t2/update! :model/Table orders-id {:is_published true})
-        (t2/update! :model/Table products-id {:is_published true})
+        (t2/update! :model/Table :id orders-id {:is_published true})
+        (t2/update! :model/Table :id products-id {:is_published true})
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                              {:table_ids [products-id]})]
           (is (=? {:selected_table               {:id           products-id
@@ -457,14 +518,16 @@
     ;; orders.customer_id remaps to customers.name
     (mt/with-temp [:model/Database  {db-id :id}          {}
                    ;; Purchasers table
-                   :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers" :schema "PUBLIC"
+                   :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers"
+                                                           :display_name "Purchasers" :schema "PUBLIC"
                                                            :is_published false}
                    :model/Field     _                    {:table_id purchasers-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                           :semantic_type :type/Name :base_type :type/Text}
                    ;; Orders table
-                   :model/Table     {orders-id :id}      {:db_id db-id :name "orders" :schema "PUBLIC"
+                   :model/Table     {orders-id :id}      {:db_id db-id :name "orders"
+                                                          :display_name "Orders" :schema "PUBLIC"
                                                           :is_published false}
                    :model/Field     _                    {:table_id orders-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
@@ -473,7 +536,8 @@
                    :model/Field     {purchaser-fk :id}    {:table_id orders-id :name "purchaser_id"
                                                            :semantic_type :type/FK :base_type :type/Integer}
                    ;; Order items table
-                   :model/Table     {items-id :id}       {:db_id db-id :name "order_items" :schema "PUBLIC"
+                   :model/Table     {items-id :id}       {:db_id db-id :name "order_items"
+                                                          :display_name "Order Items" :schema "PUBLIC"
                                                           :is_published false}
                    :model/Field     _                    {:table_id items-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
@@ -509,14 +573,16 @@
     ;; If we unpublish customers, we need to unpublish orders and order_items too
     (mt/with-temp [:model/Database  {db-id :id}          {}
                    ;; Purchasers table (published)
-                   :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers" :schema "PUBLIC"
+                   :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers"
+                                                           :display_name "Purchasers" :schema "PUBLIC"
                                                            :is_published true}
                    :model/Field     _                    {:table_id purchasers-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                           :semantic_type :type/Name :base_type :type/Text}
                    ;; Orders table (published)
-                   :model/Table     {orders-id :id}      {:db_id db-id :name "orders" :schema "PUBLIC"
+                   :model/Table     {orders-id :id}      {:db_id db-id :name "orders"
+                                                          :display_name "Orders" :schema "PUBLIC"
                                                           :is_published true}
                    :model/Field     _                    {:table_id orders-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
@@ -525,7 +591,8 @@
                    :model/Field     {purchaser-fk :id}    {:table_id orders-id :name "purchaser_id"
                                                            :semantic_type :type/FK :base_type :type/Integer}
                    ;; Order items table (published)
-                   :model/Table     {items-id :id}       {:db_id db-id :name "order_items" :schema "PUBLIC"
+                   :model/Table     {items-id :id}       {:db_id db-id :name "order_items"
+                                                          :display_name "Order Items" :schema "PUBLIC"
                                                           :is_published true}
                    :model/Field     _                    {:table_id items-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}

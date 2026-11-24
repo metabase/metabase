@@ -5,7 +5,15 @@ import { t } from "ttag";
 
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import Animation from "metabase/css/core/animation.module.css";
-import { Box, Button, Center, Flex, Loader, Modal } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Center,
+  Flex,
+  Loader,
+  Modal,
+  SIDESHEET_TRANSITION_PROPS,
+} from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import type {
@@ -114,7 +122,11 @@ export function UpdateRowActionFormModal({
         onConfirm={handleLeaveConfirmation}
         onClose={handleContinue}
       />
-      <Modal.Root opened={opened} onClose={handleClose}>
+      <Modal.Root
+        opened={opened}
+        transitionProps={SIDESHEET_TRANSITION_PROPS}
+        onClose={handleClose}
+      >
         <Modal.Overlay />
         <Modal.Content
           transitionProps={{ transition: "slide-left" }}
@@ -159,7 +171,7 @@ export function UpdateRowActionFormModal({
               gap="xl"
               justify="flex-end"
             >
-              <Button variant="subtle" onClick={handleClose}>
+              <Button variant="subtle" color="neutral" onClick={handleClose}>
                 {t`Cancel`}
               </Button>
               <Button

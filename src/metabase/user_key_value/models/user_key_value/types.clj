@@ -3,6 +3,8 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.util :as mut]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -59,7 +61,7 @@
 (mu/defn- defnamespace
   "Declare a new namespace with a schema for the value"
   [namespace :- ::namespace
-   schema]
+   schema    :- [:and any? [:fn {:description "a malli schema"} mc/schema]]]
   (derive! namespace ::registered-namespace)
   (mr/register! namespace schema))
 
@@ -67,24 +69,63 @@
   []
   (descendants hierarchy ::registered-namespace))
 
+(defn- namespace-value-schema
+  "The `:value` entry's schema of a registered namespace's own schema (a `:map`, or a `:multi` of `:map`s)."
+  [namespace]
+  (let [schema (mc/schema (mr/schema namespace))]
+    (case (mc/type schema)
+      :map   (some (fn [[k _opts s]] (when (= k :value) s)) (mc/children schema))
+      :multi (let [value-schemas (keep (fn [[_dispatch-value _props branch]]
+                                         (some (fn [[k _opts s]] (when (= k :value) s)) (mc/children branch)))
+                                       (mc/children schema))]
+               (when (seq value-schemas)
+                 (into [:or] value-schemas)))
+      nil)))
+
+(defn- known-namespace-value-schemas
+  "The union of every registered namespace's `:value` schema, so `::user-key-value` doesn't need to type `:value`
+  generically."
+  []
+  (let [value-schemas (keep namespace-value-schema (known-namespaces))]
+    (if (seq value-schemas)
+      (into [:or] value-schemas)
+      :nil)))
+
 ;;; this is just a placeholder so LSP can register the place it lives for jump-to-definition functionality. Actual
 ;;; schema gets created below by [[user-key-value-schema]] and [[update-user-key-value-schema]]
 (mr/def ::user-key-value any?)
+
+(defn- namespace-kvp-schema
+  "The schema of a whole key-value pair in `namespace`: its registered schema, merged with the keys every pair has."
+  [namespace]
+  (let [common [:map {:closed true}
+                [:key        :string]
+                [:namespace  :keyword]
+                [:expires-at [:maybe ::expires-at]]]
+        schema (mc/schema (mr/schema namespace))]
+    (case (mc/type schema)
+      :map   (mut/merge common schema)
+      :multi (into [:multi (mc/properties schema)]
+                   (map (fn [[dispatch-value _props branch]]
+                          [dispatch-value (mut/merge common branch)]))
+                   (mc/children schema))
+      schema)))
 
 (defn- user-key-value-schema
   "Build the schema for a `::user-key-value`"
   []
   [:and
-   [:map
+   [:map {:closed true}
+    [:key :string]
     [:expires-at [:maybe ::expires-at]]
     [:namespace ::namespace]
     [:value {:encode/database json/encode
              :decode/database #(json/decode % keyword)}
-     :any]]
+     (known-namespace-value-schemas)]]
    (into [:multi
           {:dispatch :namespace}]
          (map (fn [namespace]
-                [namespace namespace]))
+                [namespace (namespace-kvp-schema namespace)]))
          (known-namespaces))])
 
 (defn- update-user-key-value-schema! []

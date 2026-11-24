@@ -43,6 +43,18 @@ describe("CollectionMenu", () => {
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
+  it("should not be able to edit permissions for a data app's collection", () => {
+    setup({
+      collection: createMockCollection({
+        namespace: "data-apps",
+        can_write: false,
+      }),
+      isAdmin: true,
+    });
+
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+  });
+
   it("should not be able to edit permissions for personal subcollections", async () => {
     setup({
       collection: createMockCollection({
@@ -112,6 +124,20 @@ describe("CollectionMenu", () => {
     await userEvent.click(getIcon("ellipsis"));
     expect(
       screen.queryByText("Make collection official"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not offer to clear out unused items without the enterprise plugin", async () => {
+    setup({
+      collection: createMockCollection({ can_write: true }),
+      isAdmin: true,
+      numberOfStaleItems: 10,
+    });
+
+    await userEvent.click(getIcon("ellipsis"));
+    expect(await screen.findByText("Edit permissions")).toBeVisible();
+    expect(
+      screen.queryByText("Clear out unused items"),
     ).not.toBeInTheDocument();
   });
 

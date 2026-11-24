@@ -1,6 +1,7 @@
 (ns metabase.queries.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -8,10 +9,12 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.xrays :as queries.xrays]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model])
@@ -28,14 +31,43 @@
 
 (derive :model/Query :metabase/model)
 
-;;; Helper Fns
-
 (defn average-execution-time-ms
   "Fetch the average execution time (in milliseconds) for query with QUERY-HASH if available.
    Returns `nil` if no information is available."
   ^Integer [^bytes query-hash]
   {:pre [(instance? (Class/forName "[B") query-hash)]}
   (queries.db/average-execution-time query-hash))
+
+(mr/def ::database-and-table-ids
+  [:map
+   [:database-id ::lib.schema.id/database]
+   [:table-id    [:maybe ::lib.schema.id/table]]])
+
+(mu/defn query->database-and-table-ids :- [:maybe ::database-and-table-ids]
+  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card.
+
+  Expects MBQL 5 queries."
+  [{database-id :database, :as query} :- [:or ::lib.schema/query ::lib-be.schema/empty-query]]
+  (when (seq query)
+    (if-let [source-card-id (lib/primary-source-card-id query)]
+      (let [card (or (lib.metadata/card query source-card-id)
+                     ;; Card may belong to a different Database; fetch from the app DB
+                     (queries.db/card-database-and-table-ids source-card-id))]
+        (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
+      (let [table-id (lib/primary-source-table-id query)]
+        {:database-id database-id
+         :table-id    table-id}))))
+
+(mu/defn supports-implicit-actions? :- :boolean
+  "Whether a model with `query` supports implicit actions: every stage is MBQL with no clauses, so it is a raw table."
+  [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
+  (boolean (and (seq query)
+                (every? (fn [stage-number]
+                          (and (lib/mbql-stage? query stage-number)
+                               (not (lib/has-clauses? query stage-number))))
+                        (range 0 (count (:stages query)))))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (def ^:private smoothing-factor
   "The weight of the latest execution time in the exponential rolling average formula:
@@ -46,19 +78,6 @@
 (def ^:private decay-factor
   "The weight of the previous average in the exponential rolling average formula, see [[smoothing-factor]]."
   (- 1.0 smoothing-factor))
-
-(defn- update-rolling-average-execution-time!
-  "Update the rolling average execution time for query with `query-hash`. Returns `true` if a record was updated,
-   or `false` if no matching records were found."
-  ^Boolean [query ^bytes query-hash ^Integer execution-time-ms]
-  (let [c1 (* smoothing-factor execution-time-ms)]
-    (or
-     ;; if it DOES NOT have a query (yet) set that. In 0.31.0 we added the query.query column, and it gets set for all
-     ;; new entries, so at some point in the future we can take this out, and save a DB call.
-     (pos? (queries.db/backfill-query-and-average-execution-time! query-hash (json/encode query) decay-factor c1))
-     ;; if query is already set then just update average_execution_time. (We're doing this separate call to avoid
-     ;; updating query on every single UPDATE)
-     (pos? (queries.db/update-average-execution-time! query-hash decay-factor c1)))))
 
 (defn- rolling-average-coefficients
   "Collapse applying the rolling-average formula (see [[smoothing-factor]]) once per execution time into a single
@@ -71,7 +90,7 @@
 
 (defn- initial-average-execution-time
   "Average execution time for a new Query entry: the first execution time, with any subsequent ones folded in the same
-  way consecutive [[update-rolling-average-execution-time!]] calls would."
+  way consecutive updates would."
   ^long [execution-times-ms]
   (reduce (fn [avg t]
             (Math/round (+ (* decay-factor (double avg)) (* smoothing-factor (double t)))))
@@ -141,9 +160,11 @@
                       (get hash->status (hash-key (:query-hash (first group))) :new-entry))
                     groups)]
       (update-rolling-average-execution-times! up-to-date)
-      ;; rare legacy path: rows whose `query` still needs backfilling are handled individually
-      (doseq [{:keys [query query-hash execution-time-ms]} (apply concat needs-query-backfill)]
-        (update-rolling-average-execution-time! query query-hash execution-time-ms))
+      (when (seq needs-query-backfill)
+        (queries.db/backfill-queries-and-average-execution-times!
+         (vec (for [group needs-query-backfill]
+                (let [[c0 c1] (rolling-average-coefficients (map :execution-time-ms group))]
+                  [(:query-hash (first group)) (json/encode (:query (first group))) c0 c1])))))
       (when (seq new-entry)
         (try
           (t2/with-transaction [_conn]
@@ -151,28 +172,10 @@
           (catch Throwable e
             (log/tracef "Error inserting concurrently created Query entries: %s" (ex-message e))))))))
 
-(mr/def ::database-and-table-ids
-  [:map
-   [:database-id ::lib.schema.id/database]
-   [:table-id    [:maybe ::lib.schema.id/table]]])
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(mu/defn query->database-and-table-ids :- [:maybe ::database-and-table-ids]
-  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card.
+(defmethod app-db-copy/spec :model/Query [_model]
+  {:skip? true})
 
-  Expects MBQL 5 queries."
-  [{database-id :database, :as query} :- [:or ::lib.schema/query ::lib-be.schema/empty-query]]
-  (when (seq query)
-    (if-let [source-card-id (lib/primary-source-card-id query)]
-      (let [card (or (lib.metadata/card query source-card-id)
-                     ;; Card may belong to a different Database; fetch from the app DB
-                     (queries.db/card-database-and-table-ids source-card-id))]
-        (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
-      (let [table-id (lib/primary-source-table-id query)]
-        {:database-id database-id
-         :table-id    table-id}))))
-
-(mu/defn query-is-native? :- :boolean
-  "Whether this query (MBQL 5 or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
-  regardless of whether the Card has a native query or not."
-  [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
-  (boolean (some-> query not-empty lib/native-only-query?)))
+(defmethod xrays/spec :model/Query [_model]
+  {:related queries.xrays/related-query})

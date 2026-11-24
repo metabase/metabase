@@ -1,3 +1,4 @@
+import type { CollectionItemModel } from "./collection";
 import type { ScheduleSettings } from "./settings";
 import type { SchemaName, Table } from "./table";
 
@@ -59,15 +60,18 @@ export type DatabaseFeature =
   | "transforms/python"
   | "transforms/table";
 
+export type DatabaseNativePermissions = "write" | "none";
+
 export interface Database extends DatabaseData {
   id: DatabaseId;
-  is_saved_questions: boolean;
   features?: DatabaseFeature[];
   creator_id?: number;
   timezone?: string;
-  native_permissions: "write" | "none";
+  default_schema?: string | null;
+  native_permissions: DatabaseNativePermissions;
   transforms_permissions?: "write" | "none";
   initial_sync_status: InitialSyncStatus;
+  initial_sync_error?: string | null;
   description?: string;
   caveats?: string;
   points_of_interest?: string;
@@ -79,8 +83,11 @@ export interface Database extends DatabaseData {
   uploads_table_prefix: string | null;
   is_audit?: boolean;
   is_attached_dwh?: boolean;
+  is_stub?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
+  /** Whether an admin has granted anonymous traffic permission to query this router database. */
+  router_anonymous_access_granted?: boolean | null;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
@@ -101,7 +108,6 @@ export interface DatabaseData {
   // [[metabase.models.interface/to-json]] for `:model/Database`:
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
-  admin_details?: Record<string, unknown> | null;
   schedules: DatabaseSchedules;
   auto_run_queries: boolean | null;
   refingerprint: boolean | null;
@@ -123,6 +129,32 @@ export interface DatabaseUsageInfo {
   metric: number;
   segment: number;
   transform: number;
+}
+
+/** One of the two anonymous surfaces: a public link, or a published guest embed. */
+export type AnonymousSurface = "public-link" | "guest-embed";
+
+export type AnonymouslyReachableModel = Extract<
+  CollectionItemModel,
+  "card" | "dataset" | "metric" | "dashboard" | "document"
+>;
+
+/**
+ * An anonymously reachable question, dashboard or document that can get data from a
+ * database.
+ */
+export interface AnonymouslyReachableEntity {
+  id: number;
+  model: AnonymouslyReachableModel;
+  name: string;
+  surfaces: AnonymousSurface[];
+  reaches_indirectly: boolean;
+}
+
+/** The server caps `data`; `total` says how many there are in all. */
+export interface DatabaseAnonymousReach {
+  total: number;
+  data: AnonymouslyReachableEntity[];
 }
 
 export interface GetDatabaseRequest {
@@ -158,14 +190,13 @@ export type GetDatabaseHealthResponse =
 
 export type ListDatabasesRequest = {
   include?: "tables" | "schemas";
-  saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
   include_analytics?: boolean;
+  include_stubs?: boolean;
   router_database_id?: DatabaseId;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
 };
 
 export interface ListDatabasesResponse {
@@ -183,7 +214,6 @@ export interface ListDatabaseSchemasRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
 }
 
 export interface ListDatabaseSchemaTablesRequest {
@@ -192,18 +222,13 @@ export interface ListDatabaseSchemaTablesRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
   include_measures?: boolean;
-}
-
-export interface ListVirtualDatabaseTablesRequest {
-  id: DatabaseId;
-  schema: string;
 }
 
 export interface GetDatabaseMetadataRequest {
   id: DatabaseId;
   include_hidden?: boolean;
+  include_sensitive_fields?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
   skip_fields: true; // make sure we don't get every field of every table
@@ -228,7 +253,6 @@ export interface UpdateDatabaseRequest {
   refingerprint?: boolean | null;
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
-  admin_details?: Record<string, unknown> | null;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;
@@ -237,6 +261,21 @@ export interface UpdateDatabaseRequest {
   cache_ttl?: number | null;
   settings?: DatabaseSettings | null;
 }
+
+export interface ValidateDatabaseRequest {
+  details: {
+    engine: string;
+    details: Record<string, unknown>;
+    /** Validate against an existing database, resolving details it left redacted */
+    id?: DatabaseId;
+  };
+}
+
+export type ValidateDatabaseResponse = {
+  valid: boolean;
+  message?: string;
+  errors?: Record<string, string>;
+};
 
 export type DatabaseEditErrorType = {
   data: {
@@ -251,12 +290,6 @@ export interface DatabaseIdFieldListQuery {
   include_editable_data_model?: boolean;
 }
 
-export interface SavedQuestionDatabase {
-  id: -1337;
-  name: "Saved Questions";
-  is_saved_questions: true;
-}
-
 export interface CreateDestinationDatabaseRequest {
   router_database_id: DatabaseId;
   destination_database: { name: string; details?: Record<string, unknown> };
@@ -265,4 +298,5 @@ export interface CreateDestinationDatabaseRequest {
 export interface UpdateDatabaseRouterRequest {
   id: DatabaseId;
   user_attribute: string | null;
+  anonymous_access_granted?: boolean;
 }

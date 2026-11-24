@@ -274,6 +274,20 @@
                  {:aggregation [[:aggregation-options [:- [:sum $price] 41] {:name "sum_41"}]]
                   :breakout    [$price]}))))))))
 
+(deftest ^:parallel named-aggregation-multiplying-an-aggregation-test
+  (testing "a named custom aggregation that multiplies an aggregation (#12899, #13306)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+      (mt/dataset test-data
+        (let [mp     (mt/metadata-provider)
+              total  (lib.metadata/field mp (mt/id :orders :total))
+              query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/aggregate (lib/with-expression-name (lib/* 2 (lib/max total)) "twice max total")))
+              result (qp/process-query query)]
+          (is (= ["twice max total"]
+                 (map :display_name (mt/cols result))))
+          (is (= [[318.7]]
+                 (mt/formatted-rows [2.0] result))))))))
+
 (defn- metrics-test-metadata-provider []
   (lib.tu/mock-metadata-provider
    (mt/metadata-provider)
@@ -420,3 +434,19 @@
                 [120 317763.17]
                 [140 128488.72]]
                (mt/formatted-rows [int 2.0] (qp/process-query query))))))))
+
+(deftest aggregate-datetime-add-on-timestamp-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics :set-timezone
+                                                   :test/dynamic-dataset-loading)
+    (mt/dataset attempted-murders-no-time
+      (mt/with-report-timezone-id! "Pacific/Honolulu"
+        (let [mp          (mt/metadata-provider)
+              attempts    (lib.metadata/table mp (mt/id :attempts))
+              datetime-tz (lib.metadata/field mp (mt/id :attempts :datetime_tz))
+              query       (as-> (lib/query mp attempts) $
+                            (lib/expression $ "shifted" (lib/datetime-add datetime-tz 12 :month))
+                            (lib/aggregate $ (lib/count))
+                            (lib/breakout $ (lib/with-temporal-bucket (lib/expression-ref $ "shifted") :month)))]
+          (is (= [["2020-10-01T00:00:00-10:00" 1]
+                  ["2020-11-01T00:00:00-10:00" 19]]
+                 (mt/formatted-rows [str int] (qp/process-query query)))))))))

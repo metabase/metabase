@@ -11,10 +11,15 @@
    [metabase.transforms-rest.api.transform-tag]
    [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms-rest.db :as transforms-rest.db]
+   [metabase.transforms-rest.schema :as transforms-rest.schema]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.models.transform :as transform]
+   [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -29,9 +34,6 @@
 (mr/def ::transform-source ::transforms.schema/transform-source)
 
 (mr/def ::transform-target ::transforms.schema/transform-target)
-
-(mr/def ::run-trigger
-  [:enum "none" "global-schedule"])
 
 (def ^:private CreatorResponse
   [:map {:closed true}
@@ -160,7 +162,7 @@
     [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:database-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (transforms.core/get-transforms query-params))
+  (map #(update % :last_run transforms-base.u/present-run) (transforms.core/get-transforms query-params)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -174,18 +176,13 @@
             [:description {:optional true} [:maybe :string]]
             [:source ::transforms.schema/transform-source]
             [:target ::transforms.schema/transform-target]
-            [:run_trigger {:optional true} ::run-trigger]
+            [:run_trigger {:optional true} ::transforms.schema/run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
-  (transforms.core/check-feature-enabled! body)
+  (transforms.core/check-feature-enabled! (transforms.u/->definition body))
   (api/create-check :model/Transform body)
-  (transforms.core/check-database-feature body)
-  (transforms.core/validate-incremental-column-type! body)
-  (api/check (not (transforms-base.u/target-table-exists? body))
-             403
-             (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)
       transforms.u/add-source-readable))
 
@@ -193,7 +190,10 @@
   "Get a specific transform."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (transforms.core/get-transform id))
+  (let [transform (transforms.core/get-transform id)]
+    (-> transform
+        (u/update-some :last_run transforms-base.u/present-run)
+        (assoc :requestable_indexes (transforms.core/requestable-indexes (transforms.u/->definition transform))))))
 
 (api.macros/defendpoint :get "/:id/dependencies" :- [:sequential TransformResponse]
   "Get the dependencies of a specific transform."
@@ -225,7 +225,7 @@
     [:end-time {:optional true} [:maybe ms/NonBlankString]]
     [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
     [:user-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (-> (transforms.core/paged-runs (assoc query-params
                                          :offset (request/offset)
                                          :limit  (request/limit)))
@@ -266,17 +266,16 @@
   [_route-params
    query-params :-
    [:map {:closed true}
-    [:types {:optional true} [:maybe (ms/QueryVectorOf [:enum "job" "dag" "transform"])]]
+    [:types {:optional true} [:maybe (ms/QueryVectorOf (ms/enum-decode-keyword [:job :dag :transform]))]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout" "canceled" "canceling"])]]
     [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
     [:start-time {:optional true} [:maybe ms/NonBlankString]]
     [:end-time {:optional true} [:maybe ms/NonBlankString]]
     [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-    [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
-    [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
-  (api/check-data-analyst)
+    [:sort-column {:optional true} [:maybe (ms/enum-decode-keyword [:start_time :end_time])]]
+    [:sort-direction {:optional true} [:maybe (ms/enum-decode-keyword [:asc :desc])]]]]
+  (api/check-data-studio-access)
   (-> (transforms.core/paged-run-summaries (assoc query-params
-                                                  :types  (map keyword (:types query-params))
                                                   :offset (request/offset)
                                                   :limit  (request/limit)))
       (update :data transforms.core/present-run-summaries)))
@@ -285,7 +284,7 @@
   "Get a transform run by ID."
   [{:keys [run-id]} :- [:map {:closed true}
                         [:run-id ms/PositiveInt]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (-> (api/read-check :model/TransformRun run-id)
       (t2/hydrate [:transform :collection :transform_tag_ids])
       transforms-base.u/present-run))
@@ -300,7 +299,7 @@
             [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transforms.schema/transform-source]
             [:target {:optional true} ::transforms.schema/transform-target]
-            [:run_trigger {:optional true} ::run-trigger]
+            [:run_trigger {:optional true} ::transforms.schema/run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
@@ -322,13 +321,22 @@
   (transforms-base.u/delete-target-table-by-id! id)
   nil)
 
+(api.macros/defendpoint :delete "/collection/:id" :- :nil
+  "Delete a transforms folder, its subfolders and every transform in them. With `delete-tables`, also drop their
+  output tables."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   {:keys [delete-tables]} :- [:map {:closed true}
+                               [:delete-tables {:default false} [:maybe ms/BooleanValue]]]]
+  (transforms.core/delete-transforms-folder! (api/write-check :model/Collection id) (boolean delete-tables)))
+
 (api.macros/defendpoint :post "/:id/cancel" :- :nil
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [transform (api/write-check :model/Transform id)
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
-    (transforms.core/mark-cancel-started-run! (:id run))
+    (transform-run-cancelation/mark-cancel-started-run! (:id run))
     (when (transforms-base.u/python-transform? transform)
       ;; The cancelation row was just inserted with DB `current_timestamp`; `now` is within a
       ;; few ms of that and fine for the latency histogram, and avoids the perf/complexity cost of
@@ -340,22 +348,23 @@
   "Reset the stored checkpoint for an incremental transform."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
-  (transforms-rest.db/reset-checkpoint! id)
+  (transform/update-transforms! [{:id id :last_checkpoint_value nil}])
   nil)
 
-(defn- check-feature-and-lock!
+(mu/defn- check-feature-and-lock! :- :nil
   "Check that the transform's premium features are enabled and that transforms are not locked by the
   trial quota."
-  [transform]
-  (transforms.core/check-feature-enabled! transform)
-  (api/check (not (transforms.core/transform-locked? transform))
+  [transform :- ::transforms.schema/transform]
+  (transforms.core/check-feature-enabled! (transforms.u/->definition transform))
+  (api/check (not (transforms.core/transform-locked? (transforms.u/->definition transform)))
              [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
-                   :error-code "metabase_transforms_locked"}]))
+                   :error-code "metabase_transforms_locked"}])
+  nil)
 
-(defn run-transform!
+(mu/defn run-transform! :- ::transforms-rest.schema/async-run-response
   "Run a transform. Returns a 202 response with run_id.
    The transform must already be fetched and validated."
-  [transform]
+  [transform :- ::transforms.schema/transform]
   (check-feature-and-lock! transform)
   (transforms-rest.api.u/async-run-response
    (deferred-tru "Transform run started")

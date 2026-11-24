@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import {
   createMockMediaQueryList,
@@ -66,6 +68,19 @@ describe("AppBar", () => {
       expect(screen.getByTestId("sidebar-toggle")).toBeInTheDocument();
       expect(screen.getByTestId("search-button")).toBeInTheDocument();
       expect(screen.getByTestId("new-button")).toBeInTheDocument();
+    });
+
+    it("should open the navbar when the logo is clicked", async () => {
+      const props = getProps({
+        isNavBarEnabled: true,
+        isNavBarOpen: false,
+        isLogoVisible: true,
+      });
+
+      renderWithProviders(<AppBar {...props} />);
+      await userEvent.click(screen.getByTestId("main-logo-link"));
+
+      expect(props.onOpenNavbar).toHaveBeenCalledTimes(1);
     });
 
     it("should render the desktop app bar for saved questions and dashboards", () => {
@@ -179,6 +194,7 @@ const getProps = (opts?: Partial<AppBarProps>): AppBarProps => ({
   collectionBreadcrumbs: <BreadcrumbsMock />,
   questionLineage: <QuestionLineageMock />,
   onToggleNavbar: jest.fn(),
+  onOpenNavbar: jest.fn(),
   onCloseNavbar: jest.fn(),
   ...opts,
 });

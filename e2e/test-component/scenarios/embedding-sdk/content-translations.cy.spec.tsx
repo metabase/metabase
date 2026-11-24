@@ -25,58 +25,13 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding-sdk > content-translations", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/app/locales/de.json", {
-      body: {
-        charset: "utf-8",
-        headers: {
-          "mime-version": "1.0",
-          "x-crowdin-file-id": "2",
-          "language-team": "German",
-          "content-type": "text/plain; charset=UTF-8",
-          "po-revision-date": "2026-04-01 16:19",
-          "report-msgid-bugs-to": "docs@metabase.com",
-          "x-crowdin-project": "metabase-i18n",
-          "pot-creation-date": "2026-04-01 14:56+0000",
-          "content-transfer-encoding": "8bit",
-          language: "de",
-          "x-crowdin-file": "metabase.po",
-          "x-crowdin-language": "de",
-          "plural-forms": "nplurals=2; plural=(n != 1);",
-          "project-id-version": "metabase-i18n",
-          "x-crowdin-project-id": "758295",
-        },
-        translations: {
-          "": {},
-        },
-      },
-    });
-
-    cy.intercept("GET", "/app/locales/ar.json", {
-      body: {
-        charset: "utf-8",
-        headers: {
-          "mime-version": "1.0",
-          "x-crowdin-file-id": "2",
-          "language-team": "Arabic",
-          "content-type": "text/plain; charset=UTF-8",
-          "po-revision-date": "2026-04-01 16:19",
-          "report-msgid-bugs-to": "docs@metabase.com",
-          "x-crowdin-project": "metabase-i18n",
-          "pot-creation-date": "2026-04-01 14:56+0000",
-          "content-transfer-encoding": "8bit",
-          language: "ar",
-          "x-crowdin-file": "metabase.po",
-          "x-crowdin-language": "ar",
-          "plural-forms":
-            "nplurals=6; plural=(n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5);",
-          "project-id-version": "metabase-i18n",
-          "x-crowdin-project-id": "758295",
-        },
-        translations: {
-          "": {},
-        },
-      },
-    });
+    // These tests assert English UI chrome while checking that content is
+    // translated, so the UI catalogue has to stay out of the way. It arrives as
+    // an rspack chunk, not a JSON fetch, so it cannot be stubbed with a body.
+    // Block it instead: LocaleProvider catches the failure and leaves the UI
+    // untranslated.
+    cy.intercept("GET", "**/locale-de-json*.js", { forceNetworkError: true });
+    cy.intercept("GET", "**/locale-ar-json*.js", { forceNetworkError: true });
   });
 
   describe("question", () => {

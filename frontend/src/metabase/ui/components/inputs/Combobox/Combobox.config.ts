@@ -19,12 +19,14 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
        * conditional formatting" in `pivot_tables.cy.spec.js`.
        */
       keepMounted: true,
-      shadow: "xs",
+      shadow: "sm_outline",
     },
     classNames: {
+      dropdown: S.dropdown,
       options: S.options,
       option: S.option,
       empty: S.empty,
+      group: S.group,
       groupLabel: S.groupLabel,
     },
   }),
@@ -32,5 +34,12 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
     classNames: {
       chevron: S.chevron,
     },
+    vars: () => ({
+      chevron: {
+        // Same size as other icons in input sections; the fallback covers
+        // chevrons rendered outside an Input.
+        "--combobox-chevron-size": "var(--input-section-icon-size, 0.75rem)",
+      },
+    }),
   }),
 };

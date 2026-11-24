@@ -3,6 +3,7 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.permissions.db :as permissions.db]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -19,7 +20,8 @@
 
 (defn- v-fifty-migration-time []
   (let [v50-migration-id "v50.2024-01-04T13:52:51"]
-    (->> (mdb/changelog-by-id (mdb/app-db) v50-migration-id) :dateexecuted)))
+    ;; :dateexecuted is expected to be a datetime already. Convert with t/local-date-time to fix cases like #65043
+    (->> (mdb/changelog-by-id (mdb/app-db) v50-migration-id) :dateexecuted t/local-date-time)))
 
 (defn- -show-updated-permission-modal []
   (if (t/after? (instance-create-time) (v-fifty-migration-time))
@@ -53,12 +55,14 @@
   :type       :boolean
   :audit      :never)
 
+(defenterprise deactivate-tenants!
+  "Deactivate every Tenant and every active tenant User, which an OSS build has none of."
+  metabase-enterprise.tenants.models
+  [])
+
 (defn- update-use-tenants! [new-val]
   (when-not new-val
-    ;; deactivate all tenants
-    (permissions.db/deactivate-all-tenants!)
-    ;; deactivate all tenant users, so if the tenant is reactivated someday they'll come back too
-    (permissions.db/deactivate-active-tenant-users!))
+    (deactivate-tenants!))
   (setting/set-value-of-type! :boolean :use-tenants new-val))
 
 (defsetting use-tenants

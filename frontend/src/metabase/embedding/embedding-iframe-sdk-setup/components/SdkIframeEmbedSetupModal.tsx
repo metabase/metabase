@@ -2,17 +2,13 @@ import { useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-
 import "react-resizable/css/styles.css";
-
 import noResultsSource from "assets/img/no_results.svg";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { isSiteUrlMatchingCurrentOrigin } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-site-url-matching-current-origin";
-import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { closeModal } from "metabase/redux/ui";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
 import { useSetting, useUpdateSettingsMutation } from "metabase/settings";
 import {
   Box,
@@ -29,6 +25,7 @@ import {
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { useDataAppStatus } from "../data-apps/use-data-app-status";
 
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
@@ -36,7 +33,6 @@ import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 import { SdkIframeEmbedSiteUrlMismatchError } from "./SdkIframeEmbedSiteUrlMismatchError";
 
 export const SdkIframeEmbedSetupContent = () => {
-  const dispatch = useDispatch();
   const [updateSettings] = useUpdateSettingsMutation();
   const {
     currentStep,
@@ -44,10 +40,12 @@ export const SdkIframeEmbedSetupContent = () => {
     handleBack,
     canGoBack,
     allowPreviewAndNavigation,
+    isSimpleEmbedFeatureAvailable,
     isLoading,
     experience,
     resource,
     settings,
+    onClose,
   } = useSdkIframeEmbedSetupContext();
 
   const StepContent = useMemo(
@@ -68,7 +66,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
     updateSettings({ [settingKey]: true });
 
-    dispatch(closeModal());
+    onClose();
   }
 
   const isQuestionOrDashboard = isQuestionOrDashboardSettings(
@@ -76,8 +74,34 @@ export const SdkIframeEmbedSetupContent = () => {
     settings,
   );
 
+  const { status: dataAppStatus, isDataAppMissing } =
+    useDataAppStatus(settings);
+
   const isMissingResource =
-    isQuestionOrDashboard && !isLoading && (!resource || resource.archived);
+    isDataAppMissing ||
+    (isQuestionOrDashboard && !isLoading && (!resource || resource.archived));
+
+  // Admins can't fix the empty preview by selecting something when
+  // modular embedding is off, or when a data app opens on the code step.
+  const emptyPreviewMessage = match({
+    needsModularEmbedding:
+      !allowPreviewAndNavigation &&
+      !settings.isGuest &&
+      isSimpleEmbedFeatureAvailable,
+    isDataAppOnCodeStep:
+      experience === "data-app" && currentStep === "get-code",
+    dataAppStatus,
+  })
+    .with(
+      { needsModularEmbedding: true },
+      () => t`Preview will appear when you enable modular embedding`,
+    )
+    .with({ isDataAppOnCodeStep: true, dataAppStatus: "loading" }, () => null)
+    .with(
+      { isDataAppOnCodeStep: true, dataAppStatus: "unavailable" },
+      () => t`This data app can't be previewed.`,
+    )
+    .otherwise(() => t`Preview will appear when you select what to embed`);
 
   const siteUrl = useSetting("site-url");
   const isSiteUrlMismatched = !isSiteUrlMatchingCurrentOrigin(siteUrl);
@@ -86,7 +110,11 @@ export const SdkIframeEmbedSetupContent = () => {
     .with("get-code", () => (
       <Button
         variant="filled"
-        disabled={resource?.enable_embedding === false}
+        disabled={
+          !allowPreviewAndNavigation ||
+          isMissingResource ||
+          resource?.enable_embedding === false
+        }
         onClick={handleEmbedDone}
         leftSection={<Icon name="check_filled" />}
       >
@@ -96,7 +124,7 @@ export const SdkIframeEmbedSetupContent = () => {
     .with("select-embed-options", () => (
       <Button
         variant="filled"
-        disabled={!allowPreviewAndNavigation}
+        disabled={!allowPreviewAndNavigation || isMissingResource}
         onClick={handleNext}
       >
         {t`Get code`}
@@ -106,9 +134,9 @@ export const SdkIframeEmbedSetupContent = () => {
       <Button
         variant="filled"
         onClick={handleNext}
-        disabled={!allowPreviewAndNavigation}
+        disabled={!allowPreviewAndNavigation || isMissingResource}
       >
-        {t`Next`}
+        {experience === "data-app" ? t`Get code` : t`Next`}
       </Button>
     ));
 
@@ -128,7 +156,6 @@ export const SdkIframeEmbedSetupContent = () => {
           <Group className={S.Navigation} justify="space-between">
             {canGoBack && (
               <Button
-                variant="default"
                 onClick={handleBack}
                 disabled={!allowPreviewAndNavigation}
               >
@@ -163,9 +190,11 @@ export const SdkIframeEmbedSetupContent = () => {
                     src={noResultsSource}
                     alt="No results"
                   />
-                  <Text c="text-secondary">
-                    {t`Preview will appear when you select what to embed`}
-                  </Text>
+                  {emptyPreviewMessage && (
+                    <Text c="text-secondary" ta="center" maw="24rem">
+                      {emptyPreviewMessage}
+                    </Text>
+                  )}
                 </Stack>
               </Flex>
             </Card>
@@ -192,6 +221,12 @@ const SidebarResizer = ({ children }: { children: React.ReactNode }) => {
       {children}
     </ResizableBox>
   );
+};
+
+type SdkIframeEmbedSetupModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
 };
 
 export const SdkIframeEmbedSetupModal = ({

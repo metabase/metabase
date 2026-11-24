@@ -239,7 +239,7 @@ export function Results({
                       <Icon
                         name="chevronright"
                         size={10}
-                        c="text-disabled"
+                        c="text-secondary"
                         className={cx(S.chevron, {
                           [S.expanded]: isExpanded,
                         })}
@@ -316,7 +316,7 @@ function ItemLabel({ item, isActive }: { item: FlatItem; isActive: boolean }) {
     return (
       <Box
         className={S.label}
-        c="text-disabled"
+        c="text-secondary"
         data-testid="empty-placeholder"
         pl="1.25rem"
       >

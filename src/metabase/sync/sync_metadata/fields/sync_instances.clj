@@ -9,7 +9,6 @@
   (:require
    [medley.core :as m]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.humanization :as humanization]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
@@ -18,7 +17,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
+   [metabase.warehouse-schema.models.field :as field]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
@@ -67,50 +68,50 @@
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
-    (sync.db/insert-fields!
-     (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
-                   database-is-generated database-is-nullable database-default pk?
-                   database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
-            field-name :name :as field} (sort-by :database-position new-field-metadatas)
-           :let [semantic-type (common/semantic-type field)
-                 has-field-values (when (sync-util/can-be-list? base-type semantic-type)
-                                    :auto-list)]]
-       (do
-         (when (and effective-type
-                    base-type
-                    (not= effective-type base-type)
-                    (nil? coercion-strategy))
-           (log/warn (u/format-color 'red
-                                     (str
-                                      "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
-                                      " Using base-type: `%s`")
-                                     field-name
-                                     effective-type
-                                     base-type)))
-         {:table_id                   (u/the-id table)
-          :name                       field-name
-          :display_name               (humanization/name->human-readable-name field-name)
-          :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
-          :base_type                  base-type
-          ;; todo test this?
-          :effective_type             (if (and effective-type coercion-strategy) effective-type base-type)
-          :coercion_strategy          (when effective-type coercion-strategy)
-          :semantic_type              semantic-type
-          :parent_id                  parent-id
-          :nfc_path                   nfc-path
-          :description                field-comment
-          :position                   database-position
-          :database_position          database-position
-          :json_unfolding             (or json-unfolding false)
-          :database_is_auto_increment (or database-is-auto-increment false)
-          :database_is_generated      database-is-generated
-          :database_is_nullable       database-is-nullable
-          :database_is_pk             pk?
-          :database_default           database-default
-          :database_required          (or database-required false)
-          :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
-          :has_field_values           has-field-values
-          :visibility_type            (or visibility-type :normal)})))))
+    (mapv :id (field/create-fields!
+               (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
+                             database-is-generated database-is-nullable database-default pk?
+                             database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
+                      field-name :name :as field} (sort-by :database-position new-field-metadatas)
+                     :let [semantic-type (common/semantic-type field)
+                           has-field-values (when (sync-util/can-be-list? base-type semantic-type)
+                                              :auto-list)]]
+                 (do
+                   (when (and effective-type
+                              base-type
+                              (not= effective-type base-type)
+                              (nil? coercion-strategy))
+                     (log/warn (u/format-color 'red
+                                               (str
+                                                "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
+                                                " Using base-type: `%s`")
+                                               field-name
+                                               effective-type
+                                               base-type)))
+                   {:table_id                   (u/the-id table)
+                    :name                       field-name
+                    :display_name               (warehouse-schema.humanization/name->human-readable-name field-name)
+                    :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
+                    :base_type                  base-type
+                    ;; todo test this?
+                    :effective_type             (if (and effective-type coercion-strategy) effective-type base-type)
+                    :coercion_strategy          (when effective-type coercion-strategy)
+                    :semantic_type              semantic-type
+                    :parent_id                  parent-id
+                    :nfc_path                   nfc-path
+                    :description                field-comment
+                    :position                   database-position
+                    :database_position          database-position
+                    :json_unfolding             (or json-unfolding false)
+                    :database_is_auto_increment (or database-is-auto-increment false)
+                    :database_is_generated      database-is-generated
+                    :database_is_nullable       database-is-nullable
+                    :database_is_pk             pk?
+                    :database_default           database-default
+                    :database_required          (or database-required false)
+                    :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
+                    :has_field_values           has-field-values
+                    :visibility_type            (or visibility-type :normal)}))))))
 
 (mu/defn- create-or-reactivate-fields! :- [:maybe [:sequential i/FieldInstance]]
   "Create (or reactivate) Metabase Field object(s) for any Fields in `new-field-metadatas`. Does *NOT* recursively
@@ -121,7 +122,7 @@
   (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
-      (sync.db/reactivate-fields! (map u/the-id fields-to-reactivate)))
+      (field/update-fields! (for [id (mapv u/the-id fields-to-reactivate)] {:id id :active true})))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
           ;; If we reactivated the fields, no need to insert them; insert new rows for any that weren't reactivated
@@ -173,28 +174,24 @@
 ;;; |                                           "RETIRING" INACTIVE FIELDS                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- retire-field! :- [:maybe [:= 1]]
-  "Mark an `old-field` belonging to `table` as inactive if corresponding Field object exists. Does *NOT* recurse over
-  nested Fields. Returns `1` if a Field was marked inactive, `nil` otherwise."
-  [table          :- i/TableInstance
-   metabase-field :- common/TableMetadataFieldWithID]
-  (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field))
-  (when (pos? (sync.db/update-field! (u/the-id metabase-field) {:active false}))
-    1))
-
 (mu/defn- retire-fields! :- ms/IntGreaterThanOrEqualToZero
   "Mark inactive any Fields in the application database that are no longer present in the DB being synced. These
-  Fields are ones that are in `our-metadata`, but not in `db-metadata`. Does *NOT* recurse over nested Fields.
-  Returns `1` if a Field was marked inactive."
+  Fields are ones that are in `our-metadata`, but not in `db-metadata`. Does *NOT* recurse over nested Fields. All of
+  them are written together, in one bulk update, whatever their number. Returns the number of Fields marked inactive."
   [table        :- i/TableInstance
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]]
-  ;; retire all the Fields not present in `db-metadata`, and count how many rows were actually affected
-  (sync-util/sum-for [metabase-field our-metadata
-                      :when          (not (common/matching-field-metadata metabase-field db-metadata))]
-    (sync-util/with-error-handling (format "Error retiring %s"
-                                           (common/field-metadata-name-for-logging table metabase-field))
-      (retire-field! table metabase-field))))
+  (let [to-retire (filterv #(not (common/matching-field-metadata % db-metadata)) our-metadata)]
+    (if (empty? to-retire)
+      0
+      (let [result (sync-util/with-error-handling (format "Error retiring %d Fields of %s"
+                                                          (count to-retire)
+                                                          (common/field-metadata-name-for-logging table (first to-retire)))
+                     (doseq [metabase-field to-retire]
+                       (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field)))
+                     (field/update-fields! (for [id (mapv u/the-id to-retire)] {:id id :active false}))
+                     (count to-retire))]
+        (if (number? result) result 0)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                  HIGH-LEVEL INSTANCE SYNCING LOGIC (CREATING/REACTIVATING/RETIRING/UPDATING)                   |

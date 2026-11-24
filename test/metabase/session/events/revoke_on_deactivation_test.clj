@@ -1,10 +1,11 @@
 (ns metabase.session.events.revoke-on-deactivation-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.events.core :as events]
+   [metabase.app-db.query :as app-db.query]
    [metabase.session.core :as session]
-   [metabase.session.events.revoke-on-deactivation] ; for side effects: registers the event subscriber
+   [metabase.session.db :as session.db]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2]))
 
 (defn- insert-session!
@@ -18,27 +19,55 @@
                  :created_at :%now})
     id))
 
-(deftest revoke-on-event-test
-  (testing ":event/user-credentials-revoked deletes the user's sessions, leaving other users' untouched"
-    (mt/with-temp [:model/User {victim :id}    {}
+(defn- ending [session-id]
+  (select-keys (t2/select-one :model/Session :id session-id) [:end_reason :ended_by_user_id :key_hashed]))
+
+(deftest after-user-deactivated-test
+  (testing "deactivating a user ends the user's sessions, leaving other users' untouched"
+    (mt/with-temp [:model/User {victim :id}    {:is_active true}
                    :model/User {bystander :id} {}]
       (let [victim-session    (insert-session! victim)
             bystander-session (insert-session! bystander)]
-        (events/publish-event! :event/user-credentials-revoked {:user-id victim})
-        (is (not (t2/exists? :model/Session :id victim-session))
-            "victim's session is deleted")
-        (is (t2/exists? :model/Session :id bystander-session)
+        (mt/with-current-user (mt/user->id :crowberto)
+          (user/update-users! [{:id victim :is_active false}]))
+        (is (= {:end_reason "user-deactivated", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil}
+               (ending victim-session))
+            "victim's session is ended, attributed to the deactivating admin, and its key destroyed")
+        (is (some? (:ended_at (t2/select-one :model/Session :id victim-session))))
+        (is (= {:end_reason nil, :ended_by_user_id nil} (dissoc (ending bystander-session) :key_hashed))
             "an unrelated user's session is untouched")))))
 
 (deftest deactivation-revokes-and-reactivation-does-not-revive-test
-  (testing "deactivating a user deletes their sessions; reactivating does NOT bring them back (SEC-863)"
+  (testing "deactivating a user ends their sessions; reactivating does NOT bring them back (SEC-863)"
     (mt/with-temp [:model/User {user-id :id} {:is_active true}]
       (let [session-id (insert-session! user-id)]
-        (is (t2/exists? :model/Session :id session-id)
-            "session exists while the user is active")
-        (t2/update! :model/User user-id {:is_active false})
-        (is (not (t2/exists? :model/Session :id session-id))
-            "deactivation revokes the session")
-        (t2/update! :model/User user-id {:is_active true})
-        (is (not (t2/exists? :model/Session :id session-id))
+        (is (nil? (:ended_at (t2/select-one :model/Session :id session-id)))
+            "session is live while the user is active")
+        (user/update-users! [{:id user-id :is_active false}])
+        (is (= {:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil} (ending session-id))
+            "deactivation outside a request ends the session with no actor")
+        (user/update-users! [{:id user-id :is_active true}])
+        (is (= {:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil} (ending session-id))
             "reactivation does not revive the pre-deactivation session")))))
+
+(deftest deactivating-more-users-than-one-batch-ends-every-session-test
+  (testing "one call deactivating five users, with batches of two, ends both live sessions of each of them"
+    (mt/with-temp [:model/User {a :id} {:is_active true}
+                   :model/User {b :id} {:is_active true}
+                   :model/User {c :id} {:is_active true}
+                   :model/User {d :id} {:is_active true}
+                   :model/User {e :id} {:is_active true}]
+      (let [user-ids    [a b c d e]
+            session-ids (vec (for [user-id user-ids, _ (range 2)] (insert-session! user-id)))]
+        (let [end-sizes (atom [])
+              end!      (mt/original-fn #'session.db/end-sessions-for-users!)]
+          (with-redefs [app-db.query/update-partition-size 2]
+            (mt/with-dynamic-fn-redefs [session.db/end-sessions-for-users! (fn [ids reason ended-by]
+                                                                             (swap! end-sizes conj (count ids))
+                                                                             (end! ids reason ended-by))]
+              (user/update-users! (for [user-id user-ids] {:id user-id :is_active false}))))
+          (testing "sessions end in three statements of at most two users"
+            (is (= [2 2 1] @end-sizes))))
+        (is (= #{{:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil}}
+               (set (map ending session-ids))))
+        (is (zero? (t2/count :model/Session :id [:in session-ids] :ended_at nil)))))))

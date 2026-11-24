@@ -10,46 +10,35 @@
 (mu/defn transform-source
   "The source of the Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :source [:model/Transform :id :source] transform-id))
+  (t2/select-one-fn :source [:model/Transform :id :source] :id transform-id))
 
 (mu/defn transforms-for-ordering
-  "The id, name, target, target Table id, source Database id, and table dependencies of every Transform
-   excluding [[transform-id]]."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select [:model/Transform :id :name :target :target_table_id :source_database_id :table_dependencies]
-             :id [:not= transform-id]))
+  "The id, name, target, target Table id, source Database id, and table dependencies of every Transform."
+  []
+  (t2/select [:model/Transform :id :name :target :target_table_id :source_database_id :table_dependencies]))
+
+(mu/defn active-tables-named
+  "The id, Database id, schema and name of the active Tables of the `[database-id schema name]` triples."
+  [triples :- [:sequential {:min 1} [:tuple ::lib.schema.id/database [:maybe :string] :string]]]
+  (t2/select [:model/Table :id :db_id :schema :name]
+             :active true
+             :db_id [:in [:auto/param (into [] (comp (map first) (distinct)) triples)]]
+             :name [:in [:auto/param (into [] (comp (map #(nth % 2)) (distinct)) triples)]]))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform transform-id))
+  (t2/select-one :model/Transform :id [:auto/param transform-id]))
 
-(mu/defn update-transform!
-  "Apply `changes` to the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform
-   changes      :- [:map {:closed true}
-                    [:last_checkpoint_value {:optional true} [:maybe :string]]
-                    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]]]
-  (t2/update! :model/Transform transform-id changes))
-
-(mu/defn update-transform-run!
-  "Apply `changes` to the TransformRun with `run-id`."
-  [run-id  :- ms/PositiveInt
-   changes :- [:map {:closed true}
-               [:checkpoint_filter_field_id {:optional true} [:maybe ::lib.schema.id/field]]
-               [:checkpoint_lo_value        {:optional true} [:maybe :string]]
-               [:checkpoint_hi_value        {:optional true} [:maybe :string]]]]
-  (t2/update! :model/TransformRun run-id changes))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
+(mu/defn database-exists?
+  "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/exists? :model/Database :id database-id))
 
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field field-id))
+  (t2/select-one-fn :table_id :model/Field :id field-id))
 
 (mu/defn target-table
   "The Table named `table-name` in `schema` of the Database with `database-id` also matching the key-value
@@ -57,49 +46,20 @@
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string
-   & conditions :- [:* :some]]
+   & conditions :- [:* [:or :keyword :string :int :boolean]]]
   (apply t2/select-one :model/Table :db_id database-id :schema schema :name table-name conditions))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table table-id))
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id table-id))
 
 (mu/defn table-for-transform
-  "The Table owned by the Transform with `transform-id`, or nil."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Table :transform_id transform-id))
-
-(mu/defn update-table!
-  "Apply `changes` to the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table
-   changes  :- [:map {:closed true}
-                [:schema       {:optional true} [:maybe :string]]
-                [:active       {:optional true} [:maybe :boolean]]
-                [:transform_id {:optional true} [:maybe ::lib.schema.id/transform]]]]
-  (t2/update! :model/Table table-id changes))
-
-(mu/defn mark-table-index-failed!
-  "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`."
-  [transform-id  :- ::lib.schema.id/transform
-   index-name    :- :string
-   error-message :- :string]
-  (t2/update! :model/TableIndex
-              :transform_id transform-id :index_name index-name
-              {:status :failed :error_message error-message :last_executed_at :%now}))
-
-(mu/defn delete-table-indexes!
-  "Delete the TableIndexes with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/TableIndex :id [:in ids]))
-
-(mu/defn update-table-indexes!
-  "Apply `changes` to the TableIndexes with `ids`, stamping `last_executed_at` with the app DB's now."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- [:map {:closed true}
-               [:status        {:optional true} [:maybe [:or :keyword :string]]]
-               [:error_message {:optional true} [:maybe :string]]]]
-  (t2/update! :model/TableIndex :id [:in ids] (merge {:last_executed_at :%now} changes)))
+  "The Table owned by the Transform with `transform-id`, or nil. `transform-id` is nil for a transform
+  that hasn't been saved yet, in which case there is no owned Table either."
+  [transform-id :- [:maybe ::lib.schema.id/transform]]
+  (when transform-id
+    (t2/select-one :model/Table :transform_id transform-id)))
 
 (mu/defn active-field-names-for-table
   "The names of the active Fields of the Table with `table-id`, in position order."

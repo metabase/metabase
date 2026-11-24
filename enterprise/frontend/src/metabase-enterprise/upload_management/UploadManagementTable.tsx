@@ -11,8 +11,8 @@ import { ClientSortableTable } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
 import { SettingHeader } from "metabase/settings-components";
 import {
+  ActionIcon,
   Box,
-  Button,
   Checkbox,
   Ellipsified,
   Flex,
@@ -119,8 +119,7 @@ export function UploadManagementTable() {
 
             sendToast({
               message,
-              toastColor: "feedback-negative",
-              icon: "warning",
+              variant: "negative",
             });
           } else if (result.length > 0) {
             const message = ngettext(
@@ -207,15 +206,15 @@ const UploadTableRow = ({
       <td>{createdAtString}</td>
       <td>{item.schema}</td>
       <td>
-        <Flex align="center" justify="flex-end">
-          <Button
+        <Flex align="center" justify="flex-end" py="sm">
+          <ActionIcon
             onClick={() => onTrash(item)}
             variant="subtle"
-            className="Button Button--borderless"
-            color="text-secondary"
+            size="sm"
+            aria-label={t`Delete table`}
           >
             <Icon name="trash" />
-          </Button>
+          </ActionIcon>
         </Flex>
       </td>
     </tr>

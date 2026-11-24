@@ -17,6 +17,7 @@ export const DashCardMenuButton = forwardRef(function DashCardMenuButton(
 ) {
   return (
     <ActionIcon
+      variant="subtle"
       ref={ref}
       aria-label={t`More options`}
       size="xs"

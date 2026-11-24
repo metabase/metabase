@@ -24,7 +24,7 @@ describe("PublicResources", () => {
     };
 
     it("should show empty state when no actions", async () => {
-      setupActionListing([]);
+      await setupActionListing([]);
       await waitFor(() => {
         expect(
           screen.getByText("No actions have been publicly shared yet."),
@@ -33,7 +33,7 @@ describe("PublicResources", () => {
     });
 
     it("should render action listings when loaded", async () => {
-      setupActionListing([
+      await setupActionListing([
         {
           id: 1,
           name: "Test Action 1",
@@ -72,7 +72,7 @@ describe("PublicResources", () => {
     };
 
     it("should show empty state when no questions", async () => {
-      setupQuestion([]);
+      await setupQuestion([]);
       await waitFor(() => {
         expect(
           screen.getByText("No questions have been publicly shared yet."),
@@ -81,7 +81,7 @@ describe("PublicResources", () => {
     });
 
     it("should render question listings when loaded", async () => {
-      setupQuestion([
+      await setupQuestion([
         {
           name: "Test Question 1",
           id: 1,
@@ -94,7 +94,7 @@ describe("PublicResources", () => {
         },
         {
           name: "Test Question 3",
-          id: 2,
+          id: 3,
           public_uuid: "5bec9624-3102-428a-8b9f-47c56bd96c6c",
         },
       ]);
@@ -117,7 +117,7 @@ describe("PublicResources", () => {
     };
 
     it("should show empty state when no dashboards", async () => {
-      setupDashboardListing([]);
+      await setupDashboardListing([]);
       await waitFor(() => {
         expect(
           screen.getByText("No dashboards have been publicly shared yet."),
@@ -126,7 +126,7 @@ describe("PublicResources", () => {
     });
 
     it("should render dashboard listings when loaded", async () => {
-      setupDashboardListing([
+      await setupDashboardListing([
         {
           name: "Test Dashboard 1",
           id: 1,
@@ -139,7 +139,7 @@ describe("PublicResources", () => {
         },
         {
           name: "Test Dashboard 3",
-          id: 2,
+          id: 3,
           public_uuid: "2b80845e-0ff4-4182-8a9a-083cc904f5dd",
         },
       ]);

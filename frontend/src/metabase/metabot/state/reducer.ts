@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import {
   type PayloadAction,
   type UnknownAction,
@@ -10,12 +11,7 @@ import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
 import { logout } from "metabase/redux/auth";
 import { LOCATION_CHANGE, type Location, matchPath } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type {
-  MetabotCodeEdit,
-  MetabotStateContext,
-  MetabotSuggestedTransform,
-  SuggestedTransform,
-} from "metabase-types/api";
+import type { MetabotCodeEdit, MetabotStateContext } from "metabase-types/api";
 
 import type { MetabotProfileId } from "../constants";
 import { isContextWindowFull } from "../utils/context-usage";
@@ -53,11 +49,16 @@ import type {
   MetabotAgentId,
   MetabotMessage,
   MetabotMessagePart,
+  MetabotSavedDashboard,
   MetabotState,
   MetabotToolCall,
   MetabotUserTextChatMessage,
 } from "./types";
-import { createMessageId, hasInProgressMessage } from "./utils";
+import {
+  createMessageId,
+  hasInProgressMessage,
+  withServerErrorDisplay,
+} from "./utils";
 
 const isLocationChange = (
   action: UnknownAction,
@@ -285,7 +286,12 @@ export const metabot = createSlice({
         convo.activeToolCalls = convo.activeToolCalls.map((tc) =>
           tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
         );
-        endChainTool(convo, action.payload.toolCallId, action.payload.nowMs);
+        endChainTool(
+          convo,
+          action.payload.toolCallId,
+          action.payload.nowMs,
+          action.payload.isError,
+        );
 
         // Update the message in messages array with result for debug history
         const message = findLastToolCallPart(convo, action.payload.toolCallId);
@@ -366,59 +372,11 @@ export const metabot = createSlice({
     setNavigateToPath: (state, action: PayloadAction<string | null>) => {
       state.reactions.navigateToPath = action.payload;
     },
-    addSuggestedTransform: (
+    dashboardSaved: (
       state,
-      { payload: transform }: PayloadAction<MetabotSuggestedTransform>,
+      { payload }: PayloadAction<MetabotSavedDashboard>,
     ) => {
-      // mark all other transform w/ same id as inactive before adding new one
-      state.reactions.suggestedTransforms.forEach((t) => {
-        if (t.id === transform.id) {
-          t.active = false;
-        }
-      });
-      // transform type caused flaky "possible infinite type definition" errorj
-      // ts-expect-error fails when it doesn't fail, so casting to any
-      state.reactions.suggestedTransforms.push(transform as any);
-    },
-    activateSuggestedTransform: (
-      state,
-      action: PayloadAction<{
-        id?: SuggestedTransform["id"];
-        suggestionId: string;
-      }>,
-    ) => {
-      const { id, suggestionId } = action.payload;
-
-      state.reactions.suggestedTransforms.forEach((t) => {
-        if (t.id === id) {
-          t.active = t.suggestionId === suggestionId;
-        }
-      });
-    },
-    deactivateSuggestedTransform: (
-      state,
-      action: PayloadAction<SuggestedTransform["id"] | undefined>,
-    ) => {
-      state.reactions.suggestedTransforms.forEach((t) => {
-        if (t.id === action.payload) {
-          t.active = false;
-        }
-      });
-    },
-    updateSuggestedTransformId: (
-      state,
-      action: PayloadAction<{
-        suggestionId: string;
-        newId: number | undefined;
-      }>,
-    ) => {
-      const { suggestionId, newId } = action.payload;
-      const transform = state.reactions.suggestedTransforms.find(
-        (t) => t.suggestionId === suggestionId,
-      );
-      if (transform) {
-        transform.id = newId;
-      }
+      state.reactions.dashboardSaveIds[payload.dashboardId] = payload.saveId;
     },
     addSuggestedCodeEdit: (
       state,
@@ -459,7 +417,9 @@ export const metabot = createSlice({
         castDraft(createConversation({ conversationId }));
 
       convo.messages = castDraft(
-        messages.map((t) => ({ ...t, parts: [...t.parts] })),
+        messages.map((message) =>
+          withServerErrorDisplay({ ...message, parts: [...message.parts] }),
+        ),
       );
       convo.state = snapshotState ?? {};
       convo.activeToolCalls = activeToolCalls ?? [];
@@ -588,7 +548,7 @@ export const metabot = createSlice({
         )?.params.convoId;
         if (convoId) {
           attachAgent(state, "ask", convoId);
-        } else if (matchPath(Urls.newQuestion({ mode: "ask" }), pathname)) {
+        } else if (matchPath(Urls.askQuestion(), pathname)) {
           startNewConversationForAgent(state, "ask");
         }
       });

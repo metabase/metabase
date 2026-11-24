@@ -41,6 +41,12 @@ const elements = [
   }),
   createElement({
     type: "lib",
+    name: "redux-core",
+    pattern: "frontend/src/metabase/redux/context.tsx",
+    mode: "full",
+  }),
+  createElement({
+    type: "lib",
     name: "types",
     pattern: "frontend/src/metabase-types/*/**",
   }),
@@ -75,7 +81,7 @@ const elements = [
   // shared
   createElement({ type: "feature", name: "account" }),
   createElement({ type: "shared", name: "actions" }),
-  createElement({ type: "shared", name: "api", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "api" }),
   createElement({ type: "shared", name: "archive" }),
   createElement({ type: "feature", name: "auth" }),
   createElement({ type: "feature", name: "browse" }),
@@ -133,6 +139,20 @@ const elements = [
   // embedding-iframe-sdk, embedding-iframe-sdk-setup and mcp-app must come before
   // shared/embedding: their patterns are subfolders of
   // frontend/src/metabase/embedding/, and the first matching element wins.
+  // The data-app-* elements are the Data Apps team's folders inside embedding
+  // code. Each one takes its parent's tier and comes before its parent.
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk",
+    pattern:
+      "frontend/src/metabase/embedding/embedding-iframe-sdk/data-apps/**",
+  }),
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk-setup",
+    pattern:
+      "frontend/src/metabase/embedding/embedding-iframe-sdk-setup/data-apps/**",
+  }),
   createElement({
     type: "app",
     name: "embedding-iframe-sdk",
@@ -165,8 +185,18 @@ const elements = [
   ].map((pattern) =>
     createElement({ type: "app", name: "mcp-app", pattern, mode: "full" }),
   ),
+  createElement({
+    type: "shared",
+    name: "data-app-embedding",
+    pattern: "frontend/src/metabase/embedding/data-apps/**",
+  }),
   createElement({ type: "shared", name: "embedding" }),
   createElement({ type: "shared", name: "embedding-sdk" }),
+  createElement({
+    type: "app",
+    name: "data-app-sdk-bundle",
+    pattern: "frontend/src/embedding-sdk-bundle/components/public/DataApp/**",
+  }),
   createElement({
     type: "app",
     name: "embedding-sdk-bundle",
@@ -181,6 +211,11 @@ const elements = [
     type: "app",
     name: "embedding-sdk-ee",
     pattern: "enterprise/frontend/src/embedding-sdk-ee/**",
+  }),
+  createElement({
+    type: "app",
+    name: "data-app-sdk-package",
+    pattern: "enterprise/frontend/src/embedding-sdk-package/data-apps/**",
   }),
   createElement({
     type: "app",
@@ -214,11 +249,15 @@ const elements = [
   }),
   createElement({
     type: "shared",
+    name: "data-app-embedding-sdk-shared",
+    pattern: "frontend/src/embedding-sdk-shared/data-apps/**",
+  }),
+  createElement({
+    type: "shared",
     name: "embedding-sdk-shared",
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
   createElement({ type: "shared", name: "forms" }),
-  createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "content-translation" }),
@@ -238,13 +277,14 @@ const elements = [
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
-  createElement({ type: "shared", name: "plugins", enforceSharedTiers: false }),
-  createElement({ type: "shared", name: "pulse" }),
   createElement({
     type: "shared",
-    name: "querying",
-    enforceSharedTiers: false,
+    name: "permissions",
+    enforcePublicApi: true,
   }),
+  createElement({ type: "shared", name: "plugins" }),
+  createElement({ type: "shared", name: "pulse" }),
+  createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "questions" }),
   createElement({ type: "shared", name: "redux", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "rich_text_editing" }),
@@ -331,6 +371,13 @@ const elements = [
       mode: "full",
     }),
   ),
+  createElement({
+    type: "app",
+    name: "data-app-iframe-sdk-ee",
+    pattern:
+      "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/data-apps/**",
+    mode: "full",
+  }),
   // The Near-Membrane sandbox + its ABI (globals map, factory/provider-props
   // contract). Feature tier on purpose: it's a library consumed by the app-tier
   // entries (runtime + SDK package dev preset), and the tier guarantees it only
@@ -338,13 +385,13 @@ const elements = [
   createElement({
     type: "feature",
     name: "data-app-sandbox",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/sandbox/**",
     mode: "full",
   }),
   createElement({
     type: "app",
     name: "data-app-runtime",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/runtime/**",
     mode: "full",
   }),
   createElement({
@@ -381,10 +428,8 @@ const elements = [
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/app-static-viz.ts",
     "frontend/src/metabase/AppComponent.tsx",
-    "frontend/src/metabase/App.styled.tsx",
+    "frontend/src/metabase/AppComponent.unit.spec.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
-    "frontend/src/metabase/app/selectors.ts",
-    "frontend/src/metabase/app/selectors.unit.spec.ts",
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
@@ -398,6 +443,8 @@ const elements = [
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
+    "frontend/src/metabase/ScrollToTop.tsx",
+    "frontend/src/metabase/ScrollToTop.unit.spec.tsx",
     "frontend/src/metabase/static-viz/index.tsx",
     "frontend/src/metabase/static-viz/index.unit.spec.tsx",
   ].map((path) =>
@@ -426,12 +473,6 @@ const elements = [
         mode: "full",
       }),
   ),
-  createElement({
-    type: "shared",
-    name: "error-boundary",
-    pattern: "frontend/src/metabase/ErrorBoundary.tsx",
-    mode: "full",
-  }),
   createElement({
     type: "app",
     name: "routes-stable-id-aware",
@@ -585,4 +626,15 @@ export {
   enforcedRules,
   getFeatureModules,
   getPublicApiModules,
+};
+
+export const boundarySettings = {
+  "boundaries/elements": elements,
+  "boundaries/ignore": ["**/e2e/**", "test/**"],
+  "boundaries/dependency-nodes": ["import", "dynamic-import"],
+};
+export const boundaryOptions = {
+  default: "disallow",
+  rules: enforcedRules,
+  message: "${file.type} cannot import from ${dependency.type}",
 };

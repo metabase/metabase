@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import type { Action, Middleware, ThunkDispatch } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
+import bridgeImage from "assets/img/bridge.svg?url";
 import noResultsSource from "assets/img/no_results.svg";
 import type { AdminPathKey, State } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -33,12 +35,12 @@ interface PluginDashboardSubscriptionParametersSectionOverride {
 }
 
 const defaultLandingPageIllustration = {
-  src: "app/img/bridge.svg",
+  src: bridgeImage,
   isDefault: true,
 };
 
 const defaultLoginPageIllustration = {
-  src: "app/img/bridge.svg",
+  src: bridgeImage,
   isDefault: true,
 };
 
@@ -155,7 +157,6 @@ const getDefaultReducers = () => ({
   sandboxingPlugin: () => null,
   shared: () => null,
   documents: () => null,
-  remoteSyncPlugin: () => null,
 });
 
 export const PLUGIN_REDUCERS: {
@@ -164,7 +165,6 @@ export const PLUGIN_REDUCERS: {
   sandboxingPlugin: any;
   shared: any;
   documents: any;
-  remoteSyncPlugin: any;
 } = definePluginSlot(getDefaultReducers);
 
 const getDefaultIsEeBuild = () => ({

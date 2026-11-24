@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { c, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 
-import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";
+import { LargeIconContainer } from "./LargeIconContainer";
+import { MigrationCard } from "./MigrationCard";
 
 interface MigrationCreationErrorProps {
   error: any;

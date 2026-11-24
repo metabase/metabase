@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { createSelector } from "@reduxjs/toolkit";
 
 import type { State } from "metabase/redux/store";
+import { getTokenFeature } from "metabase/settings";
 import type { User } from "metabase-types/api";
 
 import { currentUserApi } from "./api/current-user";
@@ -23,6 +25,18 @@ export const getUserIsAnalyst = createSelector(
   [getUser],
   (user) => !!user?.is_data_analyst,
 );
+
+/**
+ * A Data Analyst whose plan still includes the feature. Membership survives a
+ * downgrade (the permissions it grants keep working), but the app areas the
+ * role unlocks on its own pause until the feature returns.
+ *
+ * Mirrors entitled-data-analyst? in src/metabase/api/common.clj, minus the
+ * superuser shortcut.
+ */
+export const getUserIsEntitledAnalyst = (state: State): boolean =>
+  getUserIsAnalyst(state) &&
+  Boolean(getTokenFeature(state, "advanced_permissions"));
 
 export const canManageSubscriptions = createSelector(
   [

@@ -1,5 +1,7 @@
+import _ from "underscore";
+
 import { checkNotNull } from "metabase/utils/types";
-import type { VisualizationDisplay } from "metabase-types/api";
+import type { SeriesSettings, VisualizationDisplay } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -8,6 +10,9 @@ import {
   createMockInsight,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+
+import type { LegacySeriesSettingsObjectKey } from "../../echarts/cartesian/model/types";
+import type { ComputedVisualizationSettings } from "../../types";
 
 import {
   GRAPH_AXIS_SETTINGS,
@@ -267,9 +272,103 @@ describe("GRAPH_AXIS_SETTINGS", () => {
       },
     );
   });
-});
 
-describe("GRAPH_TREND_SETTINGS", () => {
+  describe("the y-axis label fields", () => {
+    const isLeftLabelHidden = checkNotNull(
+      GRAPH_AXIS_SETTINGS["graph.y_axis.title_text"]?.getHidden,
+    );
+    const isRightLabelHidden = checkNotNull(
+      GRAPH_AXIS_SETTINGS["graph.y_axis.right.title_text"]?.getHidden,
+    );
+
+    const MONTH_COLUMN = "month";
+    const REVENUE_COLUMN = "revenue";
+    const ORDERS_COLUMN = "orders";
+
+    // Revenue and orders live on ranges three orders of magnitude apart, which
+    // is what makes the automatic split kick in.
+    const createTwoMetricSeries = () => [
+      createMockSingleSeries(
+        createMockCard({ display: "line" }),
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({
+                name: MONTH_COLUMN,
+                display_name: "Month",
+                base_type: "type/Text",
+              }),
+              createMockColumn({
+                name: REVENUE_COLUMN,
+                display_name: "Revenue",
+                base_type: "type/Number",
+              }),
+              createMockColumn({
+                name: ORDERS_COLUMN,
+                display_name: "Orders",
+                base_type: "type/Number",
+              }),
+            ],
+            rows: [
+              ["Jan", 1, 900],
+              ["Feb", 2, 1000],
+            ],
+          }),
+        }),
+      ),
+    ];
+
+    const splitSettings = {
+      "graph.dimensions": [MONTH_COLUMN],
+      "graph.metrics": [REVENUE_COLUMN, ORDERS_COLUMN],
+      "graph.y_axis.auto_split": true,
+    };
+
+    it.each([
+      {
+        name: "a single-metric chart",
+        settings: { ...splitSettings, "graph.metrics": [REVENUE_COLUMN] },
+      },
+      {
+        // The only axis is on the right, and the shared field labels it.
+        name: "a chart with every series pinned right",
+        settings: {
+          ...splitSettings,
+          "graph.y_axis.auto_split": false,
+          series: () => ({ axis: "right" as const }),
+        },
+      },
+      {
+        // Split panels draw one shared label from the left axis model.
+        name: "split panels",
+        settings: { ...splitSettings, "graph.split_panels": true },
+      },
+    ])("should offer only the shared label for $name", ({ settings }) => {
+      const series = createTwoMetricSeries();
+
+      expect(isLeftLabelHidden(series, settings)).toBe(false);
+      expect(isRightLabelHidden(series, settings)).toBe(true);
+    });
+
+    it("should offer both labels when the chart splits its y-axis", () => {
+      const series = createTwoMetricSeries();
+
+      expect(isLeftLabelHidden(series, splitSettings)).toBe(false);
+      expect(isRightLabelHidden(series, splitSettings)).toBe(false);
+    });
+
+    it("should hide both when y-axis labels are turned off", () => {
+      const settings = {
+        ...splitSettings,
+        "graph.y_axis.labels_enabled": false,
+      };
+      const series = createTwoMetricSeries();
+
+      expect(isLeftLabelHidden(series, settings)).toBe(true);
+      expect(isRightLabelHidden(series, settings)).toBe(true);
+    });
+  });
+
   describe("graph.show_trendline", () => {
     const getHidden = checkNotNull(
       GRAPH_TREND_SETTINGS["graph.show_trendline"]?.getHidden,
@@ -297,6 +396,164 @@ describe("GRAPH_TREND_SETTINGS", () => {
       );
 
       expect(isHidden).toBe(true);
+    });
+  });
+
+  describe("single series trend line customization", () => {
+    const CUSTOM_COLOR = "#ED6E6E";
+
+    const seriesWithInsights = (names: string[]) =>
+      names.map((name) =>
+        createMockSingleSeries(
+          { name },
+          {
+            data: createMockDatasetData({
+              insights: [createMockInsight({ col: name })],
+            }),
+          },
+        ),
+      );
+
+    const getSettings = (
+      seriesSettings: Record<string, SeriesSettings>,
+    ): ComputedVisualizationSettings => ({
+      "graph.show_trendline": true,
+      "graph.dimensions": ["FOO"],
+      series_settings: seriesSettings,
+      series: (key: LegacySeriesSettingsObjectKey) =>
+        seriesSettings[key.card.name ?? ""] ?? {},
+    });
+
+    describe("graph.trendline_color", () => {
+      const definition = checkNotNull(
+        GRAPH_TREND_SETTINGS["graph.trendline_color"],
+      );
+      const getValue = checkNotNull(definition.getValue);
+      const getHidden = checkNotNull(definition.getHidden);
+      const getProps = checkNotNull(definition.getProps);
+
+      it("should read the color of the single series", () => {
+        const series = seriesWithInsights(["count"]);
+        const settings = getSettings({
+          count: { "trendline.color": CUSTOM_COLOR },
+        });
+
+        expect(getValue(series, settings)).toBe(CUSTOM_COLOR);
+      });
+
+      it("should write the color into the single series settings and keep the rest", () => {
+        const series = seriesWithInsights(["count"]);
+        const settings = getSettings({
+          count: { "trendline.style": "dotted" },
+          avg: { color: "#88BF4D" },
+        });
+        const onChangeSettings = jest.fn();
+        const { onChange } = getProps(
+          series,
+          settings,
+          _.noop,
+          undefined,
+          onChangeSettings,
+        );
+
+        expect(typeof onChange).toBe("function");
+        if (typeof onChange === "function") {
+          onChange(CUSTOM_COLOR);
+        }
+
+        expect(onChangeSettings).toHaveBeenCalledWith({
+          series_settings: {
+            count: {
+              "trendline.style": "dotted",
+              "trendline.color": CUSTOM_COLOR,
+            },
+            avg: { color: "#88BF4D" },
+          },
+        });
+      });
+
+      it("should be hidden when the trend line is disabled", () => {
+        const series = seriesWithInsights(["count"]);
+
+        expect(
+          getHidden(series, {
+            ...getSettings({}),
+            "graph.show_trendline": false,
+          }),
+        ).toBe(true);
+        expect(getHidden(series, getSettings({}))).toBe(false);
+      });
+
+      it("should be hidden with multiple series, which are customized per series", () => {
+        expect(
+          getHidden(seriesWithInsights(["count", "avg"]), getSettings({})),
+        ).toBe(true);
+      });
+    });
+
+    describe("graph.trendline_style", () => {
+      const definition = checkNotNull(
+        GRAPH_TREND_SETTINGS["graph.trendline_style"],
+      );
+      const getValue = checkNotNull(definition.getValue);
+      const getHidden = checkNotNull(definition.getHidden);
+      const getProps = checkNotNull(definition.getProps);
+
+      it("should read the style of the single series", () => {
+        const series = seriesWithInsights(["count"]);
+        const settings = getSettings({
+          count: { "trendline.style": "dashed" },
+        });
+
+        expect(getValue(series, settings)).toBe("dashed");
+      });
+
+      it("should write the style into the single series settings and keep the rest", () => {
+        const series = seriesWithInsights(["count"]);
+        const settings = getSettings({
+          count: { "trendline.color": CUSTOM_COLOR },
+        });
+        const onChangeSettings = jest.fn();
+        const { onChange } = getProps(
+          series,
+          settings,
+          _.noop,
+          undefined,
+          onChangeSettings,
+        );
+
+        expect(typeof onChange).toBe("function");
+        if (typeof onChange === "function") {
+          onChange("dotted");
+        }
+
+        expect(onChangeSettings).toHaveBeenCalledWith({
+          series_settings: {
+            count: {
+              "trendline.color": CUSTOM_COLOR,
+              "trendline.style": "dotted",
+            },
+          },
+        });
+      });
+
+      it("should be hidden when the trend line is disabled", () => {
+        const series = seriesWithInsights(["count"]);
+
+        expect(
+          getHidden(series, {
+            ...getSettings({}),
+            "graph.show_trendline": false,
+          }),
+        ).toBe(true);
+        expect(getHidden(series, getSettings({}))).toBe(false);
+      });
+
+      it("should be hidden with multiple series, which are customized per series", () => {
+        expect(
+          getHidden(seriesWithInsights(["count", "avg"]), getSettings({})),
+        ).toBe(true);
+      });
     });
   });
 });

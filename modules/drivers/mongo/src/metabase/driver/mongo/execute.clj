@@ -1,9 +1,10 @@
 (ns metabase.driver.mongo.execute
-  (:refer-clojure :exclude [every? mapv])
+  (:refer-clojure :exclude [every? mapv select-keys some])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.conversion :as mongo.conversion]
@@ -11,11 +12,13 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.settings :as driver.settings]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? mapv]])
+   [metabase.util.performance :refer [every? mapv select-keys some]])
   (:import
+   (com.mongodb MongoCommandException)
    (com.mongodb.client
     AggregateIterable
     ClientSession
@@ -46,7 +49,8 @@
   "Make sure there are no columns coming back from `results` that we weren't expecting. If there are, we did something
   wrong here and the query we generated is off."
   [columns             :- ::mongo.qp/projections
-   first-row-col-names] ; first row col names seems to be `java.util.LinkedHashMap$LinkedKeySet` so don't try to Malli it
+   ;; first row col names seems to be `java.util.LinkedHashMap$LinkedKeySet`
+   first-row-col-names :- [:maybe (driver-api/instance-of-class java.util.Collection)]]
   {:pre [(every? string? columns) (every? string? first-row-col-names)]}
   (when (seq first-row-col-names)
     (let [expected-cols   (set (for [col-name columns]
@@ -84,8 +88,8 @@
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
   thr query result metadata."
   [{:keys [mbql? projections]} :- ::mongo.qp/compiled-pipeline-with-collection
-   query
-   first-row-col-names]
+   query                :- ::mongo.qp/pipeline
+   first-row-col-names  :- [:maybe (driver-api/instance-of-class java.util.Collection)]]
   ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.
   ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
   (if-not (and mbql? (seq projections))
@@ -170,6 +174,7 @@
         aggregate (.aggregate db session pipe)]
     (init-aggregate! aggregate timeout-ms)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn- ^:dynamic *aggregate*
   [^MongoDatabase db
    ^String coll
@@ -206,11 +211,53 @@
                []
                (reducible-rows cursor first-row (post-process-row row-col-names))))))
 
-(defn execute-reducible-query
+;; https://www.mongodb.com/docs/manual/reference/error-codes/
+;; https://www.mongodb.com/docs/manual/reference/operator/aggregation/facet/#considerations
+(def ^:private facet-oversize-error-codes
+  "MongoDB command-error codes raised when a `$facet` stage overruns a size limit — 10334 for the 16 MB
+  BSON limit on the outer output document, 4031700 for the 100 MB in-memory limit on a single stage
+  inside a `$facet` branch (which cannot spill to disk)."
+  #{10334 4031700})
+
+(defn- facet-pipeline?
+  "True iff `pipeline` contains a `$facet` stage."
+  [pipeline]
+  (boolean (some #(contains? % "$facet") pipeline)))
+
+(defn- translate-cursor-error
+  "Wrap a Throwable raised while opening the aggregation cursor into a QP-friendly `ex-info`. Pivot
+  queries whose `$facet` output overruns MongoDB's size limits get a message that names the two
+  remediations; everything else gets the generic wrapping."
+  [e native-query]
+  (let [code             (when (instance? MongoCommandException e)
+                           (.getErrorCode ^MongoCommandException e))
+        facet-oversize?  (and (contains? facet-oversize-error-codes code)
+                              (facet-pipeline? (:query native-query)))]
+    (if facet-oversize?
+      (ex-info (tru (str "Pivot result exceeded MongoDB''s $facet size limits. Reduce the pivot''s "
+                         "cardinality by adding filters or dropping breakouts with many distinct values, "
+                         "or ask an admin to disable the ''use-native-pivot-tables'' setting."))
+               {:driver     :mongo
+                :native     native-query
+                :type       driver-api/qp.error-type.invalid-query
+                :error-code code}
+               e)
+      (ex-info (tru "Error executing query: {0}" (ex-message e))
+               {:driver :mongo
+                :native native-query
+                :type   driver-api/qp.error-type.invalid-query}
+               e))))
+
+(mu/defn execute-reducible-query
   "Process and run a native MongoDB query. This function expects initialized [[mongo.connection/*mongo-client*]]."
-  [{{query :query collection-name :collection :as native-query} :native} respond]
+  [{[{query :native, collection-name :collection, :as native-stage}] :stages} :- ::lib.schema/native-only-query
+   respond                                                                    :- ::driver/execute-reducible-query.respond-fn]
   {:pre [(string? collection-name) (fn? respond)]}
-  (let [query  (cond-> query
+  (let [;; the rest of this namespace works with the compiled pipeline shape, see `::mongo.qp/compiled-pipeline`
+        native-query (-> native-stage
+                         (set/rename-keys {:native :query})
+                         (select-keys [:query :collection :projections :mbql? :params]))
+        query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)
         database (driver-api/database (driver-api/metadata-provider))
         db-name (mongo.db/db-name database)
@@ -227,9 +274,5 @@
                                                       driver.settings/*query-timeout-ms*)]
         (with-open [^MongoCursor cursor (try (.cursor aggregate)
                                              (catch Throwable e
-                                               (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                               {:driver :mongo
-                                                                :native native-query
-                                                                :type   driver-api/qp.error-type.invalid-query}
-                                                               e))))]
+                                               (throw (translate-cursor-error e native-query))))]
           (reduce-results native-query query cursor respond))))))

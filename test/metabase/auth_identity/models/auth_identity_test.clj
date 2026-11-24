@@ -4,6 +4,8 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.models.auth-identity :as auth-identity.model]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -49,7 +51,7 @@
       (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
             auth-identity-id (:id auth-identity)
             new-password "new-password-456"]
-        (t2/update! :model/AuthIdentity auth-identity-id
+        (t2/update! :model/AuthIdentity :id auth-identity-id
                     {:credentials {:plaintext_password new-password}})
         (let [updated (t2/select-one :model/AuthIdentity :id auth-identity-id)
               {:keys [password_hash password_salt]} (:credentials updated)]
@@ -70,7 +72,7 @@
             auth-identity-id (:id auth-identity)
             original-hash (get-in auth-identity [:credentials :password_hash])
             original-salt (get-in auth-identity [:credentials :password_salt])]
-        (t2/update! :model/AuthIdentity auth-identity-id
+        (t2/update! :model/AuthIdentity :id auth-identity-id
                     {:metadata {:last_login "2024-01-01"}})
         (let [updated (t2/select-one :model/AuthIdentity :id auth-identity-id)]
           (is (= original-hash (get-in updated [:credentials :password_hash]))
@@ -98,7 +100,7 @@
                             :provider "google"
                             :metadata {:email "old@example.com"}})
             auth-identity-id (:id auth-identity)]
-        (t2/update! :model/AuthIdentity auth-identity-id
+        (t2/update! :model/AuthIdentity :id auth-identity-id
                     {:metadata {:email "new@example.com"}})
         (let [updated (t2/select-one :model/AuthIdentity :id auth-identity-id)]
           (is (= "new@example.com" (get-in updated [:metadata :email]))
@@ -169,3 +171,18 @@
           (is (= "plain"
                  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
                          [:credentials :secret]))))))))
+
+(deftest update-auth-identities-statement-count-does-not-grow-with-rows-test
+  (mt/with-temp [:model/User {user-1 :id} {}
+                 :model/User {user-2 :id} {}
+                 :model/User {user-3 :id} {}
+                 :model/User {user-4 :id} {}
+                 :model/User {user-5 :id} {}
+                 :model/User {user-6 :id} {}]
+    (mt/with-model-cleanup [:model/AuthIdentity]
+      (doseq [user-id [user-1 user-2 user-3 user-4 user-5 user-6]]
+        (auth-identity.model/create-auth-identity! {:user_id user-id :provider "emailed-secret-password-reset"}))
+      (let [ids     (t2/select-pks-vec :model/AuthIdentity :user_id [:in [user-1 user-2 user-3 user-4 user-5 user-6]])
+            counted (fn [n] (events.tu/statement-count! #(auth-identity.model/update-auth-identities! (let [now (t/instant)] (mapv (fn [id] {:id id :expires_at now}) (take n ids))))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))))))

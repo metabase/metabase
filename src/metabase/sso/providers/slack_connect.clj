@@ -3,6 +3,7 @@
    and adds Slack-specific configuration and claim extraction."
   (:require
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.server.settings :as server.settings]
    [metabase.sso.db :as sso.db]
    [metabase.sso.settings :as sso-settings]
@@ -77,26 +78,6 @@
     (throw (ex-info (tru "Sorry, but you''ll need a Metabase account to view this page. Please contact your administrator.")
                     {:status-code 401}))))
 
-(defn check-sso-redirect
-  "Check if open redirect is being exploited in SSO. If so, or if the redirect-url is invalid, throw a 400."
-  [redirect-url]
-  (try
-    (let [redirect (some-> redirect-url (java.net.URI.))
-          our-host (some-> ((requiring-resolve 'metabase.system.core/site-url)) (java.net.URI.) (.getHost))]
-      (when-not (or (nil? redirect-url)
-                    (and (nil? (.getHost redirect))
-                         (nil? (.getScheme redirect)))
-                    (= (.getHost redirect) our-host))
-        (throw (ex-info (tru "Invalid redirect URL")
-                        {:status-code  400
-                         :redirect-url redirect-url})))
-      redirect-url)
-    (catch clojure.lang.ExceptionInfo e (throw e))
-    (catch Exception _e
-      (throw (ex-info (tru "Invalid redirect URL")
-                      {:status-code  400
-                       :redirect-url redirect-url})))))
-
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 
 (methodical/defmethod auth-identity/authenticate :provider/slack-connect
@@ -148,7 +129,7 @@
   [user-id provider-id]
   (when (and user-id provider-id)
     (when-not (sso.db/auth-identity-exists? user-id provider-name)
-      (sso.db/insert-auth-identity! user-id provider-name provider-id))))
+      (models.auth-identity/create-auth-identity! {:user_id user-id, :provider provider-name, :provider_id provider-id}))))
 
 (methodical/defmethod auth-identity/login! :provider/slack-connect
   [provider {:keys [user authenticated-user user-data] :as request}]
@@ -170,8 +151,10 @@
   (when (:success? result)
     (when-let [user-id (or (some-> result :user :id)
                            (some-> result :authenticated-user deref :id))]
-      (sso.db/set-auth-identity-metadata! user-id provider-name
-                                          {:signing_secret_version (server.settings/slack-connect-signing-secret-version)})))
+      (when-let [auth-identity-id (sso.db/auth-identity-id user-id provider-name)]
+        (models.auth-identity/update-auth-identities!
+         [{:id       auth-identity-id
+           :metadata {:signing_secret_version (server.settings/slack-connect-signing-secret-version)}}]))))
   (if (= sso-settings/slack-connect-auth-mode-link-only (sso-settings/slack-connect-authentication-mode))
     (dissoc result :user)
     result))

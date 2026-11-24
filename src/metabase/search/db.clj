@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.search.appdb.index-schema :as index-schema]
    [metabase.search.appdb.query :as appdb.query]
    [metabase.search.appdb.scoring :as search.scoring]
@@ -13,9 +14,22 @@
    [metabase.search.in-place.legacy :as legacy]
    [metabase.search.ingestion.query :as ingestion.query]
    [metabase.search.schema :as search.schema]
+   [metabase.search.spec :as search.spec]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(def ^:private SearchIndexRow
+  "A row of the search index table: `search.spec/attr-columns` (with `:id`/`:created_at`/`:updated_at` renamed the
+  way `metabase.search.appdb.index/document->entry` renames them), the base columns, and the extra columns the
+  active engine specialization adds, each value a Honey SQL 2 expression."
+  (into [:map {:closed true}]
+        (for [column (into #{:model :display_data :legacy_input :model_id :model_created_at :model_updated_at
+                             :updated_at :search_vector :with_native_query_vector :search_terms
+                             :native_search_terms}
+                           (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
+          [column {:optional true} ::h2x/expr])))
 
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
@@ -29,6 +43,22 @@
   [search-model :- :string
    where-clause :- [:maybe vector?]]
   (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause)))
+
+(mu/defn spec-index-doc-ids-reducible
+  "A reducible of at most `limit` distinct document ids `search-model` produces under `where-clause`, each row as
+  `{:id id}`.
+  Each id comes once, even when a spec join repeats its row, so `limit` counts documents rather than rows.
+  The where-clause is a search-spec fragment, as for [[spec-index-reducible-rows]].
+  Reducing it runs the query in its own transaction, a savepoint inside an enclosing one, so a failed query leaves
+  the enclosing transaction usable."
+  [search-model :- :string
+   where-clause :- vector?
+   limit        :- pos-int?]
+  (mdb/streaming-reducible-query
+   (-> (ingestion.query/spec-index-query-where search-model where-clause)
+       (dissoc :select)
+       (assoc :select-distinct [(ingestion.query/doc-id-select-item search-model)]
+              :limit           limit))))
 
 (mu/defn spec-index-row
   "A probe row when the `search-model` row with the underlying model PK `id` is indexable, or nil."
@@ -58,7 +88,7 @@
   [index-table            :- [:or :keyword :string]
    search-ctx             :- search.config/SearchContext
    search-string          :- [:maybe :string]
-   view-count-percentiles :- [:map-of :keyword [:maybe number?]]]
+   view-count-percentiles :- [:map-of (into [:enum] search.spec/search-models) [:maybe [:or number? :string]]]]
   (t2/query (search.scoring/with-scores search-ctx
               (search.scoring/scorers search-ctx view-count-percentiles)
               (appdb.query/base-filtered-query index-table search-ctx search-string [:legacy_input]))))
@@ -108,8 +138,11 @@
   (t2/query (sql.helpers/drop-table :if-exists table-name)))
 
 (mu/defn drop-search-index-table!
-  "Drop the search index table named `table-name`."
+  "Drop the search index table named `table-name`, throwing if it is already gone."
   [table-name :- [:or :keyword :string]]
+  ;; `IF EXISTS` cannot reliably report whether it dropped a table.
+  ;; PostgreSQL emits only a JDBC warning, which Toucan does not expose, and H2 emits nothing.
+  ;; Let an absent table throw so callers can detect races.
   (t2/query (sql.helpers/drop-table table-name)))
 
 (mu/defn create-search-index-table!
@@ -132,7 +165,7 @@
   "Upsert `entries` into the search index `table`, on conflict of `(model, model_id)` overwriting every other column
   with the new value."
   [table   :- [:or :keyword :string]
-   entries :- [:sequential :map]]
+   entries :- [:sequential SearchIndexRow]]
   (when (seq entries)
     (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
           excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
@@ -185,7 +218,7 @@
 (mu/defn insert-rows!
   "Insert `entries` into the search index `table`."
   [table   :- [:or :keyword :string]
-   entries :- [:sequential :map]]
+   entries :- [:sequential SearchIndexRow]]
   (t2/insert! table entries))
 
 (mu/defn index-entry-count
@@ -245,7 +278,7 @@
 
 (mu/defn insert-index-metadata!
   "Insert the SearchIndexMetadata `row`."
-  [row :- ::search.schema/search-index-metadata.update]
+  [row :- ::search.schema/search-index-metadata.create]
   (t2/insert! :model/SearchIndexMetadata row))
 
 (mu/defn delete-index-metadata-by-version!
@@ -253,19 +286,24 @@
   [version :- :string]
   (t2/delete! :model/SearchIndexMetadata :version version))
 
-(mu/defn delete-index-metadata-by-name-on-conn!
-  "Delete the SearchIndexMetadata rows named `index-name`, on `conn`."
+(mu/defn delete-index-metadata-by-name!
+  "Delete the SearchIndexMetadata rows named `index-name` using `conn`."
   [conn       :- (ms/InstanceOfClass java.sql.Connection)
    index-name :- :string]
   (t2/delete! :conn conn :model/SearchIndexMetadata :index_name index-name))
 
-(mu/defn delete-index-metadata!
-  "Delete the SearchIndexMetadata row of `engine`, `version`, `lang-code`, and `index-name`."
+(mu/defn delete-non-active-index-metadata!
+  "Delete the pending or retired SearchIndexMetadata rows of `engine`, `version`, `lang-code`, and `index-name`."
   [engine     :- :keyword
    version    :- :string
    lang-code  :- :string
    index-name :- :string]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :index_name index-name))
+  (t2/delete! :model/SearchIndexMetadata
+              :engine engine
+              :version version
+              :lang_code lang-code
+              :index_name index-name
+              :status [:not= :active]))
 
 (mu/defn index-metadata
   "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`, `version`, and
@@ -295,6 +333,19 @@
    version   :- :string
    lang-code :- :string]
   (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :pending))
+
+(mu/defn lock-pending-index-metadata!
+  "Lock and return the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, if one exists.
+  Must be called inside the transaction that will promote the row."
+  [engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
+  (t2/select-one [:model/SearchIndexMetadata :id]
+                 :engine engine
+                 :version version
+                 :lang_code lang-code
+                 :status :pending
+                 {:for :update}))
 
 (mu/defn delete-retired-index-metadata!
   "Delete the retired SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
@@ -348,17 +399,34 @@
                                 [:not-in :version keep-versions]
                                 [:< :updated_at updated-before]]]}))
 
-(mu/defn non-destination-database-ids
-  "The ids of the Databases that are not routing destinations, or nil."
-  []
-  (t2/select-pks-set :model/Database :router_database_id nil))
-
 (mu/defn user-common-names
   "A map of User id to common name for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
 
 (mu/defn card-result-metadata
-  "A map of Card id to result metadata for the Cards with `card-ids`."
+  "A map of Card id to result metadata for the Cards with `card-ids`.
+
+  SELECTs `report_card` directly instead of `:model/Card`, so the `:card_schema` read-time upgrade stays out of it.
+  Naming a schema-governed column on the model arms the whole upgrade chain, and the upgrade to 24 recomputes a
+  legacy metric's entire dimension set from its query — several app-db round trips per row, to produce columns
+  search never looks at. What search wants is the stored result metadata, so all that is needed from the model is
+  its `:out` transform, applied here. (The upgrade to 22 also strips `:ident` keys left by an abandoned experiment;
+  a stale one reaching a search payload is harmless.)"
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))
+  (let [result-metadata-out (:out mi/transform-result-metadata)]
+    (into {}
+          (map (juxt :id (comp result-metadata-out :result_metadata)))
+          (when (seq card-ids)
+            (t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in card-ids])))))
+
+(mu/defn collection-permission-rows
+  "The Collections with `collection-ids`, with the columns their `:can_write` hydration reads, which search results
+  don't carry."
+  [collection-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Collection :id :type :namespace :location :is_remote_synced] :id [:in collection-ids]))
+
+(mu/defn document-exploration-ids
+  "A map of the id of each Document in `document-ids` to its `:exploration_id`, nil for a Document in no Exploration."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pk->fn :exploration_id [:model/Document :id :exploration_id] :id [:in document-ids]))

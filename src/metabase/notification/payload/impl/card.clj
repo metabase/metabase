@@ -12,6 +12,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.ui-logic :as ui-logic]))
 
+(set! *warn-on-reflection* true)
+
 (mu/defmethod notification.payload/payload :notification/card
   [{:keys [creator_id payload subscriptions] :as _notification-info} :- ::notification.payload/Notification]
   (log/with-context {:card_id (:card_id payload)}
@@ -37,7 +39,7 @@
         comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card card_part)
                                                                   (get-in card_part [:result :data]))]
     (when-not (and goal-val comparison-col-rowfn)
-      (throw (ex-info "Unable to compare results to goal for notificationt_card"
+      (throw (ex-info "Unable to compare results to goal"
                       {:notification_card  notification_card
                        :result card_part})))
     (boolean
@@ -72,7 +74,7 @@
   (when (and (-> notification-info :payload :send_once)
              (not skipped?))
     (log/info "Archiving due to send_once")
-    (notification.db/deactivate-notification! (:id notification-info)))
+    (models.notification/update-notifications! [{:id (:id notification-info) :active false}]))
   (try
     (when-let [rows (-> notification-payload :payload :card_part :result :data :rows)]
       (notification.payload/cleanup! rows))

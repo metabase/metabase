@@ -4,11 +4,11 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib-be.core]
    [metabase.lib.core :as lib]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [select-keys get-in]]
@@ -25,23 +25,50 @@
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved
 ;; to [[metabase.legacy-mbql.util]]
 
+(defn- remark-field
+  [field-name value]
+  (when-let [value (cond-> value (keyword? value) name)]
+    (format " %s: %s" field-name value)))
+
+(mu/defn query->remark-data
+  "Returns the data for a query remark as a map. Drivers can format this data as their database requires."
+  [{{:keys [executed-by query-hash card-id dashboard-id pulse-id context], :as _info} :info
+    database-id :database
+    :as query} :- ::qp.schema/any-query]
+  {:user-id      executed-by
+   :query-type   (if (:lib/type query)
+                   ;; a query compiled from MBQL reaches the driver as a single native stage plus
+                   ;; `:qp/original-stages`, see [[metabase.query-processor.execute]]
+                   (case (keyword (:lib/type (or (last (:qp/original-stages query))
+                                                 (lib/query-stage query -1))))
+                     :mbql.stage/mbql   "MBQL"
+                     :mbql.stage/native "native")
+                   (case (keyword (:type query))
+                     :query  "MBQL"
+                     :native "native"))
+   :query-hash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
+   :account-id   (system/site-uuid)
+   :dashboard-id dashboard-id
+   :card-id      card-id
+   :pulse-id     pulse-id
+   :context      context
+   :database-id  database-id})
+
 (mu/defn default-query->remark
   "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
    can access the default value."
-  [{{:keys [executed-by query-hash], :as _info} :info, :as query} :- ::qp.schema/any-query]
-  (let [query-type (if (:lib/type query)
-                     (case (keyword (:lib/type (lib/query-stage query -1)))
-                       :mbql.stage/mbql   "MBQL"
-                       :mbql.stage/native "native")
-                     (case (keyword (:type query))
-                       :query  "MBQL"
-                       :native "native"))]
-    (str "Metabase" (when executed-by
-                      (assert (bytes? query-hash) "If info includes executed-by it should also include query-hash")
-                      (format ":: userID: %s queryType: %s queryHash: %s"
-                              executed-by
-                              query-type
-                              (codecs/bytes->hex query-hash))))))
+  [query :- ::qp.schema/any-query]
+  (let [{:keys [user-id query-type query-hash account-id dashboard-id card-id pulse-id context database-id]}
+        (query->remark-data query)]
+    (str "Metabase" (when user-id
+                      (assert query-hash "If info includes executed-by it should also include query-hash")
+                      (format ":: userID: %s queryType: %s queryHash: %s" user-id query-type query-hash))
+         (remark-field "accountID" account-id)
+         (remark-field "dashboardID" dashboard-id)
+         (remark-field "cardID" card-id)
+         (remark-field "pulseID" pulse-id)
+         (remark-field "context" context)
+         (remark-field "databaseID" database-id))))
 
 (defmulti query->remark
   "Generate an appropriate remark `^String` to be prepended to a query to give DBAs additional information about the query
@@ -54,19 +81,22 @@
 
   'Hey, this is a 20 character query! What's it talking about, error at position 120?'
   This gets fixed, but in a spooky-action-at-a-distance way, in
-  `frontend/src/metabase/query_builder/components/VisualizationError.jsx`"
+  `frontend/src/metabase/query_builder/components/VisualizationError.jsx`
+
+  `query` will be MBQL 5 if the driver supports `:mbql-5-native-query-execution`, otherwise `query` will be Legacy MBQL."
   {:arglists '(^String [driver query])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod query->remark :default
-  [_ query]
+  [_driver query]
   (default-query->remark query))
 
-;; TODO - this has been moved to `metabase.legacy-mbql.util`; use that implementation instead.
 (mu/defn ^:deprecated normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
-  keyword."
+  keyword.
+
+  DEPRECATED: use [[metabase.lib.core/normalize]] to normalize various things to the appropriate Lib schema."
   [token :- [:or :keyword :string]]
   (-> (name token)
       u/lower-case-en
@@ -92,18 +122,13 @@
   [new-metadata old-metadata]
   ;; deprecated fn using its own deprecated helper; both leave together
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (let [old-cols-by-desired-col-alias (m/index-by :lib/desired-column-alias (filter :lib/desired-column-alias old-metadata))
-        old-cols-by-name (m/index-by :name old-metadata)]
-    (for [new-col new-metadata]
-      (if-let [old-col (or (get old-cols-by-desired-col-alias (:lib/desired-column-alias new-col))
-                           ;; Only match by name if a desired column alias is missing,
-                           ;; otherwise we could match different columns with the same name
-                           (let [old-col (get old-cols-by-name (:name new-col))]
-                             (when (not-every? :lib/desired-column-alias [new-col old-col])
-                               old-col)))]
-        (merge new-col (select-keys old-col preserved-keys))
-        new-col))))
+  (map (fn [new-col old-col]
+         (cond-> new-col
+           old-col (merge (select-keys old-col preserved-keys))))
+       new-metadata
+       (lib/match-returned-columns old-metadata new-metadata)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *execute-async?*
   "Whether to save QueryExecutions (and other post-execution side effects) asynchronously via the batch-processing
   queue. Bind (or redef, when the query runs on another thread) to `false` in tests to save synchronously on the
@@ -117,5 +142,5 @@
 
 (mu/defn internal-query? :- :boolean
   "Returns `true` if query is an internal query."
-  [{query-type :type} :- :map]
+  [{query-type :type} :- ::qp.schema/any-query]
   (= :internal (keyword query-type)))

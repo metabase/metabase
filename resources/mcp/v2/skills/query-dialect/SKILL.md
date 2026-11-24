@@ -5,7 +5,12 @@ description: The query dialect execute_query and question_write's `query` accept
 
 # The query dialect
 
-**MBQL or SQL?** MBQL (`execute_query`) for anything that will sit on a filtered dashboard, anything with a date/category/FK filter, every plain aggregate, breakout, or join — MBQL cards wire to dashboard filters as-is; a raw-SQL card must be rewritten with template tags first. SQL (`execute_sql`) for window functions, CTEs, set operations, engine-specific functions, or when the user asks for SQL. Unsure: start in MBQL — the server validates it and names what didn't resolve.
+**MBQL or SQL?** MBQL (`execute_query`) is the default for everything it can express (`execute_query`'s description lists the operations) and for anything that will sit on a filtered dashboard — an MBQL card wires to dashboard filters as-is; a raw-SQL card must be rewritten with template tags first. SQL (`execute_sql`) is warranted only for window functions, CTEs, set operations, engine-specific functions, an explicit request for SQL, or a structured attempt rejected for a reason you can't fix. Unsure: start in MBQL — the server validates it and names what didn't resolve. A whole-table count needs no field ids at all, just the table id from `list_tables` or `search`:
+
+```json
+{"lib/type": "mbql/query",
+ "stages": [{"lib/type": "mbql.stage/mbql", "source-table": 5, "aggregation": [["count", {}]]}]}
+```
 
 Everything — tables, columns, saved questions, models, metrics, measures, segments — is named by **numeric id**, copied from `browse_data` (`list_tables`, `get_fields`), `search`, or `get_content`; never invented. A wrong name errors loudly; a wrong id that exists resolves to the wrong column *silently*. `get_content`'s `definition` include returns this same shape, so a read definition can be edited and sent back.
 
@@ -26,6 +31,19 @@ Loop: author → `execute_query` `validate_only: true` (shape + ids, mints a `qu
 
 - First stage only: `source-table` (table id) **or** `source-card` (card id), exactly one; later stages read the previous stage's output.
 - Optional stage keys: `filters`, `aggregation`, `breakout`, `expressions`, `fields`, `joins`, `order-by`, `limit`.
+
+## Limit and paging
+
+`limit: N` on a stage bounds the whole result to its first N rows in `order-by` order. `execute_query`'s `row_limit` is the page size (default 100), not a bound: a truncated page carries `next_cursor`, and each `cursor` call serves the next page until `truncated` is false. A limited query spends its limit down across pages, so its last page arrives `truncated: false` with no `next_cursor` — pagination ends by itself. "The first 400 charges by id" is therefore `order-by` + `limit: 400`, paged at the default size, never an unbounded query stopped after four pages by hand:
+
+```json
+{"lib/type": "mbql/query",
+ "stages": [{"lib/type": "mbql.stage/mbql",
+             "source-table": 30,
+             "fields": [["field", {}, 2751]],
+             "order-by": [["asc", {}, ["field", {}, 2751]]],
+             "limit": 400}]}
+```
 
 ## Two rules
 
@@ -117,13 +135,14 @@ Window: `offset` sits in `aggregation` and reads another breakout row — month-
 
 ## Metrics, measures, segments
 
-By numeric id, on a stage whose `source-table` is their base table: metric `"aggregation": [["metric", {}, 42]]`; measure `"aggregation": [["measure", {}, 7]]`; segment `"filters": [["segment", {}, 3]]`. `browse_data` `get_fields` lists each table's with ids. To compose on top of one, `get_content` `include: ["definition"]` returns its clauses in this dialect to inline and extend.
+By numeric id, on a stage built on the metric's required source: the base table in `source-table` for a table metric, or the model or saved question in `source-card` for a card metric. Only a single-stage metric defined on a card requires that exact card; a multi-stage metric whose definition starts from a card requires its underlying table in `source-table` instead. Measures and segments go on a stage whose `source-table` is their base table. Metric `"aggregation": [["metric", {}, 42]]`; measure `"aggregation": [["measure", {}, 7]]`; segment `"filters": [["segment", {}, 3]]`. `browse_data` `get_fields` lists each table's with ids. To compose on top of one, `get_content` `include: ["definition"]` returns its clauses in this dialect to inline and extend.
 
 A metric's or measure's output column is named for the aggregation inside its definition (`sum`, `count`, `avg`), not for the metric or measure — set `"name"` in its options slot (`["measure", {"name": "revenue"}, 7]`) to name it for a later stage.
 
 ## Translating the request
 
 - "only / where / for X" is a **filter**; "by / per / for each / over time" is a **breakout**.
+- "first / top / latest N" is `order-by` + `limit: N` in the stage (see Limit and paging).
 - Apply every stated constraint; add no analysis the user didn't ask for.
 
 ## Don't
@@ -133,3 +152,4 @@ A metric's or measure's output column is named for the aggregation inside its de
 - Don't omit the `{}` options slot — the server repairs it, so your query stops matching later reads.
 - Don't reference a previous stage's column by display label ("Max of Total") — machine name only.
 - Don't turn "only / where X" into a breakout, or drop a stated constraint once the aggregation is in place.
+- Don't stop paging while `truncated` is true — follow `next_cursor`, or bound the result with a stage `limit: N`.

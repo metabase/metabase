@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
@@ -215,6 +216,8 @@ export const dashboardApi = Api.injectEndpoints({
             // Archiving the dashboard the user has as their homepage clears the homepage server-side.
             // getCurrentUser provides this tag, so invalidating it refetches the user.
             idTag("user-homepage-dashboard", id),
+            // archiving a dashboard resolves any content-diagnostics finding for it
+            listTag("content-diagnostics-finding"),
           ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({

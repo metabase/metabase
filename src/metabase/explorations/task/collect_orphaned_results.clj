@@ -31,6 +31,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.explorations.db :as explorations.db]
+   [metabase.queries.models.stored-result :as stored-result]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
@@ -72,15 +73,17 @@
             total)
         ;; Selected and deleted as two statements: MySQL/MariaDB reject deleting from a table that a
         ;; subquery in the same statement reads (error 1093).
-        (let [deleted (explorations.db/delete-stored-results! ids)]
+        (let [deleted (stored-result/delete-stored-results! ids)]
           (if (pos? deleted)
             (recur (+ total (long deleted)))
             ;; Nothing deleted despite finding rows — another writer got there first. Stop rather
             ;; than spin on the same batch.
             total))))))
 
-(task/defjob ^{:doc "Collects exploration result blobs that nothing references any more."}
-  CollectOrphanedExplorationResults [_]
+(task/defjob CollectOrphanedExplorationResults
+  "Collects exploration result blobs that nothing references any more."
+  {:saved-class "metabase.explorations.task.collect_orphaned_results.CollectOrphanedExplorationResults"}
+  [_]
   (task-history/with-task-history {:task "collect-orphaned-exploration-results"}
     (collect-orphaned-results!)))
 

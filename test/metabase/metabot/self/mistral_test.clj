@@ -385,6 +385,7 @@
       (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
         (testing "Uses the connection's own credentials"
           (with-redefs [self.core/sse-reducible identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post
@@ -475,7 +476,15 @@
              (mistral/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-matches-aliases-and-dedupes-test
-  (testing "a catalog entry whose alias is whitelisted resolves to the whitelisted id, deduped across entries"
+  (testing "a catalog entry whose alias is whitelisted resolves to the whitelisted id"
+    ;; No entry has the whitelisted id as its :id, so only the alias match can find it.
+    (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                               {:status 200
+                                                :body   {:data [{:id      "mistral-medium-latest"
+                                                                 :aliases ["mistral-medium-3-5"]}]}})]
+      (is (= {:models [{:id "mistral-medium-3-5" :display_name "Mistral Medium 3.5"}]}
+             (mistral/list-models {:credentials byok-credentials})))))
+  (testing "entries that resolve to the same whitelisted id give one listing item"
     (mt/with-dynamic-fn-redefs [http/request (fn [_]
                                                {:status 200
                                                 :body   {:data [{:id      "mistral-medium-latest"

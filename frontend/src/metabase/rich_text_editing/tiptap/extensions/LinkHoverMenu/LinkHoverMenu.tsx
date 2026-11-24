@@ -126,6 +126,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
           </Ellipsified>
           {editable && (
             <ActionIcon
+              variant="subtle"
               ml="sm"
               c="text-secondary"
               onClick={() => {

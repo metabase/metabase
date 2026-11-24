@@ -10,6 +10,7 @@ export function AIProviderConfigurationModal({
 }: Pick<ModalProps, "opened" | "onClose">) {
   return (
     <Modal
+      density="relaxed"
       opened={opened}
       onClose={onClose}
       title={t`Connect to an AI provider`}

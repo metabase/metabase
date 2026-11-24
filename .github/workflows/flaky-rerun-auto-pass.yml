@@ -1,0 +1,64 @@
+name: Auto-pass a confirmed-flaky run
+
+# CI Conductor's "make pass" button dispatches this for a PR's failed "Run tests" run. Asks
+# ci-conductor whether the failures are flakes. If a person has confirmed it for the PR's head
+# commit, passes the jobs that failed; otherwise passes nothing. The test suites know nothing of
+# this. See .github/scripts/flaky-rerun-auto-pass.ts.
+#
+# A dispatch, not `workflow_run: requested`: GitHub sends no `requested` event for a re-run.
+# Dispatch with ref master. The script checks the run and the PR itself, so a dispatch by hand is
+# safe: it passes nothing that ci-conductor and a person haven't confirmed.
+#
+# Kill switch: unless the repo variable ENABLE_AUTO_PASS is 'true', the script passes nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: ID of the failed "Run tests" run
+        required: true
+        type: string
+      pr_number:
+        description: Number of the PR the run tested
+        required: true
+        type: string
+      head_sha:
+        description: Commit the run tested; must still be the PR's head
+        required: true
+        type: string
+
+permissions: {}
+
+# One decision per run at a time, so two dispatches don't both pass it.
+concurrency:
+  group: flaky-rerun-auto-pass-${{ inputs.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  auto-pass:
+    name: Auto-pass the failed jobs
+    # Only master's copy of the script may post passing checks.
+    if: ${{ github.repository == 'metabase/metabase' && github.ref == 'refs/heads/master' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+      - uses: ./.github/actions/prepare-node-bun
+      - name: Ask ci-conductor whether the failures are flaky
+        env:
+          RUN_ID: ${{ inputs.run_id }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          ENABLE_AUTO_PASS: ${{ vars.ENABLE_AUTO_PASS }}
+          CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
+          CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bun .github/scripts/flaky-rerun-auto-pass.ts

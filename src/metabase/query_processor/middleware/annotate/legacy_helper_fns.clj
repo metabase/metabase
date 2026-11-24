@@ -23,11 +23,7 @@
 (mu/defn legacy-inner-query->mbql5-query :- ::lib.schema/query
   "Convert a legacy `inner-query` to an MBQL 5 query. Requires bound QP store."
   {:deprecated "0.57.0"}
-  [inner-query :- [:and
-                   :map
-                   [:fn
-                    {:error/message "Should be a legacy MBQL inner query"}
-                    (some-fn :query :source-table :source-query)]]]
+  [inner-query :- :metabase.lib.util/query-like]
   ;; existing usage -- don't use going forward
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.store/cached [:mbql5-query (hash inner-query)]
@@ -41,6 +37,17 @@
                         {:inner-query inner-query, :type qp.error-type/qp}
                         e))))))
 
+(mu/defn legacy-query->mbql5-query :- ::lib.schema/query
+  "Convert a legacy outer `legacy-query` to an MBQL 5 query. Requires bound QP store."
+  [legacy-query :- :metabase.lib.util/legacy-query]
+  (lib/query
+   (qp.store/metadata-provider)
+   ;; if this query has a `:native` query added to it already then remove that so we don't get schema validation
+   ;; errors
+   (cond-> legacy-query
+     ((every-pred :native :query) legacy-query)
+     (dissoc :native))))
+
 (mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
@@ -49,8 +56,8 @@
 
   DEPRECATED: use [[mbql-5-aggregation-name]] going forward."
   {:deprecated "0.64.0"}
-  [legacy-inner-query :- :map
-   legacy-ag-clause]
+  [legacy-inner-query :- :metabase.lib.util/query-like
+   legacy-ag-clause   :- ::mbql.s/Aggregation]
   (let [ag-clause (lib/->mbql5 legacy-ag-clause)]
     (or (::add/desired-alias (lib/options ag-clause))
         (:name (lib/options ag-clause))
@@ -59,19 +66,3 @@
          #_{:clj-kondo/ignore [:deprecated-var]}
          (legacy-inner-query->mbql5-query legacy-inner-query)
          (lib/->mbql5 legacy-ag-clause)))))
-
-(mu/defn merged-column-info :- :metabase.query-processor.middleware.annotate/cols
-  "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results
-  metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
-  this namespace."
-  {:deprecated "0.64.0"}
-  [legacy-query {initial-cols :cols, :as _initial-metadata} :- [:maybe :map]]
-  (let [expected-cols (requiring-resolve 'metabase.query-processor.middleware.annotate/expected-cols)
-        mbql5-query   (lib/query
-                       (qp.store/metadata-provider)
-                       ;; if this query has a `:native` query added to it already then remove that so we don't get
-                       ;; schema validation errors
-                       (cond-> legacy-query
-                         ((every-pred :native :query) legacy-query)
-                         (dissoc :native)))]
-    (expected-cols mbql5-query initial-cols)))

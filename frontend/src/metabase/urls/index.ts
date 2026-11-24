@@ -5,6 +5,7 @@ export * from "./bookmarks";
 export * from "./browse";
 export * from "./cards";
 export * from "./collections";
+export * from "./content-diagnostics";
 export * from "./dashboards";
 export * from "./data-apps";
 export * from "./data-studio";
@@ -18,6 +19,7 @@ export * from "./metabot";
 export * from "./metrics";
 export * from "./misc";
 export * from "./monitor";
+export * from "./near-membrane";
 export * from "./models";
 export * from "./modelToUrl";
 export {
@@ -27,6 +29,7 @@ export {
   shouldOpenInBlankWindow,
 } from "./open-url";
 export * from "./permissions";
+export * from "./security-center";
 export * from "./questions";
 export * from "./timelines";
 export * from "./transforms";

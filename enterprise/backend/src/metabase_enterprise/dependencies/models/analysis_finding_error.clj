@@ -5,6 +5,7 @@
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
@@ -19,7 +20,7 @@
 
 (mr/def ::analysis-finding-error
   "Schema for an AnalysisFindingError record."
-  [:map
+  [:map {:closed true}
    [:id                    ms/PositiveInt]
    [:analyzed_entity_type  ::deps.dependency-types/dependency-types]
    [:analyzed_entity_id    ms/PositiveInt]
@@ -35,11 +36,25 @@
 
 (mr/def ::error-input
   "Schema for error input maps passed to replace-errors-for-entity!"
-  [:map
+  [:map {:closed true}
    [:error-type         ::lib.schema.validate/validate-error-type]
    [:error-detail       {:optional true} [:maybe :string]]
    [:source-entity-type {:optional true} [:maybe ::lib.schema.validate/source-entity-type]]
    [:source-entity-id   {:optional true} [:maybe ms/PositiveInt]]])
+
+(mu/defn errors-by-source :- [:sequential ::analysis-finding-error]
+  "Get all errors caused by a specific source entity."
+  [source-entity-type :- [:maybe ::lib.schema.validate/source-entity-type]
+   source-entity-id   :- ms/PositiveInt]
+  (dependencies.db/finding-errors-from-source source-entity-type source-entity-id))
+
+(mu/defn errors-for-entity :- [:sequential ::analysis-finding-error]
+  "Get all errors for a specific analyzed entity."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity-id   :- ms/PositiveInt]
+  (dependencies.db/finding-errors-for-entity entity-type entity-id))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn replace-errors-for-entity!
   "Delete existing errors for an entity and insert new ones.
@@ -64,14 +79,7 @@
                 :source_entity_id source-entity-id})
              errors)))))
 
-(mu/defn errors-by-source :- [:sequential ::analysis-finding-error]
-  "Get all errors caused by a specific source entity."
-  [source-entity-type :- [:maybe ::lib.schema.validate/source-entity-type]
-   source-entity-id   :- ms/PositiveInt]
-  (dependencies.db/finding-errors-from-source source-entity-type source-entity-id))
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(mu/defn errors-for-entity :- [:sequential ::analysis-finding-error]
-  "Get all errors for a specific analyzed entity."
-  [entity-type :- ::deps.dependency-types/dependency-types
-   entity-id   :- ms/PositiveInt]
-  (dependencies.db/finding-errors-for-entity entity-type entity-id))
+(defmethod app-db-copy/spec :model/AnalysisFindingError [_model]
+  {:skip? true})

@@ -46,7 +46,7 @@
                               :notes                 notes
                               :grant_start_timestamp now
                               :grant_end_timestamp   grant-end}
-          grant              (-> (support-access-grants.db/insert-grant! grant-record)
+          grant              (-> (sag.model/create-support-access-grant! grant-record)
                                  (t2/hydrate :user_info))
           support-email      (sag.settings/support-access-grant-email)
           support-user       (sag.model/fetch-or-create-support-user!)
@@ -87,9 +87,7 @@
       (throw (ex-info (tru "Grant is already revoked")
                       {:status-code 400})))
     (let [now (t/instant)]
-      (support-access-grants.db/update-grant! grant-id
-                                              {:revoked_at now
-                                               :revoked_by_user_id user-id})
+      (sag.model/revoke-support-access-grant! grant-id now user-id)
       (-> (support-access-grants.db/grant grant-id)
           (t2/hydrate :user_info)))))
 
@@ -100,13 +98,13 @@
   []
   (when-let [{support-user-id :id, superuser? :is_superuser}
              (support-access-grants.db/user-superuser-flag-by-email (sag.settings/support-access-grant-email))]
-    (when (or superuser? (support-access-grants.db/session-exists-for-user? support-user-id))
+    (when (or superuser? (support-access-grants.db/unended-session-exists-for-user? support-user-id))
       (cluster-lock/with-cluster-lock grant-lifecycle-lock
         ;; Re-check after acquiring the same lock used by grant creation. This makes credential teardown and grant
         ;; creation mutually exclusive across the cluster, so teardown cannot invalidate a newly created grant.
         (when-not (active-grant-exists?)
           (log/infof "Support access grant has ended; revoking access for support user %d" support-user-id)
-          (sag.model/revoke-support-user-access! support-user-id (t/instant)))))))
+          (sag.model/revoke-support-user-access! support-user-id (t/instant) nil))))))
 
 (defn list-grants
   "List support access grants with optional filtering and pagination.

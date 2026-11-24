@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import * as ML from "cljs/metabase.lib.js";
-import type { TemporalUnit } from "metabase-types/api";
+import type { DayOfWeekId, TemporalUnit } from "metabase-types/api";
 
 import { displayInfo } from "./metadata";
 import type { Bucket, Clause, ColumnMetadata, Query } from "./types";
@@ -78,15 +79,23 @@ type RelativeDateRangeFormatOpts = {
   includeCurrent?: boolean;
 };
 
-export function formatRelativeDateRange({
-  value,
-  unit,
-  offsetValue,
-  offsetUnit,
-  includeCurrent,
-}: RelativeDateRangeFormatOpts): string {
+export type TimeConfig = {
+  "start-of-week": DayOfWeekId;
+};
+
+export function formatRelativeDateRange(
+  timeConfig: TimeConfig,
+  {
+    value,
+    unit,
+    offsetValue,
+    offsetUnit,
+    includeCurrent,
+  }: RelativeDateRangeFormatOpts,
+): string {
   return ML.format_relative_date_range(value, unit, offsetValue, offsetUnit, {
     "include-current": includeCurrent,
+    ...timeConfig,
   });
 }
 

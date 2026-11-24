@@ -2,9 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import {
   createMockMetabotConversationDetail,
+  createMockMetabotGeneratedCardPart,
+  createMockMetabotMessage,
   createMockMetabotTextMessage,
+  createMockMetabotTextPart,
 } from "__support__/server-mocks";
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import { forkConversation } from "metabase/metabot/state";
 import * as Urls from "metabase/urls";
 
@@ -75,6 +78,31 @@ describe("metabot > fork", () => {
     expect(await conversationTitle()).toHaveTextContent("Forked conversation");
   });
 
+  it("does not render generated charts inline when forking in the sidebar", async () => {
+    const { lastMessage } = await setupWithReply();
+    mockForkEndpoint({
+      ...forkedConversation,
+      messages: [
+        ...forkedConversation.messages,
+        createMockMetabotMessage({
+          role: "agent",
+          externalId: "msg_test_chart",
+          parts: [
+            createMockMetabotGeneratedCardPart(),
+            createMockMetabotTextPart({ message: "Here is your chart" }),
+          ],
+        }),
+      ],
+    });
+
+    await userEvent.click(await forkButton(lastMessage));
+
+    expect(await screen.findByText("Here is your chart")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-inline-chart"),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows an error toast and keeps the original conversation when forking fails", async () => {
     const { store, lastMessage } = await setupWithReply();
     const originalConversationId = conversationIdForAgent(store);
@@ -95,13 +123,15 @@ describe("metabot > fork", () => {
     });
     mockForkEndpoint(forkedConversation);
 
-    await store.dispatch(
-      forkConversation({
-        agentId: "ask",
-        conversationId: "original-convo-id",
-        messageId: "msg_test_favorite",
-      }),
-    );
+    await act(async () => {
+      await store.dispatch(
+        forkConversation({
+          agentId: "ask",
+          conversationId: "original-convo-id",
+          messageId: "msg_test_favorite",
+        }),
+      );
+    });
 
     await waitFor(() =>
       expect(router?.location.pathname).toBe(

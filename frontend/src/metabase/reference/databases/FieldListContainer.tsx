@@ -14,13 +14,13 @@ import { useLocation, useParams } from "metabase/router";
 import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
-  getDatabase,
+  getDatabaseId,
   getIsEditing,
-  getTable,
   getTableId,
 } from "../selectors";
 
 import TableSidebar from "./TableSidebar";
+import { useReferenceTableFields } from "./use-reference-database";
 
 const mapDispatchToProps = {
   ...actions,
@@ -34,10 +34,13 @@ function FieldListContainer(props: FieldListContainerProps) {
   const dispatch = useDispatch();
   const params = useParams<ReferenceRouteParams>();
 
-  const database = useSelector((state) => getDatabase(state, { params }));
-  const table = useSelector((state) => getTable(state, { params }));
+  const databaseId = useSelector((state) => getDatabaseId(state, { params }));
   const tableId = useSelector((state) => getTableId(state, { params }));
   const isEditing = useSelector(getIsEditing);
+  const { database, table, fields } = useReferenceTableFields(
+    databaseId,
+    tableId,
+  );
 
   const { loading, loadingError } = useReferenceFetch(() =>
     fetchTableData(dispatch, tableId),
@@ -55,10 +58,18 @@ function FieldListContainer(props: FieldListContainerProps) {
     <SidebarLayout
       className={cx(CS.flexFull, CS.relative)}
       style={isEditing ? { paddingTop: "43px" } : {}}
-      sidebar={<TableSidebar database={database} table={table} />}
+      sidebar={
+        <TableSidebar
+          databaseId={databaseId}
+          databaseName={database?.name}
+          tableId={tableId}
+          tableName={table?.name}
+        />
+      }
     >
       <FieldList
-        params={params}
+        table={table}
+        fields={fields}
         loading={loading}
         loadingError={loadingError}
       />

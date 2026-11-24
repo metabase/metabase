@@ -12,10 +12,12 @@
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -23,16 +25,19 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
-   [metabase.util :as u]))
+   [metabase.queries.models.card :as queries.card]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private accepted-shapes
   "The sentence every definition-shape teaching error ends with, naming what `definition` accepts."
-  (str "`definition` accepts a full single-stage query holding exactly one aggregation: MBQL 5 with "
-       "numeric ids — what get_content's \"definition\" include returns for a metric and what "
-       "execute_query takes — or the older name-based dialect, still resolved on input. "
-       "Alternatively pass a query_handle from an execute tool instead of `definition`."))
+  (message/raw (str "`definition` accepts a full single-stage query holding exactly one aggregation: MBQL "
+                    "5 with numeric ids — what get_content's \"definition\" include returns for a metric "
+                    "and what execute_query takes — or the older name-based dialect, still resolved on "
+                    "input. Alternatively pass a query_handle from an execute tool instead of `definition`.")))
 
 (def ^:private accepted-displays
   "Card display types `display` accepts. Enumerated so an LLM-invented value is an argument error
@@ -46,8 +51,7 @@
 
 (def ^:private shape-rule
   "The metric shape rule, quoted verbatim in every gate error so the caller learns it once."
-  (str "A metric needs exactly one aggregation and at most one grouping, in a single "
-       "query stage."))
+  (message/raw "A metric needs exactly one aggregation and at most one grouping, in a single query stage."))
 
 ;; This tool's write echo is built from the `:metric` projection, which `get_content` reads too, so
 ;; the registration lives in [[metabase.mcp.v2.projections]] — the namespace both require. Owning it
@@ -65,14 +69,17 @@
                      (lib-be/normalize-query nil definition {:strict? true})
                      (catch Exception e
                        (common/throw-teaching-error
-                        (format "`definition` is not a valid MBQL query: %s %s"
-                                (common/ellipsize (ex-message e) 300) accepted-shapes))))]
+                        (if-let [text (common/exception-message e)]
+                          (message/msg ["\"definition\" is not a valid MBQL query: %s %s"]
+                                       (common/ellipsize text 300) accepted-shapes)
+                          (message/msg ["\"definition\" is not a valid MBQL query. %s"] accepted-shapes)))))]
     ;; normalize-query short-circuits an empty query to `{}` before its strict validation runs, so
     ;; an empty `definition` arrives here unvalidated instead of throwing above.
     (when (empty? normalized)
       (common/throw-teaching-error
-       (str "`definition` is empty. Pass the metric's query in it, or leave `definition` out of the "
-            "call entirely — on update that keeps the stored query as it is. " accepted-shapes)))
+       (message/msg [(str "\"definition\" is empty. Pass the metric's query in it, or leave \"definition\" "
+                          "out of the call entirely — on update that keeps the stored query as it is. %s")]
+                    accepted-shapes)))
     normalized))
 
 (defn- resolve-definition
@@ -83,8 +90,8 @@
   [{:keys [definition query_handle]} session-id]
   (when (and definition query_handle)
     (common/throw-teaching-error
-     (str "Pass exactly one query source: `definition` (the metric's query) or `query_handle` "
-          "(a handle from an execute tool).")))
+     (message/msg [(str "Pass exactly one query source: \"definition\" (the metric's "
+                        "query) or \"query_handle\" (a handle from an execute tool).")])))
   (some-> (cond
             definition   (if (v2.queries/portable-query? definition)
                            (v2.queries/resolve-external-query definition accepted-shapes)
@@ -105,13 +112,14 @@
   ;; a metric must refuse, and would otherwise fall through to the generic "can't be saved" message.
   (when (query-guards/native-query? dataset-query)
     (common/throw-teaching-error
-     (str "A metric can't be built from a native (SQL) query — metrics are MBQL so other queries can "
-          "reuse them. Save it with question_write instead, or rebuild the aggregation with execute_query.")))
+     (message/msg [(str "A metric can't be built from a native (SQL) query — metrics are "
+                        "MBQL so other queries can reuse them. Save it with question_write "
+                        "instead, or rebuild the aggregation with execute_query.")])))
   (when-not (lib/can-save? dataset-query :metric)
     (common/throw-teaching-error
-     (format (str "This query can't be saved as a metric. %s Build it with execute_query first — "
-                  "a single summarize (count, sum, average…) with at most one grouping.")
-             shape-rule))))
+     (message/msg [(str "This query can't be saved as a metric. %s Build it with execute_query first "
+                        "— a single summarize (count, sum, average…) with at most one grouping.")]
+                  shape-rule))))
 
 ;;; ------------------------------------------------- Responses ----------------------------------------------------
 
@@ -138,24 +146,27 @@
   [{:keys [name description display collection_position] :as args} session-id]
   (let [dataset-query (or (resolve-definition args session-id)
                           (common/throw-teaching-error
-                           "Pass the metric's query: `definition` (inline) or `query_handle` (from an execute tool)."))
+                           (message/msg [(str "Pass the metric's query: \"definition\" (inline) "
+                                              "or \"query_handle\" (from an execute tool).")])))
         collection-id (v2.resolve/resolve-collection-id-or-personal (:collection_id args))]
     (check-metric-shape! dataset-query)
     (queries/check-allowed-to-create-card! {:dataset_query dataset-query :collection_id collection-id} :metric)
-    (-> (queries/create-card!
-         (u/remove-nils
-          {:name                   name
-           :type                   :metric
-           :dataset_query          dataset-query
-           ;; REST requires both on create, so an omitted `display` falls back to the app's default
-           ;; for a single aggregation rather than being left off the insert.
-           :display                (if display (keyword display) default-display)
-           :visualization_settings {}
-           :description            description
-           :collection_id          collection-id
-           :collection_position    collection_position})
-         {:id api/*current-user-id*})
-        write-result)))
+    (let [row (u/remove-nils
+               {:name                   name
+                :type                   :metric
+                :dataset_query          dataset-query
+                ;; REST requires both on create, so an omitted `display` falls back to the app's default
+                ;; for a single aggregation rather than being left off the insert.
+                :display                (if display (keyword display) default-display)
+                :visualization_settings {}
+                :description            description
+                :collection_id          collection-id
+                :collection_position    collection_position
+                :creator_id             api/*current-user-id*})]
+      (write-result
+       (t2/with-transaction [_conn]
+         (collection/maybe-reconcile-collection-position! (select-keys row [:collection_id :collection_position]))
+         (first (queries.card/create-cards! [row])))))))
 
 ;;; -------------------------------------------------- Update ------------------------------------------------------
 
@@ -165,21 +176,15 @@
   [card]
   (when-not (= :metric (:type card))
     (common/throw-teaching-error
-     (format "Card %d is a %s, not a metric — use question_write to update it."
-             (:id card) (name (:type card))))))
+     (message/msg ["Card %d has type %s, not metric — use question_write to update it."]
+                  (:id card) (name (:type card))))))
 
 (defn- update!
   "Write-check the existing metric, patch only the caller-supplied fields, then run the shared REST
    update check stack before persisting. A `definition`/`query_handle` re-runs the metric shape
    gate; omitting both leaves the stored query untouched."
   [id {:keys [name description display collection_position archived] :as args} session-id]
-  (let [card-before  (v2.resolve/resolve-and-read-with
-                      :model/Card id
-                      ;; Hydrated like PUT /api/card/:id hydrates it: `update-card!` un-verifies a
-                      ;; verified card whose query changes by reading `:moderation_reviews` off the
-                      ;; card-before, and a bare row would leave the Verified badge on a swapped
-                      ;; definition.
-                      (fn [cid] (mcp.db/hydrate-moderation-reviews (api/write-check :model/Card cid))))
+  (let [card-before  (v2.resolve/resolve-and-read-with :model/Card id #(api/write-check :model/Card %))
         _            (check-is-metric! card-before)
         card-id      (:id card-before)
         new-query    (resolve-definition args session-id)
@@ -194,14 +199,14 @@
                        (contains? args :collection_position) (assoc :collection_position collection_position)
                        (contains? args :archived)            (assoc :archived (boolean archived))
                        new-query                             (assoc :dataset_query new-query))
-        card-updates (api/updates-with-archived-directly card-before raw-updates)]
-    (when-some [query (:dataset_query card-updates)]
-      (queries/check-no-save-cycle! card-id query))
+        card-updates (api/updates-without-collection-when-archiving card-before raw-updates)]
     (queries/check-allowed-to-update-card! card-before card-updates)
-    (queries/update-card! {:card-before-update    card-before
-                           :card-updates          card-updates
-                           :actor                 @api/*current-user*
-                           :delete-old-dashcards? false})
+    (t2/with-transaction [_conn]
+      (collection/maybe-reconcile-collection-position!
+       (select-keys card-before [:collection_id :collection_position])
+       (select-keys card-updates [:collection_id :collection_position]))
+      (queries.card/place-updated-dashboard-question! card-before card-updates false)
+      (queries.card/update-cards! [(assoc (queries.card/card-changes card-updates) :id card-id)]))
     (write-result (mcp.db/select-one-by-id :model/Card card-id))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
@@ -216,8 +221,8 @@
     [:maybe [:or
              [:int {:description "Numeric id of the metric to update."}]
              [:string {:description "21-character entity_id of the metric to update."}]]]]
-   [:name {:optional true}
-    [:maybe [:string {:min 1 :description "Create only (editable on update): display name of the metric."}]]]
+   [:name {:optional true :description "Create only (editable on update): display name of the metric."}
+    [:maybe ::queries.schema/card.name]]
    [:definition {:optional true}
     [:maybe [:map {:description (str "The metric's query: a full single-stage query holding exactly one aggregation "
                                      "and at most one breakout. Accepts the same numeric-id shape get_content's "
@@ -270,12 +275,13 @@
   to your personal collection; pass \"root\" for the root collection), collection_position to pin. Updating a card that is a
   question or a model is refused rather than retyping it. Requires write permission on the metric and curate
   permission on the target collection."
-  {:name         "metric_write"
-   :scope        metabot.scope/agent-content-write
+  {:name           "metric_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the metric, so this is not the additive-only update
    ;; `destructiveHint false` would assert (matches collection_write).
-   :annotations  {:readOnlyHint false :destructiveHint true}
-   :args         metric-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           metric-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [dispatched (v2.write/dispatch-write metric-write-entry args)
         payload    (v2.write/readback token-scopes [metabot.scope/agent-content-read]
@@ -285,9 +291,9 @@
                                           (doseq [k [:id :archived]]
                                             (when (contains? body k)
                                               (common/throw-teaching-error
-                                               (format (str "`%s` applies to method \"update\" only — "
-                                                            "remove it from this create call.")
-                                                       (name k)))))
+                                               (message/msg [(str "%s applies to method \"update\" only "
+                                                                  "— remove it from this create call.")]
+                                                            (name k)))))
                                           (create! (dissoc body :id) session-id))
 
                                         :update

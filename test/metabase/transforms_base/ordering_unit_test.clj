@@ -18,15 +18,22 @@
   [id dep-ids]
   {:id              id
    :target_table_id (* 100 id)
-   :target          {:database 1 :schema "public" :name (str "t" id)}
-   :test-deps       (into #{} (map (fn [dep-id] {:table (* 100 dep-id)})) dep-ids)})
+   :target          {:type "table" :database 1 :schema "public" :name (str "t" id)}
+   :source          {:type          :python
+                     :body          "pass"
+                     :source-tables (mapv (fn [dep-id] {:alias (str "t" dep-id) :table_id (* 100 dep-id)}) dep-ids)}})
+
+(defn- test-deps
+  "The table dependencies a synthetic transform built by [[tx]] declares through its source tables."
+  [transform]
+  (into #{} (map (fn [{:keys [table_id]}] {:table table_id})) (get-in transform [:source :source-tables])))
 
 (deftest transform-ordering-closure-walk-test
   (testing "transform-ordering only visits transforms reachable from start-ids"
-    ;; Stub table-dependencies to read the :test-deps key we put on the synthetic transforms.
+    ;; Stub table-dependencies to read the source tables we put on the synthetic transforms.
     ;; This keeps the test focused on the closure-walk and dep-resolution logic without
     ;; needing a real query processor.
-    (with-redefs [transforms-base.i/table-dependencies :test-deps]
+    (with-redefs [transforms-base.i/table-dependencies test-deps]
       (testing "empty start-ids returns empty ordering"
         (is (=? {:dependencies {} :not-found #{} :failed #{}}
                 (ordering/transform-ordering #{} [(tx 1 #{})]))))
@@ -61,7 +68,7 @@
                     (fn [transform]
                       (if (= (:id transform) 1)
                         (throw (ex-info "simulated extraction failure" {}))
-                        (:test-deps transform)))]
+                        (test-deps transform)))]
         ;; Transform 1 is tagged but its extractor throws. The walk catches, captures 1 in :failed,
         ;; treats 1 as a leaf, and the supposed downstream dep (2) is never visited.
         (is (=? {:dependencies {1 #{}} :not-found #{} :failed #{1}}
@@ -71,7 +78,7 @@
                     (fn [transform]
                       (if (= (:id transform) 1)
                         (throw (ex-info "simulated upstream failure" {}))
-                        (:test-deps transform)))]
+                        (test-deps transform)))]
         ;; Transform 2 is tagged and depends on 1. 2's extractor succeeds, so the edge 2→1 is
         ;; recorded. Then 1 is visited, its extractor throws, so 1 is captured in :failed and
         ;; treated as a leaf. The parent edge 2→1 is preserved, which is what run-transforms!
@@ -81,12 +88,11 @@
 
 (deftest passthrough-card-or-snippet-test
   (testing "transforms that read through a card/snippet are omitted from :uncached (they pass through)"
-    (with-redefs [transforms-base.i/table-dependencies :test-deps
+    (with-redefs [transforms-base.i/table-dependencies test-deps
                   ;; pretend transform 1 references a card/snippet
                   ordering/references-card-or-snippet? #(= 1 (:id %))]
       (let [{:keys [uncached]} (ordering/transform-ordering
                                 #{1 2}
-                                [{:id 1 :test-deps #{}}
-                                 {:id 2 :test-deps #{}}])]
+                                [(tx 1 #{}) (tx 2 #{})])]
         (is (not (contains? uncached 1)))
         (is (contains? uncached 2))))))

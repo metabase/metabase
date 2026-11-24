@@ -1,5 +1,6 @@
 ---
 title: Submitting a PR for a new driver
+summary: Add test extensions to your driver and run it against Metabase's core test suite before submitting a pull request.
 ---
 
 # Submitting a PR for a new driver
@@ -228,7 +229,7 @@ be-tests-postgres-latest-ee:
         POSTGRES_DB: circle_test
         POSTGRES_HOST_AUTH_METHOD: trust
   steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Postgres driver (latest)
       uses: ./.github/actions/test-driver
       with:

@@ -2,6 +2,9 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.calculation :as calculation]
+   [metabase.actions.core :as actions]
+   [metabase.dashboards.dependencies :as dashboards.dependencies]
+   [metabase.documents.dependencies :as documents.dependencies]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -9,6 +12,11 @@
    [metabase.test :as mt]
    [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
+
+(defn- calculate-deps
+  "The dependencies of the row `entity` of `entity-type`, hydrated as the job hydrates it."
+  [entity-type entity]
+  (calculation/calculate-deps entity-type (first (calculation/hydrate-entities entity-type [entity]))))
 
 (deftest ^:parallel upstream-deps-card-test
   (let [mp (mt/metadata-provider)
@@ -23,12 +31,12 @@
               :measure #{}
               :segment #{}
               :table #{products-id}}
-             (calculation/calculate-deps :card prod-card)))
+             (calculate-deps :card prod-card)))
       (is (= {:card #{prod-card-id}
               :measure #{}
               :segment #{}
               :table #{}}
-             (calculation/calculate-deps :card widget-card))))))
+             (calculate-deps :card widget-card))))))
 
 (deftest ^:parallel upstream-deps-card-join-test
   (let [mp (mt/metadata-provider)
@@ -43,12 +51,12 @@
               :measure #{}
               :segment #{}
               :table #{products-id}}
-             (calculation/calculate-deps :card products-card)))
+             (calculate-deps :card products-card)))
       (is (= {:card #{products-card-id}
               :measure #{}
               :segment #{}
               :table #{orders-id}}
-             (calculation/calculate-deps :card joined-card))))))
+             (calculate-deps :card joined-card))))))
 
 (deftest ^:parallel upstream-deps-card-implicit-join-fields-test
   (let [mp (mt/metadata-provider)
@@ -65,7 +73,7 @@
               :measure #{}
               :segment #{}
               :table #{checkins-id venues-id users-id}}
-             (calculation/calculate-deps :card card))))))
+             (calculate-deps :card card))))))
 
 (deftest ^:parallel upstream-deps-metric-dimension-mappings-test
   (testing "a metric v2's dimension mappings contribute their columns' tables as dependencies, even
@@ -85,7 +93,7 @@
                 :measure #{}
                 :segment #{}
                 :table   #{venues-id categories-id}}
-               (calculation/calculate-deps :card metric))
+               (calculate-deps :card metric))
             "the mapped column's table (categories) is a dependency alongside the query's own table (venues)")))))
 
 (deftest ^:parallel upstream-deps-card-implicit-join-filter-test
@@ -101,7 +109,7 @@
               :measure #{}
               :segment #{}
               :table #{checkins-id venues-id}}
-             (calculation/calculate-deps :card card))))))
+             (calculate-deps :card card))))))
 
 (deftest ^:parallel upstream-deps-card-implicit-join-breakout-test
   (let [mp (mt/metadata-provider)
@@ -116,7 +124,7 @@
               :measure #{}
               :segment #{}
               :table #{checkins-id venues-id}}
-             (calculation/calculate-deps :card card))))))
+             (calculate-deps :card card))))))
 
 (deftest ^:parallel upstream-deps-card-implicit-join-aggregation-test
   (let [mp (mt/metadata-provider)
@@ -131,7 +139,7 @@
               :measure #{}
               :segment #{}
               :table #{checkins-id venues-id}}
-             (calculation/calculate-deps :card card))))))
+             (calculate-deps :card card))))))
 
 (deftest ^:parallel upstream-deps-card-implicit-join-order-by-test
   (let [mp (mt/metadata-provider)
@@ -146,7 +154,7 @@
               :measure #{}
               :segment #{}
               :table #{checkins-id venues-id}}
-             (calculation/calculate-deps :card card))))))
+             (calculate-deps :card card))))))
 
 (deftest ^:parallel upstream-deps-transform-implicit-join-fields-test
   (mt/with-premium-features #{:transforms-basic}
@@ -163,13 +171,14 @@
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :query
                                                           :query query}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:card #{}
                 :measure #{}
                 :segment #{}
                 :table #{checkins-id venues-id users-id}}
-               (calculation/calculate-deps :transform transform)))))))
+               (calculate-deps :transform transform)))))))
 
 (deftest ^:parallel upstream-deps-transform-implicit-join-breakout-test
   (mt/with-premium-features #{:transforms-basic}
@@ -186,13 +195,14 @@
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :query
                                                           :query query}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:card #{}
                 :measure #{}
                 :segment #{}
                 :table #{checkins-id venues-id}}
-               (calculation/calculate-deps :transform transform)))))))
+               (calculate-deps :transform transform)))))))
 
 (deftest ^:parallel upstream-deps-transform-implicit-join-aggregation-test
   (mt/with-premium-features #{:transforms-basic}
@@ -208,13 +218,14 @@
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :query
                                                           :query query}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:card #{}
                 :measure #{}
                 :segment #{}
                 :table #{checkins-id venues-id}}
-               (calculation/calculate-deps :transform transform)))))))
+               (calculate-deps :transform transform)))))))
 
 (deftest ^:parallel upstream-deps-python-transform-test
   (mt/with-premium-features #{:transforms-basic}
@@ -226,10 +237,11 @@
                                                                           (transforms.tu/source-table-entry "ORDERS" orders-id)]
                                                           :source-database (mt/id)
                                                           :body "..."}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:table #{products-id orders-id}}
-               (calculation/calculate-deps :transform transform)))))))
+               (calculate-deps :transform transform)))))))
 
 (deftest ^:parallel upstream-deps-native-transform-with-table-tag-test
   (testing "GHY-3258: native transform with a table template tag should include the table in dependencies"
@@ -244,9 +256,10 @@
         (mt/with-temp [:model/Transform transform {:name   "Table Tag Transform"
                                                    :source {:type  :query
                                                             :query query}
-                                                   :target {:schema "PUBLIC"
+                                                   :target {:type   "table"
+                                                            :schema "PUBLIC"
                                                             :name   "test_output"}}]
-          (is (=? {:table #(contains? % products-id)} (calculation/calculate-deps :transform transform))))))))
+          (is (=? {:table #(contains? % products-id)} (calculate-deps :transform transform))))))))
 
 (deftest ^:parallel upstream-deps-card-native-with-parameter-source-test
   (let [mp (mt/metadata-provider)
@@ -266,7 +279,7 @@
                                                                          :name "category"
                                                                          :display-name "Category"
                                                                          :type :dimension
-                                                                         :dimension [:field (mt/id :products :category) nil]
+                                                                         :field-id  (mt/id :products :category)
                                                                          :widget-type :string/=
                                                                          :default nil}}}}
                     :parameters [{:id "category-param"
@@ -277,10 +290,10 @@
               :measure #{}
               :segment #{}
               :table #{products-id}}
-             (calculation/calculate-deps :card category-values-card)))
+             (calculate-deps :card category-values-card)))
       (is (= {:card #{category-values-card-id}
               :table #{products-id}}
-             (calculation/calculate-deps :card native-card))))))
+             (calculate-deps :card native-card))))))
 
 (deftest ^:parallel upstream-deps-dashboard-test
   (let [mp (mt/metadata-provider)
@@ -294,7 +307,7 @@
                           (t2/hydrate :dashcards))]
         (is (= {:card #{card-id}
                 :dashboard #{}}
-               (calculation/calculate-deps :dashboard dashboard)))))))
+               (calculate-deps :dashboard dashboard)))))))
 
 (deftest ^:parallel upstream-deps-dashboard-with-series-test
   (let [mp (mt/metadata-provider)
@@ -313,7 +326,7 @@
       (let [dashboard (t2/hydrate dashboard [:dashcards :series])]
         (is (= {:card #{main-card-id series-card-id}
                 :dashboard #{}}
-               (calculation/calculate-deps :dashboard dashboard)))))))
+               (calculate-deps :dashboard dashboard)))))))
 
 (deftest ^:parallel upstream-deps-dashboard-with-parameter-source-test
   (let [mp (mt/metadata-provider)
@@ -335,7 +348,7 @@
                           (assoc :dashcards dashcards))]
         (is (= {:card #{filtered-card-id category-values-card-id}
                 :dashboard #{}}
-               (calculation/calculate-deps :dashboard dashboard)))))))
+               (calculate-deps :dashboard dashboard)))))))
 
 (deftest ^:parallel upstream-deps-dashboard-with-click-behavior-test
   (let [mp (mt/metadata-provider)
@@ -356,7 +369,7 @@
                        :dashcards dashcards}]
         (is (= {:card #{count-card-id target-card-id}
                 :dashboard #{}}
-               (calculation/calculate-deps :dashboard dashboard)))))))
+               (calculate-deps :dashboard dashboard)))))))
 
 (deftest ^:parallel upstream-deps-dashboard-with-column-click-behavior-test
   (let [mp (mt/metadata-provider)
@@ -379,7 +392,7 @@
                        :dashcards dashcards}]
         (is (= {:card #{table-card-id target-card-id}
                 :dashboard #{}}
-               (calculation/calculate-deps :dashboard dashboard)))))))
+               (calculate-deps :dashboard dashboard)))))))
 
 (deftest ^:parallel upstream-deps-dashboard-with-dashboard-click-behavior-test
   (let [mp (mt/metadata-provider)
@@ -400,7 +413,7 @@
                        :dashcards dashcards}]
         (is (= {:card #{count-card-id}
                 :dashboard #{target-dashboard-id}}
-               (calculation/calculate-deps :dashboard dashboard)))))))
+               (calculate-deps :dashboard dashboard)))))))
 
 (deftest ^:parallel upstream-deps-dashboard-with-column-dashboard-click-behavior-test
   (let [mp (mt/metadata-provider)
@@ -423,7 +436,7 @@
                        :dashcards dashcards}]
         (is (= {:card #{table-card-id}
                 :dashboard #{target-dashboard-id}}
-               (calculation/calculate-deps :dashboard dashboard)))))))
+               (calculate-deps :dashboard dashboard)))))))
 
 (deftest ^:parallel upstream-deps-document-test
   (let [mp (mt/metadata-provider)
@@ -436,37 +449,37 @@
                                              :document {:type "doc"
                                                         :content [{:type "paragraph"
                                                                    :content [{:type "smartLink"
-                                                                              :attrs {"entityId" card-id
-                                                                                      "model" "card"}}
+                                                                              :attrs {:entityId card-id
+                                                                                      :model "card"}}
                                                                              {:type "smartLink"
-                                                                              :attrs {"entityId" dashboard-id
-                                                                                      "model" "dashboard"}}
+                                                                              :attrs {:entityId dashboard-id
+                                                                                      :model "dashboard"}}
                                                                              {:type "smartLink"
-                                                                              :attrs {"entityId" products-id
-                                                                                      "model" "table"}}]}
+                                                                              :attrs {:entityId products-id
+                                                                                      :model "table"}}]}
                                                                   {:type "cardEmbed"
-                                                                   :attrs {"id" embedded-card-id}}]}}]
+                                                                   :attrs {:id embedded-card-id}}]}}]
       (is (= {:card #{card-id embedded-card-id}
               :dashboard #{dashboard-id}
               :table #{products-id}}
-             (calculation/calculate-deps :document document))))))
+             (calculate-deps :document document))))))
 
 (deftest ^:parallel upstream-deps-document-placeholder-ids-test
   (testing "nil/zero placeholder ids in smartLink and cardEmbed nodes are not collected as deps"
-    (let [document {:content_type "application/json+vnd.prose-mirror"
-                    :document {:type "doc"
-                               :content [{:type "paragraph"
-                                          :content [{:type "smartLink"
-                                                     :attrs {"entityId" nil "model" "card"}}
-                                                    {:type "smartLink"
-                                                     :attrs {"entityId" 0 "model" "dashboard"}}
-                                                    {:type "smartLink"
-                                                     :attrs {"entityId" 17 "model" "card"}}]}
-                                         {:type "cardEmbed" :attrs {"id" nil}}
-                                         {:type "cardEmbed" :attrs {"id" 0}}
-                                         {:type "cardEmbed" :attrs {"id" 23}}]}}]
+    (mt/with-temp [:model/Document document {:content_type "application/json+vnd.prose-mirror"
+                                             :document {:type "doc"
+                                                        :content [{:type "paragraph"
+                                                                   :content [{:type "smartLink"
+                                                                              :attrs {:entityId nil :model "card"}}
+                                                                             {:type "smartLink"
+                                                                              :attrs {:entityId 0 :model "dashboard"}}
+                                                                             {:type "smartLink"
+                                                                              :attrs {:entityId 17 :model "card"}}]}
+                                                                  {:type "cardEmbed" :attrs {:id nil}}
+                                                                  {:type "cardEmbed" :attrs {:id 0}}
+                                                                  {:type "cardEmbed" :attrs {:id 23}}]}}]
       (is (= {:card #{17 23}}
-             (calculation/calculate-deps :document document))))))
+             (calculate-deps :document document))))))
 
 (deftest upstream-deps-sandbox-test
   (mt/with-premium-features #{:sandboxes}
@@ -476,41 +489,54 @@
                                            :table_id (mt/id :products)
                                            :card_id sandbox-card-id}]
       (is (= {:card #{sandbox-card-id}}
-             (calculation/calculate-deps :sandbox sandbox))))))
+             (calculate-deps :sandbox sandbox))))))
+
+(defn- segment-definition
+  "A full query on the Table with `table-id` with one filter for each of `filter-fns`, called with the metadata provider and the query."
+  [table-id & filter-fns]
+  (let [mp (mt/metadata-provider)]
+    (reduce (fn [query filter-fn] (lib/filter query (filter-fn mp query)))
+            (lib/query mp (lib.metadata/table mp table-id))
+            filter-fns)))
+
+(defn- field-filter
+  "A filter function for `segment-definition` that compares the Field `field-id` with `value` using `f`."
+  [f field-id value]
+  (fn [mp _query] (f (lib.metadata/field mp field-id) value)))
+
+(defn- segment-filter
+  "A filter function for `segment-definition` that applies the Segment `segment-id`."
+  [segment-id]
+  (fn [mp _query] (lib.metadata/segment mp segment-id)))
 
 (deftest ^:parallel upstream-deps-segment-test
   (let [products-id (mt/id :products)
         price-field-id (mt/id :products :price)
         category-field-id (mt/id :products :category)]
     (testing "segment depending only on table"
-      (mt/with-temp [:model/Segment segment {:table_id products-id
-                                             :definition {:filter [:> [:field price-field-id nil] 50]}}]
+      (mt/with-temp [:model/Segment segment {:definition (segment-definition products-id (field-filter lib/> price-field-id 50))}]
         (is (= {:segment #{} :table #{products-id}}
-               (calculation/calculate-deps :segment segment)))))
+               (calculate-deps :segment segment)))))
     (testing "segment depending on another segment"
-      (mt/with-temp [:model/Segment {segment-a-id :id :as segment-a} {:table_id products-id
-                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
-                     :model/Segment segment-b {:table_id products-id
-                                               :definition {:filter [:and
-                                                                     [:segment segment-a-id]
-                                                                     [:= [:field category-field-id nil] "Widget"]]}}]
+      (mt/with-temp [:model/Segment {segment-a-id :id :as segment-a} {:definition (segment-definition products-id (field-filter lib/> price-field-id 50))}
+                     :model/Segment segment-b {:definition (segment-definition products-id
+                                                                               (segment-filter segment-a-id)
+                                                                               (field-filter lib/= category-field-id "Widget"))}]
         (testing "base segment depends only on table"
           (is (= {:segment #{} :table #{products-id}}
-                 (calculation/calculate-deps :segment segment-a))))
+                 (calculate-deps :segment segment-a))))
         (testing "dependent segment depends on both table and segment"
           (is (= {:table #{products-id}
                   :segment #{segment-a-id}}
-                 (calculation/calculate-deps :segment segment-b))))))))
+                 (calculate-deps :segment segment-b))))))))
 
 (deftest ^:parallel upstream-deps-card-with-multiple-segments-test
   (testing "Card using multiple segments depends on all of them"
     (let [products-id (mt/id :products)
           price-field-id (mt/id :products :price)
           category-field-id (mt/id :products :category)]
-      (mt/with-temp [:model/Segment {segment-a-id :id} {:table_id products-id
-                                                        :definition {:filter [:> [:field price-field-id nil] 50]}}
-                     :model/Segment {segment-b-id :id} {:table_id products-id
-                                                        :definition {:filter [:= [:field category-field-id nil] "Widget"]}}
+      (mt/with-temp [:model/Segment {segment-a-id :id} {:definition (segment-definition products-id (field-filter lib/> price-field-id 50))}
+                     :model/Segment {segment-b-id :id} {:definition (segment-definition products-id (field-filter lib/= category-field-id "Widget"))}
                      :model/Card card {:dataset_query {:database (mt/id)
                                                        :type :query
                                                        :query {:source-table products-id
@@ -521,7 +547,7 @@
                 :measure #{}
                 :segment #{segment-a-id segment-b-id}
                 :table #{products-id}}
-               (calculation/calculate-deps :card card)))))))
+               (calculate-deps :card card)))))))
 
 (deftest ^:parallel upstream-deps-segment-with-multiple-segments-test
   (testing "Segment depending on multiple other segments tracks all dependencies"
@@ -529,18 +555,15 @@
           price-field-id (mt/id :products :price)
           category-field-id (mt/id :products :category)
           rating-field-id (mt/id :products :rating)]
-      (mt/with-temp [:model/Segment {segment-a-id :id} {:table_id products-id
-                                                        :definition {:filter [:> [:field price-field-id nil] 50]}}
-                     :model/Segment {segment-b-id :id} {:table_id products-id
-                                                        :definition {:filter [:= [:field category-field-id nil] "Widget"]}}
-                     :model/Segment segment-c {:table_id products-id
-                                               :definition {:filter [:and
-                                                                     [:segment segment-a-id]
-                                                                     [:segment segment-b-id]
-                                                                     [:> [:field rating-field-id nil] 4]]}}]
+      (mt/with-temp [:model/Segment {segment-a-id :id} {:definition (segment-definition products-id (field-filter lib/> price-field-id 50))}
+                     :model/Segment {segment-b-id :id} {:definition (segment-definition products-id (field-filter lib/= category-field-id "Widget"))}
+                     :model/Segment segment-c {:definition (segment-definition products-id
+                                                                               (segment-filter segment-a-id)
+                                                                               (segment-filter segment-b-id)
+                                                                               (field-filter lib/> rating-field-id 4))}]
         (is (= {:table #{products-id}
                 :segment #{segment-a-id segment-b-id}}
-               (calculation/calculate-deps :segment segment-c)))))))
+               (calculate-deps :segment segment-c)))))))
 
 (deftest ^:parallel upstream-deps-segment-implicit-join-test
   (testing "Segment depending on implicitly joined field adds dep on that field's table"
@@ -548,11 +571,17 @@
            venues-id (mt/id :venues)
            venue-fk-field-id (mt/id :checkins :venue_id)
            venue-name-field-id (mt/id :venues :name)]
-      (mt/with-temp [:model/Segment segment {:table_id checkins-id
-                                             :definition {:filter [:= [:field venue-name-field-id {:source-field venue-fk-field-id}] "Bird's Nest"]}}]
+      (mt/with-temp [:model/Segment segment {:definition (segment-definition
+                                                          checkins-id
+                                                          (fn [_mp query]
+                                                            (lib/= (some #(when (and (= (:id %) venue-name-field-id)
+                                                                                     (= (:fk-field-id %) venue-fk-field-id))
+                                                                            %)
+                                                                         (lib/filterable-columns query))
+                                                                   "Bird's Nest")))}]
         (is (= {:segment #{}
                 :table #{checkins-id venues-id}}
-               (calculation/calculate-deps :segment segment)))))))
+               (calculate-deps :segment segment)))))))
 
 (deftest upstream-deps-measure-test
   (let [mp (mt/metadata-provider)
@@ -561,27 +590,24 @@
         quantity (lib.metadata/field mp (mt/id :orders :quantity))]
     (testing "measure depending only on table"
       (mt/with-temp [:model/Measure measure {:name "Total Quantity"
-                                             :table_id orders-id
                                              :definition (-> (lib/query mp orders)
                                                              (lib/aggregate (lib/sum quantity)))}]
         (is (= {:measure #{} :segment #{} :table #{orders-id}}
-               (calculation/calculate-deps :measure measure)))))
+               (calculate-deps :measure measure)))))
     (testing "measure depending on another measure"
       (mt/with-temp [:model/Measure {measure-a-id :id :as measure-a} {:name "Measure A"
-                                                                      :table_id orders-id
                                                                       :definition (-> (lib/query mp orders)
                                                                                       (lib/aggregate (lib/sum quantity)))}]
         (let [mp' (mt/metadata-provider)]
           (mt/with-temp [:model/Measure measure-b {:name "Measure B"
-                                                   :table_id orders-id
                                                    :definition (-> (lib/query mp' orders)
                                                                    (lib/aggregate (lib/+ (lib.metadata/measure mp' measure-a-id) 100)))}]
             (testing "base measure depends only on table"
               (is (= {:measure #{} :segment #{} :table #{orders-id}}
-                     (calculation/calculate-deps :measure measure-a))))
+                     (calculate-deps :measure measure-a))))
             (testing "dependent measure depends on both table and measure"
               (is (= {:measure #{measure-a-id} :segment #{} :table #{orders-id}}
-                     (calculation/calculate-deps :measure measure-b))))))))))
+                     (calculate-deps :measure measure-b))))))))))
 
 (deftest upstream-deps-measure-with-multiple-measures-test
   (testing "Measure depending on multiple other measures tracks all dependencies"
@@ -591,21 +617,18 @@
           quantity (lib.metadata/field mp (mt/id :orders :quantity))
           total (lib.metadata/field mp (mt/id :orders :total))]
       (mt/with-temp [:model/Measure {measure-a-id :id} {:name "Measure A"
-                                                        :table_id orders-id
                                                         :definition (-> (lib/query mp orders)
                                                                         (lib/aggregate (lib/sum quantity)))}
                      :model/Measure {measure-b-id :id} {:name "Measure B"
-                                                        :table_id orders-id
                                                         :definition (-> (lib/query mp orders)
                                                                         (lib/aggregate (lib/sum total)))}]
         (let [mp' (mt/metadata-provider)]
           (mt/with-temp [:model/Measure measure-c {:name "Measure C"
-                                                   :table_id orders-id
                                                    :definition (-> (lib/query mp' orders)
                                                                    (lib/aggregate (lib/+ (lib.metadata/measure mp' measure-a-id)
                                                                                          (lib.metadata/measure mp' measure-b-id))))}]
             (is (= {:measure #{measure-a-id measure-b-id} :segment #{} :table #{orders-id}}
-                   (calculation/calculate-deps :measure measure-c)))))))))
+                   (calculate-deps :measure measure-c)))))))))
 
 (deftest upstream-deps-measure-implicit-join-test
   (testing "Measure depending on implicitly joined field adds dep on that field's table"
@@ -617,10 +640,9 @@
           visible-cols (lib/visible-columns base-query)
           venue-price (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Price")]
       (mt/with-temp [:model/Measure measure {:name "Total Venue Price"
-                                             :table_id checkins-id
                                              :definition (lib/aggregate base-query (lib/sum venue-price))}]
         (is (= {:measure #{} :segment #{} :table #{checkins-id venues-id}}
-               (calculation/calculate-deps :measure measure)))))))
+               (calculate-deps :measure measure)))))))
 
 (deftest upstream-deps-card-with-measure-test
   (testing "Card using a measure depends on that measure"
@@ -629,14 +651,13 @@
           orders (lib.metadata/table mp orders-id)
           quantity (lib.metadata/field mp (mt/id :orders :quantity))]
       (mt/with-temp [:model/Measure {measure-id :id} {:name "Total Quantity"
-                                                      :table_id orders-id
                                                       :definition (-> (lib/query mp orders)
                                                                       (lib/aggregate (lib/sum quantity)))}]
         (let [mp' (mt/metadata-provider)]
           (mt/with-temp [:model/Card card {:dataset_query (-> (lib/query mp' orders)
                                                               (lib/aggregate (lib.metadata/measure mp' measure-id)))}]
             (is (= {:card #{} :measure #{measure-id} :segment #{} :table #{orders-id}}
-                   (calculation/calculate-deps :card card)))))))))
+                   (calculate-deps :card card)))))))))
 
 (deftest upstream-deps-measure-with-segment-test
   (testing "Measure with conditional aggregation using segment depends on that segment"
@@ -645,35 +666,69 @@
           orders (lib.metadata/table mp orders-id)
           quantity (lib.metadata/field mp (mt/id :orders :quantity))
           total-field-id (mt/id :orders :total)]
-      (mt/with-temp [:model/Segment {segment-id :id} {:table_id orders-id
-                                                      :definition {:filter [:> [:field total-field-id nil] 100]}}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition orders-id (field-filter lib/> total-field-id 100))}]
         (let [mp' (mt/metadata-provider)
               segment-meta (lib.metadata/segment mp' segment-id)]
           (mt/with-temp [:model/Measure measure {:name "Quantity Where Total > 100"
-                                                 :table_id orders-id
                                                  :definition (-> (lib/query mp' orders)
                                                                  (lib/aggregate (lib/sum-where quantity (lib/ref segment-meta))))}]
             (is (= {:measure #{} :segment #{segment-id} :table #{orders-id}}
-                   (calculation/calculate-deps :measure measure)))))))))
+                   (calculate-deps :measure measure)))))))))
 
 (deftest ^:parallel non-integer-ids-are-discarded-during-extraction-test
   (testing "a document smartLink whose entityId is a map is dropped rather than forwarded"
-    (is (empty? (#'calculation/document-deps
+    (is (empty? (documents.dependencies/dependencies
                  {:content_type prose-mirror/prose-mirror-content-type
                   :document {:type "doc"
                              :content [{:type "smartLink"
-                                        :attrs {"model" "card" "entityId" {:raw "x"}}}]}}))))
+                                        :attrs {:model "card" :entityId {:raw "x"}}}]}}))))
   (testing "a dashcard click_behavior whose targetId is a map is dropped"
-    (let [deps (calculation/calculate-deps*
-                :dashboard
+    (let [deps (dashboards.dependencies/dependencies
                 {:dashcards [{:visualization_settings
                               {:click_behavior {:linkType "question"
                                                 :targetId {:raw "x"}}}}]})]
       (is (empty? (:card deps)))
       (is (empty? (:dashboard deps)))))
   (testing "a legitimate integer targetId is still collected"
-    (let [deps (calculation/calculate-deps*
-                :dashboard
+    (let [deps (dashboards.dependencies/dependencies
                 {:dashcards [{:visualization_settings
                               {:click_behavior {:linkType "question" :targetId 7777}}}]})]
       (is (= #{7777} (:card deps))))))
+
+(deftest upstream-deps-query-action-test
+  (let [mp (mt/metadata-provider)]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                   :model/Action {action-id :id} {:type :query, :name "Move check-ins"}
+                   :model/QueryAction _ {:action_id     action-id
+                                         :database_id   (mt/id)
+                                         :dataset_query (-> (lib/native-query mp (str "UPDATE checkins SET user_id = {{user}} "
+                                                                                      "WHERE venue_id IN (SELECT id FROM {{#" card-id "}})"))
+                                                            (lib/with-template-tags
+                                                              {"user"                 {:id           "user-tag"
+                                                                                       :type         :number
+                                                                                       :name         "user"
+                                                                                       :display-name "User"
+                                                                                       :required     true}
+                                                               (str "#" card-id) {:id           "card-tag"
+                                                                                  :type         :card
+                                                                                  :name         (str "#" card-id)
+                                                                                  :display-name "Venues"
+                                                                                  :card-id      card-id}}))}]
+      (is (= {:card  #{card-id}
+              :table #{(mt/id :checkins)}}
+             (calculate-deps :action (actions/select-action :id action-id)))))))
+
+(deftest upstream-deps-implicit-action-test
+  (let [mp (mt/metadata-provider)]
+    (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                               :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                   :model/Action {action-id :id} {:type :implicit, :name "Create venue", :model_id model-id}
+                   :model/ImplicitAction _ {:action_id action-id, :kind "row/create"}]
+      (is (= {:card #{model-id}}
+             (calculate-deps :action (actions/select-action :id action-id)))))))
+
+(deftest upstream-deps-implicit-action-without-model-test
+  (mt/with-temp [:model/Action {action-id :id} {:type :implicit, :name "Create venue"}
+                 :model/ImplicitAction _ {:action_id action-id, :kind "row/create", :table_id (mt/id :venues)}]
+    (is (= {:table #{(mt/id :venues)}}
+           (calculate-deps :action (actions/select-action :id action-id))))))

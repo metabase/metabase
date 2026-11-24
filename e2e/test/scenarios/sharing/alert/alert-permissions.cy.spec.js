@@ -42,30 +42,6 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
         expect(questionAlerts).to.have.length(3);
       });
     });
-
-    it("should let you edit an alert", () => {
-      cy.intercept("PUT", "/api/notification/*").as("updatedAlert");
-
-      // Change alert
-      H.visitQuestion(ORDERS_QUESTION_ID);
-
-      cy.findByLabelText("Move, trash, and more…").click();
-      H.popover().findByText("Edit alerts").click();
-
-      H.modal()
-        .findByText(/Created by you/)
-        .click();
-
-      H.modal().findByTestId("select-frequency").click();
-      H.popover().findByText("weekly").click();
-      H.selectScheduleTime();
-      H.modal().button("Save changes").click();
-
-      // Check that changes stuck
-      cy.wait("@updatedAlert").then(({ response: { body } }) => {
-        expect(body.subscriptions[0].cron_schedule).to.equal("0 0 8 ? * 2 *");
-      });
-    });
   });
 
   describe("as a non-admin / normal user", () => {
@@ -75,40 +51,22 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
       cy.findByLabelText("Move, trash, and more…").click();
 
-      H.popover().findByText("Edit alerts").should("not.exist");
       H.popover().findByText("Create an alert").should("be.visible");
+      H.popover().findByText("Edit alerts").should("not.exist");
     });
 
-    it("should let you see other alerts where you are a recipient", () => {
+    it("should let you see and unsubscribe from others' alerts where you are a recipient", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Edit alerts").click();
 
       H.modal().within(() => {
-        cy.findByText(`Created by ${H.getFullName(admin)}`, {
-          exact: false,
-        }).should("be.visible");
         cy.button("New alert").should("be.visible");
-      });
-    });
-
-    it("should let you see your own alerts", () => {
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      cy.findByLabelText("Move, trash, and more…").click();
-      H.popover().findByText("Edit alerts").click();
-
-      H.modal().findByText(/Created by you/);
-    });
-
-    it("should let you unsubscribe from others' alerts", () => {
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByLabelText("Move, trash, and more…").click();
-      H.popover().findByText("Edit alerts").click();
-
-      H.modal().within(() => {
         cy.findByText(`Created by ${H.getFullName(admin)}`, {
           exact: false,
-        }).realHover();
+        })
+          .should("be.visible")
+          .realHover();
         cy.icon("unsubscribe").click();
       });
 

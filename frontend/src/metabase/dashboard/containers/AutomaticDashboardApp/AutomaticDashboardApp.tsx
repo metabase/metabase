@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -54,9 +53,8 @@ const AutomaticDashboardAppInner = () => {
   const save = async () => {
     if (dashboard) {
       // remove the transient id before trying to save
-      const { data: newDashboard } = await saveDashboard(
-        dissoc(dashboard, "id"),
-      );
+      const { id: _id, ...dashboardWithoutId } = dashboard;
+      const { data: newDashboard } = await saveDashboard(dashboardWithoutId);
 
       if (!newDashboard) {
         return;
@@ -143,7 +141,7 @@ const AutomaticDashboardAppInner = () => {
                       <ActionButton
                         className={cx(CS.mlAuto, CS.textNoWrap)}
                         variant="filled"
-                        color="feedback-positive"
+                        color="positive"
                         // The dashboard isn't always loaded when the header first
                         // renders. Without this guard, "Save this" is clickable while
                         // `dashboard` is undefined, which fires a false `x-ray_saved`

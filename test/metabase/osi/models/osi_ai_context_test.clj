@@ -1,9 +1,13 @@
 (ns metabase.osi.models.osi-ai-context-test
   (:require
    [clojure.test :refer :all]
-   [metabase.entity-retrieval.mirror :as mirror]
+   [metabase.lib.core :as lib]
+   [metabase.osi.models.osi-ai-context :as osi-ai-context]
+   [metabase.osi.schema :as osi.schema]
+   [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +43,7 @@
     (mt/with-temp [:model/OsiAiContext _ (assoc entity :ai_context "Use for revenue questions.")]
       (is (= {:instructions "Use for revenue questions."} (:ai_context (by-key entity)))))))
 
-(deftest hooks-nudge-a-targeted-reconcile-test
+(deftest writes-request-targeted-reconcile-test
   (testing "insert, update and delete each nudge the entity's reconcile once — deferred until the txn commits"
     (let [nudges (atom [])
           ref    ["table" 42]]
@@ -49,17 +53,17 @@
         (try
           (testing "insert"
             (t2/with-transaction [_conn]
-              (t2/insert! :model/OsiAiContext (assoc entity :ai_context ai-context))
+              (osi-ai-context/upsert-osi-ai-context! "table" 42 ai-context)
               (is (= [] @nudges) "not nudged while the transaction is still open"))
             (is (= [ref] @nudges) "nudged once, after commit"))
           (testing "update"
             (t2/with-transaction [_conn]
-              (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 42 {:ai_context {:instructions "changed"}})
+              (osi-ai-context/upsert-osi-ai-context! "table" 42 {:instructions "changed"})
               (is (= [ref] @nudges) "still only the insert's nudge while open"))
             (is (= [ref ref] @nudges) "nudged again, after commit"))
           (testing "delete"
             (t2/with-transaction [_conn]
-              (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 42)
+              (osi-ai-context/delete-osi-ai-context! "table" 42)
               (is (= [ref ref] @nudges) "not nudged while open"))
             (is (= [ref ref ref] @nudges) "nudged again, after commit"))
           (finally (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 42)))))))
@@ -72,7 +76,7 @@
                                                                 nil)]
         (u/ignore-exceptions
           (t2/with-transaction [_conn]
-            (t2/insert! :model/OsiAiContext (assoc entity :entity_local_id 43 :ai_context ai-context))
+            (osi-ai-context/upsert-osi-ai-context! "table" 43 ai-context)
             (throw (ex-info "roll back" {}))))
         (is (= [] @nudges))
         (is (nil? (by-key (assoc entity :entity_local_id 43))))))))
@@ -98,3 +102,9 @@
         (testing "delete"
           (is (pos? (t2/delete! :model/OsiAiContext :entity_type (k 0) :entity_local_id (k 1))))
           (is (nil? (by-key entity))))))))
+
+(deftest entity-type-must-be-described-type-test
+  (testing "the schema refuses an entity_type no OsiAiContext describes and stores a card flavor as card"
+    (is (not (mr/validate ::osi.schema/osi-ai-context.update {:entity_type "dashboard"})))
+    (is (= {:entity_type "card"} (lib/normalize ::osi.schema/osi-ai-context.update {:entity_type "metric"})))
+    (is (mr/validate ::osi.schema/osi-ai-context.update {:entity_type "table"}))))

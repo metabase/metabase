@@ -33,7 +33,7 @@ const IMPERSONATED_PERMISSION_OPTION = {
   },
   value: DataPermissionValue.IMPERSONATED,
   icon: "database",
-  iconColor: "warning",
+  iconColor: "feedback-warning",
 } satisfies PermissionOption;
 
 const BLOCK_PERMISSION_OPTION = {
@@ -42,7 +42,7 @@ const BLOCK_PERMISSION_OPTION = {
   },
   value: DataPermissionValue.BLOCKED,
   icon: "close",
-  iconColor: "danger",
+  iconColor: "feedback-negative",
 } satisfies PermissionOption;
 
 /**
@@ -141,7 +141,7 @@ export function initializePlugin() {
       get label() {
         return t`Edit Impersonated`;
       },
-      iconColor: "warning",
+      iconColor: "feedback-warning",
       icon: "database",
       onSelect: (entityId, groupId, view) => {
         if (entityId == null) {

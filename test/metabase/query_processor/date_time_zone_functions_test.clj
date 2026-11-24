@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
@@ -103,7 +104,7 @@
 
 (defn- extract
   [x op]
-  (u.date/extract x (temporal-extraction-op->unit op)))
+  (u.date/extract {:start-of-week (lib-be/start-of-week)} x (temporal-extraction-op->unit op)))
 
 (def ^:private extraction-test-cases
   [{:expected-fn (fn [op]          [(extract #t "2004-03-19 09:19:09" op) (extract #t "2008-06-20 10:20:10" op)

@@ -55,6 +55,15 @@ export const Funnel = {
   },
 };
 
+export const Gauge = {
+  render: Template,
+
+  args: {
+    display: "gauge",
+    name: "Gauge",
+  },
+};
+
 export const Line = {
   render: Template,
 
@@ -100,6 +109,15 @@ export const Row = {
   },
 };
 
+export const Sankey = {
+  render: Template,
+
+  args: {
+    display: "sankey",
+    name: "Sankey",
+  },
+};
+
 export const Scalar = {
   render: Template,
 
@@ -111,6 +129,7 @@ export const Scalar = {
 
 const SCALAR_CARD_SIZES: [number, number][] = [
   [82, 82],
+  [126, 82],
   [256, 126],
   [345, 170],
   [433, 214],
@@ -137,7 +156,7 @@ export const ScalarSizeTiers = {
             width,
             height,
             borderRadius: 12,
-            border: "1px solid var(--mb-color-border)",
+            border: "1px solid var(--mb-color-border-neutral)",
           }}
         >
           <ChartSkeleton display="scalar" />

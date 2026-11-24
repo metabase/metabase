@@ -6,7 +6,11 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.classloader.core :as classloader]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.task.core :as task]
+   [metabase.task.impl :as task.impl]
+   [metabase.task.job-factory :as job-factory]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -14,7 +18,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (org.quartz CronTrigger JobDetail)))
+   (java.lang.annotation Annotation)
+   (java.time Duration Instant)
+   (java.util Date)
+   (java.util.concurrent LinkedBlockingQueue TimeUnit)
+   (org.quartz CronTrigger InterruptableJob Job JobDetail JobExecutionContext Scheduler SchedulerException)))
 
 (set! *warn-on-reflection* true)
 
@@ -22,7 +30,9 @@
 
 ;; make sure we attempt to reschedule tasks so changes made in source are propogated to JDBC backend
 
-(task/defjob TestJob [_])
+(task/defjob TestJob
+  {:saved-class "metabase.task_test.TestJob"}
+  [_])
 
 (defn- job ^JobDetail []
   (jobs/build
@@ -96,6 +106,20 @@
                 :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY}}
              (triggers))))))
 
+(deftest reschedule-after-job-was-deleted-test
+  (testing "rescheduling schedules the new trigger when the job and its trigger are deleted while it reschedules, as
+           Quartz does when the last run of a one-shot trigger completes"
+    (with-temp-scheduler-and-cleanup!
+      (task/schedule-task! (job) (trigger-1))
+      (let [get-triggers (mt/original-fn #'qs/get-triggers-of-job)]
+        (mt/with-dynamic-fn-redefs [qs/get-triggers-of-job (fn [scheduler job-key]
+                                                             (u/prog1 (get-triggers scheduler job-key)
+                                                               (qs/delete-job scheduler job-key)))]
+          (task/schedule-task! (job) (trigger-2))))
+      (is (= #{{:cron-expression     "0 0 6 * * ? *"
+                :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY}}
+             (triggers))))))
+
 (deftest scheduler-info-test
   (testing "Make sure scheduler-info doesn't explode and returns info in the general shape we expect"
     (mt/with-temp-scheduler!
@@ -132,6 +156,72 @@
          (task/start-scheduler!)
          (is (qs/started? (#'task/scheduler))))))))
 
+(deftest init-scheduler-publishes-a-ready-scheduler-once-test
+  (testing "racing inits attach our job factory once, and publish the scheduler only after attaching it"
+    (let [quartz   (reify Scheduler
+                     (standby [_]))
+          attaches (atom [])
+          ;; records whether the scheduler was already published; slow enough for every racer to reach its check
+          attach   (fn [_]
+                     (Thread/sleep 100)
+                     (swap! attaches conj (some? (task/scheduler))))
+          go       (promise)]
+      (mc/binding (task.impl/scheduler-handle) nil
+                  (fn []
+                    (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                                task.impl/set-jdbc-backend-properties! (constantly nil)
+                                                task.impl/delete-jobs-with-no-class!   (constantly nil)
+                                                task.impl/reset-errored-triggers!      (constantly nil)
+                                                task.impl/init-tasks!                  (constantly nil)
+                                                job-factory/add-to-scheduler           attach]
+                      (let [racers (mapv (fn [_] (future @go (task/init-scheduler!))) (range 4))]
+                        (deliver go true)
+                        (run! deref racers))
+                      (is (= {:attaches-before-publishing [false]
+                              :published?                 true}
+                             {:attaches-before-publishing @attaches
+                              :published?                 (identical? quartz (task/scheduler))}))))))))
+
+(defn- init-with-failing-setup!
+  "Run [[task/init-scheduler!]] with a job factory that throws and a scheduler whose shutdown throws
+  `shutdown-error`, if given, and report what happened."
+  [shutdown-error]
+  (let [shutdowns (atom 0)
+        quartz    (reify Scheduler
+                    (standby [_])
+                    (shutdown [_]
+                      (swap! shutdowns inc)
+                      (some-> shutdown-error throw)))
+        failure   (ex-info "attach failed" {})]
+    (mc/binding (task.impl/scheduler-handle) nil
+                (fn []
+                  (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                              task.impl/set-jdbc-backend-properties! (constantly nil)
+                                              job-factory/add-to-scheduler           (fn [_] (throw failure))]
+                    (let [thrown (try
+                                   (task/init-scheduler!)
+                                   nil
+                                   (catch Throwable e
+                                     e))]
+                      {:setup-error-thrown? (identical? failure thrown)
+                       :suppressed          (some->> ^Throwable thrown .getSuppressed (mapv ex-message))
+                       :shutdowns           @shutdowns
+                       :published?          (some? (task/scheduler))}))))))
+
+(deftest init-scheduler-shuts-down-a-scheduler-it-cannot-ready-test
+  (testing "a scheduler whose setup fails is shut down and not published, and the setup's own exception is thrown"
+    (is (= {:setup-error-thrown? true
+            :suppressed          []
+            :shutdowns           1
+            :published?          false}
+           (init-with-failing-setup! nil))))
+  (testing "a shutdown that fails too is attached to the setup's exception, not thrown in its place"
+    (is (= {:setup-error-thrown? true
+            :suppressed          ["shutdown failed"]
+            :shutdowns           1
+            :published?          false}
+           (init-with-failing-setup! (ex-info "shutdown failed" {}))))))
+
 (defn- capitalize-if-mysql [s]
   (cond-> (name s)
     (= :mysql (mdb.connection/db-type))
@@ -161,3 +251,303 @@
         (if scheduler-initialized?
           (task/start-scheduler!)
           (task/stop-scheduler!))))))
+
+(defmacro ^:private with-jdbc-scheduler!
+  "Runs `body` with a JDBC-backed scheduler, and stops it afterwards unless one was already running.
+  A scheduler that this starts stays in standby: it stores and loads jobs, and fires no trigger."
+  [& body]
+  `(let [running?# (some? (#'task/scheduler))]
+     (when-not running?#
+       ;; the tasks' initializers start threads that outlive the scheduler, so only the scheduler starts
+       (mt/with-dynamic-fn-redefs [task.impl/init-tasks! (constantly nil)]
+         (task/init-scheduler!)))
+     (try
+       ~@body
+       (finally
+         (when-not running?#
+           (task/stop-scheduler!))))))
+
+(defn- stored-job-class-name []
+  (t2/select-one-fn (capitalize-if-mysql :job_class_name)
+                    (capitalize-if-mysql :qrtz_job_details)
+                    (capitalize-if-mysql :job_name) "metabase.task-test.job"))
+
+(defn- trigger-that-starts-next-week
+  "An hourly trigger like [[trigger-1]] that can't fire while a test runs."
+  ^CronTrigger []
+  (triggers/build
+   (triggers/with-identity (triggers/key "metabase.task-test.trigger"))
+   (triggers/start-at (Date/from (.plus (Instant/now) (Duration/ofDays 7))))
+   (triggers/with-schedule
+    (cron/schedule
+     (cron/cron-schedule "0 0 * * * ? *")
+     (cron/with-misfire-handling-instruction-do-nothing)))))
+
+(defonce ^:private moved-job-runs (atom 0))
+
+(task/defjob MovedJob
+  "A job as it is after its namespace moved: its saved class name is not the one this namespace would give."
+  {:saved-class "metabase.task_test_before_the_move.MovedJob"}
+  [_]
+  (swap! moved-job-runs inc))
+
+(defn- moved-job ^JobDetail []
+  (jobs/build
+   (jobs/of-type MovedJob)
+   (jobs/with-identity (jobs/key "metabase.task-test.job"))))
+
+(defn- loadable-class-name
+  "Returns `class-name` if a class of that name loads, as Quartz would load a stored job's class."
+  [class-name]
+  (try
+    (.getName (Class/forName class-name true (classloader/the-classloader)))
+    (catch ClassNotFoundException _
+      nil)))
+
+(deftest startup-cleanup-keeps-a-moved-job-that-kept-its-saved-class-test
+  ;; The row is stored under the `:saved-class`, which is not the name the namespace would give the class.
+  (with-jdbc-scheduler!
+    (try
+      ;; the row is this test's own, and its trigger starts next week, so the scheduler never fires it
+      (task/schedule-task! (moved-job) (trigger-that-starts-next-week))
+      (#'task.impl/delete-jobs-with-no-class!)
+      (let [^JobDetail stored (qs/get-job (#'task/scheduler) (.getKey (moved-job)))
+            ^Class job-class  (.getJobClass stored)
+            runs-before       @moved-job-runs]
+        ;; Quartz fires a job by calling `execute` on a new instance of the class that the stored name loads.
+        (.execute ^Job (.newInstance (.getDeclaredConstructor job-class (make-array Class 0))
+                                     (object-array 0))
+                  nil)
+        (is (= {:stored-class-name   "metabase.task_test_before_the_move.MovedJob"
+                :loaded-class-name   "metabase.task_test_before_the_move.MovedJob"
+                :defined-here?       true
+                :name-from-namespace nil
+                :triggers            #{{:cron-expression     "0 0 * * * ? *"
+                                        :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}
+                :runs                1}
+               {:stored-class-name   (stored-job-class-name)
+                :loaded-class-name   (.getName job-class)
+                :defined-here?       (identical? job-class MovedJob)
+                :name-from-namespace (loadable-class-name "metabase.task_test.MovedJob")
+                :triggers            (triggers)
+                :runs                (- @moved-job-runs runs-before)})))
+      (finally
+        (task/delete-task! (.getKey (moved-job)) (.getKey (trigger-1)))))))
+
+(task/defjob AnnotatedJob
+  "A job with both Quartz annotations."
+  {:saved-class   "metabase.task_test.AnnotatedJob"
+   :concurrent?   false
+   :persist-data? true}
+  [_])
+
+(task/defjob DefaultsJob
+  {:saved-class "metabase.task_test.DefaultsJob", :concurrent? true, :persist-data? false}
+  [_])
+
+(task/defjob-type InterruptableTestJob
+  "A job that implements more than `org.quartz.Job`."
+  {:saved-class "metabase.task_test.InterruptableTestJob", :concurrent? false}
+  org.quartz.Job
+  (execute [_ _])
+  org.quartz.InterruptableJob
+  (interrupt [_]))
+
+(defn- annotation-names [^Class c]
+  (into #{} (map #(.getSimpleName (.annotationType ^Annotation %))) (.getAnnotations c)))
+
+(deftest defjob-options-put-quartz-annotations-on-the-class-test
+  (is (= {:annotated     {:class-name                       "metabase.task_test.AnnotatedJob"
+                          :annotations                      #{"DisallowConcurrentExecution"
+                                                              "PersistJobDataAfterExecution"}
+                          :concurrent-execution-disallowed? true
+                          :persist-job-data?                true}
+          :defaults      {:class-name                       "metabase.task_test.DefaultsJob"
+                          :annotations                      #{}
+                          :concurrent-execution-disallowed? false
+                          :persist-job-data?                false}
+          :interruptable {:class-name                       "metabase.task_test.InterruptableTestJob"
+                          :annotations                      #{"DisallowConcurrentExecution"}
+                          :concurrent-execution-disallowed? true
+                          :persist-job-data?                false}}
+         (update-vals {:annotated     AnnotatedJob
+                       :defaults      DefaultsJob
+                       :interruptable InterruptableTestJob}
+                      (fn [^Class c]
+                        (let [^JobDetail detail (jobs/build (jobs/of-type c))]
+                          {:class-name                       (.getName c)
+                           :annotations                      (annotation-names c)
+                           :concurrent-execution-disallowed? (.isConcurrentExectionDisallowed detail)
+                           :persist-job-data?                (.isPersistJobDataAfterExecution detail)}))))))
+
+(deftest defjob-defines-a-factory-test
+  ;; Kondo lints `task/defjob` as a `defn`, so it does not know the factory of a job defined with it.
+  (let [->annotated-job (ns-resolve 'metabase.task-test '->AnnotatedJob)]
+    (is (= {:job?           true
+            :interruptable? true
+            :docstring      "A job with both Quartz annotations."}
+           {:job?           (instance? Job (->annotated-job))
+            :interruptable? (instance? InterruptableJob (->InterruptableTestJob))
+            :docstring      (:doc (meta ->annotated-job))}))))
+
+(defn- definition-error
+  "Returns the message of the error that expanding the job definition `form` in this namespace throws."
+  [form]
+  (binding [*ns* (the-ns 'metabase.task-test)]
+    (try
+      (when (macroexpand-1 form)
+        nil)
+      (catch Throwable e
+        (ex-message (or (ex-cause e) e))))))
+
+(deftest defjob-rejects-an-invalid-definition-test
+  (is (=? {;; the entry to paste, with the class name that this namespace gives the type
+           :no-saved-class   #"(?s).*\n\n  :saved-class \"metabase\.task_test\.NewJob\"\n\n.*"
+           :no-options       #"(?s).*\n\n  \{:saved-class \"metabase\.task_test\.NewJob\"\}\n"
+           :unknown-option   #".*unknown options \[:durable\?\]\. The options are \[.*\]\."
+           :not-a-literal    #".*its `:saved-class` must be a string literal\."
+           :not-a-class-name #".*\"metabase\.task-test\.NewJob\" is not a fully qualified Java class name.*"
+           :no-package       #".*\"NewJob\" is not a fully qualified Java class name.*"
+           :not-a-boolean    #".*its `:concurrent\?` must be `true` or `false`\."
+           :metadata         #".*its type name has metadata\..*"
+           :two-arguments    #".*its argument vector takes one binding.*"
+           :valid            nil}
+          (update-vals
+           '{:no-saved-class   (task/defjob NewJob {:concurrent? false} [_])
+             :no-options       (task/defjob NewJob [_])
+             :unknown-option   (task/defjob NewJob {:saved-class "a.NewJob", :durable? true} [_])
+             :not-a-literal    (task/defjob NewJob {:saved-class (str "a." "NewJob")} [_])
+             :not-a-class-name (task/defjob NewJob {:saved-class "metabase.task-test.NewJob"} [_])
+             :no-package       (task/defjob-type NewJob {:saved-class "NewJob"} org.quartz.Job)
+             :not-a-boolean    (task/defjob NewJob {:saved-class "a.NewJob", :concurrent? nil} [_])
+             :metadata         (task/defjob ^{:doc "A job."} NewJob {:saved-class "a.NewJob"} [_])
+             :two-arguments    (task/defjob NewJob {:saved-class "a.NewJob"} [_ _])
+             :valid            (task/defjob NewJob "A job." {:saved-class "a.NewJob"} [_])}
+           definition-error))))
+
+(deftest defjob-allows-the-position-metadata-of-a-reader-test
+  ;; Eastwood reads the source with a reader that puts the line and column on every symbol.
+  (is (nil? (definition-error (list 'task/defjob
+                                    (with-meta 'NewJob {:line 1, :column 14})
+                                    {:saved-class "a.NewJob"}
+                                    '[_])))))
+
+(def ^:private ^LinkedBlockingQueue blocking-job-started (LinkedBlockingQueue.))
+
+(def ^:private ^LinkedBlockingQueue blocking-job-release (LinkedBlockingQueue.))
+
+(task/defjob BlockingJob
+  {:saved-class "metabase.task_test.BlockingJob"
+   :concurrent? false}
+  [job-context]
+  (.put blocking-job-started (.getName (.getKey (.getTrigger ^JobExecutionContext job-context))))
+  (.take blocking-job-release))
+
+(def ^:private blocking-job-key (jobs/key "metabase.task-test.blocking-job"))
+
+(defn- blocking-job ^JobDetail []
+  (jobs/build
+   (jobs/of-type BlockingJob)
+   (jobs/with-identity blocking-job-key)
+   (jobs/store-durably)))
+
+(defn- one-shot-trigger [trigger-name]
+  (triggers/build
+   (triggers/with-identity (triggers/key trigger-name))
+   (triggers/for-job blocking-job-key)
+   (triggers/start-now)))
+
+(defn- next-blocking-job-start []
+  (.poll blocking-job-started 5 TimeUnit/SECONDS))
+
+(defn- test-schedule-once! []
+  (.clear blocking-job-started)
+  (.clear blocking-job-release)
+  (testing "trigger with unused key runs"
+    (is (true? (task/schedule-once! (blocking-job) (one-shot-trigger "first"))))
+    (is (= "first" (next-blocking-job-start))))
+  (dotimes [_ 3]
+    (task/schedule-once! (blocking-job) (one-shot-trigger "first"))
+    (task/schedule-once! (blocking-job) (one-shot-trigger "second")))
+  (testing "no trigger starts while first run blocks"
+    (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS))))
+  (testing "triggers scheduled many times during run each run once after it"
+    (dotimes [_ 3]
+      (.put blocking-job-release :go))
+    (is (= #{"first" "second"} (set [(next-blocking-job-start) (next-blocking-job-start)])))
+    (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS)))))
+
+(deftest schedule-once-test
+  (mt/with-temp-scheduler!
+    (test-schedule-once!)))
+
+(deftest schedule-once-with-jdbc-job-store-test
+  (with-jdbc-scheduler!
+    (let [standby? (.isInStandbyMode (task/scheduler))]
+      (try
+        (task/add-job! (blocking-job))
+        (qs/start (task/scheduler))
+        (test-schedule-once!)
+        (finally
+          (qs/delete-job (task/scheduler) blocking-job-key)
+          (when standby?
+            (qs/standby (task/scheduler))))))))
+
+(defn- blocking-job-of-its-own ^JobDetail [job-name]
+  (jobs/build
+   (jobs/of-type BlockingJob)
+   (jobs/with-identity (jobs/key job-name))))
+
+(defn- trigger-of-job [^JobDetail job trigger-name]
+  (triggers/build
+   (triggers/with-identity (triggers/key trigger-name))
+   (triggers/for-job (.getKey job))
+   (triggers/start-now)))
+
+(deftest schedule-once-with-job-per-trigger-test
+  (with-jdbc-scheduler!
+    (let [standby? (.isInStandbyMode (task/scheduler))
+          job-a    (blocking-job-of-its-own "metabase.task-test.blocking-job.a")
+          job-b    (blocking-job-of-its-own "metabase.task-test.blocking-job.b")]
+      (try
+        (task/add-job! (blocking-job))
+        (qs/start (task/scheduler))
+        (.clear blocking-job-started)
+        (.clear blocking-job-release)
+        (task/schedule-once! job-a (trigger-of-job job-a "a"))
+        (is (= "a" (next-blocking-job-start)))
+        (testing "other job runs during run"
+          (task/schedule-once! job-b (trigger-of-job job-b "b"))
+          (is (= "b" (next-blocking-job-start))))
+        (testing "same job scheduled during its run waits for it and runs once"
+          (dotimes [_ 3]
+            (task/schedule-once! job-a (trigger-of-job job-a "a")))
+          (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS)))
+          (dotimes [_ 2]
+            (.put blocking-job-release :go))
+          (is (= "a" (next-blocking-job-start)))
+          (.put blocking-job-release :go)
+          (is (nil? (.poll blocking-job-started 500 TimeUnit/MILLISECONDS))))
+        (testing "job is deleted after its last run"
+          (is (nil? (qs/get-job (task/scheduler) (.getKey job-a)))))
+        (finally
+          (dotimes [_ 3]
+            (.put blocking-job-release :go))
+          (qs/delete-jobs (task/scheduler) [blocking-job-key (.getKey job-a) (.getKey job-b)])
+          (when standby?
+            (qs/standby (task/scheduler))))))))
+
+(deftest schedule-once-without-running-scheduler-test
+  (tu/do-with-unstarted-temp-scheduler!
+   (fn []
+     (is (nil? (task/schedule-once! (blocking-job) (one-shot-trigger "first"))))
+     (is (not (task/job-exists? blocking-job-key))))))
+
+(deftest schedule-once-that-scheduler-refuses-test
+  (let [refusing-scheduler (reify Scheduler
+                             (isInStandbyMode [_] false)
+                             (^void scheduleJob [_ ^JobDetail _job ^java.util.Set _triggers ^boolean _replace]
+                               (throw (SchedulerException. "job store is down"))))]
+    (mc/binding (task.impl/scheduler-handle) refusing-scheduler
+                (fn []
+                  (is (nil? (task/schedule-once! (blocking-job) (one-shot-trigger "first"))))))))

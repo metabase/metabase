@@ -1,16 +1,14 @@
 import { match } from "ts-pattern";
 import _ from "underscore";
 
+import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP,
 } from "metabase/embedding/embedding-iframe-sdk/constants";
-import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 
-import type {
-  SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupSettings,
-} from "../types";
+import type { SdkIframeEmbedSetupSettings } from "../types";
 
 import { filterEmptySettings } from "./filter-empty-settings";
 
@@ -66,6 +64,7 @@ export function getEmbedCustomElementSnippet({
     .with("exploration", () => "metabase-question")
     .with("browser", () => "metabase-browser")
     .with("metabot", () => "metabase-metabot")
+    .with("data-app", () => "metabase-data-app")
     .exhaustive();
 
   const attributes = buildEmbedAttributes({
@@ -107,6 +106,10 @@ export function getMetabaseConfigSnippet({
 
   const cleanedConfig = {
     ..._.omit(config, ["isGuest", "useExistingUserSession"]),
+
+    // data apps does not support theme overrides.
+    // each data app already define its theme.
+    ...(settings.componentName === "metabase-data-app" && { theme: undefined }),
 
     // Only include settings below when they are true.
     ...(config.useExistingUserSession ? { useExistingUserSession: true } : {}),

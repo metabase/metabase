@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [java-time.api :as t]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
@@ -12,7 +13,8 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
@@ -28,6 +30,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
@@ -53,7 +56,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (users-rest.db/rename-collection! (:id collection) new-collection-name))))))
+          (collection/update-collections! [{:id (:id collection) :name new-collection-name}] nil))))))
 
 ;;; ------------ Serialize User Attribute Provenance ------------------
 
@@ -86,7 +89,10 @@
 
 (mu/defn- combine :- CombinedAttributes
   "Combines user, tenant, and system attributes. User can override "
-  [attributes :- [:map-of :keyword [:maybe SimpleAttributes]]
+  [attributes :- [:map {:closed true}
+                  [:jwt    {:optional true} [:maybe SimpleAttributes]]
+                  [:tenant {:optional true} [:maybe SimpleAttributes]]
+                  [:user   {:optional true} [:maybe SimpleAttributes]]]
    system :- [:maybe SystemAttributes]]
   (letfn [(value-map [s f vs] (into {}
                                     (for [[k v] vs]
@@ -186,7 +192,7 @@
                                                    [:enum :all :internal :external]]]
        [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]]]
   (or api/*is-superuser?*
-      api/*is-data-analyst?*
+      (api/entitled-data-analyst?)
       (if group_id
         (perms/check-manager-of-group group_id)
         (perms/check-group-manager)))
@@ -216,7 +222,7 @@
                           filters)
                    ;; For admins also include the IDs of Users' Personal Collections
                    api/*is-superuser?*
-                   (t2/hydrate :personal_collection_id :tenant_collection_id)
+                   (t2/hydrate :personal_collection_id :tenant_collection_id :has_used_password)
 
                    (or api/*is-superuser?*
                        api/*is-group-manager?*)
@@ -287,15 +293,11 @@
             :can_create_queries        can-create-queries
             :can_create_native_queries can-create-native-queries)))
 
-(defn- maybe-add-advanced-permissions
+(defenterprise maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
+  metabase-enterprise.advanced-permissions.oss-hooks
   [user]
-  (if-let [with-advanced-permissions
-           (and (premium-features/enable-advanced-permissions?)
-                config/ee-available?
-                (requiring-resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))]
-    (with-advanced-permissions user)
-    user))
+  user)
 
 (defn- maybe-add-sso-source
   "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
@@ -304,15 +306,22 @@
     (assoc user :sso_source (users-rest.db/user-sso-source id))
     user))
 
+(defn- collection-user-info
+  "The user info of `user` for the Collection permission filters."
+  [user]
+  {:user-id          (:id user)
+   :is-superuser?    (boolean (:is_superuser user))
+   :is-data-analyst? (boolean (:is_data_analyst user))})
+
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard, excluding
   internal/automatically-loaded content."
   [user]
   (-> user
       (assoc :has_question_and_dashboard
-             (and (users-rest.db/has-visible-card? nil)
-                  (users-rest.db/has-visible-dashboard?)))
-      (assoc :has_model (users-rest.db/has-visible-card? "model"))))
+             (and (users-rest.db/has-visible-card? (collection-user-info user) nil)
+                  (users-rest.db/has-visible-dashboard? (collection-user-info user))))
+      (assoc :has_model (users-rest.db/has-visible-card? (collection-user-info user) "model"))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
@@ -328,7 +337,7 @@
   (let [enabled? (appearance/custom-homepage)
         id       (appearance/custom-homepage-dashboard)
         dash     (users-rest.db/dashboard id)
-        valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
+        valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? (t2/hydrate dash :can_read)))]
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 
@@ -339,7 +348,7 @@
   [user]
   (assoc user :can_write_any_collection
          (or (:is_superuser user)
-             (users-rest.db/writable-collection-exists?))))
+             (= :read-and-write (perms/some-collection-permission-for-user (collection-user-info user))))))
 
 (mr/def ::user-permissions
   "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,
@@ -376,8 +385,10 @@
    [:has_invited_second_user    :boolean]
    [:has_question_and_dashboard :boolean]
    [:has_model                  :boolean]
+   [:slack_account_status       [:maybe [:enum "active" "inactive"]]]
    [:can_write_any_collection   :boolean]
    [:sso_source                 [:maybe :keyword]]
+   [:has_used_password          :boolean]
    [:locale                     [:maybe :string]]
    [:tenant_id                  [:maybe ms/PositiveInt]]
    [:tenant_collection_id       [:maybe ms/PositiveInt]]
@@ -392,19 +403,30 @@
 
 (api.macros/defendpoint :get "/current" :- ::current-user-response
   "Fetch the current `User`."
+  {:scope api-scope/data-app}
   []
   (-> (api/check-404 @api/*current-user*)
       ;; `:type` is selected for the current user so attribute resolution can check it, but isn't part of this
       ;; endpoint's response
       (dissoc :type)
-      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)
+      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id
+                  :has_used_password)
       add-has-question-and-dashboard
       add-first-login
       add-query-permissions
       maybe-add-advanced-permissions
       maybe-add-sso-source
       add-custom-homepage-info
-      add-can-write-any-collection))
+      add-can-write-any-collection
+      (assoc :slack_account_status (sso/slack-account-status api/*current-user-id*))))
+
+(api.macros/defendpoint :delete "/:id/slack" :- ::api/generic-204-no-content
+  "Remove the current user's Slack Connect link."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (api/check-403 (= id api/*current-user-id*))
+  (sso/disconnect-slack-account! id)
+  api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -415,12 +437,10 @@
   Only personal users can be fetched this way; API-key users and the internal user 404."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (try
-    (users/check-self-or-superuser id)
-    (catch clojure.lang.ExceptionInfo _e
-      (perms/check-group-manager)))
+  (api/read-check (users/fetch-user :id id))
   (-> (api/check-404 (users/fetch-user :id id, :type :personal))
       (t2/hydrate :user_group_memberships)
+      (cond-> (or api/*is-superuser?* (= id api/*current-user-id*)) (t2/hydrate :has_used_password))
       add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -448,6 +468,7 @@
             [:source                 {:optional true, :default :admin} [:maybe keyword?]]
             [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]
             [:invite_target          {:optional true} [:maybe users.schema/InviteTarget]]]]
+  (api/create-check :model/User body)
   (users/invite-user! (set/rename-keys body {:first_name             :first-name
                                              :last_name              :last-name
                                              :user_group_memberships :user-group-memberships
@@ -458,19 +479,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- valid-email-update?
-  "This predicate tests whether or not the user is allowed to update the email address associated with this account."
-  [{:keys [sso_source email]} maybe-new-email]
-  (or
-   ;; Admin users can update
-   api/*is-superuser?*
-   ;; If the email address didn't change, let it through
-   (= email maybe-new-email)
-   ;; We should not allow a regular user to change their email address if they are a google/ldap user
-   (and
-    (not (= :google sso_source))
-    (not (= :ldap sso_source)))))
 
 (defn- valid-name-update?
   "This predicate tests whether or not the user is allowed to update the first/last name associated with this account.
@@ -484,11 +492,11 @@
   [user-id tenant-id]
   (perms/allow-changing-all-users-group-members
     (perms/allow-changing-all-external-users-group-members
-     (perms/remove-user-from-all-groups! user-id)
+     (perms-group-membership/remove-users-from-groups! [user-id] (vec (user/group-ids user-id)))
      (when tenant-id
-       (perms/add-user-to-group! user-id (perms/all-external-users-group)))
+       (perms-group-membership/add-users-to-groups! [{:user user-id :group (perms/all-external-users-group)}]))
      (when (nil? tenant-id)
-       (perms/add-user-to-group! user-id (perms/all-users-group))))))
+       (perms-group-membership/add-users-to-groups! [{:user user-id :group (perms/all-users-group)}])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -514,54 +522,43 @@
        [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]
        [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
-  (try
-    (users/check-self-or-superuser id)
-    (catch clojure.lang.ExceptionInfo _e
-      (perms/check-group-manager)))
+  (api/read-check (users/fetch-user :id id))
   (check-not-internal-user id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (users/fetch-user :id id, :is_active true, :type :personal)]
-    ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
-    (when (contains? body :email)
-      (api/check-403 (valid-email-update? user-before-update email)))
-    ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
-    (when (contains? body :first_name)
-      (api/checkp (valid-name-update? user-before-update :first_name first_name)
-                  "first_name" (tru "Editing first name is not allowed for SSO users.")))
-    (when (contains? body :last_name)
-      (api/checkp (valid-name-update? user-before-update :last_name last_name)
-                  "last_name" (tru "Editing last name is not allowed for SSO users.")))
-    ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-    (when email
-      (api/checkp (not (users-rest.db/other-user-with-email-exists? email id))
-                  "email" (tru "Email address already associated to another user.")))
-    (t2/with-transaction [_conn]
-      ;; only superuser or self can update user info
-      ;; implicitly prevent group manager from updating users' info
-      (when (or (= id api/*current-user-id*)
-                api/*is-superuser?*)
-        (when-let [changes (not-empty
-                            (u/select-keys-when body
-                                                :present (cond-> #{:first_name :last_name :locale}
-                                                           api/*is-superuser?* (conj :login_attributes :tenant_id))
-                                                :non-nil (cond-> #{:email}
-                                                           api/*is-superuser?* (conj :is_superuser))))]
-          (users-rest.db/update-user! id changes)
+    (let [updatable (user/updatable-columns user-before-update)
+          changes   (u/select-keys-when body
+                                        :present (set/intersection #{:first_name :last_name :locale :login_attributes :tenant_id}
+                                                                   updatable)
+                                        :non-nil (set/intersection #{:email :is_superuser} updatable))]
+      (when (seq changes)
+        (api/update-check user-before-update changes))
+      ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
+      (when (contains? body :first_name)
+        (api/checkp (valid-name-update? user-before-update :first_name first_name)
+                    "first_name" (tru "Editing first name is not allowed for SSO users.")))
+      (when (contains? body :last_name)
+        (api/checkp (valid-name-update? user-before-update :last_name last_name)
+                    "last_name" (tru "Editing last name is not allowed for SSO users.")))
+      ;; can't change email if it's already taken BY ANOTHER ACCOUNT
+      (when email
+        (api/checkp (not (users-rest.db/other-user-with-email-exists? email id))
+                    "email" (tru "Email address already associated to another user.")))
+      (t2/with-transaction [_conn]
+        (when (seq changes)
+          (user/update-users! [(assoc changes :id id)])
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
             (reset-magic-group-membership! id (:tenant_id changes)))
-          (events/publish-event! :event/user-update {:object (users-rest.db/user id)
-                                                     :previous-object user-before-update
-                                                     :user-id api/*current-user-id*}))
-        (maybe-update-user-personal-collection-name! user-before-update body)
+          (maybe-update-user-personal-collection-name! user-before-update changes))
         ;; Handle is_data_analyst by updating Data Analysts group membership
-        (when (and api/*is-superuser?* (contains? body :is_data_analyst))
+        (when (and (contains? updatable :is_data_analyst) (contains? body :is_data_analyst))
           (let [data-analyst-group-id (:id (perms/data-analyst-group))]
             (if is_data_analyst
-              (perms/add-user-to-group! id data-analyst-group-id)
-              (perms/remove-user-from-group! id data-analyst-group-id)))))
-      (users/maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
+              (perms-group-membership/add-users-to-groups! [{:user id :group data-analyst-group-id}])
+              (perms-group-membership/remove-users-from-groups! [id] [data-analyst-group-id]))))
+        (users/maybe-set-user-group-memberships! id user_group_memberships is_superuser))))
   (-> (users/fetch-user :id id)
       (t2/hydrate :user_group_memberships)))
 
@@ -570,15 +567,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (users-rest.db/update-user! (u/the-id existing-user)
-                              {:is_active     true
-                               :is_superuser  false
-                               ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
-                               ;; (see metabase#3323)
-                               :sso_source   (case (:sso_source existing-user)
-                                               :google (when (sso/google-auth-enabled) :google)
-                                               :ldap   (when (sso/ldap-enabled) :ldap)
-                                               (:sso_source existing-user))})
+  (user/update-users! [{:id            (u/the-id existing-user)
+                        :is_active     true
+                        :is_superuser  false
+                        ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
+                        ;; (see metabase#3323)
+                        :sso_source   (case (:sso_source existing-user)
+                                        :google (when (sso/google-auth-enabled) :google)
+                                        :ldap   (when (sso/ldap-enabled) :ldap)
+                                        (:sso_source existing-user))}])
   ;; now return the existing user whether they were originally active or not
   (users/fetch-user :id (u/the-id existing-user)))
 
@@ -599,7 +596,6 @@
                [400 {:message (tru "Not able to reactivate an active user")}])
     (api/check (tenants/tenant-is-active? (:tenant_id user))
                [400 {:message (tru "Not able to reactivate a user in a deactivated tenant")}])
-    (events/publish-event! :event/user-reactivated {:object user :user-id api/*current-user-id*})
     (reactivate-user! (dissoc user [:email :first_name :last_name]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -622,8 +618,12 @@
                                        [:password     ms/ValidPassword]
                                        [:old_password {:optional true} [:maybe :string]]]
    request]
-  (users/check-self-or-superuser id)
+  (api/write-check (users/fetch-user :id id))
   (api/let-404 [user (users-rest.db/active-personal-user-login-columns id)]
+    ;; admins can't give a password to an SSO-only user (see `sso/sso-only-user?`); that would let them log in as that
+    ;; user while bypassing SSO. A user who already logs in with a password gains no new way in.
+    (when api/*is-superuser?*
+      (api/check-404 (not (sso/sso-only-user? id (:email user) (:sso_source user)))))
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
@@ -641,7 +641,8 @@
                                        users-rest.db/mfa-auth-identity-id-from-hashed-key
                                        :mfa_auth_identity_id)]
       ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
-      (auth-identity/set-password! id password)
+      (auth-identity/set-password! id (u.secret/expose password) {:ended-by api/*current-user-id*})
+      (events/publish-event! :event/password-changed {:object user :user-id api/*current-user-id*})
       ;; after a successful password update go ahead and offer the client a new session that they can use
       (when (= id api/*current-user-id*)
         (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking!
@@ -663,9 +664,10 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [user (api/check-404 (users-rest.db/user-active-and-type id))]
+  (let [user (api/check-404 (users-rest.db/user-active-type-and-sso-source id))]
     (api/check-404 (:is_active user))
     (api/check-404 (= :personal (:type user)))
+    (api/check-404 (not (sso/sso-only-user? id (:email user) (:sso_source user))))
     (let [reset-token        (auth-identity/create-password-reset! id)
           password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
       (events/publish-event! :event/password-reset-initiated
@@ -676,20 +678,15 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- [:map {:closed true} [:success [:= true]]]
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
-  (api/check-404 (users-rest.db/user-exists? id))
-  (users-rest.db/update-personal-user! id {:is_active false})
-  (events/publish-event! :event/user-deactivated {:object (users-rest.db/user id) :user-id api/*current-user-id*})
+  (when (= :personal (:type (api/check-404 (users-rest.db/user-active-type-and-sso-source id))))
+    (user/update-users! [{:id id :is_active false}]))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -698,22 +695,19 @@
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id/modal/:modal"
+(api.macros/defendpoint :put "/:id/modal/:modal" :- [:map {:closed true} [:success [:= true]]]
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [{:keys [id modal]} :- [:map {:closed true}
                           [:id ms/PositiveInt]
                           [:modal [:enum "qbnewb" "datasetnewb"]]]]
-  (users/check-self-or-superuser id)
-  (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
                     "datasetnewb" :is_datasetnewb}
                    modal)
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
-    (api/check-500 (pos? (users-rest.db/update-personal-user! id {k false}))))
+    (api/update-check (api/check-404 (users/fetch-user :id id)) {k false})
+    (check-not-internal-user id)
+    (let [user-ids (api/check-500 (not-empty (user/user-ids-of-type [id] :personal)))]
+      (user/update-users! (for [user-id user-ids] {:id user-id k false}))))
   {:success true})

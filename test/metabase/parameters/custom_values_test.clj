@@ -373,6 +373,53 @@
                     nil
                     (constantly mock-default-result))))))))))
 
+(deftest ^:parallel parameter->values-input-box-test
+  (testing "a parameter whose widget is an Input box offers no values, whatever its source"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} (mt/card-with-source-metadata-for-query (mt/mbql-query venues))]
+        (doseq [[widget-desc widget] [["values_query_type = none"                    {:type :string/=, :values_query_type :none}]
+                                      ;; the frontend defaults these to an Input box and never saves the default
+                                      ["string/contains, no values_query_type"      {:type :string/contains}]
+                                      ["string/starts-with, no values_query_type"   {:type :string/starts-with}]
+                                      ["number/between, no values_query_type"       {:type :number/between}]
+                                      ["number/<=, no values_query_type"            {:type :number/<=}]]
+                [source-desc source] [["a connected field" {}]
+                                      ["a static list"     {:values_source_type   :static-list
+                                                            :values_source_config {:values ["African" "American"]}}]
+                                      ["a card"            {:values_source_type   :card
+                                                            :values_source_config {:card_id     card-id
+                                                                                   :value_field (mt/$ids $venues.name)}}]]
+                query-string [nil "af"]]
+          (testing (format "widget: %s, source: %s, query: %s" widget-desc source-desc (pr-str query-string))
+            (is (= {:values          []
+                    :has_more_values false}
+                   (custom-values/parameter->values
+                    (merge {:name "Name", :slug "name", :id "_NAME_"}
+                           widget
+                           source)
+                    query-string
+                    (fn [] (throw (ex-info "Shouldn't ask the connected field for values" {}))))))))))))
+
+(deftest ^:parallel parameter->values-not-input-box-test
+  (testing "a parameter whose widget is not an Input box still offers values"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [[widget-desc widget] [["string/=, no values_query_type"        {:type :string/=}]
+                                    ["string/contains, values_query_type = list"   {:type :string/contains, :values_query_type :list}]
+                                    ["string/contains, values_query_type = search" {:type :string/contains, :values_query_type :search}]
+                                    ["number/between, values_query_type = list"    {:type :number/between, :values_query_type :list}]]]
+        (testing widget-desc
+          (is (= {:values          [["African"] ["American"]]
+                  :has_more_values false}
+                 (custom-values/parameter->values
+                  (merge {:name                 "Name"
+                          :slug                 "name"
+                          :id                   "_NAME_"
+                          :values_source_type   :static-list
+                          :values_source_config {:values ["African" "American"]}}
+                         widget)
+                  nil
+                  (fn [] (throw (ex-info "Shouldn't ask the connected field for values" {})))))))))))
+
 (deftest ^:parallel parameter->values-join-aliased-value-field-test
   (let [mp (mt/metadata-provider)
         venue-table (lib.metadata/table mp (mt/id :venues))
@@ -634,26 +681,24 @@
 
 (deftest ^:parallel card-query-bulk-loads-metadata-test
   (testing "card-query bulk-loads the value-source Card's metadata up front, so resolving the value field's column hits
-            the provider cache instead of fetching one entity at a time (no N+1)"
-    (let [mp           (mt/metadata-provider)
-          orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-      (mt/with-temp [:model/Card card {:database_id     (mt/id)
-                                       :table_id        (mt/id :orders)
-                                       :type            :question
-                                       :dataset_query   orders-query
-                                       :result_metadata (lib/returned-columns orders-query)}]
-        (let [card        (t2/select-one :model/Card :id (:id card))
-              value-field [:field "TOTAL" {:base-type :type/Float}]]
-          ;; The 6 batched loads are:
-          ;; - the source Card
-          ;; - the source Database
-          ;; - the Card's result-metadata Fields
-          ;; - those Fields' FK targets
-          ;; - the FK-target Tables
-          ;; - those Tables' columns
-          ;; This count is constant -- it must NOT grow with the number of columns/Tables (that would be the N+1 this
-          ;; bulk-loading exists to prevent).
-          (is (= 6 (lib-be/with-metadata-provider-cache
-                     (t2/with-call-count [call-count]
-                       (#'custom-values/can-get-card-values? (#'custom-values/card-query (:id card) (:dataset_query card)) value-field)
-                       (call-count))))))))))
+            the provider cache instead of fetching one entity at a time (no N+1): a Card with more columns and more FK
+            target Tables takes the same number of loads"
+    (let [mp            (mt/metadata-provider)
+          table-query   #(lib/query mp (lib.metadata/table mp (mt/id %)))
+          card-defaults (fn [table]
+                          {:database_id     (mt/id)
+                           :table_id        (mt/id table)
+                           :type            :question
+                           :dataset_query   (table-query table)
+                           :result_metadata (lib/returned-columns (table-query table))})]
+      (mt/with-temp [:model/Card {reviews-card-id :id} (card-defaults :reviews)
+                     :model/Card {orders-card-id :id}  (card-defaults :orders)]
+        (let [counted (fn [card-id value-field]
+                        (let [card (t2/select-one :model/Card :id card-id)]
+                          (lib-be/with-metadata-provider-cache
+                            (t2/with-call-count [call-count]
+                              (#'custom-values/can-get-card-values? (#'custom-values/card-query (:id card) (:dataset_query card)) value-field)
+                              (call-count)))))]
+          (counted reviews-card-id [:field "RATING" {:base-type :type/Integer}])
+          (is (= (counted reviews-card-id [:field "RATING" {:base-type :type/Integer}])
+                 (counted orders-card-id [:field "TOTAL" {:base-type :type/Float}]))))))))

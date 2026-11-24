@@ -2,13 +2,13 @@
   "Application database queries for the bookmarks module, plus a thin (model, id, user-id) dispatch tier over them,
   so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.bookmarks.schema :as bookmarks.schema]
-   [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -42,70 +42,6 @@
    user-id        :- ::lib.schema.id/user]
   (t2/exists? :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
 
-(mu/defn insert-card-bookmark!
-  "Insert a CardBookmark for the Card with `card-id` and the User with `user-id`, returning the inserted instance."
-  [card-id :- ::lib.schema.id/card
-   user-id :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/CardBookmark {:card_id card-id :user_id user-id}))
-
-(mu/defn insert-dashboard-bookmark!
-  "Insert a DashboardBookmark for the Dashboard with `dashboard-id` and the User with `user-id`, returning the
-  inserted instance."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   user-id      :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/DashboardBookmark {:dashboard_id dashboard-id :user_id user-id}))
-
-(mu/defn insert-collection-bookmark!
-  "Insert a CollectionBookmark for the Collection with `collection-id` and the User with `user-id`, returning the
-  inserted instance."
-  [collection-id :- ::lib.schema.id/collection
-   user-id       :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/CollectionBookmark {:collection_id collection-id :user_id user-id}))
-
-(mu/defn insert-document-bookmark!
-  "Insert a DocumentBookmark for the Document with `document-id` and the User with `user-id`, returning the inserted
-  instance."
-  [document-id :- ms/PositiveInt
-   user-id     :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/DocumentBookmark {:document_id document-id :user_id user-id}))
-
-(mu/defn insert-exploration-bookmark!
-  "Insert an ExplorationBookmark for the Exploration with `exploration-id` and the User with `user-id`, returning the
-  inserted instance."
-  [exploration-id :- ms/PositiveInt
-   user-id        :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/ExplorationBookmark {:exploration_id exploration-id :user_id user-id}))
-
-(mu/defn delete-card-bookmark!
-  "Delete the CardBookmark of the User with `user-id` for the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card
-   user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/CardBookmark :card_id card-id :user_id user-id))
-
-(mu/defn delete-dashboard-bookmark!
-  "Delete the DashboardBookmark of the User with `user-id` for the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   user-id      :- ::lib.schema.id/user]
-  (t2/delete! :model/DashboardBookmark :dashboard_id dashboard-id :user_id user-id))
-
-(mu/defn delete-collection-bookmark!
-  "Delete the CollectionBookmark of the User with `user-id` for the Collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection
-   user-id       :- ::lib.schema.id/user]
-  (t2/delete! :model/CollectionBookmark :collection_id collection-id :user_id user-id))
-
-(mu/defn delete-document-bookmark!
-  "Delete the DocumentBookmark of the User with `user-id` for the Document with `document-id`."
-  [document-id :- ms/PositiveInt
-   user-id     :- ::lib.schema.id/user]
-  (t2/delete! :model/DocumentBookmark :document_id document-id :user_id user-id))
-
-(mu/defn delete-exploration-bookmark!
-  "Delete the ExplorationBookmark of the User with `user-id` for the Exploration with `exploration-id`."
-  [exploration-id :- ms/PositiveInt
-   user-id        :- ::lib.schema.id/user]
-  (t2/delete! :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
-
 ;;; Generic (model, id, user-id) tier. The REST API and the MCP `bookmark_content` tool both take the
 ;;; model as a runtime string, so they dispatch here rather than naming a per-model fn at the call site.
 
@@ -133,25 +69,55 @@
    "document"    [:model/DocumentBookmark    :document_id]
    "exploration" [:model/ExplorationBookmark :exploration_id]})
 
-(defn insert-bookmark!
-  "Give `user-id` a bookmark on (`model`, `id`) and return it - the existing one when there already is one.
-  Does not read-check the item; callers do. Throws for an unrecognized `model`."
-  [model id user-id]
-  (let [[bookmark-model item-key] (or (model->bookmark-model+item-key model) (unknown-bookmark-model! model))]
-    ;; select-or-insert! rather than insert!: concurrent callers both get the state they asked for instead of
-    ;; one losing to the (user_id, item) unique constraint.
-    (mdb/select-or-insert! bookmark-model {item-key id :user_id user-id} (constantly {}))))
+(defn- bookmark-model+item-key
+  "The Toucan model and the item column of the bookmarks of `type`, throwing for an unrecognized `type`."
+  [type]
+  (or (model->bookmark-model+item-key type) (unknown-bookmark-model! type)))
 
-(defn delete-bookmark!
-  "Delete `user-id`'s bookmark on (`model`, `id`). No-op when there is none. Throws for an unrecognized `model`."
-  [model id user-id]
-  (case model
-    "card"        (delete-card-bookmark! id user-id)
-    "dashboard"   (delete-dashboard-bookmark! id user-id)
-    "collection"  (delete-collection-bookmark! id user-id)
-    "document"    (delete-document-bookmark! id user-id)
-    "exploration" (delete-exploration-bookmark! id user-id)
-    (unknown-bookmark-model! model)))
+(defn insert-bookmarks!
+  "Give each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`, a bookmark and return the bookmarks,
+  the existing one when there already is one, with one read and one insert for each type of bookmark, without a read
+  check of the item, which callers do, and throwing for an unrecognized `:type`."
+  [rows]
+  (run! (comp bookmark-model+item-key :type) rows)
+  (let [by-type  (group-by :type rows)
+        existing (into {}
+                       (mapcat (fn [[type group]]
+                                 (let [[bookmark-model item-key] (bookmark-model+item-key type)]
+                                   (map (fn [bookmark] [[type (get bookmark item-key) (:user_id bookmark)] bookmark])
+                                        (t2/select bookmark-model
+                                                   item-key   [:in (into [] (comp (map :item_id) (distinct)) group)]
+                                                   :user_id   [:in (into [] (comp (map :user_id) (distinct)) group)])))))
+                       by-type)
+        missing  (into {}
+                       (map (juxt (juxt :type :item_id :user_id) identity))
+                       (remove #(contains? existing ((juxt :type :item_id :user_id) %)) rows))
+        created  (into {}
+                       (mapcat (fn [[type group]]
+                                 (let [[bookmark-model item-key] (bookmark-model+item-key type)
+                                       group (vec group)]
+                                   (map (fn [{:keys [item_id user_id]} bookmark] [[type item_id user_id] bookmark])
+                                        group
+                                        (mdb/insert-returning-instances!
+                                         bookmark-model
+                                         (mapv (fn [{:keys [item_id user_id]}] {item-key item_id :user_id user_id}) group))))))
+                       (group-by :type (vals missing)))]
+    (mapv #(let [k ((juxt :type :item_id :user_id) %)]
+             (or (get existing k) (get created k)))
+          rows)))
+
+(defn delete-bookmarks!
+  "Delete the bookmark of each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`, with one statement
+  for each type of bookmark, doing nothing for one that has none and throwing for an unrecognized `:type`."
+  [rows]
+  (run! (comp bookmark-model+item-key :type) rows)
+  (doseq [[type group] (group-by :type rows)
+          :let [[bookmark-model item-key] (bookmark-model+item-key type)]]
+    (t2/delete! bookmark-model
+                {:where (into [:or]
+                              (map (fn [{:keys [item_id user_id]}]
+                                     [:and [:= item-key [:auto/param item_id]] [:= :user_id [:auto/param user_id]]]))
+                              (distinct group))})))
 
 (mu/defn delete-bookmark-orderings-for-user!
   "Delete the BookmarkOrderings of the User with `user-id`."
@@ -160,7 +126,7 @@
 
 (mu/defn insert-bookmark-orderings!
   "Insert the BookmarkOrdering `rows`."
-  [rows :- [:sequential (mut/select-keys ::bookmarks.schema/bookmark-ordering.update [:user_id :type :item_id :ordering])]]
+  [rows :- [:sequential ::bookmarks.schema/bookmark-ordering.create]]
   (t2/insert! :model/BookmarkOrdering rows))
 
 (defn- bookmarks-union-query
@@ -206,20 +172,55 @@
                                                  :created_at]
                                         :from   [:document_bookmark]
                                         :where  [:= :user_id user-id]}]]
-    ;; While explorations are disabled, `exploration_bookmark` is left out of the union so residue rows never reach
-    ;; the listing. The `exploration_id` column stays so the joins in [[bookmark-rows-for-user]] resolve.
-    {:union-all base-queries}))
+    ^:allow-subquery
+    {:union-all (conj base-queries
+                      ^:allow-subquery {:select [[as-null :card_id]
+                                                 [as-null :dashboard_id]
+                                                 [as-null :collection_id]
+                                                 [as-null :document_id]
+                                                 :exploration_id
+                                                 [:exploration_id :item_id]
+                                                 [(h2x/literal "exploration") :type]
+                                                 :created_at]
+                                        :from   [:exploration_bookmark]
+                                        :where  [:= :user_id user-id]})}))
 
-(mu/defn bookmark-rows-for-user
+(mr/def ::bookmark-row
+  "A bookmark row left joined against the Card, Dashboard, Collection, Document, and Exploration tables."
+  [:map {:closed true}
+   [:created_at                (ms/InstanceOfClass java.time.temporal.Temporal)]
+   [:type                      [:enum "card" "collection" "dashboard" "document" "exploration"]]
+   [:item_id                   ms/PositiveInt]
+   [:report_card.name          [:maybe :string]]
+   [:report_card.card_type     [:maybe :string]]
+   [:report_card.display       [:maybe :string]]
+   [:report_card.description   [:maybe :string]]
+   [:report_card.archived      [:maybe :boolean]]
+   [:report_dashboard.name        [:maybe :string]]
+   [:report_dashboard.description [:maybe :string]]
+   [:report_dashboard.archived    [:maybe :boolean]]
+   [:collection.name              [:maybe :string]]
+   [:collection.authority_level   [:maybe :string]]
+   [:collection.is_remote_synced  [:maybe :boolean]]
+   [:collection.description       [:maybe :string]]
+   [:collection.archived          [:maybe :boolean]]
+   [:document.name     [:maybe :string]]
+   [:document.archived [:maybe :boolean]]
+   [:exploration.name        [:maybe :string]]
+   [:exploration.description [:maybe :string]]
+   [:exploration.archived    [:maybe :boolean]]])
+
+(mu/defn bookmark-rows-for-user :- [:sequential ::bookmark-row]
   "The bookmarks of the User with `user-id`, joined against the Card, Dashboard, Collection, Document, and Exploration
-  tables, excluding archived items, and filtered to items the target `user-scope` (a map of `:current-user-id` and
-  `:is-superuser?`) can still read (re-checked at read time rather than trusted from when the bookmark was created,
-  see SEC-669). The `collection_id` join uses [[h2x/identifier]] to work around
+  tables, excluding archived items, and filtered to items the target `user-scope` (a map of `:current-user-id`,
+  `:is-superuser?` and `:is-data-analyst?`) can still read (re-checked at read time rather than trusted from when the
+  bookmark was created, see SEC-669). The `collection_id` join uses [[h2x/identifier]] to work around
   https://github.com/seancorfield/honeysql/issues/450."
   [user-id    :- ::lib.schema.id/user
    user-scope :- [:map {:closed true}
-                  [:current-user-id ::lib.schema.id/user]
-                  [:is-superuser?   :boolean]]]
+                  [:current-user-id  ::lib.schema.id/user]
+                  [:is-superuser?    :boolean]
+                  [:is-data-analyst? :boolean]]]
   (let [select-fields    [[:bookmark.created_at :created_at]
                           [:bookmark.type              :type]
                           [:bookmark.item_id           :item_id]
@@ -256,9 +257,11 @@
                                      :let  [field (keyword (str (name table) "." "archived"))]]
                                  [:or [:= field false] [:= field nil]]))
         visible?         (fn [collection-id-field]
-                           (collection/visible-collection-filter-clause collection-id-field
-                                                                        {:cte-name :visible_collection_ids}
-                                                                        user-scope))
+                           (perms/visible-collections-filter-clause collection-id-field
+                                                                    {:user-id          (:current-user-id user-scope)
+                                                                     :is-superuser?    (boolean (:is-superuser? user-scope))
+                                                                     :is-data-analyst? (:is-data-analyst? user-scope)}
+                                                                    {:include-archived-items :all :root-namespace nil}))
         readable-conditions [:or
                              [:and [:= :bookmark.type (h2x/literal "card")]       (visible? :card.collection_id)]
                              [:and [:= :bookmark.type (h2x/literal "dashboard")]  (visible? :dashboard.collection_id)]
@@ -266,11 +269,7 @@
                              [:and [:= :bookmark.type (h2x/literal "document")]   (visible? :document.collection_id)]
                              [:and [:= :bookmark.type (h2x/literal "exploration")] (visible? :exploration.collection_id)]]]
     (mdb/query
-     {:with [[:visible_collection_ids (collection/visible-collection-query
-                                       {:include-archived-items :all
-                                        :permission-level        :read}
-                                       user-scope)]]
-      :select select-fields
+     {:select select-fields
       :from [[(bookmarks-union-query user-id) :bookmark]]
       :left-join left-joins
       :where [:and where-conditions readable-conditions]

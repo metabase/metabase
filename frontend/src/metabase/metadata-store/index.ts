@@ -1,19 +1,24 @@
 export {
-  getFieldRemappings,
-  getMetadata,
-  getMetadataUnfiltered,
-  getMetadataWithHiddenTables,
-  getRemappedFieldValue,
   getShallowDatabases,
+  getShallowDatabaseSchemas,
+  getShallowDatabaseTables,
+  getShallowFieldById,
+  getShallowFieldName,
   getShallowFields,
+  getShallowQuestions,
+  getShallowSchemaTables,
+  getShallowSchemas,
+  getShallowTableFieldIds,
+  getShallowTableFields,
+  getShallowTableForeignKeys,
+  getShallowTableSchema,
   getShallowSegments,
   getShallowTables,
 } from "./selectors";
-export type { MetadataSelectorOpts } from "./selectors";
+export type { MetadataSelectorOpts, ShallowForeignKey } from "./selectors";
 
 export {
   selectMetadataProvider,
-  selectMetadataProviderFactory,
   selectMetadataProviderUnfiltered,
   selectMetricMetadataProvider,
   selectQuestionFromCard,
@@ -25,7 +30,8 @@ export {
   useMetadataProviderUnfiltered,
   useMetricMetadataProvider,
   useQuestionFromCard,
-  useQuestionFromOpts,
+  useQuestionFromCardBuilder,
+  useQuestionFromOptsBuilder,
 } from "./provider";
 export type {
   CardQuestionBuilder,
@@ -37,12 +43,11 @@ export { entitiesReducer } from "./reducer";
 
 export { metadataHydrationMiddleware } from "./hydration";
 
-export { addRemappings, fetchRemapping } from "./remappings";
+export { fetchRemapping } from "./remappings";
 
 export {
   databaseFetched,
   fieldFetched,
-  fieldRemappingsUpdated,
   paramFieldsFetched,
   tableFetched,
   tableForeignKeysFetched,

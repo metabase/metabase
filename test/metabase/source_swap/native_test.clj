@@ -3,14 +3,10 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.source-swap.native :as source-swap.native]))
-
-(defn- field-id-ref
-  [mp field-id]
-  (lib/ref (lib.metadata/field mp field-id)))
+   [metabase.source-swap.native :as source-swap.native]
+   [metabase.sql-tools.settings :as sql-tools.settings]))
 
 (def ^:private metadata-provider-with-cards
   (lib.tu/mock-metadata-provider meta/metadata-provider
@@ -206,6 +202,17 @@
       (is (str/includes? result "NEW_ORDERS"))
       (is (str/includes? result "{{status}}")))))
 
+(deftest replace-table-keeps-optional-clauses-on-both-sqlglot-backends-test
+  (testing "the comment markers that hold [[optional]] clauses survive the rename on both backends (QUE-985)"
+    (doseq [[sql expected] [["SELECT * FROM orders WHERE 1=1 [[AND category IN ({{cat}})]]"
+                             "SELECT * FROM orders_v2 WHERE 1 = 1 [[ AND category IN ({{cat}}) ]]"]
+                            ["SELECT * FROM orders WHERE true [[AND created_at >= ({{start}})]]"
+                             "SELECT * FROM orders_v2 WHERE TRUE [[ AND created_at >= ({{start}}) ]]"]]
+            backend [:sqlglot :sqlglot-java]]
+      (binding [sql-tools.settings/*parser-backend-override* backend]
+        (is (= expected (#'source-swap.native/replace-table-in-native-sql :postgres sql "orders" "orders_v2"))
+            [backend sql])))))
+
 (deftest ^:parallel replace-table-in-native-sql-with-optional-clause-test
   (testing "Table rename works with optional clauses"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
@@ -266,7 +273,13 @@
                                                                    "SELECT * FROM\n-- /*]]*/ \nORDERS LIMIT 5"
                                                                    "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
-      (is (str/includes? result "/*]]*/") "Comment with bracket marker should be preserved"))))
+      ;; sqlglot regenerates comments rather than preserving their source text, and versions differ on how they
+      ;; escape a comment-terminator-like sequence inside comment content (sqlglot >=30.17 inserts spaces, e.g.
+      ;; "/*]]*/" -> "/* / *]]* / */", to keep the regenerated SQL valid). A plain substring check for "]]" would
+      ;; pass even if the marker leaked out of the comment into live SQL, so this checks it's still bracketed by
+      ;; some /* ... */ span instead.
+      (is (re-find #"(?s)/\*.*?\]\].*?\*/" result)
+          "Bracket marker should stay inside a comment, not leak into executable SQL"))))
 
 ;;; ------------------------------------------------ Schema-Qualified Native SQL Tests ------------------------------------------------
 
@@ -457,22 +470,22 @@
                    :name         "filter"
                    :display-name "Filter"
                    :widget-type  :number/=
-                   :dimension    (field-id-ref meta/metadata-provider (meta/id :products :id))}]
+                   :field-id     (meta/id :products :id)}]
           result (#'source-swap.native/update-dimension-tags query tags (meta/id :products) (meta/id :orders))]
-      (is (=? [{:name "filter", :dimension [:field {} (meta/id :orders :id)]}]
+      (is (=? [{:name "filter", :field-id (meta/id :orders :id)}]
               result)))))
 
 (deftest ^:parallel update-dimension-tags-no-match-test
   (testing "dimension tag left unchanged when no matching field on new table"
     (let [query     (lib/native-query meta/metadata-provider "SELECT 1")
-          dimension (field-id-ref meta/metadata-provider (meta/id :products :ean))
+          field-id  (meta/id :products :ean)
           tags      [{:type         :dimension
                       :name         "filter"
                       :display-name "Filter"
                       :widget-type  :number/=
-                      :dimension    dimension}]
+                      :field-id     field-id}]
           ;; Orders table doesn't have an EAN field
           result    (#'source-swap.native/update-dimension-tags query tags (meta/id :products) (meta/id :orders))]
       ;; Should be unchanged since no matching field
-      (is (=? [{:name "filter", :dimension dimension}]
+      (is (=? [{:name "filter", :field-id field-id}]
               result)))))

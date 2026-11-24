@@ -1,5 +1,6 @@
 ---
 title: "Table metadata editing"
+summary: Edit how Metabase displays your tables and columns, including display names, descriptions, column types, visibility, and sorting. None of these settings change the data in your database.
 redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
   - /docs/latest/data-modeling/metadata-editing
@@ -7,11 +8,9 @@ redirect_from:
 
 # Table metadata editing
 
-> Prefer using [Data Studio > Tables](./managing-tables.md) for metadata editing. The page _Admin > Table Metadata_ will be removed in future versions of Metabase.
+> Prefer using [Data Studio > Connected data](./managing-tables.md) for metadata editing. The page _Admin > Table Metadata_ will be removed in future versions of Metabase.
 
 _Admin > Table metadata_
-
-Metabase lets you add and edit metadata for your tables and columns.
 
 ![Table metadata settings](../images/table-metadata-settings.png)
 

@@ -4,8 +4,9 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.models.application-permissions-revision :as application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision :as collection-permission-graph-revision]
+   [metabase.permissions.models.permissions-revision :as permissions-revision]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -52,8 +53,9 @@
                     :after   changes
                     :user_id api/*current-user-id*}]
       (case model
-        :model/PermissionsRevision            (permissions.db/insert-permissions-revision-returning-instance! revision)
-        :model/ApplicationPermissionsRevision (permissions.db/insert-application-permissions-revision-returning-instance! revision)))))
+        :model/PermissionsRevision            (first (permissions-revision/create-permissions-revisions! [revision]))
+        :model/ApplicationPermissionsRevision (first (application-permissions-revision/create-application-permissions-revisions!
+                                                      [revision]))))))
 
 (mu/defn increment-implicit-perms-revision!
   "Save changes made to permissions that are NOT due to an explicit update to the permissions graph, but rather due to
@@ -66,12 +68,12 @@
   (when api/*current-user-id*
     (case model
       :model/CollectionPermissionGraphRevision
-      (permissions.db/insert-collection-permission-graph-revision!
-       {:id      (inc (collection-permission-graph-revision/latest-id))
-        :before  {}
-        :after   {}
-        :user_id api/*current-user-id*
-        :remark  remark}))))
+      (first (collection-permission-graph-revision/create-collection-permission-graph-revisions!
+              [{:id      (inc (collection-permission-graph-revision/latest-id))
+                :before  {}
+                :after   {}
+                :user_id api/*current-user-id*
+                :remark  remark}])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    PATH CLASSIFICATION + VALIDATION                                            |
@@ -363,6 +365,20 @@
   (when-not api/*current-user-id*
     (throw (ex-info (str (tru "No current user found"))
                     {:status-code 403})))
+  false)
+
+(defenterprise routed-user?
+  "Returns a boolean if the current user is routed to a destination database for any router database they can view
+  data from. In OSS this is always false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.database-routing.common
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for routing, so we should throw in this case to avoid returning
+    ;; `false` for users who should actually be routed.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have database routing. But we throw if no current-user-id so the behavior doesn't change when the ee
+  ;; version becomes available
   false)
 
 (defn sandboxed-or-impersonated-user?

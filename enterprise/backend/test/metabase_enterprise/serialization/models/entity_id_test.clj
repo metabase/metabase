@@ -8,8 +8,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.classloader.core :as classloader]
-   [metabase.models.resolution :as models.resolution]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.resolution :as models.resolution]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,13 +23,9 @@
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
-    ;; OsiAiContext is identified by the entity it describes (entity_type + the entity's portable ref); its
-    ;; serdes path nests under that entity, so it has no generated entity_id.
-    :model/OsiAiContext
+    :model/TableUserSettings
     ;; Settings have human-selected unique names.
-    :model/Setting
-    ;; Glossary items have unique `term` key
-    :model/Glossary})
+    :model/Setting})
 
 (def ^:private entities-not-exported
   "Entities that are either:
@@ -41,9 +36,10 @@
     :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
+    :model/AnalysisFindingStatus
     :model/ApiKey
+    :model/ApiKeyUsageLog
     :model/AuthIdentity
-    :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
     :model/ApplicationPermissionsRevision
@@ -53,15 +49,18 @@
     :model/CardBookmark
     :model/ChannelTemplate
     :model/CollectionBookmark
+    ;; Content Diagnostics findings are scan-snapshot runtime data (its `entity_id` column is a
+    ;; polymorphic reference to the flagged entity, not a serdes NanoID) -- not portable content.
+    :model/ContentDiagnosticsFinding
     :model/ContentTranslation
     :model/DashboardBookmark
-    :model/DataApp
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
     :model/DocumentBookmark
+    :model/EmbeddingSdkReact18Host
     :model/Exploration
     :model/ExplorationBookmark
     :model/ExplorationQuery
@@ -74,8 +73,10 @@
     :model/StoredResultUse
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
+    :model/TestSuiteMember
     :model/LoginHistory
     :model/McpFeedback
+    :model/McpGroupPermission
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog
@@ -119,11 +120,15 @@
     :model/QueryTable
     :model/RecentViews
     :model/ReplacementRun
-    :model/RemoteSyncObject
     :model/RemoteSyncTask
+    :model/ResultMetadataStatus
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
+    ;; Workspace remappings are runtime-only; they redirect QP queries against canonical
+    ;; tables to workspace-isolated copies. They aren't portable across instances and
+    ;; aren't included in serdes export/import.
+    :model/TableRemapping
     :model/Secret
     :model/Session
     :model/SourceDimensionDaily
@@ -131,6 +136,7 @@
     :model/SourceMetricDaily
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
+    :model/SqlParsingShadowDifference
     :model/SsoRelayState
     :model/SupportAccessGrantLog
     :model/TableIndex
@@ -138,6 +144,9 @@
     :model/TaskRun
     :model/Tenant
     :model/TimelineEvent
+    ;; Run history is intentionally not serialized.
+    :model/DataTestRun
+    :model/TestSuiteRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun
     :model/TransformRunCancelation
@@ -152,10 +161,16 @@
     :model/ViewLog
     :model/Sandbox
     :model/ConnectionImpersonation
+    :model/ImpersonationQueryCache
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction})
+    :model/CommentReaction
+    ;; Workspace and WorkspaceDatabase are runtime-only -- per-instance workspace
+    ;; provisioning state, not portable content. Same rationale as TableRemapping above.
+    :model/Workspace
+    :model/WorkspaceDatabase
+    :model/WorkspaceInstance})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (keys models.resolution/model->namespace)
@@ -164,14 +179,13 @@
     (testing "All exported models should get entity id except those with other unique property (like name)"
       (is (= (set (concat serdes.models/exported-models
                           ;; those are inline models which still have entity_id
-                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt"]))
-             (set (->> (concat entity-id-models
-                               entities-external-name)
-                       (map name))))))
+                          [:model/DashboardCard :model/DashboardTab :model/Dimension :model/MetabotPrompt
+                           :model/FieldUserSettings]))
+             (set (concat entity-id-models entities-external-name)))))
     (doseq [model entity-id-models]
       (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
                             "an external name, or explicitly listed as excluded from serialization")
                        model)
         ;; the property is registered by the model's own namespace, which nothing else here loads
         (classloader/require (models.resolution/model->namespace model))
-        (is (serdes/has-entity-id? model))))))
+        (is (isa? model :hook/entity-id))))))

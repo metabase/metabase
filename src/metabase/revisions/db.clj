@@ -3,7 +3,10 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.revisions.schema :as revisions.schema]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -14,19 +17,13 @@
    id    :- ms/PositiveInt]
   (t2/select-one model :id id))
 
-(mu/defn raw-row
-  "The `model` row with `id` read straight from its table, or nil. See [[entity]] for why `model` is generic."
+(mu/defn entities-by-ids
+  "The `model` rows with `ids`. See [[entity]] for why `model` is generic."
   [model :- :keyword
-   id    :- ms/PositiveInt]
-  (t2/select-one (t2/table-name model) :id id))
-
-(mu/defn update-entity!
-  "Apply `changes` to the `model` row with `id`, returning the number updated. `changes` is a column map whose shape
-  can't be pinned to one model because `model` varies (see [[entity]])."
-  [model   :- :keyword
-   id      :- ms/PositiveInt
-   changes :- [:map-of :keyword [:maybe :some]]]
-  (t2/update! model id changes))
+   ids   :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select model :id [:in ids])
+    []))
 
 (mu/defn parameter-card-ids
   "The Card ids of the ParameterCards of the `parameterized-object-type` with `parameterized-object-id`."
@@ -62,74 +59,86 @@
    revision-id :- ms/PositiveInt]
   (t2/select-one :model/Revision :model model-name, :model_id model-id, :id revision-id))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+(mu/defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
 
-(mu/defn dashcards
-  "The DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
+(mu/defn collections-by-ids
+  "The Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (if (seq collection-ids)
+    (t2/select :model/Collection :id [:in collection-ids])
+    []))
 
-(mu/defn dashboard-tabs
-  "The DashboardTabs of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardTab :dashboard_id dashboard-id))
+(mu/defn dashboards-by-ids
+  "The Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (if (seq dashboard-ids)
+    (t2/select :model/Dashboard :id [:in dashboard-ids])
+    []))
 
-(mu/defn active-card-ids-for-dashboard
-  "The ids among `card-ids` of unarchived Cards that belong to the Dashboard with `dashboard-id` or to no Dashboard."
-  [card-ids     :- [:sequential ::lib.schema.id/card]
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-pks-set :model/Card
-                     {:where [:and
-                              [:in :id card-ids]
-                              [:= :archived false]
-                              [:or
-                               [:= :dashboard_id dashboard-id]
-                               [:= :dashboard_id nil]]]}))
+(def ^:private Entity
+  "A revisioned row, as its `[model-name model-id]`."
+  [:tuple :string ms/PositiveInt])
 
-(mu/defn active-card-ids
-  "The ids among `card-ids` of unarchived Cards."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
+(defn- entities-clause
+  "The where-clause matching the Revisions of `entities` under the table alias `alias`."
+  [alias entities]
+  (let [column #(keyword (str (name alias) "." (name %)))]
+    (into [:or]
+          (for [[model-name model-id] entities]
+            [:and [:= (column :model) model-name] [:= (column :model_id) model-id]]))))
 
-(mu/defn lock-revisions!
-  "Lock the Revisions of the `model-name` row with `model-id` for update."
-  [model-name :- :string
-   model-id   :- ms/PositiveInt]
-  (t2/query {:select [:id]
-             :from [:revision]
-             :where [:and
-                     [:= :model model-name]
-                     [:= :model_id model-id]]
-             :for :update}))
+(defn- newer-revision-exists
+  "The where-clause true when a Revision of the same row is newer than the Revision under the alias `alias`."
+  [alias]
+  (let [column #(keyword (str (name alias) "." (name %)))]
+    [:exists ^:allow-subquery {:select [1]
+                               :from   [[:revision :newer]]
+                               :where  [:and
+                                        [:= :newer.model (column :model)]
+                                        [:= :newer.model_id (column :model_id)]
+                                        [:> :newer.id (column :id)]]}]))
 
-(mu/defn revision-ids-newest-first
-  "The ids of the Revisions of the `model-name` row with `model-id`, newest first."
-  [model-name :- :string
-   model-id   :- ms/PositiveInt]
-  (t2/select-fn-vec :id :model/Revision
-                    :model    model-name
-                    :model_id model-id
-                    {:order-by [[:timestamp :desc]
-                                [:id :desc]]}))
-
-(mu/defn delete-revisions!
-  "Delete the Revisions with `ids`, returning the number deleted."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Revision :id [:in ids]))
-
-(mu/defn unmark-most-recent-revisions!
-  "Clear `most_recent` on the Revisions of the `model-name` row with `model-id` other than `revision-id`, returning
-  the number updated."
-  [model-name  :- :string
-   model-id    :- ms/PositiveInt
-   revision-id :- ms/PositiveInt]
-  ;; updates the table directly: revisions are otherwise immutable
-  (t2/update! (t2/table-name :model/Revision)
-              {:model model-name :model_id model-id :most_recent true :id [:not= revision-id]}
+(mu/defn unmark-superseded-revisions!
+  "Clear `most_recent` on the Revisions of `entities` that a newer Revision of the same row supersedes, returning the
+  number updated."
+  [entities :- [:sequential Entity]]
+  (t2/update! :model/Revision
+              :id [:in ^:allow-subquery
+                   {:select [:superseded.id]
+                    :from   [[^:allow-subquery {:select [:r.id]
+                                                :from   [[:revision :r]]
+                                                :where  [:and
+                                                         [:= :r.most_recent true]
+                                                         (entities-clause :r entities)
+                                                         (newer-revision-exists :r)]}
+                              :superseded]]}]
               {:most_recent false}))
+
+(mu/defn delete-revisions-beyond!
+  "Delete the Revisions of `entities` that `kept` newer Revisions of the same row follow, returning the number
+  deleted."
+  [entities :- [:sequential Entity]
+   kept     :- ms/PositiveInt]
+  (t2/delete! :model/Revision
+              :id [:in ^:allow-subquery
+                   {:select [:old.id]
+                    :from   [[^:allow-subquery {:select [:r.id]
+                                                :from   [[:revision :r]]
+                                                :where  [:and
+                                                         (entities-clause :r entities)
+                                                         [:<= kept ^:allow-subquery
+                                                          {:select [:%count.*]
+                                                           :from   [[:revision :newer]]
+                                                           :where  [:and
+                                                                    [:= :newer.model :r.model]
+                                                                    [:= :newer.model_id :r.model_id]
+                                                                    [:> :newer.id :r.id]]}]]}
+                              :old]]}]))
 
 (mu/defn revisions
   "The Revisions of the `model-name` row with `model-id`, newest first."
@@ -141,13 +150,13 @@
   "The newest Revision of the `model-name` row with `model-id`, or nil."
   [model-name :- :string
    model-id   :- ms/PositiveInt]
-  (t2/select-one :model/Revision :model model-name, :model_id model-id, {:order-by [[:id :desc]]}))
+  (t2/select-one :model/Revision :model model-name, :model_id model-id, {:order-by [[:id :desc]], :limit 1}))
 
 (mu/defn latest-revision-object
   "The serialized object of the newest Revision of the `model-name` row with `model-id`, or nil."
   [model-name :- :string
    model-id   :- ms/PositiveInt]
-  (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id {:order-by [[:id :desc]]}))
+  (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id {:order-by [[:id :desc]], :limit 1}))
 
 (mu/defn revision-object
   "The serialized object of the Revision with `revision-id` of the `model-name` row with `model-id`, or nil."
@@ -156,25 +165,14 @@
    revision-id :- ms/PositiveInt]
   (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id :id revision-id))
 
-(def ^:private RevisionRow
-  [:map {:closed true}
-   [:model        [:or :keyword :string]]
-   [:model_id     ms/PositiveInt]
-   [:user_id      ::lib.schema.id/user]
-   [:object       :map]
-   [:is_creation  :boolean]
-   [:is_reversion :boolean]
-   [:message      {:optional true} [:maybe :string]]])
+(mr/def ::unregistered-model-object
+  "The row of a revisioned model that a Revision is made of, whose keys that model's own spec owns."
+  [:map {:closed false}])
 
-(mu/defn insert-revision!
-  "Insert the Revision `row`, returning the number inserted."
-  [row :- RevisionRow]
-  (t2/insert! :model/Revision row))
-
-(mu/defn insert-revision-returning!
-  "Insert the Revision `row` and return the inserted instance."
-  [row :- RevisionRow]
-  (t2/insert-returning-instance! :model/Revision row))
+(mu/defn insert-revisions!
+  "Insert the Revision `rows` in one statement, returning the number inserted."
+  [rows :- [:sequential ::revisions.schema/revision.create]]
+  (t2/insert! :model/Revision rows))
 
 (mu/defn latest-editors-reducible
   "A reducible of the model id, editing User, and timestamp of the most recent Revisions of the `db-model` rows with
@@ -186,9 +184,9 @@
     :from      [[:revision :r]]
     :left-join [[:core_user :u] [:= :u.id :r.user_id]]
     :where     [:and
-                [:= :r.most_recent true]
                 [:= :r.model db-model]
-                [:in :r.model_id ids]]}))
+                [:in :r.model_id ids]
+                (revisions.sql/newest-revision-clause :r db-model :r.model_id)]}))
 
 (mu/defn latest-changes
   "The editing User, model, model id, and timestamp of the most recent Revisions of the Cards with `card-ids`
@@ -199,9 +197,17 @@
                          :r.model :r.model_id :r.timestamp]
              :from      [[:revision :r]]
              :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-             :where     [:and [:= :r.most_recent true]
-                         (into [:or]
-                               (keep (fn [[model-name ids]]
-                                       (when (seq ids)
-                                         [:and [:= :model model-name] [:in :model_id ids]])))
-                               [["Card" card-ids] ["Dashboard" dashboard-ids]])]}))
+             :where     (into [:or]
+                              (keep (fn [[model-name ids]]
+                                      (when (seq ids)
+                                        [:and
+                                         [:= :r.model model-name]
+                                         [:in :r.model_id ids]
+                                         (revisions.sql/newest-revision-clause :r model-name :r.model_id)])))
+                              [["Card" card-ids] ["Dashboard" dashboard-ids]])}))
+
+(mu/defn delete-revisions-for-entities!
+  "Delete the Revisions of the rows of the model named `model-name` with `model-ids`, returning the number deleted."
+  [model-name :- :string
+   model-ids  :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Revision :model model-name :model_id [:in model-ids]))

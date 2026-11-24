@@ -32,10 +32,10 @@
                                   (lib/breakout (lib/with-temporal-bucket
                                                   (lib.metadata/field mp (mt/id :products :created_at)) :week)))
           metric-data {:description "Test metric"
-                       :dataset_query (lib/->legacy-MBQL metric-source-query)
+                       :dataset_query metric-source-query
                        :type :metric}
           model-data  {:description "Test model"
-                       :dataset_query (lib/->legacy-MBQL model-source-query)
+                       :dataset_query model-source-query
                        :type :model}]
       (mt/with-temp [:model/Collection {coll-id :id}   {}
                      :model/Collection {child-id :id}  {:location (collection/location-path coll-id)}
@@ -46,7 +46,7 @@
                                "NativeMetric1" ["native m1" "native m2" "native m3" "native m4" "native m5"]}
               native-mock (make-native-prompt-generator prompts-by-name)]
           (testing "regenerate endpoint works with native path"
-            (with-redefs [native-generator/generate-example-questions native-mock]
+            (mt/with-dynamic-fn-redefs [native-generator/generate-example-questions native-mock]
               (is (=? {:status "generated" :prompt_count 10}
                       (mt/user-http-request :crowberto :post 200
                                             (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))
@@ -61,7 +61,7 @@
                      (set (map :model prompts))))))
           (testing "native path prompts are replaced on re-regenerate"
             (let [old-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]
-              (with-redefs [native-generator/generate-example-questions native-mock]
+              (mt/with-dynamic-fn-redefs [native-generator/generate-example-questions native-mock]
                 (is (=? {:status "generated" :prompt_count 10}
                         (mt/user-http-request :crowberto :post 200
                                               (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))

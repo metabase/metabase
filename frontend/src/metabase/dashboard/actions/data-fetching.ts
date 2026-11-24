@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { createAction } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 import _ from "underscore";
@@ -22,6 +22,7 @@ import {
   getDashCardById,
   getDashboardById,
   getDashboardComplete,
+  getDashboardId,
   getLinkTargetEntities,
   getLoadingDashCards,
   getParameterValues,
@@ -53,6 +54,7 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
+import { throwIfSignalAborted } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -70,6 +72,8 @@ import type {
   QuestionDashboardCard,
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
+
+import { dashboardLayoutFetched } from "./core";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -274,7 +278,7 @@ export const fetchCardDataAction = createAsyncThunk<
       dashcard?.parameter_mappings ?? undefined,
     );
 
-    const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
+    const lastResult = dashcardData?.[dashcard.id]?.[card.id];
     if (!reload) {
       // if reload not set, check to see if the last result has the same query dict and return that
       if (
@@ -678,7 +682,36 @@ const dashboardSchema = new schema.Entity("dashboard", {
   dashcards: [dashcardSchema],
 });
 
+/**
+ * Copies each virtual card's definition (headings, text, links, ...) from the
+ * dashcard's visualization settings onto its `card`, which the backend leaves
+ * empty for virtual cards. The dashboard can come straight from RTK Query,
+ * whose responses are deeply frozen, so this builds new objects rather than
+ * mutating in place.
+ */
+function copyVirtualCardsToCards(dashboard: Dashboard): Dashboard {
+  return {
+    ...dashboard,
+    dashcards: dashboard.dashcards.map((dashcard) =>
+      isVirtualDashCard(dashcard)
+        ? {
+            ...dashcard,
+            card: {
+              ...dashcard.card,
+              ...dashcard.visualization_settings.virtual_card,
+            },
+          }
+        : dashcard,
+    ),
+  };
+}
+
 let fetchDashboardCancellation: AbortController | null;
+
+export function cancelFetchDashboard() {
+  fetchDashboardCancellation?.abort();
+  fetchDashboardCancellation = null;
+}
 
 const EMPTY_LINK_TARGETS: DashboardLinkTargets = {
   questions: {},
@@ -738,15 +771,14 @@ export const fetchDashboard = createAsyncThunk(
     },
     { getState, dispatch, rejectWithValue },
   ) => {
-    if (fetchDashboardCancellation) {
-      fetchDashboardCancellation.abort();
-    }
+    cancelFetchDashboard();
     fetchDashboardCancellation = new AbortController();
+    const { signal } = fetchDashboardCancellation;
 
     try {
       let entities;
       let linkTargets: DashboardLinkTargets = EMPTY_LINK_TARGETS;
-      let result;
+      let result: Dashboard;
       const dashboardLoadId = uuid();
 
       const dashboardType = getDashboardType(dashId);
@@ -771,7 +803,7 @@ export const fetchDashboard = createAsyncThunk(
           { uuid: dashId, dashboard_load_id: dashboardLoadId },
           dispatch,
           publicApi.endpoints.getPublicDashboard,
-          { signal: fetchDashboardCancellation.signal },
+          { signal },
         );
         result = {
           ...result,
@@ -786,7 +818,7 @@ export const fetchDashboard = createAsyncThunk(
           { token: dashId, dashboard_load_id: dashboardLoadId },
           dispatch,
           embedApi.endpoints.getEmbedDashboard,
-          { signal: fetchDashboardCancellation.signal },
+          { signal },
         );
         result = {
           ...result,
@@ -804,7 +836,7 @@ export const fetchDashboard = createAsyncThunk(
             { subPath, dashboard_load_id: dashboardLoadId },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboard,
-            { signal: fetchDashboardCancellation.signal },
+            { signal },
           ),
           runRtkEndpoint(
             {
@@ -814,7 +846,7 @@ export const fetchDashboard = createAsyncThunk(
             },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
-            { signal: fetchDashboardCancellation.signal },
+            { signal },
           ),
         ]);
         linkTargets = toLinkTargets(queryMetadata);
@@ -849,46 +881,54 @@ export const fetchDashboard = createAsyncThunk(
         );
         result = prefetchedDashboard;
       } else {
+        const dashboardRequest = runRtkEndpoint(
+          { id: dashId, dashboard_load_id: dashboardLoadId },
+          dispatch,
+          dashboardApi.endpoints.getDashboard,
+          { signal },
+        );
+        const queryMetadataRequest = runRtkEndpoint(
+          { id: dashId, dashboard_load_id: dashboardLoadId },
+          dispatch,
+          dashboardApi.endpoints.getDashboardQueryMetadata,
+          { forceRefetch: false },
+        );
+
+        // The dashboard definition already holds the card layout and usually
+        // arrives well before the query metadata, so publish it right away for
+        // the loading skeleton. Only on a fresh open: a dashboard that is
+        // already on screen never shows the skeleton.
+        const isOpeningDashboard = getDashboardId(getState()) === null;
+        if (isOpeningDashboard) {
+          dashboardRequest.then(
+            (response) =>
+              dispatch(
+                dashboardLayoutFetched(
+                  normalize(copyVirtualCardsToCards(response), dashboardSchema)
+                    .entities,
+                ),
+              ),
+            // A failed request is surfaced by the `Promise.all` below.
+            () => {},
+          );
+        }
+
         const [response, queryMetadata] = await Promise.all([
-          runRtkEndpoint(
-            { id: dashId, dashboard_load_id: dashboardLoadId },
-            dispatch,
-            dashboardApi.endpoints.getDashboard,
-            { signal: fetchDashboardCancellation.signal },
-          ),
-          runRtkEndpoint(
-            { id: dashId, dashboard_load_id: dashboardLoadId },
-            dispatch,
-            dashboardApi.endpoints.getDashboardQueryMetadata,
-            { forceRefetch: false },
-          ),
+          dashboardRequest,
+          queryMetadataRequest,
         ]);
         linkTargets = toLinkTargets(queryMetadata);
         result = response;
       }
 
+      // A request without the signal, such as the prefetched path's metadata,
+      // can outlive a newer fetch or an unmount, so its result is dropped here
+      throwIfSignalAborted(signal);
       fetchDashboardCancellation = null;
 
       const isUsingCachedResults = entities != null;
       if (!isUsingCachedResults) {
-        // Copy over any virtual cards from the dashcard to the underlying
-        // card/question. The result can come straight from RTK Query, whose
-        // responses are deeply frozen, so build new objects rather than
-        // mutating in place.
-        result = {
-          ...result,
-          dashcards: result.dashcards.map((card: DashboardCard) =>
-            card.visualization_settings?.virtual_card
-              ? {
-                  ...card,
-                  card: {
-                    ...(card.card ?? {}),
-                    ...card.visualization_settings.virtual_card,
-                  },
-                }
-              : card,
-          ),
-        };
+        result = copyVirtualCardsToCards(result);
       }
 
       if (result.param_fields) {

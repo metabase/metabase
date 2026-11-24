@@ -1,40 +1,23 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
 import type { EntitiesState, State } from "metabase/redux/store";
 import { getSettings } from "metabase/settings";
-import Question from "metabase-lib/v1/Question";
-import Database from "metabase-lib/v1/metadata/Database";
-import Field, {
-  type HydratedFieldDimension,
-} from "metabase-lib/v1/metadata/Field";
-import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import Table from "metabase-lib/v1/metadata/Table";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { ParameterField } from "metabase-lib/v1/parameters/types";
-import {
-  getFieldValues,
-  getRemappings,
-} from "metabase-lib/v1/queries/utils/field";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { formatField } from "metabase/utils/formatting";
+import type { JsMetadata } from "metabase-lib";
+import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import type {
-  Table as ApiTable,
-  Card,
+  DatabaseId,
   FieldId,
-  FieldValue,
-  Measure,
-  Metric,
+  FieldReference,
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
-  NormalizedMeasure,
-  NormalizedMetric,
   NormalizedSchema,
-  NormalizedSegment,
   NormalizedTable,
-  Segment,
+  SchemaId,
+  TableId,
 } from "metabase-types/api";
 
 import { type FieldEntity, FieldSchema } from "./schema";
@@ -123,16 +106,60 @@ export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
+export const getShallowSchemas = getNormalizedSchemas;
+export const getShallowQuestions = getNormalizedQuestions;
 
-// Takes the whole `State`, not `MetadataState`: it composes `getSettings`,
-// which reads settings out of the RTK Query cache. It narrows when that does.
-const getMetadataForOpts: (
-  state: State,
-  props: MetadataSelectorOpts,
-) => Metadata = createSelector(
+const getVisibleTable = (state: MetadataState, tableId: TableId) =>
+  getNormalizedTables(state)[tableId];
+
+const getVisibleFields = (state: MetadataState) => getNormalizedFields(state);
+
+// Field values can arrive before the field itself, which leaves a stub record
+// with no `uniqueId`. `getMetadata` drops those.
+const isResolvedField = (
+  field: NormalizedField | undefined,
+): field is NormalizedField => field?.uniqueId != null;
+
+/**
+ * The ids of a table's fields, as `getMetadata` resolves `Table.fields`: the
+ * table's `original_fields` when it has them, otherwise its visible fields.
+ */
+export const getShallowTableFieldIds = createSelector(
+  [getVisibleTable, getVisibleFields],
+  (table, fields): FieldId[] => {
+    if (table == null) {
+      return [];
+    }
+    if (table.original_fields) {
+      return table.original_fields.map((field) => field.id);
+    }
+    return (table.fields ?? [])
+      .map((fieldKey) => fields[fieldKey])
+      .filter(isResolvedField)
+      .map((field) => field.id);
+  },
+);
+
+export type ShallowForeignKey = Omit<NormalizedForeignKey, "origin"> & {
+  origin: NormalizedField;
+};
+
+/**
+ * A table's foreign keys whose origin field is visible, with that field in
+ * place of its id. `undefined` until the table's foreign keys are loaded.
+ */
+export const getShallowTableForeignKeys = createSelector(
+  [getVisibleTable, getVisibleFields],
+  (table, fields): ShallowForeignKey[] | undefined =>
+    table?.fks?.flatMap((foreignKey) => {
+      const origin = fields[foreignKey.origin_id];
+      return isResolvedField(origin) ? [{ ...foreignKey, origin }] : [];
+    }),
+);
+
+const getMetadataForOpts = createSelector(
   [
     getNormalizedDatabases,
-    getNormalizedSchemas,
     getNormalizedTables,
     getNormalizedFields,
     getNormalizedSegments,
@@ -144,7 +171,6 @@ const getMetadataForOpts: (
   ],
   (
     databases,
-    schemas,
     tables,
     fields,
     segments,
@@ -153,86 +179,40 @@ const getMetadataForOpts: (
     questions,
     snippets,
     settings,
-  ) => {
-    const metadata = new Metadata({ settings });
-
-    metadata.databases = Object.fromEntries(
-      Object.values(databases).map((d) => [d.id, createDatabase(d, metadata)]),
-    );
-    metadata.schemas = Object.fromEntries(
-      Object.values(schemas).map((s) => [s.id, createSchema(s, metadata)]),
-    );
-    metadata.tables = Object.fromEntries(
-      Object.values(tables).map((t) => [t.id, createTable(t, metadata)]),
-    );
-    metadata.fields = Object.fromEntries(
-      Object.values(fields)
-        .filter((f) => f.uniqueId != null) // remove stub field instances created for field values without field properties
-        .map((f) => [f.uniqueId, createField(f, metadata)]),
-    );
-    metadata.segments = Object.fromEntries(
-      Object.values(segments).map((s) => [s.id, createSegment(s)]),
-    );
-    metadata.measures = Object.fromEntries(
-      Object.values(measures).map((m) => [m.id, createMeasure(m)]),
-    );
-    metadata.metrics = Object.fromEntries(
-      Object.values(metrics).map((m) => [m.id, createMetric(m)]),
-    );
-    metadata.questions = Object.fromEntries(
-      Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
-    );
-    metadata.snippets = Object.fromEntries(
-      Object.values(snippets).map((snippet) => [snippet.id, snippet]),
-    );
-
-    Object.values(metadata.databases).forEach((database) => {
-      database.tables = hydrateDatabaseTables(database, metadata);
-    });
-    Object.values(metadata.schemas).forEach((schema) => {
-      schema.database = hydrateSchemaDatabase(schemas[schema.id], metadata);
-    });
-    Object.values(metadata.tables).forEach((table) => {
-      table.db = hydrateTableDatabase(table, metadata);
-      table.schema = hydrateTableSchema(table, metadata);
-      table.fields = hydrateTableFields(table, metadata);
-      table.fks = hydrateTableForeignKeys(table, metadata);
-      table.segments = hydrateTableSegments(table, metadata);
-      table.measures = hydrateTableMeasures(table, metadata);
-      table.metrics = hydrateTableMetrics(table, metadata);
-    });
-    Object.values(metadata.databases).forEach((database) => {
-      database.schemas = hydrateDatabaseSchemas(database, metadata);
-    });
-    Object.values(metadata.schemas).forEach((schema) => {
-      schema.tables = hydrateSchemaTables(schema, schemas[schema.id], metadata);
-    });
-    Object.values(metadata.measures).forEach((measure) => {
-      measure.table = hydrateMeasureTable(measure, tables);
-    });
-    Object.values(metadata.fields).forEach((field) => {
-      hydrateField(field, metadata);
-    });
-    Object.values(metadata.tables).forEach((table) => {
-      table.fields?.forEach((field) => hydrateField(field, metadata));
-    });
-
-    return metadata;
-  },
+  ) => ({
+    databases,
+    tables,
+    fields: Object.fromEntries(
+      Object.entries(fields).filter(([, field]) => isResolvedField(field)),
+    ),
+    segments,
+    measures,
+    metrics,
+    questions,
+    snippets,
+    settings,
+  }),
 );
+
+function toJsMetadata(
+  metadata: ReturnType<typeof getMetadataForOpts>,
+): JsMetadata {
+  // JsMetadata is opaque so that only metabase-lib reads the store records
+  return metadata as unknown as JsMetadata;
+}
 
 const NO_OPTS: MetadataSelectorOpts = {};
 
 /**
  * Reselect keys its cache on the argument list, so `getMetadata(state)` and
- * `getMetadata(state, undefined)` would build two `Metadata` objects over the
- * same records, and with them two sets of metabase-lib caches. Callers use both
+ * `getMetadata(state, undefined)` would build two objects over the same
+ * records, and with them two sets of metabase-lib caches. Callers use both
  * shapes, so the options are canonicalised here.
  */
 export const getMetadata = (
   state: State,
   props: MetadataSelectorOpts = NO_OPTS,
-): Metadata => getMetadataForOpts(state, props);
+): JsMetadata => toJsMetadata(getMetadataForOpts(state, props));
 
 const UNFILTERED_OPTS: MetadataSelectorOpts = {
   includeHiddenTables: true,
@@ -242,312 +222,165 @@ const UNFILTERED_OPTS: MetadataSelectorOpts = {
 export const getMetadataUnfiltered = (state: State) =>
   getMetadata(state, UNFILTERED_OPTS);
 
-export const getMetadataWithHiddenTables = (
-  state: State,
-  props?: TableSelectorOpts,
-) => {
-  return getMetadata(state, { ...props, includeHiddenTables: true });
-};
+function getDatabaseTables(
+  databaseId: DatabaseId,
+  databases: Record<string, NormalizedDatabase>,
+  tables: Record<string, NormalizedTable>,
+): NormalizedTable[] {
+  const tableIds = databases[databaseId]?.tables ?? [];
+  if (tableIds.length > 0) {
+    return tableIds.map((tableId) => tables[tableId]).filter(isNotNull);
+  }
+  return Object.values(tables).filter(
+    (table) => table.schema != null && table.db_id === databaseId,
+  );
+}
 
-// Utils
+/**
+ * A lookup from a database id to its schemas.
+ */
+export const getShallowDatabaseSchemas = createSelector(
+  [getNormalizedDatabases, getNormalizedSchemas],
+  (databases, schemas) =>
+    (databaseId: DatabaseId): NormalizedSchema[] => {
+      const database = databases[databaseId];
+      if (database == null) {
+        return [];
+      }
+      if (database.schemas) {
+        return database.schemas
+          .map((schemaId) => schemas[schemaId])
+          .filter(isNotNull);
+      }
+      return Object.values(schemas).filter(
+        (schema) => schema.database === databaseId,
+      );
+    },
+);
+
+/**
+ * A lookup from a database id to its tables.
+ */
+export const getShallowDatabaseTables = createSelector(
+  [getNormalizedDatabases, getNormalizedTables],
+  (databases, tables) =>
+    (databaseId: DatabaseId): NormalizedTable[] =>
+      databases[databaseId] != null
+        ? getDatabaseTables(databaseId, databases, tables)
+        : [],
+);
+
+/**
+ * A lookup from a schema id to its tables.
+ */
+export const getShallowSchemaTables = createSelector(
+  [getNormalizedDatabases, getNormalizedSchemas, getNormalizedTables],
+  (databases, schemas, tables) =>
+    (schemaId: SchemaId): NormalizedTable[] => {
+      const schema = schemas[schemaId];
+      if (schema == null) {
+        return [];
+      }
+      if (schema.tables) {
+        return schema.tables
+          .map((tableId) => tables[tableId])
+          .filter(isNotNull);
+      }
+      const databaseId = schema.database;
+      const databaseTables =
+        databaseId != null && databases[databaseId] != null
+          ? getDatabaseTables(databaseId, databases, tables)
+          : [];
+      if (databaseTables.length > 0) {
+        return databaseTables.filter(
+          (table) => table.schema_name === schema.name,
+        );
+      }
+      return Object.values(tables).filter((table) => table.schema === schemaId);
+    },
+);
+
+/**
+ * A lookup from a table id to the schema it belongs to. A table the store does
+ * not hold, and a schema it has not loaded, both give nothing.
+ */
+export const getShallowTableSchema = createSelector(
+  [getNormalizedTables, getNormalizedSchemas],
+  (tables, schemas) =>
+    (tableId: TableId): NormalizedSchema | undefined => {
+      const schemaId = tables[tableId]?.schema;
+      return schemaId != null ? schemas[schemaId] : undefined;
+    },
+);
+
+/**
+ * A lookup from a table id to its fields.
+ */
+export const getShallowTableFields = createSelector(
+  [getNormalizedTables, getNormalizedFields],
+  (tables, fields) =>
+    (tableId: TableId): NormalizedField[] => {
+      const table = tables[tableId];
+      if (table == null) {
+        return [];
+      }
+      if (table.original_fields) {
+        return table.original_fields
+          .map((apiField) => {
+            // normalizing a single field always stores it under `result`
+            const { entities, result } = normalize<
+              FieldEntity,
+              Pick<State["entities"], "fields">
+            >(apiField, FieldSchema);
+            return entities.fields?.[result];
+          })
+          .filter(isNotNull);
+      }
+      return (table.fields ?? [])
+        .map((fieldKey) => fields[fieldKey])
+        .filter(isResolvedField);
+    },
+);
+
+/**
+ * A lookup from a field id, or a field reference, to the field.
+ */
+export const getShallowFieldById = createSelector(
+  [getNormalizedFields],
+  (fields) =>
+    (fieldId: FieldId | FieldReference): NormalizedField | undefined => {
+      const field = fields[getUniqueFieldId({ id: fieldId })];
+      return isResolvedField(field) ? field : undefined;
+    },
+);
+
+/**
+ * A lookup from a field to its name, with the names of its parents for a
+ * nested field. A field the store does not hold keeps its own `display_name`.
+ */
+export const getShallowFieldName = createSelector(
+  [getNormalizedFields],
+  (fields) =>
+    (
+      field: Pick<NormalizedField, "id" | "table_id" | "display_name">,
+    ): string => {
+      const storeField = fields[getUniqueFieldId({ id: field.id })];
+      if (!isResolvedField(storeField)) {
+        return field.display_name;
+      }
+      const path: NormalizedField[] = [];
+      let current: NormalizedField | undefined = storeField;
+      while (current != null) {
+        path.unshift(current);
+        current =
+          current.parent_id != null
+            ? fields[getUniqueFieldId({ id: current.parent_id })]
+            : undefined;
+      }
+      return path.map(formatField).join(": ");
+    },
+);
 
 function isNotNull<T>(value: T | null | undefined): value is T {
   return value != null;
-}
-
-function createDatabase(
-  database: NormalizedDatabase,
-  metadata: Metadata,
-): Database {
-  const instance = new Database(database);
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createSchema(schema: NormalizedSchema, metadata: Metadata): Schema {
-  const { database: _database, tables: _tables, ...rest } = schema;
-  return { ...rest, metadata };
-}
-
-function createTable(table: NormalizedTable, metadata: Metadata): Table {
-  const instance = new Table(table);
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createField(field: NormalizedField, metadata: Metadata): Field {
-  const instance = new Field(field);
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createForeignKey(
-  foreignKey: NormalizedForeignKey,
-  metadata: Metadata,
-): ForeignKey {
-  const instance = new ForeignKey(foreignKey);
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createSegment(segment: NormalizedSegment): Segment {
-  const { table: _normalizedTableId, ...rest } = segment;
-  return rest;
-}
-
-function createMeasure(measure: NormalizedMeasure): Measure {
-  const { table: _normalizedTableId, ...rest } = measure;
-  return rest;
-}
-
-function createMetric(metric: NormalizedMetric): Metric {
-  const { collection: _normalizedCollectionId, ...rest } = metric;
-  return { ...rest, collection: null };
-}
-
-function createQuestion(card: Card, metadata: Metadata): Question {
-  return new Question(card, metadata);
-}
-
-function hydrateDatabaseTables(
-  database: Database,
-  metadata: Metadata,
-): Table[] {
-  const tableIds = database.getPlainObject().tables ?? [];
-  if (tableIds.length > 0) {
-    return tableIds.map((tableId) => metadata.table(tableId)).filter(isNotNull);
-  }
-
-  return Object.values(metadata.tables).filter(
-    (table) =>
-      !isVirtualCardId(table.id) && table.schema && table.db_id === database.id,
-  );
-}
-
-function hydrateDatabaseSchemas(
-  database: Database,
-  metadata: Metadata,
-): Schema[] {
-  const schemaIds = database.getPlainObject().schemas;
-  if (schemaIds) {
-    return schemaIds.map((s) => metadata.schema(s)).filter(isNotNull);
-  }
-
-  return Object.values(metadata.schemas).filter(
-    (s) => s.database && s.database.id === database.id,
-  );
-}
-
-function hydrateSchemaDatabase(
-  normalized: NormalizedSchema,
-  metadata: Metadata,
-): Database | undefined {
-  return metadata.database(normalized.database) ?? undefined;
-}
-
-function hydrateSchemaTables(
-  schema: Schema,
-  normalized: NormalizedSchema,
-  metadata: Metadata,
-): Table[] {
-  const tableIds = normalized.tables;
-  if (tableIds) {
-    return tableIds.map((table) => metadata.table(table)).filter(isNotNull);
-  } else if (schema.database && schema.database.getTables().length > 0) {
-    return schema.database
-      .getTables()
-      .filter((table) => table.schema_name === schema.name);
-  } else {
-    return Object.values(metadata.tables).filter(
-      (table) => table.schema && table.schema.id === schema.id,
-    );
-  }
-}
-
-function hydrateTableDatabase(
-  table: Table,
-  metadata: Metadata,
-): Database | undefined {
-  const { db, db_id } = table.getPlainObject();
-  return metadata.database(db ?? db_id) ?? undefined;
-}
-
-function hydrateTableSchema(
-  table: Table,
-  metadata: Metadata,
-): Schema | undefined {
-  const schemaId = table.getPlainObject().schema;
-  return metadata.schema(schemaId) ?? undefined;
-}
-
-function hydrateTableFields(entityTable: Table, metadata: Metadata): Field[] {
-  const apiTable = entityTable.getPlainObject();
-
-  if (!apiTable.original_fields) {
-    const fieldIds = apiTable.fields ?? [];
-    return fieldIds.map((id) => metadata.field(id)).filter(isNotNull);
-  }
-
-  return apiTable.original_fields.map((apiField) => {
-    // normalizing a single field always stores it under `result`
-    const { entities, result } = normalize<
-      FieldEntity,
-      Pick<State["entities"], "fields">
-    >(apiField, FieldSchema);
-    const normalizedField = entities.fields?.[result];
-    return createField(normalizedField, metadata);
-  });
-}
-
-function hydrateField(field: Field, metadata: Metadata) {
-  field.table = hydrateFieldTable(field, metadata);
-  field.target = hydrateFieldTarget(field, metadata);
-  field.name_field = hydrateNameField(field, metadata);
-  field.dimensions = hydrateFieldDimensions(field, metadata);
-  field.values = getFieldValues(field);
-  field.remapping = new Map(getRemappings(field));
-}
-
-function hydrateTableForeignKeys(
-  table: Table,
-  metadata: Metadata,
-): ForeignKey[] | undefined {
-  return table.getPlainObject().fks?.map((fk) => {
-    const instance = createForeignKey(fk, metadata);
-    instance.origin = metadata.field(fk.origin_id) ?? undefined;
-    instance.destination = metadata.field(fk.destination_id) ?? undefined;
-    return instance;
-  });
-}
-
-function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
-  const segmentIds = table.getPlainObject().segments ?? [];
-  return segmentIds
-    .map((id) => metadata.segments[id] ?? null)
-    .filter(isNotNull);
-}
-
-function hydrateTableMeasures(table: Table, metadata: Metadata): Measure[] {
-  const measureIds = table.getPlainObject().measures ?? [];
-  return measureIds.map((id) => metadata.measure(id)).filter(isNotNull);
-}
-
-function hydrateTableMetrics(table: Table, metadata: Metadata): Question[] {
-  const metricIds = table.getPlainObject().metrics ?? [];
-  return metricIds.map((id) => metadata.question(id)).filter(isNotNull);
-}
-
-function hydrateFieldTable(
-  field: Field,
-  metadata: Metadata,
-): Table | undefined {
-  return metadata.table(field.table_id) ?? undefined;
-}
-
-function hydrateFieldTarget(
-  field: Field,
-  metadata: Metadata,
-): Field | undefined {
-  return metadata.field(field.fk_target_field_id) ?? undefined;
-}
-
-/**
- * Normalizing a field flattens each dimension's `human_readable_field` to an
- * id. The API nests the field itself, so it is put back here and a store field
- * answers a remapping question the same way an API field does.
- */
-function hydrateFieldDimensions(
-  field: Field,
-  metadata: Metadata,
-): HydratedFieldDimension[] {
-  const dimensions = field.getPlainObject().dimensions ?? [];
-
-  return dimensions.map((dimension) => ({
-    ...dimension,
-    human_readable_field:
-      dimension.human_readable_field_id != null
-        ? (metadata.field(dimension.human_readable_field_id) ?? undefined)
-        : undefined,
-  }));
-}
-
-function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
-  const nameFieldId = field.getPlainObject().name_field;
-  if (nameFieldId != null) {
-    return metadata.field(nameFieldId) ?? undefined;
-  }
-}
-
-function hydrateMeasureTable(
-  measure: Measure,
-  tables: Record<string, NormalizedTable>,
-): ApiTable | undefined {
-  const normalized = tables[measure.table_id];
-  if (!normalized) {
-    return undefined;
-  }
-  const {
-    db: _db,
-    fields: _fields,
-    fks: _fks,
-    segments: _segments,
-    measures: _measures,
-    metrics: _metrics,
-    schema: _schema,
-    schema_name,
-    original_fields: _original_fields,
-    ...rest
-  } = normalized;
-  return { ...rest, schema: schema_name ?? "" };
-}
-
-/**
- * A field's client-accumulated remappings. No endpoint returns these: they are
- * merged in as values are fetched, and one component's fetch labels values for
- * another, so a component cannot answer this from its own result.
- */
-export function getFieldRemappings(
-  state: MetadataState,
-  fieldId: FieldId,
-): FieldValue[] {
-  return state.entities.fields[fieldId]?.remappings ?? NO_REMAPPINGS;
-}
-
-// a shared empty array, so a field with no remappings keeps its identity
-// between calls and a `useSelector` on it does not re-render
-const NO_REMAPPINGS: FieldValue[] = [];
-
-/**
- * The label a field carries for `value`.
- *
- * It merges the values a values endpoint fetched with the remappings the
- * client accumulated as other widgets fetched values. The store holds both, so
- * a field a caller holds cannot answer this on its own.
- */
-export function getRemappedFieldValue(
-  state: State,
-  field: ParameterField,
-  value: unknown,
-): string | undefined {
-  const fieldId = typeof field.id === "number" ? field.id : null;
-  const storeField =
-    fieldId == null ? undefined : state.entities.fields[fieldId];
-  const remappings =
-    fieldId == null ? NO_REMAPPINGS : getFieldRemappings(state, fieldId);
-
-  // parameter values arrive from the URL as strings
-  const key =
-    isNumeric(field) && typeof value !== "number"
-      ? parseFloat(String(value))
-      : value;
-
-  // a later entry wins, so the accumulated remappings override the field's
-  // own values
-  const labels = new Map<unknown, string | undefined>(
-    // the store's copy carries the values a values endpoint fetched, which the
-    // field a caller holds does not
-    getRemappings({ ...field, values: storeField?.values, remappings }),
-  );
-
-  return labels.get(key);
 }

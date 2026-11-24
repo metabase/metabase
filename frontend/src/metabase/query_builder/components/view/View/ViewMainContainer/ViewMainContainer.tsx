@@ -3,20 +3,19 @@ import cx from "classnames";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
+import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
 import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
 import { Mode } from "metabase/querying/click-actions/Mode";
 import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
-import type { QueryBuilderMode } from "metabase/redux/store";
+import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
   DatabaseId,
@@ -37,7 +36,6 @@ const clickActionMode = new Mode(getQueryMode, {
 
 interface ViewMainContainerProps {
   question: Question;
-  query: NativeQuery;
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
@@ -63,7 +61,7 @@ interface ViewMainContainerProps {
   runQuery: () => void;
   toggleEditor: () => void;
   handleResize: () => void;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  setQuery: (query: Lib.Query) => void;
   runQuestionQuery: (opts?: {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
@@ -156,6 +154,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           noResultsAction={
             !isDirty && <HasResultsAlertPrompt question={question} />
           }
+          errorAction={<FixSqlQueryButton />}
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>

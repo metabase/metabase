@@ -1,11 +1,11 @@
-## MCP v1 retirement (GHY-4343). `/api/metabase-mcp` now serves the v2 tool surface, whose tools gate
-## on six coarse scopes. Clients connected to v0.60–v0.63 hold tokens carrying the per-entity agent
-## scopes instead; no legacy scope satisfies any v2 scope, so those clients get HTTP 200 with an empty
-## tools list and no error. The refresh grant can only narrow, so it never self-heals.
+## MCP v1 retirement. `/api/metabase-mcp` now serves the v2 tool surface, whose tools gate on six
+## coarse scopes. Clients connected to v0.60–v0.63 hold tokens carrying the per-entity agent scopes
+## instead; no legacy scope satisfies any v2 scope. A call short of scope gets a 403
+## `insufficient_scope` step-up, so the client re-authorizes.
 ##
-## Two data-only changesets: widen every dynamically registered client's scope snapshot so a
-## re-authorization validates, then revoke the legacy-shaped tokens so the client actually
-## re-authenticates rather than refreshing. Both are idempotent.
+## The first changeset widens every dynamically registered client's scope snapshot so that
+## re-authorization validates. The second is a no-op: legacy tokens are left alive so clients recover
+## through the step-up. Its id stays so that instances which already ran it can still roll back.
 
 databaseChangeLog:
   - changeSet:
@@ -20,7 +20,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-09-09T12:00:01
       author: bryanmaass
-      comment: Revoke OAuth tokens carrying only pre-MCP-v2 scopes
+      comment: No-op. Legacy-scoped OAuth tokens are left alive to recover through the 403 step-up
       changes:
         - customChange:
             class: metabase.app_db.custom_migrations.RevokeLegacyMcpOAuthTokens

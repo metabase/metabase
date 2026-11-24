@@ -6,16 +6,19 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time.api :as t]
    [metabase-enterprise.sso.models.relay-state :as relay-state]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc                                   "Delete expired SAML SSO RelayState entries"}
-  DeleteExpiredSsoRelayState [_ctx]
-  (let [deleted (relay-state/delete-expired!)]
+(task/defjob DeleteExpiredSsoRelayState
+  "Delete expired SAML SSO RelayState entries"
+  {:saved-class "metabase_enterprise.sso.task.delete_expired_relay_state.DeleteExpiredSsoRelayState"
+   :concurrent? false}
+  [_ctx]
+  (let [deleted (relay-state/delete-sso-relay-states-for-cleanup! (t/offset-date-time))]
     (when (pos? deleted)
       (log/debugf "Deleted %d expired SSO RelayState entries" deleted))))
 

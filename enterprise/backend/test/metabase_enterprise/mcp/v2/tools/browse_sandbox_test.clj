@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.browse :as tools.browse]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -19,7 +20,7 @@
 
 (defn- get-fields
   [args]
-  (let [text (-> (tools.browse/browse-data args {}) :content first :text)]
+  (let [text (v2.tu/strip-data-boundary (-> (tools.browse/browse-data args {}) :content first :text))]
     (json/decode+kw (first (str/split-lines text)))))
 
 (defn- field-named

@@ -124,8 +124,8 @@
                :tools  [(metabot.tu/get-time-tool)]})]
     (testing "the model defaults to deepseek-v4-pro"
       (is (= "deepseek-v4-pro" (:model body))))
-    (testing "an unknown model id falls back to the shared max_tokens ceiling"
-      (is (= 64000 (:max_tokens body))))
+    (testing "max_tokens is the Claude request body's default cap"
+      (is (= 32000 (:max_tokens body))))
     (is (true? (:stream body)))
     (testing "the system prompt is sent as cache-marked content blocks"
       (is (=? [{:type "text" :text "You are Metabot." :cache_control {:type "ephemeral"}}]
@@ -287,16 +287,18 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest list-models-filters-catalog-to-whitelist-test
-  (testing "display names come from the whitelist — DeepSeek catalog entries carry none"
+  (testing (str "display names come from the whitelist — DeepSeek catalog entries carry none — and the retired "
+                "`deepseek-v4-flash` alias is not offered even when the catalog lists it")
     (mt/with-dynamic-fn-redefs [http/request (fn [req]
                                                (is (=? {:method  :get
                                                         :headers {"Authorization" "Bearer sk-deepseek-byok"}}
                                                        req))
                                                {:status 200
-                                                :body   {:data [{:id "deepseek-v4-flash"}
+                                                :body   {:data [{:id "deepseek-flash"}
+                                                                {:id "deepseek-v4-flash"}
                                                                 {:id "deepseek-v4-pro"}
                                                                 {:id "deepseek-chat"}]}})]
-      (is (= {:models [{:id "deepseek-v4-flash" :display_name "DeepSeek V4 Flash"}
+      (is (= {:models [{:id "deepseek-flash" :display_name "DeepSeek Flash"}
                        {:id "deepseek-v4-pro" :display_name "DeepSeek V4 Pro"}]}
              (deepseek/list-models {:credentials byok-credentials}))))))
 
@@ -365,8 +367,9 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest ^:parallel reasoning-model-test
-  (is (true? (deepseek/reasoning-model? "deepseek-v4-flash")))
+  (is (true? (deepseek/reasoning-model? "deepseek-flash")))
   (is (true? (deepseek/reasoning-model? "deepseek-v4-pro")))
+  (is (true? (deepseek/streams-reasoning? {:model "deepseek-flash"})))
   (is (false? (deepseek/reasoning-model? "deepseek-chat"))))
 
 ;;; ──────────────────────────────────────────────────────────────────

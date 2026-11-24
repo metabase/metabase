@@ -2,12 +2,11 @@
   "Application database queries for the sandbox module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
-   [metabase.users.schema :as users.schema]
+   [metabase.queries.core :as queries]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -60,7 +59,8 @@
   (t2/select :model/Sandbox
              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
               :from   [[:sandboxes :s]]
-              :join   [[:metabase_table :t] [:= :s.table_id :t.id]]
+              :join   [[(t2/table-name :model/Table) :t]
+                       [:= :s.table_id :t.id]]
               :where  [:and
                        (when group-id [:= :s.group_id group-id])
                        (when group-ids [:in :s.group_id group-ids])
@@ -79,37 +79,16 @@
                 [:table.db_id :db_id]
                 [:table.schema :schema]]
     :from      [[:sandboxes]]
-    :left-join [[:metabase_table :table]
+    :left-join [[(t2/table-name :model/Table) :table]
                 [:= :sandboxes.table_id :table.id]]
     :where     [:and
                 [:in :sandboxes.group_id group-ids]
                 [:in :table.db_id db-ids]]}))
 
-(mu/defn insert-sandbox!
-  "Insert `sandbox` and return the new instance."
-  [sandbox :- [:map {:closed true}
-               [:id                   {:optional true} ms/PositiveInt]
-               [:table_id             ::lib.schema.id/table]
-               [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
-               [:group_id             ms/PositiveInt]
-               [:attribute_remappings {:optional true} [:maybe :map]]]]
-  (first (t2/insert-returning-instances! :model/Sandbox sandbox)))
-
-(mu/defn update-sandbox!
-  "Apply `changes` to the Sandbox with `sandbox-id`, returning the number updated."
-  [sandbox-id :- ::lib.schema.id/sandbox
-   changes    :- (mut/select-keys ::sandbox.schema/sandbox.update [:card_id :attribute_remappings])]
-  (t2/update! :model/Sandbox sandbox-id changes))
-
-(mu/defn delete-sandbox!
-  "Delete the Sandbox with `sandbox-id`, returning the number deleted."
-  [sandbox-id :- ::lib.schema.id/sandbox]
-  (t2/delete! :model/Sandbox :id sandbox-id))
-
-(mu/defn delete-sandboxes!
-  "Delete the Sandboxes with `sandbox-ids`, returning the number deleted."
-  [sandbox-ids :- [:set ::lib.schema.id/sandbox]]
-  (t2/delete! :model/Sandbox :id [:in sandbox-ids]))
+(mu/defn sandboxes-by-ids :- [:map-of ::lib.schema.id/sandbox ::sandbox.schema/sandbox]
+  "The map from id to Sandbox of the Sandboxes with `sandbox-ids`."
+  [sandbox-ids :- [:sequential {:min 1} ::lib.schema.id/sandbox]]
+  (t2/select-pk->fn identity :model/Sandbox :id [:in [:auto/param (vec (distinct sandbox-ids))]]))
 
 (mu/defn impersonations-for-groups
   "The ConnectionImpersonations of the groups with `group-ids`."
@@ -125,12 +104,6 @@
   "The personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User :id user-id :type :personal))
-
-(mu/defn set-user-login-attributes!
-  "Set the login attributes of the User with `user-id`, returning the number of rows updated."
-  [user-id          :- ::lib.schema.id/user
-   login-attributes :- [:maybe users.schema/LoginAttributes]]
-  (t2/update! :model/User user-id {:login_attributes login-attributes}))
 
 (mu/defn user-attributes-reducible
   "Reducible merged JWT and login attribute maps of the Users that have any."
@@ -148,7 +121,7 @@
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
 (mu/defn tables-of-database
@@ -168,7 +141,7 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Database
                  :id ^:allow-subquery {:select [:t.db_id]
-                                       :from   [[(t2/table-name :model/Table) :t]]
+                                       :from      [[(t2/table-name :model/Table) :t]]
                                        :where  [:= :t.id table-id]}))
 
 (mu/defn fields-of-table-named
@@ -178,14 +151,14 @@
   (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names]))
 
 (mu/defn cards-by-id
-  "A map of Card ID to the query, result metadata, and schema of the Cards with `card-ids`."
+  "A map of Card ID to the query-related columns of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn identity [:model/Card :id :dataset_query :result_metadata :card_schema] :id [:in card-ids]))
+  (u/index-by :id (queries/cards-queries-info card-ids)))
 
 (mu/defn cards-result-metadata
-  "The `:id`, `:result_metadata`, and `:card_schema` of the Cards with `card-ids`."
+  "The query-related columns of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :result_metadata :card_schema] :id [:in card-ids]))
+  (queries/cards-queries-info card-ids))
 
 (mu/defn card-result-metadata
   "The result metadata of the Card with `card-id`."
@@ -193,17 +166,22 @@
   (t2/select-one-fn :result_metadata :model/Card :id card-id))
 
 (mu/defn sandboxing-cards
-  "The `:id`, `:dataset_query`, `:database_id`, and `:card_schema` of the Cards Sandboxes are built on."
+  "The `:id`, `:dataset_query`, and `:database_id` of the Cards Sandboxes are built on."
   []
   (t2/select :model/Card
-             {:select [:c.id :c.dataset_query :c.database_id :c.card_schema]
+             {:select [:c.id :c.dataset_query :c.database_id :c.card_schema
+                       ;; required alongside :card_schema for the Card schema upgrade
+                       :c.type :c.entity_id :c.result_metadata :c.dimensions :c.dimension_mappings]
               :from   [[(t2/table-name :model/Card) :c]]
               :where  [:exists ^:allow-subquery {:select [[[:inline 1]]]
                                                  :from   [[(t2/table-name :model/Sandbox) :s]]
                                                  :where  [:= :s.card_id :c.id]}]}))
 
-(mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id`, returning the number updated."
-  [card-id         :- ::lib.schema.id/card
-   result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata}))
+(mu/defn dependency-sandbox-items :- [:maybe :map]
+  "The query of the Sandboxes the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`, both the
+  id as text: all of them for a superuser, none for anyone else."
+  [{:keys [is-superuser?]} :- :metabase.dependencies.items/items-opts]
+  (when is-superuser?
+    (let [id-text [:cast :sandboxes.id (if (= :mysql (mdb/db-type)) :char :text)]]
+      {:select [[:sandboxes.id :entity_id] [id-text :name] [id-text :location]]
+       :from   [:sandboxes]})))

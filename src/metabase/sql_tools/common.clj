@@ -6,10 +6,15 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.db :as sql-tools.db]
    [metabase.sql-tools.interface :as sql-tools]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu])
+  (:import
+   (java.util IdentityHashMap)))
+
+(set! *warn-on-reflection* true)
 
 (defn normalize-name
   "Normalize a name by per driver rules."
@@ -42,10 +47,12 @@
 
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
-   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
-  [driver tables transforms {search-table :table raw-schema :schema}]
+   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found.
+
+   An unqualified reference resolves to `database`'s default schema, so the database it was parsed against decides."
+  [driver database tables transforms {search-table :table raw-schema :schema}]
   (let [search-schema (or raw-schema
-                          (sql.normalize/default-schema driver))
+                          (:default-schema database))
         normalize (partial normalize-name driver)
         matches? (fn [db-table db-schema]
                    (and (= (normalize search-table) (normalize db-table))
@@ -59,12 +66,24 @@
                   {:transform id}))
               transforms))))
 
+(defn resolve-table-specs
+  "Resolve the table `specs` parsed out of a native query with [[find-table-or-transform]], keeping each spec that
+  matches nothing as `{:unresolved-table spec}`."
+  [driver database tables transforms specs]
+  (into #{}
+        (map #(or (find-table-or-transform driver database tables transforms %)
+                  {:unresolved-table (cond-> % (nil? (:schema %)) (dissoc :schema))}))
+        specs))
+
 (mu/defn table-name :- [:maybe :string]
   "Computes a table name from a table reference"
-  [raw-col :- [:map
+  [raw-col :- [:map {:closed true}
                [:database {:optional true} :string]
                [:schema {:optional true} :string]
-               [:table {:optional true} :string]]]
+               [:table {:optional true} :string]
+               [:table-alias {:optional true} :string]
+               [:column {:optional true} :string]
+               [:type {:optional true} :keyword]]]
   (when (:table raw-col)
     (->> [:database :schema :table]
          (keep raw-col)
@@ -91,7 +110,10 @@
   [driver metadata-provider col-spec]
   (or (some->> (:table col-spec)
                (find-table-or-transform
-                driver (lib.metadata/tables metadata-provider) (lib.metadata/transforms metadata-provider))
+                driver
+                (lib.metadata/database metadata-provider)
+                (lib.metadata/tables metadata-provider)
+                (lib.metadata/transforms metadata-provider))
                :table
                (lib.metadata/active-fields metadata-provider)
                (map #(-> (assoc % :lib/desired-column-alias (:name %))
@@ -131,6 +153,27 @@
      {:col (assoc found :lib/desired-column-alias (or alias name))}
      {:error (lib/missing-column-error (:column col-spec))})])
 
+(defn field-candidates
+  "Every candidate for the column reference `col-spec`, a `:single-column` field spec of `field-references`. A
+  candidate is a column that one of the reference's sources provides and whose name equals the reference's, both
+  names normalized for `driver`. Only the innermost scope that has a candidate counts: an inner query before the one
+  around it. Returns the candidates in the order of the sources, or `[]` when no scope has one; [[resolve-field]]
+  picks the first. A candidate without `:table-id` belongs to no table: it is a computed value, or a stand-in for a
+  source whose columns are unknown."
+  [driver metadata-provider {:keys [column source-columns]}]
+  (let [column-name (normalize-name driver column)]
+    (or (some (fn [scope]
+                (not-empty
+                 (into []
+                       (comp (mapcat (fn [source]
+                                       (if (= :unknown-columns (:type source))
+                                         [{:name column}]
+                                         (keep :col (resolve-field driver metadata-provider source)))))
+                             (filter #(= column-name (normalize-name driver (:name %)))))
+                       scope)))
+              source-columns)
+        [])))
+
 (defn- get-name [m]
   (or (:alias m) (str (gensym "new-col"))))
 
@@ -159,15 +202,28 @@
 
 (defmethod resolve-field :composite-field
   [driver metadata-provider col-spec]
-  (let [member-fields (mapcat #(->> (resolve-field driver metadata-provider %)
-                                    (keep :col))
-                              (:member-fields col-spec))]
-    [{:col {:name (get-name col-spec)
-            :lib/desired-column-alias (get-name col-spec)
-            :display-name (get-display-name col-spec)
-            :base-type (apply lca :type/* (map :base-type member-fields))
-            :effective-type (apply lca :type/* (map :effective-type member-fields))
-            :semantic-type (apply lca :Semantic/* (map :semantic-type member-fields))}}]))
+  ;; A chain of UNIONs gives the same composite field to more than one member, so resolve each one a single time.
+  (let [cache (IdentityHashMap.)]
+    (letfn [(resolve-member [member]
+              (if (= :composite-field (:type member))
+                (resolve-composite member)
+                (resolve-field driver metadata-provider member)))
+            (resolve-composite [composite]
+              (sql-parsing/cached-by-identity!
+               cache
+               composite
+               (fn []
+                 (let [member-fields (into []
+                                           (comp (mapcat resolve-member)
+                                                 (keep :col))
+                                           (:member-fields composite))]
+                   [{:col {:name (get-name composite)
+                           :lib/desired-column-alias (get-name composite)
+                           :display-name (get-display-name composite)
+                           :base-type (apply lca :type/* (map :base-type member-fields))
+                           :effective-type (apply lca :type/* (map :effective-type member-fields))
+                           :semantic-type (apply lca :Semantic/* (map :semantic-type member-fields))}}]))))]
+      (resolve-composite col-spec))))
 
 (defmethod resolve-field :unknown-columns
   [_driver _metadata-provider _col-spec]

@@ -14,6 +14,7 @@
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
@@ -21,6 +22,8 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -31,47 +34,46 @@
    "dimension" :dimension "temporal-unit" :temporal-unit})
 
 (defn- tag-field-id
-  "The field the tag binds: `field_id` (the write dialect), or the id embedded in a read-shape
-   `dimension` ref — `[\"field\", <id>, opts]` legacy or `[\"field\", opts, <id>]` MBQL 5 — so the
-   tags `get_content` returns round-trip through this tool unchanged."
-  [{:keys [field_id dimension]}]
-  (or field_id
-      (when (sequential? dimension)
-        (some #(when (or (int? %) (v2.resolve/entity-id? %)) %) (rest dimension)))))
+  "The field the tag binds: `field_id` (the write dialect) or the read-shape `field-id` `get_content` emits."
+  [tag]
+  (or (:field_id tag) (:field-id tag)))
 
 (defn- ->lib-template-tag
   "Map the tool's tag shape onto `existing-tag` (the lib-extracted template-tag map, which
    already carries `:id`/`:name`/`:display-name`). `dimension` and `temporal-unit` tags
-   additionally carry a field (`field_id` — a numeric field id, resolved here and built into a
-   pMBQL field ref, since a JSON caller cannot construct one directly: it requires a `:lib/uuid`.
+   additionally carry a field (`field_id` — a numeric field id, resolved here.
    Numeric only: `metabase_field.entity_id` was dropped by migration and `:model/Field` is not in
    the eid-translation map, so an entity_id here could only ever fail); `dimension` tags also carry a widget type (`widget_type`). Alongside the
    underscore write dialect, the kebab-case read shape `get_content` emits (`display-name`,
-   `widget-type`, a `dimension` ref) is accepted, so a read-modify-write round-trip needs no
+   `widget-type`, `field-id`) is accepted, so a read-modify-write round-trip needs no
    translation."
   [existing-tag {tag-type :type :keys [display_name widget_type required default] :as tag}]
   (let [t            (or (tag-type->kw tag-type)
                          (common/throw-teaching-error
-                          (format "Invalid template tag type %s — use \"text\", \"number\", \"date\", \"boolean\", \"dimension\", or \"temporal-unit\".\n%s"
-                                  (pr-str tag-type) skills/template-tag-contract)))
+                          (message/msg [(str "Invalid template tag type %s — use \"text\", \"number\", "
+                                             "\"date\", \"boolean\", \"dimension\", or \"temporal-unit\".")
+                                        "%s"]
+                                       tag-type skills/template-tag-contract)))
         display-name (or display_name (:display-name tag))
         widget-type  (or widget_type (:widget-type tag))
         field-ref?   (contains? #{:dimension :temporal-unit} t)
         field-id     (when field-ref? (tag-field-id tag))]
     (when (and (= t :dimension) (str/blank? widget-type))
       (common/throw-teaching-error
-       (str "A dimension template tag requires a widget_type, e.g. \"string/=\", \"number/=\", or \"date/all-options\".\n"
-            skills/template-tag-contract)))
+       (message/msg [(str "A dimension template tag requires a widget_type, e.g. "
+                          "\"string/=\", \"number/=\", or \"date/all-options\".")
+                     "%s"]
+                    skills/template-tag-contract)))
     (when (and field-ref? (nil? field-id))
       (common/throw-teaching-error
-       (format "A %s template tag requires a field_id — the numeric id of the column it binds.\n%s"
-               (name t) skills/template-tag-contract)))
+       (message/msg ["A %s template tag requires a field_id — the numeric id of the column it binds."
+                     "%s"]
+                    (name t) skills/template-tag-contract)))
     (cond-> (assoc existing-tag :type t)
       display-name (assoc :display-name display-name)
       (some? required) (assoc :required (boolean required))
       (some? default) (assoc :default default)
-      field-ref? (assoc :dimension [:field {:lib/uuid (str (random-uuid))}
-                                    (v2.resolve/resolve-id-or-404 :model/Field field-id)])
+      field-ref? (assoc :field-id (v2.resolve/resolve-id-or-404 :model/Field field-id))
       (and (= t :dimension) widget-type) (assoc :widget-type (keyword widget-type)))))
 
 (def ^:private reference-tag-types
@@ -88,14 +90,13 @@
   [query template_tags]
   (if (empty? template_tags)
     query
-    (let [extracted (get-in query [:stages 0 :template-tags])
-          present (into #{} (map :name) extracted)
-          existing-by-name (into {} (map (juxt :name identity)) extracted)]
+    (let [extracted        (get-in query [:stages 0 :template-tags])
+          existing-by-name (u/index-by :name extracted)]
       (doseq [tag-name (keys template_tags)]
-        (when-not (contains? present (name tag-name))
+        (when-not (contains? existing-by-name (name tag-name))
           (common/throw-teaching-error
-           (format "Template tag %s does not appear in the SQL — add {{%s}} to the query or drop the tag."
-                   (str "{{" (name tag-name) "}}") (name tag-name)))))
+           (message/msg ["Template tag %s does not appear in the SQL — add %s to the query or drop the tag."]
+                        (name tag-name) (str "{{" (name tag-name) "}}")))))
       (lib/with-template-tags
         query
         (into {}
@@ -106,7 +107,7 @@
               template_tags)))))
 
 (defn- ensure-pmbql-type
-  "Fill in the pMBQL `:lib/type` discriminators a hand-written JSON `query` can't be expected to
+  "Fill in the MBQL 5 `:lib/type` discriminators a hand-written JSON `query` can't be expected to
    supply: `:mbql/query` at the top level (unless the query is already legacy MBQL 4, carrying
    `:type`), and `:mbql.stage/native` or `:mbql.stage/mbql` on each stage. A query that already
    carries `:lib/type` throughout — e.g. one round-tripped through a lib helper — passes through
@@ -124,29 +125,30 @@
                     stages)))))
 
 (defn- check-native-source-gates!
-  "The gates an inline `native` source passes: the `agent:sql:run` scope and the
-   `mcp-execute-sql-enabled` kill switch — `execute_sql`'s own two, because the stored card is raw
-   SQL a later `run_saved_question` executes, so accepting one under the content write scope alone
-   would rebuild `execute_sql` without its scope or its kill switch. Every source that can resolve
-   to native passes these, `query_handle` included — holding a handle is not proof the gates were
-   spent (`construct_native_query` mints under `agent:sql:construct` and never consults the kill
-   switch, and a handle resolves on `core_session.user_id`, so any credential of that user can spend
-   one minted by another). No-op on the scope half for unscoped callers (cookie sessions bind the
-   unrestricted sentinel, which matches everything)."
+  "Throw unless the current user and `token-scopes` may store a native question: the user's groups must allow
+   `execute_sql`, the scopes must match `agent:sql:run`, and the `mcp-execute-sql-enabled` kill switch must be on."
   [token-scopes]
+  ;; `execute_sql`'s own three gates. A stored native card is raw SQL a later `run_saved_question` executes, so
+  ;; accepting one under `question_write`'s policy and the content write scope alone would rebuild `execute_sql` for
+  ;; a user an admin denied it, or without its scope or its kill switch. Every source that can resolve to native
+  ;; passes these, `query_handle` included: holding a handle is not proof the gates were spent
+  ;; (`construct_native_query` mints under `agent:sql:construct` and never consults the kill switch, and a handle
+  ;; resolves on `core_session.user_id`, so any credential of that user can spend one minted by another).
+  (registry/check-tool-allowed! "execute_sql" (message/raw "Saving a native (SQL) query"))
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
-    (throw (ex-info (format (str "Saving a native (SQL) query requires the %s scope — this token can "
-                                 "write content but not author raw SQL.")
-                            metabot.scope/agent-sql-run)
-                    {:status-code 403 ::common/error-code common/error-code-invalid-request})))
-  (v2.queries/check-execute-sql-enabled! "Saving a native (SQL) query"))
+    (common/throw-insufficient-scope!
+     (message/msg [(str "Saving a native (SQL) query requires the %s scope — "
+                        "this token can write content but not author raw SQL.")]
+                  (message/raw metabot.scope/agent-sql-run))
+     metabot.scope/agent-sql-run))
+  (v2.queries/check-execute-sql-enabled! (message/raw "Saving a native (SQL) query")))
 
 (defn- resolve-query-source
   "Resolve exactly one query source to a `dataset_query` map. `query_handle` re-runs the
    save-path guards (native allowed); `query` is inline MBQL 5; `native` is built from raw SQL
    once `token-scopes` clears [[check-native-source-gates!]].
 
-   Every branch returns genuine normalized pMBQL: the save path feeds `dataset_query` into
+   Every branch returns genuine normalized MBQL 5: the save path feeds `dataset_query` into
    strictly schema-checked functions (`queries/check-allowed-to-create-card!` and friends), so
    the JSON-shaped maps a handle or inline source yields — keyword *values* flattened to strings
    by the JSON round-trip — must be restored first."
@@ -157,7 +159,8 @@
                   native       (conj :native))]
     (when-not (= 1 (count sources))
       (common/throw-teaching-error
-       "Pass exactly one query source: `query_handle` (a handle from an execute tool), `query` (an inline query), or `native` ({database_id, sql})."))
+       (message/msg [(str "Pass exactly one query source: \"query_handle\" (a handle from an execute "
+                          "tool), \"query\" (an inline query), or \"native\" ({database_id, sql}).")])))
     (cond
       query_handle
       (let [resolved (lib-be/normalize-query
@@ -173,7 +176,9 @@
                        (lib-be/normalize-query nil (ensure-pmbql-type query) {:strict? true})
                        (catch clojure.lang.ExceptionInfo e
                          (common/throw-teaching-error
-                          (str "Invalid inline query — see learn(\"query-dialect\"). " (ex-message e)))))]
+                          (if-let [text (common/exception-message e)]
+                            (message/msg ["Invalid inline query — see learn(\"query-dialect\"). %s"] text)
+                            (message/msg ["Invalid inline query — see learn(\"query-dialect\")."])))))]
         ;; `native` on the source arg is not the same thing as native in the resolved query: an inline
         ;; `query` can carry a native stage (`ensure-pmbql-type` stamps `:mbql.stage/native` on any stage
         ;; with `:native`), and that stored card is raw SQL a later run_saved_question executes. Gate on
@@ -237,8 +242,9 @@
     ;; either under `semantic_type` and the tool's own examples name them.
     (when-not (or (isa? k :Semantic/*) (isa? k :Relation/*))
       (common/throw-teaching-error
-       (format "Invalid semantic_type %s — pass a type in the \"type/…\" namespace, e.g. \"type/Currency\" or \"type/PK\"."
-               (pr-str semantic_type))))
+       (message/msg [(str "Invalid semantic_type %s — pass a type in the \"type/…\" "
+                          "namespace, e.g. \"type/Currency\" or \"type/PK\".")]
+                    semantic_type)))
     k))
 
 (defn- apply-column-override
@@ -260,13 +266,14 @@
    through untouched. Every `column_metadata` name must match a computed column, or a
    teaching error names the offending one."
   [computed-columns column_metadata]
-  (let [by-name (into {} (map (juxt :name identity)) computed-columns)]
+  (let [by-name (u/index-by :name computed-columns)]
     (doseq [{col-name :name} column_metadata]
       (when-not (contains? by-name col-name)
         (common/throw-teaching-error
-         (format "Column %s is not in the query results — column_metadata names must match the query's output columns."
-                 (pr-str col-name)))))
-    (let [overrides (into {} (map (juxt :name identity)) column_metadata)]
+         (message/msg [(str "Column %s is not in the query results — column_metadata "
+                            "names must match the query's output columns.")]
+                      col-name))))
+    (let [overrides (u/index-by :name column_metadata)]
       (mapv (fn [col]
               (if-let [override (get overrides (:name col))]
                 (apply-column-override col override)
@@ -287,9 +294,12 @@
       ;; failed to analyze (a real problem the caller should hear about, not a "native" red herring).
       (if (lib/native-only-query? dataset-query)
         (common/throw-teaching-error
-         "column_metadata isn't supported for models built from a native (SQL) query — Metabase can't determine column types without running the SQL. Omit column_metadata; you can annotate the model's columns after it's created.")
+         (message/msg [(str "column_metadata isn't supported for models built from a native (SQL) query "
+                            "— Metabase can't determine column types without running the SQL. Omit "
+                            "column_metadata; you can annotate the model's columns after it's created.")]))
         (common/throw-teaching-error
-         "Couldn't determine the query's result columns, so column_metadata can't be applied — check that the query is valid and returns columns.")))
+         (message/msg [(str "Couldn't determine the query's result columns, so column_metadata "
+                            "can't be applied — check that the query is valid and returns columns.")]))))
     (merge-column-metadata computed-columns column_metadata)))
 
 (defn- check-dashboard-collection-exclusive!
@@ -298,19 +308,8 @@
   [dashboard_id args]
   (when (and dashboard_id (contains? args :collection_id))
     (common/throw-teaching-error
-     "Pass either collection_id or dashboard_id, not both — a dashboard question's collection is the dashboard's collection.")))
-
-(defn- normalize-model-display
-  "Force `display` to table when a patch retypes a card to a model, as `PUT /api/card/:id` does. A
-   model's display is not inert: the query processor runs the pivot QP when it is `:pivot`, and a
-   chart display also drives subscription rendering, dashcard sizing, and the search display filter.
-   An explicit `list` is left alone, as REST leaves it: the list view is one of the two displays the
-   model editor offers, so it is a real choice rather than a leftover chart display."
-  [card-updates]
-  (cond-> card-updates
-    (and (= :model (:type card-updates))
-         (not= :list (:display card-updates)))
-    (assoc :display :table)))
+     (message/msg [(str "Pass either collection_id or dashboard_id, not both — a "
+                        "dashboard question's collection is the dashboard's collection.")]))))
 
 (defn- resolve-dashboard!
   "Resolve `dashboard_id` to `{:dashboard-id id :collection-id (its collection_id)}`, or nil when
@@ -337,26 +336,34 @@
         collection-id (if dashboard
                         (:collection-id dashboard)
                         (v2.resolve/resolve-collection-id-or-personal (:collection_id args)))]
-    (queries/check-allowed-to-create-card! {:dataset_query dataset-query :collection_id collection-id}
+    (queries/check-allowed-to-create-card! {:dataset_query          dataset-query
+                                            :collection_id          collection-id
+                                            :display                (keyword (or display "table"))
+                                            :visualization_settings (or visualization_settings {})}
                                            (keyword (or card_type "question")))
     (let [result-metadata (when (seq column_metadata)
                             (resolve-result-metadata dataset-query
                                                      {:type (keyword (or card_type "question"))}
                                                      column_metadata))
-          card (queries/create-card!
-                (cond-> (u/remove-nils
-                         {:name                   name
-                          :type                   (keyword (or card_type "question"))
-                          :dataset_query          dataset-query
-                          :display                (keyword (or display "table"))
-                          :description            description
-                          :collection_id          collection-id
-                          :collection_position    collection_position
-                          :cache_ttl              cache_ttl
-                          :visualization_settings (or visualization_settings {})})
-                  result-metadata (assoc :result_metadata result-metadata)
-                  dashboard-id    (assoc :dashboard_id dashboard-id))
-                {:id api/*current-user-id*})]
+          row  (cond-> (u/remove-nils
+                        {:name                   name
+                         :type                   (keyword (or card_type "question"))
+                         :dataset_query          dataset-query
+                         :display                (keyword (or display "table"))
+                         :description            description
+                         :collection_id          collection-id
+                         :collection_position    collection_position
+                         :cache_ttl              cache_ttl
+                         :visualization_settings (or visualization_settings {})
+                         :creator_id             api/*current-user-id*})
+                 result-metadata (assoc :result_metadata result-metadata)
+                 dashboard-id    (assoc :dashboard_id dashboard-id))
+          _    (queries/check-new-dashboard-questions-timeline-permissions [row])
+          card (t2/with-transaction [_conn]
+                 (collection/maybe-reconcile-collection-position! (select-keys row [:collection_id :collection_position]))
+                 (let [[created] (queries.card/create-cards! [row])]
+                   (queries.card/place-new-dashboard-questions! [created] [row])
+                   created))]
       (assoc (card-response card)
              :url (common/frontend-url (channel.urls/card-path (:id card)))))))
 
@@ -372,8 +379,8 @@
   [card]
   (when-not (contains? #{:question :model} (:type card))
     (common/throw-teaching-error
-     (format "Card %d is a %s, not a question — use metric_write to update it."
-             (:id card) (name (:type card))))))
+     (message/msg ["Card %d has type %s, not question or model — use metric_write to update it."]
+                  (:id card) (name (:type card))))))
 
 (defn- force-restore-on-dashboard-move
   "Mirrors REST's `update-card!` guard: when `card-updates` moves the card into a dashboard
@@ -386,13 +393,14 @@
    the dashboard whenever `:dashboard_id` is present, independent of `:archived`."
   [card-before card-updates]
   (cond-> card-updates
-    (and (api/column-will-change? :dashboard_id card-before card-updates)
+    (and (api/column-will-change? (:dashboard_id card-before) (get card-updates :dashboard_id ::api/not-provided))
          (:dashboard_id card-updates))
     (as-> updates
           (do
             (when (:archived updates)
               (common/throw-teaching-error
-               "Can't move a card into a dashboard while also archiving it — archive and move are separate operations."))
+               (message/msg [(str "Can't move a card into a dashboard while also archiving "
+                                  "it — archive and move are separate operations.")])))
             (assoc updates :archived false :archived_directly false)))))
 
 (defn- update!
@@ -400,7 +408,7 @@
    `archived`; moving into a dashboard via `dashboard_id`, which forces the card's collection to
    the dashboard's — the model layer enforces the dashboard-question move rules), then run the
    shared REST update check stack ([[metabase.queries.core/check-allowed-to-update-card!]] plus the
-   save-cycle guard) before persisting. Returns [[update-card-response]].
+   metric validity guard) before persisting. Returns [[update-card-response]].
 
    Moving a card OUT of a dashboard isn't expressible here: a `nil` `dashboard_id` is
    indistinguishable from an omitted one once JSON-RPC args are stripped of nulls."
@@ -436,15 +444,12 @@
                        (contains? args :card_type)              (assoc :type (keyword card_type))
                        (contains? args :archived)               (assoc :archived (boolean archived))
                        new-query                                (assoc :dataset_query new-query))
-        card-updates (api/updates-with-archived-directly card-before raw-updates)
-        card-updates (force-restore-on-dashboard-move card-before card-updates)
-        card-updates (normalize-model-display card-updates)]
+        card-updates (api/updates-without-collection-when-archiving card-before raw-updates)
+        card-updates (force-restore-on-dashboard-move card-before card-updates)]
     ;; the type the card will have once written: the patch's when the caller is converting, else the
     ;; stored one. Never the raw request, which is nil whenever `card_type` is omitted.
     (queries/check-card-can-be-saved! (:dataset_query card-updates)
                                       (or (:type card-updates) (:type card-before)))
-    (when-some [query (:dataset_query card-updates)]
-      (queries/check-no-save-cycle! card-id query))
     (queries/check-allowed-to-update-card! card-before card-updates)
     ;; Result-metadata inference runs the query's preprocess over whatever tables and cards the query
     ;; names, and its teaching errors name the columns it found — so it must come AFTER a permission
@@ -461,21 +466,38 @@
                                                        (or new-query (:dataset_query card-before))
                                                        card-before
                                                        column_metadata)))]
-      (queries/update-card! {:card-before-update    card-before
-                             :card-updates          card-updates
-                             :actor                 @api/*current-user*
-                             :delete-old-dashcards? false}))
+      (t2/with-transaction [_conn]
+        (collection/maybe-reconcile-collection-position!
+         (select-keys card-before [:collection_id :collection_position])
+         (select-keys card-updates [:collection_id :collection_position]))
+        (queries.card/place-updated-dashboard-question! card-before card-updates false)
+        (queries.card/update-cards! [(assoc (queries.card/card-changes card-updates) :id (:id card-before))])))
     (update-card-response (mcp.db/select-one-by-id :model/Card card-id))))
 
 (def ^:private question-write-args-schema
   [:map {:closed true}
-   [:method [:enum "create" "update"]]
-   [:id {:optional true} [:maybe [:or :int :string]]]
-   [:card_type {:optional true} [:maybe [:enum "question" "model"]]]
-   [:query_handle {:optional true} [:maybe :string]]
-   [:query {:optional true} [:maybe :map]]
+   [:method
+    [:enum {:description (str "\"create\" makes a new question or model (requires `name` and exactly one of "
+                              "`query_handle`, `query`, or `native`); \"update\" edits the one named by `id`.")}
+     "create" "update"]]
+   [:id {:optional true}
+    [:maybe [:or
+             [:int {:description "Numeric id of the question to update."}]
+             [:string {:description "21-character entity_id of the question to update."}]]]]
+   [:card_type {:optional true}
+    [:maybe [:enum {:description "\"question\" (default) or \"model\"."} "question" "model"]]]
+   [:query_handle {:optional true}
+    [:maybe [:string {:description (str "A handle returned by execute_query, execute_sql, or visualize_query. The "
+                                        "preferred query source on create: it saves exactly the query that tool "
+                                        "validated.")}]]]
+   [:query {:optional true}
+    [:maybe [:map {:description (str "An inline query with numeric ids and a top-level database id "
+                                     "(learn(\"query-dialect\")). Prefer `query_handle`.")}]]]
    [:native {:optional true}
-    [:maybe [:map
+    [:maybe [:map {:description (str "A native SQL query to save: {database_id, sql, template_tags?}. Requires "
+                                     "the agent:sql:run scope, the mcp-execute-sql-enabled setting, and the "
+                                     "execute_sql tool enabled for your groups. Call "
+                                     "learn(\"native-parameters\") before first passing template_tags.")}
              [:database_id [:or :int :string]]
              [:sql [:string {:min 1}]]
              [:template_tags {:optional true}
@@ -505,20 +527,39 @@
                                                              "\"id\".")}]]]
                         [:required {:optional true} [:maybe :boolean]]
                         [:default {:optional true} [:maybe :any]]]]]]]]]
-   [:name {:optional true} [:maybe [:string {:min 1}]]]
-   [:description {:optional true} [:maybe :string]]
-   [:collection_id {:optional true} [:maybe [:or :int :string]]]
-   [:dashboard_id {:optional true} [:maybe [:or :int :string]]]
-   [:collection_position {:optional true} [:maybe :int]]
-   [:display {:optional true} [:maybe common/card-display-enum]]
-   [:visualization_settings {:optional true} [:maybe :map]]
-   [:cache_ttl {:optional true} [:maybe :int]]
-   [:archived {:optional true} [:maybe :boolean]]
+   [:name {:optional true :description "Question title. Required on create."} [:maybe ::queries.schema/card.name]]
+   [:description {:optional true}
+    [:maybe [:string {:description "One or two sentences on what the question answers."}]]]
+   [:collection_id {:optional true}
+    [:maybe [:or
+             [:int {:description (str "Numeric id of the collection to save it in. Omit on create for your "
+                                      "personal collection. Exclusive with `dashboard_id`.")}]
+             [:string {:description "Collection entity_id, or \"root\" for the top-level collection."}]]]]
+   [:dashboard_id {:optional true}
+    [:maybe [:or
+             [:int {:description (str "Numeric id of a dashboard to save the question inside; it inherits that "
+                                      "dashboard's collection. On update, moves the card into that dashboard. "
+                                      "Exclusive with `collection_id`.")}]
+             [:string {:description "21-character entity_id of the dashboard to save the question inside."}]]]]
+   [:collection_position {:optional true}
+    [:maybe [:int {:description "Pin position within the collection; omit to leave it unpinned."}]]]
+   [:display {:optional true}
+    [:maybe {:description "Visualization type. learn(\"visualization-settings\") covers the choice."}
+     common/card-display-enum]]
+   [:visualization_settings {:optional true}
+    [:maybe [:map {:description (str "Display settings for the chosen `display`; learn(\"visualization-settings\") "
+                                     "lists the keys.")}]]]
+   [:cache_ttl {:optional true}
+    [:maybe [:int {:description (str "Legacy per-question cache TTL. Stored and echoed back, but no longer "
+                                     "read: caching is configured through cache policies in admin settings.")}]]]
+   [:archived {:optional true}
+    [:maybe [:boolean {:description "Update only: true moves it to the trash, false restores it."}]]]
    [:clear {:optional true}
     [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
                           "description" "collection_position" "cache_ttl"]]]]
    [:column_metadata {:optional true}
-    [:maybe [:sequential
+    [:maybe [:sequential {:description (str "Per-column result metadata to set, matched to the query's result "
+                                            "columns by name. Typically used with card_type \"model\".")}
              [:map
               [:name [:string {:min 1}]]
               [:display_name {:optional true} [:maybe :string]]
@@ -531,13 +572,14 @@
                              visibility-type-strs)]]]]]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read; on create or update, native additionally requires the agent:sql:run scope and the instance-level mcp-execute-sql-enabled setting, since the saved card is raw SQL). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet). Updating a card that is a metric is refused rather than retyping it — use metric_write."
-  {:name         "question_write"
-   :scope        metabot.scope/agent-content-write
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read; on create or update, native additionally requires the agent:sql:run scope, the instance-level mcp-execute-sql-enabled setting, and the execute_sql tool enabled for your groups, since the saved card is raw SQL). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet). Updating a card that is a metric is refused rather than retyping it — use metric_write."
+  {:name           "question_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the card, so this is not the additive-only update
    ;; `destructiveHint false` would assert.
-   :annotations  {:readOnlyHint false :destructiveHint true}
-   :args         question-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           question-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [[op a b] (v2.write/dispatch-write
                   {:create-required [:name]
@@ -548,4 +590,4 @@
                                      :create (create! a session-id token-scopes)
                                      :update (update! a b session-id token-scopes))
                                    nil)]
-    (common/success-content payload payload)))
+    (common/success-content payload)))

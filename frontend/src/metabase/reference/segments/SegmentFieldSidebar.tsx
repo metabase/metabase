@@ -5,15 +5,21 @@ import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import S from "metabase/reference/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/reference/components/SidebarItem";
-
-import type { StubbedField, StubbedSegment } from "../types";
+import type { FieldId, SegmentId } from "metabase-types/api";
 
 interface SegmentFieldSidebarProps {
-  segment: StubbedSegment;
-  field: StubbedField;
+  segmentId: SegmentId;
+  segmentName?: string;
+  fieldId: FieldId;
+  fieldName?: string;
 }
 
-const SegmentFieldSidebar = ({ segment, field }: SegmentFieldSidebarProps) => (
+const SegmentFieldSidebar = ({
+  segmentId,
+  segmentName,
+  fieldId,
+  fieldName,
+}: SegmentFieldSidebarProps) => (
   <div className={S.sidebar}>
     <ul className={CS.mx3}>
       <div>
@@ -21,16 +27,16 @@ const SegmentFieldSidebar = ({ segment, field }: SegmentFieldSidebarProps) => (
           className={CS.py4}
           crumbs={[
             [t`Segments`, "/reference/segments"],
-            [segment.name, `/reference/segments/${segment.id}`],
-            [field.name],
+            [segmentName, `/reference/segments/${segmentId}`],
+            [fieldName],
           ]}
           inSidebar={true}
           placeholder={t`Data Reference`}
         />
       </div>
       <SidebarItem
-        key={`/reference/segments/${segment.id}/fields/${field.id}`}
-        href={`/reference/segments/${segment.id}/fields/${field.id}`}
+        key={`/reference/segments/${segmentId}/fields/${fieldId}`}
+        href={`/reference/segments/${segmentId}/fields/${fieldId}`}
         icon="document"
         name={t`Details`}
       />

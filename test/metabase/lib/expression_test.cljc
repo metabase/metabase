@@ -119,7 +119,7 @@
 
 (deftest ^:parallel date-interval-names-test
   (let [clause [:datetime-add
-                {}
+                {:lib/uuid (str (random-uuid))}
                 (lib.tu/field-clause :checkins :date {:base-type :type/Date})
                 -1
                 :day]]
@@ -130,7 +130,7 @@
 
 (deftest ^:parallel datetime-subtract-names-test
   (let [clause [:datetime-subtract
-                {}
+                {:lib/uuid (str (random-uuid))}
                 (lib.tu/field-clause :checkins :date {:base-type :type/Date})
                 1
                 :day]]
@@ -154,7 +154,7 @@
            (lib/column-name query -1 expr)))))
 
 (deftest ^:parallel coalesce-names-test
-  (let [clause [:coalesce {} (lib.tu/field-clause :venues :name) "<Venue>"]]
+  (let [clause [:coalesce {:lib/uuid (str (random-uuid))} (lib.tu/field-clause :venues :name) "<Venue>"]]
     (is (= "NAME"
            (lib/column-name (lib.tu/venues-query) -1 clause)))
     (is (= "Name"
@@ -541,13 +541,13 @@
         (is (= (count exprs) (count expressions)))
         (is (some? c-pos))
         (testing "no circularity problem"
-          (are [mode expr]
-               (nil? (lib.expression/diagnose-expression query 0 mode expr c-pos))
-            :expression  (get exprs "non-circular-c")
+          (are [mode expr position]
+               (nil? (lib.expression/diagnose-expression query 0 mode expr position))
+            :expression  (get exprs "non-circular-c")                c-pos
             :aggregation (-> (get exprs "circular-c")
                              (update 2 lib/sum)
-                             (assoc 4 (lib/count)))
-            :filter      (assoc (get exprs "circular-c") 0 :=)))
+                             (assoc 4 (lib/count)))                  nil
+            :filter      (assoc (get exprs "circular-c") 0 :=)      c-pos))
         (testing "circular definition"
           (is (=? {:message "Cycle detected: c → x → b → c"}
                   (lib.expression/diagnose-expression query 0 :expression
@@ -943,3 +943,25 @@
                  :lib/type                                         :metadata/column
                  :metabase.lib.field.resolution/fallback-metadata? (symbol "nil #_\"key is not present.\"")}
                 (lib/metadata query -1 (lib/ref (meta/field-metadata :venues :name)))))))))
+
+(deftest ^:parallel unique-expression-name-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :people))]
+    (testing "a completely unrelated name"
+      (is (= "Channels" (lib.expression/unique-expression-name query 0 "Channels"))))
+    (testing "a custom column that conflicts with a source column name"
+      (is (= "Email (1)" (lib.expression/unique-expression-name query 0 "Email"))))
+    (testing "when a disambiguated custom column already exists"
+      (let [query2 (lib/expression query "Email (1)"
+                                   (lib/concat (meta/field-metadata :people :email) ".com"))]
+        (testing "and you add a new one"
+          (is (= "Email (2)" (lib.expression/unique-expression-name query2 0 "Email"))))))
+    (testing "when a column name needs escaping"
+      (let [query2 (lib/expression query "net.net"
+                                   (lib/concat (meta/field-metadata :people :email) ".net"))
+            query3 (lib/expression query "netxnet"
+                                   (lib/concat (meta/field-metadata :people :email) ".net"))
+            query4 (lib/expression query2 "netxnet (1)"
+                                   (lib/concat (meta/field-metadata :people :email) ".net"))]
+        (is (= "net.net (1)" (lib.expression/unique-expression-name query2 0 "net.net")))
+        (is (= "net.net" (lib.expression/unique-expression-name query3 0 "net.net")))
+        (is (= "net.net (1)" (lib.expression/unique-expression-name query4 0 "net.net")))))))

@@ -1,6 +1,14 @@
 (ns metabase.documents.schema
   (:require
+   [clojure.string :as str]
+   [malli.util :as mut]
+   [metabase.collections.schema]
+   [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -8,51 +16,93 @@
   "Valid Document ID"
   pos-int?)
 
+(def DocumentName
+  "The name of a Document: a non-blank string of at most 254 characters."
+  (mu/with-api-error-message
+   [:and
+    {:error/message "invalid document name"
+     :json-schema   {:type "string" :minLength 1 :maxLength 254}}
+    [:string {:min 1 :max 254}]
+    [:fn
+     {:error/message "invalid document name"}
+     (complement str/blank?)]]
+   (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
+
+(mr/def ::document.name
+  DocumentName)
+
 (mr/def ::document.document
   "The `:document` column of a Document, decoded."
-  :map)
+  ::prose-mirror/ast)
 
 (mr/def ::document
-  "A Document as selected from the app DB: every column of `:document`."
-  [:map {:closed true}
-   [:id                  ms/PositiveInt]
-   [:name                :string]
-   [:created_at          ms/TemporalInstant]
-   [:document            [:maybe ::document.document]]
-   [:content_type        [:or :keyword :string]]
-   [:creator_id          ::lib.schema.id/user]
-   [:updated_at          ms/TemporalInstant]
-   [:collection_id       [:maybe ::lib.schema.id/collection]]
-   [:archived            :boolean]
-   [:archived_directly   [:maybe :boolean]]
-   [:entity_id           :string]
-   [:last_viewed_at      ms/TemporalInstant]
-   [:view_count          :int]
-   [:collection_position [:maybe :int]]
-   [:public_uuid         [:maybe :string]]
-   [:made_public_by_id   [:maybe ms/PositiveInt]]
-   [:public_uuid_prefix  [:maybe :string]]
-   [:exploration_id      [:maybe ms/PositiveInt]]
-   [:is_placeholder      :boolean]])
+  "A Document as selected from the app DB: every column of `:document`, plus `:creator` and `:collection` some
+  callers hydrate onto it."
+  [:merge
+   ::document.update
+   [:map {:closed true}
+    [:id                  {:optional true} ms/PositiveInt]
+    [:creator             {:optional true} [:maybe :metabase.users.schema/user]]
+    [:collection          {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
+    [:can_write           {:optional true} :boolean]
+    [:can_delete          {:optional true} :boolean]
+    [:can_restore         {:optional true} :boolean]
+    [:is_remote_synced    {:optional true} :boolean]]])
+
+(mr/def ::document.revision
+  "A Document as a Revision stores it: its tracked columns."
+  [:select-keys ::document
+   [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]])
 
 (mr/def ::document.update
-  "What an update (or insert) of a Document accepts: every column of `:document` except `id`, all optional."
+  "A Document by its `id` with the columns to change, each optional."
   [:map {:closed true}
-   [:name                {:optional true} [:maybe :string]]
-   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:id                  ms/PositiveInt]
+   [:name                {:optional true} ::document.name]
    [:document            {:optional true} [:maybe ::document.document]]
-   [:content_type        {:optional true} [:maybe [:or :keyword :string]]]
+   [:content_type        {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
-   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:collection_id       {:optional true} [:maybe ::lib.schema.id/collection]]
    [:archived            {:optional true} [:maybe :boolean]]
    [:archived_directly   {:optional true} [:maybe :boolean]]
    [:entity_id           {:optional true} [:maybe :string]]
-   [:last_viewed_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:view_count          {:optional true} [:maybe :int]]
    [:collection_position {:optional true} [:maybe :int]]
    [:public_uuid         {:optional true} [:maybe :string]]
    [:made_public_by_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:public_uuid_prefix  {:optional true} [:maybe :string]]
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
-   [:is_placeholder      {:optional true} [:maybe :boolean]]])
+   [:is_placeholder      {:optional true} [:maybe :boolean]]
+   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_viewed_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:view_count          {:optional true} [:maybe :int]]
+   [:public_uuid_prefix  {:optional true} [:maybe :string]]])
+
+(mr/def ::document.create
+  "What creating a Document takes: the columns of an update without the `:id` and the columns the product sets, as the
+  public uuid prefix, which follows from the public uuid, and the name."
+  [:merge
+   (reduce mut/dissoc ::document.update [:id :created_at :updated_at :last_viewed_at :view_count :public_uuid_prefix])
+   [:map {:closed true}
+    [:name ::document.name]]])
+
+(mr/def ::external-path
+  "An entity as a serialized document names it: its containers, outermost first, then the entity itself."
+  [:sequential [:map {:closed true}
+                [:model :string]
+                [:id    {:optional true} [:maybe :string]]
+                [:label {:optional true} [:maybe :string]]]])
+
+(def ^:private external-registry
+  "[[lib.schema.id/external-registry]], plus the serdes paths serialization writes in place of the ids a document's
+  nodes refer to, or the id it keeps when the entity is gone."
+  (assoc lib.schema.id/external-registry
+         ::prose-mirror/node.entity-id [:maybe [:or :int :string ::external-path]]))
+
+(mr/def ::external-document
+  "A Document as serialization writes it, with portable references in place of ids."
+  [:schema {:registry external-registry}
+   [:merge
+    [:select-keys ::document [:archived :archived_directly :content_type :entity_id :name :collection_position
+                              :document :collection_id :creator_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

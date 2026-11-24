@@ -10,7 +10,7 @@
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
 (mu/defn group-manager?
@@ -42,7 +42,8 @@
    database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/query {:select [[:t.db_id :db_id]]
              :from   [[(t2/table-name :model/Sandbox) :s]]
-             :join   [[(t2/table-name :model/Table) :t] [:= :s.table_id :t.id]]
+             :join   [[(t2/table-name :model/Table) :t]
+                      [:= :s.table_id :t.id]]
              :where  [:and
                       [:= :s.group_id group-id]
                       [:in :t.db_id database-ids]]}))
@@ -83,7 +84,8 @@
    group-ids   :- [:sequential ms/PositiveInt]]
   (t2/query {:select [[:s.group_id :group_id]]
              :from   [[(t2/table-name :model/Sandbox) :s]]
-             :join   [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
+             :join   [[(t2/table-name :model/Table) :t]
+                      [:= :t.id :s.table_id]]
              :where  [:and
                       [:in :s.group_id group-ids]
                       [:= :t.db_id database-id]]}))

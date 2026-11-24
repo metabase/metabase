@@ -196,9 +196,7 @@ export function CustomVizPage({ params }: Props) {
                   <BundleDropzone />
                   <FormErrorMessage />
                   <Group gap="sm" justify="flex-end">
-                    <Button variant="default" onClick={handleCancel}>
-                      {t`Cancel`}
-                    </Button>
+                    <Button onClick={handleCancel}>{t`Cancel`}</Button>
                     <FormSubmitButton
                       label={isEdit ? t`Replace` : t`Add visualization`}
                       disabled={!dirty}

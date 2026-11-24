@@ -5,8 +5,10 @@ import type {
   CardAutocompleteSuggestion,
   CreateDatabaseRequest,
   Database,
+  DatabaseAnonymousReach,
   DatabaseId,
   DatabaseUsageInfo,
+  Engine,
   Field,
   GetDatabaseHealthRequest,
   GetDatabaseHealthResponse,
@@ -18,10 +20,11 @@ import type {
   ListDatabaseSchemasRequest,
   ListDatabasesRequest,
   ListDatabasesResponse,
-  ListVirtualDatabaseTablesRequest,
   SchemaName,
   Table,
   UpdateDatabaseRequest,
+  ValidateDatabaseRequest,
+  ValidateDatabaseResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -46,6 +49,14 @@ export const shouldSchemaBePassedAsQueryParam = (schema: SchemaName) =>
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    listEngines: builder.query<Record<string, Engine>, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/setting/engines",
+      }),
+      // Driver metadata only changes when the instance is upgraded.
+      keepUnusedDataFor: Infinity,
+    }),
     listDatabases: builder.query<
       ListDatabasesResponse,
       ListDatabasesRequest | void
@@ -91,6 +102,16 @@ export const databaseApi = Api.injectEndpoints({
       query: (id) => ({
         method: "GET",
         url: `/api/database/${id}/usage_info`,
+      }),
+      providesTags: (_response, _error, id) => [idTag("database", id)],
+    }),
+    getDatabaseAnonymousReach: builder.query<
+      DatabaseAnonymousReach,
+      DatabaseId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/database/${id}/anonymous-reach`,
       }),
       providesTags: (_response, _error, id) => [idTag("database", id)],
     }),
@@ -148,20 +169,6 @@ export const databaseApi = Api.injectEndpoints({
         ...tables.map((table) => idTag("table", table.id)),
       ],
     }),
-    listVirtualDatabaseTables: builder.query<
-      Table[],
-      ListVirtualDatabaseTablesRequest
-    >({
-      query: ({ id, schema, ...params }) => ({
-        method: "GET",
-        url: `/api/database/${id}/datasets/${encodeURIComponent(schema)}`,
-        params,
-      }),
-      providesTags: (tables = []) => [
-        listTag("table"),
-        ...tables.map((table) => idTag("table", table.id)),
-      ],
-    }),
     listDatabaseIdFields: builder.query<Field[], ListDatabaseIdFieldsRequest>({
       query: ({ id, ...params }) => ({
         method: "GET",
@@ -169,6 +176,16 @@ export const databaseApi = Api.injectEndpoints({
         params,
       }),
       providesTags: [listTag("field")],
+    }),
+    validateDatabase: builder.mutation<
+      ValidateDatabaseResponse,
+      ValidateDatabaseRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/database/validate",
+        body,
+      }),
     }),
     createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
       query: (body) => ({
@@ -305,11 +322,13 @@ export const databaseApi = Api.injectEndpoints({
 
 export const {
   useListDatabasesQuery,
+  useListEnginesQuery,
   useLazyListDatabasesQuery,
   useGetDatabaseQuery,
   useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
   useGetDatabaseUsageInfoQuery,
+  useGetDatabaseAnonymousReachQuery,
   useGetDatabaseSettingsAvailableQuery,
   useListDatabaseSchemasQuery,
   useLazyListDatabaseSchemasQuery,
@@ -317,8 +336,8 @@ export const {
   useListSyncableDatabaseSchemasQuery,
   useListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemaTablesQuery,
-  useListVirtualDatabaseTablesQuery,
   useListDatabaseIdFieldsQuery,
+  useValidateDatabaseMutation,
   useCreateDatabaseMutation,
   useUpdateDatabaseMutation,
   useDeleteDatabaseMutation,

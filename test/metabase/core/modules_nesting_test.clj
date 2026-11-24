@@ -69,6 +69,20 @@
     (is (= "metabase.lib-be" (modules/module-ns-prefix modules 'lib.be)))
     (is (= "metabase.lib.schema" (modules/module-ns-prefix modules 'lib.schema)))))
 
+(deftest ^:parallel module-api-namespaces-test
+  (let [modules '{default  {}
+                  custom   {:ns-prefix "metabase.renamed"}
+                  explicit {:api #{metabase.explicit.core}}
+                  open     {:api :any}}]
+    (testing "an omitted API uses the module namespace prefix defaults"
+      (is (= '#{metabase.default.api metabase.default.core metabase.default.init}
+             (modules/module-api-namespaces modules 'default)))
+      (is (= '#{metabase.renamed.api metabase.renamed.core metabase.renamed.init}
+             (modules/module-api-namespaces modules 'custom))))
+    (testing "explicit and unrestricted APIs retain their configured meaning"
+      (is (= '#{metabase.explicit.core} (modules/module-api-namespaces modules 'explicit)))
+      (is (nil? (modules/module-api-namespaces modules 'open))))))
+
 (deftest ^:parallel module-resolution-explicit-ns-prefix-test
   (let [config {:metabase/modules {'lib             {}
                                    'lib.schema      {}

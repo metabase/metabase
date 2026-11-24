@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { act, screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
   setupStrategyEditorForDatabases as baseSetup,
@@ -22,6 +22,13 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
+
 function setup(opts: SetupOpts = {}) {
   baseSetup({
     enterprisePlugins: "*", // TODO be more granular about this
@@ -31,8 +38,11 @@ function setup(opts: SetupOpts = {}) {
 }
 
 describe("StrategyEditorForDatabases", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setup();
+    // Let the initial data load settle, so a request does not resolve mid-test
+    // and rerender outside act().
+    await screen.findByLabelText(/Edit default policy/);
   });
 
   it("lets user override root strategy on enterprise instance", async () => {
@@ -195,10 +205,8 @@ describe("StrategyEditorForDatabases", () => {
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
 
-    await act(async () => {
-      await changeInput(/minimum query duration/i, 1, 5);
-      await changeInput(/multiplier/i, 10, 3);
-    });
+    await changeInput(/minimum query duration/i, 1, 5);
+    await changeInput(/multiplier/i, 10, 3);
 
     await userEvent.click(
       await screen.findByTestId("strategy-form-submit-button"),
@@ -246,31 +254,6 @@ describe("StrategyEditorForDatabases", () => {
         `Edit policy for database 'Database 1' (currently: Scheduled: weekly)`,
       ),
     ).toBeInTheDocument();
-  });
-
-  it("can abbreviate a 'Schedule' strategy", () => {
-    const strategy: ScheduleStrategy = {
-      type: "schedule",
-      schedule: "0 0 * * * ?",
-      refresh_automatically: false,
-    };
-    const result = getShortStrategyLabel(strategy);
-    expect(result).toBe("Scheduled: hourly");
-  });
-
-  it.each([
-    [CacheDurationUnit.Hours, "Duration: 5h"],
-    [CacheDurationUnit.Minutes, "Duration: 5m"],
-    [CacheDurationUnit.Seconds, "Duration: 5s"],
-    [CacheDurationUnit.Days, "Duration: 5d"],
-  ])("can abbreviate a 'Duration' strategy with unit %s", (unit, expected) => {
-    const strategy: DurationStrategy = {
-      type: "duration",
-      duration: 5,
-      unit,
-      refresh_automatically: false,
-    };
-    expect(getShortStrategyLabel(strategy)).toBe(expected);
   });
 
   it("does not silently save default values when saving right after switching strategies", async () => {
@@ -361,6 +344,33 @@ describe("StrategyEditorForDatabases", () => {
         "Edit default policy (currently: Duration: 1m)",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("getShortStrategyLabel", () => {
+  it("can abbreviate a 'Schedule' strategy", () => {
+    const strategy: ScheduleStrategy = {
+      type: "schedule",
+      schedule: "0 0 * * * ?",
+      refresh_automatically: false,
+    };
+    const result = getShortStrategyLabel(strategy);
+    expect(result).toBe("Scheduled: hourly");
+  });
+
+  it.each([
+    [CacheDurationUnit.Hours, "Duration: 5h"],
+    [CacheDurationUnit.Minutes, "Duration: 5m"],
+    [CacheDurationUnit.Seconds, "Duration: 5s"],
+    [CacheDurationUnit.Days, "Duration: 5d"],
+  ])("can abbreviate a 'Duration' strategy with unit %s", (unit, expected) => {
+    const strategy: DurationStrategy = {
+      type: "duration",
+      duration: 5,
+      unit,
+      refresh_automatically: false,
+    };
+    expect(getShortStrategyLabel(strategy)).toBe(expected);
   });
 });
 
@@ -479,17 +489,20 @@ describe("StrategyEditorForDatabases (search)", () => {
 
     await userEvent.type(searchInput, "Database 10");
 
+    // The search filters asynchronously, and under React 19 the non-matching
+    // rows drop a render after the default policy row does. Wait for a
+    // non-matching row to leave before asserting the filtered result.
     await waitFor(() => {
       expect(
         screen.queryByLabelText(/Edit default policy/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/Edit policy for database 'Database 11'/),
       ).not.toBeInTheDocument();
     });
     expect(
       screen.getByLabelText(/Edit policy for database 'Database 10'/),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByLabelText(/Edit policy for database 'Database 11'/),
-    ).not.toBeInTheDocument();
   });
 });
 
@@ -613,4 +626,72 @@ describe("StrategyEditorForDatabases (cache_preemptive enabled)", () => {
       ).not.toBeInTheDocument();
     },
   );
+});
+
+describe("StrategyEditorForDatabases (clear cache)", () => {
+  beforeEach(() => {
+    // No default policy config: databases without their own config inherit
+    // "Don't cache", so there is no cache to clear for them
+    setup({
+      cacheConfigs: [
+        createMockCacheConfig({
+          model: "database",
+          model_id: 2,
+          strategy: { type: "ttl", min_duration_ms: 1000, multiplier: 10 },
+        }),
+      ],
+    });
+    fetchMock.post(
+      "path:/api/cache/invalidate",
+      ({ url }) => {
+        const params = new URL(url).searchParams;
+        return params.get("include") === "overrides" &&
+          params.get("database") === "2"
+          ? { message: "Invalidated cache for database 2" }
+          : 400;
+      },
+      { name: "invalidate-database-cache" },
+    );
+  });
+
+  it("does not offer to clear the cache of a database that inherits 'Don't cache'", async () => {
+    await userEvent.click(
+      await screen.findByLabelText(
+        "Edit policy for database 'Database 1' (currently inheriting the default policy, No caching)",
+      ),
+    );
+    expect(await screen.findByTestId("cache-strategy-select")).toHaveValue(
+      "Default",
+    );
+    expect(
+      screen.queryByRole("button", { name: /Clear cache/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clears the cache of the selected database after confirmation", async () => {
+    await userEvent.click(
+      await screen.findByLabelText(
+        "Edit policy for database 'Database 2' (currently: Adaptive)",
+      ),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: /Clear cache for this database/,
+      }),
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Clear all cached results for Database 2?",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Clear cache" }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /Cache cleared/ }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls("invalidate-database-cache"),
+    ).toHaveLength(1);
+  });
 });

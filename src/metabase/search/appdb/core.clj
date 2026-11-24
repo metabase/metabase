@@ -28,8 +28,7 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical])
   (:import
-   (java.time OffsetDateTime)
-   (java.util Queue)))
+   (java.time OffsetDateTime)))
 
 ;; Register the multimethods for each specialization
 (comment
@@ -75,7 +74,7 @@
 (defn- view-count-percentiles*
   [p-value]
   (into {} (for [{:keys [model vcp]} (search.db/view-count-percentile-rows (search.index/active-table) p-value)]
-             [(keyword model) vcp])))
+             [model vcp])))
 
 (def ^{:private true
        :arglists '([p-value])}
@@ -89,7 +88,7 @@
   [{:keys [search-engine search-string] :as search-ctx}]
   ;; Check whether there is a query-able index.
   (when-not (search.index/active-table)
-    (let [index-state  @@#'search.index/*indexes*
+    (let [index-state  @(search.index/indexes-handle)
           ;; Sync, in case we're just out of sync with the database.
           found-active (:active (#'search.index/sync-tracking-atoms!))
           ;; If there's really no index, and we're running in prod - gulp, try to initialize now.
@@ -109,19 +108,14 @@
                        :lang_code          (i18n/site-locale-string)
                        :forced-init?       init-now?
                        :index-state-before index-state
-                       :index-state-after  @@#'search.index/*indexes*
+                       :index-state-after  @(search.index/indexes-handle)
                        :index-metadata     (search.db/index-metadata-for-engine :appdb)}))))
 
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
     (try
       (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
-        ;; wait for a bit for the queue to be drained
-        (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
-          (when-not (u/poll {:thunk       pending-updates
-                             :done?       zero?
-                             :timeout-ms  2000
-                             :interval-ms 100})
-            (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
+        (when-not (search.ingestion/await-pending-updates! 2000)
+          (log/warn "Returning search results before pending index updates finished.")))
       (let [weights     (search.config/weights search-ctx)
             percentiles (view-count-percentiles search.config/view-count-scaling-percentile)
             scorer-keys (keys (search.scoring/scorers search-ctx percentiles))]
@@ -232,7 +226,9 @@
 (methodical/defmethod events/publish-event! ::settings-changed-event
   [_topic event]
   (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
-    (log/info "Reindexing appdb index because the site locale changed.")
-    (if search.ingestion/*force-sync*
-      (search.engine/reindex! :search.engine/appdb {})
-      (future (search.engine/reindex! :search.engine/appdb {})))))
+    (let [reindex! (fn []
+                     (log/info "Reindexing appdb index because the site locale changed.")
+                     (search.engine/reindex! :search.engine/appdb {}))]
+      (if search.ingestion/*force-sync*
+        (reindex!)
+        (mdb/do-after-commit #(future (reindex!)))))))

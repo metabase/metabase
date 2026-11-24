@@ -145,8 +145,8 @@ function DatasetFieldMetadataSidebarInner({
   const initialValues = useMemo(() => {
     const values: FieldMetadataFormValues = {
       display_name: field.display_name,
-      description: field.description,
-      semantic_type: field.semantic_type,
+      description: field.description ?? null,
+      semantic_type: field.semantic_type ?? null,
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
       should_index: shouldIndex,
@@ -299,15 +299,12 @@ function DatasetFieldMetadataSidebarInner({
                         left: "0.75rem",
                         top: "0.5rem",
                         fontSize: "0.625rem",
-                        color: color("text-disabled"),
+                        color: color("text-secondary"),
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         maxWidth: "90%",
                       },
-                    },
-                    input: {
-                      fontWeight: "bold",
                     },
                   }}
                 />
@@ -321,7 +318,6 @@ function DatasetFieldMetadataSidebarInner({
                 {isNative && (
                   <Box mb="1.5rem">
                     <MappedFieldPicker
-                      className={DatasetFieldMetadataSidebarS.SelectButton}
                       name="id"
                       label={t`Database column this maps to`}
                       tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
@@ -332,7 +328,6 @@ function DatasetFieldMetadataSidebarInner({
                 )}
                 <Stack gap="sm" mb="1.5rem">
                   <DatasetFieldMetadataSemanticTypePicker
-                    className={DatasetFieldMetadataSidebarS.SelectButton}
                     field={field}
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                     onChange={handleSemanticTypeChange}

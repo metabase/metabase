@@ -1,5 +1,10 @@
 import { t } from "ttag";
 
+import {
+  DetailsRow,
+  DetailsTable,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
 import { dayjs } from "metabase/dayjs";
 import { Anchor, Badge, Flex, Loader, Text, Tooltip } from "metabase/ui";
@@ -7,9 +12,6 @@ import * as Urls from "metabase/urls";
 
 import { formatRelativeDate } from "../NotificationsAdminPage/utils";
 
-import { DetailsRow } from "./DetailsRow";
-import { DetailsTable } from "./DetailsTable";
-import { SidebarSection } from "./SidebarSection";
 import type { NotificationRunSummaryLogProps } from "./types";
 
 export const NotificationRunSummaryLog = ({
@@ -36,14 +38,7 @@ export const NotificationRunSummaryLog = ({
       );
     }
     if (runs && runs.length === 0) {
-      return (
-        <DetailsRow
-          label={t`No runs in the past 90 days.`}
-          value=""
-          bold={false}
-          spanLabel
-        />
-      );
+      return <DetailsRow label={t`No runs in the past 90 days.`} spanLabel />;
     }
     return runs?.map((run, index) => {
       const isFailing = run.status === "failing";

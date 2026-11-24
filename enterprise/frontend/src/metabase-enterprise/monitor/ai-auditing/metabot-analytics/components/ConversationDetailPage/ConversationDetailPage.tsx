@@ -2,7 +2,11 @@ import { useElementSize } from "@mantine/hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetAdhocQueryMetadataQuery,
+  useGetDatabaseQuery,
+} from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -18,7 +22,10 @@ import type {
   MetabotMessage,
 } from "metabase/metabot/state/types";
 import { convertSlackMessage } from "metabase/metabot/utils/slack-mrkdwn";
-import { useQuestionFromCard } from "metabase/metadata-store";
+import {
+  useMetadataProvider,
+  useQuestionFromCardBuilder,
+} from "metabase/metadata-store";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -49,6 +56,7 @@ import type {
   ConversationFeedback,
   GeneratedQuery,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
+import * as Lib from "metabase-lib";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
 import { ConversationHeader } from "./ConversationHeader";
@@ -199,6 +207,7 @@ export function ConversationDetailPage() {
               <Card withBorder shadow="none" p="xxl">
                 <Messages
                   messages={messages}
+                  size="md"
                   getExtraActions={getExtraActions}
                   isDoingScience={false}
                   debug
@@ -301,6 +310,7 @@ function FeedbackCard({
         {agentResponse && (
           <AgentMessage
             message={agentResponse}
+            size="md"
             debug={false}
             readonly
             hideActions
@@ -308,7 +318,6 @@ function FeedbackCard({
             submittedFeedback={undefined}
             bg="background_page-secondary"
             p="lg"
-            pb="0"
             bd="1px solid var(--mb-color-border-neutral)"
             bdrs="1rem"
           />
@@ -331,24 +340,29 @@ export function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
 }
 
 function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
+
+  const { data: database } = useGetDatabaseQuery(
+    query.database_id != null ? { id: query.database_id } : skipToken,
+  );
+  const metadataProvider = useMetadataProvider(database?.id ?? null);
 
   const runUrl = useMemo(() => {
-    if (query.database_id == null || !query.sql) {
+    if (database == null || !query.sql) {
       return null;
     }
-    const datasetQuery: DatasetQuery = {
-      type: "native",
-      database: query.database_id,
-      native: { query: query.sql, "template-tags": {} },
-    };
+    const nativeQuery = Lib.nativeQuery(
+      database.id,
+      metadataProvider,
+      query.sql,
+    );
     const question = buildQuestion({
       display: "table",
       visualization_settings: {},
-      dataset_query: datasetQuery,
+      dataset_query: Lib.toJsQuery(nativeQuery),
     }).setType("question");
     return ML_getUrl(question);
-  }, [buildQuestion, query.database_id, query.sql]);
+  }, [buildQuestion, database, metadataProvider, query.sql]);
 
   return (
     <Card withBorder shadow="none" p="lg">
@@ -401,7 +415,7 @@ function NotebookGeneratedQueryCard({
   const { isLoading, isError } = useGetAdhocQueryMetadataQuery(
     mbql.database != null ? mbql : skipToken,
   );
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );

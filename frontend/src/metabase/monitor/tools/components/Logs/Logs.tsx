@@ -13,6 +13,7 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Outlet, useLocation } from "metabase/router";
 import {
+  ActionIcon,
   Button,
   Center,
   DefaultSelectItem,
@@ -83,17 +84,17 @@ export const Logs = ({
                   placeholder={t`Filter logs`}
                   rightSection={
                     query.length > 0 ? (
-                      <Button
+                      <ActionIcon
                         aria-label={t`Clear`}
-                        c="text-primary"
-                        leftSection={<Icon name="close" />}
-                        size="xs"
                         variant="subtle"
+                        size="sm"
                         onClick={() => {
                           patchUrlState({ query: "" });
                           refollow();
                         }}
-                      />
+                      >
+                        <Icon name="close" />
+                      </ActionIcon>
                     ) : undefined
                   }
                   value={query}
@@ -140,7 +141,6 @@ export const Logs = ({
                   component={Link}
                   to={Urls.monitorLogLevels()}
                   leftSection={<Icon name="pulse" />}
-                  variant="default"
                 >{t`Customize log levels`}</Button>
 
                 <Button

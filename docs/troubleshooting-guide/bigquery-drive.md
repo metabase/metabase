@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting BigQuery and Google Drive connections in Metabase
+summary: Fix 403 Forbidden errors when BigQuery queries read from a Google Sheet or another file in Google Drive.
 ---
 
 # Troubleshooting BigQuery and Google Drive connections in Metabase

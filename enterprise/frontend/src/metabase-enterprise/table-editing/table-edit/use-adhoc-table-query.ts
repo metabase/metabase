@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { useCallback, useEffect, useMemo } from "react";
 
 import {
   useMetadataProvider,
-  useQuestionFromOpts,
+  useQuestionFromOptsBuilder,
 } from "metabase/metadata-store";
 import { useDispatch } from "metabase/redux";
 import { fetchTableMetadata } from "metabase/redux/tables";
@@ -24,7 +25,7 @@ export const useAdHocTableQuery = ({
   databaseId,
   location,
 }: UseAdHocTableQueryProps) => {
-  const buildQuestion = useQuestionFromOpts();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -46,7 +47,7 @@ export const useAdHocTableQuery = ({
   const tableQuestion = useMemo(() => {
     if (queryParam != null) {
       const query = Lib.fromJsQuery(metadataProvider, queryParam);
-      if (Lib.sourceTableOrCardId(query) === tableId) {
+      if (Lib.primarySourceTableId(query) === tableId) {
         return buildQuestion({ dataset_query: Lib.toJsQuery(query) });
       }
     }

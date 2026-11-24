@@ -8,7 +8,6 @@ import {
   type RenderingContext,
   type TreemapChartOptionConfig,
   type TreemapTree,
-  extractRemappings,
   getStaticTreemapOption,
   getTreemapChartColumns,
   getTreemapColors,
@@ -41,20 +40,14 @@ export function TreemapChart({
   height,
   fitWithinBounds = false,
 }: StaticChartProps) {
-  const rawSeriesWithRemappings = extractRemappings(rawSeries);
-  const cols = rawSeriesWithRemappings[0]?.data?.cols ?? [];
+  const cols = rawSeries[0]?.data?.cols ?? [];
   const treemapColumns = getTreemapChartColumns(cols, settings);
   if (!treemapColumns) {
     return null;
   }
 
   const treemapRows = settings["treemap.rows"];
-  const tree = getTreemapData(
-    rawSeriesWithRemappings,
-    treemapColumns,
-    treemapRows,
-    settings,
-  );
+  const tree = getTreemapData(rawSeries, treemapColumns, treemapRows, settings);
   const colors = getTreemapColors(tree, treemapRows);
   const formatters = getTreemapFormatters(treemapColumns, settings, tree);
 

@@ -27,10 +27,12 @@
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]))
@@ -38,6 +40,8 @@
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel compiled-test
   (is (= [:raw "x"]
@@ -293,10 +297,10 @@
                        [:week (-> [:dateadd
                                    (h2x/literal "day")
                                    [:inline 1]
-                                   (-> [:cast :created_at [:raw "datetime"]]
+                                   (-> [:cast :created_at [::h2x/raw-type-name "datetime"]]
                                        (h2x/with-database-type-info "datetime"))]
                                   (h2x/with-database-type-info "datetime"))]
-                       [:raw "datetime"]]
+                       [::h2x/raw-type-name "datetime"]]
                       (h2x/with-database-type-info "datetime"))]
                  (h2x/with-database-type-info "datetime"))
              (sql.qp/adjust-start-of-week :h2 (fn [x] [:week x]) :created_at))))
@@ -684,9 +688,7 @@
          (-> (lib.tu.macros/mbql-query venues
                {:source-table $$venues
                 :joins        [{:alias        "cat"
-                                :source-query {:source-table $$categories
-                                               ;; this will prevent the nesting from getting collapsed
-                                               ::whatever true}
+                                :source-query {:source-table $$categories}
                                 :condition    [:= $category-id &cat.*categories.id]}]
                 :order-by     [[:asc $name]]
                 :limit        3})
@@ -1787,3 +1789,23 @@
                  (->> (driver/prettify-native-form :h2))
                  (str/replace #"\"" "")
                  str/split-lines))))))
+
+(deftest pinned-current-datetime-honeysql-form-test
+  (testing "while the clock is pinned, the current time is a literal of the pinned moment, typed as the driver's own form"
+    (mt/with-results-timezone-id "Asia/Tokyo"
+      (driver/with-driver :h2
+        (let [sql  ["timestamp '2020-06-17 21:00:00.000'"]
+              form (qp.timezone/with-pinned-now (t/instant "2020-06-17T12:00:00Z")
+                     (sql.qp/current-datetime-honeysql-form :h2))]
+          (is (= sql (sql.qp/format-honeysql :h2 form)))
+          (is (= "timestamp" (h2x/database-type form)))
+          (testing "control: unpinned, the driver's own form"
+            (is (not= sql (sql.qp/format-honeysql :h2 (sql.qp/current-datetime-honeysql-form :h2))))))))))
+
+(deftest pinned-now-is-zoned-only-for-zoned-current-time-types-test
+  (testing "a pinned current time is a wall-clock time for an untyped form and for `timestamp` or `datetime`, any case"
+    (doseq [database-type [nil "timestamp" "TIMESTAMP" "datetime" "DATETIME"]]
+      (is (false? (#'sql.qp/zoned-type? database-type)) (pr-str database-type))))
+  (testing "and an instant for any other type"
+    (doseq [database-type ["timestamptz" "timestamp with time zone" "DateTime64(3, 'UTC')"]]
+      (is (true? (#'sql.qp/zoned-type? database-type)) database-type))))

@@ -1,0 +1,45 @@
+# Test changelog for metabase.app-db.liquibase-test/rollback-does-not-reverse-reran-changesets-test.
+# `versionless-roc-run1.yaml` as shipped by the NEXT release: the runOnChange view's SQL was edited in place
+# (same changeset identity, changed checksum -- Liquibase will re-run it and move its changelog row into this
+# release's deployment) and a genuinely new changeset was added.
+databaseChangeLog:
+  - logicalFilePath: migrations/2026/versionless_roc.yaml
+  - changeSet:
+      id: roc_base
+      author: test
+      comment: base migration of the older release (scenario test)
+      changes:
+        - createTable:
+            tableName: roc_base_table
+            columns:
+              - column:
+                  name: id
+                  type: int
+      rollback:
+        - dropTable:
+            tableName: roc_base_table
+  - changeSet:
+      id: roc_view
+      author: test
+      runOnChange: true
+      comment: runOnChange view, edited in place by the newer release (scenario test)
+      changes:
+        - sql:
+            sql: CREATE OR REPLACE VIEW v_roc AS SELECT 2 AS x
+      rollback:
+        - sql:
+            sql: DROP VIEW IF EXISTS v_roc
+  - changeSet:
+      id: roc_new
+      author: test
+      comment: new changeset of the newer release (scenario test)
+      changes:
+        - createTable:
+            tableName: roc_new_table
+            columns:
+              - column:
+                  name: id
+                  type: int
+      rollback:
+        - dropTable:
+            tableName: roc_new_table

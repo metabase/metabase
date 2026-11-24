@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.content-translation.dictionary :as dictionary]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.content-translation.models :as ct]
@@ -58,12 +59,7 @@
      :body (with-out-str
              (csv/write-csv *out* csv-data))}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post
-  "/upload-dictionary"
+(api.macros/defendpoint :post "/upload-dictionary" :- [:map {:closed true} [:success [:= true]]]
   "Upload a CSV of content translations"
   {:multipart {:max-file-size (long max-content-translation-dictionary-size-bytes)
                :max-file-count 1}}
@@ -101,6 +97,7 @@
 
 (api.macros/defendpoint :get "/dictionary" :- DictionaryResponse
   "Fetch the content translation dictionary for authenticated users (auth-based embedding flows)."
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [locale]} :- [:map {:closed true} [:locale :string]]]
   (api/check api/*current-user-id* 401 "Unauthenticated")

@@ -76,7 +76,7 @@ export function PinnedItemsGrid({
 
   if (sortedItems.length === 0) {
     return (
-      <Box mb={rem(48)} pos="relative">
+      <Box h={rem(16)} pos="relative">
         <PinDropZone variant="pin" empty />
       </Box>
     );

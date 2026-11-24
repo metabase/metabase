@@ -2,12 +2,15 @@
   "Multimethod definitions for sql-tools parser implementations.
 
    This namespace contains only the multimethod definitions. Implementations
-   are in metabase.sql-tools.macaw.core and metabase.sql-tools.sqlglot.core.")
+   are in metabase.sql-tools.macaw.core and metabase.sql-tools.sqlglot.core."
+  (:require
+   [metabase.sql-parsing.core :as sql-parsing]))
 
 (defn parser-driver-dispatch
-  "Dispatch function for sql-tools multimethods. Returns the parser keyword (e.g. :macaw, :sqlglot)."
+  "Dispatch function for sql-tools multimethods. Returns `:sqlglot` for each backend in
+  [[metabase.sql-parsing.core/backends]], else the backend keyword (e.g. `:macaw`)."
   [parser _driver & _args]
-  parser)
+  (if (sql-parsing/backends parser) :sqlglot parser))
 
 (defmulti returned-columns-impl
   "Parser specific implementation of [[metabase.sql-tools.core/returned-columns]]. Do not use directly."
@@ -46,7 +49,7 @@
 
 (defmulti referenced-tables-raw-impl
   "Parser specific implementation of [[metabase.sql-tools.core/referenced-tables-raw]]. Do not use directly."
-  {:arglists '([parser driver sql-str])}
+  {:arglists '([parser driver sql-str opts])}
   parser-driver-dispatch)
 
 (defmulti simple-query?-impl
@@ -63,6 +66,13 @@
 
   Transforms a SELECT statement to include an INTO clause for SQL Server style
   SELECT INTO syntax."
+  {:arglists '([parser driver sql table-name])}
+  parser-driver-dispatch)
+
+(defmulti add-insert-clause-impl
+  "Parser specific implementation of [[metabase.sql-tools.core/add-insert-clause]]. Do not use directly.
+
+  Makes an INSERT INTO statement from a SELECT statement, with any WITH clause before INSERT INTO."
   {:arglists '([parser driver sql table-name])}
   parser-driver-dispatch)
 

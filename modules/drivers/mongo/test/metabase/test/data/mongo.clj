@@ -9,6 +9,7 @@
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
    (com.mongodb.client MongoDatabase)))
@@ -23,6 +24,11 @@
   (defmethod driver/database-supports? [:mongo feature]
     [_driver _feature _database]
     false))
+
+;; Python transforms swap in a new table with a drop and then a rename, since this driver doesn't support
+;; `:atomic-renames`.
+(defmethod driver/database-supports? [:mongo :test/python-transforms-without-atomic-renames]
+  [_driver _feature _database] true)
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
@@ -140,12 +146,12 @@
   [_driver database view-name table-name {:keys [materialized?]}]
   (when materialized?
     (throw (Exception. "Material Views not supported.")))
-  (mongo.connection/with-mongo-database [^MongoDatabase db database]
+  (mongo.connection/with-mongo-database [^MongoDatabase db (u/the-id database)]
     (.createView db view-name table-name [])))
 
 (defmethod tx/drop-view! :mongo
   [_driver database view-name {:keys [materialized?]}]
   (when materialized?
     (throw (Exception. "Material Views not supported.")))
-  (mongo.connection/with-mongo-database [^MongoDatabase db database]
+  (mongo.connection/with-mongo-database [^MongoDatabase db (u/the-id database)]
     (some-> db (mongo.util/collection view-name) .drop)))

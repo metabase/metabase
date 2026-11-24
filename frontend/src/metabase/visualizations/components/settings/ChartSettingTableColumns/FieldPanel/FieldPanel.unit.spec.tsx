@@ -4,7 +4,11 @@ import { useState } from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
 
 import { FieldPanel } from "./FieldPanel";
 
@@ -166,7 +170,7 @@ describe("QueryColumnPicker", () => {
                   {
                     type: "column",
                     name: "PRICE",
-                    sourceName: "PRODUCTS",
+                    sourceFieldId: ORDERS.PRODUCT_ID,
                   },
                 ],
               },
@@ -198,7 +202,7 @@ describe("QueryColumnPicker", () => {
               {
                 type: "column",
                 name: "PRICE",
-                sourceName: "PRODUCTS",
+                sourceFieldId: ORDERS.PRODUCT_ID,
               },
             ],
           },
@@ -228,7 +232,7 @@ describe("QueryColumnPicker", () => {
               {
                 type: "column",
                 name: "PRICE",
-                sourceName: "PRODUCTS",
+                sourceFieldId: ORDERS.PRODUCT_ID,
               },
             ],
           },
@@ -274,12 +278,12 @@ describe("QueryColumnPicker", () => {
               {
                 type: "column",
                 name: "PRICE",
-                sourceName: "PRODUCTS",
+                sourceFieldId: ORDERS.PRODUCT_ID,
               },
               {
                 type: "column",
                 name: "CREATED_AT",
-                sourceName: "PRODUCTS",
+                sourceFieldId: ORDERS.PRODUCT_ID,
               },
             ],
           },
@@ -414,7 +418,7 @@ describe("QueryColumnPicker", () => {
               {
                 type: "column",
                 name: "PRICE",
-                sourceName: "PRODUCTS",
+                sourceFieldId: ORDERS.PRODUCT_ID,
               },
             ],
           },

@@ -1,497 +1,175 @@
-import type {
-  RemoteSyncDependencyFailure,
-  RemoteSyncIneligibleDependency,
-} from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import * as Urls from "metabase/urls";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockRemoteSyncActionData,
+  createMockRemoteSyncCardData,
+  createMockRemoteSyncCardTestData,
+  createMockRemoteSyncDataAppData,
+  createMockRemoteSyncDirtyItem,
+  createMockRemoteSyncSegmentData,
+  createMockRemoteSyncSegmentTestData,
+  createMockRemoteSyncTableUserSettingsData,
+  createMockSegment,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 import {
-  buildCollectionMap,
-  canSyncRequiredCollections,
-  getBlockedReason,
-  getCollectionPathSegments,
-  getRequiredCollectionRows,
-  getRequiredCollections,
-  isTableChildModel,
+  getItemCollections,
+  getItemTable,
+  getItemUrl,
+  getModelIcon,
 } from "./utils";
 
-describe("remote_sync utils", () => {
-  describe("buildCollectionMap", () => {
-    it("should create a map of collections by id", () => {
-      const collection1 = createMockCollection({ id: 1, name: "Collection 1" });
-      const collection2 = createMockCollection({ id: 2, name: "Collection 2" });
-
-      const map = buildCollectionMap([collection1, collection2]);
-
-      expect(map.size).toBe(2);
-      expect(map.get(1)?.name).toBe("Collection 1");
-      expect(map.get(2)?.name).toBe("Collection 2");
-    });
-
-    it("should create effective_ancestors for root level collections", () => {
-      const collection = createMockCollection({
-        id: 1,
-        name: "Root Collection",
-      });
-
-      const map = buildCollectionMap([collection]);
-
-      const result = map.get(1);
-      expect(result?.effective_ancestors).toEqual([]);
-    });
-
-    it("should create effective_ancestors for nested collections", () => {
-      const parent = createMockCollection({
-        id: 1,
-        name: "Parent",
-      });
-      const child = createMockCollection({
-        id: 2,
-        name: "Child",
-      });
-      const grandchild = createMockCollection({
-        id: 3,
-        name: "Grandchild",
-      });
-
-      // Build the tree structure
-      child.children = [grandchild];
-      parent.children = [child];
-
-      const map = buildCollectionMap([parent]);
-
-      // Parent should have empty ancestors
-      const parentResult = map.get(1);
-      expect(parentResult?.effective_ancestors).toEqual([]);
-
-      // Child should have parent as ancestor
-      const childResult = map.get(2);
-      expect(childResult?.effective_ancestors).toHaveLength(1);
-      expect(childResult?.effective_ancestors?.[0].id).toBe(1);
-      expect(childResult?.effective_ancestors?.[0].name).toBe("Parent");
-
-      // Grandchild should have parent and child as ancestors
-      const grandchildResult = map.get(3);
-      expect(grandchildResult?.effective_ancestors).toHaveLength(2);
-      expect(grandchildResult?.effective_ancestors?.[0].id).toBe(1);
-      expect(grandchildResult?.effective_ancestors?.[0].name).toBe("Parent");
-      expect(grandchildResult?.effective_ancestors?.[1].id).toBe(2);
-      expect(grandchildResult?.effective_ancestors?.[1].name).toBe("Child");
-    });
-
-    it("should handle multiple root level collections with children", () => {
-      const parent1 = createMockCollection({ id: 1, name: "Parent 1" });
-      const child1 = createMockCollection({ id: 2, name: "Child 1" });
-      parent1.children = [child1];
-
-      const parent2 = createMockCollection({ id: 3, name: "Parent 2" });
-      const child2 = createMockCollection({ id: 4, name: "Child 2" });
-      parent2.children = [child2];
-
-      const map = buildCollectionMap([parent1, parent2]);
-
-      expect(map.size).toBe(4);
-
-      // Check first tree
-      expect(map.get(1)?.effective_ancestors).toEqual([]);
-      expect(map.get(2)?.effective_ancestors).toHaveLength(1);
-      expect(map.get(2)?.effective_ancestors?.[0].id).toBe(1);
-
-      // Check second tree
-      expect(map.get(3)?.effective_ancestors).toEqual([]);
-      expect(map.get(4)?.effective_ancestors).toHaveLength(1);
-      expect(map.get(4)?.effective_ancestors?.[0].id).toBe(3);
-    });
-
-    it("should preserve original collection properties except effective_ancestors", () => {
-      const parent = createMockCollection({
-        id: 1,
-        name: "Parent",
-        description: "Parent description",
-        archived: false,
-      });
-      const child = createMockCollection({
-        id: 2,
-        name: "Child",
-        description: "Child description",
-        archived: false,
-        // Set some existing effective_ancestors that should be overridden
-        effective_ancestors: [{ id: 99, name: "Old Ancestor" }],
-      });
-      parent.children = [child];
-
-      const map = buildCollectionMap([parent]);
-
-      const childResult = map.get(2);
-      expect(childResult?.name).toBe("Child");
-      expect(childResult?.description).toBe("Child description");
-      expect(childResult?.archived).toBe(false);
-      // effective_ancestors should be overridden with the actual parent
-      expect(childResult?.effective_ancestors).toHaveLength(1);
-      expect(childResult?.effective_ancestors?.[0].id).toBe(1);
-      expect(childResult?.effective_ancestors?.[0].name).toBe("Parent");
-    });
+describe("getModelIcon", () => {
+  it("shows a card test with the list icon", () => {
+    expect(getModelIcon("cardtest")).toBe("list");
   });
 
-  describe("getCollectionPathSegments", () => {
-    it("should return Root for undefined collection id", () => {
-      const map = new Map();
-      const segments = getCollectionPathSegments(undefined, map);
+  it("shows a segment test with the list icon", () => {
+    expect(getModelIcon("segmenttest")).toBe("list");
+  });
+});
 
-      expect(segments).toEqual([{ id: "root", name: "Root" }]);
-    });
-
-    it("should return Root if collection is not found in map", () => {
-      const map = new Map();
-      const segments = getCollectionPathSegments(999, map);
-
-      expect(segments).toEqual([{ id: "root", name: "Root" }]);
-    });
-
-    it("should return collection path with ancestors", () => {
-      const parent = createMockCollection({ id: 1, name: "Parent" });
-      const child = createMockCollection({
-        id: 2,
-        name: "Child",
-        effective_ancestors: [{ id: 1, name: "Parent" }],
-      });
-
-      const map = new Map([
-        [1, parent],
-        [2, child],
-      ]);
-
-      const segments = getCollectionPathSegments(2, map);
-
-      expect(segments).toHaveLength(2);
-      expect(segments[0]).toEqual({ id: 1, name: "Parent" });
-      expect(segments[1]).toEqual({ id: 2, name: "Child" });
-    });
-
-    it("should handle collection without ancestors", () => {
-      const collection = createMockCollection({
-        id: 1,
-        name: "Single Collection",
-      });
-
-      const map = new Map([[1, collection]]);
-
-      const segments = getCollectionPathSegments(1, map);
-
-      expect(segments).toHaveLength(1);
-      expect(segments[0]).toEqual({ id: 1, name: "Single Collection" });
-    });
-
-    it("should build path from buildCollectionMap's effective_ancestors", () => {
-      const parent = createMockCollection({ id: 1, name: "Parent" });
-      const child = createMockCollection({ id: 2, name: "Child" });
-      const grandchild = createMockCollection({ id: 3, name: "Grandchild" });
-
-      child.children = [grandchild];
-      parent.children = [child];
-
-      // Use buildCollectionMap to create the map with effective_ancestors
-      const map = buildCollectionMap([parent]);
-
-      const segments = getCollectionPathSegments(3, map);
-
-      expect(segments).toHaveLength(3);
-      expect(segments[0]).toEqual({ id: 1, name: "Parent" });
-      expect(segments[1]).toEqual({ id: 2, name: "Child" });
-      expect(segments[2]).toEqual({ id: 3, name: "Grandchild" });
-    });
+describe("getItemUrl", () => {
+  it("does not link a card test, since card tests have no page", () => {
+    expect(
+      getItemUrl(createMockRemoteSyncDirtyItem({ model: "cardtest" })),
+    ).toBeNull();
   });
 
-  describe("isTableChildModel", () => {
-    it("should return true for field model", () => {
-      expect(isTableChildModel("field")).toBe(true);
-    });
-
-    it("should return true for segment model", () => {
-      expect(isTableChildModel("segment")).toBe(true);
-    });
-
-    it("should return true for measure model", () => {
-      expect(isTableChildModel("measure")).toBe(true);
-    });
-
-    it("should return false for card model", () => {
-      expect(isTableChildModel("card")).toBe(false);
-    });
-
-    it("should return false for table model", () => {
-      expect(isTableChildModel("table")).toBe(false);
-    });
-
-    it("should return false for dashboard model", () => {
-      expect(isTableChildModel("dashboard")).toBe(false);
-    });
+  it("does not link a segment test, since segment tests have no page", () => {
+    expect(
+      getItemUrl(createMockRemoteSyncDirtyItem({ model: "segmenttest" })),
+    ).toBeNull();
   });
 
-  describe("unsynced dependency failures", () => {
-    // Two blocked collections whose dependencies resolve to the same remedy collection, plus a
-    // snippet (Library remedy) and a dependency with no actionable remedy.
-    const FAILURES: RemoteSyncDependencyFailure[] = [
-      {
-        collection: { id: 14, name: "Marketing" },
-        dependencies: [
-          {
-            model: "card",
-            id: 416,
-            name: "Seats over time",
-            collection: { id: 7, name: "Finance" },
-            remedy: {
-              type: "collection",
-              collection: { id: 7, name: "Finance", personal: false },
-            },
-          },
-          {
-            model: "snippet",
-            id: 3,
-            name: "active_users",
-            remedy: { type: "library" },
-          },
-        ],
-      },
-      {
-        collection: { id: 22, name: "Ops" },
-        dependencies: [
-          {
-            model: "dashboard",
-            id: 91,
-            name: "Weekly review",
-            collection: { id: 9, name: "Nested" },
-            // Same top-level remedy as the card above, reached from a different collection.
-            remedy: {
-              type: "collection",
-              collection: { id: 7, name: "Finance", personal: false },
-            },
-          },
-          {
-            model: "card",
-            id: 512,
-            name: "Orphaned",
-            remedy: { type: "none" },
-          },
-        ],
-      },
-    ];
+  it("links table settings to their table in Data Studio", () => {
+    expect(
+      getItemUrl(
+        createMockRemoteSyncDirtyItem({
+          id: 9,
+          model: "tableusersettings",
+          data: createMockRemoteSyncTableUserSettingsData({
+            id: 9,
+            table_id: 5,
+          }),
+        }),
+      ),
+    ).toBe(Urls.dataStudioTable(5));
+  });
 
-    describe("getRequiredCollections", () => {
-      it("flattens remedies across every failure and dedupes by id", () => {
-        expect(getRequiredCollections(FAILURES)).toEqual([
-          { id: 7, name: "Finance", personal: false },
-        ]);
-      });
-
-      it("ignores library and non-actionable remedies", () => {
-        const libraryOnly = [
-          {
-            collection: { id: 14, name: "Marketing" },
-            dependencies: [
-              {
-                model: "snippet" as const,
-                id: 3,
-                name: "active_users",
-                remedy: { type: "library" as const },
-              },
-            ],
-          },
-        ];
-
-        expect(getRequiredCollections(libraryOnly)).toEqual([]);
-      });
-
-      it("keeps personal collections so callers can flag them as unsyncable", () => {
-        const personal = [
-          {
-            collection: { id: 14, name: "Marketing" },
-            dependencies: [
-              {
-                model: "card" as const,
-                id: 1,
-                name: "Draft",
-                remedy: {
-                  type: "collection" as const,
-                  collection: { id: 5, name: "Nick's stuff", personal: true },
-                },
-              },
-            ],
-          },
-        ];
-
-        expect(getRequiredCollections(personal)).toEqual([
-          { id: 5, name: "Nick's stuff", personal: true },
-        ]);
-      });
+  it("links a segment to its published table in Data Studio", () => {
+    const segment = createMockRemoteSyncDirtyItem({
+      id: 7,
+      model: "segment",
+      data: createMockRemoteSyncSegmentData({ id: 7, table_id: 5 }),
     });
 
-    const SYNCABLE_DEPENDENCY: RemoteSyncIneligibleDependency = {
-      model: "card",
-      id: 1,
-      name: "Seats over time",
-      remedy: {
-        type: "collection",
-        collection: { id: 7, name: "Finance", personal: false },
-      },
-    };
-    const PERSONAL_DEPENDENCY: RemoteSyncIneligibleDependency = {
-      model: "card",
+    expect(getItemUrl(segment)).toBe(
+      Urls.dataStudioPublishedTableSegment(5, 7),
+    );
+  });
+
+  it("links an action of a model to the model's action", () => {
+    const action = createMockRemoteSyncDirtyItem({
       id: 2,
-      name: "Draft",
-      remedy: {
-        type: "collection",
-        collection: { id: 5, name: "Personal", personal: true },
-      },
-    };
-    const ROOT_DEPENDENCY: RemoteSyncIneligibleDependency = {
-      model: "card",
+      model: "action",
+      data: createMockRemoteSyncActionData({ id: 2, model_id: 3 }),
+    });
+
+    expect(getItemUrl(action)).toBe(Urls.action({ id: 3 }, 2));
+  });
+
+  it("links an action without a model to Data Studio", () => {
+    expect(
+      getItemUrl(createMockRemoteSyncDirtyItem({ id: 2, model: "action" })),
+    ).toBe(Urls.dataStudioAction(2));
+  });
+
+  it("links a data app to Data Studio by its slug", () => {
+    const dataApp = createMockRemoteSyncDirtyItem({
+      model: "dataapp",
+      data: createMockRemoteSyncDataAppData({ slug: "sales" }),
+    });
+
+    expect(getItemUrl(dataApp)).toBe(Urls.dataStudioDataApp("sales"));
+  });
+
+  it("does not link a deleted row", () => {
+    expect(
+      getItemUrl(createMockRemoteSyncDirtyItem({ id: 0, model: "card" })),
+    ).toBeNull();
+  });
+});
+
+describe("getItemCollections and getItemTable", () => {
+  it("puts a card test in the collection of its card", () => {
+    const sales = createMockCollection({ id: 1, name: "Sales" });
+    const cardTest = createMockRemoteSyncDirtyItem({
+      model: "cardtest",
+      data: createMockRemoteSyncCardTestData({
+        card: createMockCard({ collection: sales }),
+      }),
+    });
+
+    expect(getItemCollections(cardTest)).toEqual([sales]);
+    expect(getItemTable(cardTest)).toBeNull();
+  });
+
+  it("puts a segment test in its segment's table, in the collection the table is published in", () => {
+    const library = createMockCollection({ id: 2, name: "Library" });
+    const table = createMockTable({ id: 5, collection: library });
+    const segmentTest = createMockRemoteSyncDirtyItem({
+      model: "segmenttest",
+      data: createMockRemoteSyncSegmentTestData({
+        segment: createMockSegment({ table }),
+      }),
+    });
+
+    expect(getItemCollections(segmentTest)).toEqual([library]);
+    expect(getItemTable(segmentTest)).toEqual(table);
+  });
+
+  it("puts a segment in its table, in the collection the table is published in", () => {
+    const library = createMockCollection({ id: 2, name: "Library" });
+    const table = createMockTable({ id: 5, collection: library });
+    const segment = createMockRemoteSyncDirtyItem({
+      model: "segment",
+      data: createMockRemoteSyncSegmentData({ table }),
+    });
+
+    expect(getItemCollections(segment)).toEqual([library]);
+    expect(getItemTable(segment)).toEqual(table);
+  });
+
+  it("gives a collection its ancestors and itself", () => {
+    const sales = createMockCollection({ id: 1, name: "Sales" });
+    const europe = createMockCollection({
       id: 3,
-      name: "Orphaned",
-      collection: null,
-      remedy: { type: "none" },
-    };
+      name: "Europe",
+      effective_ancestors: [
+        createMockCollection({ id: "root", name: "Our analytics" }),
+        sales,
+      ],
+    });
+    const collection = createMockRemoteSyncDirtyItem({
+      id: 3,
+      model: "collection",
+      data: europe,
+    });
 
-    // No remedy, but it does live somewhere — the backend couldn't resolve a syncable ancestor.
-    const UNRESOLVED_DEPENDENCY: RemoteSyncIneligibleDependency = {
+    expect(getItemCollections(collection)).toEqual([sales, europe]);
+  });
+
+  it("leaves the root collection out", () => {
+    const card = createMockRemoteSyncDirtyItem({
       model: "card",
-      id: 6,
-      name: "Stranded",
-      collection: { id: 9, name: "Dangling" },
-      remedy: { type: "none" },
-    };
-    const SNIPPET_DEPENDENCY: RemoteSyncIneligibleDependency = {
-      model: "snippet",
-      id: 4,
-      name: "active_users",
-      remedy: { type: "library" },
-    };
-
-    const failureWith = (
-      ...dependencies: RemoteSyncIneligibleDependency[]
-    ): RemoteSyncDependencyFailure[] => [
-      { collection: { id: 31, name: "Drafts" }, dependencies },
-    ];
-
-    describe("getBlockedReason", () => {
-      it("is linked-collections when every remedy is a collection the admin can sync", () => {
-        expect(getBlockedReason(failureWith(SYNCABLE_DEPENDENCY))).toBe(
-          "linked-collections",
-        );
-      });
-
-      it("is library when a dependency needs the Library", () => {
-        expect(
-          getBlockedReason(
-            failureWith(SYNCABLE_DEPENDENCY, SNIPPET_DEPENDENCY),
-          ),
-        ).toBe("library");
-      });
-
-      it("ranks root content above the Library, since it can't be synced at all", () => {
-        expect(
-          getBlockedReason(failureWith(SNIPPET_DEPENDENCY, ROOT_DEPENDENCY)),
-        ).toBe("unsyncable-content");
-      });
-
-      it("ranks personal content above every other reason", () => {
-        expect(
-          getBlockedReason(
-            failureWith(
-              SNIPPET_DEPENDENCY,
-              ROOT_DEPENDENCY,
-              PERSONAL_DEPENDENCY,
-            ),
-          ),
-        ).toBe("personal-content");
-      });
+      data: createMockRemoteSyncCardData({
+        collection: createMockCollection({ id: "root" }),
+      }),
     });
 
-    describe("getRequiredCollectionRows", () => {
-      it("marks a syncable remedy as actionable", () => {
-        expect(
-          getRequiredCollectionRows(failureWith(SYNCABLE_DEPENDENCY)),
-        ).toEqual([
-          { id: 7, name: "Finance", personal: false, syncable: true },
-        ]);
-      });
-
-      it("keeps a personal remedy in the list but not as actionable", () => {
-        expect(
-          getRequiredCollectionRows(failureWith(PERSONAL_DEPENDENCY)),
-        ).toEqual([
-          { id: 5, name: "Personal", personal: true, syncable: false },
-        ]);
-      });
-
-      it("names the collection a stranded dependency actually lives in", () => {
-        expect(
-          getRequiredCollectionRows(failureWith(UNRESOLVED_DEPENDENCY)),
-        ).toEqual([
-          { id: 9, name: "Dangling", personal: false, syncable: false },
-        ]);
-      });
-
-      it("adds Our analytics for a root dependency, which carries no remedy of its own", () => {
-        expect(getRequiredCollectionRows(failureWith(ROOT_DEPENDENCY))).toEqual(
-          [
-            {
-              id: "root",
-              name: "Our analytics",
-              personal: false,
-              syncable: false,
-            },
-          ],
-        );
-      });
-
-      it("lists the syncable remedy alongside Our analytics", () => {
-        expect(
-          getRequiredCollectionRows(
-            failureWith(SYNCABLE_DEPENDENCY, ROOT_DEPENDENCY),
-          ),
-        ).toEqual([
-          { id: 7, name: "Finance", personal: false, syncable: true },
-          {
-            id: "root",
-            name: "Our analytics",
-            personal: false,
-            syncable: false,
-          },
-        ]);
-      });
-
-      it("is empty when only the Library is implicated", () => {
-        expect(
-          getRequiredCollectionRows(failureWith(SNIPPET_DEPENDENCY)),
-        ).toEqual([]);
-      });
-    });
-
-    describe("canSyncRequiredCollections", () => {
-      it("is true when every dependency points at a collection we can switch on", () => {
-        expect(
-          canSyncRequiredCollections(failureWith(SYNCABLE_DEPENDENCY)),
-        ).toBe(true);
-      });
-
-      it.each([
-        ["personal", PERSONAL_DEPENDENCY],
-        ["root", ROOT_DEPENDENCY],
-        ["library", SNIPPET_DEPENDENCY],
-      ])(
-        "is false when a %s dependency rides along, since a half fix is refused again",
-        (_label, dependency) => {
-          expect(
-            canSyncRequiredCollections(
-              failureWith(SYNCABLE_DEPENDENCY, dependency),
-            ),
-          ).toBe(false);
-        },
-      );
-
-      it("is false when there is nothing to switch on", () => {
-        expect(canSyncRequiredCollections([])).toBe(false);
-      });
-    });
+    expect(getItemCollections(card)).toEqual([]);
   });
 });

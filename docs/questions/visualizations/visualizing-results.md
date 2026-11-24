@@ -1,5 +1,6 @@
 ---
 title: Visualization overview
+summary: Pick the right chart for your results and customize how it looks.
 redirect_from:
   - /docs/latest/users-guide/05-visualizing-results
   - /docs/latest/questions/sharing/visualizing-results
@@ -193,4 +194,4 @@ See also [Formatting defaults](../../data-modeling/metadata/formatting.md).
 - [Charts with multiple series](../../dashboards/multiple-series.md)
 - [Custom visualizations](./custom.md)
 - [Appearance](../../configuring-metabase/appearance.md)
-- [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices.html)
+- [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices)

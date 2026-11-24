@@ -2,16 +2,22 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.mcp.settings :as mcp.settings]
+   [metabase.server.handler :as server.handler]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]))
+
+(deftest make-handler-accepts-mcp-options-test
+  (is (ifn? (server.handler/make-handler (fn [_request _respond _raise]) #'mcp.http-handler/options))))
 
 (defn- get-cors-origin-header
   "Returns the Access-Control-Allow-Origin header value for a given request origin."
   [request-origin]
   (let [wrapped-handler (mw.security/add-security-headers
                          (fn [_request respond _raise]
-                           (respond {:status 200 :headers {} :body "ok"})))
+                           (respond {:status 200, :headers {}, :body "ok"}))
+                         (:cors mcp.http-handler/options))
         response (wrapped-handler {:headers {"origin" request-origin}
                                    :uri "/api/dashboard/1"}
                                   identity identity)]
@@ -32,7 +38,8 @@
   [request-origin]
   (let [wrapped-handler (mw.security/add-security-headers
                          (fn [_request respond _raise]
-                           (respond {:status 200 :headers {} :body "ok"})))
+                           (respond {:status 200, :headers {}, :body "ok"}))
+                         (:cors mcp.http-handler/options))
         response (wrapped-handler {:headers {"origin" request-origin}
                                    :uri "/api/metabase-mcp"}
                                   identity identity)]
@@ -104,3 +111,14 @@
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients  []
                                        mcp-apps-cors-custom-origins ""]
       (is (= "" (mcp.settings/mcp-apps-cors-origins))))))
+
+(deftest mcp-cors-settings-on-the-response-path-test
+  (testing "every response reads the MCP CORS settings, so whatever they hold, building headers neither throws nor logs"
+    (doseq [value ["claude,zed" "Claude, VSCode" "claude,\"chatgpt"]]
+      (testing (pr-str value)
+        (mt/with-temp-env-var-value! [mb-mcp-apps-cors-enabled-clients value]
+          (mt/with-log-messages-for-level [messages [metabase.mcp :trace]]
+            (dotimes [_ 3]
+              (doseq [origin [nil "https://abc.claudemcpcontent.com" "vscode-webview://abc123"]]
+                (get-cors-origin-header origin)))
+            (is (= [] (messages)))))))))

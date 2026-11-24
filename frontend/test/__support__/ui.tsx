@@ -17,6 +17,7 @@ import {
 import {
   Children,
   Fragment,
+  type JSX,
   isValidElement,
   useCallback,
   useMemo,
@@ -33,7 +34,6 @@ import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { baseStyle } from "metabase/css/core/base.styled";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
@@ -268,8 +268,7 @@ export function getTestStoreAndWrapper({
 }
 
 /**
- * A minimal version of the GlobalStyles component, for use in Storybook stories.
- * Contains strictly only the base styles to act as CSS resets and css variables, without font files.
+ * A minimal version of the GlobalStyles component that only sets the css variables.
  **/
 const GlobalStylesForTest = () => {
   const theme = useMantineTheme();
@@ -278,7 +277,7 @@ const GlobalStylesForTest = () => {
     return getMetabaseCssVariables({ theme });
   }, [theme]);
 
-  return <Global styles={[baseStyle, cssVariables]} />;
+  return <Global styles={cssVariables} />;
 };
 
 /**
@@ -438,7 +437,7 @@ function createTestRouter(holder: MemoryTestRouterHolder): TestRouter {
 
 function childrenAreRouteTree(children: React.ReactNode): boolean {
   return Children.toArray(children).some((child) => {
-    if (!isValidElement(child)) {
+    if (!isValidElement<{ children?: React.ReactNode }>(child)) {
       return false;
     }
     if (child.type === Route) {
@@ -574,14 +573,39 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
  * @see https://metaboat.slack.com/archives/C505ZNNH4/p1684753502335459?thread_ts=1684751522.480859&cid=C505ZNNH4
  */
 export const waitForLoaderToBeRemoved = async () => {
+  await waitFor(() => {
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+  });
+};
+
+/**
+ * Waits for a dashboard to finish loading. While it loads, a dashboard renders
+ * skeletons rather than a loader, so `waitForLoaderToBeRemoved` alone returns
+ * before the dashboard is there.
+ */
+export const waitForDashboardToLoad = async () => {
   await waitFor(
     () => {
+      expect(
+        screen.queryByTestId("dashboard-grid-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("dashboard-header-skeleton"),
+      ).not.toBeInTheDocument();
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-      // default timeout is 1s, but sometimes it's not enough and leads to flakiness,
-      // 3s should be enough
     },
     { timeout: 3000 },
   );
+};
+
+/**
+ * Waits for a `Sidesheet` to open.
+ * It slides in a few frames after mounting, so its content is not there right after rendering.
+ */
+export const waitForSidesheetToOpen = async () => {
+  await waitFor(() => {
+    expect(screen.getByTestId("sidesheet")).toBeVisible();
+  });
 };
 
 /**
@@ -689,8 +713,8 @@ export function renderWithTheme(children: React.ReactElement) {
   });
 }
 
-// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
+// eslint-disable-next-line import-js/export -- intentionally overriding render from @testing-library/react
 export { renderWithTheme as render };
 
-// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
+// eslint-disable-next-line import-js/export -- intentionally overriding render from @testing-library/react
 export * from "@testing-library/react";

@@ -222,6 +222,34 @@ describe("API contract checks", () => {
     expect(resultFor(results, "response")?.status).toBe("unverified");
   });
 
+  it.each([
+    ["rawResponse: true, url:", "query: id", "response", "unverified"],
+    ["rawResponse: false, url:", "query: id", "response.2XX", "compatible"],
+    [
+      "url:",
+      "extraOptions: { rawResponse: true }, query: id",
+      "response",
+      "unverified",
+    ],
+    [
+      "rawResponse: true, url:",
+      "extraOptions: { rawResponse: false }, query: id",
+      "response.2XX",
+      "compatible",
+    ],
+  ])(
+    "should account for raw responses from %s and %s",
+    (url, query, part, status) => {
+      const results = check({
+        frontend,
+        backend,
+        endpoint: endpoint.replace("url:", url).replace("query: id", query),
+      });
+      expect(resultFor(results, part)?.status).toBe(status);
+      expect(resultFor(results, "request.path.0")?.status).toBe("compatible");
+    },
+  );
+
   it("should record intentional response discards separately from compatibility", () => {
     const results = check({
       frontend,
@@ -376,7 +404,7 @@ describe("diagnostic messages", () => {
     ]);
   });
 
-  it("should list every unconstrained declaration on both sides", () => {
+  it("should list consumed unconstrained declarations on both sides", () => {
     const results = check({
       frontend:
         "interface ErdResponse { label: any; nodes: { owner: unknown }[] }",
@@ -387,42 +415,43 @@ describe("diagnostic messages", () => {
     });
     expect(messageFor(results, "response.2XX")).toEqual([
       `Unconstrained or unresolved types in ${route} response 2XX:`,
-      "extra (types.gen.d.ts:10:92): backend type unknown at $.extra",
       "label (types.gen.d.ts:10:48): backend type unknown at $.label",
       "ErdResponse.label (endpoint.ts:10): frontend type any at $.label",
       "owner (endpoint.ts:10:50): frontend type unknown at $.nodes[].owner",
     ]);
   });
 
-  it("should list an unconstrained declaration once, at the shortest path that reaches it", () => {
+  it("should report uncertainty at shared fields without repeatedly expanding the same types", () => {
     const results = check({
-      frontend,
+      frontend:
+        "type F = { value: string }; type ErdResponse = { nested: { first: F }; second: F };",
       backend: withResponse(
-        "{ second: Shared; first: Shared; nodes: Node[]; list: Shared[] }",
+        "{ nested: { first: Shared }; second: Shared }",
         "type Shared = { value: unknown };",
       ),
       endpoint,
     });
-    expect(messageFor(results, "response.2XX")).toEqual([
-      `Unconstrained or unresolved types in ${route} response 2XX:`,
-      "Shared.value (types.gen.d.ts:10): backend type unknown at $.second.value",
+    const response = resultFor(results, "response.2XX");
+    expect(response?.status).toBe("unverified");
+    expect(response?.unconstrained).toEqual([
+      expect.objectContaining({ paths: ["$.second.value"] }),
     ]);
+    expect(response?.message).toContain("same problems as at $.second");
   });
 
-  it("should stop where a recursive type repeats", () => {
+  it("should stop where a recursive pair repeats and keep its consumed gaps", () => {
     const results = check({
-      frontend,
+      frontend:
+        "type ErdResponse = { value: string; children: ErdResponse[]; meta: Record<string, number> };",
       backend: withResponse(
         "Tree",
         "type Tree = { value: unknown; children: Tree[]; meta: Record<string, unknown> };",
       ),
       endpoint,
     });
-    expect(messageFor(results, "response.2XX")).toEqual([
-      `Unconstrained or unresolved types in ${route} response 2XX:`,
-      "Tree.value (types.gen.d.ts:10): backend type unknown at $.value",
-      "$.meta[key]: backend type unknown",
-    ]);
+    expect(
+      resultFor(results, "response.2XX")?.unconstrained?.map((p) => p.paths),
+    ).toEqual([["$.value"], ["$.meta[key]"]]);
   });
 
   it("should name the path parameter of an unconstrained backend path type", () => {
@@ -552,23 +581,23 @@ describe("walks that do not finish", () => {
   it("should stop the run with the check, type and path when a walk goes past its step budget", () => {
     const run = checkWith(
       "type ErdResponse = { first: { value: unknown }; second: { value: unknown } };",
-      withResponse("{ first: { value: string } }"),
+      withResponse("{ first: { value: string }; second: { value: string } }"),
       { walkStepBudget: 3 },
     );
     expect(run).toThrow(TypeWalkError);
     expect(run).toThrow(
-      "API contract check endpoints:example:response.2XX stopped: the unconstrained type walk went past its budget of 3 steps at $.second in type { value: unknown; } (ErdResponse.second (endpoint.ts:10))",
+      "API contract check endpoints:example:response.2XX stopped: the field walk went past its budget of 3 steps at $.second in type { value: string; } (ErdResponse.second (endpoint.ts:10))",
     );
   });
 
   it("should stop the run on a type that grows each time it recurs", () => {
     const run = checkWith(
       `${growing} type ErdResponse = Grow<string>;`,
-      withResponse("Node", "export type Node = { value: string; next: Node };"),
+      withResponse("Grow<number>", growing),
       { walkDepthBudget: 50 },
     );
     expect(run).toThrow(
-      /^API contract check endpoints:example:response\.2XX stopped: the unconstrained type walk went past its depth budget of 50 at \$\.next×\d+/,
+      /^API contract check endpoints:example:response\.2XX stopped: the field walk went past its depth budget of 50 at \$\.next×\d+/,
     );
   });
 
@@ -1311,6 +1340,22 @@ describe("endpoint identities", () => {
     expect(after[0]?.id).toBe(before[0]?.id);
   });
 
+  it.each(["query", "mutation", "infiniteQuery"])(
+    "should enforce a renamed %s method after destructuring",
+    (method) => {
+      const results = checkFiles({
+        "api.ts": `
+      type EndpointBuilder = { ${method}<R, A>(definition: unknown): unknown };
+      declare const builder: EndpointBuilder;
+      const { ${method}: read } = builder;
+      const api = { example: read<number, void>({ query: () => "/api/user" }) };
+    `,
+      });
+      expect(baselineProblems(results, [])).toEqual([
+        expect.stringContaining("api:example:response.2XX"),
+      ]);
+    },
+  );
   it("should keep the same endpoint name in different APIs separate", () => {
     const results = checkFiles({
       "table.ts": definition,

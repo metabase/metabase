@@ -2,9 +2,7 @@
   "Application database queries for the x-rays module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -56,7 +54,7 @@
                 [:>= :ts.count 2]
                 [:= :ts.count_non_pks 1]] :list-like?]]
              {:inner-join [[^:allow-subquery {:select   [:f.table_id
-                                                         [:%count.* "count"]
+                                                         [:%count.* :count]
                                                          [[:count [:case [:or [:not= :semantic_type "type/PK"]
                                                                           [:= :f.semantic_type nil]]
                                                                    [:inline 1] :else [:inline nil]]]
@@ -64,7 +62,7 @@
                                                          [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
                                                                    [:inline 1] :else [:inline nil]]]
                                                           :count_pks_and_fks]]
-                                              :from     [[:metabase_field :f]]
+                                              :from     [[(t2/table-name :model/Field) :f]]
                                               :where    [:= :f.active true]
                                               :group-by [:f.table_id]} :ts]
                            [:and [:= :ts.table_id :id]
@@ -171,15 +169,10 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select :model/Card :table_id table-id :type :metric :archived false))
 
-(mu/defn insert-card!
-  "Insert the Card `card` and return the inserted instance."
-  [card :- ::queries.schema/card.update]
-  (t2/insert-returning-instance! :model/Card card))
-
-(mu/defn delete-cards-in-collection!
-  "Delete the Cards in the Collection with `collection-id`, returning the number deleted."
+(mu/defn card-ids-in-collection
+  "The IDs of the Cards in the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/delete! :model/Card :collection_id collection-id))
+  (vec (t2/select-pks-vec :model/Card :collection_id collection-id)))
 
 (mu/defn segment
   "The Segment with `segment-id`, or nil."
@@ -216,16 +209,6 @@
                  :archived false
                  :location location))
 
-(mu/defn insert-collection!
-  "Insert the Collection `row` and return the inserted instance."
-  [row :- ::collections.schema/collection.update]
-  (t2/insert-returning-instance! :model/Collection row))
-
-(mu/defn insert-collection-returning-pk!
-  "Insert the Collection `row` and return its id."
-  [row :- ::collections.schema/collection.update]
-  (t2/insert-returning-pk! :model/Collection row))
-
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
@@ -252,7 +235,7 @@
 
 (mu/defn other-card-ids-on-dashboards
   "The Card ids other than `card-id` of the DashboardCards of the Dashboards with `dashboard-ids`."
-  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
+  [dashboard-ids :- [:set ::lib.schema.id/dashboard]
    card-id       :- ::lib.schema.id/card]
   (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id [:in dashboard-ids] :card_id [:not= card-id]))
 
@@ -268,10 +251,4 @@
 (mu/defn model-index
   "The ModelIndex with `model-index-id`, or nil."
   [model-index-id :- ms/PositiveInt]
-  (t2/select-one :model/ModelIndex model-index-id))
-
-(mu/defn model-index-value
-  "The ModelIndexValue of the ModelIndex with `model-index-id` for the model primary key `model-pk`, or nil."
-  [model-index-id :- ms/PositiveInt
-   model-pk       :- :int]
-  (t2/select-one :model/ModelIndexValue :model_index_id model-index-id :model_pk model-pk))
+  (t2/select-one :model/ModelIndex :id [:auto/param model-index-id]))

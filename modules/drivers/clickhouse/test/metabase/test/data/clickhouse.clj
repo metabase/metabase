@@ -36,6 +36,11 @@
 (defmethod driver/database-supports? [:clickhouse :metabase.query-processor.parameters-test/get-parameter-count]
   [_driver _feature _db] false)
 
+;; Python transforms swap in a new table with a drop and then a rename, since this driver doesn't support
+;; `:atomic-renames`.
+(defmethod driver/database-supports? [:clickhouse :test/python-transforms-without-atomic-renames]
+  [_driver _feature _database] true)
+
 (defmethod qp.alternative-date-test/iso-8601-text-fields-expected-rows :clickhouse
   [_driver]
   [[1 "foo" (t/offset-date-time "2004-10-19T10:23:54Z") #t "2004-10-19" (t/offset-date-time "1970-01-01T10:23:54Z")]
@@ -53,6 +58,7 @@
    :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
    :jdbc_ignore_unsupported_values "true"
    :jdbc_schema_term               "schema",
+   :jdbc_metadata_use_show_statements false,
    :ignore_unknown_config_key      true
    :max_open_connections           100
    :remember_last_set_roles        true
@@ -83,6 +89,7 @@
      {:user user})
    (when-let [password (mt/db-test-env-var :clickhouse :password)]
      {:password password})
+   {:clickhouse-settings "join_use_nulls=1"}
    (when (= context :db)
      (let [database-name (ddl.i/format-name driver database-name)]
        {:db database-name
@@ -191,7 +198,7 @@
 
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
-(defmethod sql.tx/session-schema :clickhouse [_] "default")
+(defmethod sql.tx/session-schema :clickhouse [_] (-> (mt/db) :details :db))
 
 (defmethod sql.tx/generated-column-sql :clickhouse [_ expr]
   (format "ALIAS (%s)" expr))

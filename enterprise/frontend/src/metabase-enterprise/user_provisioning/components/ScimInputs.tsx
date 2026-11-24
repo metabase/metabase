@@ -2,10 +2,6 @@ import { match } from "ts-pattern";
 
 import type { CopyTextInputProps } from "metabase/common/components/CopyTextInput";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
-import { getThemeOverrides } from "metabase/ui/theme";
-
-// Unjustified type cast. FIXME
-const fontFamilyMonospace = getThemeOverrides().fontFamilyMonospace as string;
 
 // why are we overriding the default styles?
 export const getTextInputStyles = (params: {
@@ -14,7 +10,6 @@ export const getTextInputStyles = (params: {
 }) => ({
   label: {
     fontSize: "0.875rem",
-    marginBottom: ".5rem",
   },
   input: {
     color: match(params)
@@ -23,7 +18,7 @@ export const getTextInputStyles = (params: {
         () => `var(--mb-color-text-primary) !important`,
       )
       .otherwise(() => `var(--mb-color-text-primary) !important`),
-    fontFamily: fontFamilyMonospace,
+    fontFamily: "var(--mb-default-monospace-font-family)",
   },
 });
 

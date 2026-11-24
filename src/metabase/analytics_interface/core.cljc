@@ -23,6 +23,11 @@
       (analytics/set-gauge! :my-gauge/current-value 10)
       (analytics/dec-gauge! :my-gauge/active-count)")
 
+(def frontend-buffer-capacity
+  "Maximum number of events the CLJS reporter buffers between flushes. The backend sizes its per-request batch limit
+  from this, so both sides share one definition."
+  1000)
+
 (defprotocol Reporter
   (-inc! [this metric labels amount]
     "Increment a counter metric.")

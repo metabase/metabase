@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.source-check
   (:require
    [metabase-enterprise.replacement.db :as replacement.db]
+   [metabase-enterprise.replacement.entity :as replacement.entity]
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase.lib-be.core :as lib-be]
@@ -24,7 +25,7 @@
            (replacement.db/card-with-table-exists? sandbox-card-ids table-id))))))
 
 (mu/defn- has-incoming-fks? :- :boolean
-  "Returns true if any active field has a FK pointing to a field in `table-id`."
+  "Returns true if any active field on an active table has a FK pointing to a field in `table-id`."
   [table-id :- ::lib.schema.id/table]
   (if-let [field-ids (not-empty (replacement.db/active-field-ids-of-table table-id))]
     (replacement.db/active-fk-to-fields-exists? field-ids)
@@ -43,9 +44,7 @@
   "Fetch a database ID for a source."
   [entity-type :- ::replacement.schema/source-entity-type
    entity-id   :- ::replacement.schema/source-entity-id]
-  (case entity-type
-    :card  (replacement.db/card-database-id entity-id)
-    :table (replacement.db/table-database-id entity-id)))
+  (replacement.entity/source-database-id [entity-type entity-id]))
 
 (mu/defn- format-column-mappings :- [:sequential ::replacement.schema/column-mapping]
   "Format column mappings by applying format-column to source and target columns."
@@ -59,8 +58,8 @@
   "Check whether `old-source` can be replaced by `new-source`. Returns a map with
   `:success`, `:errors` (unique top-level error types), and `:column_mappings`.
   Arguments match `swap-source`: each is a `[entity-type entity-id]` pair."
-  [[old-type old-id :as old-ref]
-   [new-type new-id :as new-ref]]
+  [[old-type old-id :as old-ref] :- ::replacement.schema/source-ref
+   [new-type new-id :as new-ref] :- ::replacement.schema/source-ref]
   (if (= old-ref new-ref)
     {:success false}
     (let [source-db-id    (fetch-source-database-id old-type old-id)

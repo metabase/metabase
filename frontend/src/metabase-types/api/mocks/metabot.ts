@@ -4,6 +4,9 @@ import {
   AIToolKey,
   type McpAppsBootstrapResponse,
   type McpAppsBootstrapUser,
+  type McpGroupPermission,
+  type McpTool,
+  type McpToolPermissionsResponse,
   type MetabotConversation,
   type MetabotGroupPermission,
   type MetabotInfo,
@@ -83,6 +86,32 @@ export const createMockMetabotGroupPermissions = (
   }));
 };
 
+export const createMockMcpTool = (opts?: Partial<McpTool>): McpTool => ({
+  name: "search",
+  scope: "agent:content:read",
+  description: "Search for content.",
+  default_access: "allowed",
+  ...opts,
+});
+
+export const createMockMcpGroupPermission = (
+  opts?: Partial<McpGroupPermission>,
+): McpGroupPermission => ({
+  group_id: 1,
+  mcp_enabled: true,
+  tool_access: {},
+  ...opts,
+});
+
+export const createMockMcpToolPermissionsResponse = (
+  opts?: Partial<McpToolPermissionsResponse>,
+): McpToolPermissionsResponse => ({
+  advanced: false,
+  tools: [createMockMcpTool()],
+  permissions: [createMockMcpGroupPermission()],
+  ...opts,
+});
+
 /**
  * The setting keys `GET /api/embed-mcp/bootstrap` returns, out of those
  * {@link createMockSettings} defines: the `:public`, `:authenticated` and
@@ -92,7 +121,6 @@ export const createMockMetabotGroupPermissions = (
  */
 export const MCP_APPS_BOOTSTRAP_SETTING_KEYS = [
   "admin-email",
-  "agent-api-enabled?",
   "ai-features-enabled?",
   "airgap-enabled",
   "allowed-iframe-hosts",
@@ -105,7 +133,6 @@ export const MCP_APPS_BOOTSTRAP_SETTING_KEYS = [
   "application-name",
   "available-fonts",
   "available-locales",
-  "available-timezones",
   "bug-reporting-enabled",
   "cloud-gateway-ips",
   "csp-img-allowed-hosts",
@@ -115,6 +142,7 @@ export const MCP_APPS_BOOTSTRAP_SETTING_KEYS = [
   "custom-homepage",
   "custom-homepage-dashboard",
   "custom-viz-plugin-dev-mode-enabled",
+  "deprecated-agent-api-enabled?",
   "development-mode?",
   "email-configured?",
   "embedded-metabot-enabled?",
@@ -124,6 +152,8 @@ export const MCP_APPS_BOOTSTRAP_SETTING_KEYS = [
   "enable-embedding",
   "enable-embedding-interactive",
   "enable-embedding-modular",
+  "enable-embedding-sdk",
+  "enable-embedding-sidecar",
   "enable-nested-queries",
   "enable-password-login",
   "enable-pivoted-exports",
@@ -145,7 +175,6 @@ export const MCP_APPS_BOOTSTRAP_SETTING_KEYS = [
   "last-used-native-database-id",
   "ldap-configured?",
   "ldap-enabled",
-  "llm-anthropic-api-key-configured?",
   "loading-message",
   "map-tile-server-url",
   "mcp-enabled?",

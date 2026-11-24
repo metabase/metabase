@@ -55,7 +55,7 @@ Pass `id` and exactly **one** of:
 
 Writes are last-write-wins; a stale `old_str` failing to match is the only staleness signal.
 
-**What `edits` can do:** `new_str` is plain text, stored literally — `**bold**`, `` `code` ``, `- item`, `## Heading`, fences, and `{% card %}` inside it appear as those characters, not formatting. A blank line (`\n\n`) does split a paragraph. So edits cover rewording any paragraph, heading, or list item, and adding a plain paragraph; a new heading, bullet, code block, embed, or container needs `content_markdown`.
+**What `edits` can do:** `new_str` is parsed as Markdown, the same grammar as `content_markdown`. Inline syntax such as `**bold**` or `*em*` formats, a blank line (`\n\n`) splits a paragraph, and a `new_str` that replaces a whole block with `- item` lines, a fence, or a `:::` container turns it into that block (listed in `changed_blocks`). Inside a code span or code block the replacement stays code. So edits cover rewording, formatting, and restructuring a block; `content_markdown` is only for rewriting the whole body.
 
 Add a paragraph — extend the end of the block before it:
 
@@ -64,7 +64,7 @@ Add a paragraph — extend the end of the block before it:
            "new_str": "led by the Gadget category.\n\nGizmos were flat for the third quarter running."}]
 ```
 
-Edit one bullet — match its text only, never the `- ` marker (a marker in `new_str` is escaped and merges two items into one):
+Edit one bullet - match its text only, never the `- ` marker, so the edit stays inside that item:
 
 ```
 "edits": [{"old_str": "Churn fell to 4%", "new_str": "Churn fell to 3.8%"}]
@@ -72,16 +72,16 @@ Edit one bullet — match its text only, never the `- ` marker (a marker in `new
 
 ## Comments
 
-`get_content {"type": "document", "id": 12, "include": ["comments"]}` returns threads grouped by anchored block, each with `anchor: {start, end, text}` — the exact character slice of the returned `content_markdown` — and `thread` messages (`id`, `creator`, `text`, `is_resolved`, `created_at`). A thread whose block was rewritten or deleted appears under `orphaned_comments`: the discussion still exists but points at no text, and only the UI can re-anchor it. MCP can read comments but not reply, resolve, or re-anchor — tell the user when a thread needs that.
+`get_content {"items": [{"type": "document", "id": 12}], "include": ["comments"]}` returns threads grouped by anchored block, each with `anchor: {start, end, text}` — the exact character slice of the returned `content_markdown` — and `thread` messages (`id`, `creator`, `text`, `is_resolved`, `created_at`). A thread whose block was rewritten or deleted appears under `orphaned_comments`: the discussion still exists but points at no text, and only the UI can re-anchor it. MCP can read comments but not reply, resolve, or re-anchor — tell the user when a thread needs that.
 
 ## Don't
 
 - Don't `question_write` the master card to change an embedded chart — a no-op for the document; edit the clone id.
-- Don't put Markdown in `new_str` expecting formatting — stored as literal characters, no error.
-- Don't include the `- ` marker in a bullet edit — it merges two items into one.
+- Don't put Markdown syntax in `new_str` that you mean literally - it is parsed; escape it (`\*`).
+- Don't include the `- ` marker in a bullet edit - match the item's text only.
 - Don't full-rewrite for a small change — every comment thread is orphaned, irreversibly.
 - Don't write tables, strikethrough, or task lists — no document representation.
 
 ## To confirm
 
-`get_content {"type": "document", "id": 12}` returns the stored `content_markdown` (clone ids included); add `"include": ["layout"]` for the block outline, `["comments"]` for anchors. Rendering in the editor has no API check.
+`get_content {"items": [{"type": "document", "id": 12}]}` returns the stored `content_markdown` (clone ids included); add `"include": ["layout"]` for the block outline, `["comments"]` for anchors. Rendering in the editor has no API check.

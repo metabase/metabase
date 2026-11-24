@@ -11,12 +11,10 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.mcp.db :as mcp.db]
-   [metabase.mcp.models.mcp-query-handle]
+   [metabase.mcp.models.mcp-query-handle :as mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,13 +25,16 @@
   []
   (let [ttl-hours (mcp.settings/mcp-query-handle-ttl-hours)
         cutoff    (t/minus (t/offset-date-time) (t/hours (long ttl-hours)))
-        deleted   (mcp.db/delete-query-handles-created-before! cutoff)]
+        ids       (mcp.db/query-handle-ids-created-before cutoff)]
+    (mcp-query-handle/delete-mcp-query-handles! ids)
     (log/infof "MCP query handle GC complete. Deleted %d handle(s) older than %d hours."
-               (or deleted 0) (long ttl-hours))))
+               (count ids) (long ttl-hours))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Delete expired MCP query handles"}
-  McpQueryHandleGc [_ctx]
+(task/defjob McpQueryHandleGc
+  "Delete expired MCP query handles"
+  {:saved-class "metabase.mcp.task.mcp_query_handle_gc.McpQueryHandleGc"
+   :concurrent? false}
+  [_ctx]
   (gc-expired-query-handles!))
 
 (defmethod task/init! ::McpQueryHandleGc

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createAction, createSlice } from "@reduxjs/toolkit";
 
@@ -5,11 +6,9 @@ import {
   LOAD_DATA_PERMISSIONS,
   SAVE_DATA_PERMISSIONS,
   UPDATE_DATA_PERMISSION,
-} from "metabase/admin/permissions/permissions";
-import {
   getDatabasesBasePath,
   getGroupsBasePath,
-} from "metabase/admin/permissions/utils/urls";
+} from "metabase/permissions";
 import { navigate } from "metabase/router";
 import {
   DataPermission,

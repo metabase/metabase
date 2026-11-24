@@ -64,11 +64,10 @@ export function CollectionTypeFilter({
         disabled={!isFiltering}
         size={7}
         data-testid="type-filter-indicator"
-        offset={12}
+        offset={9}
       >
         <Popover.Target>
           <Button
-            variant="default"
             leftSection={<Icon name="filter" aria-hidden />}
             onClick={toggle}
             aria-label={isFiltering ? t`Filter, filters applied` : undefined}

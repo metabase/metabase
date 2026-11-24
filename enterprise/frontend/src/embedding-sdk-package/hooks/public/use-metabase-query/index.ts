@@ -4,21 +4,27 @@ export {
   count,
   distinct,
   max,
+  measure,
   median,
+  metric,
   min,
+  percentile,
   sum,
 } from "./aggregation-helpers";
 export { breakout, filter, orderBy } from "./query-helpers";
 export { useMetabaseQuery } from "./use-metabase-query";
 export { useMetabaseQueryObject } from "./use-metabase-query-object";
 export type {
-  LocalFieldReference,
+  DefinedQuery,
+  LegacyQuestionSource,
+  MetabaseLocalFieldReference,
   MetabaseBreakout,
   MetabaseDynamicColumn,
   MetabaseDynamicQuery,
   MetabaseOrderBy,
   MetabaseQueryOptions,
-  OrderByDirection,
+  MetabaseOrderByDirection,
+  MetabaseQueryRow,
   UseMetabaseQueryResult,
 } from "./types";
 export type { UseMetabaseQueryObjectResult } from "./use-metabase-query-object";

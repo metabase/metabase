@@ -11,10 +11,12 @@
    [metabase.setup-rest.db :as setup-rest.db]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,6 +31,7 @@
      (every-pred string? #'setup/token-match?)]]
    (i18n/deferred-tru "Token does not match the setup token.")))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
   "We must not allow users to setup multiple super users after the first user is created. But tests still need to be able
   to. This var is redef'd to false by certain tests to allow that."
@@ -42,7 +45,10 @@
     (throw (ex-info
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
-  (let [new-user   (setup-rest.db/insert-superuser! email first-name last-name)
+  (let [[new-user]   (user/create-users! [{:email        email
+                                           :first_name   first-name
+                                           :last_name    last-name
+                                           :is_superuser true}])
         user-id    (u/the-id new-user)]
     (auth-identity/set-password! user-id password)
     (let [session (auth-identity/create-session-with-auth-tracking! new-user device-info :provider/password)]
@@ -86,7 +92,7 @@
                 (let [user-info (setup-create-user! {:email email
                                                      :first-name first-name
                                                      :last-name last-name
-                                                     :password password
+                                                     :password (u.secret/expose password)
                                                      :device-info (request/device-info request)})]
                   (setup-set-settings! {:email email :site-name site-name :site-locale site-locale})
                   ;; the setup token can never be used again now that the first User exists -- clear it out so we don't

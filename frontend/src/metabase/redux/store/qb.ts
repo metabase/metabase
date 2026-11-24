@@ -1,4 +1,3 @@
-import type { QueryModalType } from "metabase/querying/constants";
 import type { Widget } from "metabase/viz-core";
 import type {
   Card,
@@ -7,8 +6,23 @@ import type {
   Field,
   NativeQuerySnippet,
   ParameterValuesMap,
-  TimelineEventId,
 } from "metabase-types/api";
+
+export type QueryModalType =
+  | "save"
+  | "add-to-dashboard"
+  | "move"
+  | "clone"
+  | "archive"
+  | "create-alert"
+  | "save-question-before-embed"
+  | "turn-into-dataset"
+  | "can-not-create-model"
+  | "new-event"
+  | "edit-event"
+  | "move-event"
+  | "preview-query"
+  | "question-embed";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
 export type DatasetEditorTab = "query" | "columns" | "metadata";
@@ -58,7 +72,6 @@ export interface QueryBuilderUIControls {
   notebookNativePreviewSidebarWidth: number | null;
   showSidebarTitle: boolean;
   modal: QueryModalType | null;
-  modalContext: TimelineEventId | null;
   modalSnippet?:
     | NativeQuerySnippet
     | Partial<Omit<NativeQuerySnippet, "id">>
@@ -71,6 +84,21 @@ export interface QueryBuilderUIControls {
   recentlySaved?: boolean;
   nativeEditorSelectedRange: Range[];
 }
+
+/**
+ * The query, display, visualization settings and parameters of a native question.
+ * Metabot compares them to tell whether the user changed it.
+ */
+export type MetabotCardBaseline = Pick<
+  Card,
+  "dataset_query" | "display" | "visualization_settings" | "parameters"
+>;
+
+/** A question Metabot is opening, read and cleared by the next query builder init. */
+export type PendingMetabotCard = {
+  /** The location's pathname and hash, which the init must match. */
+  url: string;
+};
 
 export interface QueryBuilderLoadingControls {
   showLoadCompleteFavicon: boolean;
@@ -87,6 +115,12 @@ export interface QueryBuilderParentEntityState {
 
 export interface QueryBuilderState {
   uiControls: QueryBuilderUIControls;
+  pendingMetabotCard: PendingMetabotCard | null;
+  /**
+   * The native questions Metabot opened, as loaded and as the query builder has adjusted them since.
+   * A question that still matches one is not unsaved work.
+   */
+  metabotCardBaselines: MetabotCardBaseline[];
   loadingControls: QueryBuilderLoadingControls;
   parentEntity: QueryBuilderParentEntityState;
   queryStatus: QueryBuilderQueryStatus;
@@ -112,6 +146,4 @@ export interface QueryBuilderState {
     cardId?: number;
     serializedCard: string;
   } | null;
-
-  visibleTimelineEventIds: TimelineEventId[];
 }

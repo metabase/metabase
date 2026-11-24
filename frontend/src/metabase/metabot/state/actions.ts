@@ -2,37 +2,48 @@ import {
   type ThunkDispatch,
   type UnknownAction,
   isRejected,
-  nanoid,
 } from "@reduxjs/toolkit";
 import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
-import { listTag } from "metabase/api/tags";
+import type { GeneratedEntity } from "metabase/api/ai-streaming/schemas";
+import { idTag, listTag } from "metabase/api/tags";
 import { getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
+import {
+  setIsNativeEditorOpen,
+  setPendingMetabotCard,
+} from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { navigate } from "metabase/router";
+import {
+  getIsNavigationPending,
+  getRouterLocation,
+  hasUnsavedChanges,
+  matchPath,
+  navigate,
+} from "metabase/router";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
+import { getBasename } from "metabase/utils/basename";
 import { retry } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
 import type {
+  DashboardId,
   JSONValue,
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
-  MetabotTransformInfo,
 } from "metabase-types/api";
 
 import { metabotApi } from "../api";
@@ -42,6 +53,7 @@ import {
   isHistoryEnabledProfile,
 } from "../constants";
 import { PLUGIN_METABOT_SLASH_COMMANDS } from "../plugins";
+import { isReasoningVisible } from "../utils/reasoning-visibility";
 
 import { metabot } from "./reducer";
 import {
@@ -66,7 +78,11 @@ import type {
   MetabotUserChatMessage,
   SlashCommand,
 } from "./types";
-import { createMessageId, parseSlashCommand } from "./utils";
+import {
+  createMessageId,
+  getServerErrorDisplay,
+  parseSlashCommand,
+} from "./utils";
 
 export const {
   addAgentTextDelta,
@@ -77,6 +93,7 @@ export const {
   setConversationSnapshot,
   setConversationTitle,
   setNavigateToPath,
+  dashboardSaved,
   setProfileOverride,
   reasoningStart,
   reasoningDelta,
@@ -87,10 +104,6 @@ export const {
   toolCallSearchResults,
   setMetabotReqIdOverride,
   setDebugMode,
-  addSuggestedTransform,
-  activateSuggestedTransform,
-  deactivateSuggestedTransform,
-  updateSuggestedTransformId,
   createAgent,
   destroyAgent,
   attachAgentToConversation,
@@ -328,7 +341,6 @@ export const submitInput = createAsyncThunk<
     metabot_id?: string;
     profile?: MetabotProfileId;
     retryMessageId?: string;
-    isTransformsPage?: boolean;
     isFullPageMetabot?: boolean;
   }
 >(
@@ -340,7 +352,6 @@ export const submitInput = createAsyncThunk<
       message: rawPrompt,
       profile,
       retryMessageId,
-      isTransformsPage,
       isFullPageMetabot,
       ...data
     } = payload;
@@ -388,7 +399,6 @@ export const submitInput = createAsyncThunk<
         getState(),
         conversationId,
         retryMessageId,
-        isTransformsPage ?? false,
       );
       const messageId = createMessageId();
       const userMessageId = retryMessageId ?? uuid();
@@ -424,14 +434,28 @@ export const submitInput = createAsyncThunk<
       const result = await sendMessageRequestPromise;
 
       if (isRejected(result)) {
+        const metabotName = getSetting(getState(), "metabot-name");
         return {
           prompt: rawPrompt,
           success: false,
           shouldRetry: result.payload?.shouldRetry ?? true,
-          error:
-            result.payload?.type === "error"
-              ? result.payload.display
-              : undefined,
+          error: match(result)
+            .returnType<MetabotAgentTurnDisplayError | undefined>()
+            .with(
+              P.union(
+                { payload: { type: "abort" } },
+                { meta: { aborted: true } },
+              ),
+              () => ({
+                type: "aborted",
+                message: t`Response from ${metabotName} was interrupted`,
+              }),
+            )
+            .with(
+              { payload: { type: "error" } },
+              ({ payload }) => payload.display,
+            )
+            .otherwise(() => undefined),
         };
       }
 
@@ -481,6 +505,89 @@ const findCodeEditBuffer = (
   return buffers.find((buffer) => buffer.id === bufferId);
 };
 
+/** The URL the user is on, with its search and hash. */
+const getRouterUrl = (): string | undefined => {
+  const location = getRouterLocation();
+  return location && `${location.pathname}${location.search}${location.hash}`;
+};
+
+const getViewedDashboardId = (): DashboardId | undefined => {
+  const pathname = getRouterLocation()?.pathname ?? "";
+  // the router's pathname keeps the basename of a subpath deployment
+  const match = matchPath(
+    { path: `${getBasename()}/dashboard/:slug`, end: false },
+    pathname,
+  );
+  return Urls.extractEntityId(match?.params.slug);
+};
+
+/**
+ * Opens a chart or dashboard that Metabot generated, and marks a card as Metabot's for the query builder.
+ */
+const openGeneratedEntity =
+  (entity: GeneratedEntity) => (dispatch: Dispatch) => {
+    const path = Urls.generatedEntity(entity);
+    if (entity.type === "card") {
+      // so the query builder does not count a native one as unsaved work until the user changes it
+      dispatch(setPendingMetabotCard({ url: path }));
+    }
+    navigate(path);
+  };
+
+/** Where a sidebar turn proposed to take the user. */
+type TurnDestination =
+  | { type: "generated-entity"; entity: GeneratedEntity }
+  | SavedDashboardDestination;
+
+type SavedDashboardDestination = {
+  type: "saved-dashboard";
+  dashboardId: DashboardId;
+  url: string;
+};
+
+/**
+ * Navigates to the last place a sidebar turn proposed, once the turn has ended.
+ * When that is a chart and the user is on a dashboard, the chart stays in the conversation as a link,
+ * and the dashboard the turn saved, if any, opens instead.
+ * It leaves the user where they are when:
+ * - they moved while the turn ran, or are moving now;
+ * - they already see the saved dashboard;
+ * - leaving would discard unsaved work.
+ */
+const openTurnDestination =
+  (
+    proposal: TurnDestination,
+    savedDashboard: SavedDashboardDestination | undefined,
+    startUrl: string | undefined,
+  ) =>
+  (dispatch: Dispatch) => {
+    const viewedDashboardId = getViewedDashboardId();
+    const isChartWhileOnDashboard =
+      proposal.type === "generated-entity" &&
+      proposal.entity.type === "card" &&
+      viewedDashboardId != null;
+    const destination = isChartWhileOnDashboard ? savedDashboard : proposal;
+    if (!destination) {
+      return;
+    }
+    // ad-hoc questions share a pathname and differ in the hash
+    const hasUserMoved =
+      getRouterUrl() !== startUrl || getIsNavigationPending();
+    const isViewingDestination =
+      destination.type === "saved-dashboard" &&
+      destination.dashboardId === viewedDashboardId;
+    const shouldStay =
+      hasUserMoved || isViewingDestination || hasUnsavedChanges();
+    if (shouldStay) {
+      return;
+    }
+    if (destination.type === "generated-entity") {
+      dispatch(openGeneratedEntity(destination.entity));
+    } else {
+      navigate(destination.url);
+    }
+  };
+
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & { isFullPageMetabot: boolean },
@@ -493,6 +600,13 @@ export const sendAgentRequest = createAsyncThunk<
   ) => {
     const { isFullPageMetabot, ...request } = payload;
     const conversationId = request.conversation_id;
+    // full-page Metabot and the embedding SDK don't open saved dashboards
+    const canOpenDashboards = !isFullPageMetabot && !isEmbeddingSdk();
+    const startUrl = getRouterUrl();
+    // the last chart or dashboard the turn proposed, opened when it ends
+    let destination: TurnDestination | undefined;
+    // the last dashboard the turn saved, opened when a later chart can't be
+    let savedDashboard: SavedDashboardDestination | undefined;
 
     let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
@@ -515,6 +629,7 @@ export const sendAgentRequest = createAsyncThunk<
           sourceId: conversationId,
         },
         {
+          shouldPaceReasoning: () => isReasoningVisible(conversationId),
           onDataPart: function handleDataPart(part) {
             const pushDataPart = (
               message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
@@ -552,45 +667,23 @@ export const sendAgentRequest = createAsyncThunk<
                   },
                 });
               })
-              .with({ type: "data-transform_suggestion" }, (part) => {
-                const suggestionId = nanoid();
-                const suggestedTransform = {
-                  ...part.data,
-                  id: part.data.id || undefined,
-                  active: true,
-                  suggestionId,
-                };
-                dispatch(addSuggestedTransform(suggestedTransform));
-
-                const editorTransform = request.context.user_is_viewing
-                  .filter(
-                    (t): t is MetabotTransformInfo => t.type === "transform",
-                  )
-                  .find((t) => t.id === suggestedTransform.id);
-                pushDataPart({
-                  type: "data_part",
-                  part,
-                  metadata: { editorTransform, suggestionId },
-                });
-              })
               .with({ type: "data-generated_entity" }, (part) => {
-                // TODO: always push, but let the surface render and/or navigate on its own
+                pushDataPart({ type: "data_part", part });
+
                 if (isFullPageMetabot) {
-                  pushDataPart({ type: "data_part", part });
                   return;
                 }
-
-                const path = Urls.generatedEntity(part.data);
 
                 if (isEmbeddingSdk()) {
                   if (part.data.type === "card") {
-                    dispatch(setNavigateToPath(path));
+                    dispatch(
+                      setNavigateToPath(Urls.generatedEntity(part.data)),
+                    );
                   }
-                  pushDataPart({ type: "data_part", part });
                   return;
                 }
 
-                navigate(path);
+                destination = { type: "generated-entity", entity: part.data };
               })
               .with({ type: "data-entity_saved" }, (part) => {
                 dispatch(
@@ -611,6 +704,54 @@ export const sendAgentRequest = createAsyncThunk<
                 }
                 pushDataPart({ type: "data_part", part });
               })
+              .with({ type: "data-dashboard_saved" }, (part) => {
+                const {
+                  dashboard_id,
+                  action,
+                  collection_id,
+                  open,
+                  saved_charts,
+                  url,
+                } = part.data;
+                // lists elsewhere, such as the dashboard's collection, refetch it
+                dispatch(
+                  Api.util.invalidateTags([
+                    listTag("dashboard"),
+                    idTag("dashboard", dashboard_id),
+                    idTag("collection", collection_id ?? "root"),
+                  ]),
+                );
+                saved_charts.forEach(({ chart_id, card_id }) =>
+                  dispatch(
+                    markChartSaved({ entityId: chart_id, cardId: card_id }),
+                  ),
+                );
+                // the dashboard page reloads itself when this names the dashboard it shows
+                dispatch(
+                  dashboardSaved({
+                    dashboardId: dashboard_id,
+                    saveId: part.data.tool_call_id,
+                  }),
+                );
+                pushDataPart({ type: "data_part", part });
+
+                if (open && canOpenDashboards) {
+                  savedDashboard = {
+                    type: "saved-dashboard",
+                    dashboardId: dashboard_id,
+                    url,
+                  };
+                  destination = savedDashboard;
+                } else if (
+                  action === "trashed" &&
+                  savedDashboard?.dashboardId === dashboard_id
+                ) {
+                  if (destination === savedDashboard) {
+                    destination = undefined;
+                  }
+                  savedDashboard = undefined;
+                }
+              })
               .with({ type: "data-tool_title" }, (part) => {
                 const { tool_call_id, title } = part.data;
                 dispatch(
@@ -622,6 +763,7 @@ export const sendAgentRequest = createAsyncThunk<
                 );
               })
               .with(
+                { type: "data-transform_suggestion" },
                 { type: "data-navigate_to" },
                 { type: "data-adhoc_viz" },
                 { type: "data-static_viz" },
@@ -733,14 +875,12 @@ export const sendAgentRequest = createAsyncThunk<
           shouldRetry: true,
           serverStarted,
           error: streamedError,
-          display: isMatching(
-            { type: "ai_usage_limit_reached", message: P.string },
-            streamedError,
-          )
-            ? // special case where we want to show the returned error from the backend
-              { type: "message" as const, message: streamedError.message }
-            : undefined,
+          display: getServerErrorDisplay(streamedError),
         });
+      }
+
+      if (destination) {
+        dispatch(openTurnDestination(destination, savedDashboard, startUrl));
       }
 
       const shouldPollForTitle =
@@ -777,6 +917,9 @@ export const sendAgentRequest = createAsyncThunk<
         error,
         getSetting(getState(), "metabot-name"),
       );
+      if (handled.error.type === "unknown") {
+        console.error(error);
+      }
       return rejectWithValue({
         type: "error" as const,
         conversation_id: request.conversation_id,
@@ -851,7 +994,6 @@ export const retryPrompt = createAsyncThunk<
     metabot_id?: string;
     conversationId: string;
     profile?: MetabotProfileId;
-    isTransformsPage?: boolean;
     isFullPageMetabot?: boolean;
   }
 >(
@@ -863,7 +1005,6 @@ export const retryPrompt = createAsyncThunk<
       metabot_id,
       conversationId,
       profile,
-      isTransformsPage,
       isFullPageMetabot,
     },
     { getState, dispatch },
@@ -901,7 +1042,6 @@ export const retryPrompt = createAsyncThunk<
         metabot_id,
         profile,
         retryMessageId,
-        isTransformsPage,
         isFullPageMetabot,
       }),
     ).unwrap();
@@ -936,8 +1076,7 @@ export const fetchConversationSnapshot = createAsyncThunk(
     if (error || !detail) {
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
           message: t`Sorry, we couldn't load that conversation.`,
         }),
       );

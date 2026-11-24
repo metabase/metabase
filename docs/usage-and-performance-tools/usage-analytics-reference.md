@@ -433,6 +433,7 @@ Columns:
 - Metabase Version
 - Auth Method
 - Is Sandboxed
+- Sandbox Details
 - Is Impersonated
 - Is Db Routed
 - Parameters
@@ -553,67 +554,29 @@ Some columns in the models above hold one of a fixed set of values.
 The Topic column on the [Activity log](#activity-log) model takes one of:
 
 - action-v2-execute
-- alert-create
-- alert-delete
 - alert-send
 - alert-unsubscribe
-- alert-update
-- api-key-create
-- api-key-delete
-- api-key-regenerate
-- api-key-update
-- cache-config-update
-- card-create
-- card-delete
-- card-public-link-created
-- card-public-link-deleted
-- card-update
-- channel-create
-- channel-update
+- card-test-run-start
+- card-test-run-timeout
 - cloud-add-on-purchase
-- comment-create
-- comment-delete
-- comment-update
 - create-permission-failure
-- custom-viz-plugin-create
-- custom-viz-plugin-delete
-- custom-viz-plugin-update
 - dashboard-add-cards
-- dashboard-create
-- dashboard-delete
-- dashboard-public-link-created
-- dashboard-public-link-deleted
 - dashboard-remove-cards
-- database-create
-- database-delete
 - database-discard-field-values
 - database-manual-scan
 - database-manual-sync
-- database-update
-- document-create
-- document-delete
-- document-update
-- glossary-create
-- glossary-delete
-- glossary-update
-- group-create
-- group-delete
-- group-membership-create
-- group-membership-delete
-- group-membership-update
-- group-update
 - install
-- measure-create
-- measure-delete
-- measure-update
+- mcp-jwt-token-issued
 - mfa-disabled
 - mfa-enrolled
+- mfa-required-enrollment-failed
 - mfa-verification-failed
 - notification-create
 - notification-unsubscribe
 - notification-unsubscribe-ex
 - notification-unsubscribe-undo-ex
 - notification-update
+- password-changed
 - password-reset-initiated
 - password-reset-successful
 - remote-sync-create-branch
@@ -623,40 +586,32 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - remote-sync-stash
 - security-advisory-acknowledge
 - security-advisory-match
-- segment-create
-- segment-delete
-- segment-update
+- segment-test-run-start
+- segment-test-run-timeout
+- session-revoked
+- sessions-revoked
 - setting-update
-- subscription-create
-- subscription-delete
 - subscription-send
 - subscription-unsubscribe
 - subscription-unsubscribe-undo
-- subscription-update
 - table-data-edit
 - table-manual-scan
 - table-manual-sync
-- table-publish
-- table-unpublish
-- tenant-create
-- tenant-update
-- transform-create
-- transform-delete
+- test-suite-run-start
+- test-suite-run-timeout
 - transform-inspect-discover
 - transform-inspect-lens
 - transform-run-canceled
 - transform-run-start
 - transform-run-timeout
+- transform-test-run-start
+- transform-test-run-timeout
 - update-permission-failure
-- update-transform
 - upload-append
 - upload-create
 - upload-replace
-- user-deactivated
 - user-invited
 - user-joined
-- user-reactivated
-- user-update
 - write-permission-failure
 
 ### Query log query sources
@@ -664,10 +619,10 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 The Query Source column on the [Query log](#query-log) model takes one of:
 
 - action
+- action-execute
 - ad-hoc
 - agent
 - cache-refresh
-- collection
 - csv-download
 - dashboard
 - dashboard-subscription
@@ -679,7 +634,9 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - exploration
 - json-download
 - map-tiles
+- metabot
 - metric
+- public-action-execute
 - public-csv-download
 - public-dashboard
 - public-json-download
@@ -702,6 +659,7 @@ The Entity Type column on the [Content](#content) model takes one of:
 - dashboard
 - document
 - event
+- exploration
 - glossary
 - model
 - question

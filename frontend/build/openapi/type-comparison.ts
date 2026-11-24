@@ -8,6 +8,7 @@ import {
   typeShape,
 } from "./shape";
 import {
+  elementTypes,
   indexAccepts,
   isObjectLike,
   isTypeReference,
@@ -20,7 +21,7 @@ import {
 
 interface Problem {
   status: "mismatch" | "unverified";
-  message: string;
+  message: string | Unconstrained;
 }
 
 /** One `any`, `unknown` or unresolved type declaration, at its first shortest path. */
@@ -328,6 +329,8 @@ function shapeElement(checker: ts.TypeChecker, sent: Shape): Shape | undefined {
 
 interface WalkPosition extends Position {
   depth: number;
+  sentDeclaration?: ts.Declaration;
+  targetDeclaration?: ts.Declaration;
 }
 
 interface ShapeComparison {
@@ -337,11 +340,36 @@ interface ShapeComparison {
 
 type ShapeIssue = { status: Problem["status"]; position: Position } & (
   | { detail: string }
+  | { loose: { side: Side; type: string; declaration?: string } }
   | { comparison: ShapeComparison }
 );
 
-function renderShapeIssues(issues: ShapeIssue[], root: string): Problem[] {
-  const shown = new Map<ShapeComparison, string>();
+function renderShapeIssues(
+  issues: ShapeIssue[],
+  root: string,
+  location: string,
+): Problem[] {
+  // A shared type can occur under both a deeply nested field and a direct field.
+  // Choose its shortest report path before emitting references to that occurrence.
+  const paths = new Map<ShapeComparison, string>();
+  const queue = [{ issues, from: "", to: "" }];
+  for (const entry of queue) {
+    for (const issue of entry.issues) {
+      if ("comparison" in issue) {
+        const path = entry.to + issue.position.path.slice(entry.from.length);
+        const previous = paths.get(issue.comparison);
+        if (previous === undefined || path.length < previous.length) {
+          paths.set(issue.comparison, path);
+          queue.push({
+            issues: issue.comparison.issues,
+            from: issue.comparison.position.path,
+            to: path,
+          });
+        }
+      }
+    }
+  }
+  const shown = new Set<ShapeComparison>();
   const problems: Problem[] = [];
   const visit = (issue: ShapeIssue, from: Position, to: Position): void => {
     const path = to.path + issue.position.path.slice(from.path.length);
@@ -350,6 +378,13 @@ function renderShapeIssues(issues: ShapeIssue[], root: string): Problem[] {
       issue.position.declaration === from.declaration
         ? to.declaration
         : issue.position.declaration;
+    if ("loose" in issue) {
+      problems.push({
+        status: issue.status,
+        message: { location, positions: [{ ...issue.loose, paths: [path] }] },
+      });
+      return;
+    }
     const label = fieldLabel(path, declaration, root);
     if ("detail" in issue) {
       problems.push({
@@ -358,15 +393,15 @@ function renderShapeIssues(issues: ShapeIssue[], root: string): Problem[] {
       });
       return;
     }
-    const previous = shown.get(issue.comparison);
-    if (previous !== undefined) {
+    const canonical = paths.get(issue.comparison) ?? path;
+    if (canonical !== path || shown.has(issue.comparison)) {
       problems.push({
         status: issue.status,
-        message: `${label}: same problems as at ${previous}`,
+        message: `${label}: same problems as at ${canonical}`,
       });
       return;
     }
-    shown.set(issue.comparison, path);
+    shown.add(issue.comparison);
     issue.comparison.issues.forEach((child) =>
       visit(child, issue.comparison.position, { path, declaration }),
     );
@@ -382,7 +417,7 @@ function shapeProblems(
   sent: Shape,
   target: ts.Type,
   at: ts.Node,
-  position: Position,
+  location: string,
 ): Problem[] {
   const { checker, root } = context;
   const walk = new TypeWalk(context, "field walk");
@@ -418,9 +453,39 @@ function shapeProblems(
     const problems: ShapeIssue[] = [];
     const { path, declaration, depth } = position;
     walk.step(shapeType(sent) ?? target, { path, declaration }, depth);
+    const loose = (type: ts.Type, side: Side, where?: ts.Declaration): void => {
+      if (type.flags & LOOSE_TYPE_FLAGS) {
+        problems.push({
+          status: "unverified",
+          position,
+          loose: {
+            side,
+            type: typeText(checker, type),
+            ...(where ? { declaration: declarationLabel(where, root) } : {}),
+          },
+        });
+      }
+    };
+    if (sent.kind === "type") {
+      loose(sent.type, direction.from, position.sentDeclaration);
+    }
+    for (const member of target.isUnion() ? target.types : [target]) {
+      loose(member, direction.to, position.targetDeclaration);
+    }
+    if (problems.length) {
+      return problems;
+    }
     const variants = sentVariants(checker, sent);
     const objectTargets = unionMembers(checker, target).filter(isObjectLike);
     for (const variant of variants) {
+      if (
+        variant !== sent &&
+        variant.kind === "type" &&
+        variant.type.flags & LOOSE_TYPE_FLAGS
+      ) {
+        loose(variant.type, direction.from, position.sentDeclaration);
+        continue;
+      }
       problems.push(
         ...visitVariant(
           variant,
@@ -607,7 +672,9 @@ function shapeProblems(
       return visit(sent, only, position, siblings);
     }
     const attempts: ShapeIssue[][] = [];
-    for (const member of candidates) {
+    // A nested unknown can be the only reason TypeScript rejects every candidate.
+    // Compare their fields before claiming a definite mismatch.
+    for (const member of candidates.length ? candidates : members) {
       const found = visit(sent, member, position, siblings);
       if (!found.length) {
         return [];
@@ -633,6 +700,24 @@ function shapeProblems(
     const memberElement =
       checker.isArrayType(member) &&
       checker.getIndexTypeOfType(member, ts.IndexKind.Number);
+    if (
+      sent.kind === "type" &&
+      checker.isTupleType(sent.type) &&
+      memberElement
+    ) {
+      const issues = elementTypes(checker, sent.type).flatMap(
+        (element, index) =>
+          visit(typeShape(element), memberElement, {
+            path: `${path}[${index}]`,
+            declaration: undefined,
+            depth: depth + 1,
+          }),
+      );
+      if (!issues.length && !checker.isTypeAssignableTo(sent.type, member)) {
+        return [notAssignable(position, sent, whole)];
+      }
+      return issues;
+    }
     if (sentElement && memberElement) {
       return visit(sentElement, memberElement, {
         path: `${path}[]`,
@@ -757,6 +842,8 @@ function shapeProblems(
         ...visit(found.shape, checker.getTypeOfSymbolAtLocation(property, at), {
           path: field,
           declaration: frontendDeclaration,
+          sentDeclaration: found.declaration,
+          targetDeclaration: symbolDeclaration(property),
           depth: depth + 1,
         }),
       );
@@ -777,6 +864,8 @@ function shapeProblems(
           ...visit(field.shape, index.type, {
             path: fieldPath,
             declaration: field.declaration,
+            sentDeclaration: field.declaration,
+            targetDeclaration: index.declaration,
             depth: depth + 1,
           }),
         );
@@ -803,6 +892,9 @@ function shapeProblems(
             {
               path: indexPath,
               declaration: index.declaration,
+              sentDeclaration: index.declaration,
+              targetDeclaration:
+                accepting.length === 1 ? accepting[0]?.declaration : undefined,
               depth: depth + 1,
             },
           ),
@@ -844,6 +936,8 @@ function shapeProblems(
         sentIndexes.forEach((candidate) =>
           problems.push(
             ...visit(candidate.shape, index.type, {
+              sentDeclaration: candidate.declaration,
+              targetDeclaration: index.declaration,
               path: indexPath,
               declaration: index.declaration,
               depth: depth + 1,
@@ -860,7 +954,11 @@ function shapeProblems(
   };
 
   return walk.run(() =>
-    renderShapeIssues(visit(sent, target, { ...position, depth: 0 }), root),
+    renderShapeIssues(
+      visit(sent, target, { ...ROOT, depth: 0 }),
+      root,
+      location,
+    ),
   );
 }
 
@@ -1127,14 +1225,14 @@ export function compareShape(
     kind === "response"
       ? { from: "backend", to: "frontend" }
       : { from: "frontend", to: "backend" };
-  const gaps = [
-    looseShapeVerdict(context, direction.from, sent, at, location),
-    looseShapeVerdict(context, direction.to, typeShape(target), at, location),
-  ].filter((verdict) => verdict !== undefined);
-  if (gaps.length) {
-    return combineVerdicts(gaps, []);
-  }
-  const problems = shapeProblems(context, direction, sent, target, at, ROOT);
+  const problems = shapeProblems(
+    context,
+    direction,
+    sent,
+    target,
+    at,
+    location,
+  );
   if (!problems.length) {
     return COMPATIBLE;
   }
@@ -1144,13 +1242,13 @@ export function compareShape(
   };
 }
 
-/** One verdict for several checks of the same part: unverified wins over mismatch. */
+/** A definite mismatch fails even when another possible request is unverified. */
 export function combineVerdicts(verdicts: Verdict[], notes: string[]): Verdict {
   const failing = verdicts.filter((verdict) => verdict.status !== "compatible");
-  const status = failing.some((verdict) => verdict.status === "unverified")
-    ? "unverified"
+  const status = failing.some((verdict) => verdict.status === "mismatch")
+    ? "mismatch"
     : failing.length
-      ? "mismatch"
+      ? "unverified"
       : "compatible";
   return {
     status,

@@ -10,12 +10,40 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 defineBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO");
 defineGlobalDependencies();
 
-export { DataAppRouter } from "./components/public/DataAppRouter";
-export { DataAppLink } from "./components/public/DataAppLink";
+export {
+  DataAppRouter,
+  type DataAppRouterProps,
+} from "./data-apps/public/components/DataAppRouter";
+export {
+  DataAppLink,
+  type DataAppLinkProps,
+} from "./data-apps/public/components/DataAppLink";
+export { DateRangeCalendar } from "./components/public/DateRangeCalendar";
+export { DateRangePopover } from "./components/public/DateRangePopover";
+export type {
+  DateRangeCalendarProps,
+  DateRangeValue,
+} from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
+export type {
+  DateRangePopoverPosition,
+  DateRangePopoverProps,
+} from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
+export {
+  useDateFormatter,
+  type DateFormatter,
+} from "./hooks/public/use-date-formatter";
+export type {
+  FormatDateOptions,
+  FormatDateRangeOptions,
+} from "embedding-sdk-bundle/lib/format-date-range";
 export { copy } from "./lib/public/copy";
-export { useDataAppLocation } from "./hooks/public/use-data-app-location";
+export {
+  useDataAppLocation,
+  type UseDataAppLocationResult,
+} from "./data-apps/public/hooks/use-data-app-location";
 export { defineQuery } from "./hooks/public/use-metabase-query/define-query";
 export { defineAction } from "./hooks/public/use-action/define-action";
+export { useDataAppAction as useAction } from "./hooks/public/use-action";
 export {
   aggregations,
   breakout,
@@ -25,22 +53,28 @@ export {
   useMetabaseQueryObject,
 } from "./hooks/public/use-metabase-query";
 export type {
-  LocalFieldReference,
+  DefinedQuery,
+  LegacyQuestionSource,
+  MetabaseLocalFieldReference,
   MetabaseBreakout,
   MetabaseDynamicColumn,
   MetabaseDynamicQuery,
   MetabaseOrderBy,
   MetabaseQueryOptions,
   MetabaseQueryObject,
-  OrderByDirection,
+  MetabaseOrderByDirection,
   UseMetabaseQueryObjectResult,
+  MetabaseQueryRow,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
 export type {
-  ActionKindFromDataAppSchema,
-  ActionParametersFromDataAppSchema,
+  ActionDefinition,
+  ActionKindFromDefinition,
+  ActionParametersFromDefinition,
+  DefinedAction,
+  ImplicitActionDefinition,
 } from "./hooks/public/use-action";
 export type {
   DataAppFactory,
   DataAppMetabaseProviderProps,
-} from "metabase-enterprise/data_apps/sandbox/types";
+} from "metabase-enterprise/data-apps/sandbox/types";

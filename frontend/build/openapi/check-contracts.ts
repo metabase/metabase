@@ -62,7 +62,9 @@ function readBaseline(): string[] {
   const value: unknown = JSON.parse(readFileSync(baselinePath, "utf8"));
   if (
     !Array.isArray(value) ||
-    value.some((id) => typeof id !== "string" || !id.trim())
+    !value.every(
+      (id: unknown): id is string => typeof id === "string" && !!id.trim(),
+    )
   ) {
     throw new Error(
       "Contract baseline must be an array of non-empty endpoint IDs.",
@@ -93,10 +95,7 @@ function readTsConfig(): ts.ParsedCommandLine {
 function runChecks(): ContractResult[] {
   const config = readTsConfig();
   const endpointFiles = config.fileNames.filter(
-    (file) =>
-      /\/frontend\/src\//.test(file) &&
-      !/\.(?:spec|test)\./.test(file) &&
-      /\b(?:query|mutation)\b/.test(readFileSync(file, "utf8")),
+    (file) => /\/frontend\/src\//.test(file) && !/\.(?:spec|test)\./.test(file),
   );
   const program = ts.createProgram({
     rootNames: [

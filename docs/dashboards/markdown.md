@@ -5,7 +5,7 @@ summary: How to add headings, lists, code blocks, images, and more to dashboard 
 
 # Format text with Markdown
 
-Use Markdown in Metabase to format text, add headings and lists, and insert links and images. In Metabase, you can use Markdown in:
+In Metabase, you can use Markdown in:
 
 - Dashboard header and text cards
 - Documents
@@ -96,7 +96,7 @@ To add an image, type an exclamation point (`!`), then a description of the imag
 ![A cat wearing a tiny hat](https://example.com/cat-in-hat.png)
 ```
 
-You can't upload an image to Metabase. Link to an image that's already online, using a URL your Metabase can access. Your admin can also [restrict which domains images load from](../configuring-metabase/settings.md#allowed-domains-for-images).
+You can't upload an image to Metabase. Link to an image that's already online, using a URL your Metabase can access. Your admin can also [restrict which domains images load from](../configuring-metabase/domains.md#restrict-where-images-can-load-from).
 
 The same syntax works for GIFs. Just use the URL of a GIF instead of an image.
 

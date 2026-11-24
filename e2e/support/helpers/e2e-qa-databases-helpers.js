@@ -206,44 +206,7 @@ function recursiveCheckFields(id, i = 0) {
 }
 
 export const setupWritableDB = (type = "postgres") => {
-  const connectionConfig = {
-    postgres: {
-      client: "pg",
-      connection: {
-        ...QA_DB_CREDENTIALS,
-        port: QA_POSTGRES_PORT,
-      },
-    },
-    mysql: {
-      client: "mysql2",
-      connection: {
-        ...QA_DB_CREDENTIALS,
-        user: "root",
-        port: QA_MYSQL_PORT,
-      },
-    },
-  };
-
-  const dbName = WRITABLE_DB_CONFIG[type].connection.database;
-
-  const dbCheckQuery = {
-    postgres: `SELECT FROM pg_database WHERE datname = '${dbName}';`,
-    mysql: `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${dbName}'`,
-  };
-
-  // we need to initially connect to the db we know exists to create the writable_db
-  cy.task("connectAndQueryDB", {
-    connectionConfig: connectionConfig[type],
-    query: dbCheckQuery[type],
-  }).then((results) => {
-    if (!results.rows.length) {
-      cy.log(`**-- Adding ${type} DB for actions --**`);
-      cy.task("connectAndQueryDB", {
-        connectionConfig: connectionConfig[type],
-        query: `CREATE DATABASE ${dbName};`,
-      });
-    }
-  });
+  cy.task("createWritableDb", { type });
 };
 
 export function queryQADB(query, type = "postgres") {
@@ -367,8 +330,8 @@ export function waitForSyncToFinish({
     throw new Error("The sync is taking too long. Something is wrong.");
   }
 
-  // `sync_schema` submits to a single-threaded task pool and can be queued
-  // behind a slow task or bump into an already-running sync, so in some scenarios one-shot
+  // A `sync_schema` request that arrives while a scheduled sync of the same database
+  // runs on the same server is skipped, so in some scenarios one-shot
   // schema sync may be silently dropped. If we assume such scenario, we force
   // schema sync to be retriggered occasionally.
   // (https://linear.app/metabase/issue/QUE2-663/calls-to-sync-schema-are-occasionally-silently-dropped)

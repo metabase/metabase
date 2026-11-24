@@ -51,8 +51,8 @@ correct. Existing behaviour is evidence but may itself contain a bug.
 ## Fix the contract
 
 Before editing Malli schemas, read [add-malli-schemas](../add-malli-schemas/SKILL.md).
-Response validation sees Clojure values before JSON serialization. In particular, response timestamps
-that are Java time objects need `ms/TemporalInstant`, not a blanket `:any` or string schema.
+Response validation sees Clojure values before JSON serialization. Choose a schema that accepts the
+handler's value and describes its serialized form.
 
 Correct inaccurate schemas or handwritten declarations based on the intended API behaviour, then fix
 affected consumers. TypeScript follows aliases structurally, so keep compatible existing names and
@@ -66,9 +66,8 @@ a regression test when in scope, or report the unsupported case as remaining wor
 
 ## Remove exemptions and verify
 
-`frontend/build/openapi/baseline.json` is an array of endpoint IDs, such as
-`tableApi:getTablePublishingInfo`. IDs use enclosing API/factory declaration names and endpoint names;
-file paths and line numbers are diagnostic locations, not exemption identities. An exemption covers
+`frontend/build/openapi/baseline.json` is an array of `apiName:endpointName` IDs.
+Use the enclosing API or factory declaration name and the endpoint name. An exemption covers
 every request and response check on that endpoint, regardless of its current failures or statuses.
 The checker still reports all results for exempt endpoints. Unexempted endpoints fail the gate for
 any mismatch or unverified check.

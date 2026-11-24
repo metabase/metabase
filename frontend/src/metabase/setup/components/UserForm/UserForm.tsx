@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -10,11 +11,9 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import type { UserInfo } from "metabase/redux/store";
-import { Flex, Stack } from "metabase/ui";
+import { Flex, SimpleGrid, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { memoize } from "metabase/utils/memoize";
-
-import { UserFieldGroup } from "./UserForm.styled";
 
 const getUserSchema = () =>
   Yup.object({
@@ -65,7 +64,7 @@ export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
       onSubmit={onSubmit}
     >
       <Form as={Stack} gap="lg" mt="lg">
-        <UserFieldGroup>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           <FormTextInput
             name="first_name"
             label={t`First name`}
@@ -79,7 +78,7 @@ export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
             placeholder={t`Appleseed`}
             nullable
           />
-        </UserFieldGroup>
+        </SimpleGrid>
         <FormTextInput
           name="email"
           type="email"

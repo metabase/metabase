@@ -124,7 +124,6 @@
       "include_csv": false,
       "display": "line",
       "entity_id": "_PLyllCkjrJjarnj-bWBC",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": ["x"],
         "graph.series_order_dimension": null,

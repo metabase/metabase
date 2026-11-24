@@ -7,20 +7,21 @@ import {
   useListPermissionsGroupsQuery,
 } from "metabase/api";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
+import {
+  DATABASE_TABLES_QUERY,
+  DataPermissionsHelp,
+  getDiff,
+  getIsDataPermissionsDirty,
+  loadDataPermissionsForGroup,
+  restoreLoadedPermissions,
+  saveDataPermissions,
+} from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { Center, Loader } from "metabase/ui";
 import type { GroupInfo } from "metabase-types/api";
 
-import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";
-import {
-  loadDataPermissionsForGroup,
-  restoreLoadedPermissions,
-  saveDataPermissions,
-} from "../../permissions";
-import { DATABASE_TABLES_QUERY } from "../../selectors/data-permissions/databases";
-import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
 
@@ -31,7 +32,7 @@ export function DataPermissionsPage() {
     {},
   );
   const groups = data ?? EMPTY_GROUP_LIST;
-  const isDirty = useSelector(getIsDirty);
+  const isDirty = useSelector(getIsDataPermissionsDirty);
   const diff = useSelector((state) => getDiff(state, { groups }));
   const dispatch = useDispatch();
 
@@ -60,19 +61,12 @@ export function DataPermissionsPage() {
       : skipToken,
   );
 
-  if (
+  const isLoading =
     isLoadingDatabases ||
     isLoadingGroups ||
     isLoadingAllUsers ||
     isLoadingAdminstrators ||
-    isLoadingTables
-  ) {
-    return (
-      <Center h="100%">
-        <Loader size="lg" />
-      </Center>
-    );
-  }
+    isLoadingTables;
 
   return (
     <PermissionsPageLayout
@@ -82,9 +76,15 @@ export function DataPermissionsPage() {
       diff={diff}
       isDirty={isDirty}
       helpContent={<DataPermissionsHelp />}
-      canShowSplitPermsModal
+      canShowSplitPermsModal={!isLoading}
     >
-      <Outlet />
+      {isLoading ? (
+        <Center h="100%" w="100%">
+          <Loader size="lg" />
+        </Center>
+      ) : (
+        <Outlet />
+      )}
     </PermissionsPageLayout>
   );
 }

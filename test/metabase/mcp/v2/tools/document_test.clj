@@ -4,9 +4,13 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
+   [metabase.documents.models.document :as document]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
+   [metabase.mcp.v2.tools.content]
    [metabase.mcp.v2.tools.document :as v2.document]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -18,12 +22,13 @@
 (set! *warn-on-reflection* true)
 
 (defn- call
-  "Invoke the document_write handler directly (unrestricted scopes) and return the decoded
+  "Invoke the document_write handler directly with every v2 scope and return the decoded
    payload map. Teaching errors surface as thrown ex-infos, matching how the registry treats
    handler exceptions."
   [args]
-  (-> (v2.document/document-write-tool args {:token-scopes nil})
+  (-> (v2.document/document-write-tool args {:token-scopes v2.tu/all-scopes})
       (get-in [:content 0 :text])
+      v2.tu/strip-data-boundary
       json/decode+kw))
 
 (defn- orders-query
@@ -125,7 +130,7 @@
                                        :content_markdown "## Heading\n\nEdit me please.\n\nLeave me alone."}))
               doc-id  (:id payload)
               blocks  (fn [] (:content (t2/select-one-fn :document :model/Document :id doc-id)))
-              id-of   (fn [bs pred] (some #(when (pred %) (get-in % [:attrs "_id"])) bs))
+              id-of   (fn [bs pred] (some #(when (pred %) (get-in % [:attrs :_id])) bs))
               before  (blocks)
               heading-id (id-of before #(= "heading" (:type %)))
               edited-id  (id-of before #(str/includes? (str (get-in % [:content 0 :text])) "Edit me"))]
@@ -155,7 +160,7 @@
                                        :content_markdown "Keep me.\n\nDelete me.\n\nKeep me too."}))
               doc-id  (:id payload)
               blocks  (:content (t2/select-one-fn :document :model/Document :id doc-id))
-              id-of   (fn [pred] (some #(when (pred %) (get-in % [:attrs "_id"])) blocks))
+              id-of   (fn [pred] (some #(when (pred %) (get-in % [:attrs :_id])) blocks))
               doomed  (id-of #(= "Delete me." (get-in % [:content 0 :text])))]
           (t2/insert! :model/Comment {:target_type     "document"
                                       :target_id       doc-id
@@ -197,8 +202,8 @@
    document written by a newer frontend, or by a REST caller (`[:document :any]`), looks like to
    this tool."
   {:type    "doc"
-   :content [{:type "mysteryBlock" :attrs {"_id" "m1"}}
-             {:type "paragraph" :attrs {"_id" "p1"} :content [{:type "text" :text "After."}]}]})
+   :content [{:type "mysteryBlock" :attrs {:_id "m1"}}
+             {:type "paragraph" :attrs {:_id "p1"} :content [{:type "text" :text "After."}]}]})
 
 (deftest unrenderable-body-does-not-fail-a-committed-write-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -207,7 +212,7 @@
         (let [doc-id (:id (created! (call {:method           "create"
                                            :name             "Old name"
                                            :content_markdown "Stable body."})))]
-          (t2/update! :model/Document doc-id {:document unrenderable-body})
+          (t2/update! :model/Document :id doc-id {:document unrenderable-body})
           (testing "a metadata-only update lands and is reported as the success it is — the write
                    commits before the response is built, so a body this tool can't render must not
                    turn a completed write into a failed call"
@@ -252,6 +257,14 @@
                                  :edits [{:old_str "gamma" :new_str "gamma gamma" :replace_all true}]})]
               (is (= "gamma gamma one\n\ngamma gamma two" (:content_markdown updated))))))))))
 
+(deftest ^:parallel snippet-keeps-surrogate-pairs-whole-test
+  (testing "GHY-4544: cutting an old_str for an error message never splits a surrogate pair"
+    (let [prefix (apply str (repeat 76 "a"))]
+      (is (= (str prefix "…")
+             (#'v2.document/snippet (str prefix "😀" (apply str (repeat 10 "b"))))))
+      (is (= (str prefix "b…")
+             (#'v2.document/snippet (str prefix "b" (apply str (repeat 10 "b")))))))))
+
 (deftest edit-replacement-parses-markdown-test
   (testing "replacement text is parsed as Markdown"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -266,7 +279,7 @@
                                               :content_markdown "Replace me."}))
                     doc-id   (:id payload)
                     old-id   (-> (t2/select-one-fn :document :model/Document :id doc-id)
-                                 :content first :attrs (get "_id"))
+                                 :content first :attrs (get :_id))
                     updated  (call {:method "update" :id doc-id
                                     :edits [{:old_str "Replace me." :new_str replacement}]})]
                 (is (= expected-markdown (:content_markdown updated)))
@@ -282,7 +295,7 @@
                                            :content_markdown "Replace me."}))
                   doc-id  (:id payload)
                   old-id  (-> (t2/select-one-fn :document :model/Document :id doc-id)
-                              :content first :attrs (get "_id"))
+                              :content first :attrs (get :_id))
                   updated (call {:method "update" :id doc-id
                                  :edits [{:old_str "Replace me."
                                           :new_str "::: flex\n::: supporting\nwords\n:::\n:::"}]})]
@@ -324,7 +337,7 @@
    that went through can never satisfy an assertion about a refusal."
   [{:keys [result error]}]
   (cond
-    error             (:message error)
+    error             (message/render (:message error))
     (:isError result) (-> result :content first :text)))
 
 (defn- write-error
@@ -332,13 +345,14 @@
    handler directly — the tool's own Malli schema is only applied at that seam, and these are
    arguments the schema is meant to reject."
   [args]
-  (error-text (registry/call-tool nil "test-session" "document_write" args)))
+  (error-text (registry/call-tool v2.tu/all-scopes "test-session" "document_write" args)))
 
 (deftest markdown-tables-are-rejected-test
   (mt/with-current-user (mt/user->id :crowberto)
     (with-tool-documents
       (fn [created!]
-        (let [message "Markdown tables are not supported. Save the query as a question with `display: table` and embed it with {% card id=… %}."
+        (let [message (str "Markdown tables are not supported. Save the query as a question with `display: table` "
+                           "and embed it with {% card id=… %}.")
               table   "| Table | Rows |\n|---|---|\n| users | 5,000 |"
               created (created! (call {:method "create" :name "Table test" :content_markdown "No table"}))
               doc-id  (:id created)]
@@ -376,19 +390,20 @@
         (fn [created!]
           (mt/with-current-user (mt/user->id :rasta)
             (testing "an unreadable target is indistinguishable from a dangling id"
-              (is (= [{"entityId" hidden-id "model" "dashboard" "label" nil "href" "/"}
-                      {"entityId" secret-id "model" "collection" "label" nil "href" "/"}]
+              (is (= [{:entityId hidden-id :model "dashboard" :label nil :href "/"}
+                      {:entityId secret-id :model "collection" :label nil :href "/"}]
                      (written-smart-link-attrs
                       created!
-                      (format "{%% entity id=\"%d\" model=\"dashboard\" %%} and {%% entity id=\"%d\" model=\"collection\" %%}"
+                      (format (str "{%% entity id=\"%d\" model=\"dashboard\" %%} and "
+                                   "{%% entity id=\"%d\" model=\"collection\" %%}")
                               hidden-id secret-id)))))
             (testing "a readable target still resolves its label and href"
-              (is (= [{"entityId" readable-id "model" "card" "label" "Open Question"
-                       "href" (str "/question/" readable-id)}]
+              (is (= [{:entityId readable-id :model "card" :label "Open Question"
+                       :href (str "/question/" readable-id)}]
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"card\" %%}" readable-id)))))
             (testing "user mentions resolve under the mention picker's visibility rule: a visible user"
-              (is (= [{"entityId" (mt/user->id :crowberto) "model" "user" "label" "Crowberto Corv" "href" "/"}]
+              (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label "Crowberto Corv" :href "/"}]
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"user\" %%}"
                                                        (mt/user->id :crowberto))))))
@@ -396,7 +411,7 @@
                      :model/User has no can-read?, and resolving any id would let a document author
                      enumerate names and emails the picker would never show them"
               (mt/with-temp [:model/User {inactive-id :id} {:first_name "Gone" :last_name "Person" :is_active false}]
-                (is (= [{"entityId" inactive-id "model" "user" "label" nil "href" "/"}]
+                (is (= [{:entityId inactive-id :model "user" :label nil :href "/"}]
                        (written-smart-link-attrs created!
                                                  (format "{%% entity id=\"%d\" model=\"user\" %%}" inactive-id))))
                 ;; `user-visibility` is gated on :email-restrict-recipients — in OSS the setting reads
@@ -404,18 +419,52 @@
                 ;; assertion below pins the default instead of the rule.
                 (mt/with-premium-features #{:email-restrict-recipients}
                   (mt/with-temporary-setting-values [user-visibility :none]
-                    (is (= [{"entityId" (mt/user->id :crowberto) "model" "user" "label" nil "href" "/"}
-                            {"entityId" (mt/user->id :rasta) "model" "user" "label" "Rasta Toucan" "href" "/"}]
-                           (written-smart-link-attrs created!
-                                                     (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
-                                                             (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
+                    (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label nil :href "/"}
+                            {:entityId (mt/user->id :rasta) :model "user" :label "Rasta Toucan" :href "/"}]
+                           (written-smart-link-attrs
+                            created!
+                            (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
+                                    (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
           (testing "an admin resolves what a non-admin could not"
             (mt/with-current-user (mt/user->id :crowberto)
-              (is (= [{"entityId" hidden-id "model" "dashboard" "label" "CONFIDENTIAL Layoffs"
-                       "href" (str "/dashboard/" hidden-id)}]
+              (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"
+                       :href (str "/dashboard/" hidden-id)}]
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"dashboard\" %%}"
                                                        hidden-id)))))))))))
+
+(defn- read-with-layout
+  "The `get_content` result for document `doc-id` with the `layout` include, as the decoded result row."
+  [doc-id]
+  (-> (registry/call-tool v2.tu/all-scopes "test-session" "get_content"
+                          {:items [{:type "document" :id doc-id}] :include ["layout"]})
+      (get-in [:result :content 0 :text])
+      v2.tu/strip-data-boundary
+      json/decode+kw
+      :results
+      first))
+
+(deftest smart-link-to-a-transform-folder-resolves-like-a-missing-id-test
+  (testing "GHY-4746: MCP v2 has no transforms, so an entity token naming a transform folder resolves as one
+            naming a missing collection does: the link stays unlabelled, and the folder's name is neither
+            stored nor read back"
+    (mt/with-temp [:model/Collection {folder-id :id} {:name "Rollups folder" :namespace "transforms"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (with-tool-documents
+          (fn [created!]
+            (let [token (fn [id] (format "{%% entity id=\"%d\" model=\"collection\" %%}" id))]
+              (testing "a missing collection id"
+                (is (= [{:entityId 999999999 :model "collection" :label nil :href "/"}]
+                       (written-smart-link-attrs created! (token 999999999)))))
+              (testing "a transform folder"
+                (is (= [{:entityId folder-id :model "collection" :label nil :href "/"}]
+                       (written-smart-link-attrs created! (token folder-id)))))
+              (testing "get_content does not name the folder"
+                (let [doc-id (:id (created! (call {:method           "create"
+                                                   :name             "Folder link"
+                                                   :content_markdown (str "See " (token folder-id) " here.")})))
+                      read   (json/encode (read-with-layout doc-id))]
+                  (is (not (str/includes? read "Rollups folder")) read))))))))))
 
 (deftest edit-keeps-the-label-of-a-smart-link-the-editor-cannot-read-test
   (testing "editing other text in a block must not wipe the label of a smart link pointing at
@@ -423,64 +472,63 @@
            re-parsed block's link has no label until it is resolved from the row — and an editor
            who can't read that row resolves nothing. Treating that as \"no label\" writes the blank
            back for everyone, including the people who can see the target."
-    (mt/with-temp [:model/Collection {secret-id :id} {:name "Top Secret Collection"}
-                   :model/Card       {hidden-id :id} {:name          "CONFIDENTIAL Revenue"
-                                                      :collection_id secret-id
-                                                      :dataset_query (orders-query)}
-                   :model/Card       {unseen-id :id} {:name          "CONFIDENTIAL Headcount"
-                                                      :collection_id secret-id
-                                                      :dataset_query (orders-query)}
-                   :model/Collection {shared-id :id} {:name "Shared Reports"}]
-      ;; `shared-id` needs no grant: a new collection is already all-users read-write, which is
-      ;; what lets rasta edit the document while the card stays out of reach.
-      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
-      (with-tool-documents
-        (fn [created!]
-          (let [payload    (mt/with-current-user (mt/user->id :crowberto)
-                             (created!
-                              (call {:method           "create"
-                                     :name             "Smart link label"
-                                     :collection_id    shared-id
-                                     :content_markdown (str "Intro. See {% entity id=\"" hidden-id
-                                                            "\" model=\"card\" %} for detail.")})))
-                doc-id     (:id payload)
-                link-attrs (fn []
-                             (->> (tree-seq :content :content
-                                            (t2/select-one-fn :document :model/Document :id doc-id))
-                                  (some #(when (= "smartLink" (:type %)) (:attrs %)))))
-                resolved   {"entityId" hidden-id
-                            "model"    "card"
-                            "label"    "CONFIDENTIAL Revenue"
-                            "href"     (str "/question/" hidden-id)}]
-            (testing "a writer who can read the target stores its label"
-              (is (= resolved (link-attrs))))
-            (let [updated (mt/with-current-user (mt/user->id :rasta)
-                            (call {:method "update" :id doc-id
-                                   :edits  [{:old_str "Intro." :new_str "Introduction."}]}))]
-              (testing "the edit lands"
-                (is (str/starts-with? (:content_markdown updated) "Introduction.")))
-              (testing "and the link the editor never touched keeps its label and href"
-                (is (= resolved (link-attrs))))
-              (testing "without handing that editor the name they cannot read — labels live in the
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{secret-id :id}] (collection/create-collections! [{:name "Top Secret Collection"}])
+            [{shared-id :id}] (collection/create-collections! [{:name "Shared Reports"}])]
+        (mt/with-temp [:model/Card {hidden-id :id} {:name          "CONFIDENTIAL Revenue"
+                                                    :collection_id secret-id
+                                                    :dataset_query (orders-query)}
+                       :model/Card {unseen-id :id} {:name          "CONFIDENTIAL Headcount"
+                                                    :collection_id secret-id
+                                                    :dataset_query (orders-query)}]
+          (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+          (with-tool-documents
+            (fn [created!]
+              (let [payload    (mt/with-current-user (mt/user->id :crowberto)
+                                 (created!
+                                  (call {:method           "create"
+                                         :name             "Smart link label"
+                                         :collection_id    shared-id
+                                         :content_markdown (str "Intro. See {% entity id=\"" hidden-id
+                                                                "\" model=\"card\" %} for detail.")})))
+                    doc-id     (:id payload)
+                    link-attrs (fn []
+                                 (->> (tree-seq :content :content
+                                                (t2/select-one-fn :document :model/Document :id doc-id))
+                                      (some #(when (= "smartLink" (:type %)) (:attrs %)))))
+                    resolved   {:entityId hidden-id
+                                :model    "card"
+                                :label    "CONFIDENTIAL Revenue"
+                                :href     (str "/question/" hidden-id)}]
+                (testing "a writer who can read the target stores its label"
+                  (is (= resolved (link-attrs))))
+                (let [updated (mt/with-current-user (mt/user->id :rasta)
+                                (call {:method "update" :id doc-id
+                                       :edits  [{:old_str "Intro." :new_str "Introduction."}]}))]
+                  (testing "the edit lands"
+                    (is (str/starts-with? (:content_markdown updated) "Introduction.")))
+                  (testing "and the link the editor never touched keeps its label and href"
+                    (is (= resolved (link-attrs))))
+                  (testing "without handing that editor the name they cannot read — labels live in the
                        AST, never in the Markdown, which is what makes carrying one forward safe"
-                (is (not (str/includes? (:content_markdown updated) "CONFIDENTIAL")))))
-            (testing "the fallback only keeps a label the document already had — a link the editor
+                    (is (not (str/includes? (:content_markdown updated) "CONFIDENTIAL")))))
+                (testing "the fallback only keeps a label the document already had — a link the editor
                      adds to something they can't read resolves to nothing, so this cannot be used
                      to acquire a name"
-              (mt/with-current-user (mt/user->id :rasta)
-                (call {:method "update" :id doc-id
-                       :edits  [{:old_str "for detail."
-                                 :new_str (str "for detail, and {% entity id=\"" unseen-id
-                                               "\" model=\"card\" %} too.")}]}))
-              (is (= {"entityId" unseen-id "model" "card" "label" nil "href" "/"}
-                     (->> (tree-seq :content :content
-                                    (t2/select-one-fn :document :model/Document :id doc-id))
-                          (some #(when (= unseen-id (get-in % [:attrs "entityId"])) (:attrs %)))))))))))))
+                  (mt/with-current-user (mt/user->id :rasta)
+                    (call {:method "update" :id doc-id
+                           :edits  [{:old_str "for detail."
+                                     :new_str (str "for detail, and {% entity id=\"" unseen-id
+                                                   "\" model=\"card\" %} too.")}]}))
+                  (is (= {:entityId unseen-id :model "card" :label nil :href "/"}
+                         (->> (tree-seq :content :content
+                                        (t2/select-one-fn :document :model/Document :id doc-id))
+                              (some #(when (= unseen-id (get-in % [:attrs :entityId])) (:attrs %)))))))))))))))
 
 (deftest smart-link-labels-are-not-resolved-by-the-markdown-layer-test
   (testing "parse leaves label/href at their defaults — the Markdown namespace performs no lookup,
            which is what keeps the documents module free of a permissions dependency"
-    (is (= [{"entityId" 1 "model" "dashboard" "label" nil "href" "/"}]
+    (is (= [{:entityId 1 :model "dashboard" :label nil :href "/"}]
            (->> (tree-seq :content :content (documents/parse "see {% entity id=\"1\" model=\"dashboard\" %}"))
                 (keep #(when (= "smartLink" (:type %)) (:attrs %)))
                 vec)))))
@@ -515,6 +563,23 @@
             (testing "values the write path can actually use are untouched"
               (is (nil? (write-error {:method "update" :id doc-id :edits [] :collection_position 2})))
               (is (nil? (write-error {:method "update" :id doc-id :edits [] :collection_id "root"}))))))))))
+
+(deftest move-to-or-from-root-requires-root-write-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (perms/grant-collection-read-permissions! (perms-group/all-users) collection/root-collection)
+    (mt/with-temp [:model/Collection {write-col :id} {}
+                   :model/Document   {doc-id :id}      {:name "In a writable collection" :collection_id write-col}
+                   :model/Document   {root-doc-id :id} {:name "In root"}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) write-col)
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "moving a document into root without root write perms is forbidden"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (call {:method "update" :id doc-id :edits [] :collection_id "root"})))
+          (is (= write-col (t2/select-one-fn :collection_id :model/Document :id doc-id))))
+        (testing "moving a document out of root without root write perms is forbidden"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (call {:method "update" :id root-doc-id :edits [] :collection_id write-col})))
+          (is (nil? (t2/select-one-fn :collection_id :model/Document :id root-doc-id))))))))
 
 (def ^:private cost-model-line
   "A line with several occurrences of a common letter — many matches per KB, which is what makes
@@ -581,22 +646,32 @@
                                       :edits [(edit "quick" "swift")]}))))
             (let [before (stored)]
               (testing "enough of them in a single call is refused, naming the call as the unit"
-                (let [timer   (u/start-timer)
-                      err     (write-error {:method "update" :id doc-id
-                                            :edits (mapv edit
-                                                         ["brown" "jumped" "over" "lazy" "sleeping" "dog"]
-                                                         ["red" "leapt" "above" "idle" "dozing" "fox"])})
-                      elapsed (u/since-ms timer)]
+                ;; Counts splices × document-KB, the unit `max-edit-work` prices in, rather than timing
+                ;; the call: the work is fixed, and the time depends on the machine.
+                (let [work    (atom 0.0)
+                      splice  (mt/original-fn #'documents/splice)
+                      err     (mt/with-dynamic-fn-redefs [documents/splice
+                                                          (fn [ast ser start end replacement]
+                                                            (swap! work + (/ (count (:markdown ser)) 1024.0))
+                                                            (splice ast ser start end replacement))]
+                                (write-error {:method "update" :id doc-id
+                                              :edits (mapv edit
+                                                           ["brown" "jumped" "over" "lazy" "sleeping" "dog"]
+                                                           ["red" "leapt" "above" "idle" "dozing" "fox"])}))
+                      ceiling @#'v2.document/max-edit-work]
                   (is (some? err) "should be refused, not carried out")
                   (when err
                     (is (re-find #"(?i)every edit in the call" err)
                         "should say the ceiling is per call, so the agent splits rather than retries")
                     (is (re-find #"content_markdown" err)
                         "should point at the single-pass alternative"))
-                  ;; The budget caps work performed: the sweep stops once it is spent, so an
-                  ;; over-budget call costs about the ceiling (~600ms), never the whole request.
-                  (is (< elapsed 5000)
-                      (format "refusal should stop at the ceiling (took %.0fms)" (double elapsed)))))
+                  ;; An edit that would take the call's total past the ceiling is refused before it
+                  ;; runs, so a refused call splices less than the ceiling, not the whole request. The
+                  ;; lower bound fails if `splice` stops being intercepted, or if the call is refused
+                  ;; before most of the budget is spent.
+                  (is (< (* 0.75 ceiling) @work ceiling)
+                      (format "refused call should splice between 0.75× and 1× the ceiling (%.0f of %d splice·KB)"
+                              @work ceiling))))
               (testing "a refused call leaves the stored body untouched — the reduce builds a new AST
                        and the throw lands before update-document!, so no prefix of the edits persists"
                 (is (= before (stored)))))))))))
@@ -629,13 +704,13 @@
             which made it a clean read oracle over any document the caller could write to."
     (mt/with-model-cleanup [:model/Document]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [existing (documents/create-document!
+        (let [existing (document/create-document-with-cards!
                         {:name          "someone elses doc"
                          :document      (documents/parse "PRE-EXISTING SECRET")
                          :collection_id nil})
               call!    (fn [scopes]
                          (-> (registry/call-tool scopes nil "document_write"
-                                                 {:method "update" :id (:id existing) :edits []})
+                                                 {:method "update" :id existing :edits []})
                              :result :content first :text))]
           (testing "without the read scope the body is withheld, leaving the minimal ack"
             (let [txt (call! #{"agent:content:write"})]
@@ -652,7 +727,7 @@
             sentinel, and name and the body are required rather than clearable."
     (mt/with-model-cleanup [:model/Document]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [doc   (documents/create-document!
+        (let [doc   (document/create-document-with-cards!
                      {:name                "pinned doc"
                       :document            (documents/parse "body")
                       :collection_id       nil
@@ -660,19 +735,19 @@
               call! (fn [args]
                       (registry/call-tool #{"agent:content:write" "agent:content:read"} nil
                                           "document_write"
-                                          (merge {:method "update" :id (:id doc)} args)))]
-          (is (= 1 (t2/select-one-fn :collection_position :model/Document :id (:id doc)))
+                                          (merge {:method "update" :id doc} args)))]
+          (is (= 1 (t2/select-one-fn :collection_position :model/Document :id doc))
               "precondition: the document is pinned")
           (testing "a null leaves it alone, as it does everywhere else"
             (call! {:edits [] :collection_position nil})
-            (is (= 1 (t2/select-one-fn :collection_position :model/Document :id (:id doc)))))
+            (is (= 1 (t2/select-one-fn :collection_position :model/Document :id doc))))
           (testing "clear unsets it"
             (call! {:edits [] :clear ["collection_position"]})
-            (is (nil? (t2/select-one-fn :collection_position :model/Document :id (:id doc)))))
+            (is (nil? (t2/select-one-fn :collection_position :model/Document :id doc))))
           (testing "a property outside the clearable set is refused at the boundary"
             (let [txt (error-text (call! {:edits [] :clear ["name"]}))]
               (is (re-find #"clear" txt))
-              (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id (:id doc)))))))))))
+              (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id doc))))))))))
 
 ;; TODO(slice-11/content): restore once the `get_content` tool lands — this test calls it via
 ;; `registry/call-tool ... "get_content"` to compare the write echo against a concise read. See
@@ -701,16 +776,17 @@
   (testing "a dynamically-registered client can discover and call document_write. Registration is
             not enough on its own: the tool's scope also has to reach the DCR default grant, or the
             client lists a tool every call then 403s on."
-    (let [grant (set (registry/registered-scopes))
-          named (fn [scopes] (some #(= "document_write" (:name %)) (registry/list-tools scopes)))]
+    (let [grant (set (registry/registered-scopes))]
       (testing "its scope is in the default grant"
         (is (contains? grant "agent:content:write")))
-      (testing "so a default-grant client sees it"
-        (is (named grant)))
-      (testing "and it is hidden from a token holding only the read scope"
-        (is (not (named #{"agent:content:read"}))))
+      (testing "GHY-4543: it is listed whatever the token's scopes"
+        (is (some #(= "document_write" (:name %)) (registry/list-tools))))
+      (testing "a token holding only the read scope is refused at call time"
+        (is (str/starts-with? (message/render (-> (registry/call-tool #{"agent:content:read"} nil "document_write" {})
+                                                  :error :message))
+                              "Insufficient scope to call tool: \"document_write\".")))
       (testing "the manifest carries a description and an input schema that advertises `clear`"
-        (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools grant)))]
+        (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools)))]
           (is (seq (:description tool)))
           (is (str/includes? (:description tool) "No Markdown tables - embed a table-display question instead."))
           (is (get-in tool [:inputSchema :properties :clear])))))))

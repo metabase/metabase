@@ -3,13 +3,14 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.comments.schema :as comments.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -60,6 +61,20 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Exploration :id id))
 
+(mu/defn target
+  "The `model` row with `id` a Comment targets, or nil."
+  [model :- [:enum :model/Document :model/Exploration]
+   id    :- ms/PositiveInt]
+  (t2/select-one model :id id))
+
+(mu/defn targets
+  "The `model` rows with `ids` Comments target."
+  [model :- [:enum :model/Document :model/Exploration]
+   ids   :- [:set ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select model :id [:in ids])
+    []))
+
 (mu/defn comment-by-id
   "The Comment with `id`, or nil."
   [id :- ms/PositiveInt]
@@ -83,22 +98,6 @@
                              (when (seq mention-ids)
                                [:in :id mention-ids])]}))
 
-(mu/defn insert-comment!
-  "Insert the Comment `row` and return the inserted instance."
-  [row :- ::comments.schema/comment.update]
-  (t2/insert-returning-instance! :model/Comment row))
-
-(mu/defn update-comment!
-  "Apply `changes` to the Comment with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::comments.schema/comment.update [:content :is_resolved])]
-  (t2/update! :model/Comment id changes))
-
-(mu/defn soft-delete-comment!
-  "Mark the Comment with `id` deleted now, returning the number updated."
-  [id :- ms/PositiveInt]
-  (t2/update! :model/Comment id {:deleted_at [:now]}))
-
 (defn- restrict-to-visible-users
   "Narrow `clauses` (from `user/filter-clauses`) to the users the current user should see: superusers see
   everyone; everyone else is limited to their own tenant and further narrowed by the `user-visibility`
@@ -120,11 +119,12 @@
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select [:model/User :id :first_name :last_name :email]
-             (-> (user/filter-clauses {:limit limit :offset offset})
-                 restrict-to-visible-users
-                 (sql.helpers/order-by [:%lower.first_name :asc]
-                                       [:%lower.last_name :asc]
-                                       [:id :asc]))))
+             (h2x/assert-map-or-nil!
+              (-> (user/filter-clauses {:limit limit :offset offset})
+                  restrict-to-visible-users
+                  (sql.helpers/order-by [:%lower.first_name :asc]
+                                        [:%lower.last_name :asc]
+                                        [:id :asc])))))
 
 (mu/defn mentionable-user-count
   "The `:count` of the active Users the current user may @mention."
@@ -140,27 +140,22 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(mu/defn reaction-exists?
-  "Whether the User with `user-id` has reacted to the Comment with `comment-id` with `emoji`."
+(mu/defn reaction-id
+  "The id of the CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`, or nil."
   [comment-id :- ms/PositiveInt
    user-id    :- ::lib.schema.id/user
    emoji      :- :string]
-  (t2/exists? :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
+  (t2/select-one-pk :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
 
-(mu/defn insert-reaction!
-  "Insert a CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`."
-  [comment-id :- ms/PositiveInt
-   user-id    :- ::lib.schema.id/user
-   emoji      :- :string]
-  (t2/insert! :model/CommentReaction {:comment_id comment-id, :user_id user-id, :emoji emoji}))
+(mu/defn insert-reactions!
+  "Insert the CommentReaction `rows` and return the inserted instances, in the order of `rows`."
+  [rows :- [:sequential ::comments.schema/comment-reaction.create]]
+  (app-db/insert-returning-instances! :model/CommentReaction rows))
 
-(mu/defn delete-reaction!
-  "Delete the CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`, returning
-  the number deleted."
-  [comment-id :- ms/PositiveInt
-   user-id    :- ::lib.schema.id/user
-   emoji      :- :string]
-  (t2/delete! :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
+(mu/defn delete-reactions!
+  "Delete the CommentReactions with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/CommentReaction :id [:in ids]))
 
 (mu/defn reactions-for-comments
   "The CommentReactions on the Comments with `comment-ids`, ordered by comment, time, and emoji."

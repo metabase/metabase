@@ -16,11 +16,6 @@
   [location-prefix :- :string]
   (t2/select :model/Collection :location [:like (str location-prefix "%")] :archived_directly true))
 
-(mu/defn delete-collection!
-  "Delete the Collection with `id`."
-  [id :- ::lib.schema.id/collection]
-  (t2/delete! :model/Collection :id id))
-
 (mu/defn unarchived-card-collection-types-reducible
   "A reducible of the distinct Collection id and type of the unarchived Cards."
   []
@@ -28,14 +23,23 @@
                        :from            [:report_card]
                        :where           [:= :archived false]}))
 
+(mu/defn unarchived-action-collection-ids
+  "The distinct `:collection_id`s of the unarchived Actions."
+  []
+  (t2/query {:select-distinct [:collection_id]
+             :from            [:action]
+             :where           [:and
+                               [:= :archived false]
+                               [:not= :collection_id nil]]}))
+
 (mu/defn published-table-collection-ids
   "The distinct `:collection_id`s of the published, unarchived Tables."
   []
   (t2/query {:select-distinct [:collection_id]
-             :from :metabase_table
-             :where [:and
-                     [:= :is_published true]
-                     [:= :archived_at nil]]}))
+             :from            [(t2/table-name :model/Table)]
+             :where           [:and
+                               [:= :is_published true]
+                               [:= :archived_at nil]]}))
 
 (mu/defn top-level-cards-in-collection
   "The Cards in the Collection with `collection-id` that belong to no Dashboard, newest first."

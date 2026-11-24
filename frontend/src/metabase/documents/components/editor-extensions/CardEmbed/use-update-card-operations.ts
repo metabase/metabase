@@ -1,7 +1,7 @@
 import type { NodeViewProps } from "@tiptap/core";
 import { useCallback } from "react";
 
-import { useQuestionFromCard } from "metabase/metadata-store";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { useDispatch } from "metabase/redux";
 import {
   type UseCardDataResult,
@@ -32,7 +32,7 @@ export const useUpdateCardOperations = ({
 }) => {
   const host = useEditorHost();
   const dispatch = useDispatch();
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
 
   const { card, draftCard, regularDataset } = regularCardData;
 

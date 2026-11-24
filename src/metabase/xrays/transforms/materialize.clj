@@ -4,7 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util.malli :as mu]
@@ -21,7 +21,7 @@
 (mu/defn get-collection :- [:maybe ::lib.schema.id/collection]
   "Get collection named `collection-name`. If no location is given root collection for automatically
    generated transforms is assumed (see `get-or-create-root-container-collection!`)."
-  ([collection-name]
+  ([collection-name :- :string]
    (get-collection collection-name (root-container-location)))
   ([collection-name :- :string
     location        :- :string]
@@ -31,9 +31,9 @@
   ([collection-name description]
    (create-collection! collection-name description (root-container-location)))
   ([collection-name description location]
-   (xrays.db/insert-collection-returning-pk! {:name        collection-name
-                                              :description description
-                                              :location    location})))
+   (:id (first (collection/create-collections! [{:name        collection-name
+                                                 :description description
+                                                 :location    location}])))))
 
 (defn- get-or-create-root-container-collection!
   "Get or create container collection for transforms in the root collection."
@@ -48,7 +48,7 @@
    exists."
   [{:keys [name description]}]
   (if-let [collection-id (get-collection name)]
-    (xrays.db/delete-cards-in-collection! collection-id)
+    (card/delete-cards! (xrays.db/card-ids-in-collection collection-id))
     (create-collection! name description)))
 
 (mu/defn make-card-for-step! :- ::queries.schema/card
@@ -64,5 +64,6 @@
           :result_metadata        (qp.preprocess/query->expected-cols query)
           :visualization_settings {}
           :display                :table}
-         queries/populate-card-query-fields
-         xrays.db/insert-card!)))
+         vector
+         card/create-cards!
+         first)))

@@ -15,7 +15,7 @@ export interface CustomVizPlugin {
   id: CustomVizPluginId;
   display_name: string;
   identifier: string;
-  status: "pending" | "active" | "error";
+  status: "active" | "error";
   enabled: boolean;
   icon: string | null;
   error_message: string | null;

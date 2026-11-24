@@ -3,7 +3,7 @@ import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { PublishedTableMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";
-import { usePublishedTableMeasurePage } from "../../hooks";
+import { usePublishedTableMeasurePage } from "../../hooks/use-published-table-measure-page";
 import { MeasureDetailPage } from "../MeasureDetailPage";
 
 type PublishedTableMeasureDetailPageParams = {
@@ -27,6 +27,7 @@ export function PublishedTableMeasureDetailPage() {
   return (
     <MeasureDetailPage
       measure={measure}
+      table={table}
       tabUrls={tabUrls}
       breadcrumbs={
         <PublishedTableMeasureBreadcrumbs table={table} measure={measure} />

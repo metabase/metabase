@@ -3,81 +3,69 @@
    [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.warehouses.models.database :as database]))
 
 (defenterprise current-user-can-write-field?
-  "Enterprise version. Returns a boolean whether the current user can write the given field.
-   Checks both that the user has manage-table-metadata permission and that the parent table
-   is editable (not in a remote-synced collection in read-only mode)."
+  "Enterprise version: whether the current user can manage the metadata of the table of the field `instance`, which
+  nobody can when a read-only instance syncs the table."
   :feature :advanced-permissions
   [instance]
   (let [table (or (:table instance)
                   (advanced-permissions.db/table (:table_id instance)))]
-    (and (remote-sync/table-editable? table)
+    (and (collection/remote-sync-writable-table? table)
          (let [db-id (or (:db_id table)
                          (database/table-id->database-id (:table_id instance)))]
-           (perms/user-has-permission-for-table?
-            api/*current-user-id*
-            :perms/manage-table-metadata
-            :yes
-            db-id
-            (:table_id instance))))))
+           (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {(:table_id instance) db-id})))))
 
 (defenterprise current-user-can-manage-schema-metadata?
   "Enterprise version. Returns a boolean whether the current user has permission to edit table metadata for any tables
   in the schema"
   :feature :advanced-permissions
   [db-id schema-name]
-  (perms/user-has-permission-for-schema?
-   api/*current-user-id*
-   :perms/manage-table-metadata
-   :yes
-   db-id
-   schema-name))
+  (perms/at-least-as-permissive? :perms/manage-table-metadata (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata db-id schema-name) :yes))
 
-(defenterprise current-user-can-write-db?
-  "Enterprise version. Returns a boolean whether the current user can write the given db"
+(defenterprise current-user-managed-database-ids
+  "The ids among `db-ids` of the Databases the current user manages, from one bulk question."
   :feature :advanced-permissions
-  [db-id]
-  (perms/user-has-permission-for-database?
-   api/*current-user-id*
-   :perms/manage-database
-   :yes
-   db-id))
+  [db-ids]
+  (let [values (perms/database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                    :perms/manage-database
+                                                    (vec db-ids))]
+    (into #{} (filter #(= :yes (get values %))) db-ids)))
 
-(defenterprise current-user-can-write-table?
-  "Enterprise version. Checks both that the user has manage-table-metadata permission and
-   that the table is editable (not in a remote-synced collection in read-only mode)."
+(defenterprise table-ids-with-writable-metadata
+  "Enterprise version: the ids of those of `tables` whose metadata the current user manages, from one bulk question."
   :feature :advanced-permissions
-  [table]
-  (and (remote-sync/table-editable? table)
-       (perms/user-has-permission-for-table?
-        api/*current-user-id*
-        :perms/manage-table-metadata
-        :yes
-        (:db_id table)
-        (:id table))))
+  [tables]
+  (let [values (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                 :perms/manage-table-metadata
+                                                 (into {} (map (juxt :id :db_id)) tables))]
+    (into #{}
+          (comp (map :id)
+                (filter #(perms/at-least-as-permissive? :perms/manage-table-metadata (get values %) :yes)))
+          tables)))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flags indicating whether or not current user has access to advanced permissions.
   This function is meant to be used for GET /api/user/current."
   [user]
-  (let [permissions-set       @api/*current-user-permissions-set*
-        user-id               api/*current-user-id*
-        can-access-data-model (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)]
+  (let [user-id               api/*current-user-id*
+        application           (perms/application-permissions-for-user (api/current-user-info))
+        can-access-data-model (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/manage-table-metadata)]
     (update user :permissions assoc
-            :can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
-            :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
-            :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
+            :can_access_setting      (contains? application :setting)
+            :can_access_subscription (contains? application :subscription)
+            :can_access_monitoring   (contains? application :monitoring)
             :can_access_data_model   can-access-data-model
-            :can_access_db_details   (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
-            :can_access_transforms   (or api/*is-superuser?* (and api/*is-data-analyst?*
-                                                                  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms
-                                                                                                     :exclude-db-ids [audit/audit-db-id])))
+            :can_access_db_details   (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/manage-database)
+            :can_access_transforms   (or api/*is-superuser?* (and (api/entitled-data-analyst?)
+                                                                  (perms/user-has-highest-permission-anywhere? (perms/user-info api/*current-user-id*) :perms/transforms :exclude-db-ids [audit/audit-db-id])))
+            :can_access_workspaces   (or api/*is-superuser?* (and api/*is-data-analyst?*
+                                                                  (perms/user-has-highest-permission-anywhere? (perms/user-info api/*current-user-id*) :perms/view-data :exclude-db-ids [audit/audit-db-id])))
             :is_data_analyst         api/*is-data-analyst?*
             :is_group_manager        api/*is-group-manager?*)))
 
@@ -85,77 +73,52 @@
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`."
   :feature :advanced-permissions
   [perm-type]
-  (or api/*is-superuser?*
-      (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* perm-type)))
+  (contains? (perms/application-permissions-for-user (api/current-user-info)) perm-type))
+
+(defenterprise has-advanced-setting-access?
+  "Check if `*current-user*` has permissions to edit settings."
+  :feature :advanced-permissions
+  []
+  (current-user-has-application-permissions? :setting))
 
 (defn current-user-is-manager-of-group?
   "Return true if current-user is a manager of `group-or-id`."
   [group-or-id]
   (advanced-permissions.db/group-manager? api/*current-user-id* (u/the-id group-or-id)))
 
-(defn filter-tables-by-data-model-perms
+(defenterprise filter-tables-by-data-model-perms
   "Given a list of tables, removes the ones for which `*current-user*` does not have data model editing permissions."
+  :feature :advanced-permissions
   [tables]
-  (cond
-    api/*is-superuser?*
+  (if api/*is-superuser?*
     tables
+    (filter
+     (fn [{table-id :id db-id :db_id}]
+       (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {table-id db-id}))
+     tables)))
 
-    ;; If advanced-permissions is not enabled, no non-admins have any data-model editing perms, so return an empty list
-    (not (premium-features/enable-advanced-permissions?))
-    (empty tables)
-
-    :else
-    (do
-      (perms/prime-table-perms-cache {:db-ids (into #{} (map :db_id) tables)})
-      (filter
-       (fn [{table-id :id db-id :db_id}]
-         (perms/user-has-permission-for-table?
-          api/*current-user-id*
-          :perms/manage-table-metadata
-          :yes
-          db-id
-          table-id))
-       tables))))
-
-(defn filter-schema-by-data-model-perms
+(defenterprise filter-schema-by-data-model-perms
   "Given a list of schema, remove the ones for which `*current-user*` does not have data model editing permissions."
+  :feature :advanced-permissions
   [schema]
-  (cond
-    api/*is-superuser?*
+  (if api/*is-superuser?*
     schema
-
-    ;; If advanced-permissions is not enabled, no non-admins have any data-model editing perms, so return an empty list
-    (not (premium-features/enable-advanced-permissions?))
-    (empty schema)
-
-    :else
     (filter
      (fn [{db-id :db_id schema :schema}]
-       (perms/user-has-permission-for-schema?
-        api/*current-user-id*
-        :perms/manage-table-metadata
-        :yes
-        db-id
-        schema))
+       (perms/at-least-as-permissive? :perms/manage-table-metadata (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata db-id schema) :yes))
      schema)))
 
-(defn filter-databases-by-data-model-perms
+(defenterprise filter-databases-by-data-model-perms
   "Given a list of databases, removes the ones for which `*current-user*` has no data model editing permissions.
   If databases are already hydrated with their tables, also removes tables for which `*current-user*` has no data
   model editing perms."
+  :feature :advanced-permissions
   [dbs]
-  (cond
-    api/*is-superuser?*
+  (if api/*is-superuser?*
     dbs
-
-    ;; If advanced-permissions is not enabled, no non-admins have any data-model editing perms, so return an empty list
-    (not (premium-features/enable-advanced-permissions?))
-    (empty dbs)
-
-    :else
     (reduce
      (fn [result {db-id :id tables :tables :as db}]
-       (if (= (perms/most-permissive-database-permission-for-user api/*current-user-id* :perms/manage-table-metadata db-id)
+       (if (= (get (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata [db-id]) db-id)
               :yes)
          (if tables
            (conj result (update db :tables filter-tables-by-data-model-perms))
@@ -189,10 +152,28 @@
     (let [blocked-group-ids   (advanced-permissions.db/blocked-group-ids group-ids)
           impersonation-group-ids (advanced-permissions.db/impersonated-group-ids group-ids)
           sandbox-group-ids   (advanced-permissions.db/sandboxed-group-ids group-ids)
-          ;; New databases have no legacy grants to preserve. App groups must start blocked.
           blocked-groups      (into (or blocked-group-ids #{})
-                                    (concat impersonation-group-ids sandbox-group-ids (perms/data-app-group-ids)))]
+                                    (concat impersonation-group-ids sandbox-group-ids))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
+
+(defenterprise new-table-sandboxed-groups
+  "Returns the subset of `group-ids` that must have new tables on `db-id` forced to `:blocked` view-data regardless of
+  the new table's schema, because they have a sandbox on a table in this DB. A sandbox is a stronger condition than
+  a few specific tables being blocked, so the presence of a sandbox on this DB for a group is sufficient to make any
+  new table `:blocked` for that group, even if the table came from a CSV upload.
+
+  OSS has no sandboxes, so the OSS implementation returns the empty set. On EE we deliberately do *not* consult
+  `enable-sandboxes?`: as with `apply-sandboxing`, we block *setting up* a sandbox without the feature (see
+  `metabase-enterprise.sandbox.api.gtap`) but keep enforcing one that is already configured, rather than silently
+  ignoring it when a token lapses. See UXW-4927 for the incident where an unlicensed EE instance leaked a
+  newly-synced table to a sandboxed group."
+  :feature :none ;; fail CLOSED if the feature is unavailable.
+  [db-id group-ids]
+  (if (empty? group-ids)
+    #{}
+    (into #{}
+          (map :group_id)
+          (advanced-permissions.db/sandboxed-group-ids-for-database db-id group-ids))))
 
 (defenterprise new-table-view-data-permission-levels
   "Returns a map of {group-id → permission-level} for multiple groups and a single DB."
@@ -203,17 +184,10 @@
     ;; We don't check for connection impersonations here, because impersonations are set at the
     ;; DB-level, so a new table should get `:unrestricted` and inherit the DB-level impersonation policy.
     (let [blocked-group-ids (advanced-permissions.db/blocked-group-ids-for-database db-id group-ids)
-          sandbox-group-ids (into #{}
-                                  (map :group_id)
-                                  (advanced-permissions.db/sandboxed-group-ids-for-database db-id group-ids))
-          app-group-ids     (set (perms/data-app-group-ids))
-          app-view-data     (when (some app-group-ids group-ids)
-                              (perms/data-app-view-data-permission-level db-id))
+          sandbox-group-ids (new-table-sandboxed-groups db-id group-ids)
           blocked-groups    (into (or blocked-group-ids #{}) sandbox-group-ids)]
-      ;; A new table must not introduce a block into an app group's database-wide legacy permission.
       (into {} (map (fn [group-id]
                       [group-id (cond
-                                  (app-group-ids group-id) app-view-data
                                   (blocked-groups group-id) :blocked
                                   :else :unrestricted)]))
             group-ids))))

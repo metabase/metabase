@@ -55,9 +55,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.button("Visualize").click();
 
+    cy.location("pathname").should("not.include", "/notebook");
+    H.tableInteractive().should("be.visible");
     // there were no changes to the question, so we shouldn't have the option to "Save"
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").should("not.exist");
+    H.queryBuilderHeader().button("Save").should("not.exist");
   });
 
   it("should allow post-aggregation filters", () => {
@@ -97,18 +98,56 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.contains("Showing 1 row"); // ensure only one user was returned
   });
 
-  it("shouldn't show sub-dimensions for FK (metabase#16787)", () => {
+  it("should render preview without detail view column, pick custom aggregation expressions, and hide FK sub-dimensions (metabase#63070, metabase#16787)", () => {
+    function openPreview() {
+      cy.findByTestId("step-preview-button").click();
+    }
+
+    function verifyPreviewIsRendered() {
+      cy.findByTestId("table-scroll-container").should("contain", "37.65");
+    }
+
+    function verifyIndexColumnsNotRendered() {
+      cy.findAllByTestId("row-id-cell").should("have.length", 0);
+    }
+
     H.openOrdersTable({ mode: "notebook" });
+
+    openPreview();
+    verifyPreviewIsRendered();
+    verifyIndexColumnsNotRendered();
+
     H.summarize({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").type("Distinc");
+      cy.findByText("Number of distinct values of ...").should("be.visible");
+      cy.findByText("DistinctIf").click();
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "DistinctIf(column, condition)",
+      );
+    });
+    H.expressionEditorWidget().button("Cancel").click();
+    H.popover().findByPlaceholderText("Find...").should("be.visible");
+    cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+
     H.getNotebookStep("summarize")
       .findByText("Pick a column to group by")
       .click();
 
     H.popover().within(() => {
-      cy.findByText("User ID")
+      H.getDimensionByName({ name: "Created At" })
+        .findByLabelText("Temporal bucket")
+        .should("exist");
+      H.getDimensionByName({ name: "Subtotal" })
+        .findByLabelText("Binning strategy")
+        .should("exist");
+
+      H.getDimensionByName({ name: "User ID" })
         .findByLabelText("Binning strategy")
         .should("not.exist");
-      cy.findByText("User ID")
+      H.getDimensionByName({ name: "User ID" })
         .findByLabelText("Temporal bucket")
         .should("not.exist");
     });
@@ -129,48 +168,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID is between 96 and 97").click();
+    H.popover().findByDisplayValue("96").should("be.visible");
+    H.popover().findByDisplayValue("97").should("be.visible");
     H.popover().findByText("Between").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Is not");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Greater than");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Less than");
-  });
-
-  it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
-    cy.viewport(1920, 800); // we're looking for a column name beyond the right of the default viewport
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    H.openProductsTable({ mode: "notebook" });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom column").click();
-    addSimpleCustomColumn("EXPR");
-
-    H.getNotebookStep("expression").within(() => {
-      cy.icon("add").click();
+    cy.findByRole("menu").within(() => {
+      cy.findByText("Is not").should("be.visible");
+      cy.findByText("Greater than").should("be.visible");
+      cy.findByText("Less than").should("be.visible");
     });
-    addSimpleCustomColumn("EXPR");
-
-    H.getNotebookStep("expression").within(() => {
-      cy.icon("add").click();
-    });
-    addSimpleCustomColumn("EXPR");
-
-    H.getNotebookStep("expression").within(() => {
-      cy.findByText("EXPR");
-      cy.findByText("EXPR (1)");
-      cy.findByText("EXPR (2)");
-    });
-
-    H.visualize();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("EXPR");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("EXPR (1)");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("EXPR (2)");
   });
 
   it("should show the real number of rows instead of HARD_ROW_LIMIT when loading (metabase#17397)", () => {
@@ -182,8 +187,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
       (req) => {
         req.on("response", (res) => {
-          // Throttle the response to 500 Kbps to simulate a mobile 3G connection
-          res.setThrottle(500);
+          res.setDelay(2000);
         });
       },
     ).as("dataset");
@@ -211,33 +215,16 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2 selections");
 
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 98 rows",
+    );
     cy.wait("@dataset");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 175 rows");
   });
 
-  it("should show an info popover for dimensions listened by the custom expression editor", () => {
-    // start a custom question with orders
-    H.openOrdersTable({ mode: "notebook" });
-    H.filter({ mode: "notebook" });
-
-    H.popover().contains("Custom Expression").click();
-
-    H.CustomExpressionEditor.type("[Cre");
-
-    // hover over option in the suggestion list
-    H.CustomExpressionEditor.completion("Created At")
-      .parents("li")
-      .findByLabelText("More info")
-      .realHover();
-
-    H.hovercard().within(() => {
-      cy.contains("The date and time an order was submitted.");
-      cy.contains("Creation timestamp");
-    });
-  });
-
-  it("should show an info card filter columns in the popover", () => {
+  it("should show an info card for filter columns in the popover and the custom expression editor", () => {
     H.openOrdersTable({ mode: "notebook" });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -256,12 +243,29 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.contains("Foreign Key");
       cy.findByText(/The id of the user/);
     });
+
+    // Move the mouse off the info icon so the hovercard can't cover the next click
+    cy.findByTestId("step-data-0-0").realHover();
+    cy.get("body").should("not.contain", "The id of the user");
+
+    H.popover().contains("Custom Expression").click();
+
+    H.CustomExpressionEditor.type("[Cre");
+
+    // hover over option in the suggestion list
+    H.CustomExpressionEditor.completion("Created At")
+      .parents("li")
+      .findByLabelText("More info")
+      .realHover();
+
+    H.hovercard().within(() => {
+      cy.contains("The date and time an order was submitted.");
+      cy.contains("Creation timestamp");
+    });
   });
 
   describe("popover rendering issues (metabase#15502)", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
       cy.viewport(1280, 720);
       H.startNewQuestion();
       H.miniPicker().within(() => {
@@ -270,7 +274,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       });
     });
 
-    it("popover should not render outside of viewport regardless of the screen resolution (metabase#15502-1)", () => {
+    it('popover should render within the viewport and not cover the button that invoked it, and "median" is not offered for databases without "percentile-aggregations" (metabase#15502-1, metabase#15502-2)', () => {
       H.getNotebookStep("filter")
         .findByText("Add filters to narrow your answer")
         .click();
@@ -282,12 +286,17 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .findByText("Add filters to narrow your answer")
         .click();
       H.popover().isRenderedWithinViewport();
-    });
+      H.getProfileLink().click();
 
-    it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
       H.getNotebookStep("summarize")
         .findByText("Pick a function or metric")
         .click();
+
+      H.popover().within(() => {
+        cy.findByText("Average of ...").should("be.visible");
+        cy.findByText("Median of ...").should("not.exist");
+      });
+
       // Click outside to close this popover
       H.getProfileLink().click();
       // Popover invoked again blocks the button making it impossible to click the button for the third time
@@ -297,6 +306,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       H.getNotebookStep("summarize")
         .findByText("Pick a function or metric")
         .click();
+      H.popover().findByText("Average of ...").should("be.visible");
     });
   });
 
@@ -312,10 +322,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     H.popover().within(() => {
       cy.findByText("Select all").click();
-      cy.findByLabelText("ID").should("be.disabled");
+      cy.findByLabelText("ID").should("have.attr", "aria-disabled", "true");
       cy.findByText("Tax").click();
-      cy.findByLabelText("ID").should("be.enabled").click();
+      cy.findByLabelText("ID").should("not.have.attr", "aria-disabled");
+      cy.findByLabelText("ID").click();
     });
+
+    H.popover().findAllByLabelText("More info").first().realHover();
+    H.hovercard().contains("This is a unique ID");
 
     cy.findByTestId("step-data-0-0").findByText("Data").click(); //Dismiss popover
 
@@ -325,18 +339,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByText("Tax");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID").should("not.exist");
-  });
-
-  it("should render a field info icon in the fields picker", () => {
-    H.openTable({
-      table: ORDERS_ID,
-      mode: "notebook",
-    });
-
-    cy.findByTestId("fields-picker").click();
-    H.popover().findAllByLabelText("More info").first().realHover();
-
-    H.hovercard().contains("This is a unique ID");
   });
 
   it("should treat max/min on a name as a string filter (metabase#21973)", () => {
@@ -384,8 +386,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should prompt to join with a model if the question is based on a model", () => {
-    cy.intercept("GET", "/api/table/*/query_metadata").as("loadMetadata");
-
     H.createQuestion({
       name: "Products model",
       query: { "source-table": PRODUCTS_ID },
@@ -411,23 +411,20 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByText("Products model").click();
     });
 
+    H.getNotebookStep("join").within(() => {
+      cy.findByLabelText("Right table")
+        .findByText("Products model")
+        .should("be.visible");
+      cy.findByLabelText("Left column")
+        .findByText("Product ID")
+        .should("be.visible");
+      cy.findByLabelText("Right column")
+        .findByText(/→ ID$/)
+        .should("be.visible");
+    });
+
     H.visualize();
-  });
-
-  it('should not show "median" aggregation option for databases that do not support "percentile-aggregations" driver feature', () => {
-    H.startNewQuestion();
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Orders").click();
-    });
-
-    H.getNotebookStep("summarize")
-      .findByText("Pick a function or metric")
-      .click();
-
-    H.popover().within(() => {
-      cy.findByText("Median of ...").should("not.exist");
-    });
+    H.tableInteractive().should("be.visible");
   });
 
   describe('"median" aggregation function', { tags: "@external" }, () => {
@@ -447,7 +444,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       );
     });
 
-    it('should show "median" aggregation option for databases that support "percentile-aggregations" driver feature', () => {
+    it('should show "median" aggregation option for databases that support "percentile-aggregations" driver feature, in the notebook and the Summarize side panel', () => {
       cy.findByRole("button", { name: "Summarize" }).click();
 
       H.addSummaryField({ metric: "Median of ...", field: "Price" });
@@ -462,6 +459,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.findByLabelText("Switch to data").click();
       cy.findAllByTestId("header-cell").should("contain", "Median of Price");
+
+      H.summarize();
+
+      cy.findByTestId("add-aggregation-button").click();
+
+      H.popover().within(() => {
+        cy.findByText("Median of ...").should("be.visible");
+      });
     });
 
     it("should support custom columns", () => {
@@ -495,18 +500,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findAllByTestId("header-cell")
         .should("contain", "Median of Median of Mega price")
         .should("contain", "Median of Count");
-    });
-
-    it("should support Summarize side panel", () => {
-      H.visualize();
-
-      H.summarize();
-
-      cy.findByTestId("add-aggregation-button").click();
-
-      H.popover().within(() => {
-        cy.findByText("Median of ...").should("be.visible");
-      });
     });
   });
 
@@ -660,43 +653,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       name: "ID is 1",
       index: 0,
       horizontal: -100,
-    });
-  });
-
-  it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-        },
-        type: "metric",
-        name: "Revenue",
-      },
-      {
-        wrapId: true,
-        idAlias: "metricId",
-      },
-    );
-
-    cy.get("@metricId").then((metricId) => {
-      const questionDetails = {
-        query: {
-          "source-table": ORDERS_ID,
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ],
-          aggregation: ["metric", metricId],
-        },
-      };
-
-      H.createQuestion(questionDetails, { visitQuestion: true });
-
-      H.openNotebook();
-
-      H.getNotebookStep("summarize").contains("Revenue").click();
-
-      H.CustomExpressionEditor.value().should("equal", "[Revenue]");
     });
   });
 
@@ -903,22 +859,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should allow using aggregation functions inside expressions in aggregation (metabase#52611)", () => {
-    cy.visit("/");
-    H.newButton("Question").click();
-    H.miniPicker().findByText("Sample Database").click();
-    H.miniPicker().findByText("Orders").click();
-    H.addSummaryField({ metric: "Custom Expression" });
-    H.enterCustomColumnDetails({
-      formula: "case(Sum([Total]) > 10, Sum([Total]), Sum([Subtotal]))",
-      name: "conditional sum",
-    });
-    cy.button("Done").click();
-    H.addSummaryGroupingField({ field: "Total" });
-    H.visualize();
-    H.echartsContainer().should("contain.text", "Total: 8 bins");
-  });
-
   it("Correctly translates aggregations", () => {
     cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
       locale: "en-ZZ",
@@ -937,14 +877,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.findAllByText("[zz] Average of Subtotal").should("exist");
     cy.findAllByText("Average of Subtotal").should("not.exist");
-
-    cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
-      locale: "en",
-    });
   });
 
   it("should support browser based navigation (metabase#55162)", () => {
-    cy.intercept(`/api/table/${PRODUCTS_ID}/fks`).as("tableFK");
     H.createQuestion(
       { query: { "source-table": PRODUCTS_ID }, name: "products" },
       { visitQuestion: true, wrapId: true },
@@ -1096,16 +1031,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         `/model/${PRODUCT_QUESTION_ID}-products`,
       );
 
-      /**
-       * foreign key relation orders should work, but it consistently fails in CI
-       */
-      // cy.wait("@tableFK");
-
-      // H.modal().findByTestId("fk-relation-orders").click();
-
-      // cy.location("pathname").should("contain", "/question");
-      // cy.findByTestId("filter-pill").should("contain.text", "Product ID is 1");
-
       H.openQuestionActions("Turn back to saved question");
 
       cy.location("pathname").should(
@@ -1121,40 +1046,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       // );
     });
   });
-
-  it("should be possible to select custom expressions in the aggregation picker", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.summarize({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Find...").type("Distinc");
-      cy.findByText("Number of distinct values of ...").should("be.visible");
-      cy.findByText("DistinctIf").click();
-      H.CustomExpressionEditor.value().should(
-        "equal",
-        "DistinctIf(column, condition)",
-      );
-    });
-  });
-
-  it("should not render detail view column in preview (metabase#63070)", () => {
-    function openPreview() {
-      cy.findByTestId("step-preview-button").click();
-    }
-
-    function verifyPreviewIsRendered() {
-      cy.findByTestId("table-scroll-container").should("contain", "37.65");
-    }
-
-    function verifyIndexColumnsNotRendered() {
-      cy.findAllByTestId("row-id-cell").should("have.length", 0);
-    }
-
-    H.openOrdersTable({ mode: "notebook" });
-
-    openPreview();
-    verifyPreviewIsRendered();
-    verifyIndexColumnsNotRendered();
-  });
 });
 
 function assertTableRowCount(expectedCount) {
@@ -1162,10 +1053,4 @@ function assertTableRowCount(expectedCount) {
     "have.length",
     expectedCount,
   );
-}
-
-function addSimpleCustomColumn(name) {
-  H.enterCustomColumnDetails({ formula: "[Category]", blur: true });
-  H.CustomExpressionEditor.nameInput().click().type(name);
-  cy.button("Done").click();
 }

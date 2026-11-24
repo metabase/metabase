@@ -2,22 +2,26 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
+   [metabase.events.core :as events]
    [metabase.indexed-entities.db :as indexed-entities.db]
+   [metabase.indexed-entities.schema :as indexed-entities.schema]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; model-index pk/value refs are stored as legacy field refs; validated against the legacy schema
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.query-processor.core :as qp]
    [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.task.core :as task]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -25,12 +29,14 @@
 
 (methodical/defmethod t2/table-name :model/ModelIndex [_model] :model_index)
 (methodical/defmethod t2/table-name :model/ModelIndexValue [_model] :model_index_value)
+
 (derive :model/ModelIndex :metabase/model)
 (derive :model/ModelIndexValue :metabase/model)
 
 (derive :model/ModelIndex :hook/created-at-timestamped?)
 ;; TODO disabled due to issues having an update hook causes, seemingly due to a toucan2 bug
-#_(derive :model/ModelIndex :hook/search-index)
+#_(derive :model/ModelIndex :search/indexed)
+(derive :model/ModelIndex :search/indexed-deletes)
 
 (t2/deftransforms :model/ModelIndex
   ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
@@ -39,10 +45,18 @@
   {:pk_ref    mi/transform-legacy-field-ref
    :value_ref mi/transform-legacy-field-ref})
 
-(t2/define-before-delete :model/ModelIndex
+(defn trigger-key
+  "Quartz trigger key for the job that refreshes the values of model index `model-index-id`."
+  [model-index-id]
+  (triggers/key (format "metabase.task.IndexValues.trigger.%d" model-index-id)))
+
+(defn remove-indexing-job
+  "Remove the indexing job for `model-index`.
+
+  This and [[trigger-key]] live here rather than with the job itself so that deleting a ModelIndex can cancel its
+  trigger without reaching into [[metabase.indexed-entities.task.index-values]], which reads this namespace."
   [model-index]
-  (let [remove-refresh-job (requiring-resolve 'metabase.indexed-entities.task.index-values/remove-indexing-job)]
-    (remove-refresh-job model-index)))
+  (task/delete-trigger! (trigger-key (:id model-index))))
 
 (def max-indexed-values
   "Maximum number of values we will index. Actually take one more than this to test if there are more than the
@@ -73,34 +87,51 @@
                     {:field-ref field-ref
                      :valid-clauses [:field :expression]}))))
 
-(mr/def ::model-index
-  [:map
-   [:model_id  ::lib.schema.id/card]
-   [:value_ref some?]
-   [:pk_ref    some?]])
-
-(mu/defn ^:private fetch-values
-  [model-index :- ::model-index]
+(mu/defn- values-query
+  "The query selecting `[pk value]` tuples from `model-index`'s model: every record when `pk` is nil, otherwise just
+  the record with that primary key."
+  [model-index :- ::indexed-entities.schema/model-index
+   pk          :- [:maybe :int]]
   (let [model     (indexed-entities.db/card (:model_id model-index))
-        fix       (mu/fn [field-ref :- some?
+        fix       (mu/fn [field-ref :- ::mbql.s/FieldOrExpressionRef
                           base-type :- ::lib.schema.common/base-type]
                     ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
                     (-> field-ref #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
         ;; :type/Text and :type/Integer are ensured at creation time on the api.
         value-ref (-> model-index :value_ref (fix :type/Text))
         pk-ref    (-> model-index :pk_ref (fix :type/Integer))]
-    (try
-      [nil (->> (qp/process-query
-                 ;; TODO (Cam 10/1/25) -- update this to generate the query using Lib
-                 {:database (:database_id model)
-                  :type     :query
-                  :query    {:source-table (format "card__%d" (:id model))
-                             :breakout     [pk-ref value-ref]
-                             :limit        (inc max-indexed-values)}})
-                :data :rows (filter valid-tuples?))]
-      (catch Exception e
-        (log/warnf "Error fetching indexed values for model %s: %s" (:id model) (ex-message e))
-        [(ex-message e) []]))))
+    ;; TODO (Cam 10/1/25) -- update this to generate the query using Lib
+    {:database (:database_id model)
+     :type     :query
+     :query    (cond-> {:source-table (format "card__%d" (:id model))
+                        :breakout     [pk-ref value-ref]
+                        :limit        (inc max-indexed-values)}
+                 pk (assoc :filter [:= pk-ref pk]
+                           :limit  1))}))
+
+(mu/defn ^:private fetch-values
+  [model-index :- ::indexed-entities.schema/model-index]
+  (try
+    [nil (->> (qp/process-query (values-query model-index nil))
+              :data :rows (filter valid-tuples?))]
+    (catch Exception e
+      (log/warnf "Error fetching indexed values for model %s: %s" (:model_id model-index) (ex-message e))
+      [(ex-message e) []])))
+
+(mu/defn value-for-pk :- [:maybe :string]
+  "The indexed value of the record of `model-index`'s model whose primary key is `pk`, as the current user sees it:
+  the model is queried through the QP, so data permissions, sandboxing, impersonation and routing all apply. This
+  deliberately never reads `model_index_value`, which is a lens-free copy shared by every user and reachable only
+  through search. Nil when no record matches or the user may not run the model."
+  [model-index :- ::indexed-entities.schema/model-index
+   pk          :- :int]
+  (try
+    (let [[[_pk value]] (->> (qp/process-query (values-query model-index pk))
+                             :data :rows (filter valid-tuples?))]
+      (some-> value str))
+    (catch Exception e
+      (log/debugf "Could not read indexed value %s of model %s: %s" pk (:model_id model-index) (ex-message e))
+      nil)))
 
 (defn find-changes
   "Find additions and deletions in indexed values. `source-values` are from the db, `indexed-values` are what we
@@ -116,12 +147,11 @@
     {:additions (set/difference source current)
      :deletions (set/difference current source)}))
 
+;;; ------------------------------------------------------ Writes ------------------------------------------------------
+
 (mu/defn add-values!
   "Add indexed values to the model_index_value table."
-  [model-index :- [:merge
-                   ::model-index
-                   [:map
-                    [:id pos-int?]]]]
+  [model-index :- ::indexed-entities.schema/model-index]
   (let [[error-message values-to-index] (fetch-values model-index)
         current-index-values            (into #{}
                                               (map (juxt :model_pk :name))
@@ -157,49 +187,71 @@
                       (:id model-index) (:model_id model-index) (ex-message e))
           (indexed-entities.db/mark-model-index-error! (:id model-index) (ex-message e)))))))
 
-;;;; creation
-
 (defn default-schedule
   "Default sync schedule for indexed values. Defaults to randomly once a day."
   []
   (u.cron/schedule-map->cron-string (sync.schedules/randomly-once-a-day)))
 
-(defn create
-  "Create a model index"
-  [{:keys [model-id pk-ref value-ref creator-id]}]
-  (indexed-entities.db/insert-model-index! {:model_id   model-id
-                                            ;; todo: sanitize these?
-                                            :pk_ref     pk-ref
-                                            :value_ref  value-ref
-                                            :schedule   (default-schedule)
-                                            :state      "initial"
-                                            :creator_id creator-id}))
+(defn- prepare-model-indexes
+  "The ModelIndex rows that the `rows` of a call give: each with the default schedule and the initial state."
+  [rows]
+  (mapv (fn [{:keys [model-id pk-ref value-ref creator-id]}]
+          {:model_id   model-id
+           :pk_ref     pk-ref
+           :value_ref  value-ref
+           :schedule   (default-schedule)
+           :state      "initial"
+           :creator_id creator-id})
+        rows))
 
-;;;; ------------------------------------------------- Search ----------------------------------------------------------
+(mu/defn create-model-indexes! :- [:sequential :map]
+  "Create a ModelIndex from each of `rows`, with the default schedule and the initial state, and return the new
+  instances in order, in one transaction, publishing their create event."
+  [rows :- [:sequential ::indexed-entities.schema/model-index.create]]
+  (app-db/create-batched! :model/ModelIndex rows
+                          {:before-create prepare-model-indexes
+                           :after-create  #(events/publish-event! :event/model-index-create (events/create-event %))}))
 
-(search/define-spec "indexed-entity"
-  {:model        :model/ModelIndexValue
-   :visibility   :app-user
-   :attrs        {:id            [:concat_ws ":" :model_index_id :model_pk]
-                  :collection-id :collection.id
-                  :creator-id    false
-                  ;; this seems wrong, I'd expect it to track whether the model is archived.
-                  :archived      false
-                  :database-id   :model.database_id
-                  :created-at    false
-                  :updated-at    false}
-   :search-terms [:name]
-   :render-terms {:collection-name :collection.name
-                  :collection-type :collection.type
-                  :model-id        :model.id
-                  :model-name      :model.name
-                  :pk-ref          :model_index.pk_ref
-                  :model-index-id  :model_index.id}
-   :joins        {:model_index [:model/ModelIndex [:= :model_index.id :this.model_index_id]]
-                  :model       [:model/Card [:= :model.id :model_index.model_id]]
-                  :collection  [:model/Collection [:= :collection.id :model.collection_id]]}})
+(defn- remove-indexing-jobs-and-publish!
+  "Remove the indexing jobs of the ModelIndexes `rows`, then publish their delete event."
+  [rows]
+  (run! remove-indexing-job rows)
+  (events/publish-event! :event/model-index-delete (events/delete-event rows)))
 
-(perms/define-collection-based-visibility! "indexed-entity" :denormalized-from :model/Card)
+(mu/defn delete-model-indexes! :- :nil
+  "Delete the ModelIndexes with `ids` in one transaction, removing their indexing jobs and publishing their delete event
+  right before the first statement."
+  [ids :- [:sequential ms/PositiveInt]]
+  (app-db/delete-batched! :model/ModelIndex ids {:before-delete remove-indexing-jobs-and-publish!}))
 
-;; TODO resolve the toucan2 issue preventing us from using this hook
-(underive :model/ModelIndexValue :hook/search-index)
+;;; ------------------------------------------------------ Specs -------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ModelIndex [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/ModelIndexValue [_model]
+  {:skip?    false
+   :sequence false})
+
+(defmethod search/spec :model/ModelIndexValue
+  [_model]
+  {"indexed-entity"
+   {:visibility   :app-user
+    :attrs        {:id            [:concat_ws ":" :model_index_id :model_pk]
+                   :collection-id :collection.id
+                   :creator-id    false
+                   ;; this seems wrong, I'd expect it to track whether the model is archived.
+                   :archived      false
+                   :database-id   :model.database_id
+                   :created-at    false
+                   :updated-at    false}
+    :search-terms [:name]
+    :render-terms {:collection-name :collection.name
+                   :collection-type :collection.type
+                   :model-id        :model.id
+                   :model-name      :model.name
+                   :pk-ref          :model_index.pk_ref
+                   :model-index-id  :model_index.id}
+    :joins        {:model_index [:model/ModelIndex [:= :model_index.id :this.model_index_id]]
+                   :model       [:model/Card [:= :model.id :model_index.model_id]]
+                   :collection  [:model/Collection [:= :collection.id :model.collection_id]]}}})

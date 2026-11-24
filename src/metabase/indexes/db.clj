@@ -3,6 +3,8 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -11,6 +13,12 @@
   "Lifecycle states for a table index request. Mirrors `metabase.indexes.schema/statuses`; duplicated here (rather
   than required) to keep this namespace free of module-internal logic dependencies."
   [:enum :create-pending :update-pending :delete-pending :running :succeeded :failed])
+
+(mu/defn synced-table-indexes-clause :- [:fn vector?]
+  "The clause over the TableIndex table aliased `alias` selecting the indexes of the transforms remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
 
 (mu/defn table-indexes-for-transform
   "The TableIndexes of the Transform with `transform-id`, in id order."
@@ -24,6 +32,14 @@
              :transform_id transform-id
              :status [:not= :delete-pending]
              {:order-by [[:index_name :asc]]}))
+
+(mu/defn applicable-table-index-statuses-for-transforms
+  "The id, status and error message of each of the TableIndexes of the Transforms with `transform-ids` that are not
+  pending deletion."
+  [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]]
+  (t2/select [:model/TableIndex :id :status :error_message]
+             :transform_id [:in [:auto/param transform-ids]]
+             :status [:not= :delete-pending]))
 
 (mu/defn running-table-indexes
   "The running TableIndexes among `ids` of the Transform with `transform-id`, in id order."
@@ -54,29 +70,54 @@
    statuses     :- [:set Status]]
   (t2/exists? :model/TableIndex :transform_id transform-id :status [:in statuses]))
 
+(def ^:private StatusChanges
+  "The columns a status change of a TableIndex sets."
+  [:map {:closed true}
+   [:status           {:optional true} [:maybe [:or :keyword :string]]]
+   [:error_message    {:optional true} [:maybe :string]]
+   [:last_executed_at {:optional true} [:= :%now]]])
+
+(mu/defn table-index-statuses
+  "The id, status and error message of each of the TableIndexes with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/TableIndex :id :status :error_message] :id [:in [:auto/param ids]]))
+
+(defn- update-by-changes!
+  "Apply `changes` to the TableIndexes of `rows` with one plain update through the model, `where` narrowing it."
+  [rows changes where]
+  (when (seq rows)
+    (t2/update! :model/TableIndex (into {:id [:in (mapv :id rows)]} where) changes)))
+
 (mu/defn mark-table-indexes-running!
-  "Set the TableIndexes among `ids` whose status is in `from-statuses` to running."
-  [ids           :- [:set ms/PositiveInt]
-   from-statuses :- [:set Status]]
-  (t2/update! :model/TableIndex {:id [:in ids] :status [:in from-statuses]} {:status :running}))
+  "Apply `changes` to the TableIndexes of `rows`, as stored, whose status is in `from-statuses`."
+  [rows          :- [:sequential :map]
+   from-statuses :- [:set Status]
+   changes       :- StatusChanges]
+  (update-by-changes! rows changes {:status [:in from-statuses]}))
 
 (mu/defn mark-running-table-indexes-failed!
-  "Set the running TableIndexes among `ids` to failed with `error-message`."
-  [ids           :- [:set ms/PositiveInt]
-   error-message :- :string]
-  (t2/update! :model/TableIndex
-              {:id [:in ids] :status :running}
-              {:status           :failed
-               :error_message    error-message
-               :last_executed_at :%now}))
+  "Apply `changes` to the running TableIndexes of `rows`, as stored."
+  [rows    :- [:sequential :map]
+   changes :- StatusChanges]
+  (update-by-changes! rows changes {:status :running}))
 
-(mu/defn mark-table-indexes-update-pending!
-  "Set the TableIndexes with `ids` to update-pending and clear their error."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/update! :model/TableIndex {:id [:in ids]} {:status :update-pending, :error_message nil}))
+(mu/defn update-table-index-statuses!
+  "Apply `changes` to the TableIndexes of `rows`, as stored."
+  [rows    :- [:sequential :map]
+   changes :- StatusChanges]
+  (update-by-changes! rows changes nil))
 
 (mu/defn table-index-exists-for-transform?
   "Whether the Transform with `transform-id` has a TableIndex named `index-name`."
   [transform-id :- ::lib.schema.id/transform
    index-name   :- :string]
   (t2/exists? :model/TableIndex :transform_id transform-id :index_name index-name))
+
+(mu/defn mark-table-index-failed!
+  "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`."
+  [transform-id  :- ::lib.schema.id/transform
+   index-name    :- :string
+   error-message :- :string]
+  (t2/update! :model/TableIndex
+              :transform_id transform-id :index_name index-name
+              {:status :failed :error_message error-message :last_executed_at :%now}))

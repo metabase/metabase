@@ -120,9 +120,9 @@
 (mu/defn add-filters
   "Add up to `max-filters` filters to dashboard `dashboard`. The `dimensions` argument is a list of fields for which to
   create filters."
-  [dashboard :- ::ads/dashboard
-   dimensions
-   max-filters]
+  [dashboard   :- ::ads/dashboard
+   dimensions  :- [:sequential ::ads/field]
+   max-filters :- :int]
   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                        (:dashcards dashboard))))]
               (field/with-targets (xrays.db/fk-fields-for-tables table-ids)))]

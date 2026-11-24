@@ -410,22 +410,26 @@
               (testing "while the grant is still running the sweep leaves everything alone"
                 (grants/expire-ended-grants!)
                 (is (:is_superuser (t2/select-one :model/User :id support-user-id)))
-                (is (t2/exists? :model/Session :user_id support-user-id)))
+                (is (t2/exists? :model/Session :user_id support-user-id :ended_at nil)))
               (testing "once the grant window has passed the sweep revokes access"
                 ;; Move the grant's end into the past; `revoked_at` stays nil, so nothing else cleans up.
-                (t2/update! :model/SupportAccessGrantLog (:id grant)
+                (t2/update! :model/SupportAccessGrantLog :id (:id grant)
                             {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
                 (grants/expire-ended-grants!)
                 (is (not (:is_superuser (t2/select-one :model/User :id support-user-id)))
                     "Support user should lose admin access once the grant ends")
-                (is (not (t2/exists? :model/Session :user_id support-user-id))
-                    "Support user sessions should be deleted once the grant ends")
+                (is (not (t2/exists? :model/Session :user_id support-user-id :ended_at nil))
+                    "Support user sessions should be ended once the grant ends")
+                (is (= {:end_reason "support-grant-revoked", :ended_by_user_id nil, :key_hashed nil}
+                       (select-keys (t2/select-one :model/Session :id "expiregrant1")
+                                    [:end_reason :ended_by_user_id :key_hashed]))
+                    "with no actor, since nobody revoked it")
                 (is (every? :expires_at (t2/select :model/AuthIdentity :user_id support-user-id))
                     "Support user auth identities should be expired once the grant ends"))
               (testing "the sweep is idempotent"
                 (grants/expire-ended-grants!)
                 (is (not (:is_superuser (t2/select-one :model/User :id support-user-id))))
-                (is (not (t2/exists? :model/Session :user_id support-user-id)))))))))))
+                (is (not (t2/exists? :model/Session :user_id support-user-id :ended_at nil)))))))))))
 
 (deftest expire-ended-grants-ignores-other-users-test
   (testing "the natural-expiry sweep only touches the support user"
@@ -438,7 +442,7 @@
               (t2/insert! :model/Session {:id          "otheruser001"
                                           :user_id     other-user-id
                                           :session_key (str (random-uuid))})
-              (t2/update! :model/SupportAccessGrantLog (:id grant)
+              (t2/update! :model/SupportAccessGrantLog :id (:id grant)
                           {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
               (grants/expire-ended-grants!)
               (is (:is_superuser (t2/select-one :model/User :id other-user-id)))
@@ -464,15 +468,15 @@
                 create-started               (promise)
                 original-revoke-user-access! (dynamic-redefs/original-fn
                                               #'sag.model/revoke-support-user-access!)]
-            (t2/update! :model/SupportAccessGrantLog (:id ended-grant)
+            (t2/update! :model/SupportAccessGrantLog :id (:id ended-grant)
                         {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
             (mt/with-dynamic-fn-redefs
               [sag.model/revoke-support-user-access!
-               (fn [user-id ended-at]
+               (fn [user-id ended-at ended-by]
                  (deliver teardown-started true)
                  (when (= ::timeout (deref allow-teardown 5000 ::timeout))
                    (throw (ex-info "Timed out waiting to finish support access teardown" {})))
-                 (original-revoke-user-access! user-id ended-at))]
+                 (original-revoke-user-access! user-id ended-at ended-by))]
               (let [expire-result (future (grants/expire-ended-grants!))]
                 (is (true? (deref teardown-started 5000 ::timeout))
                     "Expiry should reach credential teardown")
@@ -486,7 +490,7 @@
                     (deliver allow-teardown true)
                     (is (not= ::timeout (deref expire-result 5000 ::timeout)))
                     (let [new-grant (deref create-result 5000 ::timeout)
-                          support-user (t2/select-one :model/User support-user-id)
+                          support-user (t2/select-one :model/User :id support-user-id)
                           auth-identity (t2/select-one :model/AuthIdentity
                                                        :user_id support-user-id
                                                        :provider "support-access-grant")]

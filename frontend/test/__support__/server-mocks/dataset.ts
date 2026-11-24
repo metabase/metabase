@@ -1,8 +1,22 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
-import type { CardQueryMetadata, ParameterValues } from "metabase-types/api";
+import type {
+  CardQueryMetadata,
+  Dataset,
+  NativeDatasetResponse,
+  ParameterValues,
+} from "metabase-types/api";
 import type { MockDatasetOpts } from "metabase-types/api/mocks";
 import { createMockDataset } from "metabase-types/api/mocks";
+
+import type { MockResponse } from "./types";
+
+export function setupAdhocQueryEndpoint(
+  response: MockResponse<Dataset | Response>,
+  options?: UserRouteConfig,
+) {
+  fetchMock.post("path:/api/dataset", response, options);
+}
 
 export function setupAdhocQueryMetadataEndpoint(metadata: CardQueryMetadata) {
   fetchMock.post(`path:/api/dataset/query_metadata`, metadata, {
@@ -47,4 +61,10 @@ export function setupCardDataset(
       name: "dataset-post",
     },
   );
+}
+
+export function setupNativeDatasetEndpoint(
+  response: NativeDatasetResponse = { query: "SELECT 1", params: null },
+) {
+  fetchMock.post("path:/api/dataset/native", response);
 }

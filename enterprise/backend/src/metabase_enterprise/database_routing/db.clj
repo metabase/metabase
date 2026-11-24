@@ -4,23 +4,12 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
-
-(mu/defn database-name
-  "The name of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :name :model/Database database-id))
-
-(mu/defn destination-database?
-  "Whether the Database with `database-id` is a routing destination."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
 
 (mu/defn destination-database-id
   "The ID of the destination Database of the router with `router-database-id` named `database-name`, or nil."
@@ -34,11 +23,10 @@
    names              :- [:sequential :string]]
   (t2/exists? :model/Database :router_database_id router-database-id :name [:in names]))
 
-(mu/defn insert-databases!
-  "Insert the Database `rows` and return the new instances."
-  [rows :- [:sequential
-            ::warehouses.schema/database.update]]
-  (t2/insert-returning-instances! :model/Database rows))
+(mu/defn destination-database-exists?
+  "Whether one of the Databases with `database-ids` is a routing destination."
+  [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
+  (t2/exists? :model/Database :id [:in [:auto/param (vec (distinct database-ids))]] :router_database_id [:not= nil]))
 
 (mu/defn transform-exists-for-source-database?
   "Whether a Transform reads from the Database with `database-id`."
@@ -55,29 +43,33 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/DatabaseRouter :database_id database-id))
 
+(mu/defn router-ids-for-databases
+  "The ids of the DatabaseRouters of the Databases with `database-ids`."
+  [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
+  (t2/select-pks-vec :model/DatabaseRouter :database_id [:in [:auto/param database-ids]]))
+
 (mu/defn router-user-attribute
   "The user attribute the router of the Database with `database-id` routes on."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id database-id))
+
+(mu/defn all-router-user-attributes :- [:maybe [:map-of ::lib.schema.id/database :string]]
+  "A map of router Database ID to routing user attribute for every DatabaseRouter."
+  []
+  (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter))
 
 (mu/defn router-user-attributes-by-database
   "A map of Database ID to routing user attribute for `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
 
-(mu/defn insert-router!
-  "Insert a DatabaseRouter for the Database with `database-id` routing on `user-attribute`."
-  [database-id    :- ::lib.schema.id/database
-   user-attribute :- :string]
-  (t2/insert! :model/DatabaseRouter {:database_id database-id :user_attribute user-attribute}))
+(mu/defn router-anonymous-access-grants-by-database
+  "A map of Database ID to anonymous-access grant for `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/select-fn->fn :database_id :anonymous_access_granted :model/DatabaseRouter :database_id [:in database-ids]))
 
-(mu/defn update-router-user-attribute!
-  "Set the routing user attribute of the router of the Database with `database-id`."
-  [database-id    :- ::lib.schema.id/database
-   user-attribute :- :string]
-  (t2/update! :model/DatabaseRouter :database_id database-id {:user_attribute user-attribute}))
-
-(mu/defn delete-router!
-  "Delete the DatabaseRouter of the Database with `database-id`."
+(mu/defn router-anonymous-access-granted?
+  "Whether the router of the Database with `database-id` has been granted anonymous access. False when `database-id`
+  is not a router database."
   [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/DatabaseRouter :database_id database-id))
+  (boolean (t2/select-one-fn :anonymous_access_granted :model/DatabaseRouter :database_id database-id)))

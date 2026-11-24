@@ -21,7 +21,6 @@ import type { ColumnsReordering } from "./hooks/use-columns-reordering";
 import type { VirtualGrid } from "./hooks/use-virtual-grid";
 
 declare module "@tanstack/react-table" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     wrap?: boolean;
     enableReordering?: boolean;
@@ -154,6 +153,9 @@ export interface DataGridTheme {
 
   /** Background color of the table header that stays fixed while scrolling. Defaults to `white` if no cell background color is set */
   stickyBackgroundColor?: string;
+
+  /** Background color of every other row when striping is enabled. Defaults to a subtle tint of the cell background */
+  stripedBackgroundColor?: string;
 
   cell?: {
     /** Text color default body cells, defaults to `text-primary`. */
@@ -321,7 +323,7 @@ export type ScrollToDestinations = {
 
 export interface DataGridInstance<TData> {
   table: Table<TData>;
-  gridRef: RefObject<HTMLDivElement>;
+  gridRef: RefObject<HTMLDivElement | null>;
   virtualGrid: VirtualGrid;
   measureRoot: React.ReactNode;
   columnsReordering: ColumnsReordering;

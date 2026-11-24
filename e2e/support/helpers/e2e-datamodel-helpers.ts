@@ -23,7 +23,6 @@ export const DataModel = {
   Shared: {
     visitArea,
     getBasePathForArea,
-    getCheckLocation,
     getTriggeredFromArea,
     verifyAndCloseToast,
     verifyTablePreview,
@@ -79,9 +78,7 @@ export const DataModel = {
     getDescriptionInput: getFieldDescriptionInput,
     getPreviewButton: getFieldPreviewButton,
     getFieldValuesButton: getFieldValuesButton,
-    getDataType: getFieldDataType,
     getCoercionToggle: getFieldCoercionToggle,
-    getCoercionInput: getFieldCoercionInput,
     getSemanticTypeInput: getFieldSemanticTypeInput,
     getSemanticTypeCurrencyInput: getFieldSemanticTypeCurrencyInput,
     getSemanticTypeFkTarget: getFieldSemanticTypeFkTargetInput,
@@ -90,11 +87,7 @@ export const DataModel = {
     getDisplayValuesInput: getFieldDisplayValuesInput,
     getDisplayValuesFkTargetInput: getFieldDisplayValuesFkTargetInput,
     getUnfoldJsonInput: getFieldUnfoldJsonInput,
-    getStyleInput: getFieldStyleInput,
-    getMiniBarChartToggle: getFieldMiniBarChartToggle,
-    getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
-    getSuffixInput: getFieldSuffixInput,
     getCloseButton: getFieldSectionCloseButton,
   },
   PreviewSection: {
@@ -155,7 +148,6 @@ export const DataModel = {
     getReplaceButton: getSourceReplacementReplaceButton,
     getCancelButton: getSourceReplacementCancelButton,
     getTargetPickerButton: getSourceReplacementTargetPickerButton,
-    getDependentsTab: getSourceReplacementDependentsTab,
     getFindAndReplaceButton: getSourceReplacementFindAndReplaceButton,
   },
 };
@@ -178,7 +170,9 @@ function visit({
   basePath?: string;
 } = {}) {
   const normalizedBasePath = getNormalizedBasePath(basePath);
-  cy.intercept("GET", "/api/database").as("datamodel/visit/databases");
+  cy.intercept({ method: "GET", pathname: "/api/database" }).as(
+    "datamodel/visit/databases",
+  );
   cy.intercept("GET", "/api/database/*").as("datamodel/visit/database");
   cy.intercept("GET", "/api/table/*/query_metadata*").as(
     "datamodel/visit/metadata",
@@ -529,16 +523,8 @@ function getRawFieldName() {
   return getFieldSection().findByLabelText("Field name");
 }
 
-function getFieldDataType() {
-  return getFieldSection().findByLabelText("Data type");
-}
-
 function getFieldCoercionToggle() {
   return getFieldSection().findByLabelText("Cast to a specific data type");
-}
-
-function getFieldCoercionInput() {
-  return getFieldSection().findByPlaceholderText("Select data type");
 }
 
 function getFieldSemanticTypeInput() {
@@ -575,28 +561,12 @@ function getFieldUnfoldJsonInput() {
   );
 }
 
-function getFieldMiniBarChartToggle() {
-  return getFieldSection().findByLabelText("Show a mini bar chart");
-}
-
-function getFieldMultiplyByNumberInput() {
-  return getFieldSection().findByLabelText("Multiply by a number");
-}
-
-function getFieldStyleInput() {
-  return getFieldSection().findByLabelText("Style");
-}
-
 function getFieldPrefixInput() {
   return getFieldSection().findByTestId("prefix");
 }
 
-function getFieldSuffixInput() {
-  return getFieldSection().findByTestId("suffix");
-}
-
 function getFieldSectionCloseButton() {
-  return getFieldSectioHeader().findByRole("link", { name: /close/ });
+  return getFieldSectioHeader().findByRole("link", { name: /close/i });
 }
 
 /** preview section helpers */
@@ -825,13 +795,6 @@ export function getBasePathForArea(area: Area) {
   return () => (area === "admin" ? "/admin/datamodel" : "/data-studio/data");
 }
 
-export function getCheckLocation(area: Area) {
-  return (path: string) => {
-    const basePath = getBasePathForArea(area)();
-    cy.location("pathname").should("eq", `${basePath}${path}`);
-  };
-}
-
 export function getTriggeredFromArea(area: Area) {
   return () => (area === "admin" ? "admin" : "data_studio");
 }
@@ -946,14 +909,11 @@ function getInterceptsForArea(area: Area) {
   cy.intercept("PUT", "/api/table").as("updateTables");
   cy.intercept("PUT", "/api/table/*").as("updateTable");
 
+  cy.intercept({ method: "GET", pathname: "/api/database" }).as("databases");
+
   if (area === "admin") {
-    cy.intercept("GET", "/api/database?*").as("databases");
     cy.intercept("GET", "/api/field/*/values").as("fieldValues");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-  }
-
-  if (area === "data studio") {
-    cy.intercept("GET", "/api/database").as("databases");
   }
 }
 
@@ -982,12 +942,6 @@ function getSourceReplacementTargetPickerButton() {
     "button",
     "Pick a table, model, or saved question",
   );
-}
-
-function getSourceReplacementDependentsTab(count: number) {
-  return getSourceReplacementModal().findByRole("tab", {
-    name: new RegExp(`${count} items? will be changed`),
-  });
 }
 
 function getSourceReplacementFindAndReplaceButton() {

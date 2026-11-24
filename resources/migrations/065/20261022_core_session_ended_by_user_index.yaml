@@ -1,0 +1,21 @@
+## Deleting a user clears core_session.ended_by_user_id through fk_core_session_ended_by_user_id, which scans the table
+## without an index. MySQL, MariaDB and H2 index a foreign key's column themselves; Postgres doesn't, and on MySQL a
+## second index would take over the constraint and refuse to be dropped on rollback, so this one is Postgres-only.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-22T01:00:00
+      author: ranquild
+      comment: Index core_session.ended_by_user_id (PostgreSQL)
+      dbms: postgresql
+      changes:
+        - createIndex:
+            tableName: core_session
+            indexName: idx_core_session_ended_by_user_id
+            columns:
+              - column:
+                  name: ended_by_user_id
+      rollback:
+        - dropIndex:
+            tableName: core_session
+            indexName: idx_core_session_ended_by_user_id

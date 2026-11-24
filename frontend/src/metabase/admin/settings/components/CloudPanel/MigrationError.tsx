@@ -5,7 +5,8 @@ import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
-import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";
+import { LargeIconContainer } from "./LargeIconContainer";
+import { MigrationCard } from "./MigrationCard";
 import { getMigrationEventTime } from "./utils";
 
 interface MigrationErrorProps {
@@ -55,10 +56,10 @@ export const MigrationError = ({
       </MigrationCard>
 
       <Button
-        variant="subtle"
+        variant="transparent"
+        size="compact-md"
         onClick={restartMigration}
         disabled={isRestarting}
-        px="0"
         mt="1rem"
       >{t`Restart the process`}</Button>
     </>

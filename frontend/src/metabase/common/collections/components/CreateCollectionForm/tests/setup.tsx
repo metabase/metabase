@@ -9,6 +9,7 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { Route } from "metabase/router";
 import type {
+  Collection,
   CollectionId,
   CollectionNamespace,
   TokenFeatures,
@@ -22,12 +23,6 @@ import {
 
 import CreateCollectionForm from "../CreateCollectionForm";
 
-const ROOT_COLLECTION = createMockCollection({
-  id: "root",
-  name: "Our analytics",
-  can_write: true,
-});
-
 export interface SetupOpts {
   user?: User;
   tokenFeatures?: TokenFeatures;
@@ -35,7 +30,9 @@ export interface SetupOpts {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   parentCollectionNamespace?: CollectionNamespace | null;
   initialCollectionId?: CollectionId;
+  initialCollectionProps?: Partial<Collection>;
   namespaces?: CollectionNamespace[];
+  canWriteRoot?: boolean;
   onSubmit?: jest.Mock;
 }
 
@@ -46,9 +43,16 @@ export const setup = ({
   enterprisePlugins,
   parentCollectionNamespace,
   initialCollectionId,
+  initialCollectionProps,
   namespaces,
+  canWriteRoot = true,
   onSubmit = jest.fn(),
 }: SetupOpts = {}) => {
+  const rootCollection = createMockCollection({
+    id: "root",
+    name: "Our analytics",
+    can_write: canWriteRoot,
+  });
   const settings = mockSettings({ "token-features": tokenFeatures });
   const onCancel = jest.fn();
 
@@ -60,12 +64,12 @@ export const setup = ({
         namespace: parentCollectionNamespace,
         can_write: true,
       })
-    : ROOT_COLLECTION;
+    : rootCollection;
 
   const collections =
     parentCollectionNamespace !== undefined
-      ? [ROOT_COLLECTION, parentCollection]
-      : [ROOT_COLLECTION];
+      ? [rootCollection, parentCollection]
+      : [rootCollection];
 
   const initialCollection = initialCollectionId
     ? createMockCollection({
@@ -73,6 +77,7 @@ export const setup = ({
         name: "Data",
         can_write: true,
         namespace: parentCollectionNamespace,
+        ...initialCollectionProps,
       })
     : null;
   const endpointCollections = initialCollection
@@ -85,7 +90,7 @@ export const setup = ({
   setupCollectionsEndpoints({
     collections:
       parentCollectionNamespace !== undefined ? [parentCollection] : [],
-    rootCollection: ROOT_COLLECTION,
+    rootCollection: rootCollection,
   });
 
   // Mock individual collection fetches

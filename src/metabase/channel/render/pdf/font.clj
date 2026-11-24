@@ -40,12 +40,8 @@
    :noto-bold-italic "fonts/pdf/NotoSans-BoldItalic.ttf"
    :noto-mono        "fonts/pdf/NotoSansMono-Regular.ttf"
 
-   ;; TODO: (bshepherdson 2026-06-11) We reuse the FE's bundled Lato asset directly rather than duplicating it into a
-   ;; BE-owned path (it has full Latin/Cyrillic/Greek/Vietnamese coverage and is already shipped). This couples us to
-   ;; the `frontend_client` asset layout. These files should be moved to a BE-owned part of `resources/` and the static
-   ;; asset serving adjusted to preserve the FE URLs.
-   :brand-regular    "frontend_client/app/fonts/Lato/Lato-Regular.ttf"
-   :brand-bold       "frontend_client/app/fonts/Lato/lato-v16-latin-700.ttf"
+   :brand-regular    "fonts/pdf/Lato-Regular.ttf"
+   :brand-bold       "fonts/pdf/Lato-Bold.ttf"
 
    :arabic-regular   "fonts/pdf/NotoSansArabic-Regular.ttf"
    :arabic-bold      "fonts/pdf/NotoSansArabic-Bold.ttf"
@@ -65,6 +61,7 @@
    ;; selectors, and note that ZWJ/skin-tone sequences render as their component glyphs (no GSUB shaping).
    :emoji            "fonts/pdf/NotoEmoji-Regular.ttf"})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *fonts*
   "Per-document map of `{face-keyword {:fallbacks [<phys> ...]} ...}`, where each `<phys>` is
   `{:font <PDType0Font> :cmap <CmapLookup>}`. Bound while a document is being rendered, because `PDType0Fonts` are
@@ -275,6 +272,7 @@
              + 0.0
              (font-runs face (visual-order (normalize-ws s)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^{:dynamic true
        :arglists '([face ^String s])}
   *em-width*

@@ -4,10 +4,10 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.dashboards.constants :as dashboards.constants]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.query-processor.util :as qp.util]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -15,6 +15,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :as perf]
    [metabase.util.yaml :as yaml]
    [metabase.xrays.automagic-dashboards.populate :as populate]
@@ -39,7 +40,12 @@
 (def ^:private Score
   [:int {:min 0, :max max-score}])
 
-(def ^:private MBQL [:maybe [:sequential :any]])
+(mr/def ::template-clause
+  "A metric or filter clause in a dashboard template: a vector of strings, keywords, numbers, booleans, nils, and nested clauses, whose `[dimension X]` placeholders grounding later resolves."
+  [:sequential [:or :string :keyword number? :boolean :nil [:ref ::template-clause]]])
+
+(def ^:private MBQL
+  [:maybe ::template-clause])
 
 (def ^:private Identifier
   [:string
@@ -71,7 +77,7 @@
     (comp (with-defaults {:score max-score})
           (shorthand-definition :metric))}
    Identifier
-   [:map
+   [:map {:closed true}
     [:metric MBQL]
     [:score  Score]
     [:name {:optional true} LocalizedString]]])
@@ -82,7 +88,7 @@
     (comp (with-defaults {:score max-score})
           (shorthand-definition :filter))}
    Identifier
-   [:map
+   [:map {:closed true}
     [:filter MBQL]
     [:score  Score]]])
 
@@ -144,7 +150,7 @@
     (comp (with-defaults {:score max-score})
           (shorthand-definition :field_type))}
    Identifier
-   [:map
+   [:map {:closed true}
     [:field_type AppliesTo]
     [:score      Score]
     [:links_to        {:optional true} TableType]
@@ -172,7 +178,7 @@
                                           (if (string? x)
                                             x
                                             (u/qualified-name x)))}]
-   [:* :map]])
+   [:* ::lib.schema.visualization/visualization-settings]])
 
 (def ^:private Width
   [:int {:min 1, :max populate/grid-width}])
@@ -186,7 +192,7 @@
                                    {x {}}
                                    x))}
    Identifier
-   [:map [:aggregation {:optional true} :string]]])
+   [:map {:closed true} [:aggregation {:optional true} :string]]])
 
 (def ^:private Card
   [:map-of
@@ -196,7 +202,8 @@
                     :height     populate/default-card-height})}
    Identifier
    [:map
-    {:decode/dashboard-template (fn [x]
+    {:closed true
+     :decode/dashboard-template (fn [x]
                                   (if (sequential? x)
                                     (into {} x)
                                     x))}
@@ -225,7 +232,7 @@
                                    x
                                    (apply merge x)))}
    Identifier
-   [:map
+   [:map {:closed true}
     [:title LocalizedString]
     [:score :int]
     [:comparison_title {:optional true} LocalizedString]
@@ -307,7 +314,7 @@
 (def DashboardTemplate
   "Specification defining an automagic dashboard."
   [:and
-   [:map
+   [:map {:closed true}
     [:title                   LocalizedString]
     [:dashboard-template-name :string]
     [:specificity             :int]
@@ -319,7 +326,7 @@
     [:metrics           {:optional true} [:maybe [:sequential Metric]]]
     [:filters           {:optional true} [:maybe [:sequential Filter]]]
     [:groups            {:optional true} Groups]
-    [:indepth           {:optional true} [:maybe [:sequential :any]]]
+    [:indepth           {:optional true} [:maybe [:sequential :string]]]
     [:dashboard_filters {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} :string]]]]
    [:fn {:error/message "Valid metrics references"}           valid-metrics-references?]
    [:fn {:error/message "Valid filters references"}           valid-filters-references?]
@@ -429,15 +436,11 @@
 
 (defn- extract-localized-strings
   [[path dashboard-template]]
-  (let [strings      (atom [])
-        template     (coerce-to-dashboard-template dashboard-template)
+  (let [template     (coerce-to-dashboard-template dashboard-template)
         i18n-string? (mr/validator LocalizedString)]
-    (walk/postwalk
-     (fn [form]
-       (when (i18n-string? form)
-         (swap! strings conj (str form))))
-     template)
-    (map vector (distinct @strings) (repeat path))))
+    (map vector
+         (distinct (match/match-all template #'i18n-string? (str &match)))
+         (repeat path))))
 
 (defn- make-pot
   [strings]

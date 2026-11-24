@@ -23,13 +23,13 @@
   "Queue used to recalculate the field values for updated columns in the background."
   (ArrayBlockingQueue. 1000))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *field-value-invalidate-queue*
   "A layer of indirection on the actual [[field-value-invalidation-queue]], for testing."
   nil)
 
-(def ^:private ^:dynamic *invalidate-select-batch-size*
-  "Chunk size when fetching :model/Field rows for invalidation. Keeps a single SQL `IN (…)`
-  clause well under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
+(def ^:private invalidate-select-batch-size
+  "Chunk size when fetching :model/Field rows for invalidation, so each app-DB `IN (…)` clause stays bounded."
   500)
 
 (defn- batch-invalidate-field-values!
@@ -39,7 +39,7 @@
   (let [field-ids (into #{} cat field-batches)
         fields    (when (seq field-ids)
                     (->> field-ids
-                         (partition-all *invalidate-select-batch-size*)
+                         (partition-all invalidate-select-batch-size)
                          (mapcat (fn [batch]
                                    (action-v2.db/fields batch)))))]
     (sync.field-values/sync-fields-grouped-by-table! fields)))
@@ -175,7 +175,9 @@
   (let [table-ids        (distinct (map :table-id diffs))
         table->pk-fields (u/group-by identity select-table-pk-fields concat table-ids)
         diff->pk-diff    (u/for-map [{:keys [table-id before after] :as diff} diffs
-                                     :when (or before after)]
+                                     :when (or before after)
+                                     :let [before (some-> before (update-keys u/qualified-name))
+                                           after  (some-> after (update-keys u/qualified-name))]]
                            [diff {:pk     (get-row-pks (table->pk-fields table-id) (or after before))
                                   :before before
                                   :after  after}])]

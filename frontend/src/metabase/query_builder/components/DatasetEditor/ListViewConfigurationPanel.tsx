@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { skipToken, useGetTableQuery } from "metabase/api";
 import { useDispatch } from "metabase/redux";
 import { ListViewConfiguration } from "metabase/visualizations/visualizations/List/components/ListView";
 import {
@@ -56,17 +57,18 @@ export const ListViewConfigurationPanel = ({
     return data.cols.map((col) => Lib.fromLegacyColumn(query, -1, col));
   }, [data, question]);
 
-  const entityType = useMemo(() => {
+  const sourceTableId = useMemo(() => {
     try {
-      const query = question.query();
-      const sourceTableId = Lib.sourceTableOrCardId(query);
-      const table = question.metadata().table(sourceTableId);
-      // entity_type exists in the database but not in the TypeScript types
-      return (table as any)?.entity_type;
+      return Lib.primarySourceTableId(question.query()) ?? undefined;
     } catch {
       return undefined;
     }
   }, [question]);
+
+  const { data: table } = useGetTableQuery(
+    sourceTableId != null ? { id: sourceTableId } : skipToken,
+  );
+  const entityType = table?.entity_type ?? undefined;
 
   const handleChange = useCallback(
     ({

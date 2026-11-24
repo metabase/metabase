@@ -9,19 +9,27 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the [[sync-database!]] function to do all three at once."
   (:require
+   [metabase.app-db.core :as mdb]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.table :as table])
+   [metabase.warehouses.core :as warehouses])
   (:import
    (java.time.temporal Temporal)))
 
@@ -40,16 +48,23 @@
    :analyze      analyze/analyze-db!
    :field-values sync.field-values/update-field-values!})
 
-(defn- scan-phases [scan]
-  (if (not= :full scan)
+(defn- scan-phases [scan initial-sync-complete?]
+  (cond
+    (not= :full scan)
     [:metadata]
+
+    ;; FieldValues are only created on demand, so a Database on its first sync has none to update or clear.
+    (not initial-sync-complete?)
+    [:metadata :analyze]
+
+    :else
     [:metadata :analyze :field-values]))
 
-(defn- do-phase! [database phase]
-  (tracing/with-span :sync (str "sync." (name phase)) {:db/id (:id database)
+(defn- do-phase! [database-id phase]
+  (tracing/with-span :sync (str "sync." (name phase)) {:db/id      database-id
                                                        :sync/phase (name phase)}
     (let [f      (phase->fn phase)
-          result (f database)]
+          result (f database-id)]
       (if (instance? Throwable result)
         ;; do nothing if we're configured to just move on.
         (when-not sync-util/*log-exceptions-and-continue?*
@@ -58,41 +73,81 @@
         (assoc result :name (name phase))))))
 
 (mu/defn sync-database! :- SyncDatabaseResults
-  "Perform all the different sync operations synchronously for `database`.
+  "Perform all the different sync operations synchronously for the Database with `database-id`.
 
   By default, does a `:full` sync that performs all the different sync operations consecutively. You may instead
-  specify only a `:schema` sync that will sync just the schema but skip analysis.
+  specify only a `:schema` sync that will sync just the schema but skip analysis. A `:full` sync skips the FieldValues
+  scan when the `:initial_sync_status` of the Database is not `\"complete\"`.
 
   Please note that this function is *not* what is called by the scheduled tasks; those call different steps
   independently. This function is called when a Database is first added."
-  ([database]
-   (sync-database! database nil))
+  ([database-id :- ::lib.schema.id/database]
+   (sync-database! database-id nil))
 
-  ([database                         :- i/DatabaseInstance
-    {:keys [scan], :or {scan :full}} :- [:maybe [:map
+  ([database-id                      :- ::lib.schema.id/database
+    {:keys [scan], :or {scan :full}} :- [:maybe [:map {:closed true}
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
-   (tracing/with-span :sync "sync.database" {:db/id (:id database)}
-     (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-       (->> (scan-phases scan)
-            (keep (partial do-phase! database))
-            (doall))))))
+   (let [database (driver.u/lib-database database-id)]
+     (tracing/with-span :sync "sync.database" {:db/id database-id}
+       (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
+         (->> (scan-phases scan (= "complete" (sync.db/database-initial-sync-status database-id)))
+              (keep (partial do-phase! database-id))
+              (doall)))))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
   tables, caller should check if can connect."
   [table :- i/TableInstance]
-  (doto table
-    sync-metadata/sync-table-metadata!
-    analyze/analyze-table!
-    sync.field-values/update-field-values-for-table!
-    sync-util/set-initial-table-sync-complete!))
+  (database-routing/with-anonymous-router-access
+    (let [database (driver.u/lib-database (:db_id table))]
+      (sync-metadata/sync-table-metadata! database table)
+      (analyze/analyze-table! table)
+      (sync.field-values/update-field-values-for-table! database table)
+      (sync.updates/set-initial-table-sync-complete! table)
+      table)))
+
+(mu/defn start-initial-sync!
+  "Start the first sync of `database`, which a user created through the API when `previous-database` is nil, or
+  connected when `previous-database` was a stub, on another thread once the transaction it was written in commits: a
+  full sync when it `:is_full_sync`, else a metadata sync; nothing for a stub, any other update, or when auto sync is
+  disabled."
+  [database          :- [:map [:id ::lib.schema.id/database]]
+   previous-database :- [:maybe :map]]
+  (when (and (not (:is_stub database))
+             (or (nil? previous-database) (:is_stub previous-database))
+             (not (warehouses/disable-auto-sync)))
+    (mdb/do-after-commit
+     #(quick-task/submit-task!
+       (fn []
+         (try
+           (if (:is_full_sync database)
+             (sync-database! (u/the-id database))
+             (sync-metadata/sync-db-metadata! (u/the-id database)))
+           (catch Throwable e
+             (log/errorf "Error syncing Database %s: %s" (u/the-id database) (ex-message e)))))))))
+
+(defn sync-tables-in-background!
+  "Syncs `tables` on a background thread, Database by Database, skipping the Databases it cannot connect to."
+  [tables]
+  (when (seq tables)
+    (quick-task/submit-task!
+     (fn []
+       (doseq [[db-id tables] (group-by :db_id tables)]
+         (let [database (sync.db/database db-id)]
+           (if (binding [driver.settings/*allow-testing-h2-connections* true
+                         driver.settings/*allow-testing-sqlite-connections* true]
+                 (driver.u/can-connect-with-details? (:engine database) (:details database)))
+             (doseq [table tables]
+               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
+               (sync-table! table))
+             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
+                                       (:id database))))))))))
 
 (mu/defn refingerprint-field!
   "Refingerprint a field, usually after its type changes. Checks if can connect to database, returning
   `:sync/no-connection` if not."
   [field :- i/FieldInstance]
-  (let [table    (field/table field)
-        database (table/database table)]
+  (let [database (driver.u/lib-database (:db_id (field/table field)))]
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if (binding [driver.settings/*allow-testing-h2-connections* true
@@ -100,5 +155,6 @@
           (driver.u/can-connect-with-details? (:engine database) (:details database)))
       (sync-util/with-error-handling (format "Error refingerprinting field %s"
                                              (sync-util/name-for-logging field))
-        (sync.fingerprint/refingerprint-field! field))
+        (database-routing/with-anonymous-router-access
+          (sync.fingerprint/refingerprint-field! field)))
       :sync/no-connection)))

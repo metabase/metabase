@@ -7,6 +7,7 @@
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (defn- remove-nonsense
@@ -36,6 +37,10 @@
 (deftest sync-nested-fields-test
   (testing "basic test to make sure syncing nested fields works. This is sort of a higher-level test."
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-      (sync/sync-database! db)
-      (is (= (remove-nonsense toucanery/toucanery-tables-and-fields)
-             (remove-nonsense (get-tables db)))))))
+      (try
+        (sync/sync-database! (:id db))
+        (is (= (remove-nonsense toucanery/toucanery-tables-and-fields)
+               (remove-nonsense (get-tables db))))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))

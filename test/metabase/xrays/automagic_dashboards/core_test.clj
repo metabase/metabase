@@ -23,6 +23,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
@@ -176,7 +177,7 @@
                                                   :aggregation  [[:count]]}})})
               {:keys [entity source]} (#'magic/->root query)]
           (is (= entity query))
-          (is (= source (t2/select-one :model/Table (mt/id :orders)))))))))
+          (is (= source (t2/select-one :model/Table :id (mt/id :orders)))))))))
 
 (defn- mbql5-segment-definition
   "Create an MBQL5 segment definition"
@@ -190,11 +191,10 @@
 (deftest ^:parallel source-root-segment-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"
     (testing "The source of a segment is its underlying table."
-      (mt/with-temp [:model/Segment segment {:table_id   (mt/id :venues)
-                                             :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
+      (mt/with-temp [:model/Segment segment {:definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (let [{:keys [entity source]} (#'magic/->root segment)]
           (is (= entity segment))
-          (is (= source (t2/select-one :model/Table (mt/id :venues)))))))))
+          (is (= source (t2/select-one :model/Table :id (mt/id :venues)))))))))
 
 ;;; ------------------- `automagic-analysis` -------------------
 
@@ -324,7 +324,7 @@
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 2))))))
 
 (mu/defn- result-metadata-for-query :- [:maybe [:sequential :map]]
-  [query :- :map]
+  [query :- :metabase.legacy-mbql.schema/Query]
   ;; x-ray tests consume legacy-shaped result metadata (persisted card result_metadata format)
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.metadata/legacy-result-metadata query nil))
@@ -781,7 +781,6 @@
           measure-definition (-> (lib/query mp venues-table)
                                  (lib/aggregate (lib/sum price-field)))]
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Price"
-                                                      :table_id   (mt/id :venues)
                                                       :definition measure-definition}]
         (let [mp' (lib-be/application-database-metadata-provider (mt/id))
               measure-meta (lib.metadata/measure mp' measure-id)
@@ -805,7 +804,6 @@
           measure-definition (-> (lib/query mp venues-table)
                                  (lib/aggregate (lib/sum price-field)))]
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Price"
-                                                      :table_id   (mt/id :venues)
                                                       :definition measure-definition}]
         (let [mp' (lib-be/application-database-metadata-provider (mt/id))
               measure-meta (lib.metadata/measure mp' measure-id)
@@ -837,14 +835,14 @@
 (deftest test-table-title-test
   (testing "Given the current automagic_dashboards/field/GenericTable.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Table {table-name :name :as table} {:name "FOO"}]
+      (mt/with-temp [:model/Table {table-name :name :as table} {:name "FOO" :display_name "Foo"}]
         (is (= (format "A look at %s" (u/capitalize-en table-name))
                (:name (mt/with-test-user :rasta (magic/automagic-analysis table nil)))))))))
 
 (deftest test-field-title-test
   (testing "Given the current automagic_dashboards/field/GenericField.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Field {field-name :name :as field} {:name "TOTAL"}]
+      (mt/with-temp [:model/Field {field-name :name :as field} {:name "TOTAL" :display_name "Total"}]
         (is (= (format "A look at the %s fields" (u/capitalize-en field-name))
                (:name (mt/with-test-user :rasta (magic/automagic-analysis field nil)))))))))
 
@@ -854,8 +852,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Segment {table-id    :table_id
                                      segment-name :name
-                                     :as          segment} {:table_id   (mt/id :venues)
-                                                            :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
+                                     :as          segment} {:definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (is (= (format "A look at %s in the %s segment"
                        (u/capitalize-en (t2/select-one-fn :name :model/Table :id table-id))
                        segment-name)
@@ -1094,19 +1091,30 @@
           (is (=? [{:tables [{:table {:id table-id}}]}]
                   (magic/candidate-tables (t2/select-one :model/Database :id db-id)))))))))
 
-(deftest ^:parallel call-count-test
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table    {table-id :id} {:db_id db-id}
-                 :model/Field    _ {:table_id table-id}
-                 :model/Field    _ {:table_id table-id}]
-    (mt/with-test-user :rasta
-      (automagic-dashboards.test/with-rollback-only-transaction
-        (let [database (t2/select-one :model/Database :id db-id)]
-          (t2/with-call-count [call-count]
-            (magic/candidate-tables database)
-            ;; 1. load the tables, 2. their permissions in one primed load however many there are, 3. the databases'
-            ;; own grants, which `table-permission-for-user` coalesces in and which loads once per request.
-            (is (<= (call-count) 3))))))))
+(deftest call-count-test
+  (testing "finding the candidate Tables of a Database takes the same number of queries for 2 Tables and for 6"
+    (mt/with-temp [:model/Database database {}]
+      (mt/with-test-user :rasta
+        (automagic-dashboards.test/with-rollback-only-transaction
+          (let [counted (fn [n]
+                          (let [table-ids (t2/insert-returning-pks! :model/Table
+                                                                    (for [i (range n)]
+                                                                      (assoc (mt/with-temp-defaults :model/Table)
+                                                                             :db_id (:id database)
+                                                                             :name (str "T" n "_" i))))]
+                            (t2/insert! :model/Field (for [table-id table-ids
+                                                           field-name ["A" "B"]]
+                                                       (assoc (mt/with-temp-defaults :model/Field)
+                                                              :table_id table-id
+                                                              :name field-name)))
+                            (t2/with-call-count [call-count]
+                              (let [candidates (magic/candidate-tables database)]
+                                [(count (mapcat :tables candidates)) (call-count)]))))
+                _                          (counted 1)
+                [small-tables small-calls] (counted 2)
+                [large-tables large-calls] (counted 6)]
+            (is (= [3 9] [small-tables large-tables]))
+            (is (= small-calls large-calls))))))))
 
 (deftest ^:parallel empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"
@@ -1127,6 +1135,23 @@
                        :num-fields 2}
                       (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
                           first)))))))
+
+(deftest enhance-table-stats-honors-user-set-semantic-type-test
+  (testing "load-tables-with-enhanced-table-stats honors a user-set semantic_type that differs from the sync value"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Field    {pk-id :id}    {:table_id table-id}
+                   :model/Field    _              {:table_id table-id}]
+      (mt/with-test-user :rasta
+        (automagic-dashboards.test/with-rollback-only-transaction
+          (testing "sanity check: neither Field is a PK by sync, so the Table isn't list-like"
+            (is (partial= {:list-like? false, :num-fields 2}
+                          (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
+                              first))))
+          (field-user-settings/upsert-field-user-settings! {:id pk-id} {:semantic_type :type/PK})
+          (is (partial= {:list-like? true, :num-fields 2}
+                        (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
+                            first))))))))
 
 (deftest enhance-table-stats-fk-test
   (mt/with-temp [:model/Database {db-id :id}    {}
@@ -1200,7 +1225,7 @@
     (mt/dataset test-data
       (testing ""
         (testing "A table with a more specific entity-type will match to more specific binding definitions."
-          (let [table (t2/select-one :model/Table (mt/id :people))
+          (let [table (t2/select-one :model/Table :id (mt/id :people))
                 {{:keys [entity_type]} :source :as root} (#'magic/->root table)
                 base-context       (#'magic/make-base-context root)
                 dimensions         [{"Loc" {:field_type [:type/Location], :score 60}}
@@ -1269,7 +1294,7 @@
   (testing "Ensure we have examples to understand the shape returned from bind-dimensions"
     (mt/dataset test-data
       (testing "Clearly demonstrate the mechanism of full dimension binding"
-        (let [table (t2/select-one :model/Table (mt/id :people))
+        (let [table (t2/select-one :model/Table :id (mt/id :people))
               {{:keys [entity_type]} :source :as root} (#'magic/->root table)
               base-context     (#'magic/make-base-context root)
               dimensions       [{"Loc" {:field_type [:type/Location], :score 60}}
@@ -1459,7 +1484,7 @@
                                                 :source-table $$products}]
                                        :aggregation  [[:avg $tax]]
                                        :breakout     [&Products.products.title]}))
-              right                (t2/select-one :model/Table (mt/id :orders))
+              right                (t2/select-one :model/Table :id (mt/id :orders))
               cell-query           [:= [:field (mt/id :products :title)
                                         {:base-type :type/Text :join-alias "Products"}]
                                     "Intelligent Granite Hat"]
@@ -1509,7 +1534,7 @@
                                       :breakout     [[:expression "TestColumn"]
                                                      [:field (mt/id :orders :created_at)
                                                       {:temporal-unit :month}]]}})
-              right                (t2/select-one :model/Table (mt/id :orders))
+              right                (t2/select-one :model/Table :id (mt/id :orders))
               cell-query           [:and
                                     [:= [:expression "TestColumn"] 2]
                                     [:= [:field (mt/id :orders :created_at)
@@ -1581,7 +1606,7 @@
                                                                                                      (meta/field-metadata :orders :id))]))))}}
                           {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :reviews))}}
                           {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :reviews))}}
-                          {:viz_settings nil}]}
+                          {}]}
              {:dataset_query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                                  (lib/join (meta/table-metadata :products)))})
             :dashcards
@@ -1601,7 +1626,7 @@
                                                       (lib/expression "Existing" (lib/- 1 1)))}}
                            {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :venues))}}
                            {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :venues))}}
-                           {:viz_settings nil}]}
+                           {}]}
               {:dataset_query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                                   (lib/expression "TestColumn" (lib/+ 1 1)))})
              :dashcards
@@ -1618,7 +1643,7 @@
                                                                   :name            "15655"})
          ;; a wrong table_id used to be part of this repro (set by the FE, see #15655); table_id is now always
          ;; derived from the query, so this card gets table_id nil (its source is a native card)
-         :model/Card card {:table_id      (mt/id :orders) ; ignored: cleared since the query has no source table
+         :model/Card card {:table_id      nil
                            :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
                                                       :aggregation  [[:count]]
                                                       :breakout     [[:field "SOURCE" {:base-type :type/Text}]]}

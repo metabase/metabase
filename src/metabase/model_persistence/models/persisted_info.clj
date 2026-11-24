@@ -2,16 +2,22 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.model-persistence.db :as model-persistence.db]
+   [metabase.model-persistence.schema :as model-persistence.schema]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -56,26 +62,19 @@
   {:field-name field-name
    :base-type (or effective_type base_type)})
 
-(def ^:private Metadata
-  "Spec for metadata. Just asserting we have base types and names, not the full metadata of the qp."
-  [:maybe
-   [:sequential
-    [:map
-     [:name      :string]
-     [:base_type ::lib.schema.common/base-type]
-     [:effective_type {:optional true} ::lib.schema.common/base-type]]]])
-
 (mu/defn metadata->definition :- ::lib.schema.metadata/persisted-info.definition
   "Returns a ddl definition datastructure. A :table-name and :field-deifinitions vector of field-name and base-type."
-  [metadata :- Metadata table-name]
+  [metadata   :- [:maybe ::lib.schema.metadata/card.result-metadata]
+   table-name :- ::lib.schema.common/non-blank-string]
   {:table-name        table-name
    :field-definitions (mapv field-metadata->field-defintion metadata)})
 
 (mu/defn query-hash
   "Base64 string of the hash of a query."
-  [query :- :map]
+  [query :- :metabase.lib-be.schema/maybe-legacy-or-empty-query]
   (String. ^bytes (codecs/bytes->b64 (qp.util/query-hash query))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-persisted-substitution*
   "Allow persisted substitution. When refreshing, set this to nil to ensure that all underlying queries are used to
   rebuild the persisted table."
@@ -130,28 +129,6 @@
              (assoc card :persisted (contains? existing-ids id)))
            cards))))
 
-(defn mark-for-pruning!
-  "Marks PersistedInfo as `deletable` or `off`, these will at some point be cleaned up by the PersistPrune task.
-
-   `deletable` will wipe out all trace of persisted-info and allow them to be turned back on by automatic processes
-     use when you are disabling persistence at a high level.
-   `off` will ensure automatic processes do not pick up these up and re-enable."
-  ([conditions-map]
-   (mark-for-pruning! conditions-map "deletable"))
-  ([conditions-map state]
-   (cond
-     (contains? conditions-map :id)          (model-persistence.db/deactivate-persisted-info! (:id conditions-map) state)
-     (contains? conditions-map :database_id) (model-persistence.db/deactivate-persisted-infos-for-database! (:database_id conditions-map) state)
-     :else                                   (model-persistence.db/deactivate-all-persisted-infos! state))))
-
-(defn invalidate!
-  "Invalidates any caches corresponding to the Cards with `card-ids`. Equivalent to toggling the caching off and
-  on again."
-  [card-ids]
-  ;; We do not immediately delete the cached table, it will get clobbered during the next refresh cycle.
-  ;; TODO perhaps we should immediately kick off a recalculation of these caches
-  (model-persistence.db/invalidate-persisted-infos-for-cards! card-ids))
-
 (defenterprise default-persistent-info-state
   "The default state for a new PersistedInfo record. Defaults to 'creating' for OSS"
   metabase-enterprise.cache.config
@@ -174,6 +151,39 @@
      :state           default-state
      :creator_id      user-id}))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn mark-persisted-infos-for-pruning!
+  "Mark the PersistedInfos with `ids` inactive and as `state`, for the PersistPrune task to clean up: `deletable`, which
+  wipes out every trace of them and lets automatic processes turn them back on, when persistence is disabled at a
+  high level, or `off`, which keeps automatic processes from picking them up again."
+  [ids state]
+  (when (seq ids)
+    (model-persistence.db/update-persisted-infos! ids {:active false, :state state, :state_change_at :%now})))
+
+(defn mark-persisted-infos-for-pruning-for-databases!
+  "Marks every PersistedInfo of the Databases with `database-ids` as `deletable`, inactive, for the PersistPrune task;
+  one owner-scoped statement instead of a read of the ids of a Database's models."
+  [database-ids]
+  (when (seq database-ids)
+    (model-persistence.db/update-persisted-infos-for-databases!
+     database-ids {:active false, :state "deletable", :state_change_at :%now})))
+
+(defn mark-persisted-infos-for-pruning-for-disabling!
+  "Marks every PersistedInfo as `deletable`, inactive, which disabling model persistence for the instance does."
+  []
+  (model-persistence.db/update-all-persisted-infos! {:active false, :state "deletable", :state_change_at :%now}))
+
+(defn invalidate!
+  "Invalidates any caches corresponding to the Cards with `card-ids`. Equivalent to toggling the caching off and
+  on again."
+  [card-ids]
+  ;; We do not immediately delete the cached table, it will get clobbered during the next refresh cycle.
+  ;; TODO perhaps we should immediately kick off a recalculation of these caches
+  (when (seq card-ids)
+    (model-persistence.db/update-active-persisted-infos-for-cards!
+     card-ids {:active false, :state "creating", :state_change_at :%now})))
+
 (defn ready-unpersisted-models!
   "Looks for all new models in database and creates a persisted-info ready to be synced."
   [database-id]
@@ -195,9 +205,42 @@
                            (model-persistence.db/persisted-info-for-card card-id)))]
     persisted-info))
 
+(defn turn-on-models!
+  "Insert a PersistedInfo in the default state for each of the model `cards`, which have none, for `user-id`, in one
+  statement; the PersistRefresh task persists those `creating`."
+  [user-id cards]
+  (when (seq cards)
+    (model-persistence.db/insert-persisted-infos! (mapv #(create-row user-id %) cards))))
+
 (defn ready-database!
   "Sets PersistedInfo state to the default state for models without a PeristedInfo or those in a `deletable` state.
    Will ignore explicitly set `off` models."
   [database-id]
   (model-persistence.db/ready-deletable-persisted-infos! database-id (default-persistent-info-state))
   (ready-unpersisted-models! database-id))
+
+(mu/defn begin-persisted-info-refresh!
+  "Mark the PersistedInfo with `id` as refreshing `definition` (with `query-hash`), starting now."
+  [id         :- ms/PositiveInt
+   definition :- [:maybe ::model-persistence.schema/persisted-info.definition]
+   query-hash :- [:maybe :string]]
+  (model-persistence.db/begin-persisted-info-refresh! id definition query-hash))
+
+(mu/defn end-persisted-info-refresh!
+  "Record the outcome of the refresh of the PersistedInfo with `id`: `state`, whether it is now `active?`, and the
+  `error` message, ended now."
+  [id      :- ms/PositiveInt
+   active? :- :boolean
+   state   :- [:enum "persisted" "error"]
+   error   :- [:maybe :string]]
+  (model-persistence.db/end-persisted-info-refresh! id active? state error))
+
+(mu/defn delete-persisted-infos! :- :nil
+  "Delete the PersistedInfos with `ids` in one transaction."
+  [ids :- [:sequential ms/PositiveInt]]
+  (mdb/delete-batched! :model/PersistedInfo ids {}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/PersistedInfo [_model]
+  {:skip? false})

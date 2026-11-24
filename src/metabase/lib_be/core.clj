@@ -29,11 +29,14 @@
   with-metadata-provider-cache]
  [metabase.lib-be.models.transforms
   normalize-query
-  transform-query]
+  query-first-stage
+  transform-query
+  transform-visualization-settings]
  [metabase.lib-be.settings
   breakout-bin-width
   breakout-bins-num
   enable-nested-queries
-  start-of-week]
+  start-of-week
+  time-config]
  [metabase.lib-be.query
   bulk-load-query-metadata!])

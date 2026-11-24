@@ -13,7 +13,7 @@ import type {
 
 import styles from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";
-import { getEntityIcon } from "./styling";
+import { getEntityIcon, getEntityIconColor } from "./styling";
 
 export interface ListViewProps {
   data: DatasetData;
@@ -57,7 +57,9 @@ export function ListView({
   // Get the appropriate icon based on entity type
   const entityIcon =
     settings?.["list.entity_icon"] || getEntityIcon(entityType);
-  const entityIconColor = settings?.["list.entity_icon_color"];
+  const entityIconColor = getEntityIconColor(
+    settings?.["list.entity_icon_color"],
+  );
   const entityIconEnabled = settings?.["list.entity_icon_enabled"];
   const useImageColumn = settings?.["list.use_image_column"];
 

@@ -1,17 +1,17 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import slugg from "slugg";
 
 import MetabaseSettings from "metabase/utils/settings";
-import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
-  ConcreteTableId,
   Card as SavedCard,
+  TableId,
   UnsavedCard,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
-import { card as urlForCard } from "./cards";
+import { type CardUrlBuilderParams, card as urlForCard } from "./cards";
 import { appendSlug } from "./utils";
 
 type QuestionUrlBuilderOpts = {
@@ -37,32 +37,28 @@ export function question(
   });
 }
 
-export function serializedQuestion(card: SavedCard | UnsavedCard, opts = {}) {
+export function serializedQuestion(
+  card: SavedCard | UnsavedCard,
+  opts: Omit<CardUrlBuilderParams, "forceUnsaved"> = {},
+) {
   return urlForCard(card, { ...opts, forceUnsaved: true });
 }
 
-type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
-  mode?: "view" | "notebook" | "query" | "ask";
+type NewQuestionUrlBuilderOpts = {
+  mode?: "view" | "notebook" | "query";
   creationType?: string;
   objectId?: number | string;
 };
 
-export function newQuestion({
-  mode,
-  creationType,
-  objectId,
-  ...options
-}: NewQuestionUrlBuilderParams) {
-  if (mode === "ask") {
-    return `/question/ask`;
-  }
-
-  const q = Question.create(options);
-  const url = question(q, {
+export function newQuestion(
+  draft: Question,
+  { mode, creationType, objectId }: NewQuestionUrlBuilderOpts = {},
+) {
+  const url = question(draft, {
     creationType,
     query: objectId === undefined ? {} : { objectId },
   });
-  const type = q.type();
+  const type = draft.type();
 
   if (mode) {
     const pathType = type === "metric" ? "question" : type;
@@ -70,6 +66,10 @@ export function newQuestion({
   }
 
   return url;
+}
+
+export function askQuestion() {
+  return "/question/ask";
 }
 
 export function publicQuestion({
@@ -123,17 +123,9 @@ export function tableRowsQuery(
  * edited away from the table's pristine default.
  *
  * Only concrete (numeric) table ids are supported — the `/table/:slug` route
- * parses ids via {@link extractEntityId}. Callers holding a possibly-virtual id
- * (e.g. `card__17` from the Saved Questions virtual database) must fall back to
- * {@link tableRowsQuery} or the ad-hoc {@link question} URL.
+ * parses ids via {@link extractEntityId}.
  */
-export function table({
-  id,
-  name,
-}: {
-  id: ConcreteTableId;
-  name?: string | null;
-}) {
+export function table({ id, name }: { id: TableId; name?: string | null }) {
   return appendSlug(`/table/${id}`, name ? slugg(name) : undefined);
 }
 

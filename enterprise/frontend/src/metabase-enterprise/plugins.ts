@@ -4,10 +4,8 @@ import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
 import "./shared";
-
 // PLUGINS THAT DON'T USE hasPremiumFeature (imported immediately):
 import "./license";
-
 // PLUGINS THAT USE hasPremiumFeature (import initialization functions):
 import { initializePlugin as initializeAdvancedPermissions } from "./advanced_permissions";
 import { initializePlugin as initializeAiControls } from "./ai-controls";
@@ -20,8 +18,9 @@ import { initializePlugin as initializeCollections } from "./collections";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeContentVerification } from "./content_verification";
 import { initializePlugin as initializeCustomViz } from "./custom_viz";
+import { initializePlugin as initializeDataApps } from "./data-apps";
 import { initializePlugin as initializeLibrary } from "./data-studio/library";
-import { initializePlugin as initializeDataApps } from "./data_apps";
+import { initializePlugin as initializeDataTesting } from "./data-testing";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
@@ -34,7 +33,10 @@ import { initializePlugin as initializeGroupManagers } from "./group_managers";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
+import { initializePlugin as initializeMonitorApiKeyUsage } from "./monitor/api-key-usage";
+import { initializePlugin as initializeMonitorContentDiagnostics } from "./monitor/content-diagnostics";
 import { initializePlugin as initializeMonitorDependencyDiagnostics } from "./monitor/dependency-diagnostics";
+import { initializePlugin as initializeMonitorSessionManagement } from "./monitor/session-management";
 import { initializePlugin as initializeTools } from "./monitor/tools";
 import { initializePlugin as initializeMultiFactorAuth } from "./multi_factor_auth";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
@@ -89,7 +91,10 @@ export function initializePlugins() {
   initializeMetabot();
   initializeModelPersistence();
   initializeModeration();
+  initializeMonitorApiKeyUsage();
+  initializeMonitorContentDiagnostics();
   initializeMonitorDependencyDiagnostics();
+  initializeMonitorSessionManagement();
   initializeMultiFactorAuth();
   initializeRemoteSync();
   initializeReplacement();
@@ -107,6 +112,7 @@ export function initializePlugins() {
   initializeTools();
   initializeTransforms();
   initializeTransformsInspector();
+  initializeDataTesting();
   initializeTransformsPython();
   initializeUploadManagement();
   initializeUserProvisioning();

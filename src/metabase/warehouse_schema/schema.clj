@@ -1,111 +1,108 @@
 (ns metabase.warehouse-schema.schema
   (:require
+   [malli.util :as mut]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
+   [metabase.models.schema :as models.schema]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.schema]))
+
+(mr/def ::dimension.type
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :internal :external])
+
+(defn- check-external-dimension-field
+  "Returns `dimension`, or throws a 400 when it holds a `:type` that is external and a nil `:human_readable_field_id`,
+  the Field its human-readable values come from."
+  [{dimension-type :type, :keys [human_readable_field_id], :as dimension}]
+  (when (and (map? dimension)
+             (contains? dimension :type)
+             (contains? dimension :human_readable_field_id)
+             (= "external" (some-> dimension-type name))
+             (nil? human_readable_field_id))
+    (throw (ex-info (tru "Foreign key based remappings require a human readable field id") {:status-code 400})))
+  dimension)
 
 (mr/def ::dimension
   "A Dimension as selected from the app DB: every column of `:dimension`."
-  [:map {:closed true}
-   [:id                      ms/PositiveInt]
-   [:field_id                ::lib.schema.id/field]
-   [:name                    :string]
-   [:type                    [:or :keyword :string]]
-   [:human_readable_field_id [:maybe ::lib.schema.id/field]]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:entity_id               :string]])
+  [:merge
+   ::dimension.update
+   [:map {:closed true}
+    [:id                      ms/PositiveInt]
+    [:field                   {:optional true} [:maybe [:ref ::field]]]
+    [:human_readable_field    {:optional true} [:maybe [:ref ::field]]]]])
 
 (mr/def ::dimension.update
-  "What an update (or insert) of a Dimension accepts: every column of `:dimension` except `id`, all optional."
-  [:map {:closed true}
+  "What an update of a Dimension takes: its `:id` and the columns of `:dimension` to change, each optional; an
+  external Dimension names the Field its human-readable values come from."
+  [:map {:closed           true
+         :decode/normalize {:leave check-external-dimension-field}}
+   [:id                      ::lib.schema.id/dimension]
    [:field_id                {:optional true} [:maybe ::lib.schema.id/field]]
    [:name                    {:optional true} [:maybe :string]]
-   [:type                    {:optional true} [:maybe [:or :keyword :string]]]
+   [:type                    {:optional true} ::dimension.type]
    [:human_readable_field_id {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id               {:optional true} [:maybe :string]]])
 
+(mr/def ::dimension.create
+  "What a caller gives to create a Dimension: the columns of an update without the `:id`, and its Field and type."
+  [:merge
+   (mut/dissoc ::dimension.update :id)
+   [:map
+    [:field_id ::lib.schema.id/field]
+    [:type ::dimension.type]]])
+
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
-  :map)
+  ::lib.schema.visualization/visualization-settings)
 
 (mr/def ::field
   "A Field as selected from the app DB: every column of `:metabase_field`."
-  [:map {:closed true}
-   [:id                         ::lib.schema.id/field]
-   [:created_at                 ms/TemporalInstant]
-   [:updated_at                 ms/TemporalInstant]
-   [:name                       :string]
-   [:base_type                  [:or :keyword :string]]
-   [:semantic_type              [:maybe [:or :keyword :string]]]
-   [:active                     :boolean]
-   [:description                [:maybe :string]]
-   [:preview_display            :boolean]
-   [:position                   :int]
-   [:table_id                   ::lib.schema.id/table]
-   [:parent_id                  [:maybe ms/PositiveInt]]
-   [:display_name               [:maybe :string]]
-   [:visibility_type            [:or :keyword :string]]
-   [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
-   [:last_analyzed              [:maybe ms/TemporalInstant]]
-   [:points_of_interest         [:maybe :string]]
-   [:caveats                    [:maybe :string]]
-   [:fingerprint                [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
-   [:fingerprint_version        :int]
-   [:database_type              [:or :keyword :string]]
-   [:has_field_values           [:maybe [:or :keyword :string]]]
-   [:settings                   [:maybe ::field.settings]]
-   [:database_position          :int]
-   [:custom_position            :int]
-   [:effective_type             [:maybe [:or :keyword :string]]]
-   [:coercion_strategy          [:maybe [:or :keyword :string]]]
-   [:nfc_path                   [:maybe [:sequential [:or :string :keyword]]]]
-   [:database_required          :boolean]
-   [:json_unfolding             :boolean]
-   [:database_is_auto_increment :boolean]
-   [:database_indexed           [:maybe :boolean]]
-   [:database_partitioned       [:maybe :boolean]]
-   [:is_defective_duplicate     {:optional true} :boolean]
-   [:unique_field_helper        {:optional true} [:maybe :int]]
-   [:database_is_pk             [:maybe :boolean]]
-   [:database_is_nullable       [:maybe :boolean]]
-   [:database_is_generated      [:maybe :boolean]]
-   [:database_default           [:maybe :string]]
-   [:dimension_interestingness  [:maybe number?]]
-   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
+  [:merge
+   ::field.update
+   [:map {:closed true}
+    [:id                         ::lib.schema.id/field]
+    [:unique_field_helper        {:optional true} [:maybe :int]]
+    [:dimensions                 {:optional true} [:maybe [:sequential [:ref ::dimension]]]]
+    [:name_field                 {:optional true} [:maybe :metabase.queries.schema/param-field.name-field]]
+    [:target                     {:optional true} [:maybe [:ref ::field]]]
+    [:table                      {:optional true} [:maybe [:ref ::table]]]]])
 
 (mr/def ::field.update
-  "What an update (or insert) of a Field accepts: every column of `:metabase_field` except `id`, all optional."
+  "What an update of a Field takes: its `:id` and the columns of `:metabase_field` to change, each optional."
   [:map {:closed true}
+   [:id                         ::lib.schema.id/field]
    [:created_at                 {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                 {:optional true} [:maybe ms/TemporalInstant]]
    [:name                       {:optional true} [:maybe :string]]
-   [:base_type                  {:optional true} [:maybe [:or :keyword :string]]]
-   [:semantic_type              {:optional true} [:maybe [:or :keyword :string]]]
+   [:base_type                  {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:semantic_type              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:active                     {:optional true} [:maybe :boolean]]
    [:description                {:optional true} [:maybe :string]]
    [:preview_display            {:optional true} [:maybe :boolean]]
    [:position                   {:optional true} [:maybe :int]]
    [:table_id                   {:optional true} [:maybe ::lib.schema.id/table]]
-   [:parent_id                  {:optional true} [:maybe ms/PositiveInt]]
+   [:parent_id                  {:optional true} [:maybe ::lib.schema.id/field]]
    [:display_name               {:optional true} [:maybe :string]]
-   [:visibility_type            {:optional true} [:maybe [:or :keyword :string]]]
+   [:visibility_type            {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:fk_target_field_id         {:optional true} [:maybe ::lib.schema.id/field]]
    [:last_analyzed              {:optional true} [:maybe ms/TemporalInstant]]
    [:points_of_interest         {:optional true} [:maybe :string]]
    [:caveats                    {:optional true} [:maybe :string]]
    [:fingerprint                {:optional true} [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
    [:fingerprint_version        {:optional true} [:maybe :int]]
-   [:database_type              {:optional true} [:maybe [:or :keyword :string]]]
-   [:has_field_values           {:optional true} [:maybe [:or :keyword :string]]]
+   [:database_type              {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
+   [:has_field_values           {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:settings                   {:optional true} [:maybe ::field.settings]]
    [:database_position          {:optional true} [:maybe :int]]
    [:custom_position            {:optional true} [:maybe :int]]
-   [:effective_type             {:optional true} [:maybe [:or :keyword :string]]]
-   [:coercion_strategy          {:optional true} [:maybe [:or :keyword :string]]]
+   [:effective_type             {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:coercion_strategy          {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:nfc_path                   {:optional true} [:maybe [:sequential [:or :string :keyword]]]]
    [:database_required          {:optional true} [:maybe :boolean]]
    [:json_unfolding             {:optional true} [:maybe :boolean]]
@@ -118,136 +115,202 @@
    [:database_is_generated      {:optional true} [:maybe :boolean]]
    [:database_default           {:optional true} [:maybe :string]]
    [:dimension_interestingness  {:optional true} [:maybe number?]]
-   [:data_sensitivity           {:optional true} [:maybe [:or :keyword :string]]]])
+   [:data_sensitivity           {:optional true} [:maybe ::lib.schema.common/keyword]]])
+
+(mr/def ::field.create
+  "What a caller gives to create a Field: the columns of an update without the `:id`, and its Table and name."
+  [:merge
+   (mut/dissoc ::field.update :id)
+   [:map
+    [:name :string]
+    [:table_id ::lib.schema.id/table]]])
 
 (mr/def ::field-user-settings.settings
   "The `:settings` column of a FieldUserSettings, decoded."
-  :map)
+  ::lib.schema.visualization/visualization-settings)
 
 (mr/def ::field-user-settings
   "A FieldUserSettings as selected from the app DB: every column of `:metabase_field_user_settings`."
-  [:map {:closed true}
-   [:field_id           ::lib.schema.id/field]
-   [:created_at         ms/TemporalInstant]
-   [:updated_at         ms/TemporalInstant]
-   [:semantic_type      [:maybe [:or :keyword :string]]]
-   [:description        [:maybe :string]]
-   [:display_name       [:maybe :string]]
-   [:visibility_type    [:maybe [:or :keyword :string]]]
-   [:fk_target_field_id [:maybe ::lib.schema.id/field]]
-   [:has_field_values   [:maybe [:or :keyword :string]]]
-   [:effective_type     [:maybe [:or :keyword :string]]]
-   [:coercion_strategy  [:maybe [:or :keyword :string]]]
-   [:caveats            [:maybe :string]]
-   [:points_of_interest [:maybe :string]]
-   [:nfc_path           [:maybe [:sequential [:or :string :keyword]]]]
-   [:json_unfolding     [:maybe :boolean]]
-   [:settings           [:maybe ::field-user-settings.settings]]
-   [:data_sensitivity   [:maybe [:or :keyword :string]]]])
+  [:merge
+   ::field-user-settings.update
+   [:map {:closed true}
+    [:id    {:optional true} pos-int?]
+    [:field {:optional true} [:maybe [:ref ::field]]]]])
 
 (mr/def ::field-user-settings.update
-  "What an update (or insert) of a FieldUserSettings accepts: every column of `:metabase_field_user_settings` except `id`, all optional."
+  "What an update of a FieldUserSettings takes: its `:id` and the columns of `:metabase_field_user_settings` to
+  change, each optional."
   [:map {:closed true}
+   [:id                 pos-int?]
    [:field_id           {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
-   [:semantic_type      {:optional true} [:maybe [:or :keyword :string]]]
+   [:semantic_type      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:description        {:optional true} [:maybe :string]]
    [:display_name       {:optional true} [:maybe :string]]
-   [:visibility_type    {:optional true} [:maybe [:or :keyword :string]]]
+   [:visibility_type    {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:fk_target_field_id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:has_field_values   {:optional true} [:maybe [:or :keyword :string]]]
-   [:effective_type     {:optional true} [:maybe [:or :keyword :string]]]
-   [:coercion_strategy  {:optional true} [:maybe [:or :keyword :string]]]
+   [:has_field_values   {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:effective_type     {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:coercion_strategy  {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:caveats            {:optional true} [:maybe :string]]
    [:points_of_interest {:optional true} [:maybe :string]]
-   [:nfc_path           {:optional true} [:maybe [:sequential [:or :string :keyword]]]]
    [:json_unfolding     {:optional true} [:maybe :boolean]]
    [:settings           {:optional true} [:maybe ::field-user-settings.settings]]
-   [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]])
+   [:data_sensitivity   {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:custom_position    {:optional true} [:maybe :int]]
+   [:nfc_path           {:optional true} [:maybe :string]]
+   [:description_set        {:optional true} :boolean]
+   [:semantic_type_set      {:optional true} :boolean]
+   [:fk_target_field_id_set {:optional true} :boolean]])
+
+(mr/def ::field-user-settings.create
+  "What a caller gives to create a FieldUserSettings: the columns of an update without the `:id`, and its Field."
+  [:merge
+   (mut/dissoc ::field-user-settings.update :id)
+   [:map
+    [:field_id ::lib.schema.id/field]]])
+
+(mr/def ::field-values.human-readable-values
+  [:sequential [:maybe ms/NonBlankString]])
+
+(defn- check-human-readable-values-cover-values
+  "Returns `field-values`, or throws a 400 when it has both `:values` and `:human_readable_values` and the latter are
+  neither empty nor one for each value."
+  [{values :values, human-readable-values :human_readable_values, :as field-values}]
+  (when (and (map? field-values)
+             (contains? field-values :values)
+             (contains? field-values :human_readable_values)
+             (seq human-readable-values)
+             (not= (count human-readable-values) (count values)))
+    (throw (ex-info (tru "If remapped values are specified, they must be specified for all field values")
+                    {:status-code 400})))
+  field-values)
 
 (mr/def ::field-values
   "A FieldValues as selected from the app DB: every column of `:metabase_fieldvalues`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]
-   [:values                [:maybe ms/FieldValues]]
-   [:human_readable_values [:maybe ms/FieldValues]]
-   [:field_id              ::lib.schema.id/field]
-   [:has_more_values       [:maybe :boolean]]
-   [:type                  [:or :keyword :string]]
-   [:hash_key              [:maybe :string]]
-   [:last_used_at          ms/TemporalInstant]])
+  [:merge
+   ::field-values.update
+   [:map {:closed true}
+    [:id                    ms/PositiveInt]]])
+
+(defn- value-pairs-agree?
+  "Whether either every pair of `value-pairs` has a human-readable value or none does."
+  [value-pairs]
+  (<= (count (into #{} (map count) value-pairs)) 1))
+
+(mr/def ::field-values.value-pairs
+  [:and
+   [:sequential [:or [:tuple ms/FieldValue ms/NonBlankString] [:tuple ms/FieldValue]]]
+   [:fn {:error/fn (fn [_ _] (tru "If remapped values are specified, they must be specified for all field values"))}
+    value-pairs-agree?]])
 
 (mr/def ::field-values.update
-  "What an update (or insert) of a FieldValues accepts: every column of `:metabase_fieldvalues` except `id`, all optional."
-  [:map {:closed true}
+  "What an update of a FieldValues takes: its `:id` and the columns of `:metabase_fieldvalues` to change, each
+  optional; human-readable values, when given with the values, cover each of them."
+  [:map {:closed           true
+         :decode/normalize {:leave check-human-readable-values-cover-values}}
+   [:id                    ms/PositiveInt]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:values                {:optional true} [:maybe ms/FieldValues]]
-   [:human_readable_values {:optional true} [:maybe ms/FieldValues]]
+   [:human_readable_values {:optional true} [:maybe ::field-values.human-readable-values]]
    [:field_id              {:optional true} [:maybe ::lib.schema.id/field]]
    [:has_more_values       {:optional true} [:maybe :boolean]]
-   [:type                  {:optional true} [:maybe [:or :keyword :string]]]
+   [:type                  {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:hash_key              {:optional true} [:maybe :string]]
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::field-values.create
+  "What a caller gives to create a FieldValues: the columns of an update without the `:id`, and its Field."
+  [:merge
+   (mut/dissoc ::field-values.update :id)
+   [:map
+    [:field_id ::lib.schema.id/field]]])
+
+(mr/def ::table-user-settings
+  "A TableUserSettings as selected from the app DB: every column of `:metabase_table_user_settings`."
+  [:merge
+   ::table-user-settings.update
+   [:map {:closed true}
+    [:id         {:optional true} pos-int?]
+    [:table      {:optional true} [:maybe [:ref ::table]]]
+    [:collection {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]]])
+
+(mr/def ::table-user-settings.update
+  "What an update of a TableUserSettings takes: its `:id` and the columns of `:metabase_table_user_settings` to
+  change, each optional."
+  [:map {:closed true}
+   [:id                      pos-int?]
+   [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
+   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:display_name            {:optional true} [:maybe :string]]
+   [:description             {:optional true} [:maybe :string]]
+   [:entity_type             {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:visibility_type         {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:points_of_interest      {:optional true} [:maybe :string]]
+   [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:data_source             {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:owner_email             {:optional true} [:maybe :string]]
+   [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user]]
+   [:field_order             {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:data_authority          {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:is_published            {:optional true} [:maybe :boolean]]
+   [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:description_set         {:optional true} :boolean]
+   [:visibility_type_set     {:optional true} :boolean]
+   [:caveats_set             {:optional true} :boolean]
+   [:points_of_interest_set  {:optional true} :boolean]
+   [:data_layer_set          {:optional true} :boolean]
+   [:data_source_set         {:optional true} :boolean]])
+
+(mr/def ::table-user-settings.create
+  "What a caller gives to create a TableUserSettings: the columns of an update without the `:id`, and its Table."
+  [:merge
+   (mut/dissoc ::table-user-settings.update :id)
+   [:map
+    [:table_id ::lib.schema.id/table]]])
+
 (mr/def ::table
   "A Table as selected from the app DB: every column of `:metabase_table`."
-  [:map {:closed true}
-   [:id                      ::lib.schema.id/table]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:name                    :string]
-   [:description             [:maybe :string]]
-   [:entity_type             [:maybe [:or :keyword :string]]]
-   [:active                  :boolean]
-   [:db_id                   ::lib.schema.id/database]
-   [:display_name            [:maybe :string]]
-   [:visibility_type         [:maybe [:or :keyword :string]]]
-   [:schema                  [:maybe :string]]
-   [:points_of_interest      [:maybe :string]]
-   [:caveats                 [:maybe :string]]
-   [:show_in_getting_started :boolean]
-   [:field_order             [:or :keyword :string]]
-   [:initial_sync_status     [:or :keyword :string]]
-   [:is_upload               :boolean]
-   [:database_require_filter [:maybe :boolean]]
-   [:estimated_row_count     [:maybe :int]]
-   [:view_count              :int]
-   [:is_defective_duplicate  {:optional true} :boolean]
-   [:unique_table_helper     {:optional true} [:maybe :string]]
-   [:deactivated_at          [:maybe ms/TemporalInstant]]
-   [:archived_at             [:maybe ms/TemporalInstant]]
-   [:is_writable             [:maybe :boolean]]
-   [:data_authority          [:or :keyword :string]]
-   [:data_source             [:maybe [:or :keyword :string]]]
-   [:data_layer              [:maybe [:or :keyword :string]]]
-   [:owner_email             [:maybe :string]]
-   [:owner_user_id           [:maybe ::lib.schema.id/user]]
-   [:collection_id           [:maybe ::lib.schema.id/collection]]
-   [:is_published            :boolean]
-   [:transform_id            [:maybe ::lib.schema.id/transform]]
-   [:transform_target        :boolean]])
+  [:merge
+   ::table.update
+   [:map {:closed true}
+    [:id                      ::lib.schema.id/table]
+    [:unique_table_helper     {:optional true} [:maybe :string]]
+    [:db                      {:optional true} [:maybe [:ref :metabase.warehouses.schema/database]]]
+    [:fields                  {:optional true} [:maybe [:sequential ::field]]]
+    [:transform               {:optional true} [:maybe [:ref :metabase.transforms.schema/transform]]]
+    [:collection              {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
+    [:can_query               {:optional true} [:maybe :boolean]]
+    [:owner                   {:optional true} [:maybe [:map {:closed true}
+                                                        [:id          {:optional true} ::lib.schema.id/user]
+                                                        [:email       {:optional true} :string]
+                                                        [:first_name  {:optional true} [:maybe :string]]
+                                                        [:last_name   {:optional true} [:maybe :string]]
+                                                        [:common_name {:optional true} [:maybe :string]]]]]]])
 
 (mr/def ::table.update
-  "What an update (or insert) of a Table accepts: every column of `:metabase_table` except `id`, all optional."
+  "What an update of a Table takes: its `:id` and the columns of `:metabase_table` to change, each optional."
   [:map {:closed true}
+   [:id                      ::lib.schema.id/table]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:name                    {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
-   [:entity_type             {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_type             {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:active                  {:optional true} [:maybe :boolean]]
    [:db_id                   {:optional true} [:maybe ::lib.schema.id/database]]
    [:display_name            {:optional true} [:maybe :string]]
-   [:visibility_type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:visibility_type         {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:schema                  {:optional true} [:maybe :string]]
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:field_order             {:optional true} [:maybe [:or :keyword :string]]]
+   [:field_order             {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:initial_sync_status     {:optional true} [:maybe [:or :keyword :string]]]
    [:is_upload               {:optional true} [:maybe :boolean]]
    [:database_require_filter {:optional true} [:maybe :boolean]]
@@ -257,12 +320,89 @@
    [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:archived_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:is_writable             {:optional true} [:maybe :boolean]]
-   [:data_authority          {:optional true} [:maybe [:or :keyword :string]]]
-   [:data_source             {:optional true} [:maybe [:or :keyword :string]]]
-   [:data_layer              {:optional true} [:maybe [:or :keyword :string]]]
+   [:data_authority          {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:data_source             {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
-   [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user]]
+   [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user-or-older-export-id]]
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
    [:is_published            {:optional true} [:maybe :boolean]]
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:transform_target        {:optional true} [:maybe :boolean]]])
+
+(mr/def ::table.create
+  "What a caller gives to create a Table: the columns of an update without the `:id`, and its Database and name."
+  [:merge
+   (mut/dissoc ::table.update :id)
+   [:map
+    [:name :string]
+    [:db_id ::lib.schema.id/database]]])
+
+(mr/def ::external-dimension
+  "A Dimension as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::dimension [:name :type :entity_id :human_readable_field_id :field_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-field
+  "A Field as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::field [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default
+                           :database_indexed :database_is_auto_increment :database_is_generated
+                           :database_is_nullable :database_is_pk :database_partitioned :database_position
+                           :database_required :database_type :description :display_name :effective_type
+                           :has_field_values :json_unfolding :name :nfc_path
+                           :points_of_interest :position :preview_display :semantic_type :settings
+                           :visibility_type :table_id :fk_target_field_id :parent_id]]
+    [:map {:closed true}
+     [:dimensions {:optional true} [:maybe [:sequential [:ref ::external-dimension]]]]
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-field-user-settings
+  "A FieldUserSettings as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::field-user-settings [:semantic_type :description :display_name :visibility_type
+                                         :has_field_values :effective_type :coercion_strategy :caveats
+                                         :points_of_interest :json_unfolding :settings :data_sensitivity
+                                         :custom_position :description_set :semantic_type_set
+                                         :fk_target_field_id_set :fk_target_field_id :field_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-field-values
+  "A FieldValues as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::field-values [:values :human_readable_values :has_more_values :hash_key :type :field_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-table-user-settings
+  "A TableUserSettings as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::table-user-settings [:display_name :description :entity_type :visibility_type :field_order
+                                         :caveats :points_of_interest :show_in_getting_started :data_authority
+                                         :data_source :owner_email :is_published :description_set
+                                         :visibility_type_set :data_layer_set :data_source_set :collection_id
+                                         :owner_user_id :data_layer :table_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-table
+  "A Table as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::table [:name :description :entity_type :active :display_name :visibility_type :schema
+                           :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
+                           :database_require_filter :is_writable
+                           :data_authority :data_source :owner_email :is_published :data_layer :db_id
+                           :collection_id :transform_id :owner_user_id]]
+    [:map {:closed true}
+     [:serdes/meta    {:optional true} ::models.schema/external-meta]
+     [:archived_at    {:optional true} [:maybe ::models.schema/external-date]]
+     [:deactivated_at {:optional true} [:maybe ::models.schema/external-date]]]]])

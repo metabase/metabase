@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { type FormEvent, useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
@@ -144,9 +145,8 @@ export const CustomMappingModal = ({
 
               <Button
                 disabled={hasEmptyValues}
-                miw={128}
                 type="submit"
-                variant="primary"
+                variant="filled"
               >{t`Save`}</Button>
             </Group>
           </form>

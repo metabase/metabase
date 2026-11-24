@@ -13,17 +13,20 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase-enterprise.data-complexity-score.test-util :as test-util]
-   [metabase-enterprise.embeddings.client :as embeddings]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
-   [metabase-enterprise.semantic-search.embedders :as ss.embedders]
-   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.search.embeddings.client :as embeddings]
+   [metabase-enterprise.search.semantic.core :as semantic-search]
+   [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.search.semantic.embedders :as ss.embedders]
+   [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
-   [metabase.embeddings.provider :as embeddings.provider]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.search.embeddings.provider :as embeddings.provider]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -62,6 +65,13 @@
   (embedders/fn-embedder
    (fn [names]
      (mapv #(when-let [v (get name->vec-literal %)] (float-array v)) names))))
+
+(defn- table-count-definition
+  "A full query on `table-id` in database `db-id` with a count aggregation."
+  [db-id table-id]
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
 
 (deftest ^:parallel score-catalog-pure-test
   (testing "empty catalog scores zero — every leaf reports the zero, group totals roll up zero"
@@ -1082,9 +1092,9 @@
        ;; Non-library tables: active (→ in universe) but not published into the library tree.
        ;; audit_events + audit_log are another synonym pair via the mock embedder.
        :model/Table    {t-audit :id}      {:db_id db-id :name "audit_events"
-                                           :active true :is_published false :collection_id other-id}
+                                           :active true :is_published false}
        :model/Table    _                  {:db_id db-id :name "audit_log"
-                                           :active true :is_published false :collection_id other-id}
+                                           :active true :is_published false}
        ;; Library fields: 2 on orders, 1 on subscriptions.
        :model/Field _                     {:table_id t1 :name "id"    :active true :base_type :type/Integer}
        :model/Field _                     {:table_id t1 :name "total" :active true :base_type :type/Float}
@@ -1095,16 +1105,16 @@
        :model/Field _                     {:table_id t-audit :name "audit_ts"
                                            :active true :base_type :type/DateTime}
        ;; Library measures: "revenue" on two library tables → one repeated-measure pair in library.
-       :model/Measure _                   {:table_id t1 :name "revenue"
+       :model/Measure _                   {:name "revenue"
                                            :creator_id (mt/user->id :rasta)
-                                           :definition {} :archived false}
-       :model/Measure _                   {:table_id t2 :name "revenue"
+                                           :definition (table-count-definition db-id t1) :archived false}
+       :model/Measure _                   {:name "revenue"
                                            :creator_id (mt/user->id :rasta)
-                                           :definition {} :archived false}
+                                           :definition (table-count-definition db-id t2) :archived false}
        ;; Non-library measure with the same name → bumps universe repeated-measures above library.
-       :model/Measure _                   {:table_id t-audit :name "revenue"
+       :model/Measure _                   {:name "revenue"
                                            :creator_id (mt/user->id :rasta)
-                                           :definition {} :archived false}
+                                           :definition (table-count-definition db-id t-audit) :archived false}
        ;; Two library metric cards named "Revenue" → one name-collision pair in library.
        :model/Card _                      {:database_id db-id :type :metric :name "Revenue"
                                            :archived false :collection_id metrics-id}
@@ -1165,8 +1175,33 @@
   [published?]
   (with-meta
    {:library {:score 0 :components {}} :universe {:score 0 :components {}}
-    :metabot {:score 0 :components {}} :meta {}}
+    :metabot {:score 0 :components {}}
+    :meta    {:formula-version 1 :format-version 1 :synonym-threshold 0.8 :weights complexity/weights}}
    {:metabase-enterprise.data-complexity-score.complexity/snowplow-published? published?}))
+
+(def ^:private zero-leaf
+  "A minimal, schema-valid `::data-complexity-score.leaf`."
+  {:measurement 0.0 :score 0})
+
+(def ^:private zero-catalog
+  "A minimal, schema-valid `::data-complexity-score.catalog` with all sub-scores zeroed out."
+  {:score 0
+   :components {:size      {:score 0 :components {:entity-count zero-leaf :field-count zero-leaf}}
+                :ambiguity {:score 0 :components {:name-collisions   zero-leaf
+                                                  :synonym-pairs     zero-leaf
+                                                  :repeated-measures zero-leaf}}}})
+
+(defn- labeled-score
+  "A full, valid `score-data` map carrying `label` in `:text-variant` so a test can tell rows apart."
+  [label]
+  {:library  zero-catalog
+   :universe zero-catalog
+   :metabot  zero-catalog
+   :meta     {:formula-version   1
+              :format-version    1
+              :synonym-threshold 0.8
+              :weights           complexity/weights
+              :text-variant      (keyword label)}})
 
 (deftest ^:synchronized latest-score-filters-by-fingerprint-test
   (testing "the overview cache only returns scores matching the current scoring fingerprint"
@@ -1175,14 +1210,29 @@
           fingerprint       "latest-score-test/current"]
       (try
         (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]])
-        (data-complexity-score/record-score! other-fingerprint "appdb" {:meta {:label "other"}})
-        (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "older"}})
-        (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "newer"}})
+        (data-complexity-score/record-score! other-fingerprint "appdb" (labeled-score "other"))
+        (data-complexity-score/record-score! fingerprint "appdb" (labeled-score "older"))
+        (data-complexity-score/record-score! fingerprint "appdb" (labeled-score "newer"))
         (let [score (data-complexity-score/latest-score fingerprint)]
-          (is (= "newer" (get-in score [:meta :label])))
+          (is (= :newer (get-in score [:meta :text-variant])))
           (is (some? (get-in score [:meta :calculated-at]))))
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]]))))))
+
+(deftest ^:synchronized record-score-persists-an-appdb-score-test
+  (testing "the score `complexity-scores` computes against the app DB, whose `:meta` carries no `:weights`, persists"
+    (mt/initialize-if-needed! :db)
+    (let [fingerprint "record-score-appdb-test/current"]
+      (try
+        (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
+        (let [result (complexity/complexity-scores :embedder nil :emit-snowplow? false)
+              stored (data-complexity-score/record-score! fingerprint "appdb" result)]
+          (is (not (contains? (:meta result) :weights)))
+          (is (= (select-keys result [:library :universe :metabot])
+                 (select-keys stored [:library :universe :metabot])))
+          (is (= (:meta result) (dissoc (:meta stored) :calculated-at))))
+        (finally
+          (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
 
 (deftest ^:synchronized latest-score-filters-by-source-test
   (testing "passing source filters out representation-derived rows that share the cron's fingerprint"
@@ -1195,13 +1245,13 @@
     (let [fingerprint "latest-score-source-test/shared"]
       (try
         (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
-        (data-complexity-score/record-score! fingerprint "appdb"                {:meta {:label "appdb-row"}})
-        (data-complexity-score/record-score! fingerprint "representation:abcd"  {:meta {:label "representation-row"}})
-        (is (= "appdb-row"
-               (get-in (data-complexity-score/latest-score fingerprint) [:meta :label]))
+        (data-complexity-score/record-score! fingerprint "appdb"                (labeled-score "appdb-row"))
+        (data-complexity-score/record-score! fingerprint "representation:abcd"  (labeled-score "representation-row"))
+        (is (= :appdb-row
+               (get-in (data-complexity-score/latest-score fingerprint) [:meta :text-variant]))
             "default source=\"appdb\" skips past the newer representation-tagged row")
-        (is (= "representation-row"
-               (get-in (data-complexity-score/latest-score fingerprint "representation:abcd") [:meta :label]))
+        (is (= :representation-row
+               (get-in (data-complexity-score/latest-score fingerprint "representation:abcd") [:meta :text-variant]))
             "an explicit representation source still resolves its own row")
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
@@ -1534,7 +1584,7 @@
       (let [score {:library  {:score 0 :components {}}
                    :universe {:score 0 :components {}}
                    :metabot  {:score 0 :components {}}
-                   :meta     {:formula-version 1 :synonym-threshold 0.8 :weights {}}}]
+                   :meta     {:formula-version 1 :format-version 1 :synonym-threshold 0.8 :weights complexity/weights}}]
         (testing "publish succeeds → tagged true"
           (snowplow-test/with-fake-snowplow-collector
             (is (true? (::complexity/snowplow-published? (meta (complexity/republish-score! score)))))))
@@ -1555,8 +1605,9 @@
                        :universe {:score 2 :components {}}
                        :metabot  {:score 3 :components {}}
                        :meta     {:formula-version   1
+                                  :format-version    1
                                   :synonym-threshold 0.8
-                                  :weights           {}
+                                  :weights           complexity/weights
                                   :text-variant      :names-split
                                   :embedding-model   {:provider :ai-service :model-name "minilm" :model-dimensions 384}}}]
       (try

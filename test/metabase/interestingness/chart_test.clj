@@ -85,6 +85,13 @@
       (is (nil? (:signal bd)))
       (is (nil? (:structure bd))))))
 
+(deftest ^:parallel series-without-dates-is-not-scored-test
+  (testing "a series whose dates are all nil scores as if it weren't there"
+    (let [cfg      (time-series-config (range 30))
+          no-dates (assoc (get-in cfg [:series "s1"]) :x_values (vec (repeat 30 nil)))]
+      (is (= (chart/chart-interestingness cfg)
+             (chart/chart-interestingness (assoc-in cfg [:series "s2"] no-dates)))))))
+
 (deftest ^:parallel caller-supplied-stats-test
   (testing "2-arity form accepts pre-computed stats (no recomputation)"
     (let [cfg   (time-series-config (range 30))

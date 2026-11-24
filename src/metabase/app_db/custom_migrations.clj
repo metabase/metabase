@@ -17,7 +17,6 @@
    [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -28,9 +27,10 @@
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
+   [metabase.app-db.quartz]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
-   [metabase.task.bootstrap]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
@@ -41,12 +41,10 @@
    [toucan2.execute :as t2.execute])
   (:import
    (java.util Locale)
-   (javax.sql DataSource)
    (liquibase Scope)
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
-   (liquibase.exception ValidationErrors)
-   (liquibase.util BooleanUtil)))
+   (liquibase.exception ValidationErrors)))
 
 (set! *warn-on-reflection* true)
 
@@ -57,7 +55,7 @@
   The same problem has been fixed for forward changes in Liquibase
   but for rollback it has not."
   []
-  (BooleanUtil/isTrue (.get (Scope/getCurrentScope) Change/SHOULD_EXECUTE true)))
+  (.equals Boolean/TRUE (.get (Scope/getCurrentScope) Change/SHOULD_EXECUTE true)))
 
 (defmacro define-reversible-migration
   "Define a reversible custom migration. Both the forward and reverse migrations are defined using the same structure,
@@ -822,20 +820,16 @@
                             ;; the settings tree
                             existing-fixed)
         fixed-dashcard  (update (fix-top-level dashcard) "column_settings" fix-cols)
-        final-settings  (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
-                             ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
-                             ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
-                             ;; doesn't have link text
-                             (walk/postwalk (fn [form]
-                                              (if (map? form)
-                                                (into {} (for [[k v] form
-                                                               :when (if (seqable? v)
-                                                                       ;; remove keys with empty maps. must be postwalk
-                                                                       (seq v)
-                                                                       ;; remove nils
-                                                                       (some? v))]
-                                                           [k v]))
-                                                form))))]
+        final-settings  (match/replace-all (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
+                          ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
+                          ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
+                          ;; doesn't have link text
+                          #'map? (m/filter-vals #(if (seqable? %)
+                                                   ;; remove keys with empty maps. must be bottom-up (replace-all)
+                                                   (seq %)
+                                                   ;; remove nils
+                                                   (some? %))
+                                                &match))]
     (when (not= final-settings dashcard)
       {:id                     id
        :visualization_settings final-settings})))
@@ -858,7 +852,7 @@
                    (filter :visualization_settings))
              (completing
               (fn [_ {:keys [id visualization_settings]}]
-                (t2/update! :report_dashboardcard id
+                (t2/update! :report_dashboardcard :id id
                             {:visualization_settings (json/encode visualization_settings)})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
@@ -949,21 +943,24 @@
     (->> (t2/query query)
          (map #(update-vals % (comp keyword lower-case-en)))
          (remove (fn [{:keys [table_name]}]
-                   (or (#{:databasechangelog :databasechangeloglock} table_name)
+                   ;; databasechangelog_first_run copies the changelog's dateexecuted, so it keeps the same type
+                   (or (#{:databasechangelog :databasechangeloglock :databasechangelog_first_run} table_name)
                        ;; excludes views
                        (str/starts-with? (name table_name) "v_"))))
          (map #(update % :is_nullable (fn [x] (= :yes x))))
          (map (juxt :table_name :column_name :is_nullable)))))
 
+(defn- db-type*
+  "Like [[metabase.app-db.connection/db-type]] but distinguishes between mysql and mariadb."
+  []
+  (if (mdb.connection/mariadb?)
+    :mariadb
+    (mdb.connection/db-type)))
+
 (defn- alter-table-column-type-sql
-  [db-type table column ttype nullable?]
-  (let [ttype (name ttype)
-        db-type (if (and (= db-type :mysql)
-                         (with-open [conn (.getConnection (mdb.connection/data-source))]
-                           (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
-                  :mariadb
-                  db-type)]
-    (case db-type
+  [table column ttype nullable?]
+  (let [ttype (name ttype)]
+    (case (db-type*)
       :postgres
       (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" TYPE %s USING (\"%s\"::%s), ALTER COLUMN %s %s"
               table column ttype column ttype column (if nullable? "DROP NOT NULL" "SET NOT NULL"))
@@ -1003,28 +1000,13 @@
                                           [:postgres :core_user :updated_at])]]
       (when is-pg-specical-case?
         (t2/query ["DROP VIEW IF EXISTS v_users;"]))
-      (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type nullable?)])
+      (t2/query [(alter-table-column-type-sql (name table) (name column) target-type nullable?)])
       (when is-pg-specical-case?
         (t2/query [(slurp (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql"))])))))
 
 (define-reversible-migration UnifyTimeColumnsType
   (unify-time-column-type! :up)
   (unify-time-column-type! :down))
-
-(defn- mariadb?
-  [ds]
-  (with-open [conn (.getConnection ^DataSource ds)]
-    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
-
-(defn- db-type*
-  "Like [[metabase.connection/db-type]] but distinguishes between mysql and mariadb."
-  []
-  (let [db-type (mdb.connection/db-type)]
-    (if (= db-type :mysql)
-      (if (mariadb? (mdb.connection/data-source))
-        :mariadb
-        :mysql)
-      db-type)))
 
 (define-reversible-migration CardRevisionAddType
   (case (db-type*)
@@ -1173,6 +1155,7 @@
   []
   (nil? (t2/query-one {:select [:*] :from :metabase_database})))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *create-sample-content*
   "If true, we create sample content in the `CreateSampleContent` migration. This is bound to false sometimes in
    load-from-h2, during serialization load, and in some tests because the sample content makes tests slow enough to
@@ -1760,7 +1743,7 @@
 ;; on migrate up:
 ;; - migrate alerts from pulse table to notification table
 ;; - And then on startup new send notification triggers are created by running
-;; [[metabase.notification.task.send/init-send-notification-triggers!]]
+;; [[metabase.notification.task.send-trigger/init-send-notification-triggers!]]
 (define-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!))
 
@@ -2260,14 +2243,13 @@
                  :set    {:value_with_aad (encryption/maybe-encrypt plain {:aad (mdb.setting/setting-aad "example-dashboard-id")})}
                  :where  [:= :key "example-dashboard-id"]}))))
 
-;;; MCP v1 retirement (GHY-4343): `/api/metabase-mcp` now serves the v2 tool surface, which gates every
-;;; tool on one of six coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the
-;;; per-entity agent scopes instead, and no legacy scope satisfies any v2 scope, so `list-tools` filters
-;;; the whole surface away: HTTP 200, an empty tools list, nothing logged. It does not self-heal — the
-;;; refresh grant copies the original scope forward and can only narrow — so a refreshing client stays
-;;; in the zero-tools state indefinitely.
+;;; MCP v1 retirement: `/api/metabase-mcp` serves the v2 tool surface, which gates every tool on one of six
+;;; coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the per-entity agent scopes
+;;; instead, and no legacy scope satisfies any v2 scope. The MCP endpoint refuses a token with no v2 scope
+;;; with a 401 `invalid_token`, so the client re-authorizes; that re-authorization only validates if the
+;;; client's registered scope snapshot includes the v2 scopes.
 ;;;
-;;; The scope strings are literals rather than a read of `metabase.mcp.paths/v2-surface-scopes`: a
+;;; The scope strings are literals rather than a read of `metabase.mcp.scope/v2-surface-scopes`: a
 ;;; migration's behaviour must be frozen against later edits to that vector.
 
 (def ^:private ^:no-doc mcp-v2-scopes
@@ -2277,20 +2259,6 @@
    "agent:sql:run"
    "agent:delivery:write"
    "agent:resource:read"])
-
-;; `agent:resource:read` is excluded: it gates only a resource, so a token holding it alone still
-;; resolves zero *tools*, which is the state this migration exists to end.
-(def ^:private ^:no-doc mcp-v2-tool-scopes
-  (set (remove #{"agent:resource:read"} mcp-v2-scopes)))
-
-(defn- legacy-mcp-scopes?
-  "True when `scopes` looks like a token minted against the pre-v2 scope set: it satisfies no v2 tool
-   and carries at least one scope outside the six. The second half is what keeps this off tokens that
-   are already v2-shaped (or empty), so re-running the migration revokes nothing new."
-  [scopes]
-  (let [scopes (set (filter string? scopes))]
-    (and (not (some mcp-v2-tool-scopes scopes))
-         (boolean (some (complement (set mcp-v2-scopes)) scopes)))))
 
 (defn- json-array-out
   "Parse a JSON-array column into a vector, tolerating a row that is already a collection. Returns nil
@@ -2304,7 +2272,7 @@
       (vec parsed))))
 
 (define-migration WidenDynamicOAuthClientScopesForMcpV2
-  ;; Step 1 of 2 — raise the ceiling. Dynamically registered clients snapshot the scope set that
+  ;; Raise the ceiling. Dynamically registered clients snapshot the scope set that
   ;; existed when they registered, and `validate-scope` rejects any requested scope absent from that
   ;; snapshot. Without this a user who re-authorizes is answered `400 invalid_request`, rendered raw
   ;; in the browser tab, because `/oauth/authorize` validates before narrowing. Widening the snapshot
@@ -2321,17 +2289,108 @@
                              :where  [:= :registration_type "dynamic"]})))
 
 (define-migration RevokeLegacyMcpOAuthTokens
-  ;; Step 2 of 2 — force one re-authentication. Both tables must be stamped: leaving the refresh token
-  ;; alive means the client silently refreshes into another legacy-scoped access token instead of
-  ;; re-authenticating. Once both are revoked the next request gets the existing `invalid_token` 401
-  ;; with the discovery challenge — the RFC 6750 path every MCP client already handles.
-  (doseq [table [:oauth_access_token :oauth_refresh_token]]
-    (run! (fn [{:keys [id scope]}]
-            (when (some-> (json-array-out scope) legacy-mcp-scopes?)
-              (t2/query {:update table
-                         :set    {:revoked_at :%now}
-                         :where  [:= :id id]})))
-          ;; Already-revoked rows are skipped, which is also what makes this safe to re-run.
-          (t2/reducible-query {:select [:id :scope]
-                               :from   [table]
-                               :where  [:= :revoked_at nil]}))))
+  ;; Kept as a no-op. The MCP endpoint refuses legacy-scoped tokens with a 401 `invalid_token`, so the
+  ;; client re-authorizes and revoking the tokens adds nothing. The changeset stays so that instances
+  ;; which already ran it can still roll back past it.
+  nil)
+
+(define-migration MoveDataAppResourceCollectionsToTheirNamespace
+  ;; Every data app owns a resource collection, a root collection of the `data-apps` namespace, from its insert
+  ;; on (see `metabase-enterprise.data-apps.models.data-app`). Collections created before the namespace existed sit
+  ;; in the default namespace; an app whose collection was deleted has none. Both are brought to the invariant here.
+  (t2/query {:update :collection
+             :set    {:namespace "data-apps"}
+             :where  [:exists ^:allow-subquery {:select [1]
+                                                :from   [:data_app]
+                                                :where  [:= :data_app.resource_collection_id :collection.id]}]})
+  (run! (fn [{:keys [id name]}]
+          (let [collection-name (str "Data App: " name)
+                ;; slugified as the Collection model does (`collection-slug-max-length`), so a later rename changes nothing
+                collection-id   (t2/insert-returning-pk! :collection {:name       collection-name
+                                                                      :slug       (u/slugify collection-name {:max-length 510})
+                                                                      :location   "/"
+                                                                      :namespace  "data-apps"
+                                                                      :entity_id  (u/generate-nano-id)
+                                                                      :created_at :%now})]
+            (t2/query {:update :data_app
+                       :set    {:resource_collection_id collection-id}
+                       :where  [:= :id id]})))
+        (t2/reducible-query {:select [:id :name]
+                             :from   [:data_app]
+                             :where  [:= :resource_collection_id nil]})))
+
+(define-migration DeleteDataAppDrafts
+  ;; A draft reserved a data app's slug and resources before the app existed, for the SDK's query sync, which is
+  ;; gone. A draft has no bundle and can never be served, so the row goes, with the permission group made for it,
+  ;; as deleting an app deletes both. Its collection goes too when nothing was put in it; one that holds content
+  ;; stays for an admin to look at.
+  (doseq [{:keys [id resource_collection_id permission_group_id]} (t2/select :data_app :draft true)]
+    (t2/query {:delete-from :data_app :where [:= :id id]})
+    (when permission_group_id
+      (t2/query {:delete-from :permissions_group :where [:= :id permission_group_id]}))
+    (when resource_collection_id
+      (let [in-collection (fn [table] (t2/exists? table :collection_id resource_collection_id))
+            location      (str "/" resource_collection_id "/")]
+        (when-not (or (some in-collection [:report_card :action :report_dashboard :document :timeline :pulse
+                                           :native_query_snippet :metabase_table :transform])
+                      (t2/exists? :collection :location [:like (str location "%")]))
+          (t2/query {:delete-from :permissions :where [:= :collection_id resource_collection_id]})
+          (t2/query {:delete-from :collection :where [:= :id resource_collection_id]}))))))
+
+(defn- segment-definition-fragment
+  "The decoded `definition` of a segment when it is a bare MBQL 4 fragment, such as `{\"filter\" [...]}`, and nil when
+  it is empty or a full query already."
+  [definition]
+  (let [parsed (try (json/decode definition) (catch Exception _ nil))]
+    (when (and (map? parsed)
+               (seq parsed)
+               (not-any? #(contains? parsed %) ["lib/type" "type" "database"]))
+      parsed)))
+
+(define-migration UpgradeSegmentDefinitionFragments
+  (run! (fn [{:keys [id definition table_id db_id]}]
+          (when-let [fragment (segment-definition-fragment definition)]
+            (t2/query {:update :segment
+                       :set    {:definition (json/encode {"database" db_id
+                                                          "type"     "query"
+                                                          "query"    (merge {"source-table" table_id}
+                                                                            (dissoc fragment "aggregation"))})}
+                       :where  [:= :id id]})))
+        (t2/reducible-query {:select [:segment.id :segment.definition :segment.table_id :metabase_table.db_id]
+                             :from   [:segment]
+                             :join   [:metabase_table [:= :metabase_table.id :segment.table_id]]})))
+
+(defn- unused-tag-name
+  "The first of `name` followed by \" (2)\", \" (3)\", ... that no transform tag has, cut to fit the column."
+  [name]
+  (let [max-length 254]
+    (->> (iterate inc 2)
+         (map (fn [n]
+                (let [suffix (str " (" n ")")]
+                  (str (subs name 0 (min (count name) (- max-length (count suffix)))) suffix))))
+         (remove #(t2/exists? :transform_tag :name %))
+         first)))
+
+(define-migration RenameDuplicateTransformTags
+  (doseq [{tag-name :name} (t2/query {:select   [:name]
+                                      :from     [:transform_tag]
+                                      :group-by [:name]
+                                      :having   [:> :%count.* 1]})
+          id               (rest (t2/select-pks-vec :transform_tag :name tag-name {:order-by [[:id :asc]]}))]
+    (t2/query {:update :transform_tag
+               :set    {:name (unused-tag-name tag-name)}
+               :where  [:= :id id]})))
+
+(define-migration RenumberDuplicateDashboardCardSeriesPositions
+  (doseq [dashcard-id (into #{}
+                            (map :dashboardcard_id)
+                            (t2/query {:select   [:dashboardcard_id]
+                                       :from     [:dashboardcard_series]
+                                       :group-by [:dashboardcard_id :position]
+                                       :having   [:> :%count.* 1]}))
+          [position id] (map-indexed vector (t2/select-pks-vec :dashboardcard_series
+                                                               :dashboardcard_id dashcard-id
+                                                               {:order-by [[:position :asc] [:id :asc]]}))]
+    (t2/query {:update :dashboardcard_series
+               :set    {:position position}
+               :where  [:= :id id]})))

@@ -1,4 +1,4 @@
-import type { CallLog } from "fetch-mock";
+import fetchMock, { type CallLog } from "fetch-mock";
 
 import { act, waitFor } from "./ui";
 
@@ -56,17 +56,23 @@ const DEFAULT_BOUNDING_CLIENT_RECT: DOMRect = {
  * otherwise-undefined `top`/`left`.
  */
 export function mockGetBoundingClientRect(rect: Partial<DOMRect> = {}) {
-  const original = HTMLElement.prototype.getBoundingClientRect;
-
   beforeEach(() => {
-    HTMLElement.prototype.getBoundingClientRect = jest.fn(() => ({
-      ...DEFAULT_BOUNDING_CLIENT_RECT,
-      ...rect,
-    }));
+    jest
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(() => ({
+        ...DEFAULT_BOUNDING_CLIENT_RECT,
+        ...rect,
+      }));
   });
 
+  // `mockRestore` removes the own property that the spy added, so a later
+  // spy on `Element.prototype` applies to HTML elements again. The spy is
+  // already gone when the test called `jest.restoreAllMocks`.
   afterEach(() => {
-    HTMLElement.prototype.getBoundingClientRect = original;
+    const mock = HTMLElement.prototype.getBoundingClientRect;
+    if (jest.isMockFunction(mock)) {
+      mock.mockRestore();
+    }
   });
 }
 
@@ -89,4 +95,15 @@ export const waitForRequest = async (requestFn: () => CallLog | undefined) => {
     }
     throw error;
   }
+};
+
+/**
+ * Resolves every mocked request that has started and lets the state updates
+ * they cause reach the DOM. Use it before asserting that something did not
+ * render, where there is nothing to wait for.
+ */
+export const waitForRequestsToSettle = async () => {
+  await act(() => fetchMock.callHistory.flush(true));
+  // RTK Query commits the results on the next task.
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 };

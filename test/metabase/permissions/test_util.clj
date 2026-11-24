@@ -1,7 +1,7 @@
 (ns metabase.permissions.test-util
   (:require
    [metabase.config.core :as config]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.schema :as permissions.schema]
@@ -62,7 +62,9 @@
                                                     (contains? existing-table-ids (:table_id p)))))
                                    original-perms)]
           (t2/delete! :model/DataPermissions {:where select-condition})
-          (t2/insert! :model/DataPermissions still-valid-perms))))))
+          (doseq [rows (vals (into (sorted-map)
+                                   (group-by #(= :perms/transforms (:perm_type %)) still-valid-perms)))]
+            (t2/insert! :model/DataPermissions rows)))))))
 
 (defmacro with-restored-data-perms!
   "Runs `body`, and restores all permissions to their original state afterwards."
@@ -173,10 +175,11 @@
 
 (defn do-with-db-perms-for-group!
   "Implementation of `with-db-perms-for-group!`. Sets several data permissions for the given database to the given
-  values for the given permission group for the duration of the test."
+  values for the given permission group for the duration of the test, the transforms permission last since it needs
+  native query access set first."
   [group-or-id db-id perm-type->value thunk]
   (with-restored-data-perms-for-group! (u/the-id group-or-id)
-    (doseq [[perm-type value] perm-type->value]
+    (doseq [[perm-type value] (sort-by (comp #{:perms/transforms} key) perm-type->value)]
       (data-perms/set-database-permission! group-or-id db-id perm-type value))
     (thunk)))
 
@@ -193,10 +196,10 @@
   (let [user-id        (u/the-id user-or-id)
         original-value (t2/select-one-fn :is_data_analyst :model/User :id user-id)]
     (try
-      (t2/update! :model/User user-id {:is_data_analyst true})
+      (t2/update! :model/User :id user-id {:is_data_analyst true})
       (thunk)
       (finally
-        (t2/update! :model/User user-id {:is_data_analyst original-value})))))
+        (t2/update! :model/User :id user-id {:is_data_analyst original-value})))))
 
 (defmacro with-data-analyst-role!
   "Runs `body` with the given user's `is_data_analyst` column set to true.

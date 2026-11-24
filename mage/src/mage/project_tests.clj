@@ -9,6 +9,10 @@
 
 (def ^:private module-check-namespaces
   '[dev.modules-config-test
+    metabase.core.module-cuts-test
+    metabase.core.module-cycles-test
+    metabase.core.module-history-report-test
+    metabase.core.module-history-test
     metabase.core.modules-test])
 
 (def ^:private ratchet-test-namespaces
@@ -20,7 +24,9 @@
   '[metabase.core.namespace-uniqueness-test])
 
 (def ^:private backend-check-namespaces
-  (vec (concat module-check-namespaces ratchet-test-namespaces source-layout-check-namespaces)))
+  (vec (concat module-check-namespaces
+               ratchet-test-namespaces
+               source-layout-check-namespaces)))
 
 (def ^:private default-suites
   "Suites the bare `project-tests` command runs, in order."

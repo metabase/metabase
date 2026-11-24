@@ -11,6 +11,7 @@
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -175,12 +176,12 @@
   (testing "transform function successfully connects to PostgreSQL database and reads data"
     (mt/test-drivers #{:postgres}
       (mt/with-empty-db
-        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               _              (jdbc/execute! db-spec ["DROP TABLE IF EXISTS students"])
               _              (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
               _              (jdbc/execute! db-spec ["INSERT INTO students (id, name, score) VALUES (1, 'Alice', 85), (2, 'Bob', 92), (3, 'Charlie', 88), (4, 'Dana', 90)"])
 
-              _              (sync/sync-database! (mt/db))
+              _              (sync/sync-database! (mt/id))
 
               transform-code (str "import pandas as pd\n"
                                   "\n"
@@ -242,11 +243,11 @@
   (testing "transform function successfully connects to PostgreSQL database and reads data"
     (mt/test-drivers #{:postgres}
       (mt/with-empty-db
-        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               _              (jdbc/execute! db-spec ["DROP TABLE IF EXISTS students"])
               _              (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
 
-              _              (sync/sync-database! (mt/db))
+              _              (sync/sync-database! (mt/id))
 
               transform-code (str "import pandas as pd\n"
                                   "\n"
@@ -273,12 +274,12 @@
   (testing "transform function successfully connects to PostgreSQL database and reads data"
     (mt/test-drivers #{:postgres}
       (mt/with-empty-db
-        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               _              (jdbc/execute! db-spec ["DROP TABLE IF EXISTS students"])
               _              (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
               _              (jdbc/execute! db-spec ["INSERT INTO students (id, name, score) VALUES (1, 'Alice', 85), (2, 'Bob', 92), (3, 'Charlie', 88), (4, 'Dana', 90)"])
 
-              _              (sync/sync-database! (mt/db))
+              _              (sync/sync-database! (mt/id))
 
               transform-code (str "import pandas as pd\n"
                                   "\n"
@@ -311,7 +312,7 @@
 (deftest transform-type-test
   (mt/test-drivers #{:postgres}
     (mt/with-empty-db
-      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
             _ (jdbc/execute! db-spec ["DROP TABLE IF EXISTS sample_table"])
             _ (jdbc/execute! db-spec ["CREATE TABLE sample_table (
                                                         id BIGSERIAL PRIMARY KEY,
@@ -331,7 +332,7 @@
                                                         ('Product B', 'Another product with longer description text', 50, 15.50, false, '2024-02-01', '2024-02-01 09:15:30', '2024-02-02 16:30:00-05'),
                                                         ('Product C', NULL, 0, 0.0, true, '2024-03-10', '2024-03-10 18:45:15', '2024-03-11 08:00:00+02')"])
 
-            _ (sync/sync-database! (mt/db))
+            _ (sync/sync-database! (mt/id))
 
             transform-code (str "import pandas as pd\n"
                                 "\n"
@@ -373,10 +374,12 @@
 (deftest transform-function-with-library-test
   (testing "transform function can use libraries"
     (mt/test-drivers #{:postgres}
-      (mt/with-temp [:model/PythonLibrary _ {:path   "circle"
-                                             :source "import math\n\ndef calculate_circle_area(radius):\n    return math.pi * radius ** 2"}
-                     :model/PythonLibrary _ {:path   "utils"
-                                             :source "def format_currency(amount):\n    return f\"${amount:,.2f}\""}]
+      (mt/with-dynamic-fn-redefs [t2/select-fn->fn (fn [k v model]
+                                                     (when (and (= k :path)
+                                                                (= v :source)
+                                                                (= model :model/PythonLibrary))
+                                                       {"circle.py" "import math\n\ndef calculate_circle_area(radius):\n    return math.pi * radius ** 2"
+                                                        "utils.py"  "def format_currency(amount):\n    return f\"${amount:,.2f}\""}))]
         (let [transform-code (str "import pandas as pd\n"
                                   "from circle import calculate_circle_area\n"
                                   "from utils import format_currency\n"
@@ -466,7 +469,7 @@
             _ (driver/insert-from-source! driver db-id table-schema
                                           {:type :rows :data row-values})
 
-            _ (sync/sync-database! (mt/db) {:scan :schema})
+            _ (sync/sync-database! (mt/id) {:scan :schema})
 
             transform-code (str "import pandas as pd\n"
                                 "\n"

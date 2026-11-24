@@ -4,6 +4,7 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.scim.db :as scim.db]
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.analytics-interface.core :as analytics]
@@ -11,9 +12,14 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as permissions-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.permissions.schema :as permissions.schema]
+   [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -112,10 +118,11 @@
 (defn- throw-scim-error
   [status message]
   (throw (ex-info message
-                  {:schemas     [error-schema-uri]
-                   :detail      message
-                   :status      status
-                   :status-code status})))
+                  {:schemas       [error-schema-uri]
+                   :detail        message
+                   :status        status
+                   :status-code   status
+                   :response/keys #{:schemas :detail :status}})))
 
 (defn- scim-response
   "Wraps an object in a response with the correct SCIM content-type. Status defaults to 200 unless otherwise specified."
@@ -144,14 +151,18 @@
 ;;; |                                               User operations                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- hidden-group-ids
+  "IDs of the static groups that SCIM never exposes or manages."
+  []
+  [(:id (perms/all-users-group)) (:id (perms/admin-group))])
+
 (mi/define-batched-hydration-method add-scim-user-group-memberships
   :scim_user_group_memberships
   "Add to each `user` a list of :user_group_memberships where each item is a map with 2 keys [:name :entity_id]."
   [users]
   (when (seq users)
     (let [user-id->memberships (group-by :user_id (scim.db/user-group-memberships (map u/the-id users)
-                                                                                  [(:id (perms/all-users-group))
-                                                                                   (:id (perms/admin-group))]))
+                                                                                  (hidden-group-ids)))
           membership->group    (fn [membership] (select-keys membership [:name :entity_id]))]
       (for [user users]
         (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
@@ -160,7 +171,7 @@
 
 (mu/defn ^:private mb-user->scim :- SCIMUser
   "Given a Metabase user, returns a SCIM user."
-  [user]
+  [user :- ::users.schema/user]
   {:schemas  [user-schema-uri]
    :id       (:entity_id user)
    :userName (:email user)
@@ -181,7 +192,7 @@
 
 (mu/defn ^:private scim-user->mb :- users.schema/NewUser
   "Given a SCIM user, returns a Metabase user."
-  [user]
+  [user :- SCIMUser]
   (let [{email :userName name-obj :name locale :locale is-active? :active} user
         {:keys [givenName familyName]} name-obj]
     (merge
@@ -196,7 +207,7 @@
 
 (mu/defn ^:private get-user-by-entity-id
   "Fetches a user by entity ID, or throws a 404"
-  [entity-id]
+  [entity-id :- ms/NonBlankString]
   (or (scim.db/scim-user-by-entity-id entity-id)
       (throw-scim-error 404 "User not found")))
 
@@ -264,7 +275,7 @@
       (when (scim.db/user-email-exists? email)
         (throw-scim-error 409 "Email address is already in use"))
       (let [new-user (t2/with-transaction [_]
-                       (scim.db/insert-user! mb-user)
+                       (user/create-users! [mb-user])
                        (-> (scim.db/scim-user-by-email email)
                            mb-user->scim))]
         (scim-response new-user 201)))))
@@ -287,17 +298,18 @@
         (throw-scim-error 400 "You may not update the email of an existing user.")
         (try
           (t2/with-transaction [_conn]
-            (scim.db/update-user! (u/the-id current-user) updates)
+            (user/update-users! [(assoc updates :id (u/the-id current-user))])
             (let [user (-> (scim.db/scim-user-by-entity-id id)
                            mb-user->scim)]
               (scim-response user)))
           (catch Exception e
             (let [message (format "Error updating user: %s" (ex-message e))]
               (throw (ex-info message
-                              {:schemas     [error-schema-uri]
-                               :detail      message
-                               :status      400
-                               :status-code 400})))))))))
+                              {:schemas       [error-schema-uri]
+                               :detail        message
+                               :status        400
+                               :status-code   400
+                               :response/keys #{:schemas :detail :status}})))))))))
 
 (defn- patch->boolean
   "SCIM sends `active` as a JSON boolean, but clients in the wild send the strings \"true\"/\"false\" too. Anything
@@ -349,7 +361,7 @@
                            (= (u/lower-case-en op) "replace") (patch->user-updates path value))))
                      {}
                      (:Operations patch-ops))]
-        (scim.db/update-user! (u/the-id user) updates)
+        (user/update-users! [(assoc updates :id (u/the-id user))])
         (-> (get-user-by-entity-id id)
             mb-user->scim
             scim-response)))))
@@ -371,15 +383,15 @@
                                    (sort-by :entity_id)))))))
 
 (mu/defn ^:private get-group-by-entity-id
-  "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups, as these are
-  static and cannot be managed via SCIM."
-  [entity-id]
-  (or (scim.db/scim-group-by-entity-id entity-id [(:id (perms/all-users-group)) (:id (perms/admin-group))])
+  "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups,
+  as these are static and cannot be managed via SCIM."
+  [entity-id :- ms/NonBlankString]
+  (or (scim.db/scim-group-by-entity-id entity-id (hidden-group-ids))
       (throw-scim-error 404 "Group not found")))
 
 (mu/defn ^:private mb-group->scim :- SCIMGroup
   "Given a Metabase permissions group, returns a SCIM group."
-  [group]
+  [group :- ::permissions.schema/permissions-group]
   {:schemas     [group-schema-uri]
    :id          (:entity_id group)
    :members     (map
@@ -417,7 +429,7 @@
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
           offset         (if start-index (dec start-index) default-pagination-offset)
           filter-param   (when filter-param (codec/url-decode filter-param))
-          excluded-ids   [(:id perms/all-users-group) (:id perms/admin-group)]
+          excluded-ids   (hidden-group-ids)
           group-name     (when filter-param (group-filter-name filter-param))
           groups         (scim.db/scim-groups excluded-ids group-name limit offset)
           results-count  (count groups)
@@ -443,15 +455,21 @@
         mb-group->scim)))
 
 (defn- update-group-membership
-  "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`. Clears
-  any existing members."
+  "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`.
+
+  Member values that match no User are skipped. When none of them match, the push is a no-op rather than an
+  emptying of the group: the IdP is referring to users this instance never provisioned, and wiping the group
+  would hide that drift behind a successful response."
   [group-id user-entity-ids]
-  (let [user-ids (scim.db/user-ids-by-entity-ids user-entity-ids)]
-    (when-let [memberships (not-empty (map
-                                       (fn [user-id] {:group group-id :user user-id})
-                                       user-ids))]
-      (perms/remove-all-users-from-group! group-id)
-      (perms/add-users-to-groups! memberships))))
+  (let [desired-ids (set (scim.db/user-ids-by-entity-ids user-entity-ids))
+        current-ids (set (scim.db/group-member-user-ids group-id))]
+    (if (empty? desired-ids)
+      (log/warnf "SCIM group %d membership push named %d member(s), none of them known users; leaving membership alone"
+                 group-id (count user-entity-ids))
+      (do
+        (perms-group-membership/remove-users-from-groups! (vec (set/difference current-ids desired-ids)) [group-id])
+        (perms-group-membership/add-users-to-groups! (for [user-id (set/difference desired-ids current-ids)]
+                                                       {:group group-id :user user-id}))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -468,7 +486,7 @@
       (when (scim.db/group-name-exists? group-name)
         (throw-scim-error 409 "A group with that name already exists"))
       (t2/with-transaction [_conn]
-        (let [new-group (scim.db/insert-group! {:name group-name})]
+        (let [[new-group] (permissions-group/create-permissions-groups! [{:name group-name}])]
           (when (seq entity-ids)
             (update-group-membership (:id new-group) entity-ids))
           (-> new-group
@@ -491,7 +509,7 @@
           entity-ids (map :value (:members scim-group))]
       (t2/with-transaction [_conn]
         (let [group (get-group-by-entity-id id)]
-          (scim.db/update-group! (u/the-id group) {:name group-name})
+          (permissions-group/update-permissions-groups! [{:id (u/the-id group) :name group-name}])
           (when (seq entity-ids)
             (update-group-membership (u/the-id group) entity-ids))
           (-> (get-group-by-entity-id id)
@@ -509,5 +527,5 @@
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
-      (scim.db/delete-group! (u/the-id group))
+      (permissions-group/delete-permissions-groups! [(u/the-id group)])
       (scim-response nil 204))))

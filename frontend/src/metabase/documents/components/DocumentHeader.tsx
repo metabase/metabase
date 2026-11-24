@@ -11,6 +11,7 @@ import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
+import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import {
@@ -34,8 +35,8 @@ import type { Document } from "metabase-types/api";
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
-import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 import S from "./DocumentHeader.module.css";
+import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 
 const saveButtonTransition: TransitionProps["transition"] = {
   in: { opacity: 1, visibility: "visible", width: "auto" },
@@ -192,7 +193,7 @@ export const DocumentHeader = ({
             <Box>
               {document && (
                 <ActionIcon
-                  className={S.commentsIcon}
+                  variant="subtle"
                   component={Link}
                   to={`/document/${document.id}/comments/all`}
                   size="md"
@@ -238,43 +239,38 @@ export const DocumentHeader = ({
               </Menu.Item>
               {!isNewDocument && (
                 <>
-                  {isAdmin && (
-                    <Menu.Item
-                      leftSection={<Icon name="link" />}
-                      onClick={() => setIsPublicLinkPopoverOpen(true)}
-                      {...(!isPublicSharingEnabled && {
-                        onClick: undefined,
-                        component: "div",
-                        disabled: true,
-                      })}
-                    >
-                      {isPublicSharingEnabled ? (
-                        hasPublicLink ? (
-                          t`Public link`
-                        ) : (
-                          t`Create a public link`
-                        )
-                      ) : (
-                        <>
-                          {t`Public link`}
-                          <Button
-                            component={Link}
-                            to="/admin/settings/public-sharing"
-                            target="_blank"
-                            variant="subtle"
-                            h="auto"
-                            lh="inherit"
-                            ml="sm"
-                            p={0}
-                            bd={0}
-                            className={CS.floatRight}
-                          >
-                            {t`Enable`}
-                          </Button>
-                        </>
-                      )}
-                    </Menu.Item>
-                  )}
+                  {isAdmin &&
+                    (isPublicSharingEnabled ? (
+                      document && (
+                        <PublicLinkMenuItem
+                          hasPublicLink={hasPublicLink}
+                          entity={{ model: "document", id: document.id }}
+                          onClick={() => setIsPublicLinkPopoverOpen(true)}
+                        />
+                      )
+                    ) : (
+                      <Menu.Item
+                        leftSection={<Icon name="globe" aria-hidden />}
+                        component="div"
+                        disabled
+                      >
+                        {t`Public link`}
+                        <Button
+                          component={Link}
+                          to="/admin/settings/public-sharing"
+                          target="_blank"
+                          variant="transparent"
+                          size="compact-md"
+                          h="auto"
+                          lh="inherit"
+                          ml="sm"
+                          bd={0}
+                          className={CS.floatRight}
+                        >
+                          {t`Enable`}
+                        </Button>
+                      </Menu.Item>
+                    ))}
                   {canWrite && (
                     <Menu.Item
                       leftSection={<Icon name="move" />}

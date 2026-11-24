@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import EmptyFolder from "assets/img/empty-states/collection.svg";

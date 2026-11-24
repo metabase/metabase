@@ -1,0 +1,114 @@
+import type { MouseEvent } from "react";
+import { t } from "ttag";
+
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
+import { useConfirmation, useMetadataToasts } from "metabase/common/hooks";
+import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
+import { Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { useSetDataAppEnabledMutation } from "metabase-enterprise/api";
+import type { DataApp } from "metabase-types/api";
+
+import { useCrossOriginDataAppHref } from "../../../host/lib/get-cross-origin-data-app-href";
+import { isDataAppOpenable } from "../../../utils";
+import { trackDataAppMadeDraft, trackDataAppMadeLive } from "../../analytics";
+
+type DataAppMoreMenuProps = {
+  app: DataApp;
+};
+
+export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
+  const openEmbedWizard = useOpenEmbedJsWizard({
+    initialState: {
+      resourceType: "data-app",
+      resourceId: app.slug,
+      isGuest: false,
+      useExistingUserSession: false,
+    },
+  });
+
+  const [setDataAppEnabled] = useSetDataAppEnabledMutation();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { show: showConfirmation, modalContent } = useConfirmation();
+
+  const getCrossOriginHref = useCrossOriginDataAppHref();
+  const href =
+    getCrossOriginHref(app.slug) ??
+    Urls.getSubpathSafeUrl(Urls.dataApp(app.slug));
+
+  const handleToggleEnabled = () => {
+    const enabled = !app.enabled;
+    showConfirmation({
+      title: enabled ? t`Make ${app.name} live?` : t`Make ${app.name} a draft?`,
+      message: enabled
+        ? t`People in its groups will be able to open it at ${Urls.dataApp(app.slug)}.`
+        : t`Nobody will be able to open it until you make it live again. This doesn’t change the app.`,
+      confirmButtonText: enabled ? t`Make live` : t`Make draft`,
+      confirmButtonProps: { color: "brand" },
+      onConfirm: async () => {
+        const { error } = await setDataAppEnabled({ slug: app.slug, enabled });
+        if (error) {
+          sendErrorToast(t`Failed to update ${app.name}`);
+        } else {
+          if (enabled) {
+            trackDataAppMadeLive(app.id);
+          } else {
+            trackDataAppMadeDraft(app.id);
+          }
+          sendSuccessToast(
+            enabled ? t`${app.name} is live` : t`${app.name} is a draft`,
+          );
+        }
+      },
+    });
+  };
+
+  const handleTargetClick = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  return (
+    <>
+      <Menu position="bottom-start">
+        <Menu.Target>
+          <MoreMenuButton
+            aria-label={t`Data app options`}
+            onClick={handleTargetClick}
+          />
+        </Menu.Target>
+        <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
+          {isDataAppOpenable(app) && (
+            <Menu.Item
+              component="a"
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              leftSection={<Icon name="external" />}
+            >
+              {t`Open app`}
+            </Menu.Item>
+          )}
+          {isDataAppOpenable(app) && (
+            <Menu.Item
+              leftSection={<Icon name="embed" />}
+              onClick={() => openEmbedWizard({})}
+            >
+              {t`Embed`}
+            </Menu.Item>
+          )}
+
+          <Menu.Item
+            leftSection={
+              <Icon name={app.enabled ? "eye_crossed_out" : "eye"} />
+            }
+            onClick={handleToggleEnabled}
+          >
+            {app.enabled ? t`Make draft` : t`Make live`}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+      {modalContent}
+    </>
+  );
+}

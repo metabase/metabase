@@ -1,11 +1,28 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import type {
+  DependencyCountsResponse,
   DependencyGraph,
   DependencyNode,
   ListBreakingGraphNodesResponse,
   ListUnreferencedGraphNodesResponse,
 } from "metabase-types/api";
+
+import type { MockResponse } from "./types";
+
+export function setupDependencyCountsEndpoint(
+  response: MockResponse<DependencyCountsResponse> = {
+    breaking: 0,
+    unreferenced: 0,
+  },
+  options?: UserRouteConfig,
+) {
+  fetchMock.get("path:/api/ee/dependencies/counts", response, options);
+}
+
+export function setupDependencyCountsErrorEndpoint() {
+  fetchMock.get("path:/api/ee/dependencies/counts", { status: 500 });
+}
 
 export function setupListGraphNodeDependentsEndpoint(nodes: DependencyNode[]) {
   fetchMock.get("path:/api/ee/dependencies/graph/dependents", nodes);

@@ -12,6 +12,7 @@ import { ActionIcon, Box, Icon, Modal, TextInput } from "metabase/ui";
 import resizeObserver from "metabase/utils/resize-observer";
 import type { RecentContexts } from "metabase-types/api";
 
+import { SEARCH_DEBOUNCE_MS } from "../constants";
 import { useLogRecentItem } from "../hooks";
 import type {
   EntityPickerOptions,
@@ -227,13 +228,13 @@ const SearchInput = ({
   const [localValue, setLocalValue] = useState(value);
   const debouncedOnChange = useDebouncedCallback((newValue: string) => {
     onChange(newValue);
-  }, 300);
+  }, SEARCH_DEBOUNCE_MS);
   return (
     <TextInput
       classNames={{ input: S.textInput }}
       data-autofocus
       type="search"
-      leftSection={<Icon name="search" size={16} />}
+      leftSection={<Icon name="search" />}
       miw="min(400px, 100%)"
       placeholder={t`Search…`}
       value={localValue}
@@ -245,13 +246,15 @@ const SearchInput = ({
       rightSection={
         value.length ? (
           <ActionIcon
+            variant="subtle"
+            size="sm"
             onClick={() => {
               setLocalValue("");
               onChange("");
             }}
             data-testid="clear-search"
           >
-            <Icon name="close" size={16} />
+            <Icon name="close" />
           </ActionIcon>
         ) : null
       }

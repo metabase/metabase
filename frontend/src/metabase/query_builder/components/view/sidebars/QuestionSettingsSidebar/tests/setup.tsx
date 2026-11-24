@@ -8,9 +8,14 @@ import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+  waitForSidesheetToOpen,
+} from "__support__/ui";
 import { selectQuestionFromCard } from "metabase/metadata-store";
 import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -83,7 +88,7 @@ export const setup = async ({
     <QuestionSettingsSidebar question={question} />
   );
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <Route path="*" element={<TestQuestionSettingsSidebar />} />,
     {
       withRouter: true,
@@ -91,5 +96,8 @@ export const setup = async ({
     },
   );
 
+  await waitForSidesheetToOpen();
   await waitForLoaderToBeRemoved();
+
+  return { router: checkNotNull(router) };
 };

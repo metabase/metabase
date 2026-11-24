@@ -1,15 +1,11 @@
-import classNames from "classnames";
 import type { FocusEvent, KeyboardEvent, MouseEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { SelectButton } from "metabase/common/components/SelectButton";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
-import { Button, FocusTrap, Icon, Input, Popover } from "metabase/ui";
-import { color } from "metabase/ui/colors";
-import { getThemeOverrides } from "metabase/ui/theme";
+import { FocusTrap, Input, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
-import styles from "./ColumnInput.module.css";
 
 type ColumnInputProps = {
   query: Lib.Query;
@@ -19,8 +15,6 @@ type ColumnInputProps = {
   value: Lib.ColumnMetadata | null;
   onChange: (column: Lib.ColumnMetadata | null) => void;
 };
-
-const theme = getThemeOverrides();
 
 export function ColumnInput({
   query,
@@ -96,12 +90,8 @@ export function ColumnInput({
     <Input.Wrapper
       label={label}
       styles={{
-        root: { width: "100%" },
-        label: {
-          marginBottom: theme.spacing?.xxs,
-          fontSize: theme.fontSizes?.md,
-          color: color("text-secondary"),
-        },
+        // let long column names end with "…" instead of widening the row
+        root: { width: "100%", minWidth: 0 },
       }}
     >
       <Popover
@@ -115,20 +105,15 @@ export function ColumnInput({
         withinPortal={!open} // FIXME: portal situation not good
       >
         <Popover.Target>
-          <Button
+          <SelectButton
             data-testid="column-input"
             ref={button}
+            hasValue={value !== null}
             onMouseDownCapture={handleButtonClick}
             onKeyDown={handleKeyDown}
-            fullWidth
-            classNames={{
-              root: classNames(styles.root, { [styles.open]: open }),
-              inner: styles.button,
-            }}
-            rightSection={<Icon name="chevrondown" style={{ height: 14 }} />}
           >
             {text}
-          </Button>
+          </SelectButton>
         </Popover.Target>
         <Popover.Dropdown>{dropdown}</Popover.Dropdown>
       </Popover>

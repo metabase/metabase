@@ -3,6 +3,7 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.sql-tools.schema :as sql-tools.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -13,7 +14,8 @@
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential :string]]
   (t2/select-pks-set :model/Table
-                     {:where [:and
+                     {:from  [(t2/table-name :model/Table)]
+                      :where [:and
                               [:= :db_id database-id]
                               ;; `lower()` cannot use an index on the name column, but it still beats fetching every
                               ;; row for the Database.
@@ -24,3 +26,19 @@
                               [:or
                                [:= :visibility_type nil]
                                [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]}))
+
+(mu/defn shadow-difference-seen-again! :- :int
+  "Count one more sighting of the shadow difference with `input-hash`, and keep the newest `changes` (outcome and
+  results). Returns the number of rows updated."
+  [input-hash :- :string
+   changes    :- ::sql-tools.schema/shadow-difference.changes]
+  (t2/update! :model/SqlParsingShadowDifference
+              {:input_hash [:auto/param input-hash]}
+              (assoc changes
+                     :seen_count   [:+ :seen_count 1]
+                     :last_seen_at :%now)))
+
+(mu/defn insert-shadow-difference! :- :int
+  "Insert a shadow difference `row`. Returns the number of rows inserted."
+  [row :- ::sql-tools.schema/shadow-difference.create]
+  (t2/insert! :model/SqlParsingShadowDifference row))

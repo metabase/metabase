@@ -1,15 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
+import {
+  INVALID_AUTH_METHOD,
+  MetabaseError,
+} from "embedding-sdk-shared/errors";
 import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
   validateSession,
 } from "embedding/auth-common";
-import {
-  INVALID_AUTH_METHOD,
-  MetabaseError,
-} from "embedding-sdk-shared/errors";
-import type { EmbedAuthManagerContext } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
+import type { EmbedAuthManagerContext } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
 
 /**
  * Manages authentication for embedded Metabase components.

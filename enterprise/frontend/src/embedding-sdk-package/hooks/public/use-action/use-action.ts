@@ -12,6 +12,7 @@ import type {
   ActionResultForKind,
   UseAction,
   UseActionResult,
+  UseDataAppAction,
 } from "./types";
 
 /**
@@ -92,3 +93,6 @@ const useActionImpl = <
 
 /** @notExported UseAction */
 export const useAction: UseAction = useActionImpl;
+
+/** @notExported UseDataAppAction */
+export const useDataAppAction: UseDataAppAction = useActionImpl;

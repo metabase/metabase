@@ -4,7 +4,10 @@
    gating, Malli validation, and teaching-error conversion are exercised for free."
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.bookmark :as tools.bookmark]
    [metabase.metabot.scope :as metabot.scope]
@@ -17,7 +20,7 @@
 (comment tools.bookmark/keep-me)
 
 (defn- call-tool!
-  ([user args] (call-tool! user nil args))
+  ([user args] (call-tool! user v2.tu/all-scopes args))
   ([user scopes args]
    (mt/with-current-user (mt/user->id user)
      (registry/call-tool scopes nil "bookmark_content" args))))
@@ -25,16 +28,16 @@
 (defn- tool-result
   [{:keys [result error]}]
   (when error
-    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+    (throw (ex-info (str "tool call rejected: " (message/render (:message error))) {:error error})))
   (when (:isError result)
     (throw (ex-info (str "tool call failed: " (-> result :content first :text))
                     {:result result})))
-  (-> result :content first :text json/decode+kw))
+  (-> result :content first :text v2.tu/strip-data-boundary json/decode+kw))
 
 (defn- tool-error
   [{:keys [result error]}]
   (cond
-    error                (:message error)
+    error                (message/render (:message error))
     (:isError result)    (-> result :content first :text)
     :else                (throw (ex-info "expected a tool error, got success" {:result result}))))
 
@@ -67,32 +70,34 @@
 
 (deftest every-type-routes-to-its-bookmark-table-test
   (testing "GHY-4152: each type reaches the right bookmark table; the three card flavors share `card`"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Card {question-id :id} {:type :question :collection_id coll-id}
-                   :model/Card {model-id :id} {:type :model :collection_id coll-id}
-                   :model/Card {metric-id :id} {:type :metric :collection_id coll-id}
-                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                   :model/Document {doc-id :id} {:collection_id coll-id :document {}}]
-      (doseq [[type id] [["question" question-id] ["model" model-id] ["metric" metric-id]]]
-        (testing type
-          (is (=? {:bookmarked true} (tool-result (call-tool! :rasta {:type type :id id :bookmarked true}))))
-          (is (t2/exists? :model/CardBookmark :card_id id :user_id (mt/user->id :rasta)))))
-      (testing "dashboard"
-        (call-tool! :rasta {:type "dashboard" :id dash-id :bookmarked true})
-        (is (t2/exists? :model/DashboardBookmark :dashboard_id dash-id :user_id (mt/user->id :rasta))))
-      (testing "collection"
-        (call-tool! :rasta {:type "collection" :id coll-id :bookmarked true})
-        (is (t2/exists? :model/CollectionBookmark :collection_id coll-id :user_id (mt/user->id :rasta))))
-      (testing "document"
-        (call-tool! :rasta {:type "document" :id doc-id :bookmarked true})
-        (is (t2/exists? :model/DocumentBookmark :document_id doc-id :user_id (mt/user->id :rasta)))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{coll-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Card {question-id :id} {:type :question :collection_id coll-id}
+                       :model/Card {model-id :id} {:type :model :collection_id coll-id}
+                       :model/Card {metric-id :id} {:type :metric :collection_id coll-id}
+                       :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                       :model/Document {doc-id :id} {:collection_id coll-id :document {}}]
+          (doseq [[type id] [["question" question-id] ["model" model-id] ["metric" metric-id]]]
+            (testing type
+              (is (=? {:bookmarked true} (tool-result (call-tool! :rasta {:type type :id id :bookmarked true}))))
+              (is (t2/exists? :model/CardBookmark :card_id id :user_id (mt/user->id :rasta)))))
+          (testing "dashboard"
+            (call-tool! :rasta {:type "dashboard" :id dash-id :bookmarked true})
+            (is (t2/exists? :model/DashboardBookmark :dashboard_id dash-id :user_id (mt/user->id :rasta))))
+          (testing "collection"
+            (call-tool! :rasta {:type "collection" :id coll-id :bookmarked true})
+            (is (t2/exists? :model/CollectionBookmark :collection_id coll-id :user_id (mt/user->id :rasta))))
+          (testing "document"
+            (call-tool! :rasta {:type "document" :id doc-id :bookmarked true})
+            (is (t2/exists? :model/DocumentBookmark :document_id doc-id :user_id (mt/user->id :rasta)))))))))
 
 (deftest entity-id-test
   (testing "GHY-4152: id accepts a 21-char entity_id as well as a numeric id"
-    (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {}]
-      (is (=? {:type "collection" :id coll-id :bookmarked true}
-              (tool-result (call-tool! :rasta {:type "collection" :id coll-eid :bookmarked true}))))
-      (is (t2/exists? :model/CollectionBookmark :collection_id coll-id :user_id (mt/user->id :rasta)))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{coll-id :id coll-eid :entity_id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (is (=? {:type "collection" :id coll-id :bookmarked true}
+                (tool-result (call-tool! :rasta {:type "collection" :id coll-eid :bookmarked true}))))
+        (is (t2/exists? :model/CollectionBookmark :collection_id coll-id :user_id (mt/user->id :rasta))))))
   (testing "GHY-4152: a malformed id is a teaching error naming both accepted shapes"
     (is (= "Invalid id \"nope\" — pass the positive numeric id, or the 21-character entity_id from a search or list result."
            (tool-error (call-tool! :rasta {:type "collection" :id "nope" :bookmarked true})))))
@@ -104,7 +109,7 @@
 (deftest card-flavor-mismatch-test
   (testing "GHY-4152: bookmarking a card under the wrong flavor is a teaching error naming the right type"
     (mt/with-temp [:model/Card {card-id :id} {:type :metric}]
-      (is (= (format "Card %d is a metric — bookmark it with type: \"metric\"." card-id)
+      (is (= (format "Card %d is a \"metric\" — bookmark it with type: \"metric\"." card-id)
              (tool-error (call-tool! :rasta {:type "question" :id card-id :bookmarked true}))))
       (is (not (t2/exists? :model/CardBookmark :card_id card-id))))))
 
@@ -144,7 +149,7 @@
 (deftest scope-test
   (testing "GHY-4152: the tool requires agent:content:write"
     (mt/with-temp [:model/Card {card-id :id} {:type :question}]
-      (is (re-find #"^Insufficient scope to call tool: bookmark_content\."
+      (is (re-find #"^Insufficient scope to call tool: \"bookmark_content\"\."
                    (tool-error (call-tool! :rasta #{metabot.scope/agent-content-read}
                                            {:type "question" :id card-id :bookmarked true}))))
       ;; Reachability is the point here — without agent:content:read the echo degrades to the

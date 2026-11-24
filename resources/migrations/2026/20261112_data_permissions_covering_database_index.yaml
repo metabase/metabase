@@ -1,0 +1,43 @@
+## The SQL data permission filters probe each Table's and Database's Database-level rows by db_id with a null table_id,
+## reading their type, value and group: an index over those five columns serves them without reading data_permissions
+## rows, where the db_id index alone made a probe scan every Table-level row of the Database. It leads with db_id, so it
+## also backs the db_id foreign key, and the single-column index goes away. H2 ties each foreign key to the index it
+## was created with and refuses to drop it, so H2 keeps it.
+
+databaseChangeLog:
+  - changeSet:
+      id: npasql
+      author: ranquild
+      comment: Add index on data_permissions(db_id, table_id, perm_type, perm_value, group_id)
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_db_table_type_value_group
+            columns:
+              - column:
+                  name: db_id
+              - column:
+                  name: table_id
+              - column:
+                  name: perm_type
+              - column:
+                  name: perm_value
+              - column:
+                  name: group_id
+
+  - changeSet:
+      id: 6valmf
+      author: ranquild
+      dbms: postgresql,mysql,mariadb
+      comment: Drop index on data_permissions(db_id), covered by the index leading with db_id
+      changes:
+        - dropIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_db_id
+      rollback:
+        - createIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_db_id
+            columns:
+              - column:
+                  name: db_id

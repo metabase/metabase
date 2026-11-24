@@ -8,11 +8,11 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { getShallowTables } from "metabase/metadata-store";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Button, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Segment } from "metabase-types/api";
+import type { Segment, Table } from "metabase-types/api";
 
 import { SegmentEditor } from "../../components/SegmentEditor";
 import { SegmentHeader } from "../../components/SegmentHeader";
@@ -21,6 +21,7 @@ import type { SegmentTabUrls } from "../../types";
 
 type SegmentDetailPageProps = {
   segment: Segment;
+  table: Table;
   tabUrls: SegmentTabUrls;
   breadcrumbs: ReactNode;
   onRemove: () => Promise<void>;
@@ -28,14 +29,14 @@ type SegmentDetailPageProps = {
 
 export function SegmentDetailPage({
   segment,
+  table,
   tabUrls,
   breadcrumbs,
   onRemove,
 }: SegmentDetailPageProps) {
-  const tables = useSelector(getShallowTables);
-  const table = tables[segment.table_id];
+  const buildQuestion = useQuestionFromOptsBuilder();
   const canWriteSegments = useSelector((state) =>
-    getUserCanWriteSegments(state, !!table?.is_published),
+    getUserCanWriteSegments(state, table.is_published),
   );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -48,13 +49,15 @@ export function SegmentDetailPage({
   const isDirty = useMemo(
     () =>
       description !== (savedSegment.description ?? "") ||
-      !Lib.areLegacyQueriesEqual(definition, savedSegment.definition),
+      !Lib.areQueriesEqual(definition, savedSegment.definition),
     [description, definition, savedSegment],
   );
 
   const isValid = filters.length > 0;
   const previewUrl =
-    filters.length > 0 ? getDatasetQueryPreviewUrl(definition) : undefined;
+    filters.length > 0
+      ? getDatasetQueryPreviewUrl(definition, buildQuestion)
+      : undefined;
 
   const setQuery = useCallback((newQuery: Lib.Query) => {
     setDefinition(Lib.toJsQuery(newQuery));

@@ -6,11 +6,10 @@
 
 (mr/def ::content-translation
   "A ContentTranslation as selected from the app DB: every column of `:content_translation`."
-  [:map {:closed true}
-   [:id     ms/PositiveInt]
-   [:locale :string]
-   [:msgid  :string]
-   [:msgstr :string]])
+  [:merge
+   ::content-translation.update
+   [:map {:closed true}
+    [:id     ms/PositiveInt]]])
 
 (mr/def ::content-translation.update
   "What an update (or insert) of a ContentTranslation accepts: every column of `:content_translation` except `id`, all optional."
@@ -18,3 +17,10 @@
    [:locale {:optional true} [:maybe :string]]
    [:msgid  {:optional true} [:maybe :string]]
    [:msgstr {:optional true} [:maybe :string]]])
+
+(mr/def ::content-translation.create
+  "What a caller gives to create a ContentTranslation."
+  [:map {:closed true}
+   [:locale :string]
+   [:msgid  :string]
+   [:msgstr :string]])

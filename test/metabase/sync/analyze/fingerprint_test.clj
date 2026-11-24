@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.app-db.core :as app-db]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.db :as sync.db]
@@ -16,6 +17,8 @@
    [com.mchange.v2.resourcepool CannotAcquireResourceException]
    [java.net ConnectException]
    [java.sql SQLException SQLTimeoutException]))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   TESTS FOR WHICH FIELDS NEED FINGERPRINTING                                   |
@@ -146,7 +149,9 @@
       (mt/with-dynamic-fn-redefs [qp/process-query              (fn process-query
                                                                   [_query rff]
                                                                   (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                                  sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
+                                  sync.fingerprint/save-fingerprints! (fn [rows _]
+                                                                        (when (some :fingerprint rows)
+                                                                          (reset! fingerprinted? true)))]
         (mt/with-temp [:model/Table table {}
                        :model/Field _     (assoc field-properties :table_id (u/the-id table))]
           [(sync.fingerprint/fingerprint-table! table)
@@ -164,7 +169,7 @@
       (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {2 #{:type/Float}}]
         (mt/with-dynamic-fn-redefs [qp/process-query                   (fn [_query rff]
                                                                          (transduce identity (rff :metadata) [[1 1] [2 2] [3 3] [4 4] [5 5]]))
-                                    sync.fingerprint/save-fingerprint! (fn [& _] (swap! saved inc))]
+                                    sync.fingerprint/save-fingerprints! (fn [rows _] (swap! saved + (count (filter :fingerprint rows))))]
           (mt/with-temp [:model/Table table {}
                          :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}
                          :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}]
@@ -336,10 +341,10 @@
 (deftest refingerprint-fields-for-db!-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "refingerprints up to a limit"
-      (with-redefs [sync.fingerprint/save-fingerprint! (constantly nil)
+      (with-redefs [sync.fingerprint/save-fingerprints! (constantly nil)
                     sync.fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
         (let [results (sync.fingerprint/refingerprint-fields-for-db!
-                       (mt/db)
+                       (lib.metadata/database (mt/metadata-provider))
                        (constantly nil))
               attempted (:fingerprints-attempted results)]
           ;; it can exceed the max field count as our resolution is after each table check it.
@@ -407,5 +412,5 @@
                       sync.fingerprint/*refingerprint?* true]
           (is (= (assoc (sync.fingerprint/empty-stats-map 0)
                         :failed-fingerprints 1)
-                 (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (constantly nil))))
+                 (sync.fingerprint/fingerprint-fields-for-db! (lib.metadata/database (mt/metadata-provider)) (constantly nil))))
           (is (= 1 @tables-fingerprinted)))))))

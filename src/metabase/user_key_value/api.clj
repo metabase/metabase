@@ -3,11 +3,13 @@
    [malli.core :as mc]
    [malli.experimental.time.transform :as mett]
    [malli.transform :as mtx]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.literal]
    [metabase.user-key-value.models.user-key-value :as user-key-value]
    [metabase.user-key-value.models.user-key-value.types :as types]
+   [metabase.user-key-value.schema :as user-key-value.schema]
    [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -16,24 +18,25 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/namespace/:namespace/key/:key"
   "Upsert a KV-pair for the user"
+  {:scope api-scope/data-app}
   [{nmspace :namespace, k :key} :- [:map {:closed true}
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]
    _query-params
    {v :value, expires-at :expires_at} :- [:map {:closed true}
-                                          [:value      {:optional true} [:maybe [:or :string number? :boolean ms/OpaqueJSONObject [:sequential [:or :string number? :boolean ms/OpaqueJSONObject]]]]]
+                                          [:value      {:optional true} [:maybe [:or :string number? :boolean ::user-key-value.schema/value.object [:sequential [:or :string number? :boolean ::user-key-value.schema/value.object]]]]]
                                           [:expires_at {:optional true} [:maybe :metabase.lib.schema.literal/string.datetime]]]]
   (try
-    (user-key-value/put! api/*current-user-id* (mc/coerce ::types/user-key-value
-                                                          {:key k
-                                                           :namespace nmspace
-                                                           :value v
-                                                           :expires-at expires-at}
-                                                          (mtx/transformer
-                                                           (mtx/key-transformer {:decode keyword})
-                                                           (mtx/default-value-transformer)
-                                                           (mett/time-transformer)
-                                                           {:name :api-request})))
+    (user-key-value/put-user-key-value! api/*current-user-id* (mc/coerce ::types/user-key-value
+                                                                         {:key k
+                                                                          :namespace nmspace
+                                                                          :value v
+                                                                          :expires-at expires-at}
+                                                                         (mtx/transformer
+                                                                          (mtx/key-transformer {:decode keyword})
+                                                                          (mtx/default-value-transformer)
+                                                                          (mett/time-transformer)
+                                                                          {:name :api-request})))
     (catch Exception e
       (when (= (:type (ex-data e))
                ::mc/coercion)
@@ -46,6 +49,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/namespace/:namespace/key/:key"
   "Get a value for the user"
+  {:scope api-scope/data-app}
   [{nmspace :namespace, k :key} :- [:map {:closed true}
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]]
@@ -55,6 +59,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; Not tagged `data-apps:base`, though the three per-key routes around it are: `useUserKeyValue`
+;; only ever reads, writes or clears one key at a time, so nothing a data app renders enumerates
+;; a whole namespace.
 (api.macros/defendpoint :get "/namespace/:namespace"
   "Returns all KV pairs in a given namespace for the current user"
   [{nmspace :namespace} :- [:map {:closed true}
@@ -67,7 +74,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/namespace/:namespace/key/:key"
   "Deletes a KV-pair for the user"
+  {:scope api-scope/data-app}
   [{nmspace :namespace, k :key} :- [:map {:closed true}
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]]
-  (user-key-value/delete! api/*current-user-id* nmspace k))
+  (user-key-value/delete-user-key-value! api/*current-user-id* nmspace k))

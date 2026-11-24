@@ -8,8 +8,10 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -23,7 +25,7 @@
         (let [table (t2/select-one :model/Table :id (mt/id :json))]
           (sql-jdbc.execute/do-with-connection-with-options
            driver/*driver*
-           (mt/db)
+           (mt/id)
            nil
            (fn [^java.sql.Connection conn]
              (let [fields     (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
@@ -40,7 +42,7 @@
       json
       (testing "Nested field column listing"
         (is (= [:type/JSON :type/SerializedJSON]
-               (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/db) {:name "json"})
+               (->> (sql-jdbc.sync/describe-table driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:name "json"})
                     :fields
                     (filter #(= (:name %) "json_bit"))
                     first
@@ -110,7 +112,7 @@
                   :nfc-path [:json_bit "title"]}}
                (sql-jdbc.sync/describe-nested-field-columns
                 driver/*driver*
-                (mt/db)
+                (lib.metadata/database (mt/metadata-provider))
                 {:name "json" :id (mt/id "json")})))))))
 
 (deftest ^:parallel big-nested-field-column-test
@@ -122,7 +124,7 @@
         (is (= sql-jdbc.describe-table/max-nested-field-columns
                (count (sql-jdbc.sync/describe-nested-field-columns
                        driver/*driver*
-                       (mt/db)
+                       (lib.metadata/database (mt/metadata-provider))
                        {:name "big_json" :id (mt/id "big_json")}))))))))
 
 (deftest json-unfolding-initially-false-test
@@ -137,12 +139,12 @@
                                                    :details (assoc (:details database) :json-unfolding false)}]
             (mt/with-db database
               ;; Sync the new database
-              (sync/sync-database! database)
+              (sync/sync-database! (:id database))
               (let [get-field (fn [] (t2/select-one :model/Field :id (mt/id :json :json_bit)))
                     get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                     set-json-unfolding-for-field! (fn [v]
                                                     (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                          (assoc (get-field) :json_unfolding v)))
+                                                                          {:json_unfolding v}))
                     set-json-unfolding-for-db! (fn [v]
                                                  (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
                                                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
@@ -158,19 +160,18 @@
                             and json unfolding is already enabled for the DB"
                   (set-json-unfolding-for-field! false)
                   (set-json-unfolding-for-db! true)
-                  (set-json-unfolding-for-field! true)
-                  ;; Wait for the sync to finish
-                  (Thread/sleep 500)
+                  (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
+                    (set-json-unfolding-for-field! true))
                   (is (seq (nested-fields))))
                 (testing "nested fields are added when json unfolding is enabled for the DB"
                   (set-json-unfolding-for-db! true)
                   (is (true? (:json-unfolding (:details (get-database)))))
                   (is (true? (:json_unfolding (get-field))))
-                  (sync/sync-database! (get-database))
+                  (sync/sync-database! (:id (get-database)))
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled again"
                   (set-json-unfolding-for-db! false)
-                  (sync/sync-database! (get-database))
+                  (sync/sync-database! (:id (get-database)))
                   (is (empty? (nested-fields))))))))))))
 
 (deftest json-unfolding-initially-true-test
@@ -184,12 +185,12 @@
                                                  :details (assoc (:details database) :json-unfolding true)}]
           (mt/with-db database
             ;; Sync the new database
-            (sync/sync-database! database)
+            (sync/sync-database! (:id database))
             (let [field (t2/select-one :model/Field :id (mt/id :json :json_bit))
                   get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                   set-json-unfolding-for-field! (fn [v]
                                                   (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                        (assoc field :json_unfolding v)))
+                                                                        {:json_unfolding v}))
                   set-json-unfolding-for-db! (fn [v]
                                                (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
                                                  (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
@@ -203,11 +204,11 @@
                 (is (seq (nested-fields))))
               (testing "nested fields are removed when json unfolding is disabled for the DB"
                 (set-json-unfolding-for-db! false)
-                (sync/sync-database! (get-database))
+                (sync/sync-database! (:id (get-database)))
                 (is (empty? (nested-fields))))
               (testing "nested fields are added when json unfolding is enabled again for the DB"
                 (set-json-unfolding-for-db! true)
-                (sync/sync-database! (get-database))
+                (sync/sync-database! (:id (get-database)))
                 (is (seq (nested-fields))))
               (testing "nested fields are removed when json unfolding is disabled for the field"
                 (set-json-unfolding-for-field! false)

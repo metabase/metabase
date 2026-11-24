@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { init, track } from "@metabase/track";
 import { isObject } from "underscore";
 
@@ -7,25 +8,39 @@ const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
 const anonymizedHostname = "anonymous.metabase.com";
 const anonymizedOrigin = `http://${anonymizedHostname}`;
 
+const ENTITY_NAME_SUFFIX = /(\/\d+)-[^/]+$/;
+
+// `EMBEDDED_DATA_APP_PREFIX` from embedding-sdk-shared, which lib modules may not import.
+const EMBEDDED_DATA_APP_PATH = /(\/embed\/embedded-apps)\/.*$/;
+
+/** Removes customer-chosen names from a path: entity names, and an embedded data app's name and route. */
+export const sanitizeAnalyticsPathname = (pathname: string): string =>
+  pathname
+    .replace(EMBEDDED_DATA_APP_PATH, (_, prefix) => prefix)
+    .replace(ENTITY_NAME_SUFFIX, (_, path) => path);
+
 const getSanitizedUrl = (url: string) => {
   const parsed = new URL(url, window.location.origin);
-  const pathWithoutSlug = parsed.pathname.replace(
-    /(\/\d+)-[^\/]+$/,
-    (_, path) => path,
-  );
-  return anonymizedOrigin + pathWithoutSlug;
+  return anonymizedOrigin + sanitizeAnalyticsPathname(parsed.pathname);
 };
 
 interface MetaplowConfig {
+  hostUrl: string | null;
   getUserId: () => number | undefined;
 }
 
-export function initMetaplow(config: MetaplowConfig): void {
+export function getCollectorHostUrl(): string | null {
+  if (!Settings.get("metaplow-tracking-enabled")) {
+    return null;
+  }
   const metaplowUrl = Settings.get("metaplow-url");
-  if (!metaplowUrl) {
+  return metaplowUrl ? metaplowUrl.replace(/\/send$/, "") : null;
+}
+
+export function initMetaplow({ hostUrl, getUserId }: MetaplowConfig): void {
+  if (!hostUrl) {
     return;
   }
-  const hostUrl = metaplowUrl.replace(/\/send$/, "");
 
   init({
     website: METAPLOW_WEBSITE_ID,
@@ -59,7 +74,7 @@ export function initMetaplow(config: MetaplowConfig): void {
         data: {
           // Unjustified type cast. FIXME
           ...(payload.data as Record<string, unknown> | undefined),
-          user_id: config.getUserId(),
+          user_id: getUserId(),
         },
       };
     },

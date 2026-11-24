@@ -33,7 +33,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "🔥🔥🔥 ${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
+                    "text": "${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
                   }
                 }
               ]
@@ -80,7 +80,7 @@ jobs:
        ( contains(github.event.issue.labels.*.name, 'Type:Bug') ||
          contains(github.event.issue.labels.*.name, 'flaky-test-fix') )
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: .github/scripts
 

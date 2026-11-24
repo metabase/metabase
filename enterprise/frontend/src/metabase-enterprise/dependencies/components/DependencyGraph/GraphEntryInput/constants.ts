@@ -12,6 +12,7 @@ export const ENABLED_SEARCH_MODELS = [
   "dashboard",
   "document",
   "segment",
+  "data-app",
 ] as const satisfies SearchModel[];
 
 export const ENABLED_SEARCH_MODEL_TO_GROUP_TYPE: Record<
@@ -26,6 +27,7 @@ export const ENABLED_SEARCH_MODEL_TO_GROUP_TYPE: Record<
   dashboard: "dashboard",
   document: "document",
   segment: "segment",
+  "data-app": "data-app",
 };
 
 export const SEARCH_MODELS: SearchModel[] = ENABLED_SEARCH_MODELS;

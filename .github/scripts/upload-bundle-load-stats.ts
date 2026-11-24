@@ -1,8 +1,9 @@
 // Appends the measured load times to the "Bundle Load Times" table in
 // eng-stats-importer. Reads ROWS (the JSON matrix.js prints) and API_KEY from
-// env, and stamps each row with the commit it came from.
+// env, and stamps each row with the commit it came from. Writes the same rows to
+// a CSV file next to ROWS, and appends them only when UPLOAD is "true".
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 import { importStats } from "./stats-import";
 
@@ -17,30 +18,44 @@ interface Condition {
   warmMs: number;
   steadyMs: number;
   coldSpreadPercent: number;
+  warmSpreadPercent: number;
+  steadySpreadPercent: number;
   coldTtfbMs: number;
   coldFirstPaintMs: number;
   coldAppMountedMs: number;
   coldLargestPaintMs: number;
   coldPageReadyMs: number;
   warmPageReadyMs: number;
+  warmLargestPaintMs: number;
+  steadyLargestPaintMs: number;
+  steadyPageReadyMs: number;
+  locale: string;
   scripts: number;
   scriptKb: number;
+  cssKb: number;
+  totalKb: number;
   runs: number;
+  cpuModel: string;
+  calibrationMs: number;
 }
 
 interface CommitStamp {
   sha: string;
   subject: string;
+  /** ISO 8601, in UTC. */
+  timestamp: string;
 }
 
 type LoadTimeRow = Record<string, string | number>;
 
 function buildRows(
   conditions: Condition[],
-  { sha, subject }: CommitStamp,
+  { sha, subject, timestamp }: CommitStamp,
 ): LoadTimeRow[] {
   return conditions.map((condition) => ({
-    Date: new Date().toISOString().slice(0, 10),
+    // The commit's own time rather than the day it was measured, so the merges
+    // of one day keep their order and a backfilled row lands on its commit.
+    Date: timestamp,
     // Truncated the same way the bundle-size table does, so the two join.
     Commit: sha.slice(0, 12),
     // The stats table carries a free-text Description column. Populate it with
@@ -55,6 +70,10 @@ function buildRows(
     "Warm ms": condition.warmMs,
     "Steady ms": condition.steadyMs,
     "Cold spread %": condition.coldSpreadPercent,
+    // The returning-user readings carry their own spread, because each comes
+    // from a batch of short series rather than from one load.
+    "Warm spread %": condition.warmSpreadPercent,
+    "Steady spread %": condition.steadySpreadPercent,
     // The cold load broken up. A zero means the browser or the route never
     // reported that one, rather than that it happened at time zero.
     "Cold ttfb ms": condition.coldTtfbMs,
@@ -63,10 +82,28 @@ function buildRows(
     "Cold largest paint ms": condition.coldLargestPaintMs,
     "Cold page ready ms": condition.coldPageReadyMs,
     "Warm page ready ms": condition.warmPageReadyMs,
+    "Warm largest paint ms": condition.warmLargestPaintMs,
+    "Steady largest paint ms": condition.steadyLargestPaintMs,
+    "Steady page ready ms": condition.steadyPageReadyMs,
+    Locale: condition.locale,
     Scripts: condition.scripts,
     "Script kb": condition.scriptKb,
+    "Css kb": condition.cssKb,
+    "Total kb": condition.totalKb,
     Runs: condition.runs,
+    "CPU model": condition.cpuModel,
+    "Calibration ms": condition.calibrationMs,
   }));
+}
+
+function toCsv(rows: LoadTimeRow[]): string {
+  const columns = Object.keys(rows[0]);
+  const toCell = (value: string | number) => {
+    const text = String(value);
+    return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  };
+  const lines = [columns, ...rows.map((row) => columns.map((key) => row[key]))];
+  return lines.map((cells) => cells.map(toCell).join(",")).join("\n") + "\n";
 }
 
 async function main() {
@@ -77,9 +114,18 @@ async function main() {
   const rows = buildRows(conditions, {
     sha: process.env.HEAD_SHA || "",
     subject: process.env.COMMIT_MESSAGE || "",
+    timestamp: new Date(
+      process.env.COMMIT_TIMESTAMP || Date.now(),
+    ).toISOString(),
   });
 
   console.table(rows);
+  writeFileSync(path.replace(/\.json$/, ".csv"), toCsv(rows));
+
+  if (process.env.UPLOAD !== "true") {
+    console.log("UPLOAD is not true, so the rows stay in the CSV file");
+    return;
+  }
 
   try {
     await importStats({ table: "bundle_load_times", rows });

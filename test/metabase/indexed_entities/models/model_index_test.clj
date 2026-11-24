@@ -1,11 +1,13 @@
 (ns ^:mb/driver-tests metabase.indexed-entities.models.model-index-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.indexed-entities.models.model-index-test]}}}}}}
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.indexed-entities.models.model-index-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.indexed-entities.models.model-index-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.scheduler :as qs]
    [malli.error :as me]
    [metabase.driver.util :as driver.u]
+   [metabase.events.test-util :as events.tu]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.task.index-values :as task.index-values]
    [metabase.query-processor.compile :as qp.compile]
@@ -63,7 +65,7 @@
                        :error      nil}
                       (mt/user-http-request :rasta :get 200 (str "/model-index/" (:id model-index))))))
             (testing "We can invoke the task ourself manually"
-              (model-index/add-values! model-index)
+              (model-index/add-values! (t2/select-one :model/ModelIndex :id (:id model-index)))
               (is (= 9 (count (t2/select :model/ModelIndexValue :model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
                                              (mt/mbql-query products {:fields [$title]
@@ -74,12 +76,12 @@
             (testing "When the values change the indexed values change"
               ;; update the filter on the model to simulate different values indexed
               (t2/update! :model/Card
-                          (u/the-id model)
+                          :id (u/the-id model)
                           {:dataset_query (mt/mbql-query products
                                             {:filter [:and
                                                       [:> $id 10]
                                                       [:< $id 20]]})})
-              (model-index/add-values! model-index)
+              (model-index/add-values! (t2/select-one :model/ModelIndex :id (:id model-index)))
               (is (= 9 (count (t2/select :model/ModelIndexValue :model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
                                              (mt/mbql-query products {:fields [$title]
@@ -103,7 +105,7 @@
                   (is (= {"model-index-id" (:id model-index)}
                          (:data trigger)))))
               (testing "Deleting the model index removes the indexing task"
-                (t2/delete! :model/ModelIndex :id (u/the-id model-index))
+                (model-index/delete-model-indexes! [(u/the-id model-index)])
                 (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
 
 (def ^:private empty-changes "empty state map for find changes"
@@ -210,7 +212,8 @@
           (testing (str "scenario: " scenario)
             (let [[pk-ref value-ref] (or field-refs
                                          (->> model :result_metadata (map :field_ref)))
-                  [error values]  (#'model-index/fetch-values {:model_id  (u/the-id model)
+                  [error values]  (#'model-index/fetch-values {:id        1
+                                                               :model_id  (u/the-id model)
                                                                :pk_ref    pk-ref
                                                                :value_ref value-ref})]
               (is (nil? error))
@@ -219,6 +222,28 @@
               (is (mr/validate [:sequential [:tuple number? string?]] values)
                   (-> (mr/explain [:sequential [:tuple number? string?]] values)
                       (me/humanize))))))))))
+
+(deftest value-for-pk-test
+  (mt/dataset test-data
+    (mt/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query (mt/mbql-query products))
+                                            :type :model)]
+      (let [model-index {:id        1
+                         :model_id  (u/the-id model)
+                         :pk_ref    (mt/$ids :products $id)
+                         :value_ref (mt/$ids :products $title)}
+            title-of    (fn [pk] (-> (mt/run-mbql-query products {:filter [:= $id pk] :fields [$title]})
+                                     mt/rows ffirst))]
+        (testing "the value of the record with that pk, read through the QP as the current user"
+          (mt/with-test-user :crowberto
+            (is (= (title-of 1) (model-index/value-for-pk model-index 1)))
+            (is (= (title-of 2) (model-index/value-for-pk model-index 2)))))
+        (testing "nil when no record has that pk"
+          (mt/with-test-user :crowberto
+            (is (nil? (model-index/value-for-pk model-index 999999)))))
+        (testing "nil, not an error, when the current user may not run the model"
+          (mt/with-no-data-perms-for-all-users!
+            (mt/with-test-user :rasta
+              (is (nil? (model-index/value-for-pk model-index 1))))))))))
 
 (defn- test-index!
   "Takes a query, pk and value names so it can look up the exact field ref from the metadata. This is what the UI would
@@ -240,7 +265,7 @@
                                                :pk_ref    (by-name pk-name)
                                                :value_ref (by-name value-name)})]
         ;; post most likely creates this, but duplicate to be sure
-        (model-index/add-values! model-index)
+        (model-index/add-values! (t2/select-one :model/ModelIndex :id (:id model-index)))
         (is (= "indexed"
                (t2/select-one-fn :state :model/ModelIndex :id (u/the-id model-index))))
         (is (= quantity
@@ -311,3 +336,21 @@
             (is (=? {:state "error"
                      :error #"(?s)Error executing query.*"}
                     bad-attempt))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/ModelIndex :model/Card]
+    (let [model-id (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :type :model))
+          rows     (fn [n]
+                     (mapv (fn [_] {:model-id   model-id
+                                    :pk-ref     (mt/$ids $products.id)
+                                    :value-ref  (mt/$ids $products.title)
+                                    :creator-id (mt/user->id :rasta)})
+                           (range n)))
+          fresh!   (fn [n] (mapv :id (model-index/create-model-indexes! (rows n))))
+          counted  (fn [f]
+                     (f 1)
+                     (is (= (f 2) (f 6))))]
+      (testing "creating model indexes"
+        (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(model-index/create-model-indexes! rows))))))
+      (testing "deleting model indexes"
+        (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(model-index/delete-model-indexes! ids)))))))))

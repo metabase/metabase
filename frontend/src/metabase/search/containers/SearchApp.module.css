@@ -1,0 +1,40 @@
+.main {
+  --search-body-width: 90rem;
+  --search-sidebar-width: 18rem;
+
+  flex-direction: column;
+  gap: var(--mantine-spacing-xxl);
+  width: min(
+    calc(var(--search-body-width) + var(--search-sidebar-width)),
+    100%
+  );
+  margin: auto;
+  padding: var(--mantine-spacing-xl) var(--mantine-spacing-lg);
+}
+
+.body {
+  flex-direction: column;
+  justify-content: center;
+}
+
+.controls {
+  overflow: hidden;
+  padding-bottom: var(--mantine-spacing-xl);
+}
+
+@media (--breakpoint-min-sm) {
+  .main {
+    padding: var(--mantine-spacing-xxl);
+  }
+}
+
+@media (--breakpoint-min-md) {
+  .body {
+    flex-direction: row-reverse;
+    gap: 2.5rem;
+  }
+
+  .controls {
+    flex: 0 0 var(--search-sidebar-width);
+  }
+}

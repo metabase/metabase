@@ -63,7 +63,12 @@ export function PanelHeader({
         <Title flex={1} order={4} lh="1rem">
           {getHeaderLabel(node, groupType)}
         </Title>
-        <ActionIcon m="-sm" aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon
+          variant="subtle"
+          m="-sm"
+          aria-label={t`Close`}
+          onClick={onClose}
+        >
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>
@@ -77,19 +82,21 @@ export function PanelHeader({
               <SortOptionsPicker
                 sortOptions={sortOptions}
                 availableSortColumns={getAvailableSortColumns(groupType)}
+                size="sm"
                 onSortOptionsChange={onSortOptionsChange}
               />
               {hasFilterPicker && (
                 <FilterOptionsPicker
                   filterOptions={filterOptions}
                   isCompact
+                  compactSize="sm"
                   hasDefaultFilterOptions={hasDefaultFilterOptions}
                   onFilterOptionsChange={onFilterOptionsChange}
                 />
               )}
             </Group>
           }
-          rightSectionWidth={hasFilterPicker ? "4.25rem" : undefined}
+          rightSectionWidth={hasFilterPicker ? "3.25rem" : undefined}
           onChange={(event) => onSearchTextChange(event.target.value)}
         />
       )}

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import type { RawSeries } from "metabase-types/api";
 
 import { getCartesianChartColumns } from "../../../../lib/graph/columns";
@@ -23,6 +24,7 @@ import {
 } from "../../model/series";
 import { getAxisTransforms } from "../../model/transforms";
 import type { WaterfallChartModel } from "../../model/types";
+import { getLabelValueFormatting } from "../../model/util";
 import { WATERFALL_END_KEY, WATERFALL_TOTAL_KEY } from "../constants";
 
 import { getWaterfallXAxisModel } from "./axis";
@@ -38,6 +40,9 @@ export const getWaterfallChartModel = (
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): WaterfallChartModel => {
+  const hasResponsiveTicks =
+    renderingContext.cartesianSize != null &&
+    renderingContext.cartesianSize !== "fullscreen";
   // Waterfall chart support one card only
   const [singleRawSeries] = rawSeries;
   const { data } = singleRawSeries;
@@ -93,8 +98,15 @@ export const getWaterfallChartModel = (
     xAxisModel,
   );
 
+  const labelValueFormatting = getLabelValueFormatting(
+    settings["graph.label_value_formatting"],
+    hasResponsiveTicks,
+  );
   const { formatter: waterfallLabelFormatter, isCompact } =
-    getWaterfallLabelFormatter(seriesModel, transformedDataset, settings);
+    getWaterfallLabelFormatter(seriesModel, transformedDataset, {
+      ...settings,
+      "graph.label_value_formatting": labelValueFormatting,
+    });
 
   const dataDensity = getWaterfallChartDataDensity(
     transformedDataset,
@@ -112,9 +124,9 @@ export const getWaterfallChartModel = (
     { [WATERFALL_END_KEY]: seriesModel.column },
     {
       formattingOptions: {
-        compact:
-          settings["graph.label_value_formatting"] === "compact" || isCompact,
+        compact: labelValueFormatting === "compact" || isCompact,
       },
+      hasResponsiveTicks,
     },
   );
 

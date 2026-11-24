@@ -1,5 +1,4 @@
 import { useClipboard } from "@mantine/hooks";
-import cx from "classnames";
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
@@ -38,6 +37,7 @@ import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotInlineChart } from "./MetabotInlineChart";
+import { MetabotInlineChartLink } from "./MetabotInlineChartLink";
 import { MetabotInlineDashboardLink } from "./MetabotInlineDashboardLink";
 
 type AgentDataPartProps = {
@@ -46,6 +46,9 @@ type AgentDataPartProps = {
   readonly: boolean;
   debug: boolean;
   conversationId: string;
+  size: "md" | "lg";
+  /** Show a generated chart as a link that opens it, not as an inline chart. */
+  chartsAsLinks?: boolean;
 };
 
 export const AgentDataPart = ({
@@ -54,13 +57,15 @@ export const AgentDataPart = ({
   readonly,
   debug,
   conversationId,
+  size,
+  chartsAsLinks = false,
 }: AgentDataPartProps) =>
   match(dataPart)
     .with({ part: { type: "data-todo_list" } }, ({ part }) => (
       <AgentTodoListMessage todos={part.data} />
     ))
     .with({ part: { type: "data-transform_suggestion" } }, (dataPart) => (
-      <AgentSuggestionMessage message={dataPart} readonly={readonly} />
+      <AgentSuggestionMessage message={dataPart} />
     ))
     .with({ part: { type: "data-navigate_to" } }, ({ part }) => {
       const sourcePills = (
@@ -95,20 +100,27 @@ export const AgentDataPart = ({
     })
     .with(
       { part: { type: "data-generated_entity", data: { type: "card" } } },
-      ({ part }) => (
-        <Stack gap="lg">
-          {debug && <DataPartJsonCard type={part.type} value={part.data} />}
-          <MetabotInlineChart
-            value={part.data}
-            readonly={readonly}
-            conversationId={conversationId}
-          />
-          <GeneratedCardTablePills
-            value={part.data}
-            messageId={readonly ? undefined : externalId}
-          />
-        </Stack>
-      ),
+      ({ part }) =>
+        chartsAsLinks ? (
+          <Stack gap="lg">
+            {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+            <MetabotInlineChartLink value={part.data} />
+          </Stack>
+        ) : (
+          <Stack gap="sm" mb="lg">
+            {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+            <MetabotInlineChart
+              value={part.data}
+              readonly={readonly}
+              conversationId={conversationId}
+              size={size}
+            />
+            <GeneratedCardTablePills
+              value={part.data}
+              messageId={readonly ? undefined : externalId}
+            />
+          </Stack>
+        ),
     )
     .with(
       { part: { type: "data-generated_entity", data: { type: "dashboard" } } },
@@ -123,6 +135,18 @@ export const AgentDataPart = ({
       <Stack gap="lg">
         {debug && <DataPartJsonCard type={part.type} value={part.data} />}
         <EntitySavedMessage value={part.data} />
+      </Stack>
+    ))
+    .with({ part: { type: "data-dashboard_saved" } }, ({ part }) => (
+      <Stack gap="lg">
+        {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+        <MetabotInlineDashboardLink
+          value={{
+            type: "dashboard",
+            title: part.data.name,
+            url: part.data.url,
+          }}
+        />
       </Stack>
     ))
     .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>
@@ -243,12 +267,13 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
       <Text fw="bold">{formatPartType(type)}</Text>
     </Flex>
     <ActionIcon
+      variant="subtle"
       component={ForwardRefLink}
       to={path}
       target="_blank"
-      h="sm"
+      size="sm"
       aria-label={t`Visit`}
-      className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+      className={Styles.agentPartActions}
     >
       <Icon name="external" size="1rem" />
     </ActionIcon>
@@ -289,9 +314,10 @@ const DataPartJsonCard = ({
           <Text fw="bold">{formatPartType(type)}</Text>
         </Flex>
         <ActionIcon
-          h="sm"
+          variant="subtle"
+          size="sm"
           onClick={() => clipboard.copy(formatted)}
-          className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+          className={Styles.agentPartActions}
         >
           <Icon name="copy" size="1rem" />
         </ActionIcon>
@@ -354,9 +380,10 @@ const CodeEditDataPart = ({
           </Badge>
         </Flex>
         <ActionIcon
-          h="sm"
+          variant="subtle"
+          size="sm"
           onClick={() => clipboard.copy(value.value)}
-          className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+          className={Styles.agentPartActions}
         >
           <Icon name="copy" size="1rem" />
         </ActionIcon>

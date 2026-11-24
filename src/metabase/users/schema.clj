@@ -19,9 +19,17 @@
            (not-any? #(str/starts-with? (name %) "@") (keys attributes)))]
     (deferred-tru "login attribute keys must not start with `@`"))])
 
+(def UserAttributes
+  "The combined attributes of a User: its login and JWT attributes plus the system (`@`-prefixed) attributes like its tenant's."
+  (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value]))
+
+(mr/def ::user.type
+  "The `:type` column of a User."
+  (ms/enum-keywords-and-strings :internal :personal :api-key))
+
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  [:map
+  [:map {:closed true}
    [:first_name       {:optional true} [:maybe ms/NonBlankString]]
    [:last_name        {:optional true} [:maybe ms/NonBlankString]]
    [:email                             ms/Email]
@@ -30,8 +38,9 @@
    [:jwt_attributes   {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
    [:locale           {:optional true} [:maybe ms/KeywordOrString]]
-   [:type             {:optional true} [:maybe ms/KeywordOrString]]
-   [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]])
+   [:type             {:optional true} [:maybe ::user.type]]
+   [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]
+   [:is_active        {:optional true} [:maybe :boolean]]])
 
 (mr/def ::user-group-membership
   "Group Membership info of a User.
@@ -52,53 +61,17 @@
 
 (mr/def ::user.settings
   "The `:settings` column of a User, decoded."
-  :map)
+  ms/UserSettings)
 
 (mr/def ::user
   "A User as selected from the app DB: every column of `:core_user` that the model selects by default, plus `:common_name` added by the model's after-select hook."
-  [:map {:closed true}
-   [:id              ::lib.schema.id/user]
-   [:email           :string]
-   [:first_name      [:maybe :string]]
-   [:last_name       [:maybe :string]]
-   [:date_joined     ms/TemporalInstant]
-   [:last_login      [:maybe ms/TemporalInstant]]
-   [:is_superuser    :boolean]
-   [:is_qbnewb       :boolean]
-   [:tenant_id       [:maybe ms/PositiveInt]]
-   [:is_data_analyst :boolean]
-   [:common_name     {:optional true} [:maybe :string]]])
-
-(mr/def ::user.full
-  "A User as selected from the app DB with every column of `:core_user`, not only the default ones, plus `:common_name` added by the model's after-select hook."
-  [:map {:closed true}
-   [:id                      ::lib.schema.id/user]
-   [:email                   :string]
-   [:first_name              [:maybe :string]]
-   [:last_name               [:maybe :string]]
-   [:password                [:maybe :string]]
-   [:password_salt           [:maybe :string]]
-   [:date_joined             ms/TemporalInstant]
-   [:last_login              [:maybe ms/TemporalInstant]]
-   [:is_superuser            :boolean]
-   [:is_active               :boolean]
-   [:reset_token             [:maybe :string]]
-   [:reset_triggered         [:maybe :int]]
-   [:is_qbnewb               :boolean]
-   [:login_attributes        [:maybe LoginAttributes]]
-   [:updated_at              [:maybe ms/TemporalInstant]]
-   [:sso_source              [:maybe [:or :keyword :string]]]
-   [:locale                  [:maybe :string]]
-   [:is_datasetnewb          :boolean]
-   [:settings                [:maybe ::user.settings]]
-   [:type                    [:or :keyword :string]]
-   [:entity_id               :string]
-   [:deactivated_at          [:maybe ms/TemporalInstant]]
-   [:tenant_id               [:maybe ms/PositiveInt]]
-   [:jwt_attributes          [:maybe LoginAttributes]]
-   [:deactivated_with_tenant [:maybe :boolean]]
-   [:is_data_analyst         :boolean]
-   [:common_name             {:optional true} [:maybe :string]]])
+  [:merge
+   ::user.update
+   [:map {:closed true}
+    [:id              ::lib.schema.id/user]
+    [:common_name     {:optional true} [:maybe :string]]
+    [:attributes      {:optional true} [:maybe UserAttributes]]
+    [:user_group_memberships {:optional true} [:sequential [:map {:closed true} [:name :string] [:entity_id :string]]]]]])
 
 (mr/def ::user.update
   "What an update (or insert) of a User accepts: every column of `:core_user` except `id`, all optional."
@@ -121,13 +94,27 @@
    [:locale                  {:optional true} [:maybe :string]]
    [:is_datasetnewb          {:optional true} [:maybe :boolean]]
    [:settings                {:optional true} [:maybe ::user.settings]]
-   [:type                    {:optional true} [:maybe [:or :keyword :string]]]
+   [:type                    {:optional true} [:maybe ::user.type]]
    [:entity_id               {:optional true} [:maybe :string]]
    [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]
    [:jwt_attributes          {:optional true} [:maybe LoginAttributes]]
    [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
    [:is_data_analyst         {:optional true} [:maybe :boolean]]])
+
+(mr/def ::user.update-row
+  "What one row of an update of Users takes: the id of a User and the columns to set."
+  [:merge
+   ::user.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/user]]])
+
+(mr/def ::user.create
+  "What a caller gives to create a User: its email and any other column of `:core_user` except `id`."
+  [:merge
+   ::user.update
+   [:map {:closed true}
+    [:email :string]]])
 
 (mr/def ::user-filters
   "Options accepted by `metabase.users.db/filter-clauses` (and, by extension, any db.clj function that filters
@@ -165,16 +152,13 @@
 
 (mr/def ::user-parameter-value
   "A UserParameterValue as selected from the app DB: every column of `:user_parameter_value`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:user_id      ::lib.schema.id/user]
-   [:parameter_id :string]
-   [:value        [:maybe ::user-parameter-value.value]]
-   [:dashboard_id [:maybe ::lib.schema.id/dashboard]]])
+  ::user-parameter-value.update)
 
 (mr/def ::user-parameter-value.update
-  "What an update (or insert) of a UserParameterValue accepts: every column of `:user_parameter_value` except `id`, all optional."
+  "What an update of a UserParameterValue takes: its `:id` and every other column of `:user_parameter_value`, all
+  optional."
   [:map {:closed true}
+   [:id           ms/PositiveInt]
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:parameter_id {:optional true} [:maybe :string]]
    [:value        {:optional true} [:maybe ::user-parameter-value.value]]

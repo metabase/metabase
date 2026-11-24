@@ -66,6 +66,25 @@ describe("contract checker CLI", () => {
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
+  it("should enforce endpoints even when the builder method is imported under another name", () => {
+    write(
+      "frontend/src/api.ts",
+      endpointSource("{ owner: { email: string | null } }") +
+        "\nexport const { query: read } = builder; export const options = { query: () => '/api/user' };",
+    );
+    write(
+      "frontend/src/other.ts",
+      `
+      import { read, options } from "./api";
+
+      export const otherApi = { missed: read<number, void>(options) };
+    `,
+    );
+    const result = run();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("otherApi:missed:endpoint");
+  });
+
   it("should explain exempted nested mismatches without changing the baseline", () => {
     const baseline = JSON.stringify([ENDPOINT_ID]);
     write(BASELINE_PATH, baseline);

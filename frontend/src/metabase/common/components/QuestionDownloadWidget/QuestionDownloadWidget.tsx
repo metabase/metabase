@@ -9,6 +9,7 @@ import { useUserKeyValue } from "metabase/current-user";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
 import {
+  ActionIcon,
   Box,
   Button,
   Flex,
@@ -205,21 +206,15 @@ export const QuestionDownloadWidget = ({
                 {t`Read the docs`}
               </Link>
             </Text>
-            <Button
+            <ActionIcon
               aria-label={t`Close hint`}
-              pl={8}
-              pr={0}
               variant="subtle"
-              size="compact-md"
+              size="sm"
               style={{ flexShrink: 0 }}
+              onClick={() => setDismissedExcelPivotExportsBanner(true)}
             >
-              <Icon
-                name="close"
-                c="text-secondary"
-                tooltip={t`Don't show me this again.`}
-                onClick={() => setDismissedExcelPivotExportsBanner(true)}
-              />
-            </Button>
+              <Icon name="close" tooltip={t`Don't show me this again.`} />
+            </ActionIcon>
           </Flex>
         )}
         {hasTruncatedResults && (

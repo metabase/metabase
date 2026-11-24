@@ -1,27 +1,32 @@
-import { msgid, ngettext, t } from "ttag";
-
 import { CollectionRowMenu as BaseCollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
-import type { Collection } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
+
+import type { CollectionNode, TransformsFolderModalState } from "./types";
 
 type CollectionRowMenuProps = {
-  collection: Collection;
-  transformCount: number;
+  folder: CollectionNode;
+  /** The transforms in the folder and its subfolders. */
+  transforms: Transform[];
+  onOpenModal: (modal: TransformsFolderModalState) => void;
 };
 
-export function CollectionRowMenu(props: CollectionRowMenuProps) {
-  const { collection, transformCount } = props;
+/**
+ * The row menu of a transforms folder. A transforms folder is deleted, not archived. "Delete" shows only when the
+ * user can edit the folder and every transform in it, which is what the backend requires.
+ */
+export function CollectionRowMenu({
+  folder,
+  transforms,
+  onOpenModal,
+}: CollectionRowMenuProps) {
+  const canDelete = transforms.every((transform) => transform.can_write);
 
   return (
     <BaseCollectionRowMenu
-      collection={collection}
-      customArchiveMessage={
-        transformCount > 0
-          ? ngettext(
-              msgid`This will also archive ${transformCount} transform inside it.`,
-              `This will also archive ${transformCount} transforms inside it.`,
-              transformCount,
-            )
-          : t`Are you sure you want to archive this folder?`
+      collection={folder.collection}
+      onOpenModal={onOpenModal}
+      onDelete={
+        canDelete ? () => onOpenModal({ type: "delete", folder }) : undefined
       }
     />
   );

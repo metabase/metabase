@@ -1,3 +1,17 @@
+.modalContent,
+.modalBody {
+  display: flex;
+  flex-direction: column;
+}
+
+.modalContent {
+  overflow: hidden;
+}
+
+.modalBody {
+  min-height: 0;
+}
+
 .notebookContainer {
   overflow: auto;
 }

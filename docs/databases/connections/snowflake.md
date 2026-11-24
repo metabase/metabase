@@ -1,5 +1,6 @@
 ---
 title: Snowflake
+summary: Connect Metabase to Snowflake, including key-pair and other authentication methods and every connection setting.
 redirect_from:
   - /docs/latest/administration-guide/databases/snowflake
 ---
@@ -49,13 +50,23 @@ Learn more about [Account Identifiers in Snowflake](https://docs.snowflake.com/e
 
 ### Username
 
-The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
+The username Metabase uses to connect to your database. Create a dedicated database user for Metabase with read-only access to the schemas and tables you want to analyze. For write operations like uploads, actions, or transforms, use a separate [writable connection](../writable-connection.md). For instructions, see [Database users, roles, and privileges](../users-roles-privileges.md). You can set up multiple connections to the same database using different user accounts, each with different sets of privileges.
 
 On your app.snowflake.com account page, you can find Users and roles under Admin > Users & Roles.
 
+### Authentication method
+
+Pick how Metabase authenticates to Snowflake:
+
+- **RSA key pair** — key-based auth.
+- **Workload Identity Federation** — keyless auth using a token from an OIDC provider, AWS, Azure, or Google Cloud.
+- **Username & password** — Snowflake blocks password authentication for service users by October 2026.
+
+The fields that appear below depend on which method you pick.
+
 ### Password
 
-The password for the username that you use to connect to the database.
+The password for the username that you use to connect to the database. Snowflake blocks password authentication for service users by October 2026; use RSA key pair or Workload Identity Federation instead.
 
 ### RSA private key (PEM)
 
@@ -64,6 +75,25 @@ Not required. You have the option of using a **Local file path** or an **Uploade
 ### Private key passphrase
 
 Only required if your private key is encrypted.
+
+### Workload Identity Federation
+
+Metabase forwards a workload-identity token to Snowflake; Snowflake validates it against a service user you provision with `CREATE USER ... WORKLOAD_IDENTITY = (...)`. See Snowflake's [Workload identity federation docs](https://docs.snowflake.com/en/user-guide/workload-identity-federation) for the trust-policy syntax.
+
+#### Workload identity provider
+
+- **OpenID Connect (JWT)** — you supply the token (see next two fields).
+- **AWS**, **Azure**, or **Google Cloud** — no additional credential fields in Metabase. Attach an AWS IAM role, an Azure managed identity, or a GCP service account to the host running Metabase; the Snowflake driver picks it up.
+
+#### OIDC token
+
+A JWT you paste into Metabase. Convenient for a one-off test. Metabase does not refresh the token, so once it expires the connection will fail until you paste a new one.
+
+#### OIDC token file path
+
+Path to a file on the Metabase server that contains the JWT (for example, a Kubernetes projected service-account token at `/var/run/secrets/tokens/oidc-token`). The Snowflake driver re-reads this file per connection, so tokens rotated in place — the standard Kubernetes pattern — flow through without any change in Metabase.
+
+If both the pasted token and the file path are set, the file path wins.
 
 ### Warehouse
 
@@ -140,10 +170,6 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Writable connection
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
-
-## Model features
-
-There aren't (yet) any model features available for Snowflake.
 
 ## Database routing
 

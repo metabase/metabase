@@ -1,5 +1,4 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
 
@@ -7,6 +6,7 @@ import {
   METABOT_PROFILE_OVERRIDES,
   getToolMessage,
 } from "metabase/metabot/constants";
+import { deepMerge } from "metabase/utils/deep-merge";
 import { uuid } from "metabase/utils/uuid";
 
 import {
@@ -252,12 +252,13 @@ export const endChainTool = (
   convo: WritableDraft<MetabotConversationState>,
   id: string,
   nowMs?: number,
+  isError?: boolean,
 ) => {
   const found = findChainToolStep(convo, id);
   if (!found) {
     return;
   }
-  found.step.status = "ended";
+  found.step.status = isError ? "errored" : "ended";
   if (!found.chain.finished && nowMs != null) {
     found.chain.endedAtMs = nowMs;
   }
@@ -329,7 +330,7 @@ export const createConversationForAgent = (
   overrides?: Partial<MetabotConversationState>,
 ): MetabotConversationState =>
   createConversation(
-    merge(conversationDefaultsByAgentId[agentId] ?? {}, overrides ?? {}),
+    deepMerge(conversationDefaultsByAgentId[agentId] ?? {}, overrides),
   );
 
 export const createAgentState = (
@@ -348,7 +349,6 @@ export const resetReactionState = (
   match(agentId)
     .with("omnibot", () => {
       state.reactions.navigateToPath = null;
-      state.reactions.suggestedTransforms = [];
     })
     .with("sql", () => {
       state.reactions.suggestedCodeEdits = {};
@@ -465,9 +465,8 @@ export const getMetabotInitialState = (): MetabotState => {
     agents,
     reactions: {
       navigateToPath: null,
+      dashboardSaveIds: {},
       suggestedCodeEdits: {},
-      // NOTE: suggestedTransforms should be folded into suggestedCodeEdits eventually
-      suggestedTransforms: [],
     },
     titlePollingConversationIds: [],
     debugMode: false,

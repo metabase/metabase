@@ -1,5 +1,6 @@
 ---
 title: Google BigQuery
+summary: Connect Metabase to Google BigQuery, from creating a service account to every connection and sync setting.
 redirect_from:
   - /docs/latest/administration-guide/databases/bigquery
 ---
@@ -164,10 +165,6 @@ If you're having trouble with your BigQuery connection, you can check out this [
 ## Writable connection
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
-
-## Model features
-
-There aren't (yet) any model features available for BigQuery.
 
 ## Database routing
 

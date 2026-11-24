@@ -13,6 +13,7 @@
   database-scoped provider; the numeric dialect has to ask for it explicitly."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
@@ -21,11 +22,10 @@
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve :as serdes.resolve]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -69,7 +69,7 @@
   describing the outcome rather than throwing."
   [query]
   (mt/with-current-user (mt/user->id :rasta)
-    (binding [serdes.resolve/*numeric-ids-allowed?* true]
+    (binding [repr.resolve/*numeric-ids-allowed?* true]
       (try
         ;; Discard the resolved query: it is a large nested map and these tests only care
         ;; whether the call was permitted.
@@ -149,8 +149,8 @@
                                            :database_id   (mt/id)
                                            :dataset_query (count-query)}]
         (mt/with-current-user (mt/user->id :rasta)
-          (binding [serdes.resolve/*numeric-ids-allowed?* true]
-            (is (some? (resolve.mp/card-by-id shared.content-store/default-store (:id readable)))
+          (binding [repr.resolve/*numeric-ids-allowed?* true]
+            (is (some? (protocol.mp/card-by-id shared.content-store/default-store (:id readable)))
                 "a readable card must come back from the read-checked store")))))))
 
 (deftest numeric-source-card-unreadable-is-denied-by-the-store-test
@@ -161,8 +161,8 @@
       (unreadable-card-thunk
        (fn [victim-id]
          (mt/with-current-user (mt/user->id :rasta)
-           (binding [serdes.resolve/*numeric-ids-allowed?* true]
-             (is (nil? (resolve.mp/card-by-id shared.content-store/default-store victim-id))
+           (binding [repr.resolve/*numeric-ids-allowed?* true]
+             (is (nil? (protocol.mp/card-by-id shared.content-store/default-store victim-id))
                  (str "an unreadable card must come back as nil from the read-checked store — "
                       "the denial is collapsed there so callers cannot tell it from a missing id")))))))))
 
@@ -214,10 +214,10 @@
       (mt/with-temp [:model/Database other     {:engine :h2 :name "OtherDB-qcheck-test"}
                      :model/Table    other-tbl {:db_id (:id other) :name "OTHER_TBL" :active true}]
         (let [checked (atom [])
-              orig    api/query-check]
-          (with-redefs [api/query-check (fn [& args]
-                                          (swap! checked conj (vec args))
-                                          (apply orig args))]
+              orig    (mt/original-fn #'api/query-check)]
+          (mt/with-dynamic-fn-redefs [api/query-check (fn [& args]
+                                                        (swap! checked conj (vec args))
+                                                        (apply orig args))]
             (attempt-as-rasta
              {:lib/type "mbql/query"
               :database (db-name)
@@ -399,7 +399,7 @@
                 "implementation (OSS `can-access-via-collection?` is a constant `false`).")
     (mt/with-premium-features #{}
       (let [seen (atom nil)]
-        (with-redefs [mi/can-read? (fn [row] (reset! seen row) true)]
+        (mt/with-dynamic-fn-redefs [mi/can-read? (fn [row] (reset! seen row) true)]
           (metabot.db/readable-active-table-database-id (mt/id :venues)))
         (is (some? @seen) "can-read? should have been called")
         (doseq [k [:id :db_id :is_published :collection_id]]
@@ -427,7 +427,7 @@
                                   (throw (ex-info "You don't have permissions to do that."
                                                   {:status-code 403}))
                                   {:model entity :id id})))]
-        (with-redefs [api/query-check deny-query-check]
+        (mt/with-dynamic-fn-redefs [api/query-check deny-query-check]
           (let [forbidden   (attempt-as-rasta
                              {:lib/type "mbql/query"
                               :database (db-name)
@@ -456,14 +456,13 @@
                 "assertion cannot be satisfied by the source table's own check — that is what makes\n"
                 "this test able to fail.")
     (mt/with-premium-features #{}
-      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :checkins)
-                                                      :definition {}}]
+      (mt/with-temp [:model/Segment {segment-id :id} {}]
         (let [checked (atom [])
               record  (fn rec
                         ([obj] obj)
                         ([entity id] (rec entity id nil))
                         ([entity id & _] (swap! checked conj [entity id]) {:model entity :id id}))]
-          (with-redefs [api/query-check record]
+          (mt/with-dynamic-fn-redefs [api/query-check record]
             (attempt-as-rasta
              {:lib/type "mbql/query"
               :database (db-name)

@@ -2,7 +2,6 @@
   "Shared functions used by audit internal queries across different namespaces."
   (:require
    [clojure.core.memoize :as memoize]
-   [clojure.walk :as walk]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
@@ -16,7 +15,9 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -67,16 +68,12 @@
                         (assoc ctes alias (CTEs->subselects definition ctes)))
                       ctes
                       with)]
-     (walk/postwalk
-      (fn [form]
-        (if (map? form)
-          (-> form
-              (m/update-existing :from inject-cte-body-into-from ctes)
-              ;; TODO -- make this work with all types of joins
-              (m/update-existing :left-join inject-cte-body-into-join ctes)
-              (m/update-existing :join inject-cte-body-into-join ctes))
-          form))
-      (dissoc query :with)))))
+     (match/replace-all (dissoc query :with)
+       #'map? (-> &match
+                  (m/update-existing :from inject-cte-body-into-from ctes)
+                  ;; TODO -- make this work with all types of joins
+                  (m/update-existing :left-join inject-cte-body-into-join ctes)
+                  (m/update-existing :join inject-cte-body-into-join ctes))))))
 
 (def ^:private ^{:arglists '([])} application-db-default-timezone
   ;; cache the application DB's default timezone for an hour. I don't expect this information to change *ever*,
@@ -101,10 +98,37 @@
                       {:driver driver, :honeysql-query honeysql-query}
                       e)))))
 
+(mr/def ::honeysql-expr
+  "A Honey SQL 2 expression inside an audit query: a plain expression, a subquery, or a vector form containing these."
+  [:or
+   ::h2x/expr
+   [:ref ::honeysql-query]
+   [:sequential [:ref ::honeysql-expr]]])
+
+(mr/def ::honeysql-query
+  "A Honey SQL 2 query map as this namespace's audit queries build it: a `:with` CTE's body and a `:union-all`
+  branch are each themselves one of these."
+  [:map {:closed true}
+   [:with            {:optional true} [:sequential [:tuple :keyword [:ref ::honeysql-query]]]]
+   [:select          {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:select-distinct {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:from            {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:join            {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:left-join       {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:inner-join      {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:where           {:optional true} [:ref ::honeysql-expr]]
+   [:group-by        {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:having          {:optional true} [:ref ::honeysql-expr]]
+   [:partition-by    {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:order-by        {:optional true} [:sequential [:ref ::honeysql-expr]]]
+   [:limit           {:optional true} ::h2x/expr]
+   [:offset          {:optional true} ::h2x/expr]
+   [:union-all       {:optional true} [:sequential [:ref ::honeysql-query]]]])
+
 (mu/defn- reduce-results* :- :some
-  [honeysql-query :- :map
+  [honeysql-query :- ::honeysql-query
    rff            :- ::qp.schema/rff
-   init]
+   init           :- ::qp.schema/accumulator]
   (let [driver         (mdb/db-type)
         [sql & params] (compile-honeysql driver honeysql-query)]
     ;; MySQL driver normalizies timestamps. Setting `*results-timezone-id-override*` is a shortcut
@@ -149,7 +173,7 @@
   `metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries.internal-queries`)"
   [honeysql-query]
   (let [rff (fn rff [{:keys [cols]}]
-              (let [col-names (mapv (comp keyword :name) cols)]
+              (let [col-names (mapv :name cols)]
                 ((map (partial zipmap col-names)) conj)))]
     (reduce-results* honeysql-query rff [])))
 
@@ -185,10 +209,10 @@
   [query query-string & fields-to-search]
   (sql.helpers/where query (when (seq query-string)
                              (let [query-string (h2x/like-substring query-string)]
-                               (cons
-                                :or
-                                (for [field fields-to-search]
-                                  [:like (lowercase-field field) query-string]))))))
+                               ;; this has to be a vector: a seq compiles as a list of values, not a call to `:or`
+                               (into [:or]
+                                     (for [field fields-to-search]
+                                       [:like (lowercase-field field) query-string]))))))
 
 (def ^:private sort-directions
   "The only two directions an audit page may sort in."

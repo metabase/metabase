@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
@@ -28,8 +29,9 @@ import {
   Flex,
   Group,
   Icon,
-  Loader,
+  Modal,
   Select,
+  SelectItemWithDescription,
   Stack,
   Text,
   Tooltip,
@@ -217,9 +219,7 @@ const StrategyFormBody = ({
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
         {layout === "modal" && (
-          <Box pt="lg">
-            <StrategySelectorHeading headingId={headingId} />
-          </Box>
+          <StrategySelectorHeading headingId={headingId} />
         )}
         <Box
           className={cx({
@@ -227,6 +227,7 @@ const StrategyFormBody = ({
             [PerformanceAppStyles.FormBoxSidebar]: layout === "sidebar",
             [S.modalBody]: layout === "modal",
           })}
+          pt={layout === "default" ? "xxxl" : undefined}
         >
           {shouldShowName && (
             <Box lh="1rem" pt="lg" c="text-secondary">
@@ -240,7 +241,7 @@ const StrategyFormBody = ({
               </Group>
             </Box>
           )}
-          <Stack maw="35rem" gap="xxl">
+          <Stack maw="35rem" gap={layout === "modal" ? "xl" : "xxl"}>
             <StrategySelector
               targetId={targetId}
               model={targetModel}
@@ -340,29 +341,23 @@ const FormButtons = ({
 
   if (layout === "modal") {
     return (
-      <Group
-        justify={canInvalidate ? "space-between" : "flex-end"}
-        wrap="nowrap"
-        mt="xxl"
-        gap="lg"
-      >
+      <Modal.Footer>
         {canInvalidate && (
-          <PLUGIN_CACHING.InvalidateNowButton
-            targetId={targetId}
-            targetModel={targetModel}
-            targetName={targetName}
-          />
+          <Box mr="auto">
+            <PLUGIN_CACHING.InvalidateNowButton
+              targetId={targetId}
+              targetModel={targetModel}
+              targetName={targetName}
+            />
+          </Box>
         )}
-        <Group gap="lg" wrap="nowrap">
-          <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
-          <FormSubmitButton
-            h="2.5rem"
-            label={buttonLabels.save}
-            variant="filled"
-            data-testid="strategy-form-submit-button"
-          />
-        </Group>
-      </Group>
+        <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
+        <FormSubmitButton
+          label={buttonLabels.save}
+          variant="filled"
+          data-testid="strategy-form-submit-button"
+        />
+      </Modal.Footer>
     );
   }
 
@@ -492,15 +487,12 @@ const SaveAndDiscardButtons = ({
         </Button>
       )}
       <FormSubmitButton
-        miw={layout === "sidebar" ? undefined : "10rem"}
-        h="2.5rem"
         label={buttonLabels.save}
         successLabel={
           <Group gap="xxs">
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
-        activeLabel={<Loader size="1rem" pos="relative" top={1} />}
         variant="filled"
         data-testid="strategy-form-submit-button"
       />
@@ -577,21 +569,20 @@ const StrategySelector = ({
         allowDeselect={false}
         aria-labelledby={headingId}
         data-testid="cache-strategy-select"
-        classNames={{ option: S.option }}
         renderOption={({ option }) => {
           const strategy = availableStrategies[option.value];
           if (!strategy) {
             return option.label;
           }
           return (
-            <Stack gap="xxs">
-              <Text fw="bold">{getLabelString(strategy.label, model)}</Text>
-              {strategy.description && (
-                <Text size="sm" c="text-secondary">
-                  {getLabelString(strategy.description, model)}
-                </Text>
-              )}
-            </Stack>
+            <SelectItemWithDescription
+              showCheckIcon={false}
+              label={getLabelString(strategy.label, model)}
+              description={
+                strategy.description &&
+                getLabelString(strategy.description, model)
+              }
+            />
           );
         }}
       />

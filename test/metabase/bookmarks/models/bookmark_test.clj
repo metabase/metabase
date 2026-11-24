@@ -2,8 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.bookmarks.models.bookmark :as bookmark]
+   [metabase.bookmarks.schema :as bookmarks.schema]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel bookmarks-for-user-test
@@ -39,12 +42,51 @@
                :report_dashboard.archived    false
                :collection.description       "Collection description"
                :collection.archived          true
+               :collection.authority_level   nil
+               :collection.is_remote_synced  nil
                :report_card.card_type        nil
                :created_at                   #t "2022-09-14T17:45:13.444716Z"
-               :collection.name              "Test Collection"}]
+               :collection.name              "Test Collection"
+               :document.name                nil
+               :document.archived            nil
+               :exploration.name             nil
+               :exploration.description      nil
+               :exploration.archived         nil}]
       (is (= {:item_id     853
               :name        "Test Dashboard"
               :type        "dashboard"
               :description "Dashboard description"
               :id          "dashboard-853"}
              (#'bookmark/normalize-bookmark-result row))))))
+
+(deftest ^:parallel ordering-type-schema-test
+  (testing "BookmarkOrdering type is bookmarkable model"
+    (is (mr/validate ::bookmarks.schema/bookmark-ordering {:id 1 :type "dashboard"}))
+    (is (not (mr/validate ::bookmarks.schema/bookmark-ordering {:id 1 :type "table"})))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/Card :model/Collection :model/CardBookmark :model/CollectionBookmark :model/BookmarkOrdering]
+    (let [user-id (mt/user->id :rasta)
+          rows    (fn [n]
+                    (let [card-ids       (t2/insert-returning-pks! :model/Card (mapv (fn [_] (mt/with-temp-defaults :model/Card)) (range n)))
+                          collection-ids (t2/insert-returning-pks! :model/Collection (mapv (fn [_] (mt/with-temp-defaults :model/Collection)) (range n)))]
+                      (bookmark/create-bookmarks! (map (fn [id] {:type "card" :item_id id :user_id user-id}) (take-nth 2 card-ids)))
+                      (into (mapv (fn [id] {:type "card" :item_id id :user_id user-id}) card-ids)
+                            (map (fn [id] {:type "collection" :item_id id :user_id user-id}))
+                            collection-ids)))
+          create! (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(bookmark/create-bookmarks! rows))))
+          delete! (fn [n] (let [rows (rows n)]
+                            (bookmark/create-bookmarks! rows)
+                            (events.tu/statement-count! #(bookmark/delete-bookmarks! rows))))]
+      (testing "creating bookmarks, some of them already there"
+        (create! 1)
+        (is (= (create! 2) (create! 6))))
+      (testing "deleting bookmarks"
+        (delete! 1)
+        (is (= (delete! 2) (delete! 6))))
+      (testing "saving the ordering of bookmarks"
+        (let [order! (fn [n] (let [rows (take n (rows 6))]
+                               (bookmark/create-bookmarks! rows)
+                               (events.tu/statement-count! (fn [] (bookmark/save-ordering! user-id (map (fn [row] (select-keys row [:type :item_id])) rows))))))]
+          (order! 1)
+          (is (= (order! 2) (order! 6))))))))

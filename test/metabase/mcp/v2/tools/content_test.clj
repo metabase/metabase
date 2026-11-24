@@ -1,17 +1,26 @@
 (ns metabase.mcp.v2.tools.content-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.metrics.core :as metrics]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.models.card :as card]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -20,9 +29,8 @@
 
 (defn- call-content
   "Invoke get_content through the registry — the same seam the JSON-RPC route uses, so scope
-   gating and argument validation are exercised. `token-scopes` of nil means an internal
-   caller, which satisfies every scope check."
-  ([args] (call-content nil args))
+   gating and argument validation are exercised. The 1-arity holds every MCP scope."
+  ([args] (call-content v2.tu/all-scopes args))
   ([token-scopes args]
    ;; `call-tool` answers `{:result …}` after dispatch, or `{:error …}` when the registry rejects
    ;; the call before it. Present a rejection in the same `{:isError true}` shape a handler error
@@ -30,28 +38,28 @@
    ;; refusal text as a value, so a wrapper that threw would turn those into errors.
    (let [{:keys [result error]} (registry/call-tool token-scopes "test-session" "get_content" args)]
      (if error
-       {:isError true :content [{:type "text" :text (:message error)}]}
+       {:isError true :content [{:type "text" :text (message/render (:message error))}]}
        result))))
 
 (defn- content-results
   "The `:results` vector from a successful get_content call. Throws when the call was rejected
    before per-item work, so a tool-level error can never masquerade as an empty batch."
-  ([args] (content-results nil args))
+  ([args] (content-results v2.tu/all-scopes args))
   ([token-scopes args]
    (let [result (call-content token-scopes args)]
      (when (:isError result)
        (throw (ex-info (str "get_content returned a tool-level error: "
                             (-> result :content first :text))
                        {:result result})))
-     (:results (json/decode+kw (-> result :content first :text))))))
+     (:results (json/decode+kw (-> result :content first :text v2.tu/strip-data-boundary))))))
 
 (defn- content-one
-  ([args] (content-one nil args))
+  ([args] (content-one v2.tu/all-scopes args))
   ([token-scopes args] (first (content-results token-scopes args))))
 
 (defn- content-error
   "The tool-level error text for calls rejected before any per-item work."
-  ([args] (content-error nil args))
+  ([args] (content-error v2.tu/all-scopes args))
   ([token-scopes args] (-> (call-content token-scopes args) :content first :text)))
 
 (defn- venues-query
@@ -105,14 +113,13 @@
             (is (= "metric" (:type row))))))
       (testing "measure"
         (mt/with-temp [:model/Measure {id :id} {:name       "M1"
-                                                :table_id   (mt/id :venues)
                                                 :creator_id (mt/user->id :rasta)
                                                 :definition (measure-definition (lib/count))}]
           (let [row (content-one {:items [{:type "measure" :id id}]})]
             (is (nil? (:error row)))
             (is (= "M1" (:name row))))))
       (testing "segment"
-        (mt/with-temp [:model/Segment {id :id} {:name "S1" :table_id (mt/id :venues) :definition {}}]
+        (mt/with-temp [:model/Segment {id :id} {:name "S1"}]
           (let [row (content-one {:items [{:type "segment" :id id}]})]
             (is (nil? (:error row)))
             (is (= "S1" (:name row))))))
@@ -138,6 +145,85 @@
             (is (nil? (:error row)))
             (is (re-find #"hello" (:content_markdown row)))))))))
 
+(deftest get-content-fields-name-a-card-foreign-key-for-source-field-name-test
+  (testing "the `fields` include gives each column the name `source-field-name` takes on a stage built on the card"
+    (let [mp        (mt/metadata-provider)
+          orders    (lib.metadata/table mp (mt/id :orders))
+          field     #(lib.metadata/field mp (mt/id :orders %))
+          ;; O2 is the order whose ID is this order's PRODUCT_ID, so the card's two USER_ID columns differ.
+          self-join (-> (lib/join-clause orders [(lib/= (field :product_id) (field :id))])
+                        (lib/with-join-alias "O2")
+                        (lib/with-join-fields :all))
+          by-source (fn [stage]
+                      (-> (v2.queries/execute-representations-query
+                           {:lib/type "mbql/query"
+                            :stages   [(merge stage {:lib/type    "mbql.stage/mbql"
+                                                     :aggregation [["count" {}]]})]})
+                          (get-in [:structured-output :query])
+                          qp/process-query
+                          mt/rows))]
+      (doseq [card-type [:question :model]]
+        (mt/with-model-cleanup [:model/Card]
+          (let [[{card-id :id}] (card/create-cards! [{:type                   card-type
+                                                      :name                   (mt/random-name)
+                                                      :creator_id             (mt/user->id :rasta)
+                                                      :database_id            (mt/id)
+                                                      :display                :table
+                                                      :visualization_settings {}
+                                                      :dataset_query          (lib/join (lib/query mp orders) self-join)}])]
+            (mt/with-test-user :crowberto
+              (testing card-type
+                (let [user-id-cols (->> (content-one {:items [{:type (name card-type) :id card-id}] :include ["fields"]})
+                                        :result_metadata
+                                        (filterv #(= (mt/id :orders :user_id) (:id %))))
+                      via          (fn [fk-name]
+                                     (by-source {:source-card card-id
+                                                 :breakout    [["field" {:source-field      (mt/id :orders :user_id)
+                                                                         :source-field-name fk-name}
+                                                                (mt/id :people :source)]]}))]
+                  (is (= ["USER_ID" "O2__USER_ID"] (mapv :lib/desired-column-alias user-id-cols))
+                      (pr-str user-id-cols))
+                  (testing "and each name picks its own foreign key"
+                    (is (= (by-source {:source-table (mt/id :orders)
+                                       :breakout     [["field" {} (mt/id :people :source)]]})
+                           (via "USER_ID")))
+                    (is (not= (via "USER_ID") (via "O2__USER_ID")))))))))))))
+
+(deftest card-column-error-hint-lists-the-card-columns-test
+  (testing "a column the card does not return gets a hint naming the get_content call that lists the ones it does"
+    (let [mp    (mt/metadata-provider)
+          field #(lib.metadata/field mp (mt/id :orders %))]
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{card-id :id}] (card/create-cards! [{:type                   :model
+                                                    :name                   (mt/random-name)
+                                                    :creator_id             (mt/user->id :rasta)
+                                                    :database_id            (mt/id)
+                                                    :display                :table
+                                                    :visualization_settings {}
+                                                    :dataset_query          (lib/with-fields
+                                                                              (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                              [(field :id) (field :total)])}])]
+          (mt/with-test-user :crowberto
+            (let [e    (try
+                         (v2.queries/execute-representations-query
+                          {:lib/type "mbql/query"
+                           :stages   [{:lib/type    "mbql.stage/mbql"
+                                       :source-card card-id
+                                       :aggregation [["count" {}]]
+                                       :breakout    [["field" {} (mt/id :orders :quantity)]]}]})
+                         nil
+                         (catch clojure.lang.ExceptionInfo e e))
+                  items (some->> (ex-message e)
+                                 (re-find #"Call \"get_content\" with items (\[.*?\]) and include \[\"fields\"\]")
+                                 second
+                                 json/decode+kw)]
+              (is (=? {:error :column-not-returned} (ex-data e)))
+              (is (= [{:type "model" :id card-id}] items)
+                  (ex-message e))
+              (is (= ["ID" "TOTAL"]
+                     (mapv :name (:result_metadata (content-one {:items items :include ["fields"]}))))
+                  "and that call lists the columns the model returns"))))))))
+
 (deftest get-content-dashboard-skeleton-test
   (testing "GHY-4140: a dashboard returns the editing skeleton, never the raw REST dashcards array"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:parameters [{:name "Category" :slug "category"
@@ -149,25 +235,50 @@
                                                        :dashboard_tab_id   tab-id
                                                        :row                0
                                                        :col                0
-                                                       :parameter_mappings [{:parameter_id "_CAT_"
-                                                                             :card_id      card-id
-                                                                             :target       [:dimension
-                                                                                            [:field (mt/id :venues :name) nil]]}]}]
+                                                       :parameter_mappings
+                                                       [{:parameter_id "_CAT_"
+                                                         :card_id      card-id
+                                                         :target       [:dimension
+                                                                        [:field (mt/id :venues :name) nil]]}]}]
       (mt/with-test-user :crowberto
         (let [row (content-one {:items [{:type "dashboard" :id dash-id}]})]
           (is (nil? (:error row)))
           (is (= [{:id tab-id :name "Tab 1"}] (:tabs row)))
           (testing "each parameter names the dashcards it is wired to"
             (let [expected [{:id "_CAT_" :name "Category" :type "category" :dashcard_ids [dc-id]}]]
-              (is (= expected (:parameters row)))
-              (is (= expected
-                     (:parameters (content-one {:items   [{:type "dashboard" :id dash-id}]
-                                                :include ["parameters"]}))))))
+              (is (= expected (:parameters row)))))
+          (testing "the parameters include returns each stored parameter with its wired dashcard ids"
+            (is (= [{:id "_CAT_" :name "Category" :slug "category" :type "category" :dashcard_ids [dc-id]}]
+                   (:parameters (content-one {:items   [{:type "dashboard" :id dash-id}]
+                                              :include ["parameters"]})))))
           (testing "one summary row per dashcard, with the card reference resolved"
             (is (= [{:id dc-id :kind "card" :card {:id card-id :name "Embedded"}
                      :dashboard_tab_id tab-id :row 0 :col 0}]
                    (mapv #(select-keys % [:id :kind :card :dashboard_tab_id :row :col])
                          (:dashcards row))))))))))
+
+(deftest get-content-dashboard-parameters-include-test
+  (testing "BOT-2524: the parameters include shows the properties the concise row leaves out"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:parameters [{:id   "state"
+                                                                 :name "State"
+                                                                 :slug "state"
+                                                                 :type "string/="}
+                                                                {:id                  "city"
+                                                                 :name                "City"
+                                                                 :slug                "city"
+                                                                 :type                "string/="
+                                                                 :values_query_type   "list"
+                                                                 :isMultiSelect       false
+                                                                 :filteringParameters ["state"]}]}]
+      (mt/with-test-user :crowberto
+        (let [city   (fn [opts]
+                       (-> (content-one (merge {:items [{:type "dashboard" :id dash-id}]} opts))
+                           :parameters
+                           second
+                           (select-keys [:values_query_type :isMultiSelect :filteringParameters])))]
+          (is (= {} (city {})))
+          (is (= {:values_query_type "list" :isMultiSelect false :filteringParameters ["state"]}
+                 (city {:include ["parameters"]}))))))))
 
 (defn- dashcard-refs
   "dashcard id -> its projected `:card` and `:series` references, for the redaction assertions."
@@ -178,42 +289,94 @@
   (testing "GHY-4219: a dashcard card and a series entry the caller cannot read collapse to an id
             with no name. The redaction runs in the tool before the pure projection sees the row,
             so this pins that get_content still applies it."
-    (mt/with-temp [:model/Collection    {open-id :id}       {}
-                   :model/Collection    {locked-id :id}     {}
-                   :model/Dashboard     {dash-id :id}       {:collection_id open-id}
-                   :model/Card          {open-card :id}     {:name "Open" :collection_id open-id}
-                   :model/Card          {hidden-card :id}   {:name "Hidden" :collection_id locked-id}
-                   :model/Card          {hidden-series :id} {:name "Hidden Series"
-                                                             :collection_id locked-id}
-                   :model/DashboardCard {open-dc :id}       {:dashboard_id dash-id
-                                                             :card_id      open-card
-                                                             :row          0 :col 0}
-                   :model/DashboardCard {hidden-dc :id}     {:dashboard_id dash-id
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{open-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+            [{locked-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id open-id}
+                       :model/Card {open-card :id} {:name "Open" :collection_id open-id}
+                       :model/Card {hidden-card :id} {:name "Hidden" :collection_id locked-id}
+                       :model/Card {hidden-series :id} {:name "Hidden Series"
+                                                        :collection_id locked-id}
+                       :model/DashboardCard {open-dc :id} {:dashboard_id dash-id
+                                                           :card_id      open-card
+                                                           :row          0 :col 0}
+                       :model/DashboardCard {hidden-dc :id} {:dashboard_id dash-id
                                                              :card_id      hidden-card
                                                              :row          1 :col 0}
-                   :model/DashboardCardSeries _             {:dashboardcard_id open-dc
-                                                             :card_id          hidden-series
-                                                             :position         0}]
-      (mt/with-non-admin-groups-no-collection-perms locked-id
-        (testing "an admin, who can read everything, sees every name"
-          (mt/with-test-user :crowberto
-            (let [refs (dashcard-refs (content-one {:items [{:type "dashboard" :id dash-id}]}))]
-              (is (= {:card   {:id open-card :name "Open"}
-                      :series [{:id hidden-series :name "Hidden Series"}]}
-                     (get refs open-dc)))
-              (is (= {:card {:id hidden-card :name "Hidden"}}
-                     (get refs hidden-dc))))))
-        (mt/with-test-user :rasta
-          (let [row  (content-one {:items [{:type "dashboard" :id dash-id}]})
-                refs (dashcard-refs row)]
-            (is (nil? (:error row))
-                "the dashboard itself is readable — only the nested cards are not")
-            (testing "the readable card keeps its name"
-              (is (= {:id open-card :name "Open"} (:card (get refs open-dc)))))
-            (testing "the unreadable card is an id and nothing else"
-              (is (= {:id hidden-card} (:card (get refs hidden-dc)))))
-            (testing "and so is an unreadable series entry"
-              (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))
+                       :model/DashboardCardSeries _ {:dashboardcard_id open-dc
+                                                     :card_id          hidden-series
+                                                     :position         0}]
+          (mt/with-non-admin-groups-no-collection-perms locked-id
+            (testing "an admin, who can read everything, sees every name"
+              (mt/with-test-user :crowberto
+                (let [refs (dashcard-refs (content-one {:items [{:type "dashboard" :id dash-id}]}))]
+                  (is (= {:card   {:id open-card :name "Open"}
+                          :series [{:id hidden-series :name "Hidden Series"}]}
+                         (get refs open-dc)))
+                  (is (= {:card {:id hidden-card :name "Hidden"}}
+                         (get refs hidden-dc))))))
+            (mt/with-test-user :rasta
+              (let [row  (content-one {:items [{:type "dashboard" :id dash-id}]})
+                    refs (dashcard-refs row)]
+                (is (nil? (:error row))
+                    "the dashboard itself is readable — only the nested cards are not")
+                (testing "the readable card keeps its name"
+                  (is (= {:id open-card :name "Open"} (:card (get refs open-dc)))))
+                (testing "the unreadable card is an id and nothing else"
+                  (is (= {:id hidden-card} (:card (get refs hidden-dc)))))
+                (testing "and so is an unreadable series entry"
+                  (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))))
+
+(deftest get-content-dashboard-layout-redacts-unreadable-series-card-test
+  ;; The frontend keys `series_settings` by card name, alone or with a column or breakout value after it, and the
+  ;; series card's filter mapping carries its field ids.
+  (testing "BOT-2561: the layout include names an unreadable series card nowhere and keeps no mapping to it"
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{open-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+            [{locked-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id open-id
+                                                       :parameters    [{:id   "p"
+                                                                        :name "P"
+                                                                        :slug "p"
+                                                                        :type "category"}]}
+                       :model/Card {open-card :id} {:name "Open", :collection_id open-id}
+                       :model/Card {hidden-series :id} {:name "SECRET Series", :collection_id locked-id}
+                       :model/DashboardCard {dc-id :id} {:dashboard_id           dash-id
+                                                         :card_id                open-card
+                                                         :row                    0
+                                                         :col                    0
+                                                         :visualization_settings
+                                                         {:series_settings {"Open"                 {:color "#111"}
+                                                                            "SECRET Series"        {:color "#222"}
+                                                                            "SECRET Series: Count" {:color "#333"}}}
+                                                         :parameter_mappings
+                                                         [{:parameter_id "p"
+                                                           :card_id      open-card
+                                                           :target       [:dimension [:field (mt/id :venues :price) nil]]}
+                                                          {:parameter_id "p"
+                                                           :card_id      hidden-series
+                                                           :target       [:dimension [:field (mt/id :venues :name) nil]]}]}
+                       :model/DashboardCardSeries _ {:dashboardcard_id dc-id
+                                                     :card_id          hidden-series
+                                                     :position         0}]
+          (mt/with-non-admin-groups-no-collection-perms locked-id
+            (let [read-dashboard  #(content-one {:items   [{:type "dashboard", :id dash-id}]
+                                                 :include ["layout" "parameters"]})
+                  layout-dashcard (fn [row] (some #(when (= dc-id (:id %)) %) (:dashcards (:layout row))))]
+              (testing "an admin sees the series card's settings and mapping"
+                (mt/with-test-user :crowberto
+                  (let [dc (layout-dashcard (read-dashboard))]
+                    (is (str/includes? (json/encode dc) "SECRET Series"))
+                    (is (= #{open-card hidden-series} (set (map :card_id (:parameter_mappings dc))))))))
+              (mt/with-test-user :rasta
+                (let [row (read-dashboard)
+                      dc  (layout-dashcard row)]
+                  (is (some? dc))
+                  (is (not (str/includes? (json/encode row) "SECRET Series"))
+                      "checked on the whole response, so any include that shows it fails too")
+                  (is (= [open-card] (map :card_id (:parameter_mappings dc))))
+                  (testing "the series settings go whole, since composite keys also name the card"
+                    (is (nil? (get-in dc [:visualization_settings :series_settings])))))))))))))
 
 (defn- link-card-settings
   "Stored `visualization_settings` for a link dashcard pointing at `model`/`id`, carrying the
@@ -383,7 +546,7 @@
             so this pins that get_content still applies it."
     (mt/with-temp [:model/Collection   {locked-id :id} {}
                    :model/Card         {card-id :id}   {:name "Sub Card"}
-                   :model/Dashboard    {dash-id :id}   {}
+                   :model/Dashboard    {dash-id :id}   {:collection_id locked-id}
                    :model/Pulse        {pulse-id :id}  {:name          "Private Weekly"
                                                         :dashboard_id  dash-id
                                                         :collection_id locked-id
@@ -411,26 +574,26 @@
             (is (not (contains? (-> row :channels first) :recipients))
                 "and the channel recipient list is gone")))))))
 
-(deftest get-content-transform-test
-  (testing "GHY-4140: a transform read carries source type and target"
-    ;; The transform read-check gates on the transforms feature before the superuser bypass, so the
-    ;; feature and its setting must be on for the read to succeed — otherwise `can-read?` is false and
-    ;; the transform collapses to not-found. Enable them explicitly rather than inheriting ambient state.
+(deftest get-content-has-no-transform-type-test
+  (testing "GHY-4746: MCP v2 has no transforms, so get_content refuses the type, even for an admin on an instance
+            with transforms enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp-env-var-value! [mb-transforms-enabled true]
         (mt/with-temp [:model/Transform {id :id} {:name   "t1"
                                                   :source {:type  :query
-                                                           :query {:database (mt/id)
-                                                                   :type     "query"
-                                                                   :query    {:source-table (mt/id :venues)}}}
-                                                  :target {:type   :table
-                                                           :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                           :query (venues-query)}
+                                                  :target {:type   "table"
+                                                           :schema (t2/select-one-fn :schema :model/Table
+                                                                                     :id (mt/id :venues))
                                                            :name   "t1_out"}}]
           (mt/with-test-user :crowberto
-            (let [row (content-one {:items [{:type "transform" :id id}]})]
-              (is (nil? (:error row)))
-              (is (= "t1" (:name row)))
-              (is (= "t1_out" (-> row :target :name))))))))))
+            (let [error (content-error {:items [{:type "transform" :id id}]})]
+              (is (str/starts-with? error "Invalid arguments: "))
+              (is (re-find #"\"type\": \"should be either" error)))))))
+    (testing "a transform folder reads as not found, the same answer a missing id gets"
+      (mt/with-temp [:model/Collection {folder-id :id} {:name "Rollups" :namespace "transforms"}]
+        (mt/with-test-user :crowberto
+          (is (re-find #"not found" (:error (content-one {:items [{:type "collection" :id folder-id}]})))))))))
 
 (deftest get-content-resolves-entity-ids-test
   (testing "GHY-4140: `id` takes a 21-character entity_id as well as a numeric id, for every type
@@ -466,68 +629,14 @@
                      :handlers     []}]
       (mt/with-test-user :crowberto
         (testing "alerts are numeric-only"
-          (is (re-find #"numeric id"
-                       (:error (content-one {:items [{:type "alert"
-                                                      :id   "abcdefghijklmnopqrstu"}]})))))
+          (is (= "Alerts take a numeric id — they have no entity_id."
+                 (:error (content-one {:items [{:type "alert"
+                                                :id   "abcdefghijklmnopqrstu"}]})))))
         (testing "and the alert still reads by its numeric id"
           (is (nil? (:error (content-one {:items [{:type "alert" :id (:id notification)}]})))))
         (testing "a string that is neither a numeric id nor an entity_id"
           (is (re-find #"21-character entity_id"
                        (:error (content-one {:items [{:type "question" :id "nope"}]})))))))))
-
-(deftest get-content-transform-target-table-test
-  (testing "GHY-4140: `table` is the transform's target, hydrated with no permission check of its own
-            — `can-read?` on a Transform gates on the SOURCE tables only — so `fetch-transform`
-            re-checks it before returning it.
-
-            That gate's false branch is unreachable through permissions today, so there is no test
-            for it: reading a transform at all requires superuser or data analyst; superusers read
-            every table; and `table-permission-for-user` hands every data analyst
-            `manage-table-metadata :yes` unconditionally, which by itself satisfies `can-read?` on a
-            Table. The check is defence in depth for the day the transform read check widens. What
-            is reachable is covered here."
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp-env-var-value! [mb-transforms-enabled true]
-        ;; Target an already-synced table rather than the usual nonexistent one, so `:table` actually
-        ;; hydrates and there is something to withhold. Source and target must differ: blocking the
-        ;; source would make the transform itself unreadable and prove nothing.
-        (mt/with-temp [:model/Transform {id :id}
-                       {:name   "t1"
-                        :source {:type  :query
-                                 :query {:database (mt/id)
-                                         :type     "query"
-                                         :query    {:source-table (mt/id :venues)}}}
-                        :target {:type   :table
-                                 :schema (t2/select-one-fn :schema :model/Table :id (mt/id :checkins))
-                                 :name   (t2/select-one-fn :name :model/Table :id (mt/id :checkins))}}]
-          ;; `table` is a detailed-only key, so the gate only ever runs on a detailed read.
-          (testing "an admin, who can read the target, gets it"
-            (mt/with-test-user :crowberto
-              (let [row (content-one {:items           [{:type "transform" :id id}]
-                                      :response_format "detailed"})]
-                (is (nil? (:error row)))
-                (is (= (mt/id :checkins) (-> row :table :id))))))
-          (testing "and it is a detailed-only key, absent from a concise read"
-            (mt/with-test-user :crowberto
-              (is (nil? (:table (content-one {:items [{:type "transform" :id id}]})))))))))
-    (testing "a transform whose target table does not exist yet reads without a `table`"
-      (mt/with-premium-features #{:transforms-basic}
-        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
-          (mt/with-temp [:model/Transform {id :id}
-                         {:name   "t2"
-                          :source {:type  :query
-                                   :query {:database (mt/id)
-                                           :type     "query"
-                                           :query    {:source-table (mt/id :venues)}}}
-                          :target {:type   :table
-                                   :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
-                                   :name   "never_run_out"}}]
-            (mt/with-test-user :crowberto
-              (let [row (content-one {:items           [{:type "transform" :id id}]
-                                      :response_format "detailed"})]
-                (is (nil? (:error row)))
-                (is (= "t2" (:name row)))
-                (is (nil? (:table row)) "nothing to hydrate, so the section is omitted")))))))))
 
 (deftest get-content-not-found-is-not-an-existence-oracle-test
   (testing "GHY-4140: a nonexistent id and an existing-but-unreadable id are indistinguishable,
@@ -583,13 +692,26 @@
               (is (= "Good" (:name good)))
               (is (nil? (:error good))))))))))
 
+(deftest get-content-item-error-text-is-cleaned-test
+  (testing "GHY-4544: a caller-facing upstream string in an item's error is cleaned whole — JSON escapes control
+            characters and quotes but not format characters like a bidi override or a zero-width space, so
+            those must arrive as literal escapes rather than raw"
+    (mt/with-test-user :crowberto
+      (mt/with-dynamic-fn-redefs [tools.content/fetch-measure-or-segment
+                                  (fn [& _]
+                                    (throw (ex-info (str "Not found" (char 0x202E) "x" (char 0x200B))
+                                                    {:status-code 404})))]
+        (let [error (:error (content-one {:items [{:type "measure" :id 1}]}))]
+          (is (= "\"Not found\\u202ex\\u200b\"" error))
+          (is (not (re-find #"[‮​]" error))))))))
+
 (deftest get-content-card-type-mismatch-test
   (testing "GHY-4140: asking for a model with type question teaches the actual type"
     (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-query)}]
       (mt/with-test-user :crowberto
         (let [error (:error (content-one {:items [{:type "question" :id card-id}]}))]
           (is (some? error))
-          (is (re-find #"is a model" error))
+          (is (re-find #"has type \"model\"" error))
           (is (re-find #"type: \"model\"" error)))))))
 
 (deftest get-content-batch-cap-test
@@ -600,7 +722,7 @@
         (is (re-find #"you passed 11" error))))))
 
 (deftest get-content-reads-formerly-gated-types-test
-  (testing "GHY-4225: alerts, transforms, snippets and documents each used to need their own read
+  (testing "GHY-4225: alerts, snippets and documents each used to need their own read
             scope on top of the base one. Those folded into `agent:content:read`, so the single
             scope now carries them — the per-type gate is gone, not merely renamed."
     (testing "alert"
@@ -626,22 +748,7 @@
         (mt/with-test-user :crowberto
           (let [row (content-one #{"agent:content:read"} {:items [{:type "document" :id id}]})]
             (is (nil? (:error row)))
-            (is (re-find #"hello" (:content_markdown row)))))))
-    (testing "transform — `agent:transforms:read` is still declared, but this tool does not ask for it"
-      (mt/with-premium-features #{:transforms-basic}
-        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
-          (mt/with-temp [:model/Transform {id :id} {:name   "t1"
-                                                    :source {:type  :query
-                                                             :query {:database (mt/id)
-                                                                     :type     "query"
-                                                                     :query    {:source-table (mt/id :venues)}}}
-                                                    :target {:type   :table
-                                                             :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
-                                                             :name   "t1_out"}}]
-            (mt/with-test-user :crowberto
-              (let [row (content-one #{"agent:content:read"} {:items [{:type "transform" :id id}]})]
-                (is (nil? (:error row)))
-                (is (= "t1" (:name row)))))))))))
+            (is (re-find #"hello" (:content_markdown row)))))))))
 
 (defn- comment-content
   [text]
@@ -653,13 +760,13 @@
    paragraph has its own id (nested blocks carry no span of their own), an empty paragraph
    (zero-width span), and a closing paragraph."
   {:type    "doc"
-   :content [{:type    "paragraph" :attrs {"_id" "para-1"}
+   :content [{:type    "paragraph" :attrs {:_id "para-1"}
               :content [{:type "text" :text "First paragraph."}]}
-             {:type    "blockquote" :attrs {"_id" "quote-1"}
-              :content [{:type    "paragraph" :attrs {"_id" "quote-para"}
+             {:type    "blockquote" :attrs {:_id "quote-1"}
+              :content [{:type    "paragraph" :attrs {:_id "quote-para"}
                          :content [{:type "text" :text "Quoted text."}]}]}
-             {:type "paragraph" :attrs {"_id" "empty-1"}}
-             {:type    "paragraph" :attrs {"_id" "para-2"}
+             {:type "paragraph" :attrs {:_id "empty-1"}}
+             {:type    "paragraph" :attrs {:_id "para-2"}
               :content [{:type "text" :text "Last paragraph."}]}]})
 
 (deftest get-content-document-comments-include-test
@@ -729,18 +836,18 @@
    block nested inside one has to resolve its anchor past them; the paragraph inside the list item
    is the block with no span of its own — the list re-renders it with a `- ` prefix."
   {:type    "doc"
-   :content [{:type    "resizeNode" :attrs {"height" 442 "minHeight" 280}
-              :content [{:type    "flexContainer" :attrs {"columnWidths" [60 40]}
-                         :content [{:type    "supportingText" :attrs {"_id" "support-1"}
-                                    :content [{:type    "bulletList" :attrs {"_id" "list-1"}
+   :content [{:type    "resizeNode" :attrs {:height 442 :minHeight 280}
+              :content [{:type    "flexContainer" :attrs {:columnWidths [60 40]}
+                         :content [{:type    "supportingText" :attrs {:_id "support-1"}
+                                    :content [{:type    "bulletList" :attrs {:_id "list-1"}
                                                :content [{:type    "listItem"
-                                                          :content [{:type    "paragraph" :attrs {"_id" "list-para"}
+                                                          :content [{:type    "paragraph" :attrs {:_id "list-para"}
                                                                      :content [{:type "text"
                                                                                 :text "Nested in a list."}]}]}]}]}
-                                   {:type    "supportingText" :attrs {"_id" "support-2"}
-                                    :content [{:type    "paragraph" :attrs {"_id" "support-para"}
+                                   {:type    "supportingText" :attrs {:_id "support-2"}
+                                    :content [{:type    "paragraph" :attrs {:_id "support-para"}
                                                :content [{:type "text" :text "Beside it."}]}]}]}]}
-             {:type "paragraph" :attrs {"_id" "tail"} :content [{:type "text" :text "Tail."}]}]})
+             {:type "paragraph" :attrs {:_id "tail"} :content [{:type "text" :text "Tail."}]}]})
 
 (deftest get-content-document-comments-inside-a-layout-container-test
   (testing "a live comment inside a layout container is anchored, not reported orphaned — a block
@@ -840,9 +947,9 @@
                                               :attrs   {:level 1 :_id "h-1"}
                                               :content [{:type "text" :text "Q3 revenue"}]}
                                              {:type  "mysteryBlock"
-                                              :attrs {"_id" "m-1"}}
+                                              :attrs {:_id "m-1"}}
                                              {:type  "cardEmbed"
-                                              :attrs {"id" 118 "_id" "c-1"}}]}
+                                              :attrs {:id 118 :_id "c-1"}}]}
                     :content_type "application/json+vnd.prose-mirror"}]
       (mt/with-test-user :crowberto
         (let [row (content-one {:items [{:type "document" :id doc-id}]})]
@@ -966,7 +1073,6 @@
             nil, so a broken exporter looks exactly like a type that has nothing to export."
     (testing "measure — the aggregation clause"
       (mt/with-temp [:model/Measure {id :id} {:name       "M1"
-                                              :table_id   (mt/id :venues)
                                               :creator_id (mt/user->id :rasta)
                                               :definition (measure-definition (lib/count))}]
         (mt/with-test-user :crowberto
@@ -977,31 +1083,15 @@
                 "and carries the stored aggregation")))))
     (testing "segment — the filter clauses"
       (mt/with-temp [:model/Segment {id :id} {:name       "S1"
-                                              :table_id   (mt/id :venues)
-                                              :definition {:filter [:= [:field-id (mt/id :venues :price)] 2]}}]
+                                              :definition (let [mp (mt/metadata-provider)]
+                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 2))))}]
         (mt/with-test-user :crowberto
           (let [row (content-one {:items [{:type "segment" :id id}] :include ["definition"]})]
             (is (nil? (:error row)))
             (is (some? (:definition row)) "the definition section is present")
             (is (= "=" (-> row :definition first first))
-                "and carries the stored filter")))))
-    (testing "transform — the source, with its query serialized"
-      (mt/with-premium-features #{:transforms-basic}
-        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
-          (mt/with-temp [:model/Transform {id :id} {:name   "t1"
-                                                    :source {:type  :query
-                                                             :query {:database (mt/id)
-                                                                     :type     "query"
-                                                                     :query    {:source-table (mt/id :venues)}}}
-                                                    :target {:type   :table
-                                                             :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
-                                                             :name   "t1_out"}}]
-            (mt/with-test-user :crowberto
-              (let [row (content-one {:items [{:type "transform" :id id}] :include ["definition"]})]
-                (is (nil? (:error row)))
-                (is (some? (:definition row)) "the definition section is present")
-                (is (= (mt/id) (-> row :definition :query :database))
-                    "and the query round-trips as the numeric-id MBQL 5 shape")))))))))
+                "and carries the stored filter")))))))
 
 (deftest get-content-include-unknown-for-every-item-test
   (testing "GHY-4140: a section no item in the batch supports is a tool-level teaching error,
@@ -1009,8 +1099,8 @@
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)}]
       (mt/with-test-user :crowberto
         (let [error (content-error {:items [{:type "question" :id card-id}] :include ["layout"]})]
-          (is (re-find #"does not apply to type question" error))
-          (is (re-find #"available for: dashboard, document" error)))))))
+          (is (re-find #"does not apply to type \"question\"" error))
+          (is (re-find #"available for: \"dashboard\", \"document\"" error)))))))
 
 (deftest get-content-settings-include-test
   (testing "GHY-4511: a question's stored visualization_settings read back — through the
@@ -1089,7 +1179,7 @@
           (is (nil? (:error row)))
           (is (re-find #"hello" (:content_markdown row))
               "the read still returns the body")))
-      (is (= 0 (t2/select-one-fn :view_count :model/Document doc-id))
+      (is (= 0 (t2/select-one-fn :view_count :model/Document :id doc-id))
           "and left view_count alone"))))
 
 (deftest get-content-dimensions-respects-a-curated-metric-test
@@ -1109,7 +1199,7 @@
       (metrics/sync-dimensions! :metadata/metric metric-id)
       (let [seeded (t2/select-one-fn :dimensions :model/Card :id metric-id)]
         (is (seq seeded) "the metric must seed at least one dimension for this to prove anything")
-        (t2/update! :model/Card metric-id {:dimensions (vec (take 1 seeded))})
+        (t2/update! :model/Card :id metric-id {:dimensions (vec (take 1 seeded))})
         (mt/with-test-user :crowberto
           (let [row   (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})
                 again (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})]
@@ -1145,7 +1235,7 @@
    field ref under a freshly minted clause uuid each time, so the uuids differ between two reads
    that agree on everything that identifies the column."
   [pair]
-  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid)) pair))
+  (match/replace-all pair #'map? (dissoc &match :lib/uuid)))
 
 (deftest get-content-dimensions-match-the-rest-endpoint-test
   (testing "GHY-4140: the `dimensions` include documents itself as returning the same
@@ -1182,7 +1272,7 @@
         (metrics/sync-dimensions! :metadata/metric metric-id)
         (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id metric-id)
               orphan-id (:id (first dimensions))]
-          (t2/update! :model/Card metric-id
+          (t2/update! :model/Card :id metric-id
                       {:dimension_mappings (mapv #(cond-> %
                                                     (= orphan-id (:dimension-id %))
                                                     (assoc-in [:target 2] (mt/id :users :name)))
@@ -1196,7 +1286,6 @@
               (is (= rest mcp)))))))
     (testing "a measure"
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "M1"
-                                                      :table_id   (mt/id :venues)
                                                       :creator_id (mt/user->id :crowberto)
                                                       :definition (measure-definition (lib/count))}]
         ;; Seed first so the generated dimension ids are persisted and both reads reconcile against
@@ -1223,6 +1312,41 @@
             each had a competing registration whose winner was decided by load order"
     (is (contains? (set (projections/catalog :metric)) "query_summary"))
     (is (contains? (set (projections/catalog :document)) "content_markdown"))))
+
+(deftest dashboard-catalog-covers-parameter-value-sources-test
+  (testing "BOT-2524: get_content can select every key a dashboard parameter's value source config can hold"
+    (let [catalog     (set (projections/catalog :dashboard))
+          config-keys (mu/map-schema-keys ::parameters.schema/values-source-config)
+          paths       (into #{} (map #(str "parameters.values_source_config." (name %))) config-keys)]
+      (is (seq config-keys))
+      (is (= #{} (set/difference paths catalog))))))
+
+(deftest get-content-dashboard-parameter-value-sources-test
+  (testing "BOT-2524: a fields selection reaches into a static list and a card source"
+    (mt/with-temp [:model/Card {card-id :id} {:name "Countries"}]
+      (let [field-ref   [:field (mt/id :venues :name) nil]
+            static-list {:id                   "country"
+                         :name                 "Country"
+                         :slug                 "country"
+                         :type                 "string/="
+                         :values_source_type   "static-list"
+                         :values_source_config {:values ["US" "CA"]}}
+            card-source {:id                   "region"
+                         :name                 "Region"
+                         :slug                 "region"
+                         :type                 "string/="
+                         :values_source_type   "card"
+                         :values_source_config {:card_id card-id, :value_field field-ref}}]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:parameters [static-list card-source]}]
+          (mt/with-test-user :crowberto
+            (is (=? {:parameters [{:values_source_config {:values ["US" "CA"]}}
+                                  {:values_source_config {:card_id     card-id
+                                                          :value_field ["field" (mt/id :venues :name) nil]}}]}
+                    (content-one {:items [{:type   "dashboard"
+                                           :id     dash-id
+                                           :fields ["parameters.values_source_config.values"
+                                                    "parameters.values_source_config.card_id"
+                                                    "parameters.values_source_config.value_field"]}]})))))))))
 
 (deftest get-content-subscription-fields-covers-notification-shape-test
   (testing "GHY-4140: the subscription fields catalog covers the notification-backed shape, not
@@ -1255,7 +1379,7 @@
                                            :query_type :native}]
             (is (=? {:min {:name "min" :type "number"}}
                     (:template_tags (content-one {:items [{:type "question" :id (:id card)}]}))))))
-        (testing "pMBQL shape: a tag vector on the native stage (what question_write stores)"
+        (testing "MBQL 5 shape: a tag vector on the native stage (what question_write stores)"
           (mt/with-temp [:model/Card card {:dataset_query {:lib/type :mbql/query
                                                            :database (mt/id)
                                                            :stages   [{:lib/type      :mbql.stage/native
@@ -1278,7 +1402,8 @@
       (testing "the SQL itself, collapsed onto one line"
         (mt/with-temp [:model/Card {card-id :id}
                        {:query_type    :native
-                        :dataset_query (native-card-query "select date_trunc('month', placed_at)\n  from orders\n group by 1")}]
+                        :dataset_query (native-card-query
+                                        "select date_trunc('month', placed_at)\n  from orders\n group by 1")}]
           (is (= "SQL: select date_trunc('month', placed_at) from orders group by 1"
                  (:query_summary (content-one {:items [{:type "question" :id card-id}]}))))))
       (testing "a long query is truncated to a bounded head, marked with an ellipsis"

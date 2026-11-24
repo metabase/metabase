@@ -2,7 +2,7 @@
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
   (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys empty? not-empty doseq for
-                            first second update-vals get-in #?(:cljs clj->js)])
+                            first second update-vals get-in str #?(:cljs clj->js)])
   #?(:clj (:require
            [net.cgrand.macrovich :as macros])
      :cljs (:require
@@ -39,7 +39,9 @@
   (cond-> coll
     (transient? coll) persistent!))
 
-(defn- add-original-meta [coll og-form]
+(defn add-original-meta
+  "Transfer metadata from `og-form` to `coll`."
+  [coll og-form]
   (when-not (nil? coll)
     (with-meta coll (meta og-form))))
 
@@ -158,7 +160,15 @@
      (persistent [_]
        (LazilyPersistentVector/createOwning arr)))
    :cljs
-   (deftype SmallTransientImpl [^:mutable arr, ^:mutable cnt, f]))
+   (deftype SmallTransientImpl [^:mutable arr, ^:mutable cnt, f]
+     ITransientCollection
+     (-conj! [this x]
+       (aset arr cnt x)
+       (set! cnt (inc cnt))
+       this)
+
+     (-persistent! [_]
+       (PersistentVector. nil cnt 5 (.-EMPTY-NODE PersistentVector) arr nil))))
 
 (defn- small-transient [n f]
   ;; Storing `f` in the transient itself is a hack to reduce lambda generation.
@@ -228,13 +238,13 @@
       :cljs
       (core/mapv f coll1 coll2 coll3 coll4))))
 
-#?(:clj
-   (defn mapv-indexed
-     "Like `clojure.core/map-indexed`, but returns a vector and uses Java iterators under the hood and optimized small
+(defn mapv-indexed
+  "Like `clojure.core/map-indexed`, but returns a vector and uses Java iterators under the hood and optimized small
   transient vectors. Requires `f` to be a primitive function of (long, Object) -> Object."
-     [f coll]
-     (if (nil? coll)
-       []
+  [f coll]
+  (if (nil? coll)
+    []
+    #?(:clj
        (let [n (count coll)
              it1 (.iterator ^Iterable coll)]
          (loop [i 0, res (if (<= n 32)
@@ -243,7 +253,28 @@
            (if (.hasNext it1)
              ;; Use .invokePrim directly to prevent index from autoboxing.
              (recur (inc i) (conj! res (.invokePrim ^clojure.lang.IFn$LOO f i (.next it1))))
-             (persistent! res)))))))
+             (persistent! res))))
+       :cljs
+       (let [n (count coll)]
+         (persistent!
+          (reduce-kv #(conj! %1 (f %2 %3))
+                     (if (<= n 32)
+                       (small-transient n identity)
+                       (transient []))
+                     coll))))))
+
+(defn remove-by-index
+  "Remove an item with the given `index` from vector `v`, returning a vector."
+  [v index]
+  (let [n (count v)]
+    (persistent!
+     (reduce #(if (= %2 index)
+                %1
+                (conj! %1 (nth v %2)))
+             (if (<= n 32)
+               (small-transient (dec n) identity)
+               (transient []))
+             (range (count v))))))
 
 (defn run!
   "Drop-in replacement for `clojure.core/run!`.
@@ -327,19 +358,16 @@
     (throw (ex-info "Position should be in the range [0; N] of vector." {})))
   (let [v (vec v)
         n (count v)]
-    (if (= pos n)
-      (conj v el)
-      (let [i (volatile! -1)]
-        (persistent! (reduce (fn [acc x]
-                               (vswap! i inc)
-                               (conj! (cond-> acc
-                                        (= @i pos) (conj! el))
-                                      x))
-                             #?(:clj (if (<= n 32)
-                                       (small-transient (inc n) identity)
-                                       (transient []))
-                                :cljs (transient []))
-                             v))))))
+    (loop [i 0, acc #?(:clj (if (<= n 32)
+                              (small-transient (inc n) identity)
+                              (transient []))
+                       :cljs (transient []))]
+      (if (< i pos)
+        (recur (inc i) (conj! acc (nth v i)))
+        (loop [i pos, acc (conj! acc el)]
+          (if (< i n)
+            (recur (inc i) (conj! acc (nth v i)))
+            (persistent! acc)))))))
 
 #?(:clj
    (defn transpose
@@ -515,12 +543,47 @@
 
 ;; clojure.walk reimplementation. Partially adapted from https://github.com/tonsky/clojure-plus.
 
+(defn mapv-mostly-unchanged
+  "Special optimized `mapv` implementation for usecases where `f` is an identity function for many/most inputs. `coll`
+  must be a vector."
+  [f coll]
+  (if (map-entry? coll)
+    (mapv f coll) ;; Revert to regular mapv
+    (maybe-persistent!
+     (reduce-kv (fn [v idx el]
+                  (let [el' (f el)]
+                    (if (identical? el' el)
+                      v
+                      (assoc+ v idx el'))))
+                coll coll))))
+
 (defn walk
   "Drop-in replacement for `clojure.walk/walk`. Optimized for efficiency and has the following behavior differences:
   - Doesn't walk over map entries. When descending into a map, walks keys and values separately.
   - Uses transients and reduce where possible and tries to return the same input `form` if no changes were made."
   [inner outer form]
   (cond
+    ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so walk their
+    ;; entries through `seq` instead of `reduce-kv`.
+    (record? form)
+    (let [new-keys (volatile! (transient #{}))]
+      (-> (reduce (fn [r e]
+                    (let [k  (key e)
+                          v  (val e)
+                          k' (inner k)
+                          v' (inner v)]
+                      (if (identical? k' k)
+                        (if (identical? v' v)
+                          r
+                          (assoc r k v'))
+                        (do (vswap! new-keys conj! k')
+                            (if (contains? @new-keys k)
+                              (assoc r k' v')
+                              (-> r (dissoc k) (assoc k' v')))))))
+                  form (seq form))
+          (add-original-meta form)
+          outer))
+
     (map? form)
     (let [new-keys (volatile! (transient #{}))]
       (-> (reduce-kv (fn [m k v]
@@ -540,18 +603,12 @@
           outer))
 
     (and (vector? form) (not (map-entry? form)))
-    (-> (reduce-kv (fn [v idx el]
-                     (let [el' (inner el)]
-                       (if (identical? el' el)
-                         v
-                         (assoc+ v idx el'))))
-                   form form)
-        maybe-persistent!
+    (-> (mapv-mostly-unchanged inner form)
         (add-original-meta form)
         outer)
 
     ;; Don't care much about optimizing seq and generic coll cases. When efficiency is required, use vectors.
-    (seq? form) (outer (add-original-meta (seq (mapv inner form)) form)) ;;
+    (seq? form) (outer (add-original-meta (or (seq (mapv inner form)) ()) form))
     (coll? form) (outer (add-original-meta (into (empty form) (map inner) form) form))
     :else (outer form)))
 
@@ -583,6 +640,36 @@
            (add-original-meta form))
        form))
    m))
+
+(defn str
+  "More efficient implementation of `clojure.core/str` because it has more non-variadic arities. Optimization is
+  Clojure-only, on other platforms it reverts back to `clojure.core/str`."
+  (^String [] "")
+  (^String [^Object a]
+   #?(:clj (if (nil? a) "" (.toString a))
+      :default (clojure.core/str a)))
+  (^String [^Object a, ^Object b]
+   #?(:clj (if (nil? a)
+             (str b)
+             (if (nil? b)
+               (.toString a)
+               (.concat (.toString a) (.toString b))))
+      :default (clojure.core/str a b)))
+  (^String [a b c]
+   #?(:clj (let [sb (StringBuilder.)]
+             (.append sb (str a))
+             (.append sb (str b))
+             (.append sb (str c))
+             (.toString sb))
+      :default (clojure.core/str a b c)))
+  (^String [a b c & more]
+   #?(:clj (let [sb (StringBuilder.)]
+             (.append sb (str a))
+             (.append sb (str b))
+             (.append sb (str c))
+             (run! #(.append sb (str %)) more)
+             (.toString sb))
+      :default (apply clojure.core/str a b c more))))
 
 ;;;; Faster clj->js implementation
 
@@ -660,3 +747,14 @@
   [m key value]
   #?(:clj (do (.put ^HashMap m key value) m)
      :cljs (do (.set m key value) m)))
+
+;;;; Cross-platform array-processing functions
+
+(defn mapa
+  "Like [[mapv]], but returns an array. Requires `coll` to be countable and have O(1) access."
+  [f coll]
+  (let [n (count coll)
+        res (object-array n)]
+    (dotimes [i n]
+      (aset res i (f (nth coll i))))
+    res))

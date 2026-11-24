@@ -9,8 +9,6 @@ summary: "Change how Metabot appears in Metabase for a branded look."
 
 _Admin > AI > Customization_
 
-Admins can change how Metabot displays itself in Metabase.
-
 To navigate to the AI customization settings:
 
 1. Click the **grid** icon in the upper right.
@@ -32,7 +30,16 @@ Upload a custom icon. SVG or PNG with a transparent background gives the cleanes
 
 ![Metabot illustrations](./images/metabot-illustrations.png)
 
-Once you've uploaded a custom icon, this toggle appears and controls whether the default decorative illustrations show in the Metabot chat sidebar and on the AI exploration page.
+This toggle controls whether the default decorative illustrations show in the Metabot chat sidebar.
+
+## Customize Metabot with environment variables
+
+On self-hosted Metabases, you can also customize Metabot with [environment variables](../configuring-metabase/environment-variables.md) or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
+| Setting                                                   | Environment variable                                                                                              |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [Metabot's name](#metabots-name)                          | [`MB_METABOT_NAME`](../configuring-metabase/environment-variables.md#mb_metabot_name)                             |
+| [Show Metabot illustrations](#show-metabot-illustrations) | [`MB_METABOT_SHOW_ILLUSTRATIONS`](../configuring-metabase/environment-variables.md#mb_metabot_show_illustrations) |
 
 ## Further reading
 

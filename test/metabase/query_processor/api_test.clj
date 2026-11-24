@@ -15,6 +15,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.test-util :as api.test-util]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -37,6 +38,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -117,6 +119,7 @@
                     :pulse_id         nil
                     :card_id          nil
                     :is_sandboxed     false
+                    :sandbox_details  nil
                     :dashboard_id     nil
                     :transform_id     nil
                     :lens_id          nil
@@ -337,7 +340,7 @@
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native)
-        (is (false? (mt/with-test-user :rasta (mi/can-read? card))))
+        (is (false? (mt/with-test-user :rasta (mi/can-read? (t2/hydrate card :can_read)))))
         (testing "source-table card__N"
           (is (mt/user-http-request :rasta :post 403 "dataset/native"
                                     {:database (mt/id)
@@ -628,6 +631,28 @@
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
                                           :pretty false)))))))
 
+(deftest ^:parallel compile-native-query-with-parameters-test
+  (testing "POST /api/dataset/native"
+    (let [query (mt/native-query
+                 {:query         "SELECT * FROM VENUES WHERE NAME = {{name}}"
+                  :template-tags {"name" {:id           "name-tag"
+                                          :name         "name"
+                                          :display-name "Name"
+                                          :type         :text}}})]
+      (testing "\nTemplate tag values are spliced into the native query"
+        (is (= {:query  "SELECT * FROM VENUES WHERE NAME = 'Gadget'"
+                :params []}
+               (mt/user-http-request :crowberto :post 200 "dataset/native"
+                                     (assoc query
+                                            :parameters [{:type   :category
+                                                          :target [:variable [:template-tag "name"]]
+                                                          :value  "Gadget"}]
+                                            :pretty false)))))
+      (testing "\nA template tag without a value is reported as a missing parameter"
+        (is (=? {:cause "Cannot run the query: missing required parameters: #{\"name\"}"}
+                (mt/user-http-request :crowberto :post "dataset/native"
+                                      (assoc query :pretty false))))))))
+
 (deftest ^:parallel compile-disable-max-results-test
   (testing "POST /api/dataset/native"
     (testing "\nWith disable-max-results? the compiled SQL should not include a LIMIT clause"
@@ -666,8 +691,7 @@
             (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
             (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
             (is (malli= [:map
-                         [:permissions-error? [:= true]]
-                         [:message            [:= "You do not have permissions to run this query."]]]
+                         [:message [:= "You do not have permissions to run this query."]]]
                         (mt/user-http-request :rasta :post "dataset/native"
                                               (mt/mbql-query venues
                                                 {:fields [$id $name]}))))))))))
@@ -727,7 +751,7 @@
 (deftest report-timezone-test
   ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-  (mt/test-driver :postgres
+  (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
     (testing "expected (desired) and actual timezone should be returned as part of query results"
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [results (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query checkins
@@ -767,6 +791,23 @@
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MD" "Twitter" nil 4 16 62] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
+
+(deftest ^:parallel pivot-dataset-error-response-test
+  (mt/dataset test-data
+    (testing "POST /api/dataset/pivot"
+      (testing "a failed query returns the usual formatted error response, not an empty body"
+        (doseq [[cause query] {"an out-of-range pivot row index"
+                               (assoc (qp.pivot.test-util/pivot-query) :pivot_rows [0 1 2 3])
+
+                               "a reference to a nonexistent column"
+                               (assoc-in (qp.pivot.test-util/pivot-query) [:query :filter]
+                                         [:= [:field Integer/MAX_VALUE nil] 1])}]
+          (testing cause
+            (let [{:keys [status body]} (mt/user-http-request-full-response :crowberto :post "dataset/pivot" query)]
+              (is (contains? #{400 500} status))
+              (is (=? {:status "failed"
+                       :error  string?}
+                      body)))))))))
 
 (deftest ^:parallel pivot-dataset-row-totals-disabled-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
@@ -1154,17 +1195,55 @@
                                               {"id" {:name         "id"
                                                      :display-name "Id"
                                                      :type         :dimension
-                                                     :dimension    [:field (mt/id :people :id) nil]
+                                                     :field-id     (mt/id :people :id)
                                                      :widget-type  :id
                                                      :default      nil}}}})))))
+
+(deftest ^:parallel query-metadata-source-card-matches-its-query-test
+  (testing "A source Card brings the same metadata as its query, plus the Card itself"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {card-id :id} (mt/card-with-metadata {:dataset_query query})]
+        (let [query-metadata (fn [query]
+                               (-> (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                                         (dissoc query :lib/metadata))
+                                   (update :tables (partial map #(dissoc % :view_count)))))
+              card-query     (lib/query mp (lib.metadata/card mp card-id))]
+          (is (= (assoc (query-metadata query) :cards [])
+                 (update (query-metadata card-query) :cards #(remove (comp #{card-id} :id) %))))
+          (is (=? {:cards [{:id card-id}]}
+                  (query-metadata card-query))))))))
+
+(defn- card-with-result-metadata [query]
+  {:dataset_query   query
+   :result_metadata (-> (mt/user-http-request :crowberto :post 202 "dataset" (dissoc query :lib/metadata))
+                        :data :results_metadata :columns)})
+
+(deftest ^:parallel query-metadata-source-card-implicit-join-fk-field-test
+  (testing "Columns a source Card joined implicitly bring the FK Field they were joined through, also when nested"
+    (let [mp           (mt/metadata-provider)
+          orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          category     (m/find-first #(and (= (:id %) (mt/id :products :category))
+                                           (= (:fk-field-id %) (mt/id :orders :product_id)))
+                                     (lib/visible-columns orders-query))]
+      (mt/with-temp [:model/Card {card-id :id} (card-with-result-metadata (lib/with-fields orders-query [category]))]
+        (mt/with-temp [:model/Card {nested-id :id} (card-with-result-metadata
+                                                    (lib/query mp (lib.metadata/card mp card-id)))]
+          (doseq [card-id [card-id nested-id]]
+            (is (=? {:fields [{:id (mt/id :orders :product_id)}]
+                     :tables [{:id (mt/id :products)}]}
+                    (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                          (dissoc (lib/query mp (lib.metadata/card mp card-id)) :lib/metadata))))))))))
 
 (deftest dataset-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
-      [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
-                                                    :type     :query
-                                                    :query    {:source-table (str "card__" card-id-1)}}}]
+      [:model/Card {card-id-1 :id} (mt/card-with-metadata {:dataset_query (mt/mbql-query products)})
+       :model/Card {card-id-2 :id} (mt/card-with-metadata
+                                    {:table_id      (mt/id :products)
+                                     :dataset_query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (str "card__" card-id-1)}}})]
       (letfn [(query-metadata [expected-status card-id]
                 (-> (mt/user-http-request :crowberto :post expected-status
                                           "dataset/query_metadata"
@@ -1178,20 +1257,23 @@
             (doseq [card-id [card-id-1 card-id-2]]
               (is (=?
                    {:fields    empty?
-                    :tables    [{:id (str "card__" card-id)}]
+                    :tables    [{:id (mt/id :products)}]
+                    :cards     [{:id card-id}]
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
-            ;; card-id-1 is deleted, so querying it as a source returns empty tables
+            ;; card-id-1 is deleted, so querying it as a source returns no cards
             (is (=?
                  {:fields    empty?
                   :tables    empty?
+                  :cards     empty?
                   :databases [{:id (mt/id) :engine string?}]}
                  (query-metadata 200 card-id-1)))
             ;; card-id-2 still exists, so querying it as a source still works
             (is (=?
                  {:fields    empty?
-                  :tables    [{:id (str "card__" card-id-2)}]
+                  :tables    [{:id (mt/id :products)}]
+                  :cards     [{:id card-id-2}]
                   :databases [{:id (mt/id) :engine string?}]}
                  (query-metadata 200 card-id-2)))))))))
 
@@ -1200,10 +1282,10 @@
     (mt/with-premium-features #{}
       (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
         (t2/with-transaction [_conn nil {:rollback-only true}]
-          (mt/with-temp [:model/User       {user-id :id} {:email "oss-db-access-test@example.com"}
-                         :model/Collection collection {}]
+          (let [[{user-id :id}] (user/create-users! [{:email "oss-db-access-test@example.com"}])
+                [collection]  (collection/create-collections! [{:name "Published Tables"}])]
             ;; Publish the venues table into this collection
-            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
               ;; Set database-level permissions first to establish baseline
               (perms/set-database-permission! all-users (mt/id) :perms/view-data :unrestricted)
@@ -1237,4 +1319,33 @@
                                                   :settings {:include_sensitive_fields true}))]
           (is (some #(= (:id %) (mt/id :venues :price))
                     (->> result :tables (mapcat :fields)))
-              "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))
+              "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true")))
+      (testing "sensitive fields are excluded for users who can't edit the table's metadata, even when requested"
+        (let [result (mt/user-http-request :rasta :post 200 "dataset/query_metadata"
+                                           (assoc (mt/mbql-query venues)
+                                                  :settings {:include_sensitive_fields true}))]
+          (is (seq (->> result :tables (mapcat :fields))))
+          (is (not (some #(= (:id %) (mt/id :venues :price))
+                         (->> result :tables (mapcat :fields))))))))))
+
+(deftest native-form-requires-native-query-perms-test
+  (testing "POST /api/dataset only returns the compiled query in `:native_form` to users with native query perms"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (doseq [[create-queries expected] {:query-builder-and-native some?
+                                         :query-builder            nil?}]
+        (testing (format "with %s" create-queries)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries create-queries)
+          (let [response (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query venues {:limit 1}))]
+            (is (= "completed" (:status response)))
+            (is (expected (get-in response [:data :native_form])))))))))
+
+(deftest card-query-native-form-requires-native-query-perms-test
+  (testing "POST /api/card/:id/query doesn't return the compiled query to users without native query perms"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:limit 1})}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+        (let [response (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))]
+          (is (= "completed" (:status response)))
+          (is (nil? (get-in response [:data :native_form]))))))))

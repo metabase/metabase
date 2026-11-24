@@ -241,7 +241,7 @@
   (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
     (mt/discard-setting-changes [:test-setting-custom-init]
       (clear-setting-if-leak!)
-      (binding [mdb.connection/*application-db* {:status (atom @#'mdb.connection/initial-db-status)}]
+      (mdb.connection/with-application-db {:status (atom @#'mdb.connection/initial-db-status)}
         (is (= false (mdb/db-is-set-up?)))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -582,7 +582,16 @@
            (fetch-csv-setting-value! "A,B,C"))))
   (testing "should also work if there are quoted values that include commas in them"
     (is  (= ["A" "B" "C1,C2" "ddd"]
-            (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd")))))
+            (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd"))))
+  (testing "ignores spaces around entries, and blank entries, as an env var or a stored string can have them"
+    (is (= ["A" "B" "C"]
+           (fetch-csv-setting-value! " A , B,, C ,"))))
+  (testing "reads only the first line"
+    (is (= ["A" "B"]
+           (fetch-csv-setting-value! "A,B\nC"))))
+  (testing "reads an empty string as nil, and only blank entries as an empty list"
+    (is (nil? (fetch-csv-setting-value! "")))
+    (is (= [] (fetch-csv-setting-value! ",")))))
 
 (defn- set-and-fetch-csv-setting-value! [v]
   (test-csv-setting! v)
@@ -596,12 +605,15 @@
   (testing "should be a able to set a CSV setting with a value that includes commas"
     (is (= {:db-value "A,B,C,\"D1,D2\"", :parsed-value ["A" "B" "C" "D1,D2"]}
            (set-and-fetch-csv-setting-value! ["A" "B" "C" "D1,D2"]))))
-  (testing "should be able to set a CSV setting with a value that includes spaces"
-    (is (= {:db-value "A,B,C, D ", :parsed-value ["A" "B" "C" " D "]}
-           (set-and-fetch-csv-setting-value! ["A" "B" "C" " D "]))))
-  (testing "should be a able to set a CSV setting when the string is already CSV-encoded"
-    (is (= {:db-value "A,B,C", :parsed-value ["A" "B" "C"]}
-           (set-and-fetch-csv-setting-value! "A,B,C"))))
+  (testing "stores entries without surrounding spaces, and drops blank ones"
+    (is (= {:db-value "A,B,C,D", :parsed-value ["A" "B" "C" "D"]}
+           (set-and-fetch-csv-setting-value! ["A" "B" "" "C" " D "]))))
+  (testing "stores numbers and booleans in a list as text"
+    (is (= {:db-value "1,true,A", :parsed-value ["1" "true" "A"]}
+           (set-and-fetch-csv-setting-value! [1 true "A"]))))
+  (testing "keeps spaces and newlines inside an entry"
+    (is (= {:db-value "A,\"B\nC\",D E", :parsed-value ["A" "B\nC" "D E"]}
+           (set-and-fetch-csv-setting-value! ["A" "B\nC" "D E"]))))
   (testing "should be able to set nil CSV setting"
     (is (= {:db-value nil, :parsed-value nil}
            (set-and-fetch-csv-setting-value! nil))))
@@ -609,6 +621,46 @@
     (test-csv-setting-with-default! nil)
     (is (= ["A" "B" "C"]
            (test-csv-setting-with-default)))))
+
+(deftest csv-setting-string-value-test
+  (testing "stores a CSV string in the same form as a list"
+    (is (= {:db-value "A,B,\"C1,C2\"", :parsed-value ["A" "B" "C1,C2"]}
+           (set-and-fetch-csv-setting-value! " A , B,,\"C1,C2\""))))
+  (testing "drops spaces inside quotes too, as the stored form has no quotes to keep them"
+    (is (= {:db-value "A,E", :parsed-value ["A" "E"]}
+           (set-and-fetch-csv-setting-value! "A,\" E \""))))
+  (testing "accepts a string that ends in blank lines"
+    (doseq [trailing ["A,B\n\n" "A,B\r\n \r\n"]]
+      (testing (pr-str trailing)
+        (is (= {:db-value "A,B", :parsed-value ["A" "B"]}
+               (set-and-fetch-csv-setting-value! trailing)))))))
+
+(deftest csv-setting-invalid-string-test
+  (testing "rejects a CSV string that does not parse, or spans several lines, and keeps the stored value"
+    (test-csv-setting! "C,D")
+    (doseq [[bad message] [["A,\"B"  "Invalid comma-separated value."]
+                           ["A\nB"   "Put comma-separated values on one line."]]]
+      (testing (pr-str bad)
+        (is (= [message {:status-code 400}]
+               (try
+                 (test-csv-setting! bad)
+                 nil
+                 (catch clojure.lang.ExceptionInfo e
+                   [(ex-message e) (ex-data e)]))))
+        (is (= ["C" "D"] (test-csv-setting)))))))
+
+(deftest csv-setting-empty-value-test
+  (testing "stores nothing for a value with no entries, so the default applies"
+    (try
+      (doseq [empty-value ["" " " " , " [] [" "]]]
+        (testing (pr-str empty-value)
+          (is (= {:db-value nil, :parsed-value nil}
+                 (set-and-fetch-csv-setting-value! empty-value)))
+          (test-csv-setting-with-default! ["X"])
+          (test-csv-setting-with-default! empty-value)
+          (is (= ["A" "B" "C"] (test-csv-setting-with-default)))))
+      (finally
+        (test-csv-setting-with-default! nil)))))
 
 (deftest csv-setting-user-facing-value-test
   (testing "`user-facing-value` should be `nil` for CSV Settings with default values"
@@ -675,31 +727,42 @@
         (is (= "toucan-name" (:setting-key (ex-data e))))))))
 
 (deftest setting-value-aad-test
-  (let [read #'setting/read-setting-value]
+  (let [read-value #'setting/read-setting-value]
     (encryption-test/with-secret-key "ABCDEFGH12345678"
       (testing "a value round trips through the AAD naming its setting"
         (is (= "Sad Can"
-               (:value (read {:key "test-setting-1"
-                              :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))))
+               (:value (read-value {:key "test-setting-1"
+                                    :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))))
       (testing "a value moved to another setting's row is rejected, and the message never carries the value"
         (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                       #"Error reading setting \"test-setting-2\""
-                                      (read {:key "test-setting-2"
-                                             :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))]
+                                      (read-value {:key "test-setting-2"
+                                                   :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))]
           (is (not (re-find #"Sad Can" (ex-message e))))))
       (testing "a plaintext value is rejected while a key is set"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Expected an encrypted value"
-                              (read {:key "test-setting-1" :value_with_aad "Sad Can"}))))
+                              (read-value {:key "test-setting-1" :value_with_aad "Sad Can"}))))
       (testing "a row written only by a version predating `value_with_aad` reads as no value at all"
         (is (= {:key "test-setting-1" :value nil :value_with_aad nil}
-               (read {:key "test-setting-1" :value "Sad Can" :value_with_aad nil}))))
+               (read-value {:key "test-setting-1" :value "Sad Can" :value_with_aad nil}))))
       (testing "a key with no `defsetting` reads as no value at all, without so much as a decrypt"
         (is (= {:key "no-such-setting" :value nil :value_with_aad "not even ciphertext"}
-               (read {:key "no-such-setting" :value_with_aad "not even ciphertext"})))))
+               (read-value {:key "no-such-setting" :value_with_aad "not even ciphertext"})))))
     (testing "a key with no `defsetting` cannot be written: how it is stored is the setting's to decide"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown setting: no-such-setting"
                             (#'setting/write-setting-value {:key "no-such-setting" :value "Sad Can"}))))))
+
+(deftest settings-last-updated-row-written-only-by-cache-test
+  (testing "settings-last-updated row cannot be written through the model"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update `settings-last-updated` yourself"
+                          (t2/insert! :model/Setting :key setting.cache/settings-last-updated-key :value "2020-01-01")))
+    (setting.cache/update-settings-last-updated!)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update `settings-last-updated` yourself"
+                          (t2/update! :model/Setting :key setting.cache/settings-last-updated-key {:value "2020-01-01"})))
+    (testing "nor through the setting framework"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update `settings-last-updated` yourself"
+                            (setting/set-value-of-type! :string :settings-last-updated "2020-01-01"))))))
 
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
@@ -950,12 +1013,16 @@
               database-local-value    [2 nil]
               do-with-site-wide-value [(fn [thunk]
                                          (testing "\nsite-wide value set in application DB"
-                                           ;; Set the setting directly instead of using
-                                           ;; [[mt/with-temporary-setting-values]] because that blows up when the
-                                           ;; Setting is Database-local-only
+                                           ;; Write the row to the table directly, because the model refuses a
+                                           ;; site-wide row for a Database-local-only Setting
                                            (t2/delete! :model/Setting :key (name setting-name))
                                            (when site-wide-value
-                                             (t2/insert! :model/Setting :key (name setting-name), :value (str site-wide-value)))
+                                             (t2/insert! :setting
+                                                         :key            (name setting-name)
+                                                         :value          (str site-wide-value)
+                                                         :value_with_aad (encryption/maybe-encrypt
+                                                                          (str site-wide-value)
+                                                                          {:aad (mdb.setting/setting-aad (name setting-name))})))
                                            (setting.cache/restore-cache!)
                                            (try
                                              (thunk)
@@ -1026,7 +1093,12 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Site-wide values are not allowed for Setting :test-database-local-only-setting"
-         (test-database-local-only-setting! 2))))
+         (test-database-local-only-setting! 2)))
+    (testing "through the model"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Site-wide values are not allowed for Setting :test-database-local-only-setting"
+           (t2/insert! :model/Setting :key "test-database-local-only-setting" :value "2")))))
   (testing "Default values should be allowed for Database-local-only Settings"
     (binding [setting/*database-local-values* {}]
       (is (= "DEFAULT"
@@ -1157,21 +1229,21 @@
     (is (some? test-driver-feature-only-setting))))
 
 (deftest validate-settable-for-db-test
-  (testing "validate-settable-for-db! validates database feature requirements"
+  (testing "validate-settable-for-db validates database feature requirements"
     (let [database                       {:id 1, :engine :h2}
           setting-with-driver-feature    :test-driver-feature-only-setting
           setting-without-driver-feature :test-database-local-allowed-setting
           driver-supports-everything?    (constantly true)
           driver-supports-nothing?       (constantly false)]
       (testing "should succeed when driver supports required feature"
-        (is (nil? (setting/validate-settable-for-db! setting-with-driver-feature database driver-supports-everything?))))
+        (is (nil? (setting/validate-settable-for-db setting-with-driver-feature database driver-supports-everything?))))
       (testing "should throw when driver does not support required feature"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Setting test-driver-feature-only-setting requires driver feature :actions, but the database does not support it"
-             (setting/validate-settable-for-db! setting-with-driver-feature database driver-supports-nothing?))))
+             (setting/validate-settable-for-db setting-with-driver-feature database driver-supports-nothing?))))
       (testing "should succeed for settings without driver-feature requirement"
-        (is (nil? (setting/validate-settable-for-db! setting-without-driver-feature database driver-supports-nothing?)))))))
+        (is (nil? (setting/validate-settable-for-db setting-without-driver-feature database driver-supports-nothing?)))))))
 
 ;;; ------------------------------------------------ Database-enabled Settings ----------------------------------------
 
@@ -1203,24 +1275,24 @@
     (is (some? test-enabled-for-db-setting))))
 
 (deftest validate-settable-for-db-enabled-test
-  (testing "validate-settable-for-db! validates database-specific enablement"
+  (testing "validate-settable-for-db validates database-specific enablement"
     (let [regular-database {:id 1 :engine :h2}
           routed-database  {:id 2 :engine :h2 :router_database_id 3}]
       (testing "should succeed when database passes enabled-for-db? predicate"
-        (is (nil? (setting/validate-settable-for-db! :test-enabled-for-db-setting
-                                                     regular-database
-                                                     (constantly true)))))
+        (is (nil? (setting/validate-settable-for-db :test-enabled-for-db-setting
+                                                    regular-database
+                                                    (constantly true)))))
       (testing "should throw when database fails enabled-for-db? predicate"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Setting test-enabled-for-db-setting is not enabled for this database"
-             (setting/validate-settable-for-db! :test-enabled-for-db-setting
-                                                routed-database
-                                                (constantly true)))))
+             (setting/validate-settable-for-db :test-enabled-for-db-setting
+                                               routed-database
+                                               (constantly true)))))
       (testing "should succeed for settings without enabled-for-db? requirement"
-        (is (nil? (setting/validate-settable-for-db! :test-database-local-allowed-setting
-                                                     routed-database
-                                                     (constantly true))))))))
+        (is (nil? (setting/validate-settable-for-db :test-database-local-allowed-setting
+                                                    routed-database
+                                                    (constantly true))))))))
 
 (defsetting ^:private test-warn-vs-error-setting
   (deferred-tru "test Setting for warnings vs errors")
@@ -1255,14 +1327,14 @@
       (with-database db-with-both
         (testing "configured value is not returned"
           (is (= "default-value" (test-warn-vs-error-setting))))))
-    (testing "validate-settable-for-db! should only throw for error reasons"
+    (testing "validate-settable-for-db should only throw for error reasons"
       (testing "should not throw for warnings"
-        (is (nil? (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-warning every-feature))))
+        (is (nil? (setting/validate-settable-for-db :test-warn-vs-error-setting db-with-warning every-feature))))
       (testing "should throw for errors"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Setting test-warn-vs-error-setting is not enabled for this database"
-             (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-error every-feature)))))))
+             (setting/validate-settable-for-db :test-warn-vs-error-setting db-with-error every-feature)))))))
 
 (deftest enabled?-test
   (testing "Settings can be disabled"
@@ -1311,7 +1383,7 @@
            :feature    :test-feature
            :encryption :when-encryption-key-set)))))
 
-(deftest validate-settable!-ex-data-test
+(deftest validate-settable-ex-data-test
   (testing "Settings that can't be written report a status code, so the API doesn't surface them as a 500"
     (testing "premium feature not available"
       (mt/with-premium-features #{}
@@ -1320,7 +1392,7 @@
                 :setting     "test-feature-setting"
                 :feature     :test-feature}
                (try (test-feature-setting! "custom")
-                    (catch ExceptionInfo e (ex-data e)))))))
+                    (catch ExceptionInfo e (dissoc (ex-data e) :response/keys)))))))
     (testing ":enabled? returns false"
       (is (= {:status-code 400
               :setting     "test-enabled-setting-default"}
@@ -1370,6 +1442,10 @@
         (catch Exception e
           (is (= "Setting name 'retired-setting' is retired; use a different name instead"
                  (ex-message e))))))))
+
+(deftest ^:parallel llm-max-tokens-is-retired-test
+  (testing "the removed llm-max-tokens setting's name cannot be reused by a new setting"
+    (is (contains? @#'setting/retired-setting-names "llm-max-tokens"))))
 
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
@@ -1700,6 +1776,38 @@
   (testing "Validation is a no-op if the CSV is valid"
     (is (nil? (get-parse-exception :csv "1, 2")))))
 
+(defsetting test-csv-custom-getter-setting
+  "Test setting - this only shows up in dev (CSV with a custom getter)"
+  :visibility :internal
+  :type       :csv
+  :encryption :no
+  :getter     (constantly []))
+
+(deftest csv-setting-ignored-lines-warning-test
+  (letfn [(warnings-about [env-var]
+            (mt/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
+              (try
+                (setting/validate-settings-formatting!)
+                ;; A first line that fails validation throws after the warnings are logged, and only they matter here.
+                (catch Exception _))
+              (into [] (comp (map :message) (filter #(str/includes? % env-var))) (messages))))
+          (warnings [raw-value]
+            (mt/with-temp-env-var-value! [mb-test-csv-validation-setting raw-value]
+              (warnings-about "MB_TEST_CSV_VALIDATION_SETTING")))]
+    (testing "warns that only the first line of a multi-line env var is read"
+      (doseq [raw-value ["1,2\n3" "1,2\n\"3" "1,2\n\n3"]]
+        (testing (pr-str raw-value)
+          (is (= [(str "Only the first line of MB_TEST_CSV_VALIDATION_SETTING is used. "
+                       "Put comma-separated values on one line.")]
+                 (warnings raw-value))))))
+    (testing "says nothing about a setting with a custom getter, which may read every line"
+      (mt/with-temp-env-var-value! [mb-test-csv-custom-getter-setting "1\n2"]
+        (is (= [] (warnings-about "MB_TEST_CSV_CUSTOM_GETTER_SETTING")))))
+    (testing "says nothing about one line, blank lines after it, or a first line that fails validation instead"
+      (doseq [raw-value ["1,2" "1,2\n\n" "1,\"2"]]
+        (testing (pr-str raw-value)
+          (is (= [] (warnings raw-value))))))))
+
 (deftest invalid-csv-setting-eof-test
   (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
     (let [ex (get-parse-exception :csv "1,2,2,\",,")]
@@ -1809,14 +1917,14 @@
 (deftest validation-completeness-test
   (let [formats-to-check (disj (set (keys (methods setting/get-value-of-type))) :string)]
     (testing "Every settings format has its redaction predicate defined"
-      (doseq [format formats-to-check]
-        (testing (format "We have defined a redaction multimethod for the %s format" format)
-          (is (some? (format (methods setting/may-contain-raw-token?)))))))
+      (doseq [fmt formats-to-check]
+        (testing (format "We have defined a redaction multimethod for the %s format" fmt)
+          (is (some? (fmt (methods setting/may-contain-raw-token?)))))))
     (testing "Every settings format has tests for its validation"
-      (doseq [format formats-to-check]
+      (doseq [fmt formats-to-check]
         ;; We operate on trust that tests are added along with this var
-        (testing (format "We have defined a setting for the %s validation tests" format)
-          (is (var? (resolve (ns-validation-setting-symbol format)))))))))
+        (testing (format "We have defined a setting for the %s validation tests" fmt)
+          (is (var? (resolve (ns-validation-setting-symbol fmt)))))))))
 
 (deftest migrate-settings!-test
   (testing "rows a version predating `value_with_aad` wrote get it filled in from `value` on startup"
@@ -1943,6 +2051,27 @@
   (is (nil? (setting/env-var-value :test-setting-with-deprecated-name)))
   (is (= [] (deprecated-env-var-warnings))))
 
+(deftest env-var-source-names-the-variable-actually-set-test
+  (testing "the value comes back with the name of the variable that supplied it, so a message about the value can
+           point at the variable the operator set rather than at one they did not"
+    (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "PRIMARY"]
+      (is (= ["MB_TEST_SETTING_WITH_DEPRECATED_NAME" "PRIMARY"]
+             (setting/env-var-source :test-setting-with-deprecated-name))))
+    (mt/with-temp-env-var-value! [mb-old-test-setting-name "LEGACY"]
+      (is (= ["MB_OLD_TEST_SETTING_NAME" "LEGACY"]
+             (setting/env-var-source :test-setting-with-deprecated-name))))
+    (testing "the primary wins when both are set"
+      (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "PRIMARY"
+                                    mb-old-test-setting-name             "LEGACY"]
+        (is (= ["MB_TEST_SETTING_WITH_DEPRECATED_NAME" "PRIMARY"]
+               (setting/env-var-source :test-setting-with-deprecated-name)))))
+    (testing "an empty primary means explicitly unset, and blocks the deprecated fallback"
+      (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name ""
+                                    mb-old-test-setting-name             "LEGACY"]
+        (is (nil? (setting/env-var-source :test-setting-with-deprecated-name)))))
+    (testing "nil when neither is set"
+      (is (nil? (setting/env-var-source :test-setting-with-deprecated-name))))))
+
 (deftest deprecated-name-empty-primary-blocks-fallback-test
   (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name ""
                                 mb-old-test-setting-name             "LEGACY"]
@@ -2024,3 +2153,16 @@
     (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
       (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
         (is (= :env (setting/get-raw-value-source :test-setting-1)))))))
+
+(deftest set-value-stored-outside-cache-test
+  (testing "Setting a value that is already stored, but missing from the cache, keeps it"
+    (test-setting-1! nil)
+    (try
+      (t2/insert! (t2/table-name :model/Setting) :key "test-setting-1" :value "ABC")
+      (test-setting-1! "ABC")
+      (is (= "ABC" (t2/select-one-fn :value :model/Setting :key "test-setting-1")))
+      (test-setting-1! "DEF")
+      (is (= "DEF" (t2/select-one-fn :value :model/Setting :key "test-setting-1")))
+      (finally
+        (t2/delete! (t2/table-name :model/Setting) :key "test-setting-1")
+        (setting.cache/restore-cache!)))))

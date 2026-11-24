@@ -166,7 +166,7 @@
         segments-db  {:segments [{:id          segment-id
                                   :name        segment-name
                                   :table-id    (meta/id :venues)
-                                  :definition  {}
+                                  :definition  nil
                                   :description segment-description}]}
         metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider segments-db)
         query (lib/query metadata-provider (meta/table-metadata :venues))
@@ -192,7 +192,7 @@
         metrics-db  {:segments [{:id          metric-id
                                  :name        metric-name
                                  :table-id    (meta/id :venues)
-                                 :definition  {}
+                                 :definition  nil
                                  :description metric-description}]}
         metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider metrics-db)
         query (lib/query metadata-provider (meta/table-metadata :venues))
@@ -434,7 +434,7 @@
             filter-clause (lib/= (m/find-first #(= (:name %) "NAME") (lib/filterable-columns query)) "test")
             filter-parts  (lib.fe-util/string-filter-parts query -1 filter-clause)]
         (is (=? {:field-id (meta/id :venues :name)}
-                (lib.field/field-values-search-info query (:column filter-parts))))))
+                (lib.field/field-search-info query (:column filter-parts))))))
     (testing "should create case-insensitive filter clauses unless `case-sensitive` is explicitly set to `true`"
       (doseq [operator [:contains :does-not-contain :starts-with :ends-with]]
         (are [expected options] (=? expected (lib/options (lib.fe-util/string-filter-clause operator column ["A"] options)))
@@ -1006,7 +1006,7 @@
                                                :name "foo"
                                                :widget-type :text
                                                :display-name "foo"
-                                               :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
+                                               :field-id  1}})
                (lib/dependent-metadata nil :question))))))
 
 (deftest ^:parallel dependent-metadata-test-2
@@ -1193,7 +1193,8 @@
               "2024-05-13T16:35"]]
     (testing "Expandable temporal units"
       (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} int?] start end]
-                                (#'lib.fe-util/expand-temporal-expression (update-temporal-unit expr unit)))
+                                (#'lib.fe-util/expand-temporal-expression {:start-of-week :sunday}
+                                                                          (update-temporal-unit expr unit)))
         :hour "2024-05-13T16:00:00" "2024-05-13T16:59:59"
         :week "2024-05-12" "2024-05-18"
         :month "2024-05-01" "2024-05-31"
@@ -1216,7 +1217,7 @@
                                             (field-with-unit unit) value])]
       (are [unit value start end]
            (=? [:between map? [:field {:temporal-unit unit} int?] start end]
-               (#'lib.fe-util/expand-temporal-expression (expr-with unit value)))
+               (#'lib.fe-util/expand-temporal-expression {:start-of-week :sunday} (expr-with unit value)))
         :day   "2024-05-13T00:00:00Z"      "2024-05-13" "2024-05-13"
         :day   "2024-05-13T00:00:00+08:00" "2024-05-13" "2024-05-13"
         :day   "2024-05-13T00:00:00-08:00" "2024-05-13" "2024-05-13"

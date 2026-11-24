@@ -45,6 +45,7 @@ import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
 import { FilterDropdown } from "../SdkQuestion/components/Filter/FilterDropdown";
 import { QuestionSettingsDropdown } from "../SdkQuestion/components/QuestionSettings";
+import { RefreshButton } from "../SdkQuestion/components/RefreshButton";
 import { ResultToolbar } from "../SdkQuestion/components/ResultToolbar/ResultToolbar";
 import {
   SaveButton,
@@ -273,6 +274,7 @@ export const SdkQuestionDefaultView = ({
                   <QuestionAlertsButton />
                 </>
               )}
+              {!isEditorOpen && <RefreshButton />}
               {withEditorButton && (
                 <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
               )}

@@ -1,6 +1,9 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 
-import { trackMetaplowPageView } from "metabase/utils/metaplow";
+import {
+  sanitizeAnalyticsPathname,
+  trackMetaplowPageView,
+} from "metabase/utils/metaplow";
 import Settings from "metabase/utils/settings";
 
 export const trackPageView = (url: string): void => {
@@ -9,8 +12,7 @@ export const trackPageView = (url: string): void => {
   }
 
   if (Settings.snowplowEnabled()) {
-    Snowplow.setReferrerUrl("#");
-    Snowplow.setCustomUrl(getSanitizedUrl(url));
+    setSnowplowPageUrl(url);
     Snowplow.trackPageView();
   }
 
@@ -19,9 +21,15 @@ export const trackPageView = (url: string): void => {
   }
 };
 
-const getSanitizedUrl = (url: string): string => {
-  const urlWithoutSlug = url.replace(/(\/\d+)-[^/]+$/, (_match, path) => path);
-  const urlWithoutHost = new URL(urlWithoutSlug, Settings.snowplowUrl() ?? "");
+/** Reports `pathname`, without customer-chosen names, as the page of later Snowplow events, with no referrer. */
+export const setSnowplowPageUrl = (pathname: string): void => {
+  if (!Settings.snowplowEnabled()) {
+    return;
+  }
 
-  return urlWithoutHost.href;
+  Snowplow.setReferrerUrl("#");
+  Snowplow.setCustomUrl(getSanitizedUrl(pathname));
 };
+
+const getSanitizedUrl = (url: string): string =>
+  new URL(sanitizeAnalyticsPathname(url), Settings.snowplowUrl() ?? "").href;

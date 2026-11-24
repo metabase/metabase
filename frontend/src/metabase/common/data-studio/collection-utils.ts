@@ -22,7 +22,7 @@ export function canPlaceEntityInCollection(
     return entityType === "metric" || entityType === "collection";
   }
 
-  return false;
+  return collectionType === "library-dashboards" && entityType !== "table";
 }
 
 export function canPlaceEntityInCollectionOrDescendants(
@@ -36,7 +36,8 @@ export function canPlaceEntityInCollectionOrDescendants(
   if (collectionType === "library") {
     return (
       canPlaceEntityInCollection(entityType, "library-data") ||
-      canPlaceEntityInCollection(entityType, "library-metrics")
+      canPlaceEntityInCollection(entityType, "library-metrics") ||
+      canPlaceEntityInCollection(entityType, "library-dashboards")
     );
   }
 

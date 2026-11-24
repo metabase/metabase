@@ -5,7 +5,11 @@ import { useState } from "react";
 import { act, screen, waitFor } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
-import { metabotActions } from "metabase/metabot/state";
+import type {
+  FinishReason,
+  SSEEvent,
+} from "metabase/api/ai-streaming/sse-types";
+import { getMetabotState, metabotActions } from "metabase/metabot/state";
 import {
   createTestMetabotState,
   lastReqBody,
@@ -16,20 +20,27 @@ import {
   whoIsYourFavoriteResponse,
 } from "metabase/metabot/tests/utils";
 import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  ORDERS_ID,
+  PEOPLE_ID,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
 
 import { useMetabot } from "./use-metabot";
 
-const makeCard = (id: string, sourceTable = 1): GeneratedCard => ({
+const makeCard = (id: string, sourceTable = ORDERS_ID): GeneratedCard => ({
   type: "card",
   id,
   title: "Chart",
   query: {
     id: `q-${id}`,
-    query: {
-      database: 1,
-      type: "query",
-      query: { "source-table": sourceTable },
-    },
+    query: Lib.toJsQuery(
+      Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: sourceTable } }],
+      }),
+    ),
   },
   display: "table",
 });
@@ -55,7 +66,7 @@ const addAgentMessage = (
   );
 };
 
-const cardMessage = (id: string, sourceTable = 1) =>
+const cardMessage = (id: string, sourceTable = ORDERS_ID) =>
   // `addAgentMessage` types its payload with a non-distributive `Omit` that
   // collapses the message union to common keys, so the branch-specific `part`
   // field fails excess-property checks (see the fuller note on `addAgentMessage`
@@ -69,13 +80,13 @@ const cardMessage = (id: string, sourceTable = 1) =>
     },
   }) as any;
 
-const cardPath = (id: string, sourceTable = 1) =>
+const cardPath = (id: string, sourceTable = ORDERS_ID) =>
   Urls.generatedCard(makeCard(id, sourceTable));
 
 /**
  * Covers `useMetabot()` non-passthrough wiring: `CurrentChart`,
- * `messages[n].Chart`, `submitMessage`, `messages` mapping. Chart mocks
- * expose `data-testid` + `data-query`; real rendering lives in the
+ * `messages[n].Chart`, `submitMessage`, `messages` mapping, `incompleteResponse`.
+ * Chart mocks expose `data-testid` + `data-query`; real rendering lives in the
  * StaticQuestion/InteractiveQuestion specs. `ComponentProvider` is stubbed —
  * provider init is out of scope. Pure passthroughs (retry/cancel/reset/
  * errorMessages/isProcessing) skipped.
@@ -368,8 +379,8 @@ describe("useMetabot", () => {
         );
         addAgentMessage(
           store,
-          cardMessage("card-1A", 1),
-          cardMessage("card-1B", 2),
+          cardMessage("card-1A", ORDERS_ID),
+          cardMessage("card-1B", PRODUCTS_ID),
         );
         store.dispatch(
           metabotActions.addUserMessage({
@@ -379,14 +390,14 @@ describe("useMetabot", () => {
             message: "second",
           }),
         );
-        addAgentMessage(store, cardMessage("card-2", 3));
+        addAgentMessage(store, cardMessage("card-2", PEOPLE_ID));
       });
 
       const messages = await readMessages();
       const charts = messages.filter((m) => m.type === "chart");
       expect(charts).toHaveLength(2);
-      expect(charts[0].questionPath).toBe(cardPath("card-1B", 2));
-      expect(charts[1].questionPath).toBe(cardPath("card-2", 3));
+      expect(charts[0].questionPath).toBe(cardPath("card-1B", PRODUCTS_ID));
+      expect(charts[1].questionPath).toBe(cardPath("card-2", PEOPLE_ID));
     });
   });
 
@@ -430,21 +441,25 @@ describe("useMetabot", () => {
       });
 
       expect(
-        store.getState().metabot?.conversations?.[conversationId]?.messages
-          .length,
+        getMetabotState(store.getState()).conversations[conversationId]
+          ?.messages.length,
       ).toBe(0);
-      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
+      expect(getMetabotState(store.getState()).agents.omnibot?.visible).toBe(
+        false,
+      );
 
       await userEvent.click(screen.getByTestId("submit-btn"));
 
       await waitFor(() => {
         expect(
-          store.getState().metabot?.conversations?.[conversationId]?.messages
-            .length,
+          getMetabotState(store.getState()).conversations[conversationId]
+            ?.messages.length,
         ).toBeGreaterThan(0);
       });
 
-      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
+      expect(getMetabotState(store.getState()).agents.omnibot?.visible).toBe(
+        false,
+      );
     });
 
     it("resolves to undefined even though agent.submitInput returns an action", async () => {
@@ -456,6 +471,195 @@ describe("useMetabot", () => {
 
       await waitFor(() => expect(onResolved).toHaveBeenCalled());
       expect(onResolved).toHaveBeenCalledWith(undefined);
+    });
+  });
+
+  describe("incompleteResponse", () => {
+    const CONTEXT_WINDOW = 1000;
+    const fullContextWindow = {
+      contextTokens: CONTEXT_WINDOW,
+      contextWindowTokens: CONTEXT_WINDOW,
+    };
+
+    let turnCount = 0;
+    const turnEndingWith = (
+      finishReason: FinishReason,
+      messageMetadata?: typeof fullContextWindow,
+    ): SSEEvent[] => [
+      { type: "start", messageId: `msg_turn_${++turnCount}` },
+      { type: "text-start", id: "t1" },
+      { type: "text-delta", id: "t1", delta: "Here is the start" },
+      { type: "text-end", id: "t1" },
+      {
+        type: "finish",
+        finishReason,
+        ...(messageMetadata && { messageMetadata }),
+      },
+    ];
+
+    const TestIncomplete = ({
+      onContinued,
+    }: {
+      onContinued?: (value: unknown) => void;
+    }) => {
+      const { submitMessage, incompleteResponse } = useMetabot();
+      const continueResponse = incompleteResponse?.continueResponse;
+      const handleContinue = async () => {
+        const result = await continueResponse?.();
+        onContinued?.(result);
+      };
+      return (
+        <div>
+          <button data-testid="submit-btn" onClick={() => submitMessage("hi")}>
+            submit
+          </button>
+          {incompleteResponse && (
+            <div data-testid="incomplete-response">
+              <span data-testid="reason">{incompleteResponse.reason}</span>
+              <span data-testid="message">{incompleteResponse.message}</span>
+              {continueResponse && (
+                <button data-testid="continue-btn" onClick={handleContinue}>
+                  continue
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const submit = () => userEvent.click(screen.getByTestId("submit-btn"));
+    const continueBtn = () => screen.findByTestId("continue-btn");
+    const waitForMessageCount = (
+      store: ReturnType<typeof setup>["store"],
+      count: number,
+    ) =>
+      waitFor(() =>
+        expect(
+          getMetabotState(store.getState()).conversations[conversationId]
+            ?.messages,
+        ).toHaveLength(count),
+      );
+
+    it("exposes nothing after a response that finishes with stop", async () => {
+      mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+      const { store } = setup({ ui: <TestIncomplete /> });
+
+      await submit();
+      await waitForMessageCount(store, 2);
+
+      expect(
+        screen.queryByTestId("incomplete-response"),
+      ).not.toBeInTheDocument();
+    });
+
+    it.each<{
+      finishReason: FinishReason;
+      messageMetadata?: typeof fullContextWindow;
+      reason: string;
+      continuable: boolean;
+    }>([
+      {
+        finishReason: "tool-calls",
+        reason: "step-limit",
+        continuable: true,
+      },
+      {
+        finishReason: "length",
+        reason: "max-length",
+        continuable: true,
+      },
+      {
+        finishReason: "tool-calls",
+        messageMetadata: fullContextWindow,
+        reason: "step-limit",
+        continuable: false,
+      },
+      {
+        finishReason: "length",
+        messageMetadata: fullContextWindow,
+        reason: "context-window-full",
+        continuable: false,
+      },
+      {
+        finishReason: "content-filter",
+        reason: "content-filter",
+        continuable: false,
+      },
+      {
+        finishReason: "other",
+        reason: "other",
+        continuable: false,
+      },
+    ])(
+      "exposes $reason for a $finishReason finish (continuable: $continuable)",
+      async ({ finishReason, messageMetadata, reason, continuable }) => {
+        mockAgentEndpoint({
+          events: turnEndingWith(finishReason, messageMetadata),
+        });
+        setup({ ui: <TestIncomplete /> });
+
+        await submit();
+
+        expect(await screen.findByTestId("reason")).toHaveTextContent(reason);
+        expect(screen.getByTestId("message")).not.toBeEmptyDOMElement();
+        expect(screen.queryByTestId("continue-btn") !== null).toBe(continuable);
+      },
+    );
+
+    it("continueResponse submits the resume prompt as a new user turn", async () => {
+      mockAgentEndpoint({ events: turnEndingWith("tool-calls") });
+      setup({ ui: <TestIncomplete /> });
+      await submit();
+
+      const continuationSpy = mockAgentEndpoint({
+        events: whoIsYourFavoriteResponse,
+      });
+      await userEvent.click(await continueBtn());
+
+      expect((await lastReqBody(continuationSpy))?.message).toBe(
+        "Continue working on my last request.",
+      );
+    });
+
+    it("continueResponse does not expose the agent's internal result to the caller", async () => {
+      mockAgentEndpoint({ events: turnEndingWith("tool-calls") });
+      const onContinued = jest.fn();
+      setup({ ui: <TestIncomplete onContinued={onContinued} /> });
+      await submit();
+
+      mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+      await userEvent.click(await continueBtn());
+
+      await waitFor(() => expect(onContinued).toHaveBeenCalledWith(undefined));
+    });
+
+    it("clears once the continued turn finishes", async () => {
+      mockAgentEndpoint({ events: turnEndingWith("tool-calls") });
+      const { store } = setup({ ui: <TestIncomplete /> });
+      await submit();
+
+      mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+      await userEvent.click(await continueBtn());
+      await waitForMessageCount(store, 4);
+
+      expect(
+        screen.queryByTestId("incomplete-response"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("re-exposes when the continued response is cut off again", async () => {
+      mockAgentEndpoint({ events: turnEndingWith("tool-calls") });
+      setup({ ui: <TestIncomplete /> });
+      await submit();
+
+      mockAgentEndpoint({ events: turnEndingWith("length") });
+      await userEvent.click(await continueBtn());
+
+      await waitFor(() =>
+        expect(screen.getByTestId("reason")).toHaveTextContent("max-length"),
+      );
+      expect(await continueBtn()).toBeInTheDocument();
     });
   });
 
@@ -517,7 +721,7 @@ describe("useMetabot", () => {
             message: "first",
           }),
         );
-        addAgentMessage(store, cardMessage("card-abc", 1));
+        addAgentMessage(store, cardMessage("card-abc", ORDERS_ID));
       });
 
       await waitFor(() => {
@@ -536,7 +740,7 @@ describe("useMetabot", () => {
             message: "second",
           }),
         );
-        addAgentMessage(store, cardMessage("card-xyz", 2));
+        addAgentMessage(store, cardMessage("card-xyz", PRODUCTS_ID));
       });
 
       await waitFor(() => {

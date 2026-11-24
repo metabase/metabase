@@ -39,11 +39,6 @@
   [^Integer id]
   (format "/metric/%d" id))
 
-(defn transform-path
-  "Relative frontend path for a `Transform` with ID, e.g. \"/data-studio/transforms/10\"."
-  [^Integer id]
-  (format "/data-studio/transforms/%d" id))
-
 (defn dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
 
@@ -72,6 +67,7 @@
   [^Integer id]
   (str (site-url) (card-path id)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *dashcard-parameters*
   "Bind dashboard parameters for dashcard deeplinked urls"
   {})

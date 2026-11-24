@@ -2,10 +2,13 @@
   "/api/session endpoints"
   (:require
    [java-time.api :as t]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
+   [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
@@ -26,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
+   [metabase.util.secret :as u.secret]
    [throttle.core :as throttle]))
 
 (set! *warn-on-reflection* true)
@@ -35,9 +39,10 @@
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
 (def ^:private login-throttlers
-  {:username   (throttle/make-throttler :username)
+  {:username     (throttle/make-throttler :username)
    ;; IP Address doesn't have an actual UI field so just show error by username
-   :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
+   :ip-address   (throttle/make-throttler :username, :attempts-threshold 50)
+   :ldap-account (throttle/make-throttler :username)})
 
 (def ^:private verify-throttlers
   ;; Codes are 6 digits, so brute-force limits are load-bearing. Only failures count (see
@@ -75,30 +80,35 @@
 (def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
 (mu/defn- ldap-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
-  "If LDAP is enabled and a matching user exists return a new Session for them (or an MFA-pending
-  result map when a second factor is required), or `nil` if they couldn't be authenticated."
-  [username password device-info :- request/DeviceInfo]
-  (when (sso/ldap-enabled)
-    (let [result (auth-identity/login! :provider/ldap
-                                       {:username username
-                                        :password password
-                                        :device-info device-info})]
-      (cond
-        ;; Fallback when the ldap operation fails
-        (contains? #{:ldap-error :server-error} (:error result))
-        nil
+  "Return a new Session (or an MFA-pending result map) for a directory user, `nil` when local login should be tried, or
+  throw when the directory login is refused."
+  [username    :- ms/NonBlankString
+   password    :- ms/NonBlankString
+   device-info :- request/DeviceInfo]
+  (when-let [{:keys [dn]} (sso/ldap-directory-user username)]
+    (call-with-failure-throttling
+     [[(login-throttlers :ldap-account) (u/lower-case-en dn)]]
+     (fn []
+       (let [result (auth-identity/login! :provider/ldap
+                                          {:username username
+                                           :password password
+                                           :device-info device-info})]
+         (cond
+           ;; Fallback when the ldap operation fails
+           (contains? #{:ldap-error :server-error} (:error result))
+           nil
 
-        (= (:error result) :invalid-credentials)
-        (throw (ex-info (str password-fail-message)
-                        {:status-code 401
-                         :errors {:password password-fail-snippet}}))
+           (= (:error result) :invalid-credentials)
+           (throw (ex-info (str password-fail-message)
+                           {:status-code 401
+                            :errors {:password password-fail-snippet}}))
 
-        (:success? result)
-        (if (:mfa/pending? result) result (:session result))
+           (:success? result)
+           (if (:mfa/pending? result) result (:session result))
 
-        :else
-        (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
-                                                 :status-code 401}))))))
+           :else
+           (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
+                                                    :status-code 401}))))))))
 
 (mu/defn- email-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
   "Find a matching `User` if one exists and return a new Session for them (or an MFA-pending result
@@ -270,9 +280,10 @@
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
-        (throttle/with-throttling [(login-throttlers :ip-address) ip-address
-                                   (login-throttlers :username)   (u/lower-case-en username)]
-          (do-login))))))
+        ;; the last pair is checked first: by IP address, then by username
+        (call-with-failure-throttling [[(login-throttlers :username)   (u/lower-case-en username)]
+                                       [(login-throttlers :ip-address) ip-address]]
+                                      do-login)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -284,11 +295,11 @@
   [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
   (api/check-404 (not-empty metabase-session-key))
   (let [session-key-hashed (session/hash-session-key metabase-session-key)
-        rows-deleted (session.db/delete-session-by-key-hashed! session-key-hashed)]
+        rows-ended         (session/end-session-for-key! session-key-hashed "logout" :self)]
     ;; clear the cookie even when no row matched (e.g. a session hashed under a previous secret), or the browser
     ;; would keep resending the dead cookie
     (request/clear-session-cookie
-     (if (pos? rows-deleted)
+     (if (pos? rows-ended)
        api/generic-204-no-content
        {:status 404, :body "Not found."}))))
 
@@ -303,14 +314,6 @@
   {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms (* 1000 60 60))
    :ip-address (throttle/make-throttler :email :attempts-threshold 50)})
 
-(defn- sso-password-reset-disabled?
-  "Disable password reset for users whose SSO provider is still active — they should use SSO.
-   When a provider is no longer available (e.g., after license downgrade), allow password reset
-   so users aren't locked out."
-  [sso-source]
-  (and (some? sso-source)
-       (sso/sso-source-enabled? sso-source)))
-
 (defn- refresh-support-access-token!
   "Refresh the reset token on an existing support-access-grant AuthIdentity, preserving the grant
    binding. Returns the new plaintext token, or nil if the grant has expired."
@@ -319,11 +322,11 @@
     (let [grant-ends-at (get-in auth-identity [:credentials :grant_ends_at])]
       (when (and grant-ends-at (t/before? (t/instant) (t/instant grant-ends-at)))
         (let [token (auth-identity/generate-reset-token user-id)]
-          (session.db/set-auth-identity-credentials! (:id auth-identity)
-                                                     {:token_hash   (u.password/hash-bcrypt token)
-                                                      :expires_at   (t/plus (t/instant) (t/hours 48))
-                                                      :grant_ends_at grant-ends-at
-                                                      :consumed_at  nil})
+          (models.auth-identity/update-auth-identities! [{:id          (:id auth-identity)
+                                                          :credentials {:token_hash    (u.password/hash-bcrypt token)
+                                                                        :expires_at    (t/plus (t/instant) (t/hours 48))
+                                                                        :grant_ends_at grant-ends-at
+                                                                        :consumed_at   nil}}])
           token)))))
 
 (defn- forgot-password-impl
@@ -334,9 +337,9 @@
                 is-active?   :is_active :as user}
                (session.db/user-by-email email)]
       (cond
-        ;; SSO users should use their SSO provider, not password reset.
-        (sso-password-reset-disabled? sso-source)
-        (messages/send-password-reset-email! email sso-source nil is-active?)
+        ;; SSO-only users (see `sso/sso-only-user?`) should use their SSO provider, not password reset.
+        (sso/sso-only-user? user-id email sso-source)
+        (messages/send-password-reset-email! email (or sso-source :ldap) nil is-active?)
 
         ;; Support-access users get a refreshed token bound to the grant.
         ;; If the grant has expired, refresh-support-access-token! returns nil and we silently
@@ -356,12 +359,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/forgot_password"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/forgot_password" :- ::api/generic-204-no-content
   "Send a reset email when user has forgotten their password."
   [_route-params
    _query-params
@@ -409,20 +408,44 @@
    request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
-  (let [auth-result (auth-identity/with-fallback auth-identity/login!
-                      [:provider/support-access-grant
-                       :provider/emailed-secret-password-reset]
-                      (select-keys request-body [:token :password]))]
+  (let [credentials  (-> request-body
+                         (select-keys [:token :password])
+                         (update :password u.secret/expose))
+        grant-result (auth-identity/with-fallback auth-identity/login!
+                       [:provider/support-access-grant]
+                       credentials)
+        ;; Refuse before the reset's `login!` runs, so nothing mutates. A reset ends in a password
+        ;; session, which `:model/Session`'s before-insert rejects while password login is off — but by
+        ;; then the password has been changed, the token consumed and every session revoked, and
+        ;; `with-fallback` would report the failure as an invalid token. Such a user is sent to
+        ;; /auth/login to use their SSO provider.
+        _            (when-not (or (:success? grant-result) (session.settings/enable-password-login))
+                       (throw (ex-info (tru "Password login is disabled for this instance.") {:status-code 400})))
+        skip-session (boolean (when-not (:success? grant-result)
+                                (some-> (auth-identity/parse-token-user-id (:token credentials))
+                                        session.db/user-sso-source
+                                        sso/sso-source-enabled?)))
+        auth-result  (if (:success? grant-result)
+                       grant-result
+                       (auth-identity/with-fallback auth-identity/login!
+                         [:provider/emailed-secret-password-reset]
+                         (assoc credentials :session/skip? skip-session)))]
     (cond
+      (= :password-unchanged (:error auth-result))
+      (api/throw-invalid-param-exception
+       :password (tru "New password must be different from your current password."))
+
       (not (:success? auth-result))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))
 
       ;; The password change succeeded, but an MFA is required. Either the user is already enrolled with MFA or they
       ;; are unenrolled but `mfa-required?`. Issue no session, or anyone who can trigger a password reset can bypass
       ;; MFA! The user logs in normally with their new password, either providing their second factor or configuring
-      ;; MFA since it's required.
+      ;; MFA since it's required. Likewise, a user whose SSO provider is enabled logs in normally afterwards, so that
+      ;; login applies that provider's checks (for example, LDAP checks a directory user against the directory).
       (or (session.settings/mfa-required?)
-          (:mfa/pending? auth-result))
+          (:mfa/pending? auth-result)
+          skip-session)
       {:success true}
 
       :else
@@ -457,8 +480,31 @@
 (api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
+  {:scope api-scope/data-app}
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
+
+(api.macros/defendpoint :get "/illustration/:key" :- :any
+  "Fetch the uploaded image of a custom illustration setting, e.g. `login-page-illustration-custom`."
+  [{setting-name :key} :- [:map {:closed true}
+                           [:key ms/NonBlankString]]
+   {:keys [v]} :- [:map {:closed true}
+                   [:v {:optional true} :string]]]
+  (let [setting-key (keyword setting-name)
+        _           (api/check-404 (contains? appearance/custom-illustration-settings setting-key))
+        _           (api/check (setting/can-read-setting? setting-key (setting/current-user-readable-visibilities))
+                               [401 (tru "Unauthenticated")])
+        {:keys [content-type media-type], image-bytes :bytes, image-hash :hash}
+        (api/check-404 (appearance/illustration-image setting-key))
+        headers (cond-> {"Content-Type"  content-type
+                         ;; `v` is the hash in the URL the setting getter returns, so that URL can be cached forever.
+                         ;; `private` because middleware adds cookies to the response.
+                         "Cache-Control" (if (= v image-hash)
+                                           "private, max-age=31536000, immutable"
+                                           "private, no-cache")}
+                  (= media-type "image/svg+xml")
+                  (assoc "Content-Security-Policy" "default-src 'none'; style-src 'unsafe-inline'; sandbox"))]
+    {:status 200, :headers headers, :body image-bytes}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -497,16 +543,10 @@
                                 {:status-code 401
                                  :errors {:_error (or (:error login-result) "Authentication failed")}})))))]
     (http-401-on-error
-      (if throttling-disabled?
-        (do-login)
-        (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
-          (do-login))))))
+      (call-with-failure-throttling [[(login-throttlers :ip-address) (request/ip-address request)]]
+                                    do-login))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/password-check"
+(api.macros/defendpoint :post "/password-check" :- [:map {:closed true} [:valid [:= true]]]
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
   [_route-params
    _query-params

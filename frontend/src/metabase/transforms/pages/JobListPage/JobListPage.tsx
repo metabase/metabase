@@ -31,11 +31,16 @@ import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 
 import { JobListMoreMenu } from "../../components/JobListMoreMenu";
-import { JobMoreMenu } from "../../components/JobMoreMenu";
+import {
+  JobModal,
+  type JobModalState,
+  JobMoreMenu,
+} from "../../components/JobMoreMenu";
 
 export const JobListPage = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [jobModal, setJobModal] = useState<JobModalState>();
 
   const isAdmin = useSelector(getUserIsAdmin);
 
@@ -89,7 +94,9 @@ export const JobListPage = () => {
               id: "actions",
               header: "",
               width: 48,
-              cell: ({ row }) => <JobMoreMenu job={row.original} />,
+              cell: ({ row }) => (
+                <JobMoreMenu job={row.original} onOpenModal={setJobModal} />
+              ),
             },
           ] satisfies TreeTableColumnDef<TransformJob>[])
         : []),
@@ -119,7 +126,7 @@ export const JobListPage = () => {
 
   return (
     <PageContainer data-testid="transforms-job-list" gap={0}>
-      <TransformsHeader showMetabotButton />
+      <TransformsHeader />
       <Stack style={{ overflow: "hidden" }}>
         {isMeterLocked && <LockedTransformsBanner />}
         <Flex gap="0.5rem">
@@ -155,6 +162,7 @@ export const JobListPage = () => {
           </Card>
         </Flex>
       </Stack>
+      <JobModal modal={jobModal} onClose={() => setJobModal(undefined)} />
     </PageContainer>
   );
 };

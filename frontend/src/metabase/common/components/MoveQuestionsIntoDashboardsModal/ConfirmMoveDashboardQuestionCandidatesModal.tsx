@@ -112,7 +112,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           })
           .with({ rows: [] }, () => (
             <Flex justify="center" py="19rem">
-              <Text size="1.25rem" px="lg" color="text-disabled">
+              <Text size="1.25rem" px="lg" color="text-secondary">
                 {t`There aren't any questions to move into dashboards. Looks like everything is in its place.`}
               </Text>
             </Flex>
@@ -144,13 +144,17 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           <div />
         )}
         <Flex gap="lg" ml="1.5rem">
-          <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
+          <Button
+            variant="subtle"
+            color="neutral"
+            onClick={onCancel}
+          >{t`Cancel`}</Button>
           <Button
             loading={isMutating}
             variant="filled"
             onClick={onConfirm}
             disabled={ctaDisabled}
-            color={mutationError ? "feedback-negative" : "core-brand"}
+            color={mutationError ? "negative" : "brand"}
           >
             {t`Move these questions`}
           </Button>

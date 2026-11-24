@@ -1,177 +1,166 @@
 (ns metabase-enterprise.dependencies.findings
+  "Every entity whose analysis failed, with its errors and their causes, and the drain that makes the findings current."
   (:require
-   [metabase-enterprise.dependencies.analysis :as deps.analysis]
+   [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
-   [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.util.log :as log]
+   [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
+   [metabase-enterprise.dependencies.task.dependency :as task.dependency]
+   [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
+   [metabase.cloud-migration.core :as cloud-migration]
+   [metabase.lib.schema.validate :as lib.schema.validate]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
-(defmulti ^:private instance-db-id
-  "Gets the database id for a toucan instance"
-  {:arglists '([toucan-instance])}
-  t2/model)
+;;; ------------------------------------------- Draining the jobs -------------------------------------------
 
-(defmethod instance-db-id :default
-  [toucan-instance]
-  (:database_id toucan-instance))
+(def ^:private job-batches
+  "The jobs' batches, in the order work flows between them."
+  [task.dependency/run-batch-in-place!
+   task.result-metadata/run-batch-in-place!
+   task.analysis-finding/run-batch-in-place!])
 
-(defmethod instance-db-id :model/Transform
-  [toucan-instance]
-  (some-> toucan-instance :source :query lib/database-id))
+(def ^:private jobs-enabled?
+  [task.dependency/enabled?
+   task.result-metadata/enabled?
+   task.analysis-finding/enabled?])
 
-(defmethod instance-db-id :model/Segment
-  [toucan-instance]
-  (some-> toucan-instance :definition lib/database-id))
+(defn- job-disabled-error []
+  (ex-info (tru "The analysis cannot run while one of its jobs is disabled by its batch size.")
+           {:status-code 503}))
 
-(defmulti ^:private pre-analysis-errors
-  "Return a (possibly empty) sequence of errors detected without running the full analyzer. When
-  non-empty, the entity is recorded broken with these errors and the regular analysis is skipped.
-  Use this for structural failures e.g. an orphan Transform whose source database has been deleted."
-  {:arglists '([toucan-instance])}
-  t2/model)
+(mu/defn drain-pending! :- :nil
+  "Run the jobs until none has work left. Throws a 503 when Metabase is in read-only mode or a job is disabled."
+  []
+  (when (cloud-migration/read-only-mode)
+    (throw (ex-info (tru "The analysis cannot run while Metabase is in read-only mode.")
+                    {:status-code 503})))
+  (when-not (every? #(%) jobs-enabled?)
+    (throw (job-disabled-error)))
+  (loop [job 0, idle 0]
+    ;; stop only once every job in a row is idle, so neither work a job leaves for a later one nor a write made
+    ;; meanwhile is left pending
+    (when (< idle (count job-batches))
+      (case ((job-batches job))
+        :worked   (recur job 0)
+        :idle     (recur (rem (inc job) (count job-batches)) (inc idle))
+        ;; a batch size can change mid-drain
+        :disabled (throw (job-disabled-error))))))
 
-(defmethod pre-analysis-errors :default [_] nil)
+;;; ------------------------------------------- Reading the findings -------------------------------------------
 
-(defmethod pre-analysis-errors :model/Transform
-  [{db-id :source_database_id id :id}]
-  (when (nil? db-id)
-    [(-> (lib/validation-exception-error "Source database for this transform has been deleted.")
-         (assoc :source-entity-type :transform :source-entity-id id))]))
+(mr/def ::analyzed-type
+  "A type of entity the analysis checks."
+  [:and
+   ::deps.dependency-types/dependency-types
+   [:fn {:error/message "a type the analysis checks"} #(some #{%} (deps.analysis-finding/analyzed-types))]])
 
-(defn upsert-analysis!
-  "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`.
+(mr/def ::cause
+  "The entity an error is traced to. `entity_id` and `name` are nil once the entity is deleted; `entity_id` is always
+  nil for a table."
+  [:map {:closed true}
+   [:type      ::lib.schema.validate/source-entity-type]
+   [:id        ms/PositiveInt]
+   [:entity_id [:maybe :string]]
+   [:name      [:maybe :string]]])
 
-  If any row exists already, it is replaced. If it does not exist, it is created."
-  [toucan-instance]
-  (when-not (lib-be/metadata-provider-cache)
-    (throw (ex-info "FIXME: deps.findings/upsert-analysis! ran without reusing `MetadataProvider`s"
-                    {:instance toucan-instance})))
-  (let [model       (t2/model toucan-instance)
-        entity-type (deps.dependency-types/model->dependency-type model)
-        instance-id (:id toucan-instance)]
-    (if-let [errors (seq (pre-analysis-errors toucan-instance))]
-      (deps.analysis-finding/upsert-analysis! entity-type instance-id false errors)
-      (if-let [db-id (instance-db-id toucan-instance)]
-        (let [mp (lib-be/application-database-metadata-provider db-id)
-              results (try (deps.analysis/check-entity mp entity-type instance-id)
-                           (catch Exception e
-                             (log/errorf "Error analyzing entity: %s" (ex-message e))
-                             [(lib/validation-exception-error (.getMessage e))]))
-              success (empty? results)]
-          (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))
-        ;; No resolvable database, and no pre-analysis error explaining it: record a terminal error so
-        ;; the entity gets a finding (clearing its stale flag) instead of no-oping forever and being
-        ;; re-selected on every run. It re-checks normally if its database later becomes resolvable.
-        (deps.analysis-finding/upsert-analysis!
-         entity-type instance-id false
-         [(lib/validation-exception-error "Could not resolve a database for this entity.")])))))
+(mr/def ::error
+  [:map {:closed true}
+   [:type   ::lib.schema.validate/validate-error-type]
+   [:detail [:maybe :string]]
+   [:cause  [:maybe ::cause]]])
 
-(defn analyze-instances!
-  "Given a series of toucan entities, upsert analyses for all of them and catch errors."
-  [instances]
-  (doseq [instance instances]
-    (try (upsert-analysis! instance)
-         (catch Exception e
-           (log/errorf "Analyzing entity %s %s failed: %s"
-                       (t2/model instance) (:id instance) (ex-message e))))))
+(mr/def ::failed-entity
+  [:map {:closed true}
+   [:type          ::analyzed-type]
+   [:id            ms/PositiveInt]
+   [:entity_id     :string]
+   [:name          :string]
+   [:collection_id [:maybe ms/PositiveInt]]
+   [:errors        [:sequential ::error]]])
 
-(def analyzable-entities
-  "Entities for which we can compute analysis findings."
-  #{:card :transform :segment})
+(def ^:private cause-columns
+  {:table     [:id :name]
+   :card      [:id :name :entity_id]
+   :transform [:id :name :entity_id]})
 
-(def ^:private AnalyzableEntityType
-  "Schema for entity types supported by analysis findings."
-  (into [:enum] analyzable-entities))
+(mu/defn- cause-rows :- [:map-of [:tuple ::lib.schema.validate/source-entity-type ms/PositiveInt] :map]
+  "The source entities the `rows` name, keyed by `[type id]`; deleted ones are absent."
+  [rows :- [:sequential ::dependencies.schema/analysis-finding-error]]
+  (let [refs (into #{}
+                   (keep (fn [{:keys [source_entity_type source_entity_id]}]
+                           (when (and source_entity_type source_entity_id)
+                             [source_entity_type source_entity_id])))
+                   rows)]
+    (into {}
+          (mapcat (fn [[source-type ids]]
+                    (for [row (dependencies.db/entities-with-columns source-type (cause-columns source-type) ids)]
+                      [[source-type (:id row)] row])))
+          (u/group-by first second refs))))
 
-(def dependable-entities
-  "Entities which can be depended on by other entities, even if they cannot themselves be analyzed.
+(def ^:private known-error-type?
+  (mr/validator ::lib.schema.validate/validate-error-type))
 
-  For example, `:table`s can be passed to [[mark-transitive-dependents-stale!]] as an upstream entity whose dependents are now
-  stale, but we cannot analyze tables themselves."
-  (conj analyzable-entities :table))
+(defn- with-known-error-type
+  "`row` with an error type the analysis no longer emits, which a version bump leaves stored until the entity is
+  analyzed again, read as an analysis failure that names the stored type."
+  [{:keys [error_type error_detail] :as row}]
+  (if (known-error-type? error_type)
+    row
+    (assoc row
+           :error_type   :validation-exception-error
+           :error_detail (str "Unknown error type " (name error_type) (if error_detail (str ": " error_detail) ".")))))
 
-(defn- mark-supported-dependents-stale!
-  "Given a map of {entity-type [entity-ids]}, mark all supported (analyzable) types as stale.
-  For non-analyzable entities (e.g., tables), looks through to their dependents so we still
-  reach analyzable entities beyond them.
-  Returns true if any supported dependents were found."
-  [dependents]
-  (let [{analyzable true non-analyzable false}
-        (group-by (fn [[dep-type _]] (boolean (analyzable-entities dep-type)))
-                  (filter (fn [[_ dep-ids]] (seq dep-ids)) dependents))
-        ;; For non-analyzable entities, find their direct dependents
-        pass-through-dependents
-        (when (seq non-analyzable)
-          (let [key-seq (for [[dep-type dep-ids] non-analyzable
-                              id dep-ids]
-                          [dep-type id])
-                deps-map (models.dependency/direct-dependents key-seq)]
-            (models.dependency/group-nodes (into #{} cat (vals deps-map)))))
-        ;; Merge the analyzable dependents with the pass-through dependents
-        all-supported (merge-with into
-                                  (into {} analyzable)
-                                  (into {}
-                                        (filter (fn [[dep-type _]] (analyzable-entities dep-type)))
-                                        pass-through-dependents))]
-    (doseq [[dep-type dep-ids] all-supported]
-      (deps.analysis-finding/mark-stale! dep-type dep-ids))
-    (boolean (seq all-supported))))
+(mu/defn- errors-by-id :- [:map-of ms/PositiveInt [:sequential ::error]]
+  [entity-type :- ::analyzed-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (let [rows   (mapv with-known-error-type (dependencies.db/finding-errors-for-entities entity-type entity-ids))
+        causes (cause-rows rows)]
+    (u/group-by :analyzed_entity_id
+                (fn [{:keys [error_type error_detail source_entity_type source_entity_id]}]
+                  {:type   error_type
+                   :detail error_detail
+                   :cause  (when (and source_entity_type source_entity_id)
+                             (let [row (causes [source_entity_type source_entity_id])]
+                               {:type      source_entity_type
+                                :id        source_entity_id
+                                :entity_id (:entity_id row)
+                                :name      (:name row)}))})
+                rows)))
 
-(defn mark-transitive-dependents-stale!
-  "Mark all transitive dependents of the given upstream entities stale for re-analysis. Takes `{entity-type [entity-ids]}`
-  — entity types may be non-analyzable (e.g. `:table`), since they can still have analyzable dependents, and each id
-  collection may be any seqable (vector, set, ...). Returns true if any supported (analyzable) dependents were found.
+(def ^:private given-up-error
+  {:type   :validation-exception-error
+   :detail "Could not compute the dependencies of this entity."
+   :cause  nil})
 
-  Uses `transitive-dependents` (not `transitive-mbql-dependents`) because:
-  1. It's faster - doesn't need to fetch entities to check for native-ness
-  2. Native dependents marked stale will just be quickly re-validated as valid"
-  [type->entity-ids]
-  (-> (models.dependency/transitive-dependents
-       (update-vals type->entity-ids (fn [ids] (map (fn [id] {:id id}) ids))))
-      mark-supported-dependents-stale!))
+(def ^:private unrecorded-error
+  {:type   :validation-exception-error
+   :detail "No error was recorded for this entity."
+   :cause  nil})
 
-(mu/defn mark-entity-stale!
-  "Mark a single entity as stale for re-analysis by the background job."
-  [entity-type :- AnalyzableEntityType
-   entity-id   :- pos-int?]
-  (deps.analysis-finding/mark-stale! entity-type [entity-id]))
+(mu/defn- failed-entities-of-type :- [:sequential ::failed-entity]
+  [entity-type :- ::analyzed-type]
+  (let [rows   (dependencies.db/failed-analysis-entities entity-type)
+        errors (errors-by-id entity-type (mapv :id rows))]
+    (mapv (fn [{:keys [id given_up] :as row}]
+            {:type          entity-type
+             :id            id
+             :entity_id     (:entity_id row)
+             :name          (:name row)
+             :collection_id (:collection_id row)
+             ;; a given-up entity may have no failed finding, since the analysis skips an entity without current
+             ;; dependencies, and a failed finding may have no error rows; every row returned has failed
+             :errors        (vec (or (errors id) [(if given_up given-up-error unrecorded-error)]))})
+          rows)))
 
-(mu/defn mark-entity-and-transitive-dependents-stale!
-  "Mark `entity-id` and all of its transitive dependents stale for re-analysis. Use this when an entity changes: it
-  queues the whole affected subtree up front so the entity-check job drains a fixed set of stale entities (see
-  [[metabase-enterprise.dependencies.task.entity-check/check-entities!]]) without re-propagating staleness during the
-  drain — which can never terminate when the dependency graph has a cycle."
-  [entity-type :- AnalyzableEntityType
-   entity-id   :- pos-int?]
-  (mark-entity-stale! entity-type entity-id)
-  (mark-transitive-dependents-stale! {entity-type [entity-id]}))
-
-(mu/defn analyze-batch! :- nat-int?
-  "Add or update analyses for a batch of entities.
-
-  Takes in an entity type and batch size, and looks for a batch of entities with missing or out of date
-  AnalysisFindings and then upsert new analyses for them.
-
-  This only *analyzes* (each [[upsert-analysis!]] clears that entity's stale flag); it does NOT propagate staleness to
-  dependents. Propagation happens up front when an entity changes (see [[mark-entity-and-transitive-dependents-stale!]] and the
-  event handlers), so the entity-check job drains a fixed set of stale entities that only shrinks — guaranteeing
-  termination even when the dependency graph has cycles."
-  [type :- AnalyzableEntityType
-   batch-size :- pos-int?]
-  ;; The cache spans the select too: reading an entity attaches a `MetadataProvider` to its query
-  ;; (see `metabase.lib-be.models.transforms/transform-query`), so selecting outside the cache gives every entity in
-  ;; the batch a private one.
-  (lib-be/with-metadata-provider-cache
-    (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
-      (doseq [instance instances]
-        (try (upsert-analysis! instance)
-             (catch Exception e
-               (log/errorf "Analyzing entity %s %s failed: %s"
-                           (t2/model instance) (:id instance) (ex-message e)))))
-      (count instances))))
+(mu/defn failed-entities :- [:sequential ::failed-entity]
+  "Every entity whose stored analysis failed or whose dependencies could not be computed, with its errors, excluding
+  archived and Metabase-managed content. Call [[drain-pending!]] first for current results."
+  []
+  (into [] (mapcat failed-entities-of-type) (deps.analysis-finding/analyzed-types)))

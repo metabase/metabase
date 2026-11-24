@@ -9,7 +9,7 @@ import ts from "typescript";
  * `defineEndpoint` and `EndpointBuilder` type a fixture's query function the way RTK's builder does,
  * so a fixture cannot build a request a real endpoint cannot.
  */
-const BASE_QUERY_ARGS = `type BaseQueryArgs = string | { method?: "GET" | "POST" | "PUT" | "DELETE"; url: string | null; params?: Record<string, unknown> | null | void; body?: unknown };`;
+const BASE_QUERY_ARGS = `type BaseQueryArgs = string | { method?: "GET" | "POST" | "PUT" | "DELETE"; url: string | null; params?: Record<string, unknown> | null | void; body?: unknown; rawResponse?: boolean };`;
 
 export const ENDPOINT_PRELUDE = `${BASE_QUERY_ARGS}
   function defineEndpoint<Argument>(endpoint: {
@@ -26,7 +26,7 @@ export const ENDPOINT_BUILDER = `${BASE_QUERY_ARGS}
         query?: (request: Request) => BaseQueryArgs;
         queryFn?: () => unknown;
         transformResponse?: (response: unknown) => Response;
-      }): unknown;
+      } & { extraOptions?: unknown }): unknown;
     };
     declare const builder: EndpointBuilder;`;
 

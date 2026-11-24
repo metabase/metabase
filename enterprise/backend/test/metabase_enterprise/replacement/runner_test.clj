@@ -20,9 +20,6 @@
 
 (set! *warn-on-reflection* true)
 
-(comment
-  metabase-enterprise.dependencies.events/keep-me)
-
 (deftest bulk-load-metadata-for-entities-test
   (testing "bulk-load-metadata-for-entities! fetches all entity types in bulk"
     (mt/with-temp [:model/Card {card-id-1 :id} {:name          "Card 1"
@@ -34,10 +31,7 @@
                    :model/Table {table-id :id} {:name   "Custom Table"
                                                 :db_id  (mt/id)
                                                 :active true}
-                   :model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                    :name       "Test Segment"
-                                                    :definition (mt/mbql-query venues
-                                                                  {:filter [:> $price 3]})}]
+                   :model/Segment {segment-id :id} {:name "Test Segment"}]
       (let [entities          [[:card card-id-1]
                                [:card card-id-2]
                                [:table table-id]
@@ -109,12 +103,8 @@
     (mt/with-temp [:model/Card {card-id :id} {:name          "Test Card"
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query venues)}
-                   :model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                    :name       "Test Segment"
-                                                    :definition (mt/mbql-query venues
-                                                                  {:filter [:> $price 3]})}
-                   :model/Measure {measure-id :id} {:table_id   (mt/id :venues)
-                                                    :name       "Test Measure"
+                   :model/Segment {segment-id :id} {:name "Test Segment"}
+                   :model/Measure {measure-id :id} {:name       "Test Measure"
                                                     :definition (let [mp (mt/metadata-provider)
                                                                       table-metadata (lib.metadata/table mp (mt/id :venues))]
                                                                   (-> (lib/query mp table-metadata)
@@ -190,9 +180,9 @@
                           :name          "Child Card"}]
             (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               ;; populate dependencies
-              (events/publish-event! :event/card-create {:object old-card :user-id (mt/user->id :rasta)})
-              (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :rasta)})
-              (deps.test/synchronously-run-backfill!)
+              (events/publish-event! :event/card-create {:changes [{:object old-card}] :user-id (mt/user->id :rasta)})
+              (events/publish-event! :event/card-create {:changes [{:object child-card}] :user-id (mt/user->id :rasta)})
+              (deps.test/synchronously-run-dependency-job!)
               (testing "child card initially points to old model"
                 (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
                                       [:stages 0 :source-card]))))
@@ -245,8 +235,8 @@
                           :name          "Child 2"}]
             (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               (doseq [card [old-card child-1 child-2]]
-                (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
-              (deps.test/synchronously-run-backfill!)
+                (events/publish-event! :event/card-create {:changes [{:object card}] :user-id (mt/user->id :rasta)}))
+              (deps.test/synchronously-run-dependency-job!)
               (let [original-swap! (mt/original-fn #'replacement.source-swap/swap-source!)]
                 (mt/with-dynamic-fn-redefs [replacement.source-swap/swap-source!
                                             (fn [entity object old-source new-source]
@@ -266,7 +256,7 @@
                                             [:stages 0 :source-card]))))))))))))))
 
 (deftest copy-model-metadata-overrides!-test
-  (testing "copies user-edited metadata from model result_metadata to Field and FieldUserSettings"
+  (testing "copies user-edited metadata from model result_metadata as user settings"
     (mt/with-temp [:model/Table {table-id :id} {:name   "transform_output"
                                                 :db_id  (mt/id)
                                                 :active true}
@@ -299,7 +289,7 @@
                                              :base_type     "type/DateTimeWithLocalTZ"}])}
                      :where  [:= :id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
-      (testing "Field records are updated with overrides from model metadata"
+      (testing "Field rows show copied metadata"
         (let [field-1 (t2/select-one :model/Field :id field-1-id)
               field-2 (t2/select-one :model/Field :id field-2-id)]
           (is (= "Order Total" (:display_name field-1)))

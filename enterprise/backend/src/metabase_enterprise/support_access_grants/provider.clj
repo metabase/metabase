@@ -9,6 +9,7 @@
    [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
    [metabase-enterprise.support-access-grants.schema :as schema]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -39,7 +40,7 @@
   [token :- :string
    grant-ends-at :- ::schema/timestamp
    & {:keys [expires-in-ms]
-      :or {expires-in-ms (* 48 60 60 1000)}}]
+      :or {expires-in-ms (* 48 60 60 1000)}} :- [:maybe [:map {:closed true} [:expires-in-ms {:optional true} [:maybe :int]]]]]
   {:token_hash (u.password/hash-bcrypt token)
    :expires_at (t/plus (t/instant) (t/millis expires-in-ms))
    :grant_ends_at grant-ends-at
@@ -62,7 +63,7 @@
 
   Returns the plaintext token string that should be sent to the user via email."
   [user-id :- ms/PositiveInt
-   grant :- [:maybe [:map [:grant_end_timestamp ::schema/timestamp]]]]
+   grant :- [:maybe [:or ::schema/support-access-grant-log ::schema/grant-response]]]
   (when-not grant
     (throw (ex-info "Cannot create support access reset token: no grant provided"
                     {:status-code 400})))
@@ -80,8 +81,8 @@
                              :credentials (create-support-access-reset-token-credentials <> grant-ends-at)
                              :metadata (auth-identity/create-reset-token-metadata (:email user))}]
           (if-let [auth-identity-id (support-access-grants.db/support-access-auth-identity-id user-id)]
-            (support-access-grants.db/update-auth-identity! auth-identity-id auth-identity)
-            (support-access-grants.db/insert-auth-identity! auth-identity)))))))
+            (models.auth-identity/update-auth-identities! [(assoc auth-identity :id auth-identity-id)])
+            (models.auth-identity/create-auth-identity! auth-identity)))))))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
@@ -105,6 +106,7 @@
       (log/infof "Setting password expiration for user %s to %s based on support access grant"
                  (:id user) grant-ends-at)
       (t2/with-transaction [_]
-        (support-access-grants.db/update-auth-identity! (:id auth-identity) (auth-identity/mark-token-consumed auth-identity))
-        (auth-identity/set-password! (:id user) password {:expires-at grant-ends-at}))))
+        (models.auth-identity/update-auth-identities! [(assoc (auth-identity/mark-token-consumed auth-identity) :id (:id auth-identity))])
+        ;; the support user is who is changing their own password here, so they are who ends their sessions
+        (auth-identity/set-password! (:id user) password {:expires-at grant-ends-at, :ended-by (:id user)}))))
   result)

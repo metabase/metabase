@@ -6,6 +6,8 @@
    [java-time.api :as t]
    [metabase-enterprise.cache.db :as cache.db]
    [metabase-enterprise.cache.strategies :as strategies]
+   [metabase.cache.models.cache-config :as cache-config]
+   [metabase.cache.models.query-cache :as query-cache]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.core :as qp]
    [metabase.task.core :as task]
@@ -13,7 +15,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent Callable ExecutorService SynchronousQueue ThreadPoolExecutor TimeUnit)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory)
    (org.quartz.spi MutableTrigger)))
 
 (set! *warn-on-reflection* true)
@@ -28,13 +30,15 @@
      100 TimeUnit/SECONDS  ;; keep-alive time for idle threads
      (SynchronousQueue.)   ;; direct handoff
      (.build
-      (doto (BasicThreadFactory$Builder.)
+      (doto (BasicThreadFactory/builder)
         (.namingPattern "preemptive-caching-thread-pool-%d"))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parameterized-queries-to-rerun-per-card*
   "Number of query variations (e.g. with different parameters) to run for a single cached card."
   10)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *run-cache-refresh-async*
   "Should cache refresh jobs be run asynchronously? Defaults to true, can be set to false for testing."
   true)
@@ -134,8 +138,7 @@
   "Deletes any existing cache entries for queries that we are about to re-run, so that subsequent tasks don't also try
   to re-run them before the cache has been refreshed. "
   [queries]
-  (doseq [batch (partition 1000 1000 nil queries)]
-    (cache.db/delete-query-caches! (map :cache-hash batch))))
+  (query-cache/delete-query-caches! (mapv :cache-hash queries)))
 
 (defn- maybe-refresh-duration-caches!
   "Detects caches with strategy=duration that are eligible for refreshing, and returns a count of the refresh jobs that
@@ -239,8 +242,9 @@
         schedule-refresh-count
         (reduce
          (fn [refreshed-count {:keys [id config refresh_automatically] :as cache-config}]
-           (cache.db/update-cache-config! id {:next_run_at    (calc-next-run (:schedule config) now)
-                                              :invalidated_at now})
+           (cache-config/update-cache-configs! [{:id             id
+                                                 :next_run_at    (calc-next-run (:schedule config) now)
+                                                 :invalidated_at now}])
            (if (and (premium-features/enable-preemptive-caching?) refresh_automatically)
              (do
                (refresh-schedule-cache! cache-config)
@@ -256,9 +260,11 @@
      :schedule-refreshed   schedule-refresh-count
      :duration-refreshed   duration-refresh-count}))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc                                   "Refresh 'schedule' caches"}
-  Cache [_ctx]
+(task/defjob Cache
+  "Refresh 'schedule' caches"
+  {:saved-class "metabase_enterprise.cache.task.refresh_cache_configs.Cache"
+   :concurrent? false}
+  [_ctx]
   (refresh-cache-configs!))
 
 (def ^:private cache-job

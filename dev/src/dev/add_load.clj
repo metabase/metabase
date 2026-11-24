@@ -7,10 +7,23 @@
   "A keyword that starts with a question mark, used to track values created by from-script."
   [:and :keyword [:fn #(= "?" (namespace %))]])
 
+(def ^:private Attrs
+  "The attributes of an entity to insert, as `mt/with-temp` takes them for its model."
+  [:map {:closed false, :description "model attributes"}])
+
+(def ^:private Bindings
+  "A map of logical keywords to the columns of an inserted entity they bind."
+  [:map {:closed false, :description "logical keyword bindings"}])
+
+(def ^:private Inserted
+  "An inserted entity of any model."
+  [:map {:closed false, :description "inserted entity"}])
+
 (mu/defn- extract-bindings
   "Extracts the bindings from the script and inserts the values into the ids map. This is the data oriented equivalent
   of let."
-  [bindings :- [:or :map logical-kw] inserted]
+  [bindings :- [:or Bindings logical-kw]
+   inserted :- Inserted]
   (cond (map? bindings)
         (update-vals bindings #(get inserted %))
         (and (keyword? bindings) (= "?" (namespace bindings)))
@@ -18,14 +31,15 @@
 
 (mu/defn- fill-attrs
   "Data oriented value resolution used to add attributes to a model from the [[attrs]] map."
-  [ids :- :map attrs :- :map]
+  [ids   :- Bindings
+   attrs :- Attrs]
   (walk/postwalk
    (fn [x] (if-let [value (get ids x)] value x))
    attrs))
 
-(def ^:private BindingForm [:or [:= :?] logical-kw :map])
+(def ^:private BindingForm [:or [:= :?] logical-kw Bindings])
 
-(def ^:private NormalizedTuple [:tuple :keyword BindingForm :map])
+(def ^:private NormalizedTuple [:tuple :keyword BindingForm Attrs])
 
 (def ^:private Tuple [:or
                       [:tuple :keyword]

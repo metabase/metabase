@@ -1,6 +1,5 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
-/* eslint-disable import/order */
 const rspack = require("@rspack/core");
 
 const mainConfig = require("./rspack.main.config");
@@ -46,6 +45,7 @@ const baseConfig = {
   entry: {
     main: "./index.ts",
     "data-app": "./data-app.ts",
+    testing: "./testing.ts",
   },
 
   output: {
@@ -115,6 +115,7 @@ const esmConfig = {
   entry: {
     "main.esm": "./index.ts",
     "data-app.esm": "./data-app.ts",
+    "testing.esm": "./testing.ts",
     "data-app-dev": "./data-app-dev.ts",
   },
 

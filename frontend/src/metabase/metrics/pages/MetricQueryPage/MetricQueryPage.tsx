@@ -61,15 +61,16 @@ function MetricQueryPageBody({
   showAppSwitcher,
   showDataStudioLink,
 }: MetricQueryPageBodyProps) {
-  const buildQuestion = useQuestionFromCard();
+  const cardQuestion = useQuestionFromCard(card);
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const question = useMemo(() => {
-    return buildQuestion(card).setDatasetQuery(datasetQuery);
-  }, [card, buildQuestion, datasetQuery]);
+  const question = useMemo(
+    () => cardQuestion.setDatasetQuery(datasetQuery),
+    [cardQuestion, datasetQuery],
+  );
 
   const resultMetadata = useMemo(() => {
     return getResultMetadata(
@@ -85,7 +86,7 @@ function MetricQueryPageBody({
   );
 
   const isDirty = useMemo(() => {
-    return !Lib.areLegacyQueriesEqual(datasetQuery, card.dataset_query);
+    return !Lib.areQueriesEqual(datasetQuery, card.dataset_query);
   }, [datasetQuery, card.dataset_query]);
 
   const handleChangeQuery = (query: Lib.Query) => {

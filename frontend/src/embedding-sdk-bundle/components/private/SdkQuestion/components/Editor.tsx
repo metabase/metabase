@@ -51,15 +51,7 @@ export const Editor = ({
     queryQuestion,
   } = useSdkQuestionContext();
 
-  const buildQuestion = useQuestionFromCard();
-
-  const question = useMemo(() => {
-    if (!rawQuestion) {
-      return rawQuestion;
-    }
-
-    return buildQuestion(rawQuestion?.card());
-  }, [rawQuestion, buildQuestion]);
+  const question = useQuestionFromCard(rawQuestion?.card());
 
   const isDirty = useMemo(() => {
     return isQuestionDirty(question, originalQuestion);

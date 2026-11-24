@@ -3,7 +3,8 @@
   that all authentication providers must implement.
 
   The provider system uses three multimethods:
-  - validate: Validate credentials before database insert/update (throws on error)
+  - validate: Validate credentials before database insert/update (throws on error), in
+    [[metabase.auth-identity.validation]]
   - authenticate: Core authentication logic (returns success/failure/redirect)
   - login!: Complete login orchestration (calls authenticate, creates session)
 
@@ -41,7 +42,7 @@
        :auth-identity {...}})
 
     ;; Optional: Implement validation
-    (methodical/defmethod provider/validate :provider/my-provider
+    (methodical/defmethod validation/validate :provider/my-provider
       [_provider auth-identity-data]
       (when-not (valid? auth-identity-data)
         (throw (ex-info \"Invalid credentials\" {:error :invalid}))))
@@ -56,10 +57,17 @@
    [java-time.api :as t]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
+   [metabase.auth-identity.models.auth-identity :as auth-identity]
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.auth-identity.session :as auth-session]
+   [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.notification.core :as notification]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.request.schema :as request.schema]
+   [metabase.settings.core :as setting]
+   [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -80,43 +88,7 @@
 
 (def ^:private disabled-account-message (deferred-tru "Your account is disabled. Please contact your administrator."))
 (def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
-
-;;; -------------------------------------------------- Multimethod: validate --------------------------------------------------
-
-(methodical/defmulti validate
-  "Validate credentials and settings for a provider before insert/update into AuthIdentity.
-   Throws an exception with error details if invalid. This ensures transaction rollback on validation failure.
-   Returns nil if valid.
-
-   This method is called from define-before-insert and define-before-update hooks in the AuthIdentity model.
-
-   Args:
-     provider: Provider keyword (e.g., ::provider/password)
-     auth-identity-data: Map containing :credentials, :metadata, etc.
-
-   Returns:
-     nil if valid
-
-   Throws:
-     ExceptionInfo if validation fails
-
-   Examples:
-     ;; Password provider validates credentials structure
-     (validate ::provider/password {:credentials {:password_hash \"...\" :password_salt \"...\"}})
-     => nil
-
-     ;; Throws if invalid
-     (validate ::provider/password {:credentials {:password_hash nil}})
-     => throws ExceptionInfo"
-  {:arglists '([provider auth-identity-data])}
-  (fn [provider _auth-identity-data]
-    provider)
-  :hierarchy #'auth-identity.hierarchy/hierarchy)
-
-(methodical/defmethod validate ::provider
-  [_provider _auth-identity-data]
-  ;; Default: no validation (SSO providers typically don't need credential validation)
-  nil)
+(def ^:private personal-only-message (deferred-tru "This login is only for personal accounts."))
 
 ;;; -------------------------------------------------- Multimethod: authenticate --------------------------------------------------
 
@@ -217,6 +189,11 @@
        - Authentication data (credentials, tokens, etc.)
        - :device-info - Device information for session tracking
        - :redirect-url - Optional redirect URL after login
+       - :session/skip? - Optional; when true, the login creates no session
+       - :user/personal-only? - Optional; when true, a user who is not a personal account is refused before any
+         change is made to them
+       - :jwt/require-exp-and-iat? - Optional; when true, a JWT login refuses a JWT that lacks an `exp` or `iat`
+         claim, or whose `iat` is in the future
 
    Returns:
      Map with one of three result types:
@@ -254,15 +231,78 @@
     provider)
   :hierarchy #'auth-identity.hierarchy/hierarchy)
 
+(def ^:private DeviceInfo
+  "Device information for session tracking, as attached to a login request."
+  [:map {:closed true}
+   [:device_id {:optional true} [:maybe ms/NonBlankString]]
+   [:device_description {:optional true} [:maybe ms/NonBlankString]]
+   [:ip_address {:optional true} [:maybe ms/NonBlankString]]
+   [:embedded {:optional true} :boolean]
+   [:token_exchange {:optional true} :boolean]])
+
+(def ^:private UserData
+  "SSO provider-produced data used to create or update a User during login."
+  [:map {:closed true}
+   [:email :string]
+   [:first_name {:optional true} [:maybe :string]]
+   [:last_name {:optional true} [:maybe :string]]
+   [:sso_source {:optional true} :keyword]
+   [:is_active {:optional true} :boolean]
+   [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
+   [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
+   [:provider-id {:optional true} [:maybe :string]]
+   [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
+   [:groups {:optional true} [:maybe [:sequential :string]]]])
+
+(def ^:private login-pipeline-entries
+  "Malli map entries every provider adds to the Ring request threaded through [[apply-inactive-check]] and
+  [[create-session!]] as the login pipeline map."
+  [[:auth-identity {:optional true} [:maybe ::auth-identity.schema/auth-identity]]
+   [:authenticated-user {:optional true} [:maybe (ms/InstanceOfClass clojure.lang.IDeref)]]
+   [:claims {:optional true} [:maybe ms/JWTClaims]]
+   [:code {:optional true} [:maybe :string]]
+   [:created-new-user? {:optional true} [:maybe :boolean]]
+   [:device-info {:optional true} [:maybe DeviceInfo]]
+   [:email {:optional true} [:maybe :string]]
+   [:error {:optional true} [:maybe :keyword]]
+   [:jwt-data {:optional true} [:maybe ms/JWTClaims]]
+   [:jwt/require-exp-and-iat? {:optional true} [:maybe :boolean]]
+   [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
+   [:oidc-nonce {:optional true} [:maybe :string]]
+   [:oidc-provider {:optional true} [:maybe :keyword]]
+   [:oidc-provider-key {:optional true} [:maybe :string]]
+   [:password {:optional true} [:maybe :string]]
+   [:provider-id {:optional true} [:maybe :string]]
+   [:redirect-uri {:optional true} [:maybe :string]]
+   [:redirect-url {:optional true} [:maybe :string]]
+   [:saml-data {:optional true} [:maybe ms/SAMLAttributes]]
+   [:scheme {:optional true} [:maybe :keyword]]
+   [:server-name {:optional true} [:maybe :string]]
+   [:server-port {:optional true} [:maybe :int]]
+   [:session/provider {:optional true} [:maybe :keyword]]
+   [:session/skip? {:optional true} [:maybe :boolean]]
+   [:slack-data {:optional true} [:maybe [:map-of :string :string]]]
+   [:state {:optional true} [:maybe :string]]
+   [:success? {:optional true} [:maybe [:or :boolean [:enum :redirect]]]]
+   [:tenant-attributes {:optional true} [:maybe ms/TenantAttributes]]
+   [:tenant-slug {:optional true} [:maybe :string]]
+   [:token {:optional true} [:maybe :string]]
+   [:user-data {:optional true} [:maybe UserData]]
+   [:user-id {:optional true} [:maybe :int]]
+   [:user-provisioning-enabled? {:optional true} [:maybe :boolean]]
+   [:user/personal-only? {:optional true} [:maybe :boolean]]
+   [:username {:optional true} [:maybe :string]]])
+
 (mu/defn- apply-inactive-check
   "Checks if the provided `request` is an attempt to log in an active user, or an inactive one.
 
   If the user does not have `:is_active true`, the response is not successful and an error message is returned. A
   request that resolved no user at all is left alone: link-only flows legitimately finish without one."
-  [request :- [:map
-               [:user {:optional true} [:maybe [:map
-                                                [:id ms/PositiveInt]
-                                                [:is_active :boolean]]]]]]
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user {:optional true} [:maybe ::users.schema/user]]]
+                     login-pipeline-entries)]]
   (cond-> request
     (and (nil? (:error request))
          (:user request)
@@ -270,24 +310,45 @@
                                                            :error disabled-account-snippet
                                                            :message disabled-account-message)))
 
+(mu/defn- apply-personal-only-check
+  "Refuses a `request` that sets `:user/personal-only?` for a user who is not a personal account.
+
+  Remove the user from the request on refusal so the rest of the login cannot change their account."
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user {:optional true} [:maybe ::users.schema/user]]]
+                     login-pipeline-entries)]]
+  (cond-> request
+    (and (:user/personal-only? request)
+         (:user request)
+         (not= :personal (get-in request [:user :type])))
+    (-> (dissoc :user)
+        (assoc :success? false
+               :error    :non-personal-user
+               :message  personal-only-message))))
+
 (mu/defn- create-session!
-  "Create a new session for a user with the given provider.
-   Updates the last_used_at timestamp on the corresponding AuthIdentity."
-  [request :- [:map
-               [:user [:map
-                       [:id ms/PositiveInt]
-                       [:is_active :boolean]]]
-               [:device-info {:optional true} [:maybe [:map
-                                                       [:device_id {:optional true} [:maybe ms/NonBlankString]]
-                                                       [:device_description {:optional true} [:maybe ms/NonBlankString]]
-                                                       [:ip_address {:optional true} [:maybe ms/NonBlankString]]]]]]
+  "Create a new session for a user, attributed to the AuthIdentity of `(:session/provider request)` when a `login!`
+  method set one, otherwise to that of `provider`. Updates the last_used_at timestamp on that AuthIdentity."
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user ::users.schema/user]]
+                     login-pipeline-entries)]
    provider :- :keyword]
   (if-not (get-in request [:user :is_active])
     (assoc request :success? false
            :error disabled-account-snippet
            :message disabled-account-message)
-    (let [{:keys [user device-info]} request
-          session (auth-session/create-session-with-auth-tracking! user device-info provider)]
+    (let [{:keys [user device-info saml-data]} request
+          session (auth-session/create-session-with-auth-tracking!
+                   user device-info (or (:session/provider request) provider) nil
+                   ;; SAML logins carry the IdP's own identifiers; single logout needs them to
+                   ;; name the session and subject to end. Other providers have none and store NULL.
+                   {:saml-session-index  (:session-index saml-data)
+                    :saml-name-id        (:name-id saml-data)
+                    :saml-name-id-format (:name-id-format saml-data)})]
       (assoc request :session session))))
 
 (methodical/defmethod login! ::provider
@@ -315,14 +376,28 @@
   [_provider login-result]
   login-result)
 
+;; Keys the login pipeline produces itself, stripped off the incoming request before anything runs. A caller must not
+;; be able to hand itself a user-id, a session, or — via :session/provider — the AuthIdentity its session is
+;; attributed to.
+;;
 ;; TODO: (bshepherdson, 2026-09-04) Only a sharp-eyed code reviewer caught that `:mfa/enroll?` had been introduced
 ;; but not added to this blocklist. The consumers of [[authenticate-owned-keys]] should be switched to an allowlist
 ;; using `select-keys`, rather than `dissoc`ing all the bad fields.
 (def ^:private authenticate-owned-keys
   [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
-   :error :message :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor
+   :error :message :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor :session/provider
    :jwt-data :claims
-   :tenant-slug :tenant-attributes :user-provisioning-enabled?])
+   :tenant-slug :tenant-attributes :user-provisioning-enabled? :created-new-user?])
+
+(defn- notify-admins-of-new-sso-user!
+  "Email admins that an SSO login provisioned a new user, if `send-new-sso-user-admin-email?` is enabled. A failure
+  to send is logged rather than failing a login whose user has already been committed."
+  [{user-id :id}]
+  (when (setting/get :send-new-sso-user-admin-email?)
+    (try
+      (messages/send-user-joined-admin-notification-email! (auth-identity.db/user user-id) :sso-auth? true)
+      (catch Exception e
+        (log/errorf e "Error sending new SSO user notification to admins for user %d" user-id)))))
 
 (methodical/defmethod login! :around ::provider
   [provider request]
@@ -338,6 +413,7 @@
                                  provider (some-> user-id class .getName))))
                  (when-let [email (get-in $ [:user-data :email])]
                    (auth-identity.db/user-login-columns-by-email email)))))
+    (apply-personal-only-check $)
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
@@ -346,12 +422,15 @@
     ;; user's tenant assignment was lost) must not leave a half-provisioned account behind (UXW-4898)
     (t2/with-transaction [_]
       (next-method provider $))
+    (cond-> $
+      (:created-new-user? $) (u/prog1 (notify-admins-of-new-sso-user! (:user <>))))
     (apply-inactive-check $)
     (apply-mfa-gate provider $)
     (cond-> $
       (and (true? (:success? $))
            (:user $)
-           (not (:mfa/pending? $))) (create-session! provider))
+           (not (:mfa/pending? $))
+           (not (:session/skip? $))) (create-session! provider))
     (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims
                     :oidc-provider-key :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor])))
 
@@ -364,40 +443,23 @@
 
 (mu/defn update-user!
   "Updates a user from user-data in the request"
-  [{user-id :id} :- [:map [:id ms/PositiveInt]]
-   user-data :- [:map
-                 [:email :string]
-                 [:first_name {:optional true} [:maybe :string]]
-                 [:last_name {:optional true} [:maybe :string]]
-                 [:sso_source {:optional true} :keyword]
-                 [:is_active {:optional true} :boolean]
-                 [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:provider-id {:optional true} [:maybe :string]]]
-   provider :- :keyword]
+  [{user-id :id} :- ::users.schema/user
+   user-data     :- UserData
+   provider      :- :keyword]
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
                              (not (auth-identity.db/user-active? user-id)))]
-      (auth-identity.db/update-user! user-id
-                                     (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
-                                       reactivating? (assoc :is_superuser false))))
+      (user/update-users! [(cond-> (assoc (select-keys user-data (conj (sso-user-fields) :is_active)) :id user-id)
+                             reactivating? (assoc :is_superuser false))]))
     (when-not (auth-identity.db/auth-identity-exists? user-id (name provider))
-      (auth-identity.db/insert-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
-                                                (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
+      (auth-identity/create-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
+                                             (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
     (auth-identity.db/user-login-status user-id)))
 
 (mu/defn- create-user!
   "Create a user from user-data in the request "
-  [user-data :- [:map
-                 [:email :string]
-                 [:first_name {:optional true} [:maybe :string]]
-                 [:last_name {:optional true} [:maybe :string]]
-                 [:sso_source {:optional true} :keyword]
-                 [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:provider-id {:optional true} [:maybe :string]]
-                 [:tenant_id {:optional true} [:maybe ms/PositiveInt]]]
-   provider :- :keyword]
+  [user-data :- UserData
+   provider  :- :keyword]
   (let [insert-fields (sso-user-fields)]
     ;; The tenant flow upstream validated the tenant claim and stamped :tenant_id into user-data. If
     ;; the field list would strip it here (e.g. a premium-feature check flapped mid-request, or the
@@ -408,26 +470,39 @@
       (throw (ex-info "Unable to provision SSO user: tenant assignment could not be applied"
                       {:status-code 500})))
     (t2/with-transaction [_]
-      (u/prog1
-        (auth-identity.db/insert-user-returning-login-columns! (select-keys user-data insert-fields))
-        (auth-identity.db/insert-auth-identity! (cond-> {:user_id (:id <>) :provider (name provider)}
-                                                  (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
+      (let [[{user-id :id :as new-user}] (user/create-users! [(select-keys user-data insert-fields)])]
+        (auth-identity/create-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
+                                               (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
         (notification/with-skip-sending-notification true
-          (events/publish-event! :event/user-invited {:object (assoc (auth-identity.db/user (:id <>))
-                                                                     :sso_source (name provider))}))))))
+          (events/publish-event! :event/user-invited {:object (assoc new-user :sso_source (name provider))}))
+        (select-keys (auth-identity.db/user-login-columns user-id) [:id :last_login :is_active :tenant_id])))))
+
+(defn- create-or-update-user!
+  [provider request]
+  (let [existing-user (:user request)
+        user-data     (:user-data request)]
+    (cond
+      existing-user
+      {:user              (cond-> existing-user
+                            user-data (update-user! user-data provider))
+       :created-new-user? false}
+
+      user-data
+      {:user              (create-user! user-data provider)
+       :created-new-user? true}
+
+      :else
+      {:user              nil
+       :created-new-user? false})))
 
 (methodical/defmethod login! ::create-user-if-not-exists
   [provider request]
-  (let [user (or (when-let [user (:user request)]
-                   (cond-> user
-                     (:user-data request) (update-user! (:user-data request) provider)))
-                 (when-let [user-data (:user-data request)]
-                   (create-user! user-data provider)))
-        redirect-url (or (:redirect-url request) "/")]
+  (let [{:keys [user created-new-user?]} (create-or-update-user! provider request)]
     (assoc request
-           :success? true
-           :user user
-           :redirect-url redirect-url)))
+           :success?          true
+           :user              user
+           :redirect-url      (or (:redirect-url request) "/")
+           :created-new-user? created-new-user?)))
 
 (methodical/prefer-method! #'login! ::provider ::create-user-if-not-exists)
 

@@ -21,6 +21,7 @@
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.recipients :as mcp.recipients]
    [metabase.mcp.v2.redaction :as redaction]
@@ -49,12 +50,14 @@
 
 (def ^:private schedule-field-advice
   "What to do instead, per field a schedule type doesn't read."
-  {:schedule_hour  "an hourly schedule sends every hour — use \"daily\", \"weekly\", or \"monthly\" to send at one hour"
-   :schedule_day   "use \"weekly\", or \"monthly\" with schedule_frame \"first\" or \"last\", to send on a weekday"
-   :schedule_frame "only a monthly schedule sends on a frame of the month"})
+  {:schedule_hour  (message/raw (str "an hourly schedule sends every hour — use \"daily\", \"weekly\", "
+                                     "or \"monthly\" to send at one hour"))
+   :schedule_day   (message/raw (str "use \"weekly\", or \"monthly\" with \"schedule_frame\" \"first\" or \"last\", "
+                                     "to send on a weekday"))
+   :schedule_frame (message/raw "only a monthly schedule sends on a frame of the month")})
 
 (defn- check-ignored-schedule-fields!
-  "Reject a schedule field the caller's `schedule_type` doesn't read. `create-pulse-channel!`
+  "Reject a schedule field the caller's `schedule_type` doesn't read. `create-pulse-channels!`
    nils such a field out silently, so the subscription would deliver on a schedule nobody asked
    for while the call reports success — `{hourly, schedule_hour 9}` sends 24 times a day, not once
    at nine. Only a non-nil value counts: the strict-client transform lists every property as
@@ -68,13 +71,13 @@
                      first)]
     (when ignored
       (common/throw-teaching-error
-       (format "%s %s schedule doesn't use %s, so it would be ignored — %s."
-               (if (= "hourly" schedule_type) "An" "A")
-               schedule_type (name ignored) (schedule-field-advice ignored))))))
+       (message/msg ["%s %s schedule doesn't use %s, so it would be ignored — %s."]
+                    (message/raw (if (= "hourly" schedule_type) "An" "A"))
+                    schedule_type (name ignored) (schedule-field-advice ignored))))))
 
 (defn- check-schedule!
   "Reject a schedule the pulse channel would reject or mis-encode: one missing a field its type
-   needs, or one carrying a field its type doesn't read. `create-pulse-channel!`'s validation is an
+   needs, or one carrying a field its type doesn't read. `create-pulse-channels!`'s validation is an
    assertion, so an incomplete schedule would otherwise surface as a generic internal error
    instead of a sentence naming the missing field, and it drops a surplus field silently. Kept in
    step with `alert_write`'s check of the same vocabulary, so an agent that has learned one tool's
@@ -83,17 +86,21 @@
   (letfn [(require! [v field explanation]
             (when (nil? v)
               (common/throw-teaching-error
-               (format "A %s schedule needs %s — %s." schedule_type field explanation))))]
+               (message/msg ["A %s schedule needs %s — %s."]
+                            schedule_type field explanation))))]
     (case schedule_type
       "hourly"  nil
-      "daily"   (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
-      "weekly"  (do (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
-                    (require! schedule_day "schedule_day" "the day of the week, e.g. \"mon\""))
-      "monthly" (do (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
-                    (require! schedule_frame "schedule_frame" "\"first\", \"mid\", or \"last\"")
+      "daily"   (require! schedule_hour "schedule_hour" (message/raw "the hour of the day to send, 0-23"))
+      "weekly"  (do (require! schedule_hour "schedule_hour" (message/raw "the hour of the day to send, 0-23"))
+                    (require! schedule_day "schedule_day" (message/raw "the day of the week, e.g. \"mon\"")))
+      "monthly" (do (require! schedule_hour "schedule_hour" (message/raw "the hour of the day to send, 0-23"))
+                    (require! schedule_frame "schedule_frame" (message/raw "\"first\", \"mid\", or \"last\""))
                     (when (and (= "mid" schedule_frame) schedule_day)
                       (common/throw-teaching-error
-                       "A monthly schedule with schedule_frame \"mid\" sends on the 15th, so it cannot also take a schedule_day — drop schedule_day, or use frame \"first\" or \"last\" to send on a particular weekday.")))))
+                       (message/msg [(str "A monthly schedule with \"schedule_frame\" \"mid\" sends on the 15th, "
+                                          "so it cannot also take a \"schedule_day\" — drop \"schedule_day\", "
+                                          "or use \"schedule_frame\" \"first\" or \"last\" "
+                                          "to send on a particular weekday.")]))))))
   (check-ignored-schedule-fields! schedule))
 
 ;;; ------------------------------------------------- Channels -----------------------------------------------------
@@ -117,16 +124,19 @@
   [slack-channel]
   (when-not (channel.settings/slack-configured?)
     (common/throw-teaching-error
-     "Slack is not connected to this Metabase — ask an admin to set it up in Admin settings, or use channel \"email\"."))
+     (message/msg [(str "Slack is not connected to this Metabase — ask an admin "
+                        "to set it up in Admin settings, or use channel \"email\".")])))
   (when (str/blank? slack-channel)
     (common/throw-teaching-error
-     "channel \"slack\" needs a slack_channel — the name of the channel to post to, e.g. \"data-team\"."))
+     (message/msg [(str "channel \"slack\" needs a slack_channel — the name "
+                        "of the channel to post to, e.g. \"data-team\".")])))
   (let [entry        (channel.settings/find-cached-slack-channel-or-username slack-channel)
         display-name (:display-name entry)]
     (when-not display-name
       (common/throw-teaching-error
-       (format "Metabase can't see a Slack channel or user named %s, so a subscription to it would deliver nowhere — check the name, or invite the Metabase Slack app to the channel."
-               (pr-str slack-channel))))
+       (message/msg [(str "Metabase can't see a Slack channel or user named %s, so a subscription to it would "
+                          "deliver nowhere — check the name, or invite the Metabase Slack app to the channel.")]
+                    slack-channel)))
     ;; Unconditional rather than `cond->`: the details map is merged onto the stored one, and the
     ;; sender prefers `:channel_id` over the name. An entry without an id would otherwise leave the
     ;; *previous* channel's id in place, so a repoint would show the new name and deliver to the old
@@ -149,7 +159,8 @@
                 (u/update-if-exists :schedule_frame name)))]
     (when (str/blank? (:schedule_type s))
       (common/throw-teaching-error
-       "`schedule` is required to add a delivery channel — pass {schedule_type: \"hourly\" | \"daily\" | \"weekly\" | \"monthly\", …}."))
+       (message/msg [(str "\"schedule\" is required to add a delivery channel — pass "
+                          "{schedule_type: \"hourly\" | \"daily\" | \"weekly\" | \"monthly\", …}.")])))
     (check-schedule! s)
     (u/select-non-nil-keys s schedule-keys)))
 
@@ -157,7 +168,7 @@
   "Merge the caller's delivery arguments onto `existing` (the subscription's current channel of
    this type, or nil when there isn't one yet). Only the arguments actually present change, so a
    caller who sends just a schedule keeps the channel's recipients — and its row, since the
-   preserved `:id` makes [[metabase.pulse.core/update-pulse!]] update rather than recreate it.
+   preserved `:id` makes [[metabase.pulse.core/update-pulses!]] update rather than recreate it.
 
    `enabled?` must be the negation of the subscription's resulting `archived` state. A Pulse
    encodes \"archived\" by disabling every one of its channels, and the channel write lands after
@@ -166,13 +177,16 @@
   [existing channel-type enabled? {:keys [schedule recipients slack_channel] :as args}]
   (when (and (= "slack" channel-type) (contains? args :recipients))
     (common/throw-teaching-error
-     "A Slack subscription posts to a channel and has no recipient list — drop recipients, or use channel \"email\" to send to people."))
+     (message/msg [(str "A Slack subscription posts to a channel and has no recipient list "
+                        "— drop recipients, or use channel \"email\" to send to people.")])))
   (when (and (= "email" channel-type) (contains? args :recipients) (empty? recipients))
     (common/throw-teaching-error
-     "An empty recipients list would deliver this subscription to nobody — pass at least one user id or email address, or omit recipients to leave the current recipients alone."))
+     (message/msg [(str "An empty recipients list would deliver this subscription to nobody — pass at least one "
+                        "user id or email address, or omit recipients to leave the current recipients alone.")])))
   (when (and (= "email" channel-type) slack_channel)
     (common/throw-teaching-error
-     "`slack_channel` only applies to a Slack subscription — pass channel \"slack\" to post there, or drop slack_channel to keep delivering by email."))
+     (message/msg [(str "\"slack_channel\" only applies to a Slack subscription — pass channel "
+                        "\"slack\" to post there, or drop slack_channel to keep delivering by email.")])))
   (merge {:channel_type channel-type
           :enabled      enabled?}
          (select-keys existing [:id])
@@ -200,10 +214,10 @@
            ;; Without this the `case` throws an IllegalArgumentException that surfaces as a bare
            ;; "Internal error", which tells the agent nothing about what to do instead.
            (common/throw-teaching-error
-            (format (str "This subscription delivers over \"%s\", which this tool cannot edit — it handles "
-                         "\"email\" and \"slack\". Edit it in Metabase, or create a separate email or Slack "
-                         "subscription for the dashboard.")
-                    channel-type)))))
+            (message/msg [(str "This subscription delivers over %s, which this tool cannot edit "
+                               "— it handles \"email\" and \"slack\". Edit it in Metabase, or "
+                               "create a separate email or Slack subscription for the dashboard.")]
+                         channel-type)))))
 
 (defn- target-channel-type
   "Which of the subscription's channels this call edits. Explicit `channel` wins; otherwise a
@@ -214,8 +228,9 @@
       (when (= 1 (count existing-channels))
         (name (:channel_type (first existing-channels))))
       (common/throw-teaching-error
-       (format "This subscription delivers to %d channels, so pass `channel` (\"email\" or \"slack\") to say which one to change."
-               (count existing-channels)))))
+       (message/msg [(str "This subscription delivers to %d channels, so pass \"channel\" "
+                          "(\"email\" or \"slack\") to say which one to change.")]
+                    (count existing-channels)))))
 
 (defn- channel-affecting?
   "Does `args` ask for a change to the delivery channel at all? An update that only touches
@@ -238,16 +253,16 @@
   [parameters dashboard-parameters]
   (when (and (seq parameters) (not (premium-features/enable-dashboard-subscription-filters?)))
     (common/throw-teaching-error
-     (str "Filtered subscriptions need the dashboard-subscription-filters feature, which this instance "
-          "doesn't have — the filter values would be stored and then ignored at send time. Omit "
-          "`parameters` to subscribe to the dashboard's own default filter values.")))
+     (message/msg [(str "Filtered subscriptions need the dashboard-subscription-filters feature, which this "
+                        "instance doesn't have — the filter values would be stored and then ignored at send "
+                        "time. Omit \"parameters\" to subscribe to the dashboard's own default filter values.")])))
   (let [known (into #{} (map (comp u/qualified-name :id)) dashboard-parameters)]
     (doseq [{param-id :id} parameters]
       (when-not (contains? known param-id)
         (common/throw-teaching-error
-         (format "The dashboard has no parameter %s. Its parameter ids are: %s."
-                 (pr-str param-id)
-                 (if (seq known) (str/join ", " (sort known)) "(none)")))))
+         (message/msg ["The dashboard has no parameter %s. Its parameter ids are: %s."]
+                      param-id
+                      (if (seq known) (common/list-message (sort known)) (message/raw "(none)"))))))
     (mapv #(select-keys % [:id :value]) parameters)))
 
 ;;; -------------------------------------------------- Create ------------------------------------------------------
@@ -260,19 +275,24 @@
    teaching error.
 
    This list does not decide what a send renders — the dashboard payload re-executes the whole
-   dashboard by id. It exists because [[metabase.pulse.core/create-pulse!]] requires at least one
+   dashboard by id. It exists because [[metabase.pulse.models.pulse/create-pulses!]] requires at least one
    card ref, and because `dashboard_card_id` is what the email channel matches per-card attachment
    flags against for visualizer dashcards."
   [dashboard]
-  (let [cards (for [{dashcard-id :id :keys [card]} (sort-by (juxt #(or (:row %) 0) #(or (:col %) 0))
-                                                            (:dashcards dashboard))
-                    :when (int? (:id card))]
-                (-> (api/read-check card)
-                    (select-keys [:id :name :collection_id :description :display :parameter_mappings])
-                    (assoc :dashboard_card_id dashcard-id :dashboard_id (:id dashboard))))]
+  (let [dashcards (into []
+                        (filter #(int? (:id (:card %))))
+                        (sort-by (juxt #(or (:row %) 0) #(or (:col %) 0)) (:dashcards dashboard)))
+        cards     (for [[{dashcard-id :id} card] (map vector dashcards (t2/hydrate (mapv :card dashcards) :can_read))]
+                    (-> (api/read-check card)
+                        (select-keys [:id :name :collection_id :description :display :parameter_mappings])
+                        (assoc :dashboard_card_id dashcard-id
+                               :dashboard_id      (:id dashboard)
+                               :include_csv       false
+                               :include_xls       false)))]
     (when (empty? cards)
       (common/throw-teaching-error
-       "This dashboard has no cards to send — a subscription needs at least one saved question, model, or metric on the dashboard."))
+       (message/msg [(str "This dashboard has no cards to send — a subscription needs at "
+                          "least one saved question, model, or metric on the dashboard.")])))
     (vec cards)))
 
 (defn- create!
@@ -281,21 +301,14 @@
                       (t2/hydrate [:dashcards :card]))
         cards     (subscription-cards dashboard)
         channel   (build-channel nil (or channel "email") true args)
-        ;; `collection_id` is deliberately nil rather than the dashboard's: the Pulse model derives
-        ;; it from `dashboard_id`, and naming it here would make the create-check demand *write*
-        ;; access to the dashboard's collection — anyone who can view a dashboard can subscribe to
-        ;; it. Both collection keys must still be present, since the position reconciler requires
-        ;; them.
         pulse     (pulse.api/create-pulse-with-perm-checks!
                    cards
                    [channel]
-                   {:name                (:name dashboard)
-                    :creator_id          api/*current-user-id*
-                    :dashboard_id        (:id dashboard)
-                    :collection_id       nil
-                    :collection_position nil
-                    :skip_if_empty       (boolean skip_if_empty)
-                    :parameters          (resolve-parameters parameters (:parameters dashboard))})]
+                   {:name          (:name dashboard)
+                    :creator_id    api/*current-user-id*
+                    :dashboard_id  (:id dashboard)
+                    :skip_if_empty (boolean skip_if_empty)
+                    :parameters    (resolve-parameters parameters (:parameters dashboard))})]
     (:id pulse)))
 
 ;;; -------------------------------------------------- Update ------------------------------------------------------
@@ -353,7 +366,8 @@
                                                           (not archived?) args)))]
     (when (empty? updates)
       (common/throw-teaching-error
-       "Nothing to update — pass at least one of schedule, channel, slack_channel, recipients, parameters, skip_if_empty, or archived."))
+       (message/msg [(str "Nothing to update — pass at least one of schedule, channel, "
+                          "slack_channel, recipients, parameters, skip_if_empty, or archived.")])))
     (pulse.api/update-pulse-with-perm-checks! (:id subscription) updates)
     (:id subscription)))
 
@@ -362,20 +376,20 @@
 (def ^:private schedule-schema
   [:map {:closed true
          :description "When to deliver. Metabase sends at the top of the hour, in the instance's report time zone."}
-   [:schedule_type
-    [:enum {:description "How often to send."} "hourly" "daily" "weekly" "monthly"]]
-   [:schedule_hour {:optional true}
-    [:maybe [:int {:min 0 :max 23
-                   :description "Hour of the day to send, 0-23. Required for daily, weekly, and monthly."}]]]
-   [:schedule_day {:optional true}
-    [:maybe [:enum {:description (str "Day of the week. Required for weekly; with a monthly "
-                                      "schedule_frame of \"first\" or \"last\" it picks that weekday "
-                                      "of the month.")}
-             "mon" "tue" "wed" "thu" "fri" "sat" "sun"]]]
-   [:schedule_frame {:optional true}
-    [:maybe [:enum {:description (str "Which part of the month to send on. Required for monthly. "
-                                      "\"mid\" is the 15th and takes no schedule_day.")}
-             "first" "mid" "last"]]]])
+   [:schedule_type {:description "How often to send."}
+    :metabase.pulse.schema/pulse-channel.schedule-type-name]
+   [:schedule_hour {:optional true
+                    :description "Hour of the day to send, 0-23. Required for daily, weekly, and monthly."}
+    [:maybe :metabase.pulse.schema/pulse-channel.schedule-hour]]
+   [:schedule_day {:optional true
+                   :description (str "Day of the week. Required for weekly; with a monthly "
+                                     "schedule_frame of \"first\" or \"last\" it picks that weekday "
+                                     "of the month.")}
+    [:maybe :metabase.pulse.schema/pulse-channel.schedule-day]]
+   [:schedule_frame {:optional true
+                     :description (str "Which part of the month to send on. Required for monthly. "
+                                       "\"mid\" is the 15th and takes no schedule_day.")}
+    [:maybe :metabase.pulse.schema/pulse-channel.schedule-frame-name]]])
 
 (def ^:private subscription-write-args-schema
   [:map {:closed true}
@@ -425,14 +439,14 @@
    so establishing one — or redirecting where one delivers — needs the same scope that seeing those
    results in-session would. The send itself happens later, tokenlessly, under the creator's
    permissions; this check at write time is the only place the token's scopes can bound that
-   deferred execution. No-op for unscoped callers (cookie sessions bind the unrestricted sentinel,
-   which matches everything). Mirrors alert_write's check of the same scope."
+   deferred execution. Mirrors alert_write's check of the same scope."
   [token-scopes action]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
-    (throw (ex-info (format (str "%s runs the dashboard's questions and delivers the results, which requires the "
-                                 "%s scope — this token can manage subscriptions but not execute queries.")
-                            action metabot.scope/agent-query-run)
-                    {:status-code 403 ::common/error-code common/error-code-invalid-request}))))
+    (common/throw-insufficient-scope!
+     (message/msg [(str "%s runs the dashboard's questions and delivers the results, which requires "
+                        "the %s scope — this token can manage subscriptions but not execute queries.")]
+                  action (message/raw metabot.scope/agent-query-run))
+     metabot.scope/agent-query-run)))
 
 (defn- execute-scope-trigger
   "The reason [[check-query-execute-scope!]] should refuse `updates` with, or nil when the update
@@ -446,13 +460,13 @@
   [updates]
   (cond
     (some #(contains? updates %) [:channel :slack_channel :recipients])
-    "Changing where a subscription delivers"
+    (message/raw "Changing where a subscription delivers")
 
     (false? (:archived updates))
-    "Restoring a trashed subscription"
+    (message/raw "Restoring a trashed subscription")
 
     (contains? updates :schedule)
-    "Changing a subscription's schedule"))
+    (message/raw "Changing a subscription's schedule")))
 
 (registry/deftool subscription-write
   "Create or update a dashboard subscription — scheduled delivery of a whole dashboard, e.g. \"send me this dashboard
@@ -470,14 +484,17 @@
   never does. This is for dashboards on a schedule — use alert_write for a
   question that fires on a condition. Requires read permission on the dashboard; only its creator (or an admin) can
   update it."
-  {:name         "subscription_write"
-   :scope        metabot.scope/agent-delivery-write
-   :annotations  {:readOnlyHint false :destructiveHint false}
-   :args         subscription-write-args-schema}
+  {:name           "subscription_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-delivery-write
+   ;; `destructiveHint`: `archived: true` trashes the subscription, and an update can replace the recipients.
+   ;; `openWorldHint`: it sends to email addresses and Slack channels outside Metabase.
+   :annotations    {:readOnlyHint false, :destructiveHint true, :openWorldHint true}
+   :args           subscription-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write subscription-write-entry args)
         id       (case op
-                   :create (do (check-query-execute-scope! token-scopes "Creating a subscription")
+                   :create (do (check-query-execute-scope! token-scopes (message/raw "Creating a subscription"))
                                (create! a))
                    :update (do (when-let [reason (execute-scope-trigger b)]
                                  (check-query-execute-scope! token-scopes reason))

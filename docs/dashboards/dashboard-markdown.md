@@ -5,8 +5,6 @@ summary: Add context to your dashboards with text and heading cards, including f
 
 # Dashboard heading and text cards
 
-Add heading and text cards to your dashboards to label sections, link to other content, display images, and more.
-
 ## Add a heading or text card
 
 To add a heading or text card to a dashboard:
@@ -82,7 +80,7 @@ To add a filter value to a card:
 
 ## Add an image
 
-If your admin has [allowed domains for images](../configuring-metabase/settings.md#allowed-domains-for-images), you can add an image to a dashboard. Add a text card and use Markdown image syntax:
+You can add an image to a dashboard, as long as your admin hasn't [restricted the domain it's hosted on](../configuring-metabase/domains.md#restrict-where-images-can-load-from). Add a text card and use Markdown image syntax:
 
 ```text
 ![A description of the image](https://example.com/image.png)

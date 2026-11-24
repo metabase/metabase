@@ -98,6 +98,15 @@ merge_outputs() {
     if [ -f "$jvm_dir/logs/test-log.json" ]; then
       cp -a "$jvm_dir/logs/test-log.json" "$WORKSPACE/logs/test-log-p$idx.json" || true
     fi
+    # Flamegraphs, when the run was profiled. Flat with a `p$idx-` prefix, not nested: the
+    # collect-profile action globs `results/*flamegraph.html` without descending.
+    if [ -d "$jvm_dir/target/clj-async-profiler/results" ]; then
+      mkdir -p "$WORKSPACE/target/clj-async-profiler/results"
+      for f in "$jvm_dir"/target/clj-async-profiler/results/*flamegraph.html; do
+        [ -e "$f" ] || continue
+        cp -a "$f" "$WORKSPACE/target/clj-async-profiler/results/p$idx-$(basename "$f")" || true
+      done
+    fi
   done
 }
 trap merge_outputs EXIT
@@ -145,6 +154,10 @@ echo "Runner $TEST_RUNNER_INDEX of $TEST_RUNNER_COUNT: running $TEST_JVMS_PER_RU
 for idx in "${INDEXES[@]}"; do
   prepare_jvm_dir "$JVM_DIRS_ROOT/partition-$idx"
 done
+
+# Prepare dependencies before concurrent JVMs can race to clone or check out the same Git library.
+# This also initializes the Clojure launcher before the partitions start.
+clojure -P -X:"$CLOJURE_ALIASES" >/dev/null || die "preparing Clojure dependencies failed"
 
 for idx in "${INDEXES[@]}"; do
   run_partition "$idx" "$JVM_DIRS_ROOT/partition-$idx" &

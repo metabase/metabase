@@ -126,7 +126,7 @@ const modelPersistence = () =>
     Component: ModelPersistenceConfiguration,
   }));
 
-// `route.lazy` supplies a component and no props, so the three routes that
+// `route.lazy` supplies a component and no props, so the four routes that
 // share this layout bind theirs here.
 const metabotLayout =
   (props: ComponentProps<typeof MetabotAdminLayout> = {}) =>
@@ -259,17 +259,17 @@ export const getRoutes = (
             </Route>
 
             <Route path="" lazy={peopleListing}>
-              {modalRoute("new", NewUserModal, { noWrap: true })}
+              {modalRoute("new", NewUserModal)}
               {PLUGIN_TENANTS.userStrategyRoute}
             </Route>
 
             <Route path=":userId" lazy={peopleListing}>
               <Route index element={redirect("/admin/people")} />
-              {modalRoute("edit", EditUserModal, { noWrap: true })}
-              {modalRoute("success", UserSuccessModal, { noWrap: true })}
-              {modalRoute("reset", UserPasswordResetModal, { noWrap: true })}
-              {modalRoute("deactivate", UserActivationModal, { noWrap: true })}
-              {modalRoute("reactivate", UserActivationModal, { noWrap: true })}
+              {modalRoute("edit", EditUserModal)}
+              {modalRoute("success", UserSuccessModal)}
+              {modalRoute("reset", UserPasswordResetModal)}
+              {modalRoute("deactivate", UserActivationModal)}
+              {modalRoute("reactivate", UserActivationModal)}
               {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
                 <Fragment key={index}>{getRoutes()}</Fragment>
               ))}
@@ -344,7 +344,7 @@ export const getRoutes = (
           path="settings"
           element={createElement(createAdminRouteGuard("settings"))}
         >
-          {getSettingsRoutes(store, IsAdmin)}
+          {getSettingsRoutes(store)}
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" element={<IsAdmin />}>
@@ -388,6 +388,15 @@ export const getRoutes = (
             <Route path="mcp/authorizations" lazy={oauthAuthorizations} />
           </Route>
           <Route
+            key="mcp-tools-access-layout"
+            lazy={metabotLayout({
+              fullWidth: true,
+              innerContentProps: { fullWidth: true, fullHeight: true },
+            })}
+          >
+            {PLUGIN_AI_CONTROLS.getMcpToolsAccessRoutes()}
+          </Route>
+          <Route
             key="layout"
             lazy={metabotLayout({
               fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
@@ -402,10 +411,22 @@ export const getRoutes = (
         </Route>
 
         {PLUGIN_SECURITY_CENTER.isEnabled && (
-          <Route
-            path="security-center"
-            lazy={PLUGIN_SECURITY_CENTER.securityCenterPage}
-          />
+          <Route element={<IsAdmin />}>
+            <Route
+              path="security-center"
+              lazy={PLUGIN_SECURITY_CENTER.securityCenterPage}
+            >
+              <Route index element={redirect("advisories")} />
+              <Route
+                path="advisories"
+                lazy={PLUGIN_SECURITY_CENTER.securityCenterAdvisoriesPage}
+              />
+              <Route
+                path="health-checks"
+                lazy={PLUGIN_SECURITY_CENTER.securityCenterHealthChecksPage}
+              />
+            </Route>
+          </Route>
         )}
 
         <Route element={createElement(createAdminRouteGuard("help"))}>

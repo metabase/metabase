@@ -11,17 +11,18 @@ import { UsageConditionsInfoIcon } from "./UsageConditionsInfoIcon";
 interface Props {
   isEnabled: boolean;
   termsAccepted: boolean;
+  withIndent?: boolean;
 }
 
 /**
- * Rendered under the SSO radio when modular embedding
- * (`enable-embedding-modular`) isn't enabled yet or its terms haven't been
+ * Shown when modular embedding isn't enabled yet or its terms haven't been
  * accepted. Lets the admin enable the feature and accept the terms in a
  * single click from inside the wizard.
  */
 export const EnableModularEmbeddingSection = ({
   isEnabled,
   termsAccepted,
+  withIndent = true,
 }: Props) => {
   const [updateSettings] = useUpdateSettingsMutation();
   const [sendToast] = useToast();
@@ -40,7 +41,10 @@ export const EnableModularEmbeddingSection = ({
         ...(!termsAccepted && { "show-modular-embed-terms": false }),
       });
     } catch (error) {
-      sendToast({ message: t`Failed to enable modular embedding` });
+      sendToast({
+        message: t`Failed to enable modular embedding`,
+        variant: "negative",
+      });
     }
   };
 
@@ -71,7 +75,7 @@ export const EnableModularEmbeddingSection = ({
   return (
     <Stack
       gap={0}
-      pl="xxl"
+      pl={withIndent ? "xxl" : 0}
       data-testid="enable-embedding-card"
       mt="xxs"
       mb="sm"
@@ -90,7 +94,6 @@ export const EnableModularEmbeddingSection = ({
         <Button
           variant={isAccepted ? "default" : "filled"}
           onClick={handleEnable}
-          size="xs"
           disabled={isAccepted}
           leftSection={isAccepted && <Icon name="check" />}
         >

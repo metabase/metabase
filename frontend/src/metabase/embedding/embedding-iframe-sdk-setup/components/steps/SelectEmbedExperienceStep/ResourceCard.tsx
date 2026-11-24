@@ -8,13 +8,14 @@ import {
   DashboardPickerModal,
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
+import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { Button, Card, Icon, Stack, Text } from "metabase/ui";
 import type { CollectionId, IconName } from "metabase-types/api";
 
-import { EXPERIENCES_WITHOUT_RESOURCE_SELECTION } from "../../../constants";
+import type { EXPERIENCES_WITHOUT_RESOURCE_SELECTION } from "../../../constants";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
 import type {
-  SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
 } from "../../../types";
@@ -53,6 +54,17 @@ export const ResourceCard = () => {
 
   if (!hasResourceSelectionStep(experience)) {
     return null;
+  }
+
+  if (experience === "data-app") {
+    return (
+      <PLUGIN_DATA_APPS.EmbedDataAppPicker
+        value={
+          settings.componentName === "metabase-data-app" ? settings.path : null
+        }
+        onChange={(path) => updateSettings({ path })}
+      />
+    );
   }
 
   const recentItems = match(experience)
@@ -191,9 +203,8 @@ export const ResourceCard = () => {
           </Text>
 
           <Button
-            variant="default"
             leftSection={<Icon name={icon} c="core-brand" size={16} />}
-            rightSection={<Icon name="chevrondown" size={12} />}
+            rightSection={<Icon name="chevronright" size={12} />}
             onClick={openPicker}
             data-testid="embed-browse-entity-button"
             aria-label={label}
@@ -217,9 +228,9 @@ type ResourceExperience = Exclude<
   (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
 >;
 
-const getResourceCopy = (experience: ResourceExperience) =>
+const getResourceCopy = (experience: Exclude<ResourceExperience, "data-app">) =>
   match<
-    ResourceExperience,
+    Exclude<ResourceExperience, "data-app">,
     { title: string; icon: IconName; placeholder: string; label: string }
   >(experience)
     .with("dashboard", () => ({
@@ -256,11 +267,8 @@ const COLLECTION_MODAL_OPTIONS = {
 
 const hasResourceSelectionStep = (
   experience: SdkIframeEmbedSetupExperience,
-): experience is Exclude<
-  SdkIframeEmbedSetupExperience,
-  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
-> =>
-  // Unjustified type cast. FIXME
-  !(
-    EXPERIENCES_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
-  ).includes(experience);
+): experience is ResourceExperience =>
+  experience === "dashboard" ||
+  experience === "chart" ||
+  experience === "browser" ||
+  experience === "data-app";

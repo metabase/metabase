@@ -4,6 +4,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupDatabaseListEndpoint,
+  setupEnginesEndpoint,
   setupGdriveGetFolderEndpoint,
   setupGdrivePostFolderEndpoint,
   setupGdriveServiceAccountEndpoint,
@@ -24,6 +25,7 @@ import type {
 import {
   createMockCollection,
   createMockDatabase,
+  createMockEngines,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
@@ -155,6 +157,8 @@ export const setup = ({
       "super-service-account@testing.metabase.com",
     );
   }
+
+  setupEnginesEndpoint(createMockEngines());
 
   renderWithProviders(<AddDataModal onClose={jest.fn()} opened={opened} />, {
     storeInitialState: state,

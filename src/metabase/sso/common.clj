@@ -3,27 +3,32 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.sso.db :as sso.db]
+   [metabase.sso.ldap :as ldap]
+   [metabase.sso.ldap.default-implementation :as ldap.impl]
+   [metabase.sso.ldap.settings :as ldap.settings]
+   [metabase.sso.settings :as sso.settings]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (defn- excluded-group-ids
   []
-  (into #{(u/the-id (perms/all-users-group))
-          (u/the-id (perms/all-external-users-group))}
-        (perms/data-app-group-ids)))
+  #{(u/the-id (perms/all-users-group))
+    (u/the-id (perms/all-external-users-group))})
 
 (defn- sync-group-memberships*!
+  "Remove the user from the groups `to-remove` and add them to `to-add`, logging rather than throwing the refusal to
+  remove the last admin, so that the sync does not block the login."
   [user-or-id to-remove to-add]
   (when (seq to-remove)
     (log/debugf "Removing user %s from group(s) %s" (u/the-id user-or-id) to-remove)
     (try
-      (perms/remove-user-from-groups! user-or-id to-remove)
+      (perms-group-membership/remove-users-from-groups! [user-or-id] (vec to-remove))
       (catch clojure.lang.ExceptionInfo e
-        ;; in case sync attempts to delete the last admin, the pre-delete hooks of
-        ;; [[metabase.permissions.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.
-        ;; but we don't want to block user from logging-in, so catch this exception and log a warning
         (if (= (ex-message e) (str perms/fail-to-remove-last-admin-msg))
           (log/warn "Attempted to remove the last admin during group sync!"
                     "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
@@ -34,7 +39,7 @@
   (doseq [group-or-id to-add]
     (log/debugf "Adding user %s to group %s" (u/the-id user-or-id) (u/the-id group-or-id))
     (try
-      (perms/add-user-to-group! user-or-id group-or-id)
+      (perms-group-membership/add-users-to-groups! [{:user user-or-id :group group-or-id}])
       (catch Throwable e
         ;; A tenant/group mismatch means the user landed in the wrong space (e.g. an SSO login whose
         ;; tenant assignment was lost); swallowing it would silently wedge the account (UXW-4898),
@@ -63,3 +68,25 @@
                                 (set/difference excluded))
          [to-remove to-add] (data/diff current-group-ids new-group-ids)]
      (sync-group-memberships*! user-or-id to-remove to-add))))
+
+(mu/defn ldap-directory-user :- [:maybe ldap.impl/UserInfo]
+  "The directory entry of `username` when LDAP is enabled and its directory finds `username`, or nil, so that callers
+  treat `username` as a local user, also when the lookup fails (for example, when the LDAP server is unavailable)."
+  [username :- :string]
+  (when (ldap.settings/ldap-enabled)
+    (try
+      (ldap/find-user username)
+      (catch Throwable e
+        (log/warnf "LDAP user lookup failed: %s" (ex-message e))
+        nil))))
+
+(mu/defn sso-only-user? :- :boolean
+  "Whether the User with `user-id`, `email` and `sso-source` signs in only through SSO: their SSO provider is enabled
+  and they have no used password, or their LDAP directory finds them."
+  [user-id    :- ::lib.schema.id/user
+   email      :- :string
+   sso-source :- [:maybe [:or :keyword :string]]]
+  (boolean (or (and (some? sso-source)
+                    (sso.settings/sso-source-enabled? sso-source)
+                    (not (sso.db/used-password-exists? user-id)))
+               (ldap-directory-user email))))

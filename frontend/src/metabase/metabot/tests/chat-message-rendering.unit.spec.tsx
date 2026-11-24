@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 import type { ComponentProps } from "react";
 
 import {
@@ -32,15 +31,18 @@ import {
   setup as renderMetabotChat,
   thumbsDown,
   thumbsUp,
+  updateTestConversation,
 } from "metabase/metabot/tests/utils";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCollection,
   createMockDocument,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import {
   AgentMessage,
@@ -58,6 +60,7 @@ const setup = (
       debug={false}
       readonly={false}
       conversationId="convo-1"
+      size="md"
       setFeedbackMessage={() => {}}
       submittedFeedback={undefined}
       message={{
@@ -81,6 +84,7 @@ describe("AgentMessage", () => {
   it("hides the action bar on the last agent message while processing", () => {
     renderWithProviders(
       <Messages
+        size="md"
         messages={[
           createMockMetabotTextMessage("user", "hi"),
           createMockMetabotTextMessage("agent", "hello"),
@@ -100,6 +104,7 @@ describe("AgentMessage", () => {
   it("hides the copy action when the agent response has no text", () => {
     renderWithProviders(
       <Messages
+        size="md"
         messages={[
           createMockMetabotTextMessage("user", "hi"),
           createMockMetabotMessage({
@@ -160,6 +165,7 @@ describe("AgentMessage", () => {
     it("shows feedback ratings in an interactive conversation", async () => {
       renderWithProviders(
         <Messages
+          size="md"
           messages={conversation}
           isDoingScience={false}
           debug={false}
@@ -175,6 +181,7 @@ describe("AgentMessage", () => {
     it("hides feedback ratings in a read-only conversation", () => {
       renderWithProviders(
         <Messages
+          size="md"
           messages={conversation}
           isDoingScience={false}
           debug={false}
@@ -188,6 +195,37 @@ describe("AgentMessage", () => {
       ).not.toBeInTheDocument();
       expect(
         screen.queryByTestId("metabot-chat-message-thumbs-down"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("generated chart", () => {
+    const generatedChartPart: MetabotMessage["parts"][number] = {
+      id: "g1",
+      role: "agent",
+      type: "data_part",
+      part: {
+        type: "data-generated_entity",
+        data: {
+          type: "card",
+          id: "chart-1",
+          title: "Orders by month",
+          query: {
+            id: "query-1",
+            query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+          },
+        },
+      },
+    };
+
+    it("shows a link to open the chart when charts show as links", () => {
+      setup({ parts: [generatedChartPart] }, { chartsAsLinks: true });
+
+      expect(
+        screen.getByTestId("metabot-inline-chart-link"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("metabot-inline-chart"),
       ).not.toBeInTheDocument();
     });
   });
@@ -393,9 +431,7 @@ describe("AgentMessage", () => {
         screen.getByText(/was cut off because it hit the maximum length/),
       ).toBeInTheDocument();
       await userEvent.click(await continueResponseButton());
-      expect(onContinue).toHaveBeenCalledWith(
-        expect.stringMatching(/Pick up exactly where you left off/),
-      );
+      expect(onContinue).toHaveBeenCalled();
     });
 
     it("offers to continue a step-limited response", async () => {
@@ -406,40 +442,34 @@ describe("AgentMessage", () => {
         screen.getByText(/paused after reaching its step limit/),
       ).toBeInTheDocument();
       await userEvent.click(await continueResponseButton());
-      expect(onContinue).toHaveBeenCalledWith(
-        expect.stringMatching(/Continue working on my last request/),
-      );
+      expect(onContinue).toHaveBeenCalled();
     });
 
     it("shows a terminal notice when the context window is full", () => {
-      setup(
-        {
-          status: {
-            type: "incomplete",
-            finishReason: "length",
-            contextWindowFull: true,
-          },
+      setup({
+        status: {
+          type: "incomplete",
+          finishReason: "length",
+          contextWindowFull: true,
         },
-        { onContinue: jest.fn() },
-      );
+      });
 
       expect(
         screen.getByText(/reached its maximum length and can't continue/),
       ).toBeInTheDocument();
-      expect(queryContinueResponseButton()).not.toBeInTheDocument();
     });
 
-    it("explains a content-filtered response without offering to continue", () => {
-      setup(
-        { status: incompleteStatus("content-filter") },
-        {
-          onContinue: jest.fn(),
-        },
-      );
+    it("explains a content-filtered response", () => {
+      setup({ status: incompleteStatus("content-filter") });
 
       expect(
         screen.getByText(/was stopped by a content filter/),
       ).toBeInTheDocument();
+    });
+
+    it("hides the continue button without a handler", () => {
+      setup({ status: incompleteStatus("tool-calls") });
+
       expect(queryContinueResponseButton()).not.toBeInTheDocument();
     });
 
@@ -455,15 +485,24 @@ describe("AgentMessage", () => {
 
 describe("UserMessage chart mentions", () => {
   it("renders a chart mention as an icon chip using conversation state", async () => {
-    const datasetQuery = createMockStructuredDatasetQuery();
-    const metabotState = assocIn(
-      getMetabotInitialState(),
-      ["conversations", "omnibot", "state"],
+    const datasetQuery = Lib.createTestJsQuery(
+      SAMPLE_PROVIDER,
+      DEFAULT_TEST_QUERY,
+    );
+    const initialState = getMetabotInitialState();
+    const omnibotConversationId = checkNotNull(
+      initialState.agents.omnibot,
+    ).conversationId;
+    const metabotState = updateTestConversation(
+      initialState,
+      omnibotConversationId,
       {
-        charts: {
-          "chart-1": {
-            queries: [datasetQuery],
-            visualization_settings: { chart_type: "bar" },
+        state: {
+          charts: {
+            "chart-1": {
+              queries: [datasetQuery],
+              visualization_settings: { chart_type: "bar" },
+            },
           },
         },
       },
@@ -471,6 +510,7 @@ describe("UserMessage chart mentions", () => {
 
     renderWithProviders(
       <Messages
+        size="md"
         messages={[
           createMockMetabotTextMessage(
             "user",

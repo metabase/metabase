@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
 import { t } from "ttag";
 
@@ -8,6 +9,8 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { TableBrowser } from "metabase/browse/tables/TableBrowser";
+import { BrowseCard } from "metabase/common/components/BrowseCard";
+import { BrowseGrid } from "metabase/common/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -18,10 +21,9 @@ import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DatabaseId } from "metabase-types/api";
 
-import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
-import { BrowseGrid } from "../components/BrowseGrid";
+import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 type Schema = { id: string; name: string };
 
@@ -61,13 +63,20 @@ const BrowseSchemasContainer = ({
             />
           ) : (
             <>
-              <Flex align="center" pt="lg" pr="sm" pb="sm">
+              <Flex
+                align="center"
+                justify="space-between"
+                pt="lg"
+                pr="sm"
+                pb="sm"
+              >
                 <BrowserCrumbs
                   crumbs={[
                     { title: t`Databases`, to: "/browse/databases" },
                     { title: database?.name ?? "" },
                   ]}
                 />
+                <DatabaseQuickLinksMenu databaseId={dbId} />
               </Flex>
               {schemas.length === 0 ? (
                 <h2

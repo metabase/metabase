@@ -1,4 +1,7 @@
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabasesEndpoints,
+  setupSettingEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -8,6 +11,7 @@ import {
   createMockDatabase,
   createMockTokenStatus,
   createMockUser,
+  createMockVersionInfo,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -32,6 +36,10 @@ function setup({
   tokenStatus,
 }: SetupOpts) {
   setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: createMockVersionInfo(),
+  });
 
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),

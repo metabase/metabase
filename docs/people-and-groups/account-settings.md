@@ -31,7 +31,7 @@ If you're having trouble logging in, see our [People can't log into Metabase](..
 
 ## Two-factor authentication
 
-{% include plans-blockquote.html feature="Two-factor authentication" %}
+> Two-factor authentication is available on the Starter plan on Metabase Cloud, and on all Pro and Enterprise plans (both self-hosted and on Metabase Cloud).
 
 If your admin has turned on [two-factor authentication](./two-factor-authentication.md) (2FA), you'll see an **Authentication** tab in your account settings. 2FA adds a second step to logging in: after your password, you enter a code from an authenticator app, so your password alone won't let someone into your account.
 
@@ -44,6 +44,8 @@ If your admin has turned on [two-factor authentication](./two-factor-authenticat
 5. Scan the QR code with an authenticator app like Google Authenticator, 1Password, or Authy. If you can't scan it, enter the key manually in your authenticator app.
 6. Enter the six-digit code from the app.
 7. Save your recovery codes. Metabase shows these ten codes only once, so copy them and store them somewhere safe. Each recovery code only works once. If you [regenerate recovery codes](#regenerate-recovery-codes), the old codes will no longer work.
+
+If your admin requires 2FA, Metabase prompts you to set up 2FA the next time you log in.
 
 ### Logging in with two-factor authentication
 
@@ -61,13 +63,15 @@ Recovery codes are single-use, so it's worth generating a fresh set if you're ru
 
 In your account settings, on the **Authentication** tab, click **Disable**. Your account will be protected by your password only, and your recovery codes will stop working.
 
+If your admin requires 2FA, you can't disable it.
+
 ## Account login history
 
 The login history lists each login, along with some location information (if available), and some client information (like Browser (Firefox/Windows)). If you see any suspicious login attempts, change your password and notify your administrator.
 
 ### A note about new login emails
 
-Whenever you log in from a new device, Metabase will send you an email just to let you know someone (presumably you) has logged in from an unrecognized device. If you see this email, but don't remember logging in, or don't recognize the device, change your password and let your administrator know.
+Whenever you log in from a new device, Metabase will send you an email just to let you know someone (presumably you) has logged in from an unrecognized device. If you see this email, but don't remember logging in, or don't recognize the device, change your password and let your administrator know. Admins of self-hosted Metabases can turn off these emails with the [`MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE`](../configuring-metabase/environment-variables.md#mb_send_email_on_first_login_from_new_device) environment variable.
 
 ## Disable animations in Metabase
 

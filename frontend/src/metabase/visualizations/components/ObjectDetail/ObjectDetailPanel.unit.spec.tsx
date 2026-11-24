@@ -9,8 +9,11 @@ import {
 } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { getNextId } from "__support__/utils";
+import { getNextId, waitForRequestsToSettle } from "__support__/utils";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
@@ -23,6 +26,7 @@ import {
 import {
   PEOPLE,
   PEOPLE_ID,
+  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -52,7 +56,7 @@ const mockTableMultiplePks = createMockTable({
 });
 
 const databaseWithActionsEnabled = createMockDatabase({
-  id: getNextId(),
+  id: SAMPLE_DB_ID,
   settings: { "database-enable-actions": true },
 });
 
@@ -61,71 +65,76 @@ const databaseWithActionsDisabled = createMockDatabase({
   settings: { "database-enable-actions": false },
 });
 
+const tablesProvider = createMetadataProvider({
+  metadata: createMockMetadata({
+    databases: [createSampleDatabase({ id: databaseWithActionsEnabled.id })],
+    tables: [mockTable, mockTableMultiplePks, mockTableNoPk],
+  }),
+});
+
 const mockDatasetCard = createMockCard({
   id: getNextId(),
   type: "model",
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": PEOPLE_ID,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+    }),
+  ),
 });
 
 const mockDatasetNoPkCard = createMockCard({
   id: getNextId(),
   type: "model",
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": mockTableNoPk.id,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: mockTableNoPk.id } }],
+    }),
+  ),
 });
 
 const mockDatasetMultiplePksCard = createMockCard({
   id: getNextId(),
   type: "model",
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": mockTableMultiplePks.id,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: mockTableMultiplePks.id } }],
+    }),
+  ),
 });
 
 const mockDatasetWithClausesCard = createMockCard({
   id: getNextId(),
   type: "model",
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": PEOPLE_ID,
-      filter: [
-        "contains",
-        ["field", PEOPLE.NAME, null],
-        "Macy",
-        { "case-sensitive": false },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [
+        {
+          source: { type: "table", id: PEOPLE_ID },
+          filters: [
+            {
+              type: "operator",
+              operator: "contains",
+              args: [
+                { type: "column", fieldId: PEOPLE.NAME },
+                { type: "literal", value: "Macy" },
+              ],
+            },
+          ],
+        },
       ],
-    },
-  },
+    }),
+  ),
 });
 
 const mockDatasetNoWritePermissionCard = createMockCard({
   id: getNextId(),
   can_write: false,
   type: "model",
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": PEOPLE_ID,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+    }),
+  ),
 });
 
 const metadata = createMockMetadata({
@@ -146,22 +155,25 @@ const metadata = createMockMetadata({
   ],
 });
 
-const mockQuestion = checkNotNull(metadata.question(mockCard.id));
+const mockQuestion = new Question(mockCard, metadata);
 
-const mockDataset = checkNotNull(metadata.question(mockDatasetCard.id));
+const mockDataset = new Question(mockDatasetCard, metadata);
 
-const mockDatasetNoPk = checkNotNull(metadata.question(mockDatasetNoPkCard.id));
+const mockDatasetNoPk = new Question(mockDatasetNoPkCard, metadata);
 
-const mockDatasetMultiplePks = checkNotNull(
-  metadata.question(mockDatasetMultiplePksCard.id),
+const mockDatasetMultiplePks = new Question(
+  mockDatasetMultiplePksCard,
+  metadata,
 );
 
-const mockDatasetWithClauses = checkNotNull(
-  metadata.question(mockDatasetWithClausesCard.id),
+const mockDatasetWithClauses = new Question(
+  mockDatasetWithClausesCard,
+  metadata,
 );
 
-const mockDatasetNoWritePermission = checkNotNull(
-  metadata.question(mockDatasetNoWritePermissionCard.id),
+const mockDatasetNoWritePermission = new Question(
+  mockDatasetNoWritePermissionCard,
+  metadata,
 );
 
 const implicitCreateAction = createMockImplicitQueryAction({
@@ -273,10 +285,10 @@ function setup(
 }
 
 describe("ObjectDetailPanel", () => {
-  it("renders an object detail component", () => {
+  it("renders an object detail component", async () => {
     setup({ question: mockQuestion });
 
-    expect(screen.getByText(/Product/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Product/i)).toBeInTheDocument();
     expect(
       screen.getByText(checkNotNull(testDataset.rows[0][2]).toString()),
     ).toBeInTheDocument();
@@ -320,7 +332,7 @@ describe("ObjectDetailPanel", () => {
   it("should fetch table foreign keys on mount", async () => {
     const { fetchTableFks } = setup({
       question: mockQuestion,
-      table: metadata.table(mockTable.id),
+      table: mockTable,
     });
     await waitFor(() => expect(fetchTableFks).toHaveBeenCalledTimes(1));
   });
@@ -328,7 +340,7 @@ describe("ObjectDetailPanel", () => {
   it("should not fetch table foreign keys in object detail viz (VIZ-1133)", async () => {
     const { fetchTableFks } = setup({
       question: mockQuestion.setDisplay("object"),
-      table: metadata.table(mockTable.id),
+      table: mockTable,
     });
     await waitFor(() => expect(fetchTableFks).not.toHaveBeenCalled());
   });
@@ -344,10 +356,14 @@ describe("ObjectDetailPanel", () => {
   });
 
   describe("renders actions menu", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       setupDatabasesEndpoints([databaseWithActionsEnabled]);
       setupActionsEndpoints(actions);
       setup({ question: mockDataset });
+      // `ActionExecuteModal` initialises its values state after this render.
+      // Nothing observable changes when it does, and it issues no request to
+      // wait on, so flush that update rather than leaving it for the next test.
+      await waitForRequestsToSettle();
     });
 
     it("should not show implicit create action", async () => {
@@ -396,8 +412,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actionsFromDatabaseWithDisabledActions);
     setup({ question: mockDataset });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it("should not render actions menu for non-model questions", async () => {
@@ -405,8 +420,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockQuestion });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it(`should not render actions menu when "showControls" is "false"`, async () => {
@@ -414,8 +428,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDataset, showControls: false });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it("should render actions menu when user has write permission", async () => {
@@ -423,8 +436,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDataset });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeInTheDocument();
+    expect(await screen.findByTestId("actions-menu")).toBeInTheDocument();
   });
 
   it("should not render actions menu when user has no write permission", async () => {
@@ -432,8 +444,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetNoWritePermission });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   /**
@@ -446,8 +457,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetWithClauses });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it("should not render actions menu when model's source table does not have a primary key", async () => {
@@ -455,8 +465,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetNoPk });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it("should not render actions menu when model's source table has multiple primary keys", async () => {
@@ -464,8 +473,7 @@ describe("ObjectDetailPanel", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetMultiplePks });
 
-    const actionsMenu = await findActionsMenu();
-    expect(actionsMenu).toBeUndefined();
+    await expectNoActionsMenu();
   });
 
   it("should show update object modal on update action click", async () => {
@@ -502,14 +510,16 @@ describe("ObjectDetailPanel", () => {
 
     const action = await findActionInActionMenu(implicitDeleteAction);
     expect(action).toBeInTheDocument();
-    action?.click();
+    await userEvent.click(checkNotNull(action));
 
     const modal = await screen.findByTestId("delete-object-modal");
     expect(modal).toBeInTheDocument();
 
-    expect(within(modal).getByTestId("modal-header")).toHaveTextContent(
-      "Are you sure you want to delete this row?",
-    );
+    expect(
+      within(modal).getByRole("heading", {
+        name: "Are you sure you want to delete this row?",
+      }),
+    ).toBeInTheDocument();
   });
 
   describe("keyboard bindings", () => {
@@ -560,13 +570,11 @@ async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
 }
 
 /**
- * There is no loading indicator in ObjectDetail component, so there is no easy way
- * to wait for relevant API requests to finish. This function relies on DOM changes instead.
+ * The menu appears once the actions and databases requests resolve, so settle
+ * them before asserting it is absent.
  */
-async function findActionsMenu() {
-  try {
-    return await screen.findByTestId("actions-menu");
-  } catch (error) {
-    return undefined;
-  }
+async function expectNoActionsMenu() {
+  await screen.findByTestId("object-detail");
+  await waitForRequestsToSettle();
+  expect(screen.queryByTestId("actions-menu")).not.toBeInTheDocument();
 }

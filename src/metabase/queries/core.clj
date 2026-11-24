@@ -3,6 +3,7 @@
    [metabase.queries.cached-result]
    [metabase.queries.card]
    [metabase.queries.card-write-checks]
+   [metabase.queries.db]
    [metabase.queries.metadata]
    [metabase.queries.models.card]
    [metabase.queries.models.card.metadata]
@@ -10,6 +11,7 @@
    [metabase.queries.models.query]
    [metabase.queries.models.stored-result]
    [metabase.queries.models.stored-result-use]
+   [metabase.query-processor.card]
    [potemkin :as p]))
 
 (comment metabase.queries.cached-result/keep-me
@@ -21,46 +23,55 @@
          metabase.queries.models.parameter-card/keep-me
          metabase.queries.models.query/keep-me
          metabase.queries.models.stored-result/keep-me
-         metabase.queries.models.stored-result-use/keep-me)
+         metabase.queries.models.stored-result-use/keep-me
+         metabase.query-processor.card/keep-me)
 
 (p/import-vars
  [metabase.queries.card
   card-param-constraints
   card-param-values
   card-param-remapped-value]
+ [metabase.queries.db
+  card-query-info
+  cards-queries-info]
  [metabase.queries.models.card
-  create-card!]
+  can-delete?
+  card-read-check-columns
+  check-shared-dashboard-timeline-permissions!
+  check-new-dashboard-questions-timeline-permissions
+  check-newly-exposed-dashcards-timeline-permissions!
+  check-shared-dashboard-timeline-permissions-for-card-ids!
+  card-exposed-timeline-ids
+  dashcard-hides-card-events?
+  with-copy-source-card]
  [metabase.queries.card-write-checks
   actual-collection-id
   check-allowed-to-create-card!
   check-allowed-to-run-query!
   check-allowed-to-update-card!
-  check-card-can-be-saved!
-  check-no-save-cycle!]
+  check-card-can-be-saved!]
  [metabase.queries.metadata
   batch-fetch-card-metadata
   ;; TODO does this belong here, or in the `dashboards` module?
   batch-fetch-dashboard-metadata
   batch-fetch-query-metadata]
  [metabase.queries.models.card
-  fully-parameterized?
-  maybe-unverify!
-  model-supports-implicit-actions?
+  current-card-schema-version
   model?
-  parameter-template-tag?
+  native-audit-db-query?
   sole-dashboard-id
   starting-card-schema-version
-  update-card!
+  timeline-events-supported-display?
   visible-metric-cards-where-clause]
  [metabase.queries.models.card.metadata
-  infer-metadata
   infer-metadata-with-model-overrides
   maybe-async-result-metadata
-  refresh-metadata
-  save-metadata-async!]
+  refresh-metadata]
  [metabase.queries.models.parameter-card
   check-new-parameter-source-card-permissions
   check-parameter-source-card-permissions
+  parameter-source-cards-readable?
+  values-source-card-id
   values-source-card-ids]
  [metabase.queries.models.query
   average-execution-time-ms
@@ -73,22 +84,10 @@
   cached-dataset]
  [metabase.queries.models.stored-result-use
   assert-can-view-card-snapshots!
-  carry-pairings-for-document!])
+  carry-pairings-for-document!]
+ [metabase.query-processor.card
+  parameter-template-tag?])
 
-;; the re-exported var carries the docstring; kondo can't see through import-def
-#_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)
+(p/import-def metabase.queries.models.card/populate-cards-query-fields populate-cards-query-fields)
 
-;; the re-exported var carries the docstring; kondo can't see through import-def
-#_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def metabase.queries.models.card/template-tag-parameters card-template-tag-parameters)
-
-;; the re-exported var carries the docstring; kondo can't see through import-def
-#_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def metabase.queries.models.parameter-card/delete-all-for-parameterized-object!
-              delete-all-parameter-cards-for-parameterized-object!)
-
-;; the re-exported var carries the docstring; kondo can't see through import-def
-#_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def metabase.queries.models.parameter-card/upsert-or-delete-from-parameters!
-              upsert-or-delete-parameter-cards-from-parameters!)
+(p/import-def metabase.query-processor.card/template-tag-parameters card-template-tag-parameters)

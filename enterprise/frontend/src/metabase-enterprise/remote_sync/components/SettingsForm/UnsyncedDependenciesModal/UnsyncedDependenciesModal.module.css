@@ -1,0 +1,8 @@
+.link {
+  color: inherit;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--mb-color-text-brand);
+  }
+}

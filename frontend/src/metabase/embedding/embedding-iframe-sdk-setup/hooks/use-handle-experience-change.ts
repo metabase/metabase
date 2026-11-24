@@ -2,12 +2,12 @@ import { useCallback } from "react";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
-import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase/embedding/embedding-iframe-sdk/constants";
 import { EMBED_FALLBACK_QUESTION_ID } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { determineDashboardId } from "metabase/embedding/embedding-iframe-sdk-setup/utils/determine-dashboard-id";
 import { getDefaultSdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-default-sdk-iframe-embed-setting";
+import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase/embedding/embedding-iframe-sdk/constants";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { useSetting } from "metabase/settings";
 
 export const useHandleExperienceChange = () => {
@@ -45,6 +45,7 @@ export const useHandleExperienceChange = () => {
             exampleDashboardId,
           }),
         )
+        .with("data-app", () => "")
         .with(P.union("exploration", "browser", "metabot"), () => 0) // resource id does not apply
         .exhaustive();
 

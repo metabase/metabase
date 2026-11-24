@@ -14,6 +14,10 @@ defineGlobalDependencies();
 export { CollectionBrowser } from "./components/public/CollectionBrowser";
 export { CreateQuestion } from "./components/public/CreateQuestion";
 export { CreateDashboardModal } from "./components/public/CreateDashboardModal";
+export {
+  DataApp,
+  type DataAppProps,
+} from "./data-apps/public/components/DataApp";
 export { EditableDashboard } from "./components/public/dashboard/EditableDashboard";
 export { InteractiveDashboard } from "./components/public/dashboard/InteractiveDashboard";
 export { StaticDashboard } from "./components/public/dashboard/StaticDashboard";
@@ -33,7 +37,6 @@ export { useAction } from "./hooks/public/use-action";
 export type {
   ActionExecuteError,
   ActionKind,
-  ActionResultForBulk,
   ActionResultForCreate,
   ActionResultForDelete,
   ActionResultForKind,
@@ -45,9 +48,18 @@ export type {
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
 
-export { DataAppRouter } from "./components/public/DataAppRouter";
-export { DataAppLink } from "./components/public/DataAppLink";
-export { useDataAppLocation } from "./hooks/public/use-data-app-location";
+export {
+  DataAppRouter,
+  type DataAppRouterProps,
+} from "./data-apps/public/components/DataAppRouter";
+export {
+  DataAppLink,
+  type DataAppLinkProps,
+} from "./data-apps/public/components/DataAppLink";
+export {
+  useDataAppLocation,
+  type UseDataAppLocationResult,
+} from "./data-apps/public/hooks/use-data-app-location";
 
 export {
   type CollectionBrowserProps,
@@ -75,6 +87,7 @@ export {
   type InteractiveQuestionQuestionSettingsProps,
   type InteractiveQuestionQuestionSettingsDropdownProps,
   type InteractiveQuestionQuestionVisualizationProps,
+  type InteractiveQuestionRefreshButtonProps,
   type InteractiveQuestionResetButtonProps,
   type InteractiveQuestionSaveButtonProps,
   type InteractiveQuestionSaveQuestionFormProps,
@@ -142,8 +155,12 @@ export type {
   MetabotAgentTextMessage,
   MetabotChartProps,
   MetabotErrorMessage,
+  MetabotIncompleteResponse,
   MetabotMessage,
   MetabotUserTextMessage,
+  NavigatedEntityParameterChangePayload,
+  NavigatedEntityParameters,
+  NavigationId,
   ParameterChangeSource,
   ParameterChangePayload,
   UseMetabotResult,
@@ -167,6 +184,7 @@ export type {
   SdkActionId,
   SdkActionDefinition,
   SdkActionInput,
+  SdkLegacyActionDefinition,
 } from "embedding-sdk-bundle/types";
 export type {
   FieldSchema,

@@ -1,6 +1,8 @@
 import { createContext, useContext } from "react";
 
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
+import type { SdkEntityId } from "embedding-sdk-bundle/types/entity";
+import type { NavigationId } from "embedding-sdk-bundle/types/navigation";
 import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { DashboardTabId, ParameterValueOrArray } from "metabase-types/api";
@@ -17,6 +19,8 @@ export type SdkInternalNavigationEntry =
   | (BaseEntry & {
       type: "dashboard";
       id: SdkDashboardId;
+      /** Set for click-behavior targets. */
+      entityId?: SdkEntityId;
       name: string;
       virtual?: true;
       parameters?: ParameterValues;
@@ -28,9 +32,19 @@ export type SdkInternalNavigationEntry =
   | (BaseEntry & {
       type: "question";
       id: SdkQuestionId | null;
+      /** Set for click-behavior targets. */
+      entityId?: SdkEntityId;
       name: string;
       virtual?: true;
       parameters?: ParameterValues;
+      onPop?: () => void;
+    })
+  | (BaseEntry & {
+      /** A pre-filtered ad-hoc question, rendered from its serialized path. */
+      type: "ad-hoc-question";
+      name: string;
+      virtual?: true;
+      adHocQuestionPath: string;
       onPop?: () => void;
     })
   | (BaseEntry & {
@@ -59,13 +73,18 @@ export type SdkInternalNavigationEntry =
       onPop?: () => void;
     });
 
+export type SdkInternalNavigationStackEntry = SdkInternalNavigationEntry & {
+  /** Random id of this visit, set when the entry is added to the stack. Key into `navigatedEntityParameters`. */
+  navigationId: NavigationId;
+};
+
 export type SdkInternalNavigationContextValue = {
-  stack: SdkInternalNavigationEntry[];
+  stack: SdkInternalNavigationStackEntry[];
   push: (entry: SdkInternalNavigationEntry) => void;
   pop: () => void;
-  currentEntry: SdkInternalNavigationEntry | undefined;
+  currentEntry: SdkInternalNavigationStackEntry | undefined;
   canGoBack: boolean;
-  previousEntry: SdkInternalNavigationEntry | undefined;
+  previousEntry: SdkInternalNavigationStackEntry | undefined;
   initWithDashboard: (dashboard: { id: SdkDashboardId; name: string }) => void;
   /**
    * True when nav stack has pushed beyond the original entity. SdkDashboard reads

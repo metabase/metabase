@@ -12,7 +12,7 @@
 (deftest ^:parallel parameter-target-stage-number-test
   (let [query     (lib/query meta/metadata-provider (meta/table-metadata :orders))
         col       (first (lib/filterable-columns query))
-        field-ref (lib/->legacy-MBQL (lib.ref/ref col))
+        field-ref (lib/->legacy-MBQL-ref (lib.ref/ref col))
         target    [:dimension field-ref]]
     (testing "defaults to 0 when no stage-number specified"
       (is (= 0
@@ -26,9 +26,9 @@
 (deftest ^:parallel update-parameter-target-field-ref-test
   (let [query      (lib/query meta/metadata-provider (meta/table-metadata :orders))
         col        (first (lib/filterable-columns query))
-        field-ref  (lib/->legacy-MBQL (lib.ref/ref col))
+        field-ref  (lib/->legacy-MBQL-ref (lib.ref/ref col))
         other-col  (second (lib/filterable-columns query))
-        other-ref  (lib/->legacy-MBQL (lib.ref/ref other-col))]
+        other-ref  (lib/->legacy-MBQL-ref (lib.ref/ref other-col))]
     (testing "dimension target: replaces the field ref"
       (is (= [:dimension other-ref]
              (lib/update-parameter-target-field-ref
@@ -45,10 +45,4 @@
         (is (= target
                (lib/update-parameter-target-field-ref
                 target
-                (fn [_] (throw (ex-info "should not be called" {}))))))))
-    (testing "passes extra args to f"
-      (is (= [:dimension other-ref]
-             (lib/update-parameter-target-field-ref
-              [:dimension field-ref]
-              (fn [_mbql5-ref extra-col] (lib.ref/ref extra-col))
-              other-col))))))
+                (fn [_] (throw (ex-info "should not be called" {}))))))))))

@@ -3,6 +3,7 @@ import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useStore } from "metabase/redux";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -23,21 +24,25 @@ import {
   type EChartsSeriesBrushEvent,
   type EChartsSeriesBrushSelectedEvent,
   type EChartsSeriesMouseEvent,
-  GOAL_LINE_SERIES_ID,
   INDEX_KEY,
   type RenderingContext,
   buildBrushMirrorGraphics,
   buildClearBrushMirrorGraphics,
   getVisualizerSeriesCardIndex,
+  isBreakoutSeries,
+  isGoalLineSeriesId,
   isLineXBrushRange,
   useClickedStateTooltipSync,
 } from "metabase/viz-core";
-import type { CardId } from "metabase-types/api";
+import type { CardId, SeriesCard } from "metabase-types/api";
 
 import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";
 import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
-import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
+import {
+  doesSeriesAlwaysOpenQuestion,
+  getHoveredEChartsSeriesDataKeyAndIndex,
+} from "./utils";
 
 function getSplitPanelGrids(option: EChartsOption) {
   const { grid } = option;
@@ -69,7 +74,7 @@ function clearBrush(
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
   chartModel: BaseCartesianChartModel,
   option: EChartsOption,
   renderingContext: RenderingContext,
@@ -87,6 +92,7 @@ export const useChartEvents = (
     onHoverChange,
     clicked,
     isDashboard,
+    getCardHref,
   }: VisualizationProps,
   // The ECharts instance, mirrored into state by the caller. Used as a signal
   // to re-run chart-instance-dependent effects (e.g. brush) once it is ready,
@@ -96,28 +102,27 @@ export const useChartEvents = (
 ) => {
   // Read at call time so the handler list does not rebuild on metadata change.
   const store = useStore();
-  const isBrushing = useRef<boolean>();
+  const isBrushing = useRef<boolean>(undefined);
   useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
+
+  const getQuestionCard = useCallback(
+    (cardId?: CardId): SeriesCard => {
+      if (isVisualizerCard) {
+        const index = getVisualizerSeriesCardIndex(cardId);
+        return visualizerRawSeries[index].card;
+      }
+      return (
+        rawSeries.find((series) => series.card.id === cardId)?.card ?? card
+      );
+    },
+    [card, rawSeries, visualizerRawSeries, isVisualizerCard],
+  );
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
-      if (isVisualizerCard) {
-        const index = getVisualizerSeriesCardIndex(cardId);
-        const nextCard = visualizerRawSeries[index].card;
-        onChangeCardAndRun?.({ nextCard });
-      } else {
-        const nextCard =
-          rawSeries.find((series) => series.card.id === cardId)?.card ?? card;
-        onChangeCardAndRun?.({ nextCard });
-      }
+      onChangeCardAndRun?.({ nextCard: getQuestionCard(cardId) });
     },
-    [
-      card,
-      rawSeries,
-      visualizerRawSeries,
-      isVisualizerCard,
-      onChangeCardAndRun,
-    ],
+    [getQuestionCard, onChangeCardAndRun],
   );
 
   const isSplitPanels =
@@ -157,10 +162,12 @@ export const useChartEvents = (
             return;
           }
 
-          if (event.seriesId === GOAL_LINE_SERIES_ID) {
+          if (isGoalLineSeriesId(event.seriesId)) {
+            chartRef.current?.getZr().setCursorStyle("default");
+
             const eventData = getGoalLineHoverData(
               settings,
-              event,
+              event.event.event.target,
               chartModel.leftAxisModel?.formatGoal,
             );
 
@@ -411,17 +418,23 @@ export const useChartEvents = (
     chartInstance,
   );
 
+  const hasMultipleCards = rawSeries.length > 1;
+
   const onSelectSeries = useCallback(
     (event: React.MouseEvent, seriesIndex: number) => {
-      const areMultipleCards = rawSeries.length > 1;
       const seriesModel = chartModel.seriesModels[seriesIndex];
 
-      if (areMultipleCards) {
+      if (
+        doesSeriesAlwaysOpenQuestion(seriesModel, {
+          hasMultipleCards,
+          isDashboard,
+        })
+      ) {
         onOpenQuestion(seriesModel.cardId);
         return;
       }
 
-      const hasBreakout = "breakoutColumn" in seriesModel;
+      const hasBreakout = isBreakoutSeries(seriesModel);
       const dimensions = hasBreakout
         ? [
             {
@@ -446,7 +459,7 @@ export const useChartEvents = (
     },
     [
       chartModel.seriesModels,
-      rawSeries,
+      hasMultipleCards,
       settings,
       visualizationIsClickable,
       onVisualizationClick,
@@ -455,8 +468,35 @@ export const useChartEvents = (
     ],
   );
 
+  const getSeriesHref = useCallback(
+    (seriesIndex: number) => {
+      const seriesModel = chartModel.seriesModels[seriesIndex];
+      return seriesModel
+        ? getCardHref?.(getQuestionCard(seriesModel.cardId))
+        : undefined;
+    },
+    [chartModel.seriesModels, getCardHref, getQuestionCard],
+  );
+
+  // Legend titles are links only when clicking one always opens a question:
+  // breakout series can open drills instead. The Embedding SDK has no
+  // in-app routes to link to.
+  const canNavigate =
+    getCardHref !== undefined &&
+    onChangeCardAndRun != null &&
+    !isEmbeddingSdk();
+  const canLinkSeries =
+    canNavigate &&
+    chartModel.seriesModels.every((seriesModel) =>
+      doesSeriesAlwaysOpenQuestion(seriesModel, {
+        hasMultipleCards,
+        isDashboard,
+      }),
+    );
+
   return {
     onSelectSeries,
+    getSeriesHref: canLinkSeries ? getSeriesHref : undefined,
     onOpenQuestion,
     eventHandlers,
   };

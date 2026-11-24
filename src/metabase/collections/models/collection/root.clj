@@ -1,8 +1,6 @@
 (ns metabase.collections.models.collection.root
   (:require
    [medley.core :as m]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -20,25 +18,22 @@
 
 (p.types/defrecord+ RootCollection [])
 
-(doto RootCollection
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
-
 (extend-protocol t2.protocols/IModel
   RootCollection
   (model [_this]
     RootCollection))
 
-(defmethod mi/perms-objects-set RootCollection
-  [collection read-or-write]
-  {:pre [(map? collection)]}
-  ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE snippet collections are enabled
-  (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-           (not (premium-features/enable-snippet-collections?)))
-    #{}
-    #{((case read-or-write
-         :read  perms/collection-read-path
-         :write perms/collection-readwrite-path) collection)}))
+(extend-protocol t2.protocols/IDispatchValue
+  Class
+  (dispatch-value [klass]
+    klass))
+
+(defn unrestricted-snippets?
+  "Whether `collection`, a Collection or a root Collection, is in the snippets namespace while EE snippet Collections
+  are off, which leaves it open to everyone."
+  [collection]
+  (and (= (some-> (:namespace collection) u/qualified-name) "snippets")
+       (not (premium-features/enable-snippet-collections?))))
 
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."
@@ -58,6 +53,7 @@
                         :shared-tenant-collections (tru "Shared collections")
                         :snippets (tru "SQL snippets")
                         :transforms (tru "Transforms")
+                        :data-actions (tru "Data actions")
                         (tru "Our analytics"))
                 :namespace collection-namespace
                 :is_personal false

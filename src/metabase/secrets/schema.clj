@@ -7,20 +7,12 @@
 
 (mr/def ::secret
   "A Secret as selected from the app DB: every column of `:secret`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:version    :int]
-   [:creator_id [:maybe ::lib.schema.id/user]]
-   [:created_at ms/TemporalInstant]
-   [:updated_at [:maybe ms/TemporalInstant]]
-   [:name       :string]
-   [:kind       [:or :keyword :string]]
-   [:source     [:maybe [:or :keyword :string]]]
-   [:value      [:or bytes? :string]]])
+  ::secret.update)
 
 (mr/def ::secret.update
-  "What an update (or insert) of a Secret accepts: every column of `:secret` except `id`, all optional."
+  "What an update of a Secret takes: its `:id` and the columns of `:secret` to change, each optional."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:version    {:optional true} [:maybe :int]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]

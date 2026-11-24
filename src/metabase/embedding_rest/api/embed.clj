@@ -24,10 +24,12 @@
    [metabase.embedding.jwt :as embedding.jwt]
    [metabase.events.core :as events]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.public-sharing-rest.api :as api.public]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
@@ -37,12 +39,16 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ResourceId [:or ms/PositiveInt ms/NanoIdString])
-(def ^:private Token [:map
-                      [:resource [:map
-                                  [:question {:optional true} ResourceId]
-                                  [:dashboard {:optional true} ResourceId]]]
-                      [:params :any]])
+(def ^:private ResourceId
+  "An id or entity_id identifying a Card or Dashboard in a JWT `:resource`."
+  [:or ms/PositiveInt ms/NanoIdString])
+(def ^:private Token
+  "An embedding JWT payload naming its `:resource` and `:params`, whose other claims (`exp`, `iat`, ...) belong to the embedding application."
+  [:map {:closed false, :description "embedding JWT claims"}
+   [:resource [:map {:closed true}
+               [:question {:optional true} ResourceId]
+               [:dashboard {:optional true} ResourceId]]]
+   [:params api.embed.common/SlugValueMap]])
 
 (defn- conditional-update-in
   "If there's a value at `path`, apply `f`, otherwise return `m`."
@@ -98,16 +104,13 @@
      :card card
      :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
      :embedding-params (:embedding_params card)
-     :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
+     :query-params query-params
      :qp qp
      :constraints constraints
      :options options)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/query"
+  :- ::api.public/query-result-response
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -122,12 +125,9 @@
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/card/:token/query/:export-format"
+  :- (qp.streaming/export-response-schema ::api.public/query-result)
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [{:keys [token export-format]} :- [:map {:closed true}
                                      [:token api.embed.common/EncodedToken]
@@ -188,7 +188,7 @@
         dashboard-id   (api.embed.common/unsigned-token->dashboard-id unsigned-token)
         dashboard      (api/check-404 (embedding-rest.db/dashboard dashboard-id))
         dashcard       (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card           (api/check-404 (embedding-rest.db/card card-id))]
+        card           (api/check-404 (embedding-rest.db/active-card card-id))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (api.embed.common/process-query-for-dashcard
      :export-format export-format
@@ -197,16 +197,13 @@
      :card card
      :embedding-params (:embedding_params dashboard)
      :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
+     :query-params query-params
      :constraints constraints
      :qp qp
      :middleware middleware)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  :- ::api.public/query-result-response
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
@@ -226,12 +223,9 @@
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
+  :- (qp.streaming/export-response-schema ::api.public/query-result)
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
   [{:keys [token dashcard-id card-id export-format]} :- [:map {:closed true}
@@ -354,11 +348,8 @@
                                                  :param-key param-key
                                                  :value (codec/url-decode value)})))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/card/:token/query"
+  :- ::api.public/query-result-response
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -372,11 +363,8 @@
                                       :api (api.embed.common/parse-query-params query-params)
                                       :qp qp.pivot/run-pivot-query))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  :- ::api.public/query-result-response
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
@@ -439,7 +427,7 @@
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)
         dashboard (api/check-404 (embedding-rest.db/dashboard dashboard-id))
         dashcard (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card (api/check-404 (embedding-rest.db/card card-id))]
+        card (api/check-404 (embedding-rest.db/active-card card-id))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (api.embed.common/process-tiles-query-for-dashcard
      dashboard dashcard card

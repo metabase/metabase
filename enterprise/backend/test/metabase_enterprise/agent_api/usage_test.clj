@@ -1,12 +1,13 @@
 (ns metabase-enterprise.agent-api.usage-test
   "Tests for the Agent API (CLI) usage write point — one lean `agent_api_call_log` row per direct
   Agent API HTTP call. Exercises the `defenterprise` dispatch via the OSS entry point in
-  `metabase.agent-api.usage`. Collection runs on every EE instance (`:feature :none`); PII is gated
+  `metabase.metabot.agent-api.usage`. Collection runs on every EE instance (`:feature :none`); PII is gated
   by `analytics-pii-retention-enabled` (itself `:audit-app`-gated). The end-to-end path through the
   real `routes` wrapper is covered in `metabase-enterprise.agent-api.api-test`."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase.agent-api.usage :as usage]
+   [metabase.agent-api.models.agent-api-call-log :as agent-api-call-log]
+   [metabase.metabot.agent-api.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -126,6 +127,6 @@
 (deftest logging-is-best-effort-test
   (testing "a failed write is swallowed and never propagates"
     (mt/with-premium-features #{:audit-app}
-      (mt/with-dynamic-fn-redefs [t2/insert! (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [agent-api-call-log/create-agent-api-call-logs! (fn [& _] (throw (ex-info "boom" {})))]
         (is (nil? (usage/record-agent-api-call!
                    {:user-id 1 :operation "GET /api/agent/v1/ping" :status "success" :duration-ms 1})))))))
