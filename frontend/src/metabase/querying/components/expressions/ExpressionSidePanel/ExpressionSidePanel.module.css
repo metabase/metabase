@@ -1,17 +1,42 @@
 /* The whole panel. Its 360px width is SIDEBAR_WIDTH in ExpressionSidebarSlot.tsx */
 .panel {
-  display: flex;
-  flex-direction: column;
+  position: relative;
   height: 100%;
   background-color: var(--mb-color-background_surface-primary);
 }
 
-/* Top row: "Custom expressions" and the close button */
+/* The list, and a function's page over it. The list stays mounted, and
+   hidden, under the page. */
+.page,
+.detailPage {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.page[aria-hidden="true"] {
+  visibility: hidden;
+}
+
+.detailPage {
+  position: absolute;
+  inset: 0;
+  background-color: var(--mb-color-background_surface-primary);
+}
+
+/* Top row: "Docs" (or the back button and "Function") and the close button */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: var(--mantine-spacing-xl);
+}
+
+/* The back button and "Function", 16px apart */
+.headerStart {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-lg);
 }
 
 .title {
@@ -23,7 +48,7 @@
   color: var(--mb-color-text-primary);
 }
 
-/* The search and the Templates / Functions switch, which stay put while the
+/* The search and the Functions / Snippets switch, which stay put while the
    list scrolls */
 .controls {
   display: flex;
@@ -81,7 +106,7 @@
   }
 }
 
-/* A template or function row */
+/* A snippet row */
 .row {
   display: flex;
   align-items: center;
@@ -96,22 +121,6 @@
 
   &:hover {
     background-color: var(--mb-color-background_surface-primary-hover);
-  }
-
-  /* A function this database doesn't support */
-  &.disabled {
-    cursor: default;
-    color: var(--mb-color-text-disabled);
-    background-color: transparent;
-
-    .icon {
-      filter: grayscale(1);
-      opacity: 0.5;
-    }
-
-    .parentheses {
-      color: inherit;
-    }
   }
 }
 
@@ -129,39 +138,9 @@
   text-align: left;
 }
 
-/* A function's name, such as between() */
-.functionName {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--mb-default-monospace-font-family);
-  font-size: 13px;
-  font-weight: 450;
-}
-
-.parentheses {
-  color: var(--mb-color-text-disabled);
-}
-
 /* "Didn't find any results" */
 .empty {
   padding: 0 var(--mantine-spacing-xl);
-  color: var(--mb-color-text-secondary);
-}
-
-/* The card shown when hovering a function, to the left of the panel */
-.details {
-  width: 280px;
-  padding: var(--mantine-spacing-md);
-  font-size: var(--mantine-font-size-sm);
-  line-height: 1.4;
-  color: var(--mb-color-text-primary);
-}
-
-.signature {
-  margin-bottom: var(--mantine-spacing-xs);
-  font-family: var(--mb-default-monospace-font-family);
-  font-size: var(--mantine-font-size-sm);
   color: var(--mb-color-text-secondary);
 }
 
@@ -172,4 +151,163 @@
   color: var(--mb-color-text-secondary);
   font-size: 12px;
   white-space: nowrap;
+}
+
+/* A function in the list: the icon and the name, and the description below,
+   lined up with the name. The block's 16px plus 8px lines it up with the 24px
+   section title. The whole row is the hover target. */
+.function {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+  width: 100%;
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-sm);
+  text-align: left;
+}
+
+.functionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  min-width: 0;
+}
+
+/* The 16px square with the 10px f: light brand, strong brand on hover */
+.functionIcon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--mantine-radius-xxs);
+  background-color: var(--mb-color-background_surface-brand-subtle);
+  color: var(--mb-color-icon-brand);
+}
+
+/* The name, such as between(): 14px code font, brand on hover */
+.functionName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: var(--mantine-font-size-md);
+  font-weight: 500;
+  line-height: 1.22;
+  color: var(--mb-color-text-primary);
+}
+
+.parentheses {
+  font-weight: 450;
+  color: var(--mb-color-text-disabled);
+}
+
+/* The description, 24px in (the icon and the gap), darker on hover */
+.functionDescription {
+  display: block;
+  padding-left: var(--mantine-spacing-xl);
+  font-size: var(--mantine-font-size-md);
+  line-height: 20px;
+  color: var(--mb-color-text-secondary);
+}
+
+.function:hover:not(.disabled) {
+  .functionIcon {
+    background-color: var(--mb-color-background_surface-brand-strong);
+    color: var(--mb-color-text-primary-inverse);
+  }
+
+  .functionName {
+    color: var(--mb-color-text-brand-strong);
+  }
+
+  .functionDescription {
+    color: var(--mb-color-text-primary);
+  }
+}
+
+/* A function this database doesn't support: greyed out; its page says so */
+.function.disabled {
+  .functionIcon {
+    background-color: var(--mb-color-background_surface-secondary);
+    color: var(--mb-color-icon-disabled);
+  }
+
+  .functionName,
+  .functionDescription {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* A function's page below its header: the old editor's help popover, laid
+   out for the panel. 24px at the sides and the bottom, 16px between parts. */
+.detailScrollArea {
+  flex: 1;
+  min-height: 0;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-lg);
+  padding: 0 var(--mantine-spacing-xl) var(--mantine-spacing-xl);
+  font-size: var(--mantine-font-size-md);
+  line-height: 20px;
+  color: var(--mb-color-text-primary);
+}
+
+/* "This database doesn't support …" */
+.detailNotice {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-xs);
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-secondary);
+}
+
+/* The signature, such as case(condition, output, …) */
+.signature {
+  padding-bottom: var(--mantine-spacing-lg);
+  border-bottom: 0.5px solid var(--mb-color-border-neutral);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: var(--mantine-font-size-md);
+  color: var(--mb-color-text-secondary);
+}
+
+/* An argument's name, in the signature, the table and the descriptions */
+.argName {
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 13px;
+  color: var(--mb-color-text-syntax-parameter);
+}
+
+.detailText p {
+  margin: 0;
+}
+
+/* Each argument's name, and what it is, side by side */
+.arguments {
+  display: grid;
+  grid-template-columns: minmax(4rem, max-content) 1fr;
+  gap: var(--mantine-spacing-lg) var(--mantine-spacing-lg);
+}
+
+/* "Example" and the formatted example in a grey box */
+.example {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+.exampleTitle {
+  color: var(--mb-color-text-secondary);
+}
+
+/* "Learn more", with the book icon, to the function's page in the docs */
+.learnMore {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  font-weight: 700;
+  color: var(--mb-color-text-brand);
 }

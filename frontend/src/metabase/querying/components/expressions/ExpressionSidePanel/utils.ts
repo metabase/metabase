@@ -20,27 +20,29 @@ import {
   getSidePanelSections,
 } from "./content";
 
-export type SidePanelRow =
-  | {
-      type: "template";
-      key: string;
-      name: string;
-      code: string;
-      icon: SidePanelIconName;
-      /** Why the row matches the search, when its name does not show it. */
-      hint?: string;
-    }
-  | {
-      type: "function";
-      key: string;
-      /** The clause name, which the editor inserts by. */
-      name: string;
-      displayName: string;
-      icon: SidePanelIconName;
-      /** The database lacks a feature the function needs. */
-      isDisabled: boolean;
-      hint?: string;
-    };
+export type SidePanelTemplateRow = {
+  type: "template";
+  key: string;
+  name: string;
+  code: string;
+  icon: SidePanelIconName;
+  /** Why the row matches the search, when its name does not show it. */
+  hint?: string;
+};
+
+export type SidePanelFunctionRow = {
+  type: "function";
+  key: string;
+  /** The clause name, which the help text is looked up by. */
+  name: string;
+  displayName: string;
+  icon: SidePanelIconName;
+  /** The database lacks a feature the function needs. */
+  isDisabled: boolean;
+  hint?: string;
+};
+
+export type SidePanelRow = SidePanelTemplateRow | SidePanelFunctionRow;
 
 export type SidePanelSectionView = {
   name: string;

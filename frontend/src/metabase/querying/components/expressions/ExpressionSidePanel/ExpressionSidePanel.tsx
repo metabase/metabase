@@ -1,10 +1,7 @@
-import cx from "classnames";
 import {
   type ChangeEvent,
-  Children,
   Fragment,
   type MouseEvent,
-  type ReactNode,
   type SyntheticEvent,
   useEffect,
   useMemo,
@@ -13,15 +10,10 @@ import {
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
-import { Markdown } from "metabase/common/components/Markdown";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import {
-  findRelatedFunctions,
-  getHelpText,
-} from "metabase/querying/expressions";
+import { findRelatedFunctions } from "metabase/querying/expressions";
 import {
   ActionIcon,
-  HoverCard,
   Icon,
   ScrollArea,
   SegmentedControl,
@@ -31,52 +23,43 @@ import {
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
-import { HighlightExpressionSource } from "../HighlightExpression";
-
 import S from "./ExpressionSidePanel.module.css";
+import { FunctionDetail } from "./FunctionDetail";
+import { FunctionRow } from "./FunctionRow";
 import {
   type SidePanelIconName,
   type SidePanelTab,
   getTemplatesTabLabel,
 } from "./content";
 import { SIDE_PANEL_ICONS } from "./icons";
-import { type SidePanelRow, getSidePanelView } from "./utils";
+import {
+  type SidePanelFunctionRow,
+  type SidePanelRow,
+  type SidePanelTemplateRow,
+  getSidePanelView,
+} from "./utils";
 
 const ICON_SIZE = 16;
-
-const MARKDOWN_COMPONENTS = {
-  code(props: { children: ReactNode }) {
-    const children = Children.toArray(props.children);
-    if (!children.every((child) => typeof child === "string")) {
-      return <code>{children}</code>;
-    }
-
-    const source = children.join("").replace(/^\$/, "");
-    return <HighlightExpressionSource inline expression={source} />;
-  },
-};
 
 export type ExpressionSidePanelProps = {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   reportTimezone?: string;
   onClose: () => void;
-  /** Called with the clause name of a function. */
-  onFunctionClick: (name: string) => void;
   onTemplateClick: (code: string) => void;
 };
 
 /**
- * Templates and functions for the expression editor, in two tabs. The first
- * tab is named after what the editor builds: templates for a custom column,
- * conditions for a filter, aggregations for a summary.
+ * The docs for the expression editor, in two tabs: every function, and
+ * ready-made snippets. The second tab is named after what the editor builds:
+ * snippets for a custom column, conditions for a filter, aggregations for a
+ * summary. Clicking a function opens its page, with a way back to the list.
  */
 export function ExpressionSidePanel({
   expressionMode,
   query,
   reportTimezone,
   onClose,
-  onFunctionClick,
   onTemplateClick,
 }: ExpressionSidePanelProps) {
   const databaseId = Lib.databaseID(query);
@@ -84,8 +67,9 @@ export function ExpressionSidePanel({
     databaseId != null ? { id: databaseId } : skipToken,
   );
 
-  const [tab, setTab] = useState<SidePanelTab>("templates");
+  const [tab, setTab] = useState<SidePanelTab>("functions");
   const [search, setSearch] = useState("");
+  const [openFunction, setOpenFunction] = useState<SidePanelFunctionRow>();
 
   const relatedNames = useRelatedFunctions({
     expressionMode,
@@ -100,13 +84,25 @@ export function ExpressionSidePanel({
 
   const tabs = useMemo(
     () => [
+      { value: "functions" as const, label: t`Functions` },
       {
         value: "templates" as const,
         label: getTemplatesTabLabel(expressionMode),
       },
-      { value: "functions" as const, label: t`Functions` },
     ],
     [expressionMode],
+  );
+
+  const closeButton = (
+    <ActionIcon
+      variant="subtle"
+      color="neutral"
+      size="sm"
+      aria-label={t`Close`}
+      onClick={onClose}
+    >
+      <Icon name="close" size={12} />
+    </ActionIcon>
   );
 
   return (
@@ -119,60 +115,96 @@ export function ExpressionSidePanel({
       onMouseDown={handlePanelMouseDown}
       onTouchStart={stopPropagation}
     >
-      <div className={S.header}>
-        <h4 className={S.title}>{t`Custom expressions`}</h4>
-        <ActionIcon
-          variant="subtle"
-          color="neutral"
-          size="sm"
-          aria-label={t`Close`}
-          onClick={onClose}
-        >
-          <Icon name="close" size={12} />
-        </ActionIcon>
+      {/* The list stays mounted under a function's page, so that going back
+          finds it scrolled where it was. */}
+      <div className={S.page} aria-hidden={openFunction != null}>
+        <div className={S.header}>
+          <h4 className={S.title}>{t`Docs`}</h4>
+          {closeButton}
+        </div>
+
+        <div className={S.controls}>
+          <TextInput
+            value={search}
+            placeholder={t`Search`}
+            leftSection={<Icon name="search" size={12} />}
+            aria-label={t`Search the docs`}
+            autoFocus
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setSearch(event.target.value)
+            }
+          />
+          <SegmentedControl
+            data={tabs}
+            value={tab}
+            onChange={setTab}
+            fullWidth
+          />
+        </div>
+
+        <ScrollArea className={S.scrollArea} type="hover" scrollbars="y">
+          {sections.length === 0 && (
+            <div className={S.empty}>{t`Didn't find any results`}</div>
+          )}
+          {sections.map((section, index) => (
+            <Fragment key={section.name}>
+              {index > 0 && <div className={S.divider} />}
+              <section className={S.section}>
+                <h5 className={S.sectionTitle}>{section.name}</h5>
+                {/* Functions are one list per section, without lines. */}
+                {(tab === "functions"
+                  ? [section.blocks.flat()]
+                  : section.blocks
+                ).map((rows, blockIndex) => (
+                  <div key={blockIndex} className={S.block}>
+                    {rows.map((row) => (
+                      <Row
+                        key={row.key}
+                        row={row}
+                        database={database}
+                        onFunctionOpen={setOpenFunction}
+                        onTemplateClick={onTemplateClick}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </section>
+            </Fragment>
+          ))}
+        </ScrollArea>
       </div>
 
-      <div className={S.controls}>
-        <TextInput
-          value={search}
-          placeholder={t`Search`}
-          leftSection={<Icon name="search" size={12} />}
-          aria-label={t`Search expressions`}
-          autoFocus
-          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-            setSearch(event.target.value)
-          }
-        />
-        <SegmentedControl data={tabs} value={tab} onChange={setTab} fullWidth />
-      </div>
-
-      <ScrollArea className={S.scrollArea} type="hover" scrollbars="y">
-        {sections.length === 0 && (
-          <div className={S.empty}>{t`Didn't find any results`}</div>
-        )}
-        {sections.map((section, index) => (
-          <Fragment key={section.name}>
-            {index > 0 && <div className={S.divider} />}
-            <section className={S.section}>
-              <h5 className={S.sectionTitle}>{section.name}</h5>
-              {section.blocks.map((rows, blockIndex) => (
-                <div key={blockIndex} className={S.block}>
-                  {rows.map((row) => (
-                    <Row
-                      key={row.key}
-                      row={row}
-                      database={database}
-                      reportTimezone={reportTimezone}
-                      onFunctionClick={onFunctionClick}
-                      onTemplateClick={onTemplateClick}
-                    />
-                  ))}
-                </div>
-              ))}
-            </section>
-          </Fragment>
-        ))}
-      </ScrollArea>
+      {openFunction != null && database != null && (
+        <div className={S.detailPage}>
+          <div className={S.header}>
+            <div className={S.headerStart}>
+              <ActionIcon
+                variant="default"
+                size="sm"
+                aria-label={t`Back to the list`}
+                onClick={() => setOpenFunction(undefined)}
+              >
+                <Icon name="arrow_left" size={12} />
+              </ActionIcon>
+              <h4 className={S.title}>{t`Function`}</h4>
+            </div>
+            {closeButton}
+          </div>
+          <ScrollArea
+            className={S.detailScrollArea}
+            type="hover"
+            scrollbars="y"
+            data-selectable
+          >
+            <FunctionDetail
+              name={openFunction.name}
+              database={database}
+              reportTimezone={reportTimezone}
+              isDisabled={openFunction.isDisabled}
+            />
+          </ScrollArea>
+        </div>
+      )}
     </div>
   );
 }
@@ -220,9 +252,14 @@ function useRelatedFunctions({
 const NO_NAMES: string[] = [];
 
 // Clicking a row must not take focus away from the expression being typed.
+// The text of a function's page can still be selected, to copy an example.
 function handlePanelMouseDown(event: MouseEvent<HTMLDivElement>) {
   event.stopPropagation();
-  if (!(event.target instanceof HTMLInputElement)) {
+  const target = event.target;
+  const canFocus =
+    target instanceof HTMLInputElement ||
+    (target instanceof Element && target.closest("[data-selectable]") != null);
+  if (!canFocus) {
     event.preventDefault();
   }
 }
@@ -234,66 +271,39 @@ function stopPropagation(event: SyntheticEvent) {
 function Row({
   row,
   database,
-  reportTimezone,
-  onFunctionClick,
+  onFunctionOpen,
   onTemplateClick,
 }: {
   row: SidePanelRow;
   database: Database | undefined;
-  reportTimezone?: string;
-  onFunctionClick: (name: string) => void;
+  onFunctionOpen: (row: SidePanelFunctionRow) => void;
   onTemplateClick: (code: string) => void;
 }) {
-  if (row.type === "template") {
+  if (row.type === "function") {
     return (
-      <UnstyledButton
-        className={S.row}
-        onClick={() => onTemplateClick(row.code)}
-        data-testid="expression-side-panel-template"
-      >
-        <PanelIcon name={row.icon} />
-        <span className={S.label}>{row.name}</span>
-        {row.hint != null && <span className={S.hint}>{row.hint}</span>}
-      </UnstyledButton>
+      <FunctionRow row={row} database={database} onOpen={onFunctionOpen} />
     );
   }
+  return <TemplateRow row={row} onClick={onTemplateClick} />;
+}
 
+function TemplateRow({
+  row,
+  onClick,
+}: {
+  row: SidePanelTemplateRow;
+  onClick: (code: string) => void;
+}) {
   return (
-    <HoverCard
-      position="left-start"
-      offset={8}
-      openDelay={150}
-      disabled={!database}
+    <UnstyledButton
+      className={S.row}
+      onClick={() => onClick(row.code)}
+      data-testid="expression-side-panel-template"
     >
-      <HoverCard.Target>
-        <UnstyledButton
-          className={cx(S.row, { [S.disabled]: row.isDisabled })}
-          aria-disabled={row.isDisabled}
-          onClick={row.isDisabled ? undefined : () => onFunctionClick(row.name)}
-          data-testid="expression-side-panel-function"
-        >
-          <PanelIcon name={row.icon} />
-          <span className={S.functionName}>
-            {row.displayName}
-            <span className={S.parentheses}>()</span>
-          </span>
-          {row.hint != null && <span className={S.hint}>{row.hint}</span>}
-        </UnstyledButton>
-      </HoverCard.Target>
-      <HoverCard.Dropdown
-        className={S.details}
-        data-testid="expression-side-panel-details"
-      >
-        {row.isDisabled && t`This database doesn't support ${row.displayName}.`}
-        {!row.isDisabled && database && (
-          <FunctionDetails
-            name={row.name}
-            database={database}
-            reportTimezone={reportTimezone}
-          />
-        )}
-      </HoverCard.Dropdown>
-    </HoverCard>
+      <PanelIcon name={row.icon} />
+      <span className={S.label}>{row.name}</span>
+      {row.hint != null && <span className={S.hint}>{row.hint}</span>}
+    </UnstyledButton>
   );
 }
 
@@ -306,31 +316,5 @@ function PanelIcon({ name }: { name: SidePanelIconName }) {
       height={ICON_SIZE}
       aria-hidden
     />
-  );
-}
-
-function FunctionDetails({
-  name,
-  database,
-  reportTimezone,
-}: {
-  name: string;
-  database: Database;
-  reportTimezone?: string;
-}) {
-  const helpText = getHelpText(name, database, reportTimezone);
-  if (!helpText) {
-    return null;
-  }
-
-  const args = helpText.args.map((arg) => arg.name).join(", ");
-
-  return (
-    <>
-      <div className={S.signature}>{`${helpText.displayName}(${args})`}</div>
-      <Markdown components={MARKDOWN_COMPONENTS}>
-        {helpText.description}
-      </Markdown>
-    </>
   );
 }

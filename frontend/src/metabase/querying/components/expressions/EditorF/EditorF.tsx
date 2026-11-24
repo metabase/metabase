@@ -26,11 +26,8 @@ import {
   type ExpressionError,
   diagnoseAndCompile,
   dismissSuggestionsOrPlaceholders,
-  expressionClauseSnippet,
   format,
-  getClauseDefinition,
   insertExpressionTemplate,
-  insertWithPlaceholders,
   tokenAtPos,
 } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
@@ -627,20 +624,6 @@ export function EditorF(props: EditorFProps) {
     [isProposing, onSourceChange],
   );
 
-  // Inserts the function with its argument placeholders, the same way
-  // autocomplete does, and selects the first one.
-  const handleFunctionBrowserClauseClick = useCallback((name: string) => {
-    const view = ref.current?.view;
-    const clause = getClauseDefinition(name);
-    if (!view || !clause) {
-      return;
-    }
-
-    const { from, to } = view.state.selection.main;
-    view.focus();
-    insertWithPlaceholders(view, expressionClauseSnippet(clause), from, to);
-  }, []);
-
   const handleTemplateClick = useCallback((code: string) => {
     const view = ref.current?.view;
     if (view) {
@@ -678,7 +661,6 @@ export function EditorF(props: EditorFProps) {
       query={query}
       reportTimezone={reportTimezone}
       onClose={closeSidebar}
-      onFunctionClick={handleFunctionBrowserClauseClick}
       onTemplateClick={handleTemplateClick}
     />
   );

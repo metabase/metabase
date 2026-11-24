@@ -13,7 +13,7 @@ export type SidePanelIconName =
   | "text"
   | "time";
 
-/** The two views of the panel: ready-made snippets, and every function. */
+/** The two views of the panel: every function, and ready-made snippets. */
 export type SidePanelTab = "templates" | "functions";
 
 export type SidePanelTemplateItem = {
@@ -139,7 +139,7 @@ export const FUNCTION_ICONS: Record<string, SidePanelIconName> = {
 /** Functions shown with a clock rather than their section's icon. */
 export const TIME_FUNCTIONS = new Set(["hour", "minute", "second"]);
 
-/** The label of the first tab: what the templates are called in each editor. */
+/** The label of the templates' tab: what they are called in each editor. */
 export function getTemplatesTabLabel(expressionMode: Lib.ExpressionMode) {
   switch (expressionMode) {
     case "filter":
@@ -147,7 +147,7 @@ export function getTemplatesTabLabel(expressionMode: Lib.ExpressionMode) {
     case "aggregation":
       return t`Aggregations`;
     default:
-      return t`Templates`;
+      return t`Snippets`;
   }
 }
 
