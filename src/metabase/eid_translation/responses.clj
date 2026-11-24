@@ -13,8 +13,9 @@
   `:dashboard` of a Card with a `:dashboard_id`; or a plain map with a `:model` that [[api/model->db-model]] names, as
   in lists of items. Rows of models with neither entity ids nor natural keys keep their own numeric ids, and so does a
   plain map of unknown model, whose `:id` may name nothing at all; only the few columns of such a map that name rows of
-  the same model wherever they are, such as `:field_id`, are replaced. An id whose row is missing stays as it is. All
-  the refs of a body are found with one query per model.
+  the same model wherever they are, such as `:field_id`, are replaced. A row of a known model has those columns
+  replaced too. A reference column holding a list or set of ids has each replaced. An id whose row is missing stays as it is.
+  All the refs of a body are found with one query per model.
 
   The walk does not enter a structure column, one whose serialization transform names no model. The structure columns
   with ids inside that a model's [[metabase.eid-translation.spec/spec]] names in `:structures`, such as a Card's query
@@ -43,6 +44,20 @@
   (or (contains? natural-key-models model)
       (isa? model :hook/entity-id)))
 
+(def ^:private plain-map-references
+  "The columns that name rows of the same model wherever they are, unlike `:parent_id` or `:model_id`. They are all
+  the references of a plain map of unknown model, and every row of a known model, such as a search result, has them
+  as well as those of its model."
+  {:card_id        :model/Card
+   :collection_id  :model/Collection
+   :creator_id     :model/User
+   :dashboard_id   :model/Dashboard
+   :database_id    :model/Database
+   :db_id          :model/Database
+   :field_id       :model/Field
+   :last_editor_id :model/User
+   :table_id       :model/Table})
+
 (defn- model-columns
   "For `model`, `{:references {column model-of-the-rows-it-names} :structures #{column} :exports {column export-fn}}`:
   the columns holding the ids of rows with refs; the columns holding structures, which the walk does not enter; and,
@@ -58,7 +73,7 @@
                                  (when-let [{parent :model column :key} (:parent spec)]
                                    [[column parent]])
                                  (:references eid-spec)))]
-    {:references references
+    {:references (merge plain-map-references references)
      :structures (into (set (keys (:transforms eid-spec)))
                        (comp (remove (fn [[column transform]] (or (:model transform) (contains? references column))))
                              (map key))
@@ -75,18 +90,6 @@
   "The model of a plain map under these keys, which no column of its holder names."
   {:last-edit-info    :model/User
    :parent_collection :model/Collection})
-
-(def ^:private plain-map-references
-  "The reference columns of a plain map of unknown model: the columns that name rows of the same model wherever they
-  are, unlike `:parent_id` or `:model_id`."
-  {:card_id       :model/Card
-   :collection_id :model/Collection
-   :creator_id    :model/User
-   :dashboard_id  :model/Dashboard
-   :database_id   :model/Database
-   :db_id         :model/Database
-   :field_id      :model/Field
-   :table_id      :model/Table})
 
 (defn- location-ids
   "The ids of the ancestors that the Collection location `location`, such as `\"/1/2/\"`, names."
@@ -108,8 +111,15 @@
   [model references row visit]
   (let [replace (fn [replacements column target]
                   (let [v (get row column)]
-                    (cond-> replacements
-                      (pos-int? v) (assoc column (visit target v)))))]
+                    (cond
+                      (pos-int? v)
+                      (assoc replacements column (visit target v))
+
+                      (and (or (sequential? v) (set? v)) (seq v) (every? pos-int? v))
+                      (assoc replacements column (into (if (set? v) #{} []) (map #(visit target %)) v))
+
+                      :else
+                      replacements)))]
     (cond-> (reduce-kv replace (if (ref-model? model) (replace {} :id model) {}) references)
       (= model :model/Collection)
       (into (keep (fn [k] (some->> (location-ref (get row k) visit) (vector k))))

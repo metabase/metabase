@@ -12,6 +12,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.driver :as driver]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -722,6 +723,10 @@
            :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
            :owner_user_id :collection_id :is_published :transform_id :transform_target]
    :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
+
+(defmethod eid-translation/spec :model/Table [_model]
+  ;; A Table has no entity id, but a hydrated `:pk_field` names a Field by id.
+  {:references {:pk_field :model/Field}})
 
 (defmethod serialization/spec :model/Table [_]
   {:schema              ::warehouse-schema.schema/external-table

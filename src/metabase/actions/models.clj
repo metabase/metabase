@@ -1111,8 +1111,9 @@
   {:names      [:action]
    :references {:database_id :model/Database
                 :table_id    :model/Table}
-   :structures [:parameters :parameter_mappings :visualization_settings]
-   :transforms {:dataset_query serialization/mbql-transform}})
+   :structures [:parameter_mappings :visualization_settings]
+   :transforms {:dataset_query serialization/mbql-transform
+                :parameters    actions.serialization/api-parameters-transform}})
 
 (defmethod app-db-copy/spec :model/QueryAction [_model]
   {:skip?    false
