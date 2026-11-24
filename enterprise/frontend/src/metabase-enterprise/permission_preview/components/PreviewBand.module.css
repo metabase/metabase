@@ -1,0 +1,40 @@
+.band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--mantine-spacing-md);
+  row-gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
+  background-color: var(--mb-color-feedback-warning);
+  border-radius: var(--mantine-radius-md);
+}
+
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--mantine-spacing-md);
+  row-gap: var(--mantine-spacing-sm);
+}
+
+/* The controls take the room that is left, and drop to a row of their own when
+   they would get narrower than 26rem. */
+.controls {
+  display: flex;
+  align-items: center;
+  flex: 1000 1 26rem;
+  gap: var(--mantine-spacing-md);
+  min-width: 0;
+}
+
+/* A button's hover and pressed colours are see-through tints: over the band they
+   would turn yellow, so they are laid over the button's own white. */
+.bandButton[data-variant][data-size]:not(:disabled) {
+  background-color: var(--mb-color-background_page-primary);
+}
+
+.bandButton[data-variant][data-size]:hover:not([data-loading]),
+.bandButton[data-variant][data-size][aria-pressed="true"]:not([data-loading]) {
+  background-color: var(--mb-color-background_page-primary);
+  background-image: linear-gradient(var(--button-hover), var(--button-hover));
+}

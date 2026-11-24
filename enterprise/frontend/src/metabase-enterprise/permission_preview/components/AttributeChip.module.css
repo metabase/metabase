@@ -1,0 +1,16 @@
+.chip {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 var(--mantine-spacing-sm);
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-xs);
+  white-space: nowrap;
+}
+
+.open {
+  border-color: var(--mb-color-core-brand);
+}
