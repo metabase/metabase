@@ -139,10 +139,10 @@
    An already-missing filter keeps the name the subscription stored.
    The `:channels` and `:recipient-count` are what [[delivery]] describes for `pulse-id->channels`.
    The `:already-broken?` flag is true when the update removed none of the missing filters.
-   The `:readable?` flag says whether the current user can read the subscription, from `readable-ids`.
+   The `:readable?` flag is `readable?`, whether the current user can read the subscription.
    Neither shape has the recipients' names and emails or the filter values."
-  [original-dashboard-params readable-ids pulse-id->channels {:keys [pulse-id bad-parameters pulse-creator]}]
-  (if-not (contains? readable-ids pulse-id)
+  [original-dashboard-params readable? pulse-id->channels {:keys [pulse-id bad-parameters pulse-creator]}]
+  (if-not readable?
     ;; The user can't see or restore it, and its creator is emailed. Its id and stored filters are another user's
     ;; data, and the stored filter ids are free text that could carry instructions to a model.
     {:readable? false}
@@ -183,7 +183,11 @@
   (let [broken       (broken-subscription-data dashboard-id original-dashboard-params)
         readable-ids (readable-pulse-ids (map :pulse-id broken))
         channels     (visible-enabled-channels broken readable-ids)
-        archived     (mapv #(archived-subscription original-dashboard-params readable-ids channels %) broken)]
+        archived     (mapv #(archived-subscription original-dashboard-params
+                                                   (contains? readable-ids (:pulse-id %))
+                                                   channels
+                                                   %)
+                           broken)]
     (pulse/update-pulses! (mapv #(hash-map :id (:pulse-id %) :archived true) broken))
     (run! messages/send-broken-subscription-notification! broken)
     archived))
