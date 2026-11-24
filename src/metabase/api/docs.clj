@@ -18,7 +18,7 @@
 
 ;; kept on this namespace so existing callers (metabase.api-routes.cmd) are unaffected by the split
 (p/import-vars
- [metabase.api.docs.regenerate
+ [regenerate
   openapi-file-path
   request-spec-regeneration!
   write-openapi-spec-to-file!])

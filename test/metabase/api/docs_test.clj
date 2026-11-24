@@ -23,7 +23,7 @@
                                      "Dev" {}
                                      "Testing" {}
                                      "Unused" {}}}}]
-    (with-redefs [open-api/root-open-api-object (constantly spec)]
+    (mt/with-dynamic-fn-redefs [open-api/root-open-api-object (constantly spec)]
       (let [result (regenerate/open-api-object identity)]
         (is (= #{"/api/item" "/api/device"} (set (keys (:paths result)))))
         (is (= #{"Public" "Child"} (set (keys (get-in result [:components :schemas])))))
@@ -37,6 +37,6 @@
                                                               :member (ref "Member")}}
                                        "Member" {}
                                        "Unused" {}}}}]
-      (with-redefs [open-api/root-open-api-object (constantly spec)]
+      (mt/with-dynamic-fn-redefs [open-api/root-open-api-object (constantly spec)]
         (is (= #{"Group" "Member"}
                (set (keys (get-in (regenerate/open-api-object identity) [:components :schemas])))))))))
