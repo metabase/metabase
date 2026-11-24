@@ -104,7 +104,8 @@
    :updated_at        (t/offset-date-time (:updated_at advisory))})
 
 (mu/defn ^:private fetch-advisories-from-store :- [:maybe [:sequential [:map]]]
-  "GET advisories from the MetaStore. Returns a seq of advisory maps or nil on failure.
+  "GET advisories from the MetaStore. Returns a seq of advisory maps, or nil when there is no token.
+   Throws when the MetaStore responds with a non-2xx status.
    Sends the latest `updated_at` as a `since` cursor so only changed advisories are returned."
   []
   (when-let [token (premium-features/premium-embedding-token)]
@@ -123,7 +124,8 @@
         (let [advisories (:advisories (json/decode+kw (:body resp)))]
           (mu/validate-throw [:sequential ::advisory] advisories)
           (mapv parse-advisory advisories))
-        (log/warnf "Advisory fetch failed with status %s" (:status resp))))))
+        (throw (ex-info (format "Advisory fetch failed with status %s" (:status resp))
+                        {:status (:status resp)}))))))
 
 (defn- upsert-advisory!
   "Insert or update a single advisory by :advisory_id.
@@ -138,12 +140,10 @@
                              (assoc advisory :match_status :unknown)))))
 
 (defn sync-advisories!
-  "Fetch advisories from the MetaStore and upsert into the appdb."
+  "Fetch advisories from the MetaStore and upsert into the appdb.
+   Throws if the fetch fails or any advisory fails to upsert."
   []
-  (let [advisories (try
-                     (fetch-advisories-from-store)
-                     (catch Exception e
-                       (log/warn e "Error fetching advisories from MetaStore")))]
+  (let [advisories (fetch-advisories-from-store)]
     (if (seq advisories)
       (let [total    (count advisories)
             failures (reduce (fn [n advisory]
@@ -151,10 +151,13 @@
                                  (upsert-advisory! advisory)
                                  n
                                  (catch Exception e
-                                   (log/warnf e "Error upserting advisory %s" (:advisory_id advisory))
+                                   (log/errorf e "Error upserting advisory %s" (:advisory_id advisory))
                                    (inc n))))
                              0
                              advisories)
             synced   (- total failures)]
-        (log/infof "Synced %d/%d advisories from MetaStore" synced total))
+        (log/infof "Synced %d/%d advisories from MetaStore" synced total)
+        (when (pos? failures)
+          (throw (ex-info (format "Failed to upsert %d/%d advisories" failures total)
+                          {:failures failures :total total}))))
       (log/info "No new advisories from MetaStore"))))
