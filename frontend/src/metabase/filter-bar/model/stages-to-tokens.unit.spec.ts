@@ -4,8 +4,6 @@ import {
   OPEN,
   OR,
   TEST_ADAPTER,
-  THEN_1,
-  THEN_2,
   and,
   createTestPill,
   leaf,
@@ -15,7 +13,7 @@ import {
 import type { FilterBarAdapter, FilterStages } from "../types";
 
 import { stagesToTokens } from "./stages-to-tokens";
-import type { Token } from "./types";
+import type { TokenStages } from "./types";
 
 const A = pill("A");
 const B = pill("B");
@@ -24,48 +22,52 @@ const D = pill("D");
 const E = pill("E");
 
 describe("stagesToTokens", () => {
-  it.each<[string, FilterStages<string>, Token<string>[]]>([
+  it.each<[string, FilterStages<string>, TokenStages<string>]>([
     ["no filters", [], []],
-    ["one filter", [leaf("A")], [A]],
+    ["one filter", [leaf("A")], [[A]]],
     [
       "or inside and gets parentheses",
       [and(leaf("A"), or(leaf("B"), leaf("C")))],
-      [A, AND, OPEN, B, OR, C, CLOSE],
+      [[A, AND, OPEN, B, OR, C, CLOSE]],
     ],
     [
       "and inside or needs no parentheses",
       [or(and(leaf("A"), leaf("B")), leaf("C"))],
-      [A, AND, B, OR, C],
+      [[A, AND, B, OR, C]],
     ],
     [
       "nested groups",
       [and(leaf("A"), or(leaf("B"), and(leaf("C"), or(leaf("D"), leaf("E")))))],
-      [A, AND, OPEN, B, OR, C, AND, OPEN, D, OR, E, CLOSE, CLOSE],
+      [[A, AND, OPEN, B, OR, C, AND, OPEN, D, OR, E, CLOSE, CLOSE]],
     ],
     [
       "the same connective nested needs no parentheses",
-      [and(leaf("A"), and(leaf("B"), leaf("C")))],
-      [A, AND, B, AND, C],
+      [or(leaf("A"), or(leaf("B"), leaf("C")))],
+      [[A, OR, B, OR, C]],
     ],
-    ["a group of one is unwrapped", [and(or(leaf("A")))], [A]],
+    ["a group of one is unwrapped", [and(or(leaf("A")))], [[A]]],
     [
       "a group of one keeps the parentheses its child needs",
       [and(leaf("A"), or(or(leaf("B"), leaf("C"))))],
-      [A, AND, OPEN, B, OR, C, CLOSE],
+      [[A, AND, OPEN, B, OR, C, CLOSE]],
     ],
-    ["empty groups are skipped", [and(leaf("A"), or(), and(or()))], [A]],
+    ["empty groups are skipped", [and(leaf("A"), or(), and(or()))], [[A]]],
     [
-      "then splits the whole expression",
+      "each stage on its own",
       [or(leaf("A"), leaf("B")), leaf("C")],
-      [A, OR, B, THEN_1, C],
+      [[A, OR, B], [C]],
     ],
-    ["no row filters", [and(), leaf("C")], [THEN_1, C]],
+    ["no row filters", [and(), leaf("C")], [[], [C]]],
     [
       "a filter on the second summary only",
       [and(), and(), leaf("C")],
-      [THEN_2, C],
+      [[], [], [C]],
     ],
-    ["trailing empty stages are dropped", [leaf("A"), and(), and()], [A]],
+    [
+      "empty stages are kept, so the caret can get into them",
+      [leaf("A"), and(), and()],
+      [[A], [], []],
+    ],
   ])("%s", (_, stages, expected) => {
     expect(stagesToTokens(stages, TEST_ADAPTER)).toEqual(expected);
   });
@@ -84,9 +86,17 @@ describe("stagesToTokens", () => {
     const tokens = stagesToTokens(stages, adapter);
 
     expect(tokens).toEqual([
-      { type: "pill", filter: "A", content: createTestPill("A@0") },
-      THEN_2,
-      { type: "pill", filter: "C", content: createTestPill("C@2") },
+      [{ type: "pill", filter: "A", content: createTestPill("A@0") }],
+      [],
+      [{ type: "pill", filter: "C", content: createTestPill("C@2") }],
     ]);
+  });
+
+  it("gives each connector its own object, so it can be a React key", () => {
+    const [tokens] = stagesToTokens(
+      [and(leaf("A"), leaf("B"), leaf("C"))],
+      TEST_ADAPTER,
+    );
+    expect(tokens[1]).not.toBe(tokens[3]);
   });
 });

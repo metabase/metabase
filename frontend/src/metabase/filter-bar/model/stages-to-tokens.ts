@@ -6,16 +6,15 @@ import {
   isLeafTree,
 } from "../types";
 
-import type { NodeType, Token } from "./types";
+import type { NodeType, Token, TokenStages } from "./types";
 import {
   PRECEDENCE,
   closeToken,
   connectorToken,
   isEmptyTree,
-  joinTokens,
+  join,
   openToken,
   pillToken,
-  thenToken,
 } from "./utils";
 
 const treeToTokens = <F>(
@@ -32,9 +31,9 @@ const treeToTokens = <F>(
     return treeToTokens(children[0], stageAdapter, parentType);
   }
 
-  const tokens = joinTokens(
+  const tokens = join(
     children.map((child) => treeToTokens(child, stageAdapter, node.type)),
-    connectorToken(node.type),
+    () => connectorToken(node.type),
   );
   const needsParens =
     parentType !== undefined && PRECEDENCE[node.type] < PRECEDENCE[parentType];
@@ -45,11 +44,7 @@ const treeToTokens = <F>(
 export const stagesToTokens = <F>(
   stages: FilterStages<F>,
   adapter: FilterBarAdapter<F>,
-): Token<F>[] =>
-  stages.flatMap((tree, stage): Token<F>[] => {
-    if (isEmptyTree(tree)) {
-      return [];
-    }
-    const tokens = treeToTokens(tree, adapter.stage(stage));
-    return stage === 0 ? tokens : [thenToken(stage), ...tokens];
-  });
+): TokenStages<F> =>
+  stages.map((tree, stage) =>
+    isEmptyTree(tree) ? [] : treeToTokens(tree, adapter.stage(stage)),
+  );

@@ -4,11 +4,6 @@ export type NodeType = Exclude<FilterTree<unknown>["type"], "leaf">;
 
 export type PillToken<F> = { type: "pill"; filter: F; content: PillContent };
 
-// Stages without filters have no tokens at all, so a `then` stores the stage it
-// opens instead of the stage being counted by `then`s. Hidden tokens would make
-// the caret, Backspace and selection skip what the user can't see.
-export type ThenToken = { type: "then"; stage: number };
-
 export type AndToken = { type: "and" };
 export type OrToken = { type: "or" };
 export type OpenToken = { type: "open" };
@@ -19,12 +14,18 @@ export type Token<F> =
   | AndToken
   | OrToken
   | OpenToken
-  | CloseToken
-  | ThenToken;
+  | CloseToken;
+
+export type TokenType = Token<unknown>["type"];
+
+// The tokens of each stage of the query, by stage index.
+export type TokenStages<F> = Token<F>[][];
+
+export type ConnectorToken = AndToken | OrToken;
+export type ParenToken = OpenToken | CloseToken;
 
 export type ParseErrorCode =
-  | "missing-filter"
-  | "missing-connector"
+  | "missing-operand"
   | "empty-parentheses"
   | "missing-closing-parenthesis"
   | "unexpected-closing-parenthesis";
@@ -32,6 +33,7 @@ export type ParseErrorCode =
 export type ParseError = {
   type: "error";
   code: ParseErrorCode;
+  stage: number;
   indexes: readonly number[];
 };
 
@@ -57,6 +59,6 @@ export const isCloseToken = <F>(
   token: Token<F> | undefined,
 ): token is CloseToken => token?.type === "close";
 
-export const isThenToken = <F>(
+export const isConnectorToken = <F>(
   token: Token<F> | undefined,
-): token is ThenToken => token?.type === "then";
+): token is ConnectorToken => isAndToken(token) || isOrToken(token);

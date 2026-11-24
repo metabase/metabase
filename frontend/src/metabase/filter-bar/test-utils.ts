@@ -4,7 +4,6 @@ import {
   connectorToken,
   openToken,
   pillToken,
-  thenToken,
 } from "./model/utils";
 import type {
   ColumnGroup,
@@ -40,12 +39,10 @@ export const TEST_ADAPTER: FilterBarAdapter<string> = {
 export const pill = (filter: string): Token<string> =>
   pillToken(filter, createTestPill(filter));
 
-export const AND = connectorToken<string>("and");
-export const OR = connectorToken<string>("or");
-export const OPEN = openToken<string>();
-export const CLOSE = closeToken<string>();
-export const THEN_1 = thenToken<string>(1);
-export const THEN_2 = thenToken<string>(2);
+export const AND = connectorToken("and");
+export const OR = connectorToken("or");
+export const OPEN = openToken();
+export const CLOSE = closeToken();
 
 export const leaf = <F>(filter: F): FilterTree<F> => ({ type: "leaf", filter });
 

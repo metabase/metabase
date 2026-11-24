@@ -1,51 +1,49 @@
-import { useMemo } from "react";
+import { EditorContent } from "@tiptap/react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { ActionIcon, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Text } from "metabase/ui";
 
-import { isHiddenToken } from "../../model/is-hidden-token";
-import { stagesToTokens } from "../../model/stages-to-tokens";
-import { getStageIndex } from "../../model/utils";
 import type { FilterBarProps } from "../../types";
-import { FilterBarToken } from "../FilterBarToken/FilterBarToken";
 
-export const FilterBar = <F,>({
-  value,
-  onChange,
-  adapter,
-}: FilterBarProps<F>) => {
-  const tokens = useMemo(
-    () => stagesToTokens(value, adapter),
-    [value, adapter],
-  );
+import S from "./FilterBar.module.css";
+import { useFilterBarEditor } from "./use-filter-bar-editor";
+
+export const FilterBar = <F,>(props: FilterBarProps<F>) => {
+  const { editor, error, hasFilters, clear } = useFilterBarEditor(props);
 
   return (
     <Flex
-      wrap="wrap"
       align="center"
       gap="sm"
       mih="3rem"
-      py="md"
-      px="xxl"
+      pr="xxl"
       bg="background_page-secondary"
     >
-      {tokens.map((token, index) =>
-        isHiddenToken(tokens, index) ? null : (
-          <FilterBarToken
-            key={index}
-            token={token}
-            stageAdapter={adapter.stage(getStageIndex(tokens, index))}
-          />
-        ),
+      <EditorContent className={S.editor} editor={editor} />
+      {error && (
+        <Text size="sm" c="feedback-negative" lh={1}>
+          {match(error.code)
+            .with("missing-operand", () => t`Expected a filter`)
+            .with("empty-parentheses", () => t`Empty parentheses`)
+            .with(
+              "missing-closing-parenthesis",
+              () => t`Missing closing parenthesis`,
+            )
+            .with(
+              "unexpected-closing-parenthesis",
+              () => t`Unexpected closing parenthesis`,
+            )
+            .exhaustive()}
+        </Text>
       )}
-      {tokens.length > 0 && (
+      {hasFilters && (
         <ActionIcon
-          ml="auto"
           my="-xxs"
           size="md"
           variant="subtle"
           aria-label={t`Clear all filters`}
-          onClick={() => onChange([])}
+          onClick={clear}
         >
           <Icon name="trash" />
         </ActionIcon>

@@ -1,28 +1,30 @@
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 
 import type { FilterTree } from "../types";
 
 import {
+  type ConnectorToken,
   type NodeType,
+  type OpenToken,
   type ParseError,
   type ParseErrorCode,
   type ParseResult,
   type Token,
+  type TokenStages,
+  isCloseToken,
+  isConnectorToken,
   isOpenToken,
+  isPillToken,
 } from "./types";
-import {
-  PRECEDENCE,
-  dropTrailingEmpty,
-  emptyTree,
-  isEmptyTree,
-  splitByThen,
-} from "./utils";
+import { PRECEDENCE, connectorToken, emptyTree, openToken } from "./utils";
 
-type StackItem = { type: NodeType | "open"; index: number };
+type StackItem = (OpenToken | ConnectorToken) & { index: number };
 
-type SegmentResult<F> = { type: "ok"; tree: FilterTree<F> } | ParseError;
+type SegmentError = Omit<ParseError, "stage">;
 
-const failure = (code: ParseErrorCode, ...indexes: number[]): ParseError => ({
+type SegmentResult<F> = { type: "ok"; tree: FilterTree<F> } | SegmentError;
+
+const failure = (code: ParseErrorCode, ...indexes: number[]): SegmentError => ({
   type: "error",
   code,
   indexes,
@@ -40,7 +42,8 @@ const join = <F>(
 });
 
 // Shunting-yard that builds the tree right away instead of reverse Polish
-// notation, and stops at the first token out of place.
+// notation, and stops at the first token out of place. Operands side by side
+// get an implicit `and`, like implicit multiplication in `2x`.
 const parseSegment = <F>(tokens: readonly Token<F>[]): SegmentResult<F> => {
   const output: FilterTree<F>[] = [];
   const stack: StackItem[] = [];
@@ -48,7 +51,7 @@ const parseSegment = <F>(tokens: readonly Token<F>[]): SegmentResult<F> => {
 
   const popOperators = (shouldPop: (type: NodeType) => boolean) => {
     let top = stack.at(-1);
-    while (top && top.type !== "open" && shouldPop(top.type)) {
+    while (top && !isOpenToken(top) && shouldPop(top.type)) {
       stack.pop();
       const right = output.pop();
       const left = output.pop();
@@ -59,49 +62,54 @@ const parseSegment = <F>(tokens: readonly Token<F>[]): SegmentResult<F> => {
     }
   };
 
+  const pushConnector = (type: NodeType, index: number) => {
+    popOperators((top) => PRECEDENCE[top] >= PRECEDENCE[type]);
+    stack.push({ ...connectorToken(type), index });
+    expectsOperand = true;
+  };
+
+  const addImplicitAnd = (index: number) => {
+    if (!expectsOperand) {
+      pushConnector("and", index);
+    }
+  };
+
   for (const [index, token] of tokens.entries()) {
     const error = match(token)
-      .with({ type: "pill" }, ({ filter }) => {
-        if (!expectsOperand) {
-          return failure("missing-connector", index - 1, index);
-        }
+      .with(P.when(isPillToken), ({ filter }) => {
+        addImplicitAnd(index);
         output.push({ type: "leaf", filter });
         expectsOperand = false;
         return null;
       })
-      .with({ type: "open" }, () => {
-        if (!expectsOperand) {
-          return failure("missing-connector", index - 1, index);
-        }
-        stack.push({ type: "open", index });
+      .with(P.when(isOpenToken), () => {
+        addImplicitAnd(index);
+        stack.push({ ...openToken(), index });
         return null;
       })
-      .with({ type: "and" }, { type: "or" }, ({ type }) => {
+      .with(P.when(isConnectorToken), ({ type }) => {
         if (expectsOperand) {
-          return failure("missing-filter", index);
+          return failure("missing-operand", index);
         }
-        popOperators((top) => PRECEDENCE[top] >= PRECEDENCE[type]);
-        stack.push({ type, index });
-        expectsOperand = true;
+        pushConnector(type, index);
         return null;
       })
-      .with({ type: "close" }, () => {
+      .with(P.when(isCloseToken), () => {
         const previous = tokens[index - 1];
         if (isOpenToken(previous)) {
           return failure("empty-parentheses", index - 1, index);
         }
         if (expectsOperand) {
           return previous
-            ? failure("missing-filter", index - 1)
+            ? failure("missing-operand", index - 1)
             : failure("unexpected-closing-parenthesis", index);
         }
         popOperators(() => true);
-        if (stack.pop()?.type !== "open") {
+        if (!isOpenToken(stack.pop())) {
           return failure("unexpected-closing-parenthesis", index);
         }
         return null;
       })
-      .with({ type: "then" }, () => null)
       .exhaustive();
 
     if (error) {
@@ -110,10 +118,10 @@ const parseSegment = <F>(tokens: readonly Token<F>[]): SegmentResult<F> => {
   }
 
   if (expectsOperand && tokens.length > 0) {
-    return failure("missing-filter", tokens.length - 1);
+    return failure("missing-operand", tokens.length - 1);
   }
   popOperators(() => true);
-  const unclosed = stack.find((item) => item.type === "open");
+  const unclosed = stack.find(isOpenToken);
   if (unclosed) {
     return failure("missing-closing-parenthesis", unclosed.index);
   }
@@ -121,23 +129,18 @@ const parseSegment = <F>(tokens: readonly Token<F>[]): SegmentResult<F> => {
   return { type: "ok", tree: output[0] ?? emptyTree() };
 };
 
-export const parseTokens = <F>(tokens: readonly Token<F>[]): ParseResult<F> => {
-  const stages: FilterTree<F>[] = [];
-
-  for (const segment of splitByThen(tokens)) {
-    const result = parseSegment(segment.tokens);
-    if (result.type === "error") {
-      return {
-        ...result,
-        indexes: result.indexes.map((index) => index + segment.offset),
-      };
-    }
-    // Stages without filters have no `then` of their own (see `ThenToken`).
-    while (stages.length < segment.stage) {
-      stages.push(emptyTree());
-    }
-    stages.push(result.tree);
+export const parseTokens = <F>(stages: TokenStages<F>): ParseResult<F> => {
+  const results = stages.map(parseSegment);
+  const [error] = results.flatMap((result, stage) =>
+    result.type === "error" ? [{ ...result, stage }] : [],
+  );
+  if (error) {
+    return error;
   }
-
-  return { type: "ok", stages: dropTrailingEmpty(stages, isEmptyTree) };
+  return {
+    type: "ok",
+    stages: results.flatMap((result) =>
+      result.type === "ok" ? [result.tree] : [],
+    ),
+  };
 };

@@ -1,42 +1,29 @@
 import { match } from "ts-pattern";
 
+import { applyImplicitAnds } from "./implicit-and";
 import { parseTokens } from "./parse-tokens";
 import {
   type ParseError,
   type Token,
+  type TokenStages,
   isAndToken,
   isCloseToken,
   isOpenToken,
   isOrToken,
-  isThenToken,
 } from "./types";
-import { closeToken, connectorToken } from "./utils";
+import { closeToken } from "./utils";
 
 const removeAt = <F>(
   tokens: readonly Token<F>[],
   indexes: readonly number[],
 ): Token<F>[] => tokens.filter((_, index) => !indexes.includes(index));
 
-const insertAndAt = <F>(
-  tokens: readonly Token<F>[],
-  index: number,
-): Token<F>[] => [
-  ...tokens.slice(0, index),
-  connectorToken("and"),
-  ...tokens.slice(index),
-];
-
 const closeGroups = <F>(
   tokens: readonly Token<F>[],
   openIndex: number,
 ): Token<F>[] | null => {
-  const thenIndex = tokens.findIndex(
-    (token, index) => index > openIndex && isThenToken(token),
-  );
-  const end = thenIndex === -1 ? tokens.length : thenIndex;
-
   const groups: { hasAnd: boolean; hasOr: boolean; isAfterAnd: boolean }[] = [];
-  tokens.slice(openIndex, end).forEach((token, offset) => {
+  tokens.slice(openIndex).forEach((token, offset) => {
     const group = groups.at(-1);
     if (isOpenToken(token)) {
       const isAfterAnd = isAndToken(tokens[openIndex + offset - 1]);
@@ -60,11 +47,7 @@ const closeGroups = <F>(
     return null;
   }
 
-  return [
-    ...tokens.slice(0, end),
-    ...groups.map(() => closeToken<F>()),
-    ...tokens.slice(end),
-  ];
+  return [...tokens, ...groups.map(() => closeToken())];
 };
 
 const fixError = <F>(
@@ -72,28 +55,24 @@ const fixError = <F>(
   { code, indexes }: ParseError,
 ): Token<F>[] | null =>
   match(code)
-    .with("missing-filter", "empty-parentheses", () =>
+    .with("missing-operand", "empty-parentheses", () =>
       removeAt(tokens, indexes),
     )
-    .with("missing-connector", () => insertAndAt(tokens, indexes[1]))
     .with("missing-closing-parenthesis", () => closeGroups(tokens, indexes[0]))
     .with("unexpected-closing-parenthesis", () => null)
     .exhaustive();
 
-const dropDanglingThens = <F>(tokens: readonly Token<F>[]): Token<F>[] =>
-  tokens.filter((token, index) => {
-    const next = tokens[index + 1];
-    const isEmptyStage = next === undefined || isThenToken(next);
-    return !isThenToken(token) || !isEmptyStage;
-  });
-
-export const normalizeTokens = <F>(
-  tokens: readonly Token<F>[],
-): readonly Token<F>[] => {
-  const result = parseTokens(tokens);
+export const normalizeTokens = <F>(input: TokenStages<F>): TokenStages<F> => {
+  const stages = applyImplicitAnds(input);
+  const result = parseTokens(stages);
   if (result.type === "ok") {
-    return dropDanglingThens(tokens);
+    return stages;
   }
-  const fixed = fixError(tokens, result);
-  return fixed ? normalizeTokens(fixed) : tokens;
+  const fixed = fixError(stages[result.stage], result);
+  if (!fixed) {
+    return stages;
+  }
+  return normalizeTokens(
+    stages.map((tokens, stage) => (stage === result.stage ? fixed : tokens)),
+  );
 };

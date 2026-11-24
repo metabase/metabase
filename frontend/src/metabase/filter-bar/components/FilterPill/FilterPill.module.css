@@ -3,11 +3,19 @@
   cursor: pointer;
   transition: box-shadow 120ms;
 
-  &:hover {
+  &:hover,
+  &[data-selected] {
     box-shadow:
       var(--mantine-shadow-xs_outline),
       0 0 0 1px var(--mb-color-background_page-secondary),
       0 0 0 2px var(--mb-color-core-filter);
+  }
+
+  &[data-error] {
+    box-shadow:
+      var(--mantine-shadow-xs_outline),
+      0 0 0 1px var(--mb-color-background_page-secondary),
+      0 0 0 2px var(--mb-color-feedback-negative);
   }
 }
 

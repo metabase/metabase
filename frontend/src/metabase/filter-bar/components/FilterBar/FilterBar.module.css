@@ -1,0 +1,61 @@
+.editor {
+  flex: 1;
+  min-width: 0;
+
+  & :global(.ProseMirror) {
+    padding: calc(var(--mantine-spacing-md) - var(--mantine-spacing-xxs)) 0
+      calc(var(--mantine-spacing-md) - var(--mantine-spacing-xxs))
+      var(--mantine-spacing-xxl);
+    outline: none;
+  }
+
+  & :global(.ProseMirror p) {
+    margin: 0 0 0 calc(-1 * var(--mantine-spacing-xxs));
+    font-size: 0.875rem;
+    caret-color: transparent;
+  }
+
+  & :global(.react-renderer) {
+    display: inline-flex;
+    margin: var(--mantine-spacing-xxs);
+    vertical-align: middle;
+  }
+
+  & [data-node-view-wrapper] {
+    display: inline-flex;
+    user-select: none;
+  }
+
+  & [data-hidden] [data-node-view-wrapper] {
+    width: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+
+  & :global(.ProseMirror:not(.ProseMirror-focused)) .caret {
+    display: none;
+  }
+}
+
+.caret {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1.25em;
+  vertical-align: middle;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 1px;
+    background-color: var(--mb-color-icon-primary);
+    animation: blink 1s steps(1) infinite;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}

@@ -18,9 +18,18 @@ import S from "./FilterPill.module.css";
 type FilterPillProps = {
   content: PillContent;
   formatValues: (parts: FilterParts) => string;
+  isSelected: boolean;
+  hasError: boolean;
+  onRemove: () => void;
 };
 
-export const FilterPill = ({ content, formatValues }: FilterPillProps) => {
+export const FilterPill = ({
+  content,
+  formatValues,
+  isSelected,
+  hasError,
+  onRemove,
+}: FilterPillProps) => {
   const isOpaque = isOpaquePillContent(content);
 
   return (
@@ -35,6 +44,8 @@ export const FilterPill = ({ content, formatValues }: FilterPillProps) => {
       bdrs="lg"
       bg="background_surface-primary"
       data-testid="filter-pill"
+      data-selected={isSelected || undefined}
+      data-error={hasError || undefined}
     >
       <Flex
         className={S.parts}
@@ -58,7 +69,16 @@ export const FilterPill = ({ content, formatValues }: FilterPillProps) => {
           ))
           .exhaustive()}
       </Flex>
-      <ActionIcon size="xs" variant="subtle" aria-label={t`Remove filter`}>
+      <ActionIcon
+        size="xs"
+        variant="subtle"
+        aria-label={t`Remove filter`}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={(event) => {
+          event.stopPropagation();
+          onRemove();
+        }}
+      >
         <Icon name="close" />
       </ActionIcon>
     </Flex>
