@@ -16,12 +16,12 @@
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.warehouse-schema.models.field :as field]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,7 +34,7 @@
 (defn- save-scores!
   "Write the scores of `pairs`, each a Field and its update row, with one call."
   [pairs]
-  (field/update-fields! (mapv second pairs) {:fields (mapv first pairs)}))
+  (sync.updates/update-fields! (mapv second pairs) {:fields (mapv first pairs)}))
 
 (mu/defn- score-and-save! :- [:sequential i/FieldInstance]
   "Score `fields` and write their scores with one call, or Table by Table when that fails, `name-table` naming a Table

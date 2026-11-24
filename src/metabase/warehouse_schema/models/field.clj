@@ -459,20 +459,13 @@
   [rows]
   (check-fk-targets (filter :fk_target_field_id rows)))
 
-(defn- publish-fields-created!
-  "Publish the create event of the Fields `created`."
-  [created]
-  (events/publish-event! :event/field-create (events/create-event created)))
-
 (mu/defn create-fields! :- [:sequential ::warehouse-schema.schema/field]
-  "Insert the Field `rows` in one transaction that first locks their Databases, publishing their create event, and
-  return the inserted Fields, refusing a foreign key target outside the Database of a Field's Table."
+  "Insert the Field `rows` in one transaction, publishing their create event, and return the inserted Fields, refusing a
+  foreign key target outside the Database of a Field's Table."
   [rows :- [:sequential ::warehouse-schema.schema/field.create]]
-  (database/call-locking-databases
-   #(when (seq rows) (warehouse-schema.db/database-ids-of-tables (into [] (comp (keep :table_id) (distinct)) rows)))
-   #(mdb/create-batched! :model/Field rows
-                         {:before-create check-new-fields
-                          :after-create  publish-fields-created!})))
+  (mdb/create-batched! :model/Field rows
+                       {:before-create check-new-fields
+                        :after-create  #(events/publish-event! :event/field-create (events/create-event %))}))
 
 (defmulti clear-for-deactivated-fields!
   "Clear what the rows of `model` hold that points at the deactivated Fields with `field-ids`, which a model whose
@@ -694,19 +687,17 @@
            [:fields {:optional true} [:sequential ::warehouse-schema.schema/field]]]])
 
 (mu/defn update-fields! :- :nil
-  "Apply `updates`, each the `:id` of a Field and the columns to change, in one transaction that first locks their
-  Databases, publishing their update event; the stored rows are read unless the caller gives them as `:fields`."
+  "Apply `updates`, each the `:id` of a Field and the columns to change, in one transaction, publishing their update
+  event; the stored rows are read unless the caller gives them as `:fields`."
   ([updates :- [:sequential ::warehouse-schema.schema/field.update]]
    (update-fields! updates nil))
   ([updates          :- [:sequential ::warehouse-schema.schema/field.update]
     {:keys [fields]} :- ::write-opts]
-   (database/call-locking-databases
-    #(when (seq updates) (warehouse-schema.db/database-ids-of-fields (mapv :id updates)))
-    #(t2/with-transaction [_conn]
-       (publish-field-updates! (transduce (map (fn [batch] (update-field-batch! (vec batch) fields)))
-                                          (completing merge-changes)
-                                          {}
-                                          (partition-all mdb/update-partition-size updates)))))
+   (t2/with-transaction [_conn]
+     (publish-field-updates! (transduce (map #(update-field-batch! (vec %) fields))
+                                        (completing merge-changes)
+                                        {}
+                                        (partition-all mdb/update-partition-size updates))))
    nil))
 
 (mu/defn change-case!

@@ -13,13 +13,13 @@
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
-   [metabase.warehouse-schema.models.field :as field]))
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
@@ -117,7 +117,7 @@
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
-    (mapv :id (field/create-fields! (new-field-rows table new-field-metadatas parent-id)))))
+    (mapv :id (sync.updates/create-fields! (new-field-rows table new-field-metadatas parent-id)))))
 
 (mu/defn- create-or-reactivate-fields! :- [:maybe [:sequential i/FieldInstance]]
   "Create (or reactivate) Metabase Field object(s) for any Fields in `new-field-metadatas`. Does *NOT* recursively
@@ -128,7 +128,7 @@
   (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
-      (field/update-fields! (for [id (mapv u/the-id fields-to-reactivate)] {:id id :active true})))
+      (sync.updates/update-fields! (for [id (mapv u/the-id fields-to-reactivate)] {:id id :active true})))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
           ;; If we reactivated the fields, no need to insert them; insert new rows for any that weren't reactivated
@@ -195,7 +195,7 @@
                                                           (common/field-metadata-name-for-logging table (first to-retire)))
                      (doseq [metabase-field to-retire]
                        (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field)))
-                     (field/update-fields! (for [id (mapv u/the-id to-retire)] {:id id :active false}))
+                     (sync.updates/update-fields! (for [id (mapv u/the-id to-retire)] {:id id :active false}))
                      (count to-retire))]
         (if (number? result) result 0)))))
 
@@ -333,7 +333,7 @@
             metabase-field             to-retire]
       (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field)))
     (when (seq new-rows)
-      (field/create-fields! new-rows))
+      (sync.updates/create-fields! new-rows))
     (when (seq updates)
-      (field/update-fields! updates))
+      (sync.updates/update-fields! updates))
     (transduce (map #(+ (count (:new-fields %)) (count (:to-retire %)))) + 0 plans)))

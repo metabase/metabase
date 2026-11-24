@@ -9,9 +9,11 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,10 +31,36 @@
   (when (not= (:initial_sync_status table) "complete")
     (table/update-tables! [{:id (u/the-id table) :initial_sync_status "complete"}])))
 
+(defn update-fields!
+  "Apply the Field update `rows` with `opts` through [[field/update-fields!]] in a transaction that first locks their
+  Databases, as a Database delete does, so that sync never holds some of its Fields while waiting for that delete."
+  ([rows]
+   (update-fields! rows nil))
+  ([rows opts]
+   (let [rows (vec rows)]
+     (database/call-locking-databases #(when (seq rows) (sync.db/database-ids-of-fields (mapv :id rows)))
+                                      #(field/update-fields! rows opts)))))
+
+(defn create-fields!
+  "Insert the Field `rows` through [[field/create-fields!]] in a transaction that first locks their Databases, returning
+  the inserted Fields."
+  [rows]
+  (let [rows (vec rows)]
+    (database/call-locking-databases
+     #(when (seq rows) (sync.db/database-ids-of-tables (into [] (comp (keep :table_id) (distinct)) rows)))
+     #(field/create-fields! rows))))
+
+(defn save-field-values-changes!
+  "Write `changes` of the FieldValues of the Fields with `field-ids` through [[field-values/save-field-values-changes!]]
+  in a transaction that first locks their Databases."
+  [field-ids changes]
+  (database/call-locking-databases #(when (seq field-ids) (sync.db/database-ids-of-fields (vec field-ids)))
+                                   #(field-values/save-field-values-changes! changes)))
+
 (defn- update-fields-counted!
   "Apply the Field update `rows` with `opts` and return their number."
   [rows opts]
-  (field/update-fields! (vec rows) opts)
+  (update-fields! rows opts)
   (count rows))
 
 (defn- update-tables-counted!

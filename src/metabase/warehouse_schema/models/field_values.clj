@@ -50,7 +50,6 @@
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
-   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -786,20 +785,13 @@
    (into #{} (comp (filter #(= :full (keyword (or (:type %) :full)))) (map :field_id)) rows))
   rows)
 
-(defn- publish-field-values-created!
-  "Publish the create event of the FieldValues `created`."
-  [created]
-  (events/publish-event! :event/field-values-create (events/create-event created)))
-
 (mu/defn create-field-values! :- [:sequential ::warehouse-schema.schema/field-values]
-  "Insert the FieldValues `rows` in one transaction that first locks their Databases, publishing their create event,
-  and return the inserted FieldValues, deleting first the advanced FieldValues of the Fields that get full ones."
+  "Insert the FieldValues `rows` in one transaction, publishing their create event, and return the inserted FieldValues,
+  deleting first the advanced FieldValues of the Fields that get full ones."
   [rows :- [:sequential ::warehouse-schema.schema/field-values.create]]
-  (database/call-locking-databases
-   #(when (seq rows) (warehouse-schema.db/database-ids-of-fields (into [] (comp (keep :field_id) (distinct)) rows)))
-   #(mdb/create-batched! :model/FieldValues rows
-                         {:before-create clear-replaced-advanced-values!
-                          :after-create  publish-field-values-created!})))
+  (mdb/create-batched! :model/FieldValues rows
+                       {:before-create clear-replaced-advanced-values!
+                        :after-create  #(events/publish-event! :event/field-values-create (events/create-event %))}))
 
 (defn- without-unchanged-identity
   "`row` without the `type` and `hash_key` that `stored`, the row it updates, already holds."
@@ -839,15 +831,12 @@
                                                 (mapv #(without-unchanged-identity % (id->stored (:id %))) updates)))))
 
 (mu/defn update-field-values! :- :nil
-  "Apply `updates`, each the `:id` of a FieldValues and the columns to change, in one transaction that first locks their
-  Databases, publishing their update event, deleting first the advanced FieldValues of the Fields whose full values
-  change."
+  "Apply `updates`, each the `:id` of a FieldValues and the columns to change, in one transaction, publishing their
+  update event, deleting first the advanced FieldValues of the Fields whose full values change."
   [updates :- [:sequential ::warehouse-schema.schema/field-values.update]]
-  (database/call-locking-databases
-   #(when (seq updates) (warehouse-schema.db/database-ids-of-field-values (mapv :id updates)))
-   #(mdb/update-batched! :model/FieldValues updates
-                         {:before-update prepare-field-values-updates!
-                          :after-update  publish-field-values-updates!})))
+  (mdb/update-batched! :model/FieldValues updates
+                       {:before-update prepare-field-values-updates!
+                        :after-update  publish-field-values-updates!}))
 
 (defn- insert-unless-concurrent!
   "Insert the FieldValues `row` and return the inserted instance, or nil when a concurrent insert stored it first."

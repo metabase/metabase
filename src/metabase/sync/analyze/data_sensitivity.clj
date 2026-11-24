@@ -14,11 +14,11 @@
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.models.field :as field]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -59,7 +59,7 @@
 (defn- save-pairs!
   "Write `pairs`, each a Field and its update row, with one call."
   [pairs]
-  (field/update-fields! (mapv second pairs) {:fields (mapv first pairs)}))
+  (sync.updates/update-fields! (mapv second pairs) {:fields (mapv first pairs)}))
 
 (defn- save-categories!
   "Write the category of each of `results`, `[field category]` pairs of Fields of `tables`, `:PUBLIC` for nil, with
@@ -157,7 +157,7 @@
 (defn- clear-classifier-labels!
   "Clear the `data_sensitivity` of the Fields with `field-ids` in one update and return their number."
   [field-ids]
-  (field/update-fields! (for [id field-ids] {:id id :data_sensitivity nil}))
+  (sync.updates/update-fields! (for [id field-ids] {:id id :data_sensitivity nil}))
   (count field-ids))
 
 (mu/defn reset-data-sensitivity! :- :int

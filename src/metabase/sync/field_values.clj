@@ -11,6 +11,7 @@
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -144,7 +145,7 @@
         saved?  (and (next ok)
                      (not (instance? Throwable (sync-util/rethrow-fatal
                                                 (sync-util/with-error-handling "Error updating field values"
-                                                  (field-values/save-field-values-changes! (mapv second ok)))))))
+                                                  (sync.updates/save-field-values-changes! (mapv (comp :id first) ok) (mapv second ok)))))))
         outcome (fn [[field change]]
                   (cond
                     (instance? Throwable change) change
@@ -152,7 +153,7 @@
                     :else                        (sync-util/with-error-handling
                                                   (format "Error updating field values for %s"
                                                           (sync-util/name-for-logging field))
-                                                   (field-values/save-field-values-changes! [change])
+                                                   (sync.updates/save-field-values-changes! [(:id field)] [change])
                                                    (:result change))))]
     (transduce (map (comp result->delta outcome))
                (partial merge-with +)

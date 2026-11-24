@@ -386,6 +386,21 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/FieldUserSettings :field_id field-id))
 
+(mu/defn database-ids-of-tables :- [:set ::lib.schema.id/database]
+  "The ids of the Databases of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (set (app-db/select-batched-set #(t2/select-fn-set :db_id :model/Table :id [:in [:auto/param %]]) table-ids)))
+
+(mu/defn database-ids-of-fields :- [:set ::lib.schema.id/database]
+  "The ids of the Databases of the Tables of the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (set (app-db/select-batched-set #(map :db_id (t2/query {:select-distinct [:t.db_id]
+                                                          :from            [[(t2/table-name :model/Table) :t]]
+                                                          :join            [[(t2/table-name :model/Field) :f]
+                                                                            [:= :f.table_id :t.id]]
+                                                          :where           [:in :f.id [:auto/param %]]}))
+                                  field-ids)))
+
 (mu/defn field-user-settings-for-fields :- [:sequential ::warehouse-schema.schema/field-user-settings]
   "The FieldUserSettings of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]

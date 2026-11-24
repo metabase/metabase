@@ -8,6 +8,7 @@
    [metabase.sync.analyze.table-chunks :as table-chunks]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
@@ -71,7 +72,7 @@
   [rows   :- [:sequential :map]
    fields :- [:sequential i/FieldInstance]]
   (when (seq rows)
-    (field/update-fields! rows {:fields (vec fields)})))
+    (sync.updates/update-fields! rows {:fields (vec fields)})))
 
 (defn- fingerprint-stats
   "The stats of `fingerprints`, those of the Fields of one sample."
