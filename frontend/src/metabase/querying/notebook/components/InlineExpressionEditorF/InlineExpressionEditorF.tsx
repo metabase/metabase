@@ -9,9 +9,8 @@ import {
 } from "metabase/prototype";
 import type { ExpressionError } from "metabase/querying/expressions";
 import { useSetting } from "metabase/settings";
-import { Box, Button, Icon, UnstyledButton } from "metabase/ui";
-import { METAKEY } from "metabase/utils/browser";
-import * as Lib from "metabase-lib";
+import { Button } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 
 import { EditorF } from "../../../components/expressions/EditorF";
 import type {
@@ -22,13 +21,16 @@ import type {
 } from "../../../components/expressions/EditorF/EditorF";
 import { Layout } from "../../../components/expressions/Layout";
 import type { InlineExpressionEditorProps } from "../InlineExpressionEditor";
-import { ExpressionPreview } from "../InlineExpressionEditor/ExpressionPreview";
-import { NotebookActionButton } from "../NotebookStep/NotebookActionButton";
+import {
+  useLiveStepPreview,
+  useStepPreview,
+} from "../NotebookStep/StepPreviewContext";
 
 import { AiPrompt } from "./AiPrompt";
 import S from "./InlineExpressionEditorF.module.css";
 import { ModeSwitch } from "./ModeSwitch";
 
+/** A valid expression to run: the step's preview shows it. */
 type PreviewRun = {
   source: string;
   clause: Lib.ExpressionClause;
@@ -42,20 +44,6 @@ function useIsAiAvailable() {
   const isConfigured = Boolean(useSetting("llm-metabot-configured?"));
   const [isHidden] = usePrototypeSetting(EXPRESSION_HIDE_AI_SETTING);
   return isConfigured && !isHidden;
-}
-
-function getResultName(
-  expressionMode: Lib.ExpressionMode,
-  name: string | undefined,
-) {
-  switch (expressionMode) {
-    case "filter":
-      return t`Matches`;
-    case "aggregation":
-      return name;
-    default:
-      return name ?? t`New column`;
-  }
 }
 
 /** True when the key is in the code, not in the prompt or another field. */
@@ -103,19 +91,6 @@ function getActionButton({
     return "run";
   }
   return hasCode ? "done" : "cancel";
-}
-
-function getBreakoutKey(
-  query: Lib.Query,
-  stageIndex: number,
-  expressionMode: Lib.ExpressionMode,
-) {
-  if (expressionMode !== "aggregation") {
-    return "";
-  }
-  return Lib.breakouts(query, stageIndex)
-    .map((breakout) => Lib.displayInfo(query, stageIndex, breakout).displayName)
-    .join("\n");
 }
 
 /**
@@ -168,27 +143,21 @@ export function InlineExpressionEditorF({
   // The text in the editor. The editor reports the opened expression when it
   // validates it.
   const [editedSource, setEditedSource] = useState<string>();
-  // The expression in the preview. The preview runs only on request, so it
-  // can be outdated.
-  const [previewRun, setPreviewRun] = useState<PreviewRun>();
-  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
-  // The groups of an aggregation also change its result, so a preview of
-  // other groups is outdated.
-  const breakoutKey = getBreakoutKey(query, stageIndex, expressionMode);
-  const breakoutKeyRef = useRef(breakoutKey);
-  breakoutKeyRef.current = breakoutKey;
-  const [previewBreakoutKey, setPreviewBreakoutKey] = useState(breakoutKey);
-
-  // The text of the last run (Cmd+Enter, Run, ▶ or the AI's answer), which
-  // closing the preview keeps. Run shows until the code changes from it.
+  // The text of the last run (Cmd+Enter, Run, or the AI's answer). Run shows
+  // until the code changes from it.
   const [lastRunSource, setLastRunSource] = useState<string>();
 
-  const showPreview = useCallback((run: PreviewRun) => {
-    setPreviewRun(run);
-    setLastRunSource(run.source);
-    setPreviewBreakoutKey(breakoutKeyRef.current);
-    setPreviewRefreshKey((key) => key + 1);
-  }, []);
+  // A run opens the step's preview, the same as the step's ▶: the whole
+  // table with the expression. It follows the step's query until the code
+  // changes, so it shows the expression once it's saved to the step.
+  const stepPreview = useStepPreview();
+  const showPreview = useCallback(
+    (run: PreviewRun) => {
+      setLastRunSource(run.source);
+      stepPreview?.run();
+    },
+    [stepPreview],
+  );
   // Errors show only after the user asks for a check: Enter or Done. The
   // next edit hides them.
   const [isErrorShown, setIsErrorShown] = useState(false);
@@ -212,18 +181,6 @@ export function InlineExpressionEditorF({
     return { source: result.source, clause: result.clause };
   };
 
-  const runPreview = () => {
-    const run = checkNow();
-    if (run != null) {
-      showPreview(run);
-    }
-  };
-
-  const isPreviewOutdated =
-    previewRun != null &&
-    ((editedSource !== undefined && editedSource !== previewRun.source) ||
-      breakoutKey !== previewBreakoutKey);
-
   // A check also reports the text, so only a new text hides the errors.
   const editedSourceRef = useRef<string | undefined>(undefined);
   const handleEdit = useCallback((source: string) => {
@@ -238,11 +195,10 @@ export function InlineExpressionEditorF({
   // In AI mode, the code that the prompt changes.
   const context = isEmpty ? null : (editedSource ?? null);
 
-  // Removing the code from the prompt starts over: no code, no preview. The
-  // prompt stays, to run again without the code.
+  // Removing the code from the prompt starts over: no code. The prompt stays,
+  // to run again without the code.
   const clearContext = () => {
     clearCodeRef.current?.();
-    setPreviewRun(undefined);
     setLastRunSource(undefined);
     setLastRunPrompt(undefined);
   };
@@ -380,6 +336,9 @@ export function InlineExpressionEditorF({
         (initialSource ?? "").trim() !== "";
   const hasCodeToRun =
     editedSource !== undefined && !isEmpty && editedSource !== lastRunSource;
+  useLiveStepPreview(
+    lastRunSource !== undefined && editedSource === lastRunSource,
+  );
   const actionButton = getActionButton({
     mode,
     prompt,
@@ -494,47 +453,7 @@ export function InlineExpressionEditorF({
             onAcceptBreakouts={onAcceptBreakouts}
           />
         </Layout>
-        {previewRun == null && !readOnly && (
-          // The same button as the preview of a step.
-          <Box
-            className={S.previewButton}
-            component={NotebookActionButton}
-            icon="play"
-            title={t`Preview`}
-            color="text-disabled"
-            onClick={runPreview}
-          />
-        )}
       </div>
-
-      {previewRun != null && (
-        <div className={S.previewSection}>
-          <div className={S.previewHeader}>
-            <span className={S.previewTitle}>{t`Preview`}</span>
-            <UnstyledButton
-              className={S.previewClose}
-              aria-label={t`Close the preview`}
-              onClick={() => setPreviewRun(undefined)}
-            >
-              <Icon name="close" size={16} />
-            </UnstyledButton>
-          </div>
-          <div className={S.previewPlate}>
-            <ExpressionPreview
-              query={query}
-              stageIndex={stageIndex}
-              expressionMode={expressionMode}
-              expressionIndex={expressionIndex}
-              clause={previewRun.clause}
-              name={getResultName(expressionMode, previewRun.name ?? name)}
-              refreshKey={previewRefreshKey}
-              isOutdated={isPreviewOutdated}
-              runLabel={t`Update preview (${METAKEY}+Enter)`}
-              onRun={runPreview}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

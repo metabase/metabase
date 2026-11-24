@@ -124,6 +124,8 @@ Pills B and C (Figma nodes 361:2521, 361:2582) are used only in the custom colum
 - 2026-11-24 — The docs side panel is redesigned (Figma 395:5532, 395:6116, 395:6211): Functions first, each with its description, and a page per function with the old help popover's content. Why: reviewers found no function help, examples or optional arguments, and "Open docs" didn't open docs. It applies to the popover editors too, which share the panel.
 - 2026-11-24 — F: the suggestion list scrolls in a Mantine ScrollArea (thin scrollbar), between the argument's description at the top and the "Open docs" row at the bottom, which both stay in place.
 - 2026-11-24 — F: "Open docs" in the suggestions opens the docs panel at the page of the function the cursor is in, like `case(`; outside a function, at the list. The info button always opens the list. If the panel is already open, it switches to that page.
+- 2026-11-24 — The step's preview button (▶) is back as on master: it sits right of the step's cell (centered on it, also while an inline editor is open below), and previews the whole step: every column, with all custom columns. The editor's own ▶ is removed; its "Preview" box still shows after Run or Cmd+Enter. Replaces the 2026-11-23 decision on the ▶ next to the editor.
+- 2026-11-24 — F: Run, Cmd+Enter and the AI's answer open the step's preview (the master table of the whole step) instead of the editor's own preview box, which is removed. The step's preview follows the step's query while the code is unchanged since its last run, so it shows the saved expression without Refresh; after an edit it shows Refresh, as on master, until the next Run.
 
 ## Settings
 - `expression-hide-ai` — behave as without an AI provider.

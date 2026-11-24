@@ -43,11 +43,17 @@ const getPreviewQuestion = (
 
 type NotebookStepPreviewProps = {
   step: NotebookStep;
+  /** A new id shows the step's query as it is now, without Refresh. */
+  runId?: number;
+  /** While true, the preview follows the step's query, without Refresh. */
+  isLive?: boolean;
   onClose: () => void;
 };
 
 export const NotebookStepPreview = ({
   step,
+  runId,
+  isLive = false,
   onClose,
 }: NotebookStepPreviewProps) => {
   const buildQuestion = useQuestionFromOptsBuilder();
@@ -56,6 +62,13 @@ export const NotebookStepPreview = ({
     [step, buildQuestion],
   );
   const [activeQuestion, setActiveQuestion] = useState(previewQuestion);
+  const [shownRunId, setShownRunId] = useState(runId);
+  if (runId !== shownRunId) {
+    setShownRunId(runId);
+    setActiveQuestion(previewQuestion);
+  } else if (isLive && activeQuestion.isDirtyComparedTo(previewQuestion)) {
+    setActiveQuestion(previewQuestion);
+  }
 
   const refresh = () => {
     setActiveQuestion(previewQuestion);

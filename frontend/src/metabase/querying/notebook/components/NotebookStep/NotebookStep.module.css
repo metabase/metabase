@@ -12,6 +12,29 @@
   }
 }
 
+/* The step's content and, on its right, the preview button. The content's
+   parts are rows of the grid: the cell, and an inline editor below it while
+   one is open. The button sits in the first row, centered on the cell. The
+   content is 11/12 of the width, at most 75rem, as before. */
+.StepBody {
+  display: grid;
+  grid-template-columns: min(75rem, calc(100% * 11 / 12)) 1fr;
+  align-items: center;
+}
+
+.StepContent {
+  display: contents;
+
+  > * {
+    grid-column: 1;
+  }
+}
+
+.StepActions {
+  grid-row: 1;
+  grid-column: 2;
+}
+
 .StepRoot {
   margin-bottom: 0.5rem;
   padding-bottom: 0.5rem;
