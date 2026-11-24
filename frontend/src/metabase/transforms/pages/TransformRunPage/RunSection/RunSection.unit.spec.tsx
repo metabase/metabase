@@ -6,10 +6,21 @@ import {
   setupListDagTransformsEndpoint,
   setupListTransformJobsEndpoint,
   setupListTransformTagsEndpoint,
+  setupListTransformsEndpoint,
   setupRunTransformDagEndpoint,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { Route } from "metabase/router";
+import { RunListPage } from "metabase/transforms/pages/RunListPage";
+import * as Urls from "metabase/urls";
 import type {
   RunTransformDagResponse,
   Transform,
@@ -17,6 +28,7 @@ import type {
   TransformRunForJobRun,
 } from "metabase-types/api";
 import {
+  createMockListTransformRunsResponse,
   createMockTransform,
   createMockTransformJob,
   createMockTransformRun,
@@ -259,5 +271,87 @@ describe("RunSection no active job note", () => {
 
     expect(screen.queryByText(NOTE_TEXT)).not.toBeInTheDocument();
     expect(fetchMock.callHistory.called("path:/api/transform-job")).toBe(false);
+  });
+});
+
+describe("RunSection run list link", () => {
+  const MBQL_TRANSFORM = createMockTransform({ id: 1, name: "MBQL transform" });
+  const MBQL_RUN = createMockTransformRun({
+    id: 101,
+    transform_id: MBQL_TRANSFORM.id,
+    transform: MBQL_TRANSFORM,
+    status: "succeeded",
+    run_method: "manual",
+  });
+  const SQL_TRANSFORM = createMockTransform({
+    id: 2,
+    name: "SQL transform",
+    last_run: createMockTransformRun({ id: 102, status: "succeeded" }),
+  });
+  const SQL_RUN = createMockTransformRun({
+    id: 102,
+    transform_id: SQL_TRANSFORM.id,
+    transform: SQL_TRANSFORM,
+    status: "succeeded",
+    run_method: "manual",
+  });
+
+  function setupWithRunList() {
+    setupListTransformTagsEndpoint([]);
+    setupListTransformJobsEndpoint([]);
+    setupUserMetabotPermissionsEndpoint();
+    setupListTransformsEndpoint([MBQL_TRANSFORM, SQL_TRANSFORM]);
+    fetchMock.get("path:/api/transform/run", (call) => {
+      const transformIds = new URL(call.url).searchParams
+        .getAll("transform-ids")
+        .map(Number);
+      const runs = [MBQL_RUN, SQL_RUN].filter(
+        (run) =>
+          transformIds.length === 0 ||
+          transformIds.includes(run.transform_id ?? -1),
+      );
+      return createMockListTransformRunsResponse({
+        data: runs,
+        total: runs.length,
+      });
+    });
+    mockGetBoundingClientRect({ width: 1200, height: 800 });
+
+    const { router } = renderWithProviders(
+      <>
+        <Route
+          path="/transform"
+          element={<RunSection transform={SQL_TRANSFORM} />}
+        />
+        <Route path={Urls.transformRunList()} element={<RunListPage />} />
+      </>,
+      { withRouter: true, initialRoute: "/transform" },
+    );
+    return { router };
+  }
+
+  it("opens the run list filtered by the current transform", async () => {
+    const { router } = setupWithRunList();
+
+    const link = screen.getByRole("link", { name: "See all runs" });
+    expect(link).toHaveAttribute(
+      "href",
+      `/data-studio/transforms/runs/individual?transform-ids=${SQL_TRANSFORM.id}`,
+    );
+    await userEvent.click(link);
+
+    expect(router?.location.search).toBe(`?transform-ids=${SQL_TRANSFORM.id}`);
+    const table = await screen.findByRole("treegrid", {
+      name: "Transform runs",
+    });
+    expect(await within(table).findByText("SQL transform")).toBeInTheDocument();
+    expect(within(table).getByText("Success")).toBeInTheDocument();
+    expect(within(table).getByText("Manual")).toBeInTheDocument();
+    expect(within(table).queryByText("MBQL transform")).not.toBeInTheDocument();
+
+    const call = fetchMock.callHistory.lastCall("path:/api/transform/run");
+    expect(
+      new URL(call?.url ?? "http://x").searchParams.getAll("transform-ids"),
+    ).toEqual([String(SQL_TRANSFORM.id)]);
   });
 });
