@@ -100,6 +100,7 @@ function AttributeValue({ attribute, value, onApply }: AttributeValueProps) {
       </Popover.Target>
       <Popover.Dropdown p="md" w="20rem">
         <TextInput
+          size="lg"
           data-autofocus
           label={attribute.name}
           description={

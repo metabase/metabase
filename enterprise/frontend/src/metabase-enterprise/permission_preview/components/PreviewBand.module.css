@@ -15,6 +15,9 @@
   align-items: center;
   column-gap: var(--mantine-spacing-md);
   row-gap: var(--mantine-spacing-sm);
+
+  /* The height of the controls, so a wrapped band is 8 + 32 + 8 + 32 + 8. */
+  min-height: 2rem;
 }
 
 /* The controls take the room that is left, and drop to a row of their own when
@@ -33,8 +36,19 @@
   background-color: var(--mb-color-background_page-primary);
 }
 
-.bandButton[data-variant][data-size]:hover:not([data-loading]),
-.bandButton[data-variant][data-size][aria-pressed="true"]:not([data-loading]) {
+.bandButton[data-variant][data-size]:hover:not([data-loading]) {
   background-color: var(--mb-color-background_page-primary);
   background-image: linear-gradient(var(--button-hover), var(--button-hover));
+}
+
+/* A pressed button is the subtle brand surface, hovered or not. */
+.bandButton[data-variant][data-size][aria-pressed="true"]:not([data-loading]),
+.bandButton[data-variant][data-size][aria-pressed="true"]:hover:not(
+    [data-loading]
+  ) {
+  background-color: var(--mb-color-background_page-primary);
+  background-image: linear-gradient(
+    var(--mb-color-background_surface-brand-subtle),
+    var(--mb-color-background_surface-brand-subtle)
+  );
 }
