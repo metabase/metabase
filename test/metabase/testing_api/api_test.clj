@@ -239,7 +239,8 @@
 (deftest metabot-retrieve-reports-failed-queries-test
   (testing "a search that lost some of its queries is a failure, not a smaller result"
     (mt/with-dynamic-fn-redefs [metabot.search/search (fn [_] (with-meta [] {:failed-queries ["people"]}))]
-      (is (=? {:failed-queries ["people"]}
+      (is (=? {:failed-queries ["people"]
+               :output         #"(?s).*Total results: 0.*"}
               (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
                                     {:retriever "general", :arguments {:keyword_queries ["orders" "people"]}}))))))
 

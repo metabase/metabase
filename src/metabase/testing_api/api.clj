@@ -622,7 +622,8 @@
   "Run one of Metabot's read-only retrieval tools with fixed arguments and no model, for search evals.
   Admins only, because the testing routes are not behind the authentication middleware.
   Answers 400 when the tool rejects the arguments, and 502 when the call fails or any of its queries fails, so a
-  caller can tell a failed or partial search from one that found nothing."
+  caller can tell a failed or partial search from one that found nothing. A partial search's 502 still carries the
+  other queries' `output`, for debugging."
   [_route-params
    _query-params
    {:keys [retriever arguments]} :- [:map {:closed true}
@@ -649,7 +650,8 @@
                       {:status-code    502
                        :error-code     "search-incomplete"
                        :failed-queries failed-queries
-                       :response/keys  #{:failed-queries}})))
+                       :output         output
+                       :response/keys  #{:failed-queries :output}})))
     {:output output}))
 
 (api.macros/defendpoint :post "/mcp/seed-tool-call"
