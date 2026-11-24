@@ -66,13 +66,17 @@
 
 (api.macros/defendpoint :get "/" :- [:map
                                      [:last_checked_at [:maybe ms/TemporalInstant]]
+                                     [:last_sync_attempted_at [:maybe ms/TemporalInstant]]
+                                     [:last_sync_error [:maybe :string]]
                                      [:advisories [:sequential AdvisoryResponse]]]
   "List all security advisories with match status."
   []
   (api/check-superuser)
   (let [advisories (t2/hydrate (security-center.db/advisories-newest-first) :acknowledged_by_user)]
-    {:last_checked_at (settings/security-center-last-synced-at)
-     :advisories      (mapv advisory-response advisories)}))
+    {:last_checked_at        (settings/security-center-last-synced-at)
+     :last_sync_attempted_at (settings/security-center-last-sync-attempted-at)
+     :last_sync_error        (settings/security-center-last-sync-error)
+     :advisories             (mapv advisory-response advisories)}))
 
 (defn- acknowledge-response
   "Format a slim response for the acknowledge endpoint."
