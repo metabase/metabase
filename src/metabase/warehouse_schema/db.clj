@@ -259,6 +259,33 @@
   (let [changes (into {} (map (fn [column] [column [kase column]])) columns)]
     (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/Field :id [:in %] changes) field-ids)))
 
+(mu/defn database-ids-of-tables :- [:set ::lib.schema.id/database]
+  "The ids of the Databases of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (set (app-db/select-batched-set #(t2/select-fn-set :db_id :model/Table :id [:in [:auto/param %]]) table-ids)))
+
+(mu/defn database-ids-of-fields :- [:set ::lib.schema.id/database]
+  "The ids of the Databases of the Tables of the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (set (app-db/select-batched-set #(map :db_id (t2/query {:select-distinct [:t.db_id]
+                                                          :from            [[(t2/table-name :model/Table) :t]]
+                                                          :join            [[(t2/table-name :model/Field) :f]
+                                                                            [:= :f.table_id :t.id]]
+                                                          :where           [:in :f.id [:auto/param %]]}))
+                                  field-ids)))
+
+(mu/defn database-ids-of-field-values :- [:set ::lib.schema.id/database]
+  "The ids of the Databases of the Tables of the Fields of the FieldValues with `field-values-ids`."
+  [field-values-ids :- [:sequential ms/PositiveInt]]
+  (set (app-db/select-batched-set #(map :db_id (t2/query {:select-distinct [:t.db_id]
+                                                          :from            [[(t2/table-name :model/Table) :t]]
+                                                          :join            [[(t2/table-name :model/Field) :f]
+                                                                            [:= :f.table_id :t.id]
+                                                                            [(t2/table-name :model/FieldValues) :fv]
+                                                                            [:= :fv.field_id :f.id]]
+                                                          :where           [:in :fv.id [:auto/param %]]}))
+                                  field-values-ids)))
+
 (mu/defn update-fields!
   "Apply `rows`, each the id of a Field and the columns to change, one update per distinct change."
   [rows :- [:sequential :map]]

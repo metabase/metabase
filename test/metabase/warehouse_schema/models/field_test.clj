@@ -14,6 +14,8 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (deftest unknown-types-test
@@ -515,3 +517,55 @@
              (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
              (is (= [true false true false true false] (:values (hydrate 6))))
              (is (= (mapv per-field-can-write? fields) (:values (hydrate 6)))))))))))
+
+(defn- write-while-database-locked!
+  "Run `write!` on another thread while a transaction holds the lock of the Database with `db-id`, returning whether it
+  was still waiting after half a second and whether it finished once the lock was released."
+  [db-id write!]
+  (let [locked  (promise)
+        release (promise)
+        holder  (future
+                  (t2/with-transaction [_conn]
+                    (warehouses.db/lock-databases! [db-id])
+                    (deliver locked true)
+                    @release))
+        _       (deref locked 10000 nil)
+        writer  (future (write!) ::written)
+        waiting (try
+                  (= ::waiting (deref writer 500 ::waiting))
+                  (finally
+                    (deliver release true)))]
+    (deref holder 10000 nil)
+    {:waiting? waiting
+     :written? (= ::written (deref writer 30000 ::timeout))}))
+
+(deftest field-writes-take-database-lock-first-test
+  (testing "Field and FieldValues writes lock their Database before their own rows"
+    (mt/with-model-cleanup [:model/Database]
+      (let [db-id    (t2/insert-returning-pk! :model/Database {:name "Lock First" :engine :h2 :details {}})
+            table-id (t2/insert-returning-pk! :model/Table {:db_id db-id :name "T" :active true})
+            [field-id other-id] (t2/insert-returning-pks! :model/Field (for [field-name ["F" "G"]]
+                                                                         {:table_id      table-id
+                                                                          :name          field-name
+                                                                          :base_type     :type/Text
+                                                                          :database_type "VARCHAR"}))
+            fv-id    (t2/insert-returning-pk! :model/FieldValues {:field_id field-id :type :full :values ["a"]})]
+        (testing "update-fields!"
+          (is (= {:waiting? true :written? true}
+                 (write-while-database-locked! db-id #(field/update-fields! [{:id field-id :description "d"}]))))
+          (is (= "d" (t2/select-one-fn :description :model/Field :id field-id))))
+        (testing "create-fields!"
+          (is (= {:waiting? true :written? true}
+                 (write-while-database-locked! db-id #(field/create-fields! [{:table_id      table-id
+                                                                              :name          "H"
+                                                                              :base_type     :type/Text
+                                                                              :database_type "VARCHAR"}])))))
+        (testing "create-field-values!"
+          (is (= {:waiting? true :written? true}
+                 (write-while-database-locked! db-id #(field-values/create-field-values! [{:field_id other-id
+                                                                                           :type     :full
+                                                                                           :values   ["b"]}])))))
+        (testing "update-field-values!"
+          (is (= {:waiting? true :written? true}
+                 (write-while-database-locked! db-id #(field-values/update-field-values! [{:id fv-id :values ["c"]}]))))
+          (is (= ["c"] (t2/select-one-fn :values :model/FieldValues :id fv-id))))))))

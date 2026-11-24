@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -797,19 +798,22 @@
      (let [database (driver.u/lib-database db-id)]
        (-> (into {}
                  (map (fn [[k step!]]
-                        [k (t2/with-call-count [call-count]
-                             (step! database)
-                             (call-count))]))
+                        [k (events.tu/real-statement-count! #(step! database))]))
                  steps)
            (assoc :check (check db-id)))))))
 
 (defn- statement-counts-at-two-sizes!
-  "[[sync-step-statement-counts!]] at 4 and 16 Tables, after a warm-up at 2 Tables."
+  "[[sync-step-statement-counts!]] at 4 and 16 Tables, the lower of two measurements at each size so that a one-time
+  read such as a cache refill does not count, after a warm-up at 2 Tables."
   ([prepare! steps]
    (statement-counts-at-two-sizes! prepare! steps (constantly nil)))
   ([prepare! steps check]
    (sync-step-statement-counts! 2 prepare! steps check)
-   (mapv #(sync-step-statement-counts! % prepare! steps check) [4 16])))
+   (mapv (fn [n]
+           (merge-with #(if (number? %1) (min %1 %2) %1)
+                       (sync-step-statement-counts! n prepare! steps check)
+                       (sync-step-statement-counts! n prepare! steps check)))
+         [4 16])))
 
 (defn- sync-tables!
   "Sync the Tables of the Database with `db-id`, but not their Fields."

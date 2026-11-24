@@ -1011,11 +1011,25 @@
     (catch Throwable e
       (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
 
+(mu/defn call-locking-databases
+  "Call `thunk` in a transaction that first locks the Database rows with the ids `(database-ids)` returns, as their
+  delete does, so that a write over the rows of many of their Tables never waits for that delete while holding some of
+  them; within a transaction the caller opened, whose locks are its own business, call it as it is."
+  [database-ids :- ifn?
+   thunk        :- ifn?]
+  (if (mdb/in-transaction?)
+    (thunk)
+    (t2/with-transaction [_conn]
+      (when-let [ids (seq (database-ids))]
+        (warehouses.db/lock-databases! (vec ids)))
+      (thunk))))
+
 (defn- delete-database-content-and-publish!
-  "Delete the Secrets of the Database rows `databases` and what else belongs to them, with their sync triggers
+  "Lock the Database rows `databases`, then delete their Secrets and what else belongs to them, with their sync triggers
   unscheduled once the followers that may refuse the delete have accepted it, then publish their delete event and tell
   their drivers."
   [databases]
+  (warehouses.db/lock-databases! (mapv :id databases))
   (delete-followers! refusing-follower-models databases)
   (run! unschedule-tasks! databases)
   (models.secret/delete-secrets-for-databases! databases)

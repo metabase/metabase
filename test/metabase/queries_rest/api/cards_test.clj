@@ -209,8 +209,8 @@
                           (is (= (+ count-before n) (t2/count :model/DashboardCard :dashboard_id dashboard-id)))
                           (call-count))))]
           (move! 2)
-          (let [few  (move! 10)
-                many (move! 40)]
+          (let [few  (min (move! 10) (move! 10))
+                many (min (move! 40) (move! 40))]
             (is (= few many))))))))
 
 (deftest move-cards-leaving-dashboards-statement-count-test
