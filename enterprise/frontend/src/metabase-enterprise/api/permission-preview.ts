@@ -29,6 +29,8 @@ export const permissionPreviewApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/permission_debug",
         params,
       }),
+      // A preview restarted with other attribute values asks the same question
+      keepUnusedDataFor: 0,
     }),
     endPermissionPreview: builder.mutation<void, PermissionPreviewId>({
       query: (id) => ({

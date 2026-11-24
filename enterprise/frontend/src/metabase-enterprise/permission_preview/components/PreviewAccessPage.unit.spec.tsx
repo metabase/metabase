@@ -2,13 +2,20 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupDatabasesEndpoints,
   setupGroupsEndpoint,
   setupTenantEntpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import {
   createReadyMessage,
   createTokenMessage,
@@ -73,10 +80,17 @@ const GROUPS: Omit<Group, "members">[] = [
 
 interface SetupOpts {
   users?: User[];
+  hasTenants?: boolean;
+  attributes?: string[];
   refusal?: { status: number; body: object };
 }
 
-function setup({ users = USERS, refusal }: SetupOpts = {}) {
+function setup({
+  users = USERS,
+  hasTenants = true,
+  attributes = [],
+  refusal,
+}: SetupOpts = {}) {
   setupUsersEndpoints(users);
   setupGroupsEndpoint(GROUPS);
   setupTenantEntpoints([createMockTenant({ id: 8, name: "Acme" })]);
@@ -102,6 +116,19 @@ function setup({ users = USERS, refusal }: SetupOpts = {}) {
   );
   fetchMock.get("path:/api/ee/permission_debug", createAnswer());
   fetchMock.delete("express:/api/ee/permission_debug/preview/session/:id", 204);
+  setupDatabasesEndpoints([]);
+  fetchMock.get(
+    "path:/api/mt/gtap",
+    attributes.map((name, index) => ({
+      id: index + 1,
+      group_id: 9,
+      table_id: 10,
+      card_id: null,
+      permission_id: null,
+      attribute_remappings: { [name]: ["variable", ["x"]] },
+    })),
+  );
+  fetchMock.get("path:/api/ee/advanced-permissions/impersonation", []);
 
   renderWithProviders(<PreviewAccessPage />, {
     storeInitialState: createMockState({
@@ -109,6 +136,7 @@ function setup({ users = USERS, refusal }: SetupOpts = {}) {
         "token-features": createMockTokenFeatures({
           advanced_permissions: true,
         }),
+        "use-tenants": hasTenants,
       }),
       currentUser: createMockUser({ is_superuser: true }),
     }),
@@ -116,12 +144,16 @@ function setup({ users = USERS, refusal }: SetupOpts = {}) {
 }
 
 async function getFrame() {
-  const frame = await screen.findByTitle(/^Preview of /);
+  const frame = await screen.findByTitle(/^What .* sees$/);
 
   if (!(frame instanceof HTMLIFrameElement)) {
     throw new Error("the preview is not in an iframe");
   }
   return frame;
+}
+
+function findBand() {
+  return screen.findByRole("status", { name: "Previewing as" });
 }
 
 function debuggedUserIds() {
@@ -131,7 +163,7 @@ function debuggedUserIds() {
 }
 
 async function openExplainAccessOnQuestion() {
-  const linkBox = await screen.findByLabelText("Link or ID");
+  const linkBox = await screen.findByLabelText("Address");
   await userEvent.clear(linkBox);
   await userEvent.type(linkBox, "/question/12{Enter}");
   await userEvent.click(screen.getByRole("button", { name: /Explain access/ }));
@@ -149,7 +181,7 @@ describe("PreviewAccessPage", () => {
 
     expect(
       await screen.findByText(
-        "Select a user or group to see what they can open.",
+        "Select a user or group to see what they can open",
       ),
     ).toBeInTheDocument();
     expect(startedBodies()).toEqual([]);
@@ -179,7 +211,7 @@ describe("PreviewAccessPage", () => {
 
     await userEvent.click(await screen.findByText("Sandy Sales"));
 
-    expect(await screen.findByText("Previewing as Sandy Sales")).toBeVisible();
+    expect(await findBand()).toHaveTextContent("Previewing as Sandy Sales");
     expect(screen.getByText("Read-only")).toBeVisible();
     expect(await getFrame()).toHaveAttribute(
       "src",
@@ -206,9 +238,9 @@ describe("PreviewAccessPage", () => {
 
     await userEvent.click(screen.getByText("Acme analysts"));
 
-    expect(
-      await screen.findByText("Previewing as a member of Acme analysts"),
-    ).toBeVisible();
+    expect(await findBand()).toHaveTextContent(
+      "Previewing as a member of Acme analysts",
+    );
     expect(startedBodies()).toEqual([JSON.stringify({ group_id: 10 })]);
   });
 
@@ -230,7 +262,59 @@ describe("PreviewAccessPage", () => {
         "Admins can't be previewed, because they can see everything.",
       ),
     ).toBeInTheDocument();
-    expect(screen.queryByTitle(/^Preview of /)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/^What .* sees$/)).not.toBeInTheDocument();
+  });
+
+  it("shows an empty frame under the refusal, with nothing started", async () => {
+    setup({
+      refusal: {
+        status: 400,
+        body: { message: "Nope", "error-code": "preview-target-admin" },
+      },
+    });
+
+    await userEvent.click(await screen.findByText("Sandy Sales"));
+
+    expect(await findBand()).toHaveTextContent("Starting the preview…");
+    expect(
+      screen.getByRole("button", { name: "Explain access" }),
+    ).toBeDisabled();
+    expect(screen.queryByText(/Loading .* view/)).not.toBeInTheDocument();
+  });
+
+  it("covers the frame with a loading caption until the frame has loaded", async () => {
+    setup();
+
+    await userEvent.click(await screen.findByText("Sandy Sales"));
+    const frame = await getFrame();
+
+    expect(screen.getByText("Loading Sandy Sales's view…")).toBeVisible();
+    fireEvent.load(frame);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Loading Sandy Sales's view…"),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("keeps the open item in the frame when another person is picked", async () => {
+    setup();
+    await userEvent.click(await screen.findByText("Sandy Sales"));
+    await getFrame();
+    const address = screen.getByLabelText("Address");
+    await userEvent.clear(address);
+    await userEvent.type(address, "/dashboard/12{Enter}");
+
+    await userEvent.click(screen.getByText("Tina Tenant"));
+
+    await waitFor(async () =>
+      expect(await getFrame()).toHaveAttribute(
+        "src",
+        "/embed/permission-preview-content/dashboard/12",
+      ),
+    );
+    expect(screen.getByLabelText("Address")).toHaveValue("/dashboard/12");
   });
 
   it("ends the preview of the person it replaces", async () => {
@@ -248,7 +332,11 @@ describe("PreviewAccessPage", () => {
         ),
       ).toBe(true),
     );
-    expect(await screen.findByText("Previewing as Tina Tenant")).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("status", { name: "Previewing as" }),
+      ).toHaveTextContent("Previewing as Tina Tenant"),
+    );
   });
 
   it("opens a pasted link in the frame", async () => {
@@ -256,7 +344,7 @@ describe("PreviewAccessPage", () => {
     await userEvent.click(await screen.findByText("Sandy Sales"));
     await getFrame();
 
-    const linkBox = screen.getByLabelText("Link or ID");
+    const linkBox = screen.getByLabelText("Address");
     await userEvent.clear(linkBox);
     await userEvent.type(
       linkBox,
@@ -272,6 +360,122 @@ describe("PreviewAccessPage", () => {
     expect(linkBox).toHaveValue(
       "http://localhost:3000/dashboard/12-sales-overview",
     );
+  });
+
+  describe("a group's attributes", () => {
+    async function previewSales() {
+      await screen.findByText("Sandy Sales");
+      await userEvent.click(screen.getByText("Group"));
+      await userEvent.click(await screen.findByText("Sales"));
+      await getFrame();
+    }
+
+    async function pickValue(name: string, value: string) {
+      await userEvent.click(
+        await screen.findByRole("button", { name: new RegExp(`^${name}`) }),
+      );
+      await userEvent.clear(screen.getByLabelText(name));
+      await userEvent.type(screen.getByLabelText(name), value);
+      await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    }
+
+    it("restarts the preview with the picked value and keeps the open item", async () => {
+      setup({ attributes: ["state"] });
+      await previewSales();
+      const address = screen.getByLabelText("Address");
+      await userEvent.clear(address);
+      await userEvent.type(address, "/question/12{Enter}");
+
+      await pickValue("state", "TX");
+
+      await waitFor(() =>
+        expect(startedBodies()).toEqual([
+          JSON.stringify({ group_id: 9 }),
+          JSON.stringify({ group_id: 9, attributes: { state: "TX" } }),
+        ]),
+      );
+      await waitFor(async () =>
+        expect(await getFrame()).toHaveAttribute(
+          "src",
+          "/embed/permission-preview-content/question/12",
+        ),
+      );
+      expect(screen.getByRole("button", { name: /state TX/ })).toBeVisible();
+    });
+
+    it("drops the picked values when another group is picked", async () => {
+      setup({ attributes: ["state"] });
+      await previewSales();
+      await pickValue("state", "TX");
+      await waitFor(() => expect(startedBodies()).toHaveLength(2));
+
+      await userEvent.click(screen.getByText("Acme analysts"));
+      await userEvent.click(await screen.findByText("Sales"));
+
+      await waitFor(() => expect(startedBodies()).toHaveLength(4));
+      expect(startedBodies().slice(2)).toEqual([
+        JSON.stringify({ group_id: 10 }),
+        JSON.stringify({ group_id: 9 }),
+      ]);
+    });
+
+    it("shows no attribute line for a user preview", async () => {
+      setup({ attributes: ["state"] });
+      await userEvent.click(await screen.findByText("Sandy Sales"));
+      await getFrame();
+
+      expect(
+        screen.queryByText("User attributes used by rules:"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("the side list", () => {
+    it("has no section headings on an instance without tenants", async () => {
+      setup({ hasTenants: false });
+
+      await screen.findByText("Sandy Sales");
+
+      expect(screen.queryByText("Internal users")).not.toBeInTheDocument();
+      expect(screen.queryByText("Tenant users")).not.toBeInTheDocument();
+    });
+
+    it("is one Tab stop, the picked row or else the first, and arrow keys move between rows", async () => {
+      setup();
+      await screen.findByText("Sandy Sales");
+      const rows = screen.getAllByRole("menuitem");
+
+      expect(rows.map((row) => row.tabIndex)).toEqual([0, -1]);
+
+      rows[0].focus();
+      await userEvent.keyboard("{ArrowDown}");
+      expect(rows[1]).toHaveFocus();
+      await userEvent.keyboard("{ArrowUp}");
+      expect(rows[0]).toHaveFocus();
+    });
+
+    it("picks the focused row with Enter", async () => {
+      setup();
+      await screen.findByText("Sandy Sales");
+
+      screen.getByRole("menuitem", { name: "Tina Tenant" }).focus();
+      await userEvent.keyboard("{Enter}");
+
+      expect(startedBodies()).toEqual([JSON.stringify({ user_id: 3 })]);
+    });
+
+    it("marks the picked row", async () => {
+      setup();
+
+      await userEvent.click(await screen.findByText("Sandy Sales"));
+
+      expect(
+        screen.getByRole("menuitem", { name: "Sandy Sales" }),
+      ).toHaveAttribute("aria-current", "true");
+      expect(
+        screen.getByRole("menuitem", { name: "Tina Tenant" }),
+      ).toHaveAttribute("aria-current", "false");
+    });
   });
 
   describe("the person's token", () => {
@@ -321,7 +525,7 @@ describe("PreviewAccessPage", () => {
     await userEvent.click(await screen.findByText("Sandy Sales"));
     await getFrame();
 
-    expect(screen.getByLabelText("Link or ID")).toHaveValue("/collection/all");
+    expect(screen.getByLabelText("Address")).toHaveValue("/");
   });
 
   it("explains the access to the item the frame shows, as the user the preview runs as", async () => {

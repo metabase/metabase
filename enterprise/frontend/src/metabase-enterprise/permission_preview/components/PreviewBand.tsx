@@ -1,23 +1,18 @@
-import { type KeyboardEvent, useEffect, useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
-import {
-  ActionIcon,
-  Badge,
-  Button,
-  Flex,
-  Icon,
-  Text,
-  TextInput,
-  Tooltip,
-} from "metabase/ui";
+import { Badge, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 
+import { AddressBox } from "./AddressBox";
+import { GroupPreviewInfo } from "./GroupPreviewInfo";
+import S from "./PreviewBand.module.css";
+import { PreviewedUserName } from "./PreviewedUserName";
 import type { PreviewTarget } from "./types";
 
 interface PreviewBandProps {
   target: PreviewTarget;
+  isStarted: boolean;
   linkText: string;
-  onOpenLink: (link: string) => void;
+  onOpenLink: (item: string, linkText: string) => void;
   onGoHome: () => void;
   isExplainOpen: boolean;
   onToggleExplain: () => void;
@@ -25,73 +20,55 @@ interface PreviewBandProps {
 
 export function PreviewBand({
   target,
+  isStarted,
   linkText,
   onOpenLink,
   onGoHome,
   isExplainOpen,
   onToggleExplain,
 }: PreviewBandProps) {
-  const [draft, setDraft] = useState(linkText);
-
-  useEffect(() => {
-    setDraft(linkText);
-  }, [linkText]);
-
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter") {
-      onOpenLink(draft);
-    }
-  }
-
   return (
-    <Flex
-      h="3rem"
-      px="md"
-      gap="md"
-      align="center"
-      wrap="nowrap"
-      bg="background_surface-warning"
-    >
-      <Flex gap="sm" align="center" miw={0} wrap="nowrap">
-        <Icon name="eye" flex="0 0 auto" />
-        <Text fw="bold" truncate>
-          {getBandTitle(target)}
-        </Text>
-        <Badge flex="0 0 auto">{t`Read-only`}</Badge>
-      </Flex>
-      <Tooltip label={t`All collections`}>
-        <ActionIcon
-          flex="0 0 auto"
-          aria-label={t`All collections`}
-          onClick={onGoHome}
+    <div className={S.band} role="status" aria-label={t`Previewing as`}>
+      <div className={S.who}>
+        <Flex align="center" gap="sm">
+          <Icon name="eye" c="text-primary" />
+          <Text fw="bold" c="text-primary">
+            {isStarted ? getSentence(target) : t`Starting the preview…`}
+          </Text>
+        </Flex>
+        <Tooltip
+          label={t`Nothing you change here is saved. Previews are recorded in the audit log.`}
         >
-          <Icon name="home" />
-        </ActionIcon>
-      </Tooltip>
-      <TextInput
-        flex={1}
-        miw={0}
-        aria-label={t`Link or ID`}
-        leftSection={<Icon name="link" />}
-        value={draft}
-        onChange={(event) => setDraft(event.currentTarget.value)}
-        onKeyDown={handleKeyDown}
-      />
-      <Button
-        flex="0 0 auto"
-        variant={isExplainOpen ? "filled" : "default"}
-        aria-pressed={isExplainOpen}
-        leftSection={<Icon name="info" />}
-        onClick={onToggleExplain}
-      >
-        {t`Explain access`}
-      </Button>
-    </Flex>
+          <Badge variant="outline" color="neutral">{t`Read-only`}</Badge>
+        </Tooltip>
+        {target.kind === "group" && <GroupPreviewInfo group={target.group} />}
+      </div>
+      <div className={S.controls}>
+        <Tooltip label={t`Back to all collections`}>
+          <Button
+            className={S.bandButton}
+            aria-label={t`Back to all collections`}
+            leftSection={<Icon name="home" />}
+            onClick={onGoHome}
+          />
+        </Tooltip>
+        <AddressBox linkText={linkText} onOpen={onOpenLink} />
+        <Button
+          className={S.bandButton}
+          variant={isExplainOpen ? "light" : "default"}
+          aria-pressed={isExplainOpen}
+          disabled={!isStarted}
+          onClick={onToggleExplain}
+        >
+          {t`Explain access`}
+        </Button>
+      </div>
+    </div>
   );
 }
 
-function getBandTitle(target: PreviewTarget) {
+function getSentence(target: PreviewTarget) {
   return target.kind === "user"
-    ? t`Previewing as ${target.user.common_name}`
+    ? jt`Previewing as ${<PreviewedUserName key="name" user={target.user} />}`
     : t`Previewing as a member of ${target.group.name}`;
 }

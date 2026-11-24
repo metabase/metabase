@@ -7,10 +7,9 @@ import { PermissionsPageLayout } from "metabase/admin/permissions/components/Per
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import {
   ALL_COLLECTIONS_ITEM,
-  getItemFromLink,
   getLinkText,
 } from "metabase/embedding/permission-preview/item";
-import { Box, Center, Flex, Stack, Text } from "metabase/ui";
+import { Box, Flex, Loader, Text } from "metabase/ui";
 import {
   useEndPermissionPreviewMutation,
   useStartPermissionPreviewMutation,
@@ -19,6 +18,7 @@ import type { PermissionPreviewSession } from "metabase-types/api";
 
 import { getRefusalMessage } from "../utils/refusal";
 
+import { AttributeBar } from "./AttributeBar";
 import { ExplainAccess } from "./ExplainAccess/ExplainAccess";
 import { PreviewBand } from "./PreviewBand";
 import { PreviewFrame } from "./PreviewFrame";
@@ -31,18 +31,23 @@ export function PreviewAccessPage() {
   return (
     <PermissionsPageLayout tab="preview-access">
       <PreviewSidebar target={target} onSelect={setTarget} />
-      <Flex flex={1} direction="column" mih={0} h="100%">
+      <Flex flex={1} miw={0} mih={0} h="100%">
         {target ? (
           <Preview target={target} />
         ) : (
           <PermissionsEditorEmptyState
             icon="eye"
-            message={t`Select a user or group to see what they can open.`}
+            message={t`Select a user or group to see what they can open`}
           />
         )}
       </Flex>
     </PermissionsPageLayout>
   );
+}
+
+interface PickedAttributes {
+  targetKey: string;
+  values: Record<string, string>;
 }
 
 interface PreviewProps {
@@ -58,9 +63,21 @@ function Preview({ target }: PreviewProps) {
   const [openCount, setOpenCount] = useState(0);
   const [linkText, setLinkText] = useState(getLinkText(ALL_COLLECTIONS_ITEM));
   const [isExplainOpen, setIsExplainOpen] = useState(false);
+  const [pickedAttributes, setPickedAttributes] = useState<PickedAttributes>({
+    targetKey: "",
+    values: {},
+  });
+  const [loadedFrame, setLoadedFrame] = useState<string | null>(null);
   const isWide = useMediaQuery("(min-width: 80rem)");
 
-  const targetId = target.kind === "user" ? target.user.id : target.group.id;
+  const targetId = getTargetId(target);
+  const targetKey = `${target.kind}:${targetId}`;
+  // the values picked for a group are dropped when another person is picked
+  if (pickedAttributes.targetKey !== targetKey) {
+    setPickedAttributes({ targetKey, values: {} });
+  }
+  const attributes = pickedAttributes.values;
+  const attributesKey = JSON.stringify(attributes);
 
   useEffect(() => {
     let isCurrent = true;
@@ -68,9 +85,7 @@ function Preview({ target }: PreviewProps) {
 
     setRefusal(null);
 
-    startPreview(
-      target.kind === "user" ? { user_id: targetId } : { group_id: targetId },
-    )
+    startPreview(getStartBody(target.kind, targetId, attributes))
       .unwrap()
       .then((started) => {
         if (isCurrent) {
@@ -94,7 +109,9 @@ function Preview({ target }: PreviewProps) {
         endPreview(startedSession.id);
       }
     };
-  }, [target.kind, targetId, startPreview, endPreview]);
+    // `attributes` is read through its key, so a new object alone doesn't restart
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target.kind, targetId, attributesKey, startPreview, endPreview]);
 
   useEffect(() => {
     if (!session) {
@@ -118,9 +135,17 @@ function Preview({ target }: PreviewProps) {
     setOpenCount((count) => count + 1);
   }, []);
 
-  function handleOpenLink(link: string) {
-    openItem(getItemFromLink(link));
-    setLinkText(link);
+  function handleOpen(item: string, text: string) {
+    openItem(item);
+    setLinkText(text);
+  }
+
+  function handleApplyAttribute(name: string, value: string) {
+    const { [name]: _previous, ...others } = attributes;
+    setPickedAttributes({
+      targetKey,
+      values: value ? { ...others, [name]: value } : others,
+    });
   }
 
   const handleLocationChange = useCallback((item: string) => {
@@ -128,53 +153,84 @@ function Preview({ target }: PreviewProps) {
     setLinkText(getLinkText(item));
   }, []);
 
+  const name = getTargetName(target);
+  const frameKey = session ? `${session.id}:${openCount}` : null;
+  const isLoading = !refusal && (!session || loadedFrame !== frameKey);
+
   return (
-    <Stack flex={1} gap={0} mih={0}>
-      <PreviewBand
-        target={target}
-        linkText={linkText}
-        onOpenLink={handleOpenLink}
-        onGoHome={() => {
-          openItem(ALL_COLLECTIONS_ITEM);
-          setLinkText(getLinkText(ALL_COLLECTIONS_ITEM));
-        }}
-        isExplainOpen={isExplainOpen}
-        onToggleExplain={() => setIsExplainOpen((isOpen) => !isOpen)}
-      />
-      <Flex flex={1} mih={0}>
-        <Box flex={1} mih={0} display="flex">
+    <>
+      <Flex flex={1} direction="column" miw={0} p="md" gap="sm">
+        <PreviewBand
+          target={target}
+          isStarted={session != null}
+          linkText={linkText}
+          onOpenLink={handleOpen}
+          onGoHome={() =>
+            handleOpen(ALL_COLLECTIONS_ITEM, getLinkText(ALL_COLLECTIONS_ITEM))
+          }
+          isExplainOpen={isExplainOpen}
+          onToggleExplain={() => setIsExplainOpen((isOpen) => !isOpen)}
+        />
+        {target.kind === "group" && (
+          <AttributeBar
+            group={target.group}
+            values={attributes}
+            onApply={handleApplyAttribute}
+          />
+        )}
+        {refusal && <Text c="feedback-negative">{refusal}</Text>}
+        <Box
+          flex={1}
+          mih={0}
+          pos="relative"
+          bdrs="md"
+          style={{
+            border: "1px solid var(--mb-color-border-neutral-strong)",
+            overflow: "hidden",
+          }}
+        >
           {session && (
             <PreviewFrame
-              key={`${session.id}:${openCount}`}
+              key={frameKey}
               token={session.token}
-              name={getTargetName(target)}
+              name={name}
               initialItem={frameItem}
+              onLoad={() => setLoadedFrame(frameKey)}
               onLocationChange={handleLocationChange}
             />
           )}
-          {!session && (
-            <Center flex={1}>
-              <Text c="text-secondary">
-                {refusal ?? t`Loading ${getTargetName(target)}'s view…`}
-              </Text>
-            </Center>
+          {isLoading && (
+            <Flex
+              pos="absolute"
+              inset={0}
+              direction="column"
+              align="center"
+              justify="center"
+              gap="md"
+              bg="background_page-primary"
+              style={{ zIndex: 1 }}
+            >
+              <Loader />
+              <Text c="text-secondary">{t`Loading ${name}'s view…`}</Text>
+            </Flex>
           )}
         </Box>
-        {session && isExplainOpen && isWide && (
-          <Box
-            component="aside"
-            w="30rem"
-            style={{ borderLeft: "1px solid var(--mb-color-border-neutral)" }}
-          >
-            <ExplainAccess
-              target={target}
-              userId={session.user_id}
-              item={frameItem}
-              onClose={() => setIsExplainOpen(false)}
-            />
-          </Box>
-        )}
       </Flex>
+      {session && isExplainOpen && isWide && (
+        <Box
+          component="aside"
+          flex="0 0 auto"
+          w="30rem"
+          style={{ borderLeft: "1px solid var(--mb-color-border-neutral)" }}
+        >
+          <ExplainAccess
+            target={target}
+            userId={session.user_id}
+            item={frameItem}
+            onClose={() => setIsExplainOpen(false)}
+          />
+        </Box>
+      )}
       {session && isExplainOpen && !isWide && (
         <Sidesheet
           isOpen
@@ -189,8 +245,25 @@ function Preview({ target }: PreviewProps) {
           />
         </Sidesheet>
       )}
-    </Stack>
+    </>
   );
+}
+
+function getTargetId(target: PreviewTarget) {
+  return target.kind === "user" ? target.user.id : target.group.id;
+}
+
+function getStartBody(
+  kind: PreviewTarget["kind"],
+  id: number,
+  attributes: Record<string, string>,
+) {
+  if (kind === "user") {
+    return { user_id: id };
+  }
+  return Object.keys(attributes).length > 0
+    ? { group_id: id, attributes }
+    : { group_id: id };
 }
 
 function getTargetName(target: PreviewTarget) {

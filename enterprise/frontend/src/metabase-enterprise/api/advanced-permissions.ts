@@ -9,6 +9,12 @@ type GetImpersonationRequest = {
 
 export const advancedPermissionsApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    listImpersonations: builder.query<Impersonation[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/advanced-permissions/impersonation",
+      }),
+    }),
     getImpersonation: builder.query<Impersonation, GetImpersonationRequest>({
       query: (params) => ({
         method: "GET",
@@ -19,4 +25,5 @@ export const advancedPermissionsApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { useGetImpersonationQuery } = advancedPermissionsApi;
+export const { useGetImpersonationQuery, useListImpersonationsQuery } =
+  advancedPermissionsApi;

@@ -1,27 +1,42 @@
-import { useMemo, useState } from "react";
+import { type KeyboardEvent, forwardRef, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { Tree } from "metabase/common/components/tree";
+import type {
+  ITreeNodeItem,
+  TreeNodeProps,
+} from "metabase/common/components/tree/types";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Flex,
   Icon,
+  Input,
   SegmentedControl,
   Stack,
   Text,
   TextInput,
-  UnstyledButton,
 } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
-import type { GroupInfo, IconName, User } from "metabase-types/api";
+import type { GroupInfo, User } from "metabase-types/api";
 
 import S from "./PreviewSidebar.module.css";
 import type { PreviewTarget } from "./types";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const USER_LIMIT = 100;
+
+interface RowData {
+  detail?: string;
+  rightText?: string;
+  isTabStop: boolean;
+  target: PreviewTarget;
+}
+
+type RowItem = ITreeNodeItem<RowData>;
 
 interface PreviewSidebarProps {
   target: PreviewTarget | null;
@@ -40,9 +55,10 @@ export function PreviewSidebar({ target, onSelect }: PreviewSidebarProps) {
       w="18.75rem"
       style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
     >
-      <Stack gap="sm" px="xl" pt="md" pb="sm">
+      <Stack gap="sm" pt="md" px="xl" flex="0 0 auto">
         <SegmentedControl
           fullWidth
+          aria-label={t`Preview as`}
           value={kind}
           onChange={(value) => {
             setKind(value === "group" ? "group" : "user");
@@ -54,19 +70,42 @@ export function PreviewSidebar({ target, onSelect }: PreviewSidebarProps) {
           ]}
         />
         {kind === "group" && (
-          <Text c="text-secondary">{t`Previews a stand-in member, not a real user.`}</Text>
+          <Text
+            fz="sm"
+            c="text-secondary"
+          >{t`Previews a stand-in member, not a real user.`}</Text>
         )}
-        <TextInput
-          h="2.5rem"
-          leftSection={<Icon name="search" />}
-          placeholder={
-            kind === "user" ? t`Search for a user` : t`Search for a group`
-          }
-          value={search}
-          onChange={(event) => setSearch(event.currentTarget.value)}
-        />
       </Stack>
-      <Box flex={1} mih={0} style={{ overflowY: "auto" }}>
+      <TextInput
+        size="lg"
+        py="md"
+        px="xl"
+        flex="0 0 auto"
+        aria-label={
+          kind === "user" ? t`Search for a user` : t`Search for a group`
+        }
+        placeholder={
+          kind === "user" ? t`Search for a user` : t`Search for a group`
+        }
+        leftSection={<Icon name="search" />}
+        rightSectionPointerEvents="all"
+        rightSection={
+          search.length > 0 ? (
+            <Input.ClearButton
+              c="text-secondary"
+              onClick={() => setSearch("")}
+            />
+          ) : null
+        }
+        value={search}
+        onChange={(event) => setSearch(event.currentTarget.value)}
+      />
+      <Box
+        flex={1}
+        mih={0}
+        style={{ overflowY: "auto" }}
+        onKeyDown={moveBetweenRows}
+      >
         {kind === "user" ? (
           <UserList search={search} target={target} onSelect={onSelect} />
         ) : (
@@ -75,6 +114,20 @@ export function PreviewSidebar({ target, onSelect }: PreviewSidebarProps) {
       </Box>
     </Flex>
   );
+}
+
+// the rows are one Tab stop for the whole list; the arrow keys move between them
+function moveBetweenRows(event: KeyboardEvent<HTMLElement>) {
+  const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+  if (step === 0) {
+    return;
+  }
+  event.preventDefault();
+  const rows = [
+    ...event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ];
+  const current = rows.findIndex((row) => row === event.target);
+  rows[current + step]?.focus();
 }
 
 interface ListProps {
@@ -91,6 +144,7 @@ function UserList({ search, target, onSelect }: ListProps) {
     error,
   } = useListUsersQuery({ tenancy: "all", query, limit: USER_LIMIT });
   const { data: tenants } = useListTenantsQuery({ status: "active" });
+  const hasTenants = useSetting("use-tenants");
 
   const tenantNames = useMemo(
     () => new Map(tenants?.data.map((tenant) => [tenant.id, tenant.name])),
@@ -100,83 +154,88 @@ function UserList({ search, target, onSelect }: ListProps) {
   const previewableUsers = (users?.data ?? []).filter(
     (user) => !user.is_superuser && user.is_active,
   );
-  const internalUsers = previewableUsers.filter((user) => !user.tenant_id);
-  const tenantUsers = previewableUsers.filter((user) => user.tenant_id);
+  const internalUsers = previewableUsers
+    .filter((user) => !user.tenant_id)
+    .sort((a, b) => a.common_name.localeCompare(b.common_name));
+  const tenantUsers = previewableUsers
+    .filter((user) => user.tenant_id)
+    .sort(
+      (a, b) =>
+        getTenantName(a, tenantNames).localeCompare(
+          getTenantName(b, tenantNames),
+        ) || a.common_name.localeCompare(b.common_name),
+    );
 
-  return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-      <>
-        {previewableUsers.length === 0 && <NoResults />}
-        <UserSection
-          title={t`Internal users`}
-          users={internalUsers}
-          tenantNames={tenantNames}
-          target={target}
-          onSelect={onSelect}
-        />
-        <UserSection
-          title={t`Tenant users`}
-          users={tenantUsers}
-          tenantNames={tenantNames}
-          target={target}
-          onSelect={onSelect}
-        />
-      </>
-    </LoadingAndErrorWrapper>
-  );
-}
+  const selectedId = target?.kind === "user" ? target.user.id : undefined;
+  const tabStopId = selectedId ?? [...internalUsers, ...tenantUsers][0]?.id;
 
-interface UserSectionProps {
-  title: string;
-  users: User[];
-  tenantNames: Map<number, string>;
-  target: PreviewTarget | null;
-  onSelect: (target: PreviewTarget) => void;
-}
-
-function UserSection({
-  title,
-  users,
-  tenantNames,
-  target,
-  onSelect,
-}: UserSectionProps) {
-  if (users.length === 0) {
+  if (error) {
+    return <Message>{t`Couldn't load who can be previewed`}</Message>;
+  }
+  if (isLoading) {
     return null;
+  }
+  if (previewableUsers.length === 0) {
+    return <NoResults />;
+  }
+
+  function getItems(sectionUsers: User[]): RowItem[] {
+    return sectionUsers.map((user) => ({
+      id: user.id,
+      name: user.common_name,
+      icon: "person",
+      data: {
+        detail: getUserDetail(user, tenantNames),
+        isTabStop: user.id === tabStopId,
+        target: { kind: "user", user },
+      },
+    }));
   }
 
   return (
-    <Box pb="sm">
-      <SectionTitle>{title}</SectionTitle>
-      {users.map((user) => (
-        <Row
-          key={user.id}
-          icon="person"
-          name={user.common_name}
-          detail={getUserDetail(user, tenantNames)}
-          isSelected={target?.kind === "user" && target.user.id === user.id}
-          onClick={() => onSelect({ kind: "user", user })}
-        />
-      ))}
-    </Box>
+    <>
+      <Section
+        title={hasTenants ? t`Internal users` : null}
+        items={getItems(internalUsers)}
+        selectedId={selectedId}
+        onSelect={onSelect}
+      />
+      <Section
+        title={hasTenants ? t`Tenant users` : null}
+        items={getItems(tenantUsers)}
+        selectedId={selectedId}
+        onSelect={onSelect}
+      />
+    </>
   );
 }
 
+function getTenantName(user: User, tenantNames: Map<number, string>) {
+  return (user.tenant_id && tenantNames.get(user.tenant_id)) || "";
+}
+
 function getUserDetail(user: User, tenantNames: Map<number, string>) {
-  const tenantName = user.tenant_id ? tenantNames.get(user.tenant_id) : null;
+  const tenantName = getTenantName(user, tenantNames);
 
   return tenantName ? `${tenantName} · ${user.email}` : user.email;
 }
 
 function GroupList({ search, target, onSelect }: ListProps) {
   const { data: groups, isLoading, error } = useListPermissionsGroupsQuery({});
+  const hasTenants = useSetting("use-tenants");
 
-  const previewableGroups = (groups ?? []).filter(
-    (group) =>
-      group.magic_group_type !== "admin" &&
-      group.magic_group_type !== "all-external-users" &&
-      group.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const previewableGroups = (groups ?? [])
+    .filter(
+      (group) =>
+        group.magic_group_type !== "admin" &&
+        group.magic_group_type !== "all-external-users" &&
+        group.name.toLowerCase().includes(search.toLowerCase()),
+    )
+    .sort(
+      (a, b) =>
+        Number(Boolean(b.magic_group_type)) -
+          Number(Boolean(a.magic_group_type)) || a.name.localeCompare(b.name),
+    );
   const internalGroups = previewableGroups.filter(
     (group) => !group.is_tenant_group,
   );
@@ -184,120 +243,186 @@ function GroupList({ search, target, onSelect }: ListProps) {
     (group) => group.is_tenant_group,
   );
 
+  const selectedId = target?.kind === "group" ? target.group.id : undefined;
+  const tabStopId = selectedId ?? [...internalGroups, ...tenantGroups][0]?.id;
+
+  if (error) {
+    return <Message>{t`Couldn't load who can be previewed`}</Message>;
+  }
+  if (isLoading) {
+    return null;
+  }
+  if (previewableGroups.length === 0) {
+    return <NoResults />;
+  }
+
+  function getItems(sectionGroups: GroupInfo[]): RowItem[] {
+    return sectionGroups.map((group) => {
+      const memberCount = group.member_count ?? 0;
+
+      return {
+        id: group.id,
+        name: group.name,
+        icon: group.is_tenant_group
+          ? "globe"
+          : group.magic_group_type
+            ? "bolt"
+            : "group",
+        data: {
+          rightText: ngettext(
+            msgid`${memberCount} member`,
+            `${memberCount} members`,
+            memberCount,
+          ),
+          isTabStop: group.id === tabStopId,
+          target: { kind: "group", group },
+        },
+      };
+    });
+  }
+
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-      <>
-        {previewableGroups.length === 0 && <NoResults />}
-        <GroupSection
-          title={t`Internal groups`}
-          groups={internalGroups}
-          target={target}
-          onSelect={onSelect}
-        />
-        <GroupSection
-          title={t`Tenant groups`}
-          groups={tenantGroups}
-          target={target}
-          onSelect={onSelect}
-        />
-      </>
-    </LoadingAndErrorWrapper>
+    <>
+      <Section
+        title={hasTenants ? t`Internal groups` : null}
+        items={getItems(internalGroups)}
+        selectedId={selectedId}
+        onSelect={onSelect}
+      />
+      <Section
+        title={hasTenants ? t`Tenant groups` : null}
+        items={getItems(tenantGroups)}
+        selectedId={selectedId}
+        onSelect={onSelect}
+      />
+    </>
   );
 }
 
-interface GroupSectionProps {
-  title: string;
-  groups: GroupInfo[];
-  target: PreviewTarget | null;
+interface SectionProps {
+  title: string | null;
+  items: RowItem[];
+  selectedId?: number;
   onSelect: (target: PreviewTarget) => void;
 }
 
-function GroupSection({ title, groups, target, onSelect }: GroupSectionProps) {
-  if (groups.length === 0) {
+function Section({ title, items, selectedId, onSelect }: SectionProps) {
+  if (items.length === 0) {
     return null;
   }
 
   return (
-    <Box pb="sm">
-      <SectionTitle>{title}</SectionTitle>
-      {groups.map((group) => {
-        const memberCount = group.member_count ?? 0;
-        return (
-          <Row
-            key={group.id}
-            icon={getGroupIcon(group)}
-            name={group.name}
-            rightText={ngettext(
-              msgid`${memberCount} member`,
-              `${memberCount} members`,
-              memberCount,
-            )}
-            isSelected={
-              target?.kind === "group" && target.group.id === group.id
-            }
-            onClick={() => onSelect({ kind: "group", group })}
+    <>
+      {title && (
+        <Text fw="bold" c="text-secondary" px="xl" pt="md" pb="xs">
+          {title}
+        </Text>
+      )}
+      <Tree
+        data={items}
+        selectedId={selectedId}
+        TreeNode={PreviewTreeNode}
+        rightSection={(item: RowItem) =>
+          item.data?.rightText && (
+            <Text
+              fz="sm"
+              fw="normal"
+              lh="normal"
+              pl="sm"
+              opacity={0.7}
+              c="inherit"
+            >
+              {item.data.rightText}
+            </Text>
+          )
+        }
+        onSelect={(item: RowItem) => item.data && onSelect(item.data.target)}
+      />
+    </>
+  );
+}
+
+const PreviewTreeNode = forwardRef<HTMLLIElement, TreeNodeProps<RowData>>(
+  function PreviewTreeNode(
+    { item, depth, isSelected, rightSection, onSelect },
+    ref,
+  ) {
+    const Node = Tree.Node;
+    const className = isSelected ? `${S.row} ${S.selected}` : S.row;
+
+    return (
+      <Node.Root
+        ref={ref}
+        role="menuitem"
+        aria-label={item.name}
+        aria-current={isSelected}
+        tabIndex={item.data?.isTabStop ? 0 : -1}
+        className={className}
+        depth={depth}
+        isSelected={isSelected}
+        onClick={onSelect}
+        onKeyDown={(event: KeyboardEvent) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect?.();
+          }
+        }}
+      >
+        <Node.ExpandToggleButton hidden>
+          <Node.ExpandToggleIcon
+            isExpanded={false}
+            name="chevronright"
+            size={12}
           />
-        );
-      })}
+        </Node.ExpandToggleButton>
+        <Node.IconContainer>
+          <Icon
+            {...(typeof item.icon === "string"
+              ? { name: item.icon }
+              : item.icon)}
+          />
+        </Node.IconContainer>
+        <Node.NameContainer miw={0} data-testid="tree-item-name">
+          <Text
+            className={S.name}
+            fw="bold"
+            lh="normal"
+            truncate
+            title={item.name}
+          >
+            {item.name}
+          </Text>
+          {item.data?.detail && (
+            <Text
+              fz="sm"
+              fw="normal"
+              lh="normal"
+              c="inherit"
+              truncate
+              title={item.data.detail}
+            >
+              {item.data.detail}
+            </Text>
+          )}
+        </Node.NameContainer>
+        {rightSection?.(item)}
+      </Node.Root>
+    );
+  },
+);
+
+function NoResults() {
+  return (
+    <Box mt="6.25rem">
+      <EmptyState message={t`No results found`} icon="search" />
     </Box>
   );
 }
 
-function getGroupIcon(group: GroupInfo): IconName {
-  if (group.is_tenant_group) {
-    return "globe";
-  }
-  return group.magic_group_type ? "bolt" : "group";
-}
-
-function SectionTitle({ children }: { children: string }) {
+function Message({ children }: { children: string }) {
   return (
-    <Text fw="bold" c="text-secondary" px="xl" py="sm">
+    <Text c="text-secondary" px="xl" py="md">
       {children}
     </Text>
-  );
-}
-
-function NoResults() {
-  return <Text c="text-secondary" px="xl" py="md">{t`No results found`}</Text>;
-}
-
-interface RowProps {
-  icon: IconName;
-  name: string;
-  detail?: string;
-  rightText?: string;
-  isSelected: boolean;
-  onClick: () => void;
-}
-
-function Row({ icon, name, detail, rightText, isSelected, onClick }: RowProps) {
-  return (
-    <UnstyledButton
-      className={isSelected ? `${S.row} ${S.selected}` : S.row}
-      aria-pressed={isSelected}
-      px="xl"
-      py="sm"
-      onClick={onClick}
-    >
-      <Flex gap="sm" align="center">
-        <Icon name={icon} c="text-secondary" />
-        <Stack gap={0} flex={1} miw={0}>
-          <Text fw="bold" truncate title={name}>
-            {name}
-          </Text>
-          {detail && (
-            <Text fz="xs" c="text-secondary" truncate title={detail}>
-              {detail}
-            </Text>
-          )}
-        </Stack>
-        {rightText && (
-          <Text fz="xs" c="text-secondary">
-            {rightText}
-          </Text>
-        )}
-      </Flex>
-    </UnstyledButton>
   );
 }
