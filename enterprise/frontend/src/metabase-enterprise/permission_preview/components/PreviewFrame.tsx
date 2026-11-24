@@ -13,6 +13,7 @@ interface PreviewFrameProps {
   token: string;
   name: string;
   initialItem: string;
+  onLoad: () => void;
   onLocationChange: (item: string) => void;
 }
 
@@ -20,6 +21,7 @@ export function PreviewFrame({
   token,
   name,
   initialItem,
+  onLoad,
   onLocationChange,
 }: PreviewFrameProps) {
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -55,11 +57,13 @@ export function PreviewFrame({
     <Box
       component="iframe"
       ref={frameRef}
-      title={t`Preview of ${name}`}
+      title={t`What ${name} sees`}
       src={source}
-      flex={1}
+      display="block"
       w="100%"
-      style={{ border: "1px solid var(--mb-color-border-neutral)" }}
+      h="100%"
+      bd={0}
+      onLoad={onLoad}
     />
   );
 }
