@@ -1,4 +1,3 @@
-import { Global } from "@emotion/react";
 import type {
   AnyAction,
   Middleware,
@@ -49,6 +48,7 @@ import {
   toRouteObjects,
 } from "metabase/router";
 import { useUpdateSettingMutation } from "metabase/settings";
+import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -277,7 +277,7 @@ const GlobalStylesForTest = () => {
     return getMetabaseCssVariables({ theme });
   }, [theme]);
 
-  return <Global styles={cssVariables} />;
+  return <GlobalStyleSheet styles={cssVariables} />;
 };
 
 /**

@@ -11,6 +11,7 @@ import { createMockState } from "__support__/state";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockDatabase,
   createMockSegment,
   createMockTable,
@@ -31,7 +32,9 @@ const setup = ({
   remoteSyncType,
 }: SetupOpts) => {
   const database = createMockDatabase();
-  const table = createMockTable({ is_published: isTablePublished });
+  const table = createMockTable({
+    collection: isTablePublished ? createMockCollection() : null,
+  });
   const segment = createMockSegment({ name: "Discounted", table_id: table.id });
 
   setupSchemaEndpoints(database);

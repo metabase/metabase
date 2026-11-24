@@ -2,6 +2,7 @@
   "Application database queries for the SQL tools module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sql-tools.schema :as sql-tools.schema]
    [metabase.util :as u]
@@ -13,19 +14,22 @@
   `table-names`, or nil."
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential :string]]
-  (t2/select-pks-set :model/Table
-                     {:from  [(t2/table-name :model/Table)]
-                      :where [:and
-                              [:= :db_id database-id]
-                              ;; `lower()` cannot use an index on the name column, but it still beats fetching every
-                              ;; row for the Database.
-                              [:in [:lower :name] (into #{} (map u/lower-case-en) table-names)]
-                              ;; Mirrors the Table filter the MetadataProvider applies to an unfiltered fetch; an
-                              ;; `:id` lookup does not apply it, so it has to happen here.
-                              [:= :active true]
-                              [:or
-                               [:= :visibility_type nil]
-                               [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]}))
+  (not-empty
+   (set (app-db/select-batched
+         #(t2/select-pks-set :model/Table
+                             {:from  [(t2/table-name :model/Table)]
+                              :where [:and
+                                      [:= :db_id database-id]
+                                      ;; `lower()` cannot use an index on the name column, but it still beats fetching
+                                      ;; every row for the Database.
+                                      [:in [:lower :name] %]
+                                      ;; Mirrors the Table filter the MetadataProvider applies to an unfiltered fetch; an
+                                      ;; `:id` lookup does not apply it, so it has to happen here.
+                                      [:= :active true]
+                                      [:or
+                                       [:= :visibility_type nil]
+                                       [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]})
+         (into #{} (map u/lower-case-en) table-names)))))
 
 (mu/defn shadow-difference-seen-again! :- :int
   "Count one more sighting of the shadow difference with `input-hash`, and keep the newest `changes` (outcome and

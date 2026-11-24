@@ -9,6 +9,11 @@
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.test-util :as perms.tu]
    [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -303,3 +308,85 @@
             [create-6 update-6 delete-6] (counted 6)]
         (is (= [create-2 delete-2] [create-6 delete-6]))
         (is (= update-2 update-6))))))
+
+(defn- do-with-suite-fixture!
+  "Call `f` with two card tests, one on a card all users read and one on a card they do not, as a map with `:runnable`
+  and `:hidden` entity ids, all users having native queries on the test Database, and lucky a data analyst."
+  [f]
+  (mt/with-premium-features data-testing.test-util/data-analyst-features
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (perms.tu/with-no-data-perms-for-all-users!
+        (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                      :perms/create-queries :query-builder-and-native}
+          (mt/with-temp [:model/Collection {readable :id}     {}
+                         :model/Collection {unreadable :id}   {}
+                         :model/Card       {card-id :id}      {:collection_id readable
+                                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                         :model/Card       {hidden-card :id}  {:collection_id unreadable
+                                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                         :model/CardTest   {runnable :entity_id} {:card_id card-id}
+                         :model/CardTest   {hidden :entity_id}   {:card_id hidden-card}]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
+            (f {:runnable runnable :hidden hidden :card-id card-id})))))))
+
+(deftest can-query-needs-every-member-runnable-test
+  (do-with-suite-fixture!
+   (fn [{:keys [runnable hidden]}]
+     (mt/with-temp [:model/TestSuite {all-runnable :id} {}
+                    :model/TestSuite {one-hidden :id}   {}
+                    :model/TestSuite {empty-suite :id}  {}
+                    :model/TestSuite {missing :id}      {}]
+       (data-testing.test-util/add-members! all-runnable [[:card runnable]])
+       (data-testing.test-util/add-members! one-hidden [[:card runnable] [:card hidden]])
+       (data-testing.test-util/add-members! missing [[:card runnable] [:card "missingtestentityid00"]])
+       (let [suites    (t2/select :model/TestSuite :id [:in [all-runnable one-hidden empty-suite missing]] {:order-by [[:id :asc]]})
+             can-query (fn [] (mapv mi/can-query? (t2/hydrate suites :can_query)))]
+         (testing "data analyst: every member runnable, one member on unreadable card, no member, missing member"
+           (mt/with-data-analyst-role! (mt/user->id :lucky)
+             (mt/with-current-user (mt/user->id :lucky)
+               (is (= [true false true false] (can-query))))))
+         (testing "user who cannot read suites"
+           (mt/with-current-user (mt/user->id :lucky)
+             (is (= [false false false false] (can-query)))))
+         (testing "superuser"
+           (mt/with-current-user (mt/user->id :crowberto)
+             (is (= [true true true false] (can-query))))))))))
+
+(deftest can-query-statements-do-not-grow-with-suites-or-members-test
+  (do-with-suite-fixture!
+   (fn [{:keys [card-id]}]
+     (mt/with-temp [:model/CardTest  {e1 :entity_id} {:card_id card-id}
+                    :model/CardTest  {e2 :entity_id} {:card_id card-id}
+                    :model/CardTest  {e3 :entity_id} {:card_id card-id}
+                    :model/CardTest  {e4 :entity_id} {:card_id card-id}
+                    :model/CardTest  {e5 :entity_id} {:card_id card-id}
+                    :model/CardTest  {e6 :entity_id} {:card_id card-id}
+                    :model/TestSuite {s1 :id} {}
+                    :model/TestSuite {s2 :id} {}
+                    :model/TestSuite {s3 :id} {}
+                    :model/TestSuite {s4 :id} {}
+                    :model/TestSuite {s5 :id} {}
+                    :model/TestSuite {s6 :id} {}
+                    :model/TestSuite {big :id} {}]
+       (doseq [[suite-id eid] (map vector [s1 s2 s3 s4 s5 s6] [e1 e2 e3 e4 e5 e6])]
+         (data-testing.test-util/add-members! suite-id [[:card eid]]))
+       (mt/with-data-analyst-role! (mt/user->id :lucky)
+         (mt/with-current-user (mt/user->id :lucky)
+           (let [suites  (t2/select :model/TestSuite :id [:in [s1 s2 s3 s4 s5 s6]] {:order-by [[:id :asc]]})
+                 counted (fn [rows]
+                           (t2/with-call-count [call-count]
+                             {:values     (mapv mi/can-query? (t2/hydrate rows :can_query))
+                              :statements (call-count)}))]
+             (testing "suites"
+               (counted (take 1 suites))
+               (is (= (:statements (counted (take 2 suites))) (:statements (counted suites))))
+               (is (= (repeat 6 true) (:values (counted suites)))))
+             (testing "members of one suite"
+               (let [suite (t2/select-one :model/TestSuite :id big)
+                     with  (fn [n]
+                             (t2/delete! :model/TestSuiteMember :suite_id big)
+                             (data-testing.test-util/add-members! big (mapv #(vector :card %) (take n [e1 e2 e3 e4 e5 e6])))
+                             (counted [suite]))]
+                 (with 1)
+                 (is (= (:statements (with 2)) (:statements (with 6))))
+                 (is (= [true] (:values (with 6)))))))))))))

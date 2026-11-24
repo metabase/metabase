@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- action-database-joins
@@ -59,6 +60,11 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id [:model/Table :db_id] :id table-id))
 
+(mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
+  "The Database id of each of the Tables with `table-ids`, by Table id."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (app-db/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param %]]) table-ids))
+
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -72,17 +78,23 @@
 (mu/defn cards
   "The Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids]))
+  (app-db/select-batched #(t2/select :model/Card :id [:in %]) card-ids))
 
 (mu/defn cards-by-id
   "A map of Card id to Card for the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity :model/Card :id [:in %]) card-ids))
 
-(mu/defn collection-exists?
-  "Whether the Collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id))
+(mu/defn card-collection-ids :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]
+  "The Collection id of each of the Cards with `card-ids` that exists, nil for the root, by Card id."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (app-db/select-batched-map #(t2/select-pk->fn :collection_id [:model/Card :id :collection_id] :id [:in [:auto/param %]])
+                             card-ids))
+
+(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection (ms/InstanceOf :model/Collection)]
+  "The Collections with `collection-ids` that exist, by id."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (app-db/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in [:auto/param %]]) collection-ids))
 
 (mu/defn action
   "The Action with `action-id`, or nil."
@@ -102,7 +114,7 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (app-db/select-batched #(t2/select :model/Table :id [:in %]) table-ids))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -146,110 +158,112 @@
   "Insert the QueryAction `rows` and return the inserted instances."
   [rows :- [:sequential ::actions.schema/query-action.create]]
   (t2/insert! :model/QueryAction rows)
-  (t2/select :model/QueryAction :action_id [:in (mapv :action_id rows)]))
+  (app-db/select-batched #(t2/select :model/QueryAction :action_id [:in %]) (mapv :action_id rows)))
 
 (mu/defn insert-implicit-actions!
   "Insert the ImplicitAction `rows` and return the inserted instances."
   [rows :- [:sequential ::actions.schema/implicit-action.create]]
   (t2/insert! :model/ImplicitAction rows)
-  (t2/select :model/ImplicitAction :action_id [:in (mapv :action_id rows)]))
+  (app-db/select-batched #(t2/select :model/ImplicitAction :action_id [:in %]) (mapv :action_id rows)))
 
 (mu/defn update-query-actions!
   "Apply `changes` to the QueryActions of the Actions with `action-ids`, returning the number updated."
   [action-ids :- [:sequential ::lib.schema.id/action]
    changes    :- (mut/dissoc ::actions.schema/query-action.update :action_id)]
-  (t2/update! :model/QueryAction :action_id [:in action-ids] changes))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/QueryAction :action_id [:in %] changes) action-ids))
 
 (mu/defn update-implicit-actions!
   "Apply `changes` to the ImplicitActions of the Actions with `action-ids`, returning the number updated."
   [action-ids :- [:sequential ::lib.schema.id/action]
    changes    :- (mut/dissoc ::actions.schema/implicit-action.update :action_id)]
-  (t2/update! :model/ImplicitAction :action_id [:in action-ids] changes))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/ImplicitAction :action_id [:in %] changes) action-ids))
 
 (mu/defn delete-query-actions!
   "Delete the QueryActions of the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/delete! :model/QueryAction :action_id [:in action-ids]))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/QueryAction :action_id [:in %]) action-ids))
 
 (mu/defn delete-implicit-actions!
   "Delete the ImplicitActions of the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/delete! :model/ImplicitAction :action_id [:in action-ids]))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/ImplicitAction :action_id [:in %]) action-ids))
 
 (mu/defn actions-by-ids
   "A map of id to Action for the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select-pk->fn identity :model/Action :id [:in action-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity :model/Action :id [:in %]) action-ids))
 
 (mu/defn action-types-and-models
   "A map of id to the id, type and model Card id of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select-pk->fn identity [:model/Action :id :type :model_id] :id [:in action-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity [:model/Action :id :type :model_id] :id [:in %]) action-ids))
 
 (mu/defn card-placements
   "A map of id to the id, type and Collection id of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn identity [:model/Card :id :type :collection_id] :id [:in card-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity [:model/Card :id :type :collection_id] :id [:in %]) card-ids))
 
 (mu/defn card-queries
   "A map of id to the query of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn :dataset_query :model/Card :id [:in %]) card-ids))
 
 (mu/defn action-ids-of-models
   "The ids of the Actions of the Cards with `model-ids`."
   [model-ids :- [:sequential ::lib.schema.id/card]]
-  (vec (t2/select-pks-vec :model/Action :model_id [:in model-ids])))
+  (app-db/select-batched #(t2/select-pks-vec :model/Action :model_id [:in %]) model-ids))
 
 (mu/defn action-model-ids
   "The `:id` and `:model_id` of the Actions of the Cards with `model-ids`."
   [model-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Action :id :model_id] :model_id [:in model-ids]))
+  (app-db/select-batched #(t2/select [:model/Action :id :model_id] :model_id [:in %]) model-ids))
 
 (mu/defn action-ids-of-databases :- [:vector ::lib.schema.id/action]
   "The ids of the query Actions whose query runs against one of the Databases with `database-ids` and of the implicit
   Actions that write to one of their Tables."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (vec (into (set (t2/select-fn-set :action_id :model/QueryAction :database_id [:in database-ids]))
-             (t2/select-fn-set :action_id :model/ImplicitAction
-                               {:join  [[(t2/table-name :model/Table) :table]
-                                        [:= :table.id :implicit_action.table_id]]
-                                :where [:in :table.db_id database-ids]}))))
+  (vec (into (set (app-db/select-batched #(t2/select-fn-set :action_id :model/QueryAction :database_id [:in %]) database-ids))
+             (app-db/select-batched #(t2/select-fn-set :action_id :model/ImplicitAction
+                                                       {:join  [[(t2/table-name :model/Table) :table]
+                                                                [:= :table.id :implicit_action.table_id]]
+                                                        :where [:in :table.db_id %]})
+                                    database-ids))))
 
 (mu/defn implicit-action-ids-of-tables
   "The ids of the Actions whose ImplicitAction writes to one of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (vec (t2/select-fn-vec :action_id [:model/ImplicitAction :action_id] :table_id [:in table-ids])))
+  (app-db/select-batched #(t2/select-fn-vec :action_id [:model/ImplicitAction :action_id] :table_id [:in %]) table-ids))
 
 (mu/defn unarchived-actions-in-collections
   "The unarchived Actions in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Action :collection_id [:in collection-ids] :archived false))
+  (app-db/select-batched #(t2/select :model/Action :collection_id [:in %] :archived false) collection-ids))
 
 (mu/defn actions-in-collections
   "The Actions in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Action :collection_id [:in collection-ids]))
+  (app-db/select-batched #(t2/select :model/Action :collection_id [:in %]) collection-ids))
 
 (mu/defn restorable-action-ids-in-collections
   "The ids of the Actions in the Collections with `collection-ids` that were archived along with them and whose model,
   if any, is not archived."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (into [] (map :id)
-        (t2/query {:select    [:action.id]
-                   :from      [[(t2/table-name :model/Action) :action]]
-                   :left-join [[(t2/table-name :model/Card) :model]
-                               [:= :model.id :action.model_id]]
-                   :where     [:and
-                               [:in :action.collection_id collection-ids]
-                               [:= :action.archived true]
-                               [:= :action.archived_directly false]
-                               [:or [:= :action.model_id nil] [:= :model.archived false]]]})))
+        (app-db/select-batched #(t2/query {:select    [:action.id]
+                                           :from      [[(t2/table-name :model/Action) :action]]
+                                           :left-join [[(t2/table-name :model/Card) :model]
+                                                       [:= :model.id :action.model_id]]
+                                           :where     [:and
+                                                       [:in :action.collection_id %]
+                                                       [:= :action.archived true]
+                                                       [:= :action.archived_directly false]
+                                                       [:or [:= :action.model_id nil] [:= :model.archived false]]]})
+                               collection-ids)))
 
 (mu/defn query-actions
   "The QueryActions of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select :model/QueryAction :action_id [:in action-ids]))
+  (app-db/select-batched #(t2/select :model/QueryAction :action_id [:in %]) action-ids))
 
 (mu/defn query-action
   "The QueryAction of the Action with `action-id`, or nil."
@@ -269,7 +283,7 @@
 (mu/defn implicit-actions
   "The ImplicitActions of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select :model/ImplicitAction :action_id [:in action-ids]))
+  (app-db/select-batched #(t2/select :model/ImplicitAction :action_id [:in %]) action-ids))
 
 (mu/defn actions-with-id
   "The Actions with `action-id` (usually a single Action, since ids are unique)."
@@ -279,7 +293,7 @@
 (mu/defn actions-with-ids
   "The Actions whose `:id` is in `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select :model/Action :id [:in action-ids]))
+  (app-db/select-batched #(t2/select :model/Action :id [:in %]) action-ids))
 
 (mu/defn unarchived-action-with-id
   "The unarchived Actions with `action-id` (usually a single Action, since ids are unique)."
@@ -294,15 +308,16 @@
 (mu/defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids]))
+  (app-db/select-batched #(t2/select [:model/Field :id :base_type :display_name :description] :id [:in %]) field-ids))
 
 (mu/defn action-database-settings
   "The id and Database settings of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/query {:select    [:action.id :db.settings]
-             :from      [[(t2/table-name :model/Action) :action]]
-             :left-join (action-database-joins)
-             :where     [:and [:in :action.id action-ids] [:not= :db.id nil]]}))
+  (app-db/select-batched #(t2/query {:select    [:action.id :db.settings]
+                                     :from      [[(t2/table-name :model/Action) :action]]
+                                     :left-join (action-database-joins)
+                                     :where     [:and [:in :action.id %] [:not= :db.id nil]]})
+                         action-ids))
 
 (mu/defn card-scope-columns
   "The query-relevant columns of the Card with `card-id`, plus its Collection id and display, or nil."
@@ -333,7 +348,7 @@
   [ids :- [:sequential pos-int?]]
   (let [root         (collection.root/hydrated-root-collection)
         actions-root (collection.root/hydrated-root-collection :data-actions)]
-    (-> (t2/select [:model/Action :id :name :type :model_id :collection_id] :id [:in ids])
+    (-> (app-db/select-batched #(t2/select [:model/Action :id :name :type :model_id :collection_id] :id [:in %]) ids)
         (t2/hydrate [:model [:collection :effective_ancestors]] [:collection :effective_ancestors])
         (->> (mapv (fn [action]
                      (-> (collection.root/hydrate-root-collection action (if (:model_id action) root actions-root))
@@ -342,12 +357,14 @@
 (mu/defn query-action-queries :- [:map-of ::lib.schema.id/action :map]
   "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
+  (app-db/select-batched-map #(t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in %])
+                             action-ids))
 
 (mu/defn implicit-action-table-ids :- [:map-of ::lib.schema.id/action [:maybe ::lib.schema.id/table]]
   "The `:table_id` of the ImplicitActions of the Actions with `action-ids`, keyed by Action id."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select-fn->fn :action_id :table_id :model/ImplicitAction :action_id [:in action-ids]))
+  (app-db/select-batched-map #(t2/select-fn->fn :action_id :table_id :model/ImplicitAction :action_id [:in %])
+                             action-ids))
 
 (mu/defn dependency-action-items :- :map
   "The query of the Actions the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of a

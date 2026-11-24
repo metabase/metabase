@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task-history.schema :as task-history.schema]
    [metabase.task-history.task.task-history-cleanup :as task-history-cleanup]
@@ -268,3 +269,18 @@
           (is (<= (Math/abs (- (.between java.time.temporal.ChronoUnit/MILLIS (t/instant started_at) (t/instant ended_at))
                                duration))
                   1)))))))
+
+(deftest permission-hydration-statements-do-not-grow-with-rows-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [hydrate (fn [n]
+                      (t2/with-call-count [call-count]
+                        (let [rows (doall (t2/hydrate (mapv #(t2/instance :model/TaskHistory {:id %}) (range 1 (inc n)))
+                                                      :can_read :can_write))]
+                          {:statements (call-count)
+                           :values     (mapv (juxt mi/can-read? :can_write) rows)})))]
+        (hydrate 1)
+        (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+        (testing "each row gets the answer the per-row check gave"
+          (let [answer (boolean (#'task-history/can-access?))]
+            (is (= (repeat 6 [answer answer]) (:values (hydrate 6))))))))))

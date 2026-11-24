@@ -129,7 +129,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card-test (api/read-check :model/CardTest id)]
-    (api/check-403 (data-testing.models.card-test/can-run? card-test))
+    (api/check-403 (mi/can-query? (t2/hydrate card-test :can_query)))
     (refusing #(data-testing.runner/run-test! :card
                                               (data-testing.models.card-test/testable-card (:card_id card-test))
                                               card-test))))

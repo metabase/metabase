@@ -199,43 +199,92 @@
   "The number of rows one pass of an update write function takes."
   1000)
 
+(def select-partition-size
+  "The number of ids one SELECT statement of a read function takes, below the parameter limit of every app DB."
+  10000)
+
+(defn select-partitions
+  "The partitions of `xs` of at most [[select-partition-size]], each a vector, for a read that takes them one by one."
+  [xs]
+  (map vec (partition-all select-partition-size xs)))
+
+(defn select-batched
+  "The rows `select-fn` returns for each partition of the distinct `ids` of at most [[select-partition-size]], in one
+  vector."
+  [select-fn ids]
+  (into [] (mapcat (comp select-fn vec)) (partition-all select-partition-size (sequence (distinct) ids))))
+
+(defn select-batched-by-keys
+  "The rows `select-fn` returns for the map `m`, with the collection under each of its keys `ks` bound in partitions of
+  at most [[select-partition-size]], in one vector."
+  [select-fn m ks]
+  (if-let [[k & more] (seq ks)]
+    (if-let [values (seq (get m k))]
+      (select-batched #(select-batched-by-keys select-fn (assoc m k (set %)) more) values)
+      (recur select-fn m more))
+    (select-fn m)))
+
+(defn select-batched-map
+  "The entries of the maps `select-fn` returns for each partition of `ids`, as [[select-batched]] reads them, in one
+  map."
+  [select-fn ids]
+  (into {} (select-batched select-fn ids)))
+
+(defn select-batched-set
+  "The elements `select-fn` returns for each partition of `ids`, as [[select-batched]] reads them, in one set, nil when
+  there are none, as Toucan's set selects answer."
+  [select-fn ids]
+  (not-empty (into #{} (select-batched select-fn ids))))
+
+(defn select-batched-reducible
+  "A reducible over the rows of the reducible `select-fn` returns for each partition of the distinct `ids`."
+  [select-fn ids]
+  (eduction (mapcat (comp select-fn vec)) (partition-all select-partition-size (sequence (distinct) ids))))
+
+(defn sum-batched
+  "The sum of the row counts `write-fn` returns for each partition of the distinct `ids` of at most `partition-size`."
+  [partition-size write-fn ids]
+  (transduce (map (comp write-fn vec)) + 0 (partition-all partition-size (sequence (distinct) ids))))
+
 (defn- grouped-updates
-  "The `[changes pks]` pairs of `updates` in the order the changes first appear, where `pk-fn` gives the primary key of
-  a row and `changes-fn` its columns to change; rows with no column to change are left out."
+  "The `[changes pks]` pairs of `updates`, in the order the changes first appear.
+  The primary key of a row is `(pk-fn row)`, and its columns to change are `(changes-fn row)`.
+  The rows of one primary key merge in order, so the last value of a column wins.
+  A key left with no column to change is left out."
   [updates pk-fn changes-fn]
-  (let [pks (reduce (fn [m row]
-                      (let [changes (changes-fn row)]
-                        (cond-> m
-                          (seq changes) (update changes (fnil conj []) (pk-fn row)))))
-                    {}
-                    updates)]
-    (into []
-          (comp (map changes-fn) (filter seq) (distinct) (map (fn [changes] [changes (pks changes)])))
-          updates)))
+  (let [pk->changes  (reduce (fn [m row] (update m (pk-fn row) merge (changes-fn row))) {} updates)
+        pks          (into [] (comp (map pk-fn) (distinct) (filter (comp seq pk->changes))) updates)
+        changes->pks (group-by pk->changes pks)]
+    (into [] (comp (map pk->changes) (distinct) (map (juxt identity changes->pks))) pks)))
 
 (defn update-grouped!
-  "Apply each of `updates`, the primary key of a row of `model` and the columns to change, with one update through the
-  model for the rows that get the same changes, in the order the changes first appear."
+  "Apply each of `updates`, the primary key of a row of `model` and the columns to change.
+  The rows of one key merge first, so the last value of a column wins.
+  The updates run through the model in the order their changes first appear.
+  With a one-column primary key, keys that end with the same changes share one update per [[update-partition-size]]
+  of them; others update one by one."
   [model updates]
   (let [pk-columns (t2/primary-keys model)]
     (if (= (count pk-columns) 1)
       (let [pk (first pk-columns)]
-        (doseq [[changes pks] (grouped-updates updates pk #(dissoc % pk))]
-          (t2/update! model pk [:in [:auto/param pks]] changes)))
+        (doseq [[changes pks] (grouped-updates updates pk #(dissoc % pk))
+                pks           (partition-all update-partition-size pks)]
+          (t2/update! model pk [:in [:auto/param (vec pks)]] changes)))
       (doseq [[changes pks] (grouped-updates updates (apply juxt pk-columns) #(apply dissoc % pk-columns))
               pk            pks]
         (t2/update! model :toucan/pk pk changes)))))
 
 (defn insert-returning-instances!
   "Insert the `rows` of `model` with one statement for each set of columns they have, and return the new instances in
-  the order of `rows`, read back with one select; Toucan's function of this name returns them in any order."
+  the order of `rows`, read back through [[select-batched]]; Toucan's function of this name returns them in any
+  order."
   [model rows]
   (if (empty? rows)
     []
     (let [pks     (u/map-by-key-set #(t2/insert-returning-pks! model %) rows)
           columns (t2/primary-keys model)
           pk-of   (if (= 1 (count columns)) (first columns) (apply juxt columns))
-          by-pk   (u/index-by pk-of (t2/select model :toucan/pk [:in pks]))]
+          by-pk   (u/index-by pk-of (select-batched #(t2/select model :toucan/pk [:in %]) pks))]
       (mapv by-pk pks))))
 
 (defn- check-batched-opts
@@ -347,17 +396,24 @@
 
 (mu/defn increment-counts! :- :int
   "Add, for each `[count ids]` entry of `count->ids`, `count` to `column` of the rows of `model` with `ids`, in one raw
-  statement that runs no hook and publishes no event, for a usage counter no rule reads, returning the number updated."
+  statement for each [[update-partition-size]] of them that runs no hook and publishes no event, for a usage counter
+  no rule reads, returning the number updated."
   [model      :- :keyword
    column     :- :keyword
    count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
-  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
-  (first (t2/query {:update (t2/table-name model)
-                    :set    {column [:+ column (into [:case]
-                                                     (mapcat (fn [[cnt ids]]
-                                                               [[:in :id ids] cnt])
-                                                             count->ids))]}
-                    :where  [:in :id (apply concat (vals count->ids))]})))
+  (transduce
+   (map (fn [pairs]
+          (let [count->ids (update-vals (group-by first pairs) #(mapv second %))]
+            #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
+            (first (t2/query {:update (t2/table-name model)
+                              :set    {column [:+ column (into [:case]
+                                                               (mapcat (fn [[cnt ids]]
+                                                                         [[:in :id ids] cnt])
+                                                                       count->ids))]}
+                              :where  [:in :id (mapv second pairs)]})))))
+   +
+   0
+   (partition-all update-partition-size (for [[cnt ids] count->ids, id ids] [cnt id]))))
 
 (mu/defn delete-oldest-rows! :- [:maybe :int]
   "Delete up to `batch-size` of the rows of `model` whose `time-column` is at or before `cutoff`, lowest ids first

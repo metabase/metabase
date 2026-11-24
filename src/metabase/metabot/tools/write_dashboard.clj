@@ -858,21 +858,22 @@
                                      (u/format-plural recipient-count "recipient"))
                                 " with no recipients")
                               ", which used " (str/join ", " (map filter-label parameters))))
-        lines          (fn [group]
-                         (let [{readable true unreadable false} (group-by (comp boolean :readable?) group)
-                               n                                (count unreadable)]
-                           (concat (map describe readable)
-                                   (when (pos? n)
-                                     [(str "  - " n (if (seq readable) " more " " ") (u/format-plural n "subscription")
-                                           " the user can't see")]))))
+        {readable   true
+         unreadable false} (group-by :readable? subscriptions)
         {broken true
-         caused false} (group-by (comp boolean :already-broken?) subscriptions)]
+         caused false}     (group-by :already-broken? readable)]
     [(when (seq caused)
        (cons "The change removed filters that these subscriptions set values for, so they were archived:"
-             (lines caused)))
+             (map describe caused)))
      (when (seq broken)
        (cons "These subscriptions already used filters the dashboard no longer had, and were archived too:"
-             (lines broken)))
+             (map describe broken)))
+     (when (seq unreadable)
+       ;; Unreadable ones aren't split into caused and already-broken, so the line says either could apply.
+       (let [n (count unreadable)]
+         (str "The change " (when (seq readable) "also ") "archived " n " " (u/format-plural n "subscription")
+              " the user can't see, which used filters the dashboard doesn't have. This change may have removed "
+              "them, or they were missing before.")))
      (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email is set "
           "up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]))
 

@@ -350,6 +350,35 @@
                  [table-id (or (coalesce-with-additional perm-type db-id table-id (get rows table-id)) least)]))
           table-id->db-id)))
 
+(mu/defn group-table-permissions :- [:map-of [:tuple ms/PositiveInt ::lib.schema.id/table]
+                                     ::permissions.schema/data-permission-value]
+  "The `perm-type` value that each group gives on each Table of `group-table-pairs`, `[group-id table-id]` pairs, as
+  `{[group-id table-id] value}`: what [[table-permissions-for-groups]] answers for that group alone, with the Database
+  of each Table from `table-id->db-id` and the rows of all pairs read in two queries per chunk of Tables that
+  [[chunked]] makes."
+  [group-table-pairs :- [:sequential [:tuple ms/PositiveInt ::lib.schema.id/table]]
+   perm-type         :- ::permissions.schema/data-permission-type
+   table-id->db-id   :- TableIdToDatabaseId]
+  (check-table-level perm-type)
+  (if (empty? group-table-pairs)
+    {}
+    (let [least      (least-permissive-value perm-type)
+          group-ids  (vec (distinct (map first group-table-pairs)))
+          db-rows    (group-by (juxt :group_id :db_id)
+                               (chunked #(permissions.db/database-level-values-of-groups group-ids %
+                                                                                         [(u/qualified-name perm-type)])
+                                        (distinct (map (comp table-id->db-id second) group-table-pairs))))
+          table-rows (group-by (juxt :group_id :table_id :db_id)
+                               (chunked #(permissions.db/table-level-values-of-groups group-ids perm-type %)
+                                        (distinct (map second group-table-pairs))))]
+      (into {}
+            (map (fn [[group-id table-id :as pair]]
+                   (let [db-id (table-id->db-id table-id)
+                         rows  (concat (db-rows [group-id db-id]) (table-rows [group-id table-id db-id]))]
+                     [pair (or (coalesce-with-additional perm-type db-id table-id (coalesce-rows perm-type rows))
+                               least)])))
+            group-table-pairs))))
+
 ;;; --------------------------------------------- Schema level checks ----------------------------------------------
 
 (mu/defn some-table-in-schema-permission-for-user :- ::permissions.schema/data-permission-value
@@ -366,6 +395,33 @@
     :else
     (or (probed-permission user-id perm-type {:db-id database-id :schema-name schema-name})
         (least-permissive-value perm-type))))
+
+(mu/defn some-table-in-schemas-permissions-for-user :- [:map-of [:tuple ::lib.schema.id/database [:maybe :string]]
+                                                        ::permissions.schema/data-permission-value]
+  "[[some-table-in-schema-permission-for-user]] of each of `schemas`, `[database-id schema-name]` pairs, as `{pair
+  value}`, in two queries per chunk of Databases that [[chunked]] makes."
+  [{:keys [user-id] :as user-info} :- ::permissions.schema/data-user-info
+   perm-type                       :- ::permissions.schema/data-permission-type
+   schemas                         :- [:sequential [:tuple ::lib.schema.id/database [:maybe :string]]]]
+  (check-table-level perm-type)
+  (let [schemas (vec (distinct schemas))
+        least   (least-permissive-value perm-type)]
+    (cond
+      (empty? schemas)                              {}
+      (has-highest-everywhere? user-info perm-type) (zipmap schemas (repeat (most-permissive-value perm-type)))
+      (no-user? user-info)                          (zipmap schemas (repeat least))
+      :else
+      (let [db-ids      (distinct (map first schemas))
+            db-rows     (group-by :db_id (chunked #(permissions.db/user-database-level-values user-id perm-type %)
+                                                  db-ids))
+            schema-rows (group-by (juxt :db_id (comp #(or % "") :schema_name))
+                                  (chunked #(permissions.db/user-schema-level-values user-id perm-type %) db-ids))]
+        (into {}
+              (map (fn [[db-id schema-name :as pair]]
+                     (let [held (into #{} (map (comp keyword :perm_value))
+                                      (concat (db-rows db-id) (schema-rows [db-id (or schema-name "")])))]
+                       [pair (or (u/seek held (probe-order perm-type)) least)])))
+              schemas)))))
 
 (mu/defn every-table-in-schema-permission-for-user :- ::permissions.schema/data-permission-value
   "The `perm-type` value that the user of `user-info` has on every Table of the schema `schema-name` of the Database
@@ -722,6 +778,37 @@
            (data-permissions/delete-data-permissions! (map :id to-delete)))
          (when (seq to-insert)
            (data-permissions/create-data-permissions! to-insert)))))))
+
+(defn- run-under-database-locks
+  "Run `thunk` holding the lock [[set-database-permission!]] takes for `perm-type` on each Database of `db-ids`, in
+  ascending id order."
+  [db-ids perm-type thunk]
+  ((reduce (fn [f db-id]
+             #(with-cluster-lock {:db-id db-id :perm-type (u/qualified-name perm-type)} (f)))
+           thunk
+           (sort > (distinct db-ids)))))
+
+(mu/defn set-database-permissions! :- :nil
+  "Set `perm-type` to `value` for each `[group-id db-id]` of `group-db-pairs`, as [[set-database-permission!]] does
+  for one pair, with the permissions of all pairs read together and written with one delete call and one create call."
+  [group-db-pairs :- [:sequential [:tuple ms/PositiveInt ::lib.schema.id/database]]
+   perm-type      :- ::permissions.schema/data-permission-type
+   value          :- :keyword]
+  (when-let [pairs (not-empty (vec (distinct group-db-pairs)))]
+    (run-under-database-locks
+     (map second pairs) perm-type
+     (fn []
+       (let [perms                         (index-database-permissions (distinct (map first pairs))
+                                                                       (distinct (map second pairs)))
+             {:keys [to-insert to-delete]} (apply merge-perm-changes
+                                                  (for [[group-id db-id] pairs]
+                                                    (build-database-permission perms group-id db-id perm-type value)))]
+         (t2/with-transaction [_conn]
+           (when (seq to-delete)
+             (data-permissions/delete-data-permissions! (mapv :id to-delete)))
+           (when (seq to-insert)
+             (data-permissions/create-data-permissions! to-insert)))))))
+  nil)
 
 (defenterprise new-group-view-data-permission-levels
   "Returns a map of {db-id → permission-level} for multiple databases. On OSS, all are `:unrestricted`."
@@ -1213,6 +1300,12 @@
   metabase-enterprise.advanced-permissions.models.permissions.data-permissions
   [_query _user-id]
   :full)
+
+(defenterprise download-perms-levels
+  "The download permission level of the user for each of `queries`, in order, which is `:full` in OSS."
+  metabase-enterprise.advanced-permissions.models.permissions.data-permissions
+  [queries _user-id]
+  (mapv (constantly :full) queries))
 
 (mu/defn user-has-transforms-permission-for-database? :- :boolean
   "Whether the user of `user-info` has the transforms permission on the Database with `database-id`, which no one has

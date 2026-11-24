@@ -1,7 +1,6 @@
 (ns metabase-enterprise.search.semantic.api
   "/api/ee/semantic-search endpoints"
   (:require
-   [clojure.core.memoize :as memoize]
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.search.semantic.env :as semantic.env]
    [metabase-enterprise.search.semantic.index :as semantic.index]
@@ -10,10 +9,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.permissions.core :as perms]
    [metabase.search.ingestion :as search.ingestion]))
-
-(def ^:private indexible-items-count
-  (memoize/ttl search.ingestion/search-items-count
-               :ttl/threshold (* 5 60 1000))) ; 5 minutes
 
 (defn- active-index-document-count
   [pgvector index-metadata]
@@ -43,7 +38,7 @@
       (try
         (if active-index
           {:indexed_count (active-index-document-count pgvector active-index)
-           :total_est     (indexible-items-count)}
+           :total_est     (search.ingestion/search-items-count)}
           {})
         (catch Exception e
           (throw (ex-info "Error fetching semantic search index status" {} e)))))))

@@ -271,10 +271,11 @@
                   (mt/user-http-request :rasta :get 403 path)
                   (mt/user-http-request :rasta :post 403 (str path "/run")))
                 (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
-                (testing "collection read: get and run, but not create, update or delete"
+                (testing "collection read and native queries: get, run and create, but not update or delete"
                   (is (= test-id (:id (mt/user-http-request :rasta :get 200 path))))
                   (is (= "passed" (:status (mt/user-http-request :rasta :post 200 (str path "/run")))))
-                  (mt/user-http-request :rasta :post 403 "ee/card-test" (body card-id))
+                  (let [created (mt/user-http-request :rasta :post 200 "ee/card-test" (body card-id))]
+                    (t2/delete! :model/CardTest :id (:id created)))
                   (mt/user-http-request :rasta :put 403 path {:name "nope"})
                   (mt/user-http-request :rasta :delete 403 path))
                 (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)

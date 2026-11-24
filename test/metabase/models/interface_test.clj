@@ -239,17 +239,17 @@
 
 (deftest can-query?-default-falls-back-to-can-read?-test
   (testing "Default implementation falls back to can-read?"
-    ;; Use Card model which uses the default can-query? implementation
-    (mt/with-temp [:model/Card card {}]
+    ;; Use Dashboard model which uses the default can-query? implementation
+    (mt/with-temp [:model/Dashboard dashboard {}]
       (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
-        (is (true? (mi/can-query? (t2/hydrate card :can_query)))))
+        (is (true? (mi/can-query? (t2/hydrate dashboard :can_query)))))
       (mt/with-dynamic-fn-redefs [mi/can-read? (constantly false)]
-        (is (false? (mi/can-query? (t2/hydrate card :can_query))))))))
+        (is (false? (mi/can-query? (t2/hydrate dashboard :can_query))))))))
 
 (deftest can-query-hydration-returns-boolean-test
   (testing ":can_query hydration returns a boolean value"
-    (mt/with-temp [:model/Card card {}]
-      (let [hydrated (t2/hydrate card :can_query)]
+    (mt/with-temp [:model/Dashboard dashboard {}]
+      (let [hydrated (t2/hydrate dashboard :can_query)]
         (is (contains? hydrated :can_query))
         (is (boolean? (:can_query hydrated)))))))
 
@@ -378,3 +378,19 @@
         (is (= #{"x?"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
       (finally
         (t2/delete! :setting :key [:in [guard-test-key other-key]])))))
+
+(deftest ^:synchronized automagic-hydration-partitions-test
+  (let [user-ids (mapv mt/user->id [:rasta :crowberto :lucky :trashbird :rasta])
+        cards    (fn [n] (mapv #(t2/instance :model/Card {:id %2, :creator_id %1}) (take n user-ids) (range 1 (inc n))))
+        hydrate  (fn [rows] (t2/with-call-count [call-count]
+                              [(mapv (comp :id :creator) (t2/hydrate rows :creator)) (call-count)]))]
+    (testing "rows beyond one partition hydrate as they do in one statement"
+      (let [[expected statements] (hydrate (cards 5))]
+        (is (= user-ids expected))
+        (is (= statements (second (hydrate (cards 2)))))
+        (is (= expected (first (mt/with-partition-size 2
+                                 (hydrate (cards 5))))))))
+    (testing "each partition of rows reads with its own statement"
+      (is (< (second (hydrate (cards 5)))
+             (second (mt/with-partition-size 2
+                       (hydrate (cards 5)))))))))

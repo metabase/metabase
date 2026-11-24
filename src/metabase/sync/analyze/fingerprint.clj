@@ -5,12 +5,12 @@
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.sync.db :as sync.db]
+   [metabase.sync.analyze.table-chunks :as table-chunks]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -28,14 +28,11 @@
   {:fingerprint_version i/*latest-fingerprint-version*
    :last_analyzed       nil})
 
-(mu/defn- mark-fingerprinting-failed!
-  "Advance `fingerprint_version` to the latest version for `fields` without saving a fingerprint. Called when
-  fingerprinting fails for a non-transient reason, so that the Fields are not re-selected by [[fields-to-fingerprint]]
-  and retried on every subsequent sync. Transient failures (see [[metabase.sync.util/transient-exception?]]) are
-  left untouched so they are retried."
-  [fields :- [:maybe [:sequential i/FieldInstance]]]
-  (when-let [ids (seq (map u/the-id fields))]
-    (field/update-fields! (for [id (vec ids)] {:id id :fingerprint_version i/*latest-fingerprint-version*}) {:fields fields})))
+(defn- failed-row
+  "The update row that advances the fingerprint version of `field` without saving a fingerprint, so that a Field whose
+  fingerprinting failed for a non-transient reason is not re-selected and retried on every sync."
+  [field]
+  {:id (:id field) :fingerprint_version i/*latest-fingerprint-version*})
 
 (defn- fingerprint-outcome
   "What fingerprinting a Field gave, `fingerprint` being a Throwable when it failed: the stat it counts under."
@@ -50,7 +47,7 @@
   gets none."
   [field fingerprint]
   (case (fingerprint-outcome fingerprint)
-    :failed-fingerprints  {:id (:id field) :fingerprint_version i/*latest-fingerprint-version*}
+    :failed-fingerprints  (failed-row field)
     :no-data-fingerprints nil
     :updated-fingerprints (do (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
                               (assoc (incomplete-analysis-kvs) :id (:id field) :fingerprint fingerprint))))
@@ -75,7 +72,7 @@
   [rows   :- [:sequential :map]
    fields :- [:sequential i/FieldInstance]]
   (when (seq rows)
-    (field/update-fields! rows {:fields (vec fields)})))
+    (sync.updates/update-fields! rows {:fields (vec fields)})))
 
 (defn- fingerprint-stats
   "The stats of `fingerprints`, those of the Fields of one sample."
@@ -91,19 +88,29 @@
   issues when syncing."
   1234)
 
-(mu/defn- fingerprint-fields!
+(mu/defn- sample-fingerprints
+  "The fingerprints of `fields` of `table` from a sample of its rows: `:rows`, the update rows that save them, and
+  `:stats`."
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff (fn [_metadata]
               (redux/post-complete
                (analyze/fingerprint-fields fields)
                (fn [fingerprints]
-                 (save-fingerprints! (into [] (keep identity) (map fingerprint-row fields fingerprints)) (vec fields))
-                 (fingerprint-stats fingerprints))))
+                 {:rows  (into [] (keep identity) (map fingerprint-row fields fingerprints))
+                  :stats (fingerprint-stats fingerprints)})))
         driver (driver.u/database->driver (:db_id table))
         opts {:truncation-size *truncation-size*}]
     (tracing/with-span :sync "sync.fingerprint.sample" {:sync/table (:name table) :sync/field-count (count fields)}
       (driver/table-rows-sample driver table fields rff opts))))
+
+(mu/defn- fingerprint-fields!
+  "Fingerprint `fields` of `table` from a sample of its rows and save the fingerprints, returning their stats."
+  [table  :- i/TableInstance
+   fields :- [:maybe [:sequential i/FieldInstance]]]
+  (let [{:keys [rows stats]} (sample-fingerprints table fields)]
+    (save-fingerprints! rows (vec fields))
+    stats))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
@@ -119,16 +126,15 @@
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- fields-to-fingerprint :- [:maybe [:sequential i/FieldInstance]]
-  "Return up to `limit` Fields belonging to `table` for which we should generate (and save) fingerprints, ordered by
-  id so the selection is stable across syncs. This should include NEW fields that are active and visible."
-  [table :- i/TableInstance
-   limit :- ms/PositiveInt]
-  (seq (sync.db/fields-needing-fingerprint-update
-        (u/the-id table)
-        *refingerprint?*
-        i/*fingerprint-version->types-that-should-be-re-fingerprinted*
-        limit)))
+(mu/defn- fields-to-fingerprint :- [:map-of :int [:sequential i/FieldInstance]]
+  "Up to `limit` Fields of each of `tables` to fingerprint, new active and visible ones included, by Table id, ordered
+  by id so that the selection is stable across syncs."
+  [tables :- [:sequential i/TableInstance]
+   limit  :- ms/PositiveInt]
+  (group-by :table_id (analyze/fields-to-fingerprint (mapv :id tables)
+                                                     *refingerprint?*
+                                                     i/*fingerprint-version->types-that-should-be-re-fingerprinted*
+                                                     limit)))
 
 (mu/defn- warn-too-many-fields!
   "Log that `table` has more fields to fingerprint than fingerprint-max-fields-per-table (`limit`), so only the first
@@ -140,40 +146,100 @@
                   "the first %d and skipping the rest. Raise MB_FINGERPRINT_MAX_FIELDS_PER_TABLE to fingerprint more.")
              (sync-util/name-for-logging table) limit limit))
 
-(mu/defn- fingerprint-fields-of-table!
-  "Fingerprint the (non-empty) `fields` of `table`. On a non-transient error, advance their fingerprint version so we
-  don't re-attempt every sync; transient errors are left untouched to retry next sync."
-  [table  :- i/TableInstance
-   fields :- [:sequential i/FieldInstance]]
-  (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
-  (let [stats (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                (fingerprint-fields! table fields))]
-    (if-let [throwable (:throwable stats)]
-      (do
-        (when-not (sync-util/transient-exception? throwable)
-          (mark-fingerprinting-failed! fields))
-        (merge (empty-stats-map 0) stats))
-      stats)))
+(defn- table-fingerprints
+  "The fingerprints of the first `limit` of `fields` of `table`, unsaved, as `:rows` (the update rows that save them)
+  and `:stats`, where a non-transient error makes the rows advance the fingerprint version of the Fields and a
+  transient one leaves them for the next sync."
+  [table fields limit]
+  (tracing/with-span :sync "sync.fingerprint.table" {:db/id (:db_id table) :sync/table (:name table)}
+    (when (> (count fields) limit)
+      (warn-too-many-fields! table limit))
+    (let [fields (vec (take limit fields))]
+      (if (empty? fields)
+        {:table table :fields fields :rows [] :stats (empty-stats-map 0)}
+        (let [_         (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
+              sample    (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                          (sample-fingerprints table fields))
+              throwable (:throwable sample)]
+          {:table  table
+           :fields fields
+           :rows   (cond
+                     (nil? throwable)                           (:rows sample)
+                     (sync-util/transient-exception? throwable) []
+                     :else                                      (mapv failed-row fields))
+           :stats  (if throwable
+                     (merge (empty-stats-map 0) sample)
+                     (:stats sample))})))))
+
+(defn- save-table-fingerprints!
+  "Save the rows of `result`, the fingerprints of one Table, returning it with the stats of a failure when that fails,
+  after advancing the fingerprint version of its Fields unless the failure is transient."
+  [{:keys [table fields rows] :as result}]
+  (let [saved (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                (save-fingerprints! rows fields))]
+    (if-let [throwable (:throwable saved)]
+      (do (when-not (sync-util/transient-exception? throwable)
+            (save-fingerprints! (mapv failed-row fields) fields))
+          (assoc result :stats (merge (empty-stats-map 0) saved)))
+      result)))
+
+(defn- save-fingerprints-of-tables!
+  "Save the rows of `results`, the fingerprints of some Tables, with one call, or Table by Table when that fails,
+  returning the results."
+  [results]
+  (if (and (next results)
+           (not (sync-util/rethrow-fatal
+                 (:throwable (sync-util/with-returning-throwable "Error saving fingerprints"
+                               (save-fingerprints! (into [] (mapcat :rows) results)
+                                                   (into [] (mapcat :fields) results)))))))
+    results
+    (mapv save-table-fingerprints! results)))
 
 (mu/defn fingerprint-table!
   "Generate and save fingerprints for the Fields in `table` that have not been previously analyzed. At most
   [[metabase.sync.settings/fingerprint-max-fields-per-table]] fields are processed; if the table has more eligible
   fields, the rest are skipped (with a warning) so we don't load a huge number of Fields into memory at once."
   [table :- i/TableInstance]
-  (tracing/with-span :sync "sync.fingerprint.table" {:db/id (:db_id table) :sync/table (:name table)}
-    (let [limit  (sync.settings/fingerprint-max-fields-per-table)
-          fields (fields-to-fingerprint table (inc limit))]
-      (when (> (count fields) limit)
-        (warn-too-many-fields! table limit))
-      (if-let [fields (seq (take limit fields))]
-        (fingerprint-fields-of-table! table fields)
-        (empty-stats-map 0)))))
+  (let [limit  (sync.settings/fingerprint-max-fields-per-table)
+        fields (get (fields-to-fingerprint [table] (inc limit)) (:id table))]
+    (:stats (first (save-fingerprints-of-tables! [(table-fingerprints table fields limit)])))))
+
+(defn- add-table-stats
+  "`acc` with the `stats` of one Table added, a failure of the Table counting as one failed fingerprint."
+  [acc stats]
+  (merge-with + acc (if (:throwable stats)
+                      (-> stats
+                          (dissoc :throwable)
+                          (update :failed-fingerprints inc))
+                      stats)))
 
 (def ^:private LogProgressFn
   [:=> [:cat :string [:schema i/TableInstance]] :nil])
 
+(defn- fingerprint-group!
+  "Fingerprint the Tables of `group` one by one and save their fingerprints at once, returning `acc` with their stats
+  added, `reduced` once `continue?` says to stop or a Table could not reach its database."
+  [acc group log-progress-fn continue?]
+  (let [limit                    (sync.settings/fingerprint-max-fields-per-table)
+        table-id->fields         (fields-to-fingerprint group (inc limit))
+        step                     (if *refingerprint?* "refingerprint-fields" "fingerprint-fields")
+        {:keys [results stop?]}  (reduce (fn [{:keys [results running]} table]
+                                           (log-progress-fn step table)
+                                           (let [result  (table-fingerprints table (table-id->fields (:id table)) limit)
+                                                 running (add-table-stats running (:stats result))
+                                                 state   {:results (conj results result) :running running}]
+                                             (if (and (continue? running) (not (sync-util/abandon-sync? (:stats result))))
+                                               state
+                                               (reduced (assoc state :stop? true)))))
+                                         {:results [] :running acc}
+                                         group)
+        acc                      (transduce (map :stats) (completing add-table-stats) acc
+                                            (save-fingerprints-of-tables! results))]
+    (cond-> acc
+      stop? reduced)))
+
 (mu/defn- fingerprint-fields-for-db!*
-  "Invokes `fingerprint-table!` on every table in `database`"
+  "Fingerprint the Fields of every table in `database`, reading and saving the Fields of a group of Tables at once."
   ([database        :- i/DatabaseInstance
     log-progress-fn :- LogProgressFn]
    (fingerprint-fields-for-db!* database log-progress-fn (constantly true)))
@@ -183,24 +249,17 @@
     continue?       :- [:=> [:cat ::FingerprintStats] :boolean]]
    (let [tables (if *refingerprint?*
                   (sync-util/refingerprint-reducible-sync-tables database)
-                  (sync-util/reducible-sync-tables database))]
-     (reduce (fn [acc table]
-               (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-               (let [ret (fingerprint-table! table)
-                     new-acc (let [ret (if (:throwable ret)
-                                         (-> ret
-                                             (dissoc :throwable)
-                                             (update :failed-fingerprints inc))
-                                         ret)]
-                               (merge-with + acc ret))]
-                 (if (and (continue? new-acc) (not (sync-util/abandon-sync? ret)))
-                   new-acc
-                   (reduced new-acc))))
+                  (sync-util/reducible-sync-tables database))
+         groups (table-chunks/groups tables
+                                     #(analyze/fingerprint-field-counts
+                                       % *refingerprint?* i/*fingerprint-version->types-that-should-be-re-fingerprinted*)
+                                     (inc (sync.settings/fingerprint-max-fields-per-table)))]
+     (reduce (fn [acc group] (fingerprint-group! acc group log-progress-fn continue?))
              (empty-stats-map 0)
-             tables))))
+             groups))))
 
 (mu/defn fingerprint-fields-for-db!
-  "Invokes [[fingerprint-table!]] on every table in `database`"
+  "Fingerprint the Fields of every table in `database` whose driver supports fingerprinting."
   [database        :- i/DatabaseInstance
    log-progress-fn :- LogProgressFn]
   (if (driver.u/supports? (:engine database) :fingerprint database)

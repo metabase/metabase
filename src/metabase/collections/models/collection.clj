@@ -3,11 +3,10 @@
   permissions for these objects."
   (:refer-clojure :exclude [ancestors descendants])
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.util :as mut]
-   [metabase.api-keys.core :as api-key]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
@@ -190,54 +189,45 @@
   []
   (collections.db/collection-of-type library-collection-type))
 
-(def ^{:arglists '([id])} root-collection-type-by-id
-  "Return the `:type` of the top-level (root) collection with the given `id`, or `nil` if no
-   top-level collection has that id. Caching is keyed by `[app-db-id collection-id]` per the
-   `metabase.app-db.core/memoize-for-application-db` docstring — different ids never share cache
-   entries, which keeps tests isolated even when other tests run ingestion in parallel.
+(defn- location-root-id
+  "The id of the top-level Collection in the materialized path `location`, or nil for the root path or none."
+  [location]
+  (some-> location
+          (str/split #"/")
+          (->> (remove str/blank?))
+          first
+          parse-long))
 
-   Top-level collections change infrequently, so a 1-hour TTL is fine."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
-   (fn [id]
-     (when id
-       (collections.db/root-collection-type-by-id id)))
-   :ttl/threshold (* 60 60 1000)))
+(defn root-collection-types
+  "The `:type` of the top-level ancestor Collection of each of the ingestion `records`, in order, from their
+  `:collection_id`, `:collection_location` and `:collection_type`: nil without a Collection, the Collection's own type
+  when it is top-level, else the type of the first id of its location."
+  [records]
+  (let [root-ids    (into #{}
+                          (keep (fn [{:keys [collection_id collection_location]}]
+                                  (when collection_id
+                                    (location-root-id collection_location))))
+                          records)
+        root-id->type (if (seq root-ids)
+                        (collections.db/root-collection-types-by-ids root-ids)
+                        {})]
+    (mapv (fn [{:keys [collection_id collection_location collection_type]}]
+            (cond
+              (nil? collection_id)                                        nil
+              (or (nil? collection_location) (= "/" collection_location)) collection_type
+              :else (some-> (location-root-id collection_location) root-id->type)))
+          records)))
 
-(defn root-collection-type
-  "Return the `:type` of the top-level ancestor collection given a collection's materialized path and
-   its own type/id. Used by the search ranking spec to power the `:library` scorer for items nested
-   inside library trees.
-
-   Resolution rules:
-     - `:collection_id` `nil`  →  `nil` (item has no collection)
-     - location is `\"/\"` or `nil`  →  the collection's own `:collection_type` (it IS a root)
-     - otherwise  →  parse the first id out of the materialized path and look up its type
-
-   Reads `:collection_id`, `:collection_location`, `:collection_type` from the ingestion record map."
-  [{:keys [collection_id collection_location collection_type]}]
-  (cond
-    (nil? collection_id)
-    nil
-
-    (or (nil? collection_location) (= "/" collection_location))
-    collection_type
-
-    :else
-    (when-let [root-id (some-> collection_location
-                               (str/split #"/")
-                               (->> (remove str/blank?))
-                               first
-                               parse-long)]
-      (root-collection-type-by-id root-id))))
-
-(defn table-root-collection-type
-  "Return the `:type` of the top-level ancestor of the collection that holds a record's parent table.
-  Reads `:table_collection_id`, `:table_collection_location`, `:table_collection_type` from the ingestion record map."
-  [{:keys [table_collection_id table_collection_location table_collection_type]}]
-  (root-collection-type {:collection_id       table_collection_id
-                         :collection_location table_collection_location
-                         :collection_type     table_collection_type}))
+(defn table-root-collection-types
+  "The `:type` of the top-level ancestor of the Collection that holds the parent Table of each of the ingestion
+  `records`, in order, from their `:table_collection_id`, `:table_collection_location` and `:table_collection_type`,
+  as [[root-collection-types]] reads it."
+  [records]
+  (root-collection-types (mapv (fn [{:keys [table_collection_id table_collection_location table_collection_type]}]
+                                 {:collection_id       table_collection_id
+                                  :collection_location table_collection_location
+                                  :collection_type     table_collection_type})
+                               records)))
 
 (def library-entity-id
   "The entity_id for the Library collection."
@@ -338,9 +328,11 @@
   (derive :hook/entity-id))
 
 (defn- default-audit-collection?
-  [{:keys [id] :as _col}]
+  "Whether `collection` is the default audit Collection, whose id `audit-collection-ids` holds, outside analytics dev
+  mode."
+  [audit-collection-ids {:keys [id] :as _collection}]
   (when-not (audit/analytics-dev-mode)
-    (= id (:id (audit/default-audit-collection)))))
+    (= id (:audit-collection-id audit-collection-ids))))
 
 (defn- check-can-read-keys
   "Throws unless `collection` has the columns its `:can_read` hydration reads."
@@ -382,16 +374,19 @@
               ids)
       (some nil? collection-ids) (conj nil))))
 
-(defn remote-sync-writable-table?
-  "Whether remote sync leaves the metadata of `table` writable: any Table unless the instance is read-only, and then
-  one that isn't published into a synced Collection."
-  [{:keys [is_published collection_id] :as table}]
-  (or (not (remote-sync/read-only?))
-      (do
-        (api/check-500 (contains? table :is_published) "No :is_published is set for a Table.")
-        (api/check-500 (contains? table :collection_id) "No :collection_id is set for a Table.")
-        (or (not is_published)
-            (contains? (remote-sync-writable-collection-ids [collection_id]) collection_id)))))
+(defn remote-sync-writable-table-ids
+  "The ids of those of `tables` whose metadata remote sync leaves writable: every one unless the instance is
+  read-only, and then those that aren't published into a synced Collection."
+  [tables]
+  (let [table-ids (into #{} (map :id) tables)]
+    (if (and (remote-sync/read-only?) (seq table-ids))
+      (let [published (collections.db/published-table-collection-ids table-ids)
+            writable  (remote-sync-writable-collection-ids (vals published))]
+        (into #{}
+              (filter #(or (not (contains? published %))
+                           (contains? writable (get published %))))
+              table-ids))
+      table-ids)))
 
 (defn writable-table-ids
   "The ids of those of `tables` whose content the current user can write: every Table for a superuser, those a data
@@ -410,7 +405,7 @@
 
                     :else
                     [])]
-    (into #{} (comp (filter remote-sync-writable-table?) (map :id)) permitted)))
+    (remote-sync-writable-table-ids permitted)))
 
 (defn hydrate-table-content-can-read
   "Each of `rows`, a model's rows with nil ones kept, with `:can_read` in its metadata: whether the current user reads
@@ -432,11 +427,18 @@
       (when row
         (assoc row :can_write (contains? writable (:table_id row)))))))
 
+(defn- hidden-audit-collection-ids
+  "The ids of the audit Collections, read in one query, while the audit app is off, which hides them, else nil."
+  []
+  (when-not (premium-features/enable-audit-app?)
+    (audit/audit-collection-ids)))
+
 (defn- audit-collection-hidden?
-  "Whether the Collection with `collection-id` is the audit Collection while the audit app is off, which hides it."
-  [collection-id]
-  (and (not (premium-features/enable-audit-app?))
-       (audit/is-collection-id-audit? collection-id)))
+  "Whether the Collection with `collection-id` is one of the audit Collections whose ids `hidden-audit-ids`, the value
+  of [[hidden-audit-collection-ids]], holds."
+  [hidden-audit-ids collection-id]
+  (and (some? hidden-audit-ids)
+       (audit/is-collection-id-audit? hidden-audit-ids collection-id)))
 
 (defn- collection-permissions
   "The current user's permission on each of `collections`, by id."
@@ -452,6 +454,16 @@
        (get (perms/collection-permissions-for-user (api/current-user-info) [nil] {:root-namespace (:namespace root)}) nil)
        permission)))
 
+(defn- root-permissions
+  "Whether the current user has `permission` or more on each root Collection among `collections`, by namespace, each
+  namespace answered once."
+  [collections permission]
+  (into {}
+        (comp (filter #(and (some? %) (collection.root/is-root-collection? %)))
+              (m/distinct-by :namespace)
+              (map (fn [root] [(:namespace root) (boolean (root-collection-permission-at-least? root permission))])))
+        collections))
+
 (defn- hydrate-can-read
   "Keeps in the metadata of each of `collections`, under `:can_read`, whether the current user reads it: the trash,
   and otherwise a Collection that is not the hidden audit Collection, on which they have read permission or which is
@@ -459,20 +471,22 @@
   [collections]
   (let [rows        (into [] (remove #(or (nil? %) (collection.root/is-root-collection? %))) collections)
         _           (run! check-can-read-keys rows)
-        permissions (collection-permissions rows)]
+        permissions (collection-permissions rows)
+        hidden-ids  (when (seq rows) (hidden-audit-collection-ids))
+        roots       (root-permissions collections :read)]
     (for [{:keys [id] :as collection} collections]
       (cond
         (nil? collection)
         nil
 
         (collection.root/is-root-collection? collection)
-        (vary-meta collection assoc :can_read (boolean (root-collection-permission-at-least? collection :read)))
+        (vary-meta collection assoc :can_read (get roots (:namespace collection)))
 
         :else
         (vary-meta collection assoc :can_read
                    (boolean
                     (or (is-trash? collection)
-                        (and (not (audit-collection-hidden? id))
+                        (and (not (audit-collection-hidden? hidden-ids id))
                              (or (collection.root/unrestricted-snippets? collection)
                                  (perms/collection-permission-at-least? (get permissions id) :read))))))))))
 
@@ -483,19 +497,21 @@
   [collections]
   (let [rows        (into [] (remove #(or (nil? %) (collection.root/is-root-collection? %))) collections)
         _           (run! check-can-write-keys rows)
-        permissions (collection-permissions rows)]
+        permissions (collection-permissions rows)
+        audit-ids   (when (seq rows) (audit/audit-collection-ids))
+        roots       (root-permissions collections :read-and-write)]
     (for [{:keys [id] :as collection} collections]
       (cond
         (nil? collection)
         nil
 
         (collection.root/is-root-collection? collection)
-        (assoc collection :can_write (boolean (root-collection-permission-at-least? collection :read-and-write)))
+        (assoc collection :can_write (get roots (:namespace collection)))
 
         :else
         (assoc collection :can_write
                (boolean
-                (and (not (default-audit-collection? collection))
+                (and (not (default-audit-collection? audit-ids collection))
                      (not (is-trash-or-descendant? collection))
                      (or (collection.root/unrestricted-snippets? collection)
                          (perms/collection-permission-at-least? (get permissions id) :read-and-write))
@@ -509,39 +525,40 @@
   [_model _k collections]
   (hydrate-can-write collections))
 
-(methodical/defmethod t2/simple-hydrate [metabase.collections.models.collection.root.RootCollection :can_read]
-  "Whether the current user reads `root`, a root Collection."
-  [_model k root]
-  (vary-meta root assoc k (boolean (root-collection-permission-at-least? root :read))))
+(methodical/defmethod t2/batched-hydrate [metabase.collections.models.collection.root.RootCollection :can_read]
+  "Whether the current user reads each of `collections`, a list dispatched on its first row, a root Collection."
+  [_model _k collections]
+  (hydrate-can-read collections))
 
-(methodical/defmethod t2/simple-hydrate [metabase.collections.models.collection.root.RootCollection :can_write]
-  "Whether the current user writes `root`, a root Collection."
-  [_model k root]
-  (assoc root k (boolean (root-collection-permission-at-least? root :read-and-write))))
+(methodical/defmethod t2/batched-hydrate [metabase.collections.models.collection.root.RootCollection :can_write]
+  "Whether the current user writes each of `collections`, a list dispatched on its first row, a root Collection."
+  [_model _k collections]
+  (hydrate-can-write collections))
 
 (defn content-readable-collection-ids
   "The ids among `collection-ids`, a nil id for the root Collection of the `:root-namespace` option included, of the
-  Collections whose content the current user reads, from one permission query: those they read and, with the
+  Collections whose content the current user reads, from one permission read: those they read and, with the
   `:audit-rules?` option, as for Cards and Dashboards, that aren't the hidden audit Collection."
   [collection-ids {:keys [audit-rules?] :as options}]
   (let [permissions (perms/collection-permissions-for-user (api/current-user-info) (vec collection-ids)
-                                                           (select-keys options [:root-namespace]))]
+                                                           (select-keys options [:root-namespace]))
+        hidden-ids  (when audit-rules? (hidden-audit-collection-ids))]
     (into #{}
           (filter (fn [id]
                     (and (perms/collection-permission-at-least? (get permissions id) :read)
-                         (not (and audit-rules? id (audit-collection-hidden? id))))))
+                         (not (and audit-rules? id (audit-collection-hidden? hidden-ids id))))))
           (keys permissions))))
 
 (defn content-writable-collection-ids
   "The ids among `collection-ids`, a nil id for the root Collection of the `:root-namespace` option included, of the
-  Collections whose content the current user writes, from one permission query and, on a read-only instance, one
+  Collections whose content the current user writes, from one permission read and, on a read-only instance, one
   more: those they write, that remote sync leaves writable and, with the `:audit-rules?` option, as for Cards and
   Dashboards, that aren't the audit Collection."
   [collection-ids {:keys [audit-rules?] :as options}]
   (let [permissions   (perms/collection-permissions-for-user (api/current-user-info) (vec collection-ids)
                                                              (select-keys options [:root-namespace]))
         sync-writable (remote-sync-writable-collection-ids (keys permissions))
-        audit-id      (when audit-rules? (:id (audit/default-audit-collection)))]
+        audit-id      (when audit-rules? (:audit-collection-id (audit/audit-collection-ids)))]
     (into #{}
           (filter (fn [id]
                     (and (perms/collection-permission-at-least? (get permissions id) :read-and-write)
@@ -592,11 +609,11 @@
 
 (defn can-write-all-collections-or-root?
   "Whether the current user can write every one of the Collections with `collection-ids`, nil for the root Collection
-  of the `:root-namespace` option, as [[can-write-collection-or-root?]] answers for one, from one read of the
-  Collections, false when one does not exist, which that function answers with a 404."
+  of the `:root-namespace` option, as [[can-write-collection-or-root?]] answers for one, with the Collections read
+  together, false when one does not exist, which that function answers with a 404."
   [collection-ids {:keys [root-namespace]}]
   (let [ids    (into [] (comp (remove nil?) (distinct)) collection-ids)
-        stored (into {} (mapcat #(collections.db/collections-by-ids (vec %))) (partition-all mdb/update-partition-size ids))]
+        stored (collections.db/collections-by-ids ids)]
     (and (= (count stored) (count ids))
          (every? mi/can-write? (t2/hydrate (vec (vals stored)) :can_write))
          (or (not-any? nil? collection-ids)
@@ -999,11 +1016,12 @@
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it.
   Personal collection should be created on user creation, but creates if missing for backwards compatibility"
   [user-or-id :- UserOrId]
-  ;; API key users do not get personal collections
-  (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
+  (when (if (and (map? user-or-id) (contains? user-or-id :type))
+          (not= :api-key (:type user-or-id))
+          (contains? (collections.db/non-api-key-user-ids #{(u/the-id user-or-id)}) (u/the-id user-or-id)))
     (or (user->existing-personal-collection user-or-id)
         (try
-          (first (create-collections! [{:name              (user->personal-collection-name user-or-id :site)
+          (first (create-collections! [{:name              (user->personal-collection-name (u/the-id user-or-id) :site)
                                         :personal_owner_id (u/the-id user-or-id)}]))
           ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
           ;; condition where some other thread created it in the meantime; try one last time to fetch it
@@ -1029,57 +1047,35 @@
   [user-ids :- [:sequential ms/PositiveInt]]
   (run! create-personal-collections-batch! (partition-all mdb/delete-partition-size (distinct user-ids))))
 
-(def ^:private ^{:arglists '([user-id])} user->personal-collection-id
-  "Cached function to fetch the ID of the Personal Collection belonging to User with `user-id`. Since a Personal
-  Collection cannot be deleted, the ID will not change; thus it is safe to cache, saving a DB call. It is also
-  required to calculate the Current User's permissions set, which is done for every API call; thus it is cached to
-  save a DB call for *every* API call."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[user-id]]
-                         [(mdb/unique-identifier) user-id])}
-   (fn user->personal-collection-id*
-     [user-id]
-     (some-> user-id user->personal-collection u/the-id))
-   ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
-   ;; large
-   ;;
-   ;; TODO (Chris 2026-08-18) -- The claim that Personal Collections cannot be deleted does not hold when a
-   ;; transaction rolls back: the collection disappears while its ID remains cached for the rest of the TTL.
-   ;; Tests evict this cache at the `with-temp` boundary (see [[metabase.test.util]]). Production has no
-   ;; equivalent boundary and would need an after-rollback hook alongside the commit hooks.
-   :ttl/threshold (* 60 60 1000)))
-
-(mu/defn user->personal-collection-and-descendant-ids :- [:sequential ms/PositiveInt]
-  "Somewhat-optimized function that fetches the ID of a User's Personal Collection as well as the IDs of all descendants
-  of that Collection. Exists because this needs to be known to calculate the Current User's permissions set, which is
-  done for every API call; this function is an attempt to make fetching this information as efficient as reasonably
-  possible."
-  [user-or-id :- ms/PositiveInt]
-  (into []
-        (when-let [personal-collection-id (user->personal-collection-id (u/the-id user-or-id))]
-          (conj
-           ;; `descendant-ids` wants a CollectionWithLocationAndID, and luckily we know Personal Collections always go
-           ;; in Root, so we can pass it what it needs without actually having to fetch an entire CollectionInstance
-           (descendant-ids {:location "/", :id personal-collection-id})
-           personal-collection-id))))
+(defn- personal-collection-ids-creating-missing
+  "A map from each of the Users with `user-ids` to the id of its Personal Collection, creating the missing ones
+  together and reading back any that another request created at the same time."
+  [user-ids]
+  (let [owned   (collections.db/personal-collection-ids-by-owner user-ids)
+        missing (into [] (remove #(contains? owned %)) user-ids)]
+    (if (empty? missing)
+      owned
+      (let [failure (try
+                      (create-personal-collections! missing)
+                      nil
+                      (catch Throwable e e))
+            owned   (collections.db/personal-collection-ids-by-owner user-ids)]
+        (when (and failure (not-every? #(contains? owned %) missing))
+          (throw failure))
+        owned))))
 
 (mi/define-batched-hydration-method include-personal-collection-ids
   :personal_collection_id
-  "Efficiently hydrate the `:personal_collection_id` property of a sequence of Users. (This is, predictably, the ID of
-  their Personal Collection.)"
+  "Efficiently hydrate the `:personal_collection_id` property of a sequence of Users, creating the Personal Collections
+  that are missing, so that this property never comes back as `nil` for a User who is not an API key."
   [users]
   (when (seq users)
-    ;; efficiently create a map of user ID -> personal collection ID
-    (let [non-api-user-ids (collections.db/non-api-key-user-ids (set (map u/the-id users)))
+    (let [non-api-user-ids       (collections.db/non-api-key-user-ids (set (map u/the-id users)))
           user-id->collection-id (when (seq non-api-user-ids)
-                                   (collections.db/personal-collection-ids-by-owner non-api-user-ids))]
-      ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
-      ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
-      ;; as a side-effect. This will ensure this property never comes back as `nil`
+                                   (personal-collection-ids-creating-missing non-api-user-ids))]
       (for [user users]
         (assoc user :personal_collection_id (when (contains? non-api-user-ids (u/the-id user))
-                                              (or (get user-id->collection-id (u/the-id user))
-                                                  (user->personal-collection-id (u/the-id user)))))))))
+                                              (get user-id->collection-id (u/the-id user))))))))
 
 (mi/define-simple-hydration-method is-shared-tenant-collection
   :is_shared_tenant_collection
@@ -1202,11 +1198,6 @@
                  (when-not (collection.root/is-root-collection? collection)
                    (apply location-path (filter visible (location-path->ids (real-location-path collection)))))))))))
 
-(defn effective-location-path
-  "Given a collection, returns the effective location (hiding parts of the path that the current user doesn't have access to)."
-  [collection]
-  (:effective_location (t2/hydrate collection :effective_location)))
-
 (def ^:private effective-parent-fields
   "Fields that should be included when hydrating the `:effective_parent` of a collection. Used for displaying recent views
   and collection search results."
@@ -1240,34 +1231,17 @@
 ;;; |                          Nested Collections: Ancestors, Children, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- ancestors* :- [:maybe [:sequential (ms/InstanceOf :model/Collection)]]
-  [{:keys [location]} :- CollectionWithLocationOrRoot]
-  (when-let [ancestor-ids (seq (location-path->ids location))]
-    (collections.db/ancestor-summaries ancestor-ids)))
-
-(mi/define-simple-hydration-method ancestors
-  :ancestors
-  "Fetch ancestors (parent, grandparent, etc.) of a `collection`. These are returned in order starting with the
-  highest-level (e.g. most distant) ancestor."
-  [collection]
-  (ancestors* collection))
-
 (defn- effective-ancestors*
-  "Given a collection, return the effective ancestors of that collection, from `collection-id->collection`, whose
-  Collections are hydrated with `:can_read` and `:can_write`, each ancestor keeping its `:can_write`."
-  [collection collection-id->collection]
-  (if (or (nil? collection)
-          (collection.root/is-root-collection? collection))
-    []
-    (some->> (effective-location-path collection)
-             location-path->ids
-             (keep collection-id->collection)
-             (filter mi/can-read?)
-             (map #(t2/instance :model/Collection (select-keys % [:name :id :personal_owner_id :type :can_write])))
-             (concat (let [root (t2/hydrate (root-collection-with-ui-details (:namespace collection)) :can_read :can_write)]
-                       (when (mi/can-read? root)
-                         [root])))
-             doall)))
+  "The effective ancestors at `effective-location`: `root` when the current user can read it, then the readable
+  Collections of `collection-id->collection` on that location, each keeping its `:can_write`."
+  [effective-location root collection-id->collection]
+  (->> (location-path->ids effective-location)
+       (keep collection-id->collection)
+       (filter mi/can-read?)
+       (map #(t2/instance :model/Collection (select-keys % [:name :id :personal_owner_id :type :can_write])))
+       (concat (when (mi/can-read? root)
+                 [root]))
+       doall))
 
 (mi/define-batched-hydration-method effective-ancestors
   :effective_ancestors
@@ -1288,15 +1262,25 @@
   Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
   can effectively treat A as the parent of C."
   [collections]
-  (let [all-ids (mapcat #(some-> % effective-location-path location-path->ids) collections)
+  (let [rows                      (filterv #(and (some? %) (not (collection.root/is-root-collection? %))) collections)
+        row->location             (zipmap rows (map :effective_location (t2/hydrate rows :effective_location)))
+        all-ids                   (mapcat location-path->ids (vals row->location))
         collection-id->collection (if (seq all-ids)
                                     (u/index-by :id (t2/hydrate (vals (collections.db/collections-by-ids all-ids))
                                                                 :can_read :can_write))
-                                    {})]
+                                    {})
+        namespace->root           (into {}
+                                        (map (fn [collection-namespace]
+                                               [collection-namespace
+                                                (t2/hydrate (root-collection-with-ui-details collection-namespace)
+                                                            :can_read :can_write)]))
+                                        (distinct (map :namespace rows)))]
     (map (fn [collection]
            (assoc collection
                   :effective_ancestors
-                  (effective-ancestors* collection collection-id->collection)))
+                  (if-let [location (row->location collection)]
+                    (effective-ancestors* location (namespace->root (:namespace collection)) collection-id->collection)
+                    [])))
          collections)))
 
 (mu/defn- parent-id* :- [:maybe ms/PositiveInt]
@@ -1439,12 +1423,13 @@
 ;;; -------------------------------------------------- Remote Sync -------------------------------------------------------
 
 (defn set-remote-synced!
-  "Marks `collection` and its descendants as remote-synced, or as not remote-synced when `remote-synced?` is false."
-  [collection remote-synced?]
-  (set-remote-synced-by-depth! (collections.db/subtree-locations-to-flag (:id collection)
-                                                                         (children-location collection)
-                                                                         remote-synced?)
-                               remote-synced?))
+  "Marks `collections` and their descendants as remote-synced, or as not remote-synced when `remote-synced?` is false."
+  [collections remote-synced?]
+  (when (seq collections)
+    (set-remote-synced-by-depth! (collections.db/subtree-locations-to-flag (mapv :id collections)
+                                                                           (mapv children-location collections)
+                                                                           remote-synced?)
+                                 remote-synced?)))
 
 (methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
@@ -1500,7 +1485,7 @@
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot operate on the Root Collection."))))
   ;; Make sure we're not trying to operate on the Custom Reports Collection...
-  (when (= (audit/default-custom-reports-collection) collection)
+  (when (= (u/the-id collection) (:custom-reports-collection-id (audit/audit-collection-ids)))
     (throw (Exception. (tru "You cannot operate on the Custom Reports Collection."))))
   ;; also make sure we're not trying to operate on a PERSONAL Collection
   (when (collections.db/personal-collection? (u/the-id collection))
@@ -1594,7 +1579,7 @@
   `new-parent` takes."
   [collection new-parent]
   (boolean
-   (and (not= (u/the-id collection) (:id (audit/default-custom-reports-collection)))
+   (and (not= (u/the-id collection) (:custom-reports-collection-id (audit/audit-collection-ids)))
         (mi/can-write? (t2/hydrate new-parent :can_write))
         (can-write-collection-ids? (vec (collection-ids-for-moving collection new-parent))))))
 
@@ -2005,9 +1990,43 @@
         (and (can-write-all-collections-or-root? (map :collection_id moving) {:root-namespace nil})
              (can-write-all-collections-or-root? [(:collection_id changes)] {:root-namespace nil})))))
 
+(defn move-answers
+  "For each `[row changes]` pair of `pairs`, what [[can-move?]] answers, `:not-found` where it throws the 404 for a
+  Collection that does not exist, with the Collections read together."
+  [pairs]
+  (let [moving?  (fn [[row changes]]
+                   (api/column-will-change? (:collection_id row) (get changes :collection_id ::api/not-provided)))
+        ids      (into [] (comp (filter moving?)
+                                (mapcat (fn [[row changes]] [(:collection_id row) (:collection_id changes)]))
+                                (remove nil?)
+                                (distinct))
+                       pairs)
+        stored   (collections.db/collections-by-ids ids)
+        writable (into {} (map (juxt :id (comp boolean mi/can-write?))) (t2/hydrate (vec (vals stored)) :can_write))
+        root     (when (some #(and (moving? %) (or (nil? (:collection_id (first %))) (nil? (:collection_id (second %))))) pairs)
+                   (boolean (mi/can-write? (t2/hydrate (root-collection-with-ui-details nil) :can_write))))
+        answer   (fn [id] (cond (nil? id) root (contains? writable id) (get writable id) :else :not-found))]
+    (mapv (fn [[row changes :as pair]]
+            (if (moving? pair)
+              (let [old (answer (:collection_id row))]
+                (if (true? old) (answer (:collection_id changes)) old))
+              true))
+          pairs)))
+
+(defn can-move-all-or-404?
+  "As [[can-move-all?]], but throws the 404 that [[can-move?]] throws when the Collection `changes` move `rows` to does
+  not exist and the user writes the old Collections of those that move."
+  [rows changes]
+  (let [new-id (:collection_id changes)
+        moving (filterv #(api/column-will-change? (:collection_id %) (get changes :collection_id ::api/not-provided)) rows)]
+    (or (empty? moving)
+        (and (can-write-all-collections-or-root? (map :collection_id moving) {:root-namespace nil})
+             (or (nil? new-id) (some? (api/check-404 (collections.db/collection new-id))))
+             (can-write-all-collections-or-root? [new-id] {:root-namespace nil})))))
+
 (defmulti allowed-namespaces
-  "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
-  default namespace (namespace = `nil`)."
+  "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in.
+  Models without their own method get [[default-allowed-namespaces]]."
   {:arglists '([model])}
   t2.protocols/dispatch-value)
 
@@ -2034,12 +2053,26 @@
   [_ _]
   true)
 
+(def searchable-namespaces
+  "The Collection namespaces search indexes, with the content inside them.
+  Kept apart from [[default-allowed-namespaces]]: where content may be saved and what search finds are separate
+  decisions, so a new placement namespace isn't indexed by accident."
+  #{nil :analytics :shared-tenant-collection :tenant-specific})
+
+(defn searchable-namespace-clause
+  "HoneySQL clause matching rows whose `namespace-column` holds one of the [[searchable-namespaces]].
+  The appdb and in-place engines also hide `analytics` content at query time unless the audit app is enabled."
+  [namespace-column]
+  (into [:or]
+        (for [collection-namespace searchable-namespaces]
+          [:= namespace-column (some-> collection-namespace name)])))
+
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
   `allowed-namespaces`), or throw an Exception.
 
-    ;; Cards can only go in Collections in the default namespace (namespace = nil)
-    (check-collection-namespace Card new-collection-id)
+    ;; Snippets can only go in Collections in the `snippets` namespace
+    (check-collection-namespace :model/NativeQuerySnippet new-collection-id)
 
   `collection` is a Collection id or the row [[content-parent]] gives."
   [model collection]
@@ -2380,6 +2413,119 @@
     (t2/resolve-model model)
     (shift-positions-in-collection! model collection-id positions direction)))
 
+(defn position-updates
+  "The `{:id :collection_position}` of each of `rows`, with an `:id` and a `:collection_position`, whose position
+  changes once the sorted `freed-positions` are closed one by one, the highest first, each moving down by one the rows
+  above it."
+  [rows freed-positions]
+  (let [descending (reverse freed-positions)]
+    (into []
+          (keep (fn [{:keys [id collection_position]}]
+                  (let [new-position (reduce (fn [position freed] (if (> position freed) (dec position) position))
+                                             collection_position
+                                             descending)]
+                    (when (not= new-position collection_position)
+                      {:id id :collection_position new-position}))))
+          rows)))
+
+(defmulti positioned-rows-in-collections
+  "The `:id`, `:collection_id` and `:collection_position` of the rows of `model` that have a position in the Collections
+  with `collection-ids`, nil for the root, which a model that has a position in its Collection implements with its own
+  read function."
+  {:arglists '([model collection-ids])}
+  (fn [model _collection-ids] model))
+
+(defmulti update-positions!
+  "Gives the rows of `model` the positions that `id->position` holds, which a model that has a position in its
+  Collection implements with its own write function."
+  {:arglists '([model id->position])}
+  (fn [model _id->position] model))
+
+(defn collection-ids-clause
+  "The HoneySQL condition that `:collection_id` is one of `collection-ids`, nil for the root."
+  [collection-ids]
+  (let [ids (into [] (remove nil?) collection-ids)]
+    (cond
+      (empty? ids)                        [:= :collection_id nil]
+      (not-any? nil? collection-ids)      [:in :collection_id [:auto/param ids]]
+      :else                               [:or [:= :collection_id nil] [:in :collection_id [:auto/param ids]]])))
+
+(defn- shift-after-move
+  "`state`, the Collection and position of the positioned rows by `[model id]`, after the Card `card-key` leaves the
+  Collection `old-id`, which closes its gap, and enters `new-id`, where it makes room for its position, as the single
+  Card path does."
+  [state card-key old-id new-id]
+  (let [position (get-in state [card-key :collection_position])]
+    (-> (update-vals state
+                     (fn [{:keys [collection_id collection_position] :as row}]
+                       (cond
+                         (and (= collection_id old-id) (> collection_position position)) (update row :collection_position dec)
+                         (and (= collection_id new-id) (>= collection_position position)) (update row :collection_position inc)
+                         :else                                                           row)))
+        (assoc-in [card-key :collection_id] new-id))))
+
+(defn positions-after-moves
+  "The positions, `{model {id position}}`, that the positioned rows `rows`, `{:model :id :collection_id
+  :collection_position}`, have after the Cards of `moves`, `{:id :collection_id :to}` of a Card with a position, one
+  after the other in order, each leave their Collection and enter `:to` keeping their position, as moving them one by
+  one with [[maybe-reconcile-collection-position!]] does, only for those that change."
+  [rows moves]
+  (let [start (into {} (map (fn [row] [[(:model row) (:id row)] (select-keys row [:collection_id :collection_position])])) rows)
+        end   (reduce (fn [state {:keys [id collection_id to]}]
+                        (shift-after-move state [:model/Card id] collection_id to))
+                      start
+                      moves)]
+    (reduce-kv (fn [acc [model id] {:keys [collection_position]}]
+                 (cond-> acc
+                   (not= collection_position (get-in start [[model id] :collection_position]))
+                   (assoc-in [model id] collection_position)))
+               {}
+               end)))
+
+(mu/defn moved-positions :- [:map-of :keyword [:map-of ms/PositiveInt ms/PositiveInt]]
+  "The positions, `{model {id position}}`, that the rows in the Collections the Cards `moves` leave and enter have
+  after the Cards move one after the other, see [[positions-after-moves]], each model's rows read together."
+  [moves :- [:sequential [:map {:closed true}
+                          [:id            ms/PositiveInt]
+                          [:collection_id [:maybe ms/PositiveInt]]
+                          [:to            [:maybe ms/PositiveInt]]]]]
+  (let [collection-ids (into #{} (mapcat (juxt :collection_id :to)) moves)]
+    (positions-after-moves (into []
+                                 (mapcat (fn [model]
+                                           (t2/resolve-model model)
+                                           (map #(assoc % :model model) (positioned-rows-in-collections model collection-ids))))
+                                 positioned-models)
+                           moves)))
+
+(mu/defn write-positions!
+  "Gives the rows the positions `model->id->position`, as [[moved-positions]] answers, with one call of its write
+  function per model."
+  [model->id->position :- [:map-of :keyword [:map-of ms/PositiveInt ms/PositiveInt]]]
+  (doseq [[model id->position] model->id->position]
+    (update-positions! model id->position)))
+
+(mu/defn reconcile-freed-positions!
+  "Closes the gaps that the positions `collection-id->freed-positions` hold, the positions that rows left in each
+  Collection, nil for the root, leave, reading and writing the rows of each model that has a position in its
+  Collection together, giving every row the position that reconciling the freed positions one by one, the highest
+  first, gives it."
+  [collection-id->freed-positions :- [:map-of [:maybe ms/PositiveInt] [:sequential ms/PositiveInt]]]
+  (when (seq collection-id->freed-positions)
+    (let [collection-id->freed (update-vals collection-id->freed-positions (comp vec sort))
+          collection-ids       (vec (keys collection-id->freed))]
+      (write-positions!
+       (into {}
+             (keep (fn [model]
+                     (t2/resolve-model model)
+                     (when-let [updates (not-empty
+                                         (into {}
+                                               (mapcat (fn [[collection-id rows]]
+                                                         (map (juxt :id :collection_position)
+                                                              (position-updates rows (collection-id->freed collection-id)))))
+                                               (group-by :collection_id (positioned-rows-in-collections model collection-ids))))]
+                       [model updates])))
+             positioned-models)))))
+
 (mu/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
   for fixing card/dashboard/pulse changes that impact other instances in the collection"
@@ -2489,8 +2635,8 @@
   [:model/Card :model/Dashboard :model/NativeQuerySnippet :model/Pulse :model/Timeline :model/Action])
 
 (def ^:private unpublish-followers
-  "The models that unpublish the Tables of a Collection that is archived or deleted, in order."
-  [:model/TableUserSettings :model/Table])
+  "The models that unpublish the Tables of a Collection that is archived or deleted."
+  [:model/TableUserSettings])
 
 (defn- unpublish-tables!
   "Unpublishes the Tables in the Collections with `collection-ids`, in their user settings too, and the Tables that
@@ -2817,13 +2963,14 @@
    (mapv (comp :id :before) entries)))
 
 (defn- publish-carried-updates!
-  "Publish the update event of the Collections `rows`, as the `changes` that the archive or restore of the Collection
-  `root-id` made to them."
-  [rows changes root-id]
-  (events/publish-event! :event/collection-update
-                         (events/update-event (into {} (map (juxt :id identity)) rows)
-                                              (mapv #(assoc changes :id (:id %)) rows)
-                                              {:context {:archived-with [:model/Collection root-id]}})))
+  "Publish one update event of the Collections of `rows-changes`, each a `[row changes]` pair of a Collection and the
+  changes that the archive or restore of the Collection `carrier-id` made to it."
+  [rows-changes carrier-id]
+  (when (seq rows-changes)
+    (events/publish-event! :event/collection-update
+                           (events/update-event (into {} (map (fn [[row]] [(:id row) row])) rows-changes)
+                                                (mapv (fn [[row changes]] (assoc changes :id (:id row))) rows-changes)
+                                                {:context {:archived-with [:model/Collection carrier-id]}}))))
 
 (defn- archive-subtrees!
   "Archives the Collections under the update `entries`, which archive their Collection on its own, with the archive
@@ -2840,11 +2987,15 @@
                          (sort-by (comp - count children-location :before))
                          first))
         by-root   (group-by (comp :id :before nearest) below)]
-    (doseq [[root-id descendants] by-root
-            :let [operation-id (:operation-id (first (filter #(= root-id (:id (:before %))) roots)))
-                  changes      {:archived true, :archive_operation_id operation-id, :archived_directly false}]]
-      (collections.db/update-collections! (mapv :id descendants) changes)
-      (publish-carried-updates! descendants changes carrier-id))
+    (publish-carried-updates!
+     (into []
+           (mapcat (fn [[root-id descendants]]
+                     (let [operation-id (:operation-id (first (filter #(= root-id (:id (:before %))) roots)))
+                           changes      {:archived true, :archive_operation_id operation-id, :archived_directly false}]
+                       (collections.db/update-collections! (mapv :id descendants) changes)
+                       (map #(vector % changes) descendants))))
+           by-root)
+     carrier-id)
     (archive-followers! (into (mapv (comp :id :before) roots) (map :id) below)
                         {:context {:archived-with [:model/Collection carrier-id]}})))
 
@@ -2861,7 +3012,7 @@
     (when (seq below)
       (let [changes {:archived false, :archive_operation_id nil}]
         (collections.db/update-collections! (mapv :id below) changes)
-        (publish-carried-updates! below changes carrier-id)))
+        (publish-carried-updates! (mapv #(vector % changes) below) carrier-id)))
     (restore-followers! (into (mapv (comp :id :before) entries) (map :id) below)
                         {:context {:archived-with [:model/Collection carrier-id]}})))
 
@@ -2911,8 +3062,8 @@
             (restore-subtrees! restoring root-id)))))
     (when (seq moved)
       (move-descendants! moved by-id)
-      (doseq [{:keys [before]} moved]
-        (events/publish-event! :event/collection-touch {:collection-id (:id before) :user-id api/*current-user-id*})))
+      (events/publish-event! :event/collection-touch {:collection-ids (mapv (comp :id :before) moved)
+                                                      :user-id        api/*current-user-id*}))
     columns))
 
 (defn- update-collection-batch!
@@ -2980,8 +3131,7 @@
   permissions in one transaction, publishing their delete event right before the first statement."
   [collection-ids :- [:sequential ms/PositiveInt]]
   (t2/with-transaction [_conn]
-    (let [id->stored (into {} (map collections.db/collections-by-ids)
-                           (map vec (partition-all mdb/delete-partition-size (distinct collection-ids))))]
+    (let [id->stored (collections.db/collections-by-ids collection-ids)]
       (check-collection-deletes (vals id->stored))
       (when (seq id->stored)
         (let [ids     (into (set (keys id->stored))
@@ -3029,7 +3179,7 @@
    {:attrs        {:collection-id        :id
                    :collection-type      :type
                    :collection-location  :location
-                   :root-collection-type {:fn root-collection-type}
+                   :root-collection-type {:batch-fn root-collection-types}
                    :creator-id           false
                    :database-id          false
                    :archived             true
@@ -3046,10 +3196,7 @@
                    ;; results pass through `metabase.search.impl/add-collection-effective-location`.
                    ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
                    :location                   true}
-    :where [:or [:= :namespace nil]
-            [:= :namespace "analytics"]
-            [:= :namespace "shared-tenant-collection"]
-            [:= :namespace "tenant-specific"]]
+    :where        (searchable-namespace-clause :namespace)
     ;; depends on the current user, used for rendering and ranking
     ;; TODO not sure this is what it'll look like
     :bookmark     [:model/CollectionBookmark [:and

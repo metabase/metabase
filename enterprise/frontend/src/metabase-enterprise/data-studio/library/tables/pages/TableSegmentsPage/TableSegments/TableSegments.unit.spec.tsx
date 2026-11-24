@@ -10,6 +10,7 @@ import type {
   TokenFeatures,
 } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockTable,
   createMockTokenFeatures,
   createMockUser,
@@ -32,7 +33,7 @@ const setup = ({
     id: 1,
     db_id: 1,
     schema: "PUBLIC",
-    is_published: true,
+    collection: createMockCollection(),
     ...table,
   });
 
@@ -91,7 +92,7 @@ describe("TableSegments", () => {
       setup({
         isAdmin: true,
         remoteSyncType: "read-only",
-        table: { is_published: false },
+        table: { collection: null },
       });
 
       expect(

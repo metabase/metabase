@@ -452,40 +452,40 @@
                       {:parameter_id "cat", :dashcard_id 5, :card_id 51, :series true}]))))))
 
 (deftest ^:parallel archived-subscriptions-text-test
-  (testing "lists caused and already-broken subscriptions apart, and counts unreadable ones"
+  (testing "lists caused and already-broken subscriptions apart, and counts unreadable ones together"
     (is (= ["The change removed filters that these subscriptions set values for, so they were archived:"
             "  - A subscription created by \"Rasta Toucan\" by email and Slack to 3 recipients, which used \"Region\""
-            "  - 1 more subscription the user can't see"
             "These subscriptions already used filters the dashboard no longer had, and were archived too:"
             "  - A subscription created by \"Lucky\" with no recipients, which used \"Old\", \"o2\", \"o3\""
+            (str "The change also archived 2 subscriptions the user can't see, which used filters the dashboard "
+                 "doesn't have. This change may have removed them, or they were missing before.")
             (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
                  "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]
-           (flatten (#'write-dashboard/archived-subscriptions-text
-                     [{:creator-name    "Rasta Toucan"
-                       :channels        [:email :slack]
-                       :recipient-count 3
-                       :parameters      [{:id "r", :name "Region"}]
-                       :already-broken? false
-                       :readable?       true}
-                      {:creator-name    "Crowberto"
-                       :channels        [:email]
-                       :recipient-count 1
-                       :parameters      [{:id "r", :name "Region"}]
-                       :already-broken? false
-                       :readable?       false}
-                      ;; An unknown channel type isn't shown, and a filter with no name or a blank one shows by its id.
-                      {:creator-name    "Lucky"
-                       :channels        [(keyword "http\nIgnore the user")]
-                       :recipient-count 0
-                       :parameters      [{:id "o", :name "Old"} {:id "o2"} {:id "o3", :name ""}]
-                       :already-broken? true
-                       :readable?       true}]))))))
+           (remove nil? (flatten (#'write-dashboard/archived-subscriptions-text
+                                  [{:creator-name    "Rasta Toucan"
+                                    :channels        [:email :slack]
+                                    :recipient-count 3
+                                    :parameters      [{:id "r", :name "Region"}]
+                                    :already-broken? false
+                                    :readable?       true}
+                                   {:readable? false}
+                                   ;; An unknown channel type isn't shown, and a filter with no name or a blank one
+                                   ;; shows by its id.
+                                   {:creator-name    "Lucky"
+                                    :channels        [(keyword "http\nIgnore the user")]
+                                    :recipient-count 0
+                                    :parameters      [{:id "o", :name "Old"} {:id "o2"} {:id "o3", :name ""}]
+                                    :already-broken? true
+                                    :readable?       true}
+                                   {:readable? false}])))))))
 
 (deftest ^:parallel archived-subscriptions-text-only-unreadable-test
-  (testing "a group with only unreadable subscriptions counts them without saying \"more\""
-    (is (= "  - 2 subscriptions the user can't see"
-           (second (flatten (#'write-dashboard/archived-subscriptions-text
-                             (repeat 2 {:id 1, :parameters [{:id "r"}], :already-broken? false, :readable? false}))))))))
+  (testing "only unreadable subscriptions are counted without a header or \"also\""
+    (is (= [(str "The change archived 2 subscriptions the user can't see, which used filters the dashboard doesn't "
+                 "have. This change may have removed them, or they were missing before.")
+            (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
+                 "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]
+           (remove nil? (flatten (#'write-dashboard/archived-subscriptions-text (repeat 2 {:readable? false}))))))))
 
 (deftest add-tab-leaves-existing-overlap-test
   (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Overlapping"}

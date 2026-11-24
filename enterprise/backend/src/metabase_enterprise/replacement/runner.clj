@@ -162,12 +162,19 @@
   (let [card            (replacement.db/card card-id)
         result-metadata (:result_metadata card)
         fields          (replacement.db/active-fields-of-table table-id)
-        field-by-name   (m/index-by :name fields)]
-    (doseq [col-meta result-metadata
-            :let [field     (field-by-name (source-swap.util/column-match-key col-meta))
-                  overrides (u/select-keys-when col-meta :non-nil metadata-override-keys)]
-            :when (and field (seq overrides))]
-      (field-user-settings/upsert-field-user-settings! field overrides))))
+        field-by-name   (m/index-by :name fields)
+        id->overrides   (reduce (fn [id->overrides col-meta]
+                                  (let [field     (field-by-name (source-swap.util/column-match-key col-meta))
+                                        overrides (u/select-keys-when col-meta :non-nil metadata-override-keys)]
+                                    (cond-> id->overrides
+                                      (and field (seq overrides)) (update (:id field) merge overrides))))
+                                {}
+                                result-metadata)]
+    (field-user-settings/upsert-field-user-settings-for-fields!
+     (into [] (keep (fn [{:keys [id] :as field}]
+                      (when-let [overrides (id->overrides id)]
+                        [field overrides])))
+           fields))))
 
 (defn run-swap-model-with-transform!
   "Execute a transform, find the output table, then swap all dependents of the card

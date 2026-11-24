@@ -57,7 +57,7 @@ Some tips:
 Hover over Metabot's response to:
 
 - Copy the response.
-- Give thumbs-up/thumbs-down [feedback on responses](#giving-feedback-on-metabot-responses). If you upvote a response, you can optionally add some feedback. If you downvote a response, you can optionally contribute a bug report to help us improve Metabot.
+- Give thumbs-up/thumbs-down [feedback on responses](#giving-feedback-on-metabot-responses). If you upvote a response, you can optionally add feedback. If you downvote a response, you can optionally add details about what went wrong.
 - Re-run the prompt with Metabot. This is useful if you've updated the chart or just want to have Metabot take another pass (since AI responses aren't deterministic, Metabot may give a different response on another run).
 
 ## Analyze charts with Metabot
@@ -158,4 +158,4 @@ Thumbs up are just as helpful as thumbs down. If you give a thumbs down, you can
 - Incomplete response
 - Other
 
-> When you submit feedback, the form you send may contain sensitive data from your conversation.
+> On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see your feedback along with the conversation. On Metabase Cloud, Metabase (the company) can see your feedback too. See [AI privacy](./privacy.md#who-can-see-your-feedback).

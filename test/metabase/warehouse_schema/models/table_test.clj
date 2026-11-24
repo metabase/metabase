@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
@@ -518,25 +517,6 @@
                             (t2/update! :model/Table :id table-id {:db_id db-2})))
       (is (= db-1 (t2/select-one-fn :db_id :model/Table :id table-id))))))
 
-(deftest only-published-tables-sit-in-collections-test
-  (mt/with-temp [:model/Collection {coll-id :id} {}]
-    (testing "inserting an unpublished Table into a Collection is refused"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
-                            (t2/insert! :model/Table {:db_id (mt/id) :name "unpublished" :collection_id coll-id}))))
-    (mt/with-temp [:model/Table {table-id :id} {}]
-      (testing "putting an unpublished Table into a Collection is refused"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
-                              (t2/update! :model/Table :id table-id {:collection_id coll-id}))))
-      (testing "publishing a Table into a Collection is accepted"
-        (t2/update! :model/Table :id table-id {:is_published true :collection_id coll-id})
-        (is (= [true coll-id] ((juxt :is_published :collection_id) (t2/select-one :model/Table :id table-id)))))
-      (testing "unpublishing a Table while it stays in its Collection is refused"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
-                              (t2/update! :model/Table :id table-id {:is_published false}))))
-      (testing "a published Table without a Collection is accepted"
-        (t2/update! :model/Table :id table-id {:collection_id nil})
-        (is (= [true nil] ((juxt :is_published :collection_id) (t2/select-one :model/Table :id table-id))))))))
-
 (deftest field-order-change-repositions-fields-test
   (testing "Changing field_order repositions the Table's Fields, whoever writes it"
     (mt/with-temp [:model/Table {table-id :id} {:field_order :database}
@@ -545,44 +525,34 @@
       (table/update-tables! [{:id table-id :field_order :alphabetical}])
       (is (= {f-a 0, f-b 1} (t2/select-pk->fn :position :model/Field :table_id table-id))))))
 
-(deftest is-published-and-collection-id-test
-  (testing "is_published defaults to false"
-    (mt/with-temp [:model/Table {table-id :id} {}]
-      (is (false? (t2/select-one-fn :is_published :model/Table :id table-id)))))
-  (testing "can create a table with is_published=true and collection_id"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                   :model/Table {table-id :id} {:is_published true :collection_id coll-id}]
-      (let [table (t2/select-one :model/Table :id table-id)]
-        (is (true? (:is_published table)))
-        (is (= coll-id (:collection_id table))))))
-  (testing "collection_id FK constraint prevents referencing non-existent collection"
-    (is (thrown?
-         Exception
-         (mt/with-temp [:model/Table _ {:is_published true :collection_id Integer/MAX_VALUE}]))))
-  (testing "deleting a collection unpublishes the tables in it"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                   :model/Table {table-1-id :id} {:is_published true :collection_id coll-id}
-                   :model/Table {table-2-id :id} {:is_published true :collection_id coll-id}]
-      (collection/delete-collections! [coll-id])
-      (is (= #{[false nil]} (t2/select-fn-set (juxt :is_published :collection_id) :model/Table
-                                              :id [:in [table-1-id table-2-id]]))))))
-
 (deftest collection-hydration-test
-  (testing "hydrating :collection on a table"
+  (testing "hydrating :collection on published table"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                   :model/Table table {:is_published true :collection_id coll-id}]
+                   :model/Table {table-id :id :as table} {}
+                   :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id coll-id}]
       (let [hydrated (t2/hydrate table :collection)]
         (is (= coll-id (-> hydrated :collection :id)))
         (is (= "Test Collection" (-> hydrated :collection :name))))))
-  (testing "hydrating :collection on a table with no collection_id returns nil"
-    (mt/with-temp [:model/Table table {}]
+  (testing "hydrating :collection on table published with nil collection_id returns root collection"
+    (mt/with-temp [:model/Table {table-id :id :as table} {}
+                   :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id nil}]
       (let [hydrated (t2/hydrate table :collection)]
-        (is (nil? (:collection hydrated))))))
+        (is (= "root" (-> hydrated :collection :id))))))
+  (testing "hydrating :collection on unpublished table returns nil"
+    (mt/with-temp [:model/Table table-1 {}
+                   :model/Table {table-2-id :id :as table-2} {}
+                   :model/TableUserSettings _ {:table_id table-2-id :display_name "Unpublished"}]
+      (doseq [table [table-1 table-2]]
+        (let [hydrated (t2/hydrate table :collection)]
+          (is (contains? hydrated :collection))
+          (is (nil? (:collection hydrated)))))))
   (testing "batched hydration works for multiple tables"
     (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1"}
                    :model/Collection {coll2-id :id} {:name "Collection 2"}
-                   :model/Table table1 {:is_published true :collection_id coll1-id}
-                   :model/Table table2 {:is_published true :collection_id coll2-id}
+                   :model/Table {table1-id :id :as table1} {}
+                   :model/TableUserSettings _ {:table_id table1-id :is_published true :collection_id coll1-id}
+                   :model/Table {table2-id :id :as table2} {}
+                   :model/TableUserSettings _ {:table_id table2-id :is_published true :collection_id coll2-id}
                    :model/Table table3 {}]
       (let [hydrated (t2/hydrate [table1 table2 table3] :collection)]
         (is (= coll1-id (-> hydrated first :collection :id)))
@@ -701,6 +671,74 @@
         (let [hydrated (t2/hydrate table :can_query)]
           (is (contains? hydrated :can_query))
           (is (boolean? (:can_query hydrated))))))))
+
+(defn- do-with-external-remaps!
+  "Runs `thunk` with each `[field-id readable-field-id fk-target-field-id]` of `remaps` set up as an external remap of
+  the Field to the readable Field through a foreign key to the target Field."
+  [remaps thunk]
+  (if-let [[[field-id readable-field-id fk-target-field-id] & more] (seq remaps)]
+    (mt/with-temp-vals-in-db :model/Field field-id {:fk_target_field_id fk-target-field-id}
+      (mt/with-temp [:model/Dimension _ {:field_id                field-id
+                                         :name                    "Remap"
+                                         :type                    :external
+                                         :human_readable_field_id readable-field-id}]
+        (do-with-external-remaps! more thunk)))
+    (thunk)))
+
+(defn- can-query-by-table
+  "The `:can_query` of the test Tables with `table-kws` hydrated together, by Table keyword."
+  [table-kws]
+  (let [tables (t2/hydrate (t2/select :model/Table :id [:in (mapv mt/id table-kws)]) :can_query)]
+    (into {} (map (fn [table-kw] [table-kw (:can_query (first (filter #(= (mt/id table-kw) (:id %)) tables)))]))
+          table-kws)))
+
+(deftest table-can-query-hydration-external-remaps-test
+  (testing ":can_query of Table needs query access to Tables its Fields show values of"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (doseq [table-kw [:venues :orders :people :checkins]]
+        (perms/set-table-permission! (perms/all-users-group) (mt/id table-kw) :perms/create-queries :query-builder))
+      (do-with-external-remaps!
+       [[(mt/id :venues :category_id) (mt/id :categories :name) (mt/id :categories :id)]
+        [(mt/id :orders :user_id) (mt/id :people :name) (mt/id :people :id)]]
+       (fn []
+         (testing "non-admin in one batch"
+           (mt/with-test-user :rasta
+             (is (= {:venues     false
+                     :orders     true
+                     :checkins   true
+                     :categories false}
+                    (can-query-by-table [:venues :orders :checkins :categories])))
+             (testing ":can_read keeps plain rule"
+               (is (mi/can-read? (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :can_read))))))
+         (testing "superuser"
+           (mt/with-test-user :crowberto
+             (is (= {:venues true :orders true :checkins true :categories true}
+                    (can-query-by-table [:venues :orders :checkins :categories]))))))))))
+
+(deftest table-can-query-hydration-statement-count-test
+  (testing ":can_query of many Tables with remaps takes as many statements as of few, as a non-admin"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+      (do-with-external-remaps!
+       [[(mt/id :venues :category_id) (mt/id :categories :name) (mt/id :categories :id)]
+        [(mt/id :checkins :venue_id) (mt/id :venues :name) (mt/id :venues :id)]
+        [(mt/id :orders :user_id) (mt/id :people :name) (mt/id :people :id)]
+        [(mt/id :reviews :product_id) (mt/id :products :title) (mt/id :products :id)]
+        [(mt/id :categories :name) (mt/id :users :name) (mt/id :users :id)]
+        [(mt/id :users :name) (mt/id :categories :name) (mt/id :categories :id)]]
+       (fn []
+         (mt/with-test-user :rasta
+           (let [tables (t2/select :model/Table :id [:in (mapv mt/id [:venues :checkins :orders :reviews :categories :users])])
+                 count! (fn [n]
+                          (t2/hydrate (take n tables) :can_query)
+                          (t2/with-call-count [call-count]
+                            (doall (t2/hydrate (take n tables) :can_query))
+                            (call-count)))]
+             (is (= 6 (count tables)))
+             (is (every? :can_query (t2/hydrate tables :can_query)))
+             (is (= (count! 2) (count! 6))))))))))
 
 (deftest data-layer-legacy-serdes-round-trip-test
   (testing "Importing a v58 serialization export with legacy medallion data_layer values maps them to current values"

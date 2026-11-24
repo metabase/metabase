@@ -32,7 +32,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.before-update :as t2.before-update]))
@@ -55,11 +54,12 @@
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn table-field-names->cols
-  "Return a mapping of field names to corresponding cols for given table."
-  [table-id]
+  "Return a mapping of field names to corresponding cols for the table with `table-id` of the database with
+  `database-id`."
+  [database-id table-id]
   (into {} (for [col (request/as-admin
                        (qp.preprocess/query->expected-cols
-                        {:database (database/table-id->database-id table-id)
+                        {:database database-id
                          :type     :query
                          :query    {:source-table table-id}}))]
              [(:name col) col])))
@@ -89,26 +89,42 @@
                            :actual        (:base_type col)
                            :response/keys #{:expected :actual}})))))))
 
-(mu/defn check-columns-match-table
-  "Make sure the result metadata data columns for the Card associated with a sandbox match up with the columns in the Table
-  that's getting sandboxed The base types of the Card columns can derive from the respective base types of the columns in
-  the Table itself, but you cannot return an entirely different type. Extra columns in the sandboxing Card are ignored."
-  ([{card-id :card_id, table-id :table_id} :- [:map
-                                               [:card_id {:optional true} [:maybe ::lib.schema.id/card]]
-                                               [:table_id ::lib.schema.id/table]]]
-   ;; not all sandboxes have Cards
-   (when card-id
-     ;; not all Cards have saved result metadata
-     (when-let [result-metadata (not-empty (sandbox.db/card-result-metadata card-id))]
-       (check-columns-match-table table-id result-metadata))))
+(mu/defn- check-columns-match-table-of-database
+  "Throws a 400 when a column of `result-metadata-columns` has a base type that does not derive from that of the
+  same-named column of the Table with `table-id` of the Database with `database-id`, ignoring columns the Table lacks."
+  [database-id             :- [:maybe ::lib.schema.id/database]
+   table-id                :- ::lib.schema.id/table
+   result-metadata-columns :- [:maybe ::queries.schema/card.result-metadata]]
+  (let [table-cols (table-field-names->cols database-id table-id)]
+    (doseq [col   result-metadata-columns
+            :let  [table-col (get table-cols (:name col))]
+            :when table-col]
+      (check-column-types-match col table-col))))
 
-  ([table-id :- ::lib.schema.id/table
-    result-metadata-columns :- [:maybe ::queries.schema/card.result-metadata]]
-   (let [table-cols (table-field-names->cols table-id)]
-     (doseq [col   result-metadata-columns
-             :let  [table-col (get table-cols (:name col))]
-             :when table-col]
-       (check-column-types-match col table-col)))))
+(defn- columns-check-inputs
+  "The result metadata of the Cards and the Database ids of the Tables of those of the sandbox `rows` that have a Card,
+  as `[card-id->result-metadata table-id->database-id]`, each read once."
+  [rows]
+  (if-let [rows (not-empty (filterv :card_id rows))]
+    [(sandbox.db/cards-result-metadata (mapv :card_id rows))
+     (sandbox.db/table-database-ids (mapv :table_id rows))]
+    [{} {}]))
+
+(defn- check-sandbox-columns
+  "Throws a 400 when the Card of the sandbox `row` returns columns whose types differ from those of its Table, given the
+  inputs [[columns-check-inputs]] read."
+  [[card-id->result-metadata table-id->database-id] {card-id :card_id, table-id :table_id}]
+  (when card-id
+    (when-let [result-metadata (not-empty (card-id->result-metadata card-id))]
+      (check-columns-match-table-of-database (table-id->database-id table-id) table-id result-metadata))))
+
+(mu/defn check-columns-match-table
+  "Make sure the result metadata data columns for the Card associated with the `sandbox` match up with the columns in
+  the Table that's getting sandboxed."
+  [sandbox :- [:map
+               [:card_id {:optional true} [:maybe ::lib.schema.id/card]]
+               [:table_id ::lib.schema.id/table]]]
+  (check-sandbox-columns (columns-check-inputs [sandbox]) sandbox))
 
 (t2/define-before-update :model/Sandbox
   [sandbox]
@@ -156,29 +172,29 @@
   [entity-kind id]
   (non-admin-affects-sandboxing-with-any? entity-kind (when id [id])))
 
-(defn- check-result-metadata-still-matches-sandboxed-tables
-  "Throws if `new-result-metadata` would stop matching the Tables the sandboxes built out of this Card sandbox: the
-  Card cannot add fields or change types vs. the original Table."
-  [card-id new-result-metadata]
-  (when-let [gtaps-using-this-card (not-empty (sandbox.db/sandboxes-using-card card-id))]
-    (let [original-result-metadata (sandbox.db/card-result-metadata card-id)]
-      (when-not (= original-result-metadata new-result-metadata)
-        (doseq [{table-id :table_id} gtaps-using-this-card]
-          (try
-            (check-columns-match-table table-id new-result-metadata)
-            (catch clojure.lang.ExceptionInfo e
-              (throw (ex-info (str (tru "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules.")
-                                   " "
-                                   (.getMessage e))
-                              (ex-data e)
-                              e)))))))))
-
-(defenterprise pre-update-check-sandbox-constraints
-  "Throws when `changes` give a Card result metadata that no longer matches the Tables of the sandboxes that use it."
+(defenterprise pre-update-check-sandboxes-constraints
+  "Throws when a change of the result metadata of any of `card-changes`, `[stored-card changes]` pairs, gives a Card
+  result metadata that no longer matches the Tables of the sandboxes that use it, with the sandboxes and their Tables
+  read together."
   :feature :sandboxes
-  [{new-result-metadata :result_metadata, card-id :id} changes]
-  (when (contains? changes :result_metadata)
-    (check-result-metadata-still-matches-sandboxed-tables card-id new-result-metadata)))
+  [card-changes]
+  (let [checked               (filterv (fn [[_ changes]] (contains? changes :result_metadata)) card-changes)
+        id->sandboxes         (sandbox.db/sandboxes-using-cards (mapv (comp :id first) checked))
+        table-ids             (into [] (comp cat (map :table_id)) (vals id->sandboxes))
+        table-id->database-id (if (seq table-ids) (sandbox.db/table-database-ids table-ids) {})]
+    (doseq [[{card-id :id original-result-metadata :result_metadata} {new-result-metadata :result_metadata}] checked
+            :let [gtaps-using-this-card (not-empty (get id->sandboxes card-id))]
+            :when gtaps-using-this-card
+            :when (not= original-result-metadata new-result-metadata)
+            {table-id :table_id} gtaps-using-this-card]
+      (try
+        (check-columns-match-table-of-database (table-id->database-id table-id) table-id new-result-metadata)
+        (catch clojure.lang.ExceptionInfo e
+          (throw (ex-info (str (tru "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules.")
+                               " "
+                               (.getMessage e))
+                          (ex-data e)
+                          e)))))))
 
 (defenterprise sandboxes-allow-result-metadata-write?
   "Whether sandboxing lets the current user store result metadata for the Card with `card-id`: only an admin may for one
@@ -291,27 +307,28 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(defn- remove-native-access!
-  "Downgrades the native query access of the group of `sandbox` to the query builder on the Database of its Table, where
-  the group has native access to that Table."
-  [{:keys [table_id group_id]}]
-  (let [db-id (database/table-id->database-id table_id)]
-    (when (= :query-builder-and-native
-             (get (perms/table-permissions-for-groups #{group_id} :perms/create-queries {table_id db-id}) table_id))
-      (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder))))
-
 (defn- check-new-sandboxes
   "Throws a 400 unless every row of `rows` satisfies these rules, with the refusal of the first row that breaks one:
 
   - its Card's columns match its Table"
   [rows]
-  (run! check-columns-match-table rows))
+  (let [inputs (columns-check-inputs rows)]
+    (run! #(check-sandbox-columns inputs %) rows)))
 
 (defn- remove-native-access-of-groups!
   "Take native query access away from the group of each of `rows` on the Database of its Table where it has it, and
-  return the rows."
+  return the rows, with the Databases and permissions of all rows read once and written together."
   [rows]
-  (run! remove-native-access! rows)
+  (when-let [pairs (not-empty (into [] (comp (map (juxt :group_id :table_id)) (distinct)) rows))]
+    (let [table-id->db-id (sandbox.db/table-database-ids (mapv second pairs))
+          pairs           (filterv (comp table-id->db-id second) pairs)
+          pair->value     (perms/group-table-permissions pairs :perms/create-queries table-id->db-id)]
+      (perms/set-database-permissions! (into []
+                                             (comp (filter #(= :query-builder-and-native (pair->value %)))
+                                                   (map (fn [[group-id table-id]] [group-id (table-id->db-id table-id)])))
+                                             pairs)
+                                       :perms/create-queries
+                                       :query-builder)))
   rows)
 
 (mu/defn create-sandboxes! :- [:sequential ::sandbox.schema/sandbox]
@@ -332,13 +349,19 @@
   - a new Card's columns match the Table of the Sandbox
   - the Sandbox keeps its Table and its group"
   [updates id->stored]
-  (doseq [{id :id :as row} updates
-          :let [before  (id->stored id)
-                changes (dissoc row :id)]
-          :when before]
-    (when (and (contains? changes :card_id) (not= (:card_id changes) (:card_id before)))
-      (check-columns-match-table (merge before changes)))
-    (t2.before-update/before-update :model/Sandbox (merge before changes))))
+  (let [card-changed? (fn [{id :id :as row}]
+                        (when-let [before (id->stored id)]
+                          (and (contains? row :card_id) (not= (:card_id row) (:card_id before)))))
+        inputs        (columns-check-inputs (for [{id :id :as row} updates
+                                                  :when (card-changed? row)]
+                                              (merge (id->stored id) (dissoc row :id))))]
+    (doseq [{id :id :as row} updates
+            :let [before  (id->stored id)
+                  changes (dissoc row :id)]
+            :when before]
+      (when (card-changed? row)
+        (check-sandbox-columns inputs (merge before changes)))
+      (t2.before-update/before-update :model/Sandbox (merge before changes)))))
 
 (mu/defn update-sandboxes! :- :nil
   "Apply `updates`, each the id of a Sandbox and the columns to set, in one transaction, publishing their update event;

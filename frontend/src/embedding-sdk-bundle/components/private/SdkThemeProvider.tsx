@@ -1,5 +1,3 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
-import { Global } from "@emotion/react";
 import { useContext, useId, useMemo } from "react";
 
 import { UnsupportedReactVersionError } from "embedding-sdk-bundle/components/private/UnsupportedReactVersionError/UnsupportedReactVersionError";
@@ -15,6 +13,7 @@ import {
 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
+import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -134,5 +133,5 @@ function GlobalSdkCssVariables({
     });
   }, [theme, font, whitelabelColors, forceDynamicBrandRamp]);
 
-  return <Global styles={styles} />;
+  return <GlobalStyleSheet styles={styles} />;
 }

@@ -27,7 +27,7 @@ export function SegmentList({ table }: SegmentListProps) {
       segmentId,
     });
   const canCreateSegment = useSelector((state) =>
-    getUserCanWriteSegments(state, table.is_published),
+    getUserCanWriteSegments(state, table.collection != null),
   );
 
   return (

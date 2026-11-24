@@ -23,5 +23,4 @@
   update-pulses!]
  [metabase.pulse.update-alerts
   card-change-invalidates-alerts?
-  alerts-of-card-being-changed
   notify-alerts-deleted!])

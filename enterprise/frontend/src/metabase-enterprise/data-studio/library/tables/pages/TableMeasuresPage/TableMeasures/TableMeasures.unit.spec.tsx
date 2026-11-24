@@ -10,6 +10,7 @@ import type {
   TokenFeatures,
 } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockTable,
   createMockTokenFeatures,
   createMockUser,
@@ -28,7 +29,7 @@ const setup = ({ isAdmin = true, remoteSyncType, table }: SetupOpts = {}) => {
     id: 1,
     db_id: 1,
     schema: "PUBLIC",
-    is_published: true,
+    collection: createMockCollection(),
     ...table,
   });
 
@@ -86,7 +87,7 @@ describe("TablesMeasures", () => {
     it("is rendered when remote sync is set to read-only but table is not published", () => {
       setup({
         remoteSyncType: "read-only",
-        table: { is_published: false },
+        table: { collection: null },
       });
 
       expect(

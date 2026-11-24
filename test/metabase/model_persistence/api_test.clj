@@ -71,6 +71,16 @@
                  :state   "persisted"}
                 (mt/user-http-request :crowberto :get 200 (format "persist/%d" (u/the-id pinfo)))))))))
 
+(deftest persisted-info-list-test
+  (with-setup! db
+    (mt/with-temp
+      [:model/Card          model {:database_id (u/the-id db), :type :model}
+       :model/PersistedInfo pinfo {:database_id (u/the-id db), :card_id (u/the-id model)}]
+      (testing "GET /api/persist lists the persisted models of the databases with persisted models"
+        (is (=? [{:id (u/the-id pinfo) :card_id (u/the-id model) :database_id (u/the-id db)}]
+                (filter #(= (u/the-id db) (:database_id %))
+                        (:data (mt/user-http-request :crowberto :get 200 "persist")))))))))
+
 (deftest persisted-info-by-card-id-test
   (with-setup! db
     (mt/with-temp

@@ -49,6 +49,7 @@
   check-allowed-to-create-card!
   check-allowed-to-run-query!
   check-allowed-to-update-card!
+  check-allowed-to-update-cards!
   check-card-can-be-saved!]
  [metabase.queries.metadata
   batch-fetch-card-metadata

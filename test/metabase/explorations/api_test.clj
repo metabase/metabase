@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.derived-perms :as derived-perms]
@@ -221,6 +222,38 @@
             ;; (every metric dimension appears in a group) no longer holds.
             (doseq [g groups]
               (is (every? #(contains? metric-dim-ids (:id %)) (:dimensions g))))))))))
+
+(deftest dimensions-first-read-statement-count-test
+  (testing "GET /api/exploration/dimensions heals metrics without dimensions with no more statements per metric than writing their dimensions, which differ from one metric to the next, takes"
+    (with-sample-metrics-archived
+      (mt/with-model-cleanup [:model/Card]
+        (let [query   (dissoc (let [mp (mt/metadata-provider)]
+                                (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                    (lib/aggregate (lib/count))))
+                              :lib/metadata)
+              create! (fn [n]
+                        (vec (for [i (range n)]
+                               (:id (mt/user-http-request :crowberto :post 200 "card"
+                                                          {:name                   (str "Heal metric " n "-" i)
+                                                           :type                   "metric"
+                                                           :display                "scalar"
+                                                           :visualization_settings {}
+                                                           :dataset_query          query})))))
+              clear!  (fn [ids] (t2/update! :model/Card :id [:in ids] {:dimensions nil :dimension_mappings nil}))
+              extra   (fn [user n]
+                        (let [ids     (create! n)
+                              healing (events.tu/real-statement-count!
+                                       #(mt/user-http-request user :get 200 "exploration/dimensions"))
+                              stored  (t2/select :model/Card :id [:in ids])
+                              _       (clear! ids)
+                              writing (events.tu/real-statement-count!
+                                       #(queries.card/update-cards! (mapv (fn [row] (select-keys row [:id :dimensions :dimension_mappings])) stored)))]
+                          [healing writing]))]
+          (doseq [user [:crowberto :rasta]]
+            (extra user 2)
+            (let [[small-heal small-write] (extra user 4)
+                  [large-heal large-write] (extra user 12)]
+              (is (<= (- large-heal small-heal) (- large-write small-write)) (str user)))))))))
 
 (deftest dimensions-search-by-name-test
   (testing "GET /api/exploration/dimensions filters case-insensitively by metric name"

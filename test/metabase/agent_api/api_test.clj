@@ -1773,6 +1773,52 @@
                                 {:dashcards [{:action "add" :card_id card-id}]})
           (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))
 
+(deftest update-dashboard-dashcards-statements-do-not-grow-with-mutations-test
+  (testing "adds to a shared dashboard and removals cost the same number of statements for any number of mutations"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+        (let [cards!     (fn [n]
+                           (vec (for [i (range n)]
+                                  (:id (first (t2/insert-returning-instances!
+                                               :model/Card
+                                               {:name                   (str "mutation card " i)
+                                                :creator_id             (mt/user->id :crowberto)
+                                                :database_id            (mt/id)
+                                                :collection_id          coll-id
+                                                :display                :line
+                                                :visualization_settings {}
+                                                :dataset_query          (orders-count-query)}))))))
+              dashboard! (fn [existing]
+                           (let [{dash-id :id} (first (t2/insert-returning-instances!
+                                                       :model/Dashboard
+                                                       {:name "Mutations" :creator_id (mt/user->id :crowberto)
+                                                        :collection_id coll-id :public_uuid (str (random-uuid))}))]
+                             (when (pos? existing)
+                               (t2/insert! :model/DashboardCard
+                                           (for [i (range existing)]
+                                             {:dashboard_id dash-id :row (* 4 i) :col 0 :size_x 4 :size_y 4
+                                              :visualization_settings {:virtual_card {:display "text"} :text "hello"}
+                                              :parameter_mappings []})))
+                             dash-id))
+              statements (fn [dash-id mutations]
+                           (t2/with-call-count [call-count]
+                             (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id) {:dashcards mutations})
+                             (call-count)))
+              adds       (fn [n] (mapv (fn [id] {:action "add" :card_id id}) (cards! n)))
+              removes    (fn [dash-id] (mapv (fn [id] {:action "remove" :dashcard_id id})
+                                             (t2/select-pks-vec :model/DashboardCard :dashboard_id dash-id)))]
+          (mt/with-model-cleanup [:model/Card :model/Dashboard]
+            (statements (dashboard! 0) (adds 2))
+            (let [small (statements (dashboard! 0) (adds 3))
+                  large (statements (dashboard! 0) (adds 9))]
+              (is (= small large)))
+            (let [small-dash (dashboard! 3)
+                  large-dash (dashboard! 9)
+                  small      (statements small-dash (removes small-dash))
+                  large      (statements large-dash (removes large-dash))]
+              (is (= small large)))))))))
+
 (deftest update-dashboard-dashcards-multi-add-test
   (testing "Add multiple cards in one call - each one autoplaced w/o overlap"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Multi-add"}
