@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
@@ -57,6 +59,7 @@ interface SetupOpts {
 }
 
 async function setup({ initialItem }: SetupOpts) {
+  const onNavigate = jest.fn();
   const { state } = setupSdkState({ currentUser: createMockUser() });
 
   setupCardEndpoints(TEST_CARD);
@@ -82,7 +85,7 @@ async function setup({ initialItem }: SetupOpts) {
   renderWithSDKProviders(
     <>
       <LocaleProbe />
-      <PreviewContent initialItem={initialItem} onNavigate={jest.fn()} />
+      <PreviewContent initialItem={initialItem} onNavigate={onNavigate} />
     </>,
     {
       componentProviderProps: { authConfig: createMockSdkConfig() },
@@ -91,6 +94,8 @@ async function setup({ initialItem }: SetupOpts) {
   );
 
   await screen.findByText("locale ready");
+
+  return { onNavigate };
 }
 
 function LocaleProbe() {
@@ -113,6 +118,17 @@ describe("PreviewContent", () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText("download icon")).toBeInTheDocument();
     expect(screen.queryByText("Save")).not.toBeInTheDocument();
+  });
+
+  it("offers Back to collections over an item that is open from the start, and goes to All collections", async () => {
+    const { onNavigate } = await setup({ initialItem: "question/7" });
+    await waitForLoaderToBeRemoved();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Back to collections/ }),
+    );
+
+    expect(onNavigate).toHaveBeenCalledWith("collection/all");
   });
 
   it("shows the not found page for a link that names no item", async () => {

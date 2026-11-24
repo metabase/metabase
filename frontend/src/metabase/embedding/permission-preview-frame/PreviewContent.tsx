@@ -8,6 +8,7 @@ import { InteractiveDashboard } from "embedding-sdk-bundle/components/public/das
 import type { MetabaseCollectionItem } from "embedding-sdk-bundle/types/collection";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
+  ALL_COLLECTIONS_ITEM,
   NOT_FOUND_ITEM,
   parseItem,
 } from "metabase/embedding/permission-preview/item";
@@ -32,13 +33,16 @@ export function PreviewContent({
 
   function handleBack() {
     const previousItems = history.slice(0, -1);
+    if (previousItems.length === 0) {
+      previousItems.push(ALL_COLLECTIONS_ITEM);
+    }
     setHistory(previousItems);
     onNavigate(previousItems[previousItems.length - 1]);
   }
 
   return (
     <Stack h="100vh" gap={0}>
-      {history.length > 1 && (
+      {item !== ALL_COLLECTIONS_ITEM && (
         <Box px="lg" pt="md">
           <Button
             variant="subtle"
