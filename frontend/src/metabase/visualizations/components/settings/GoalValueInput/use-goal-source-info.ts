@@ -2,15 +2,15 @@ import { useMemo } from "react";
 
 import { skipToken, useGetCardQuery, useGetMeasureQuery } from "metabase/api";
 import * as Urls from "metabase/urls";
-import type { ReferencedEntityKind } from "metabase/viz-core";
+import type { GoalSourceKind } from "metabase/viz-core";
 import type { GoalForeignEntityRef } from "metabase-types/api";
 
-import type { ColumnOption, ReferencedEntityInfo } from "./types";
+import type { ColumnOption, GoalSourceInfo } from "./types";
 import { getCardGoalColumnOptions } from "./utils";
 
-export function useReferencedEntity(
+export function useGoalSourceInfo(
   entity: GoalForeignEntityRef | null,
-): ReferencedEntityInfo {
+): GoalSourceInfo {
   const { data: card, isError: isCardError } = useGetCardQuery(
     entity?.type === "card" ? { id: entity.id, ignore_error: true } : skipToken,
   );
@@ -24,7 +24,7 @@ export function useReferencedEntity(
     entity != null &&
     !hasError &&
     (entity.type === "card" ? card == null : measure == null);
-  const kind: ReferencedEntityKind | undefined =
+  const kind: GoalSourceKind | undefined =
     entity?.type === "card" ? card?.type : entity?.type;
   const name = entity?.type === "card" ? card?.name : measure?.name;
   const url =

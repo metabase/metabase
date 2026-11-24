@@ -19,7 +19,7 @@ import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/Scal
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { getScalarValueFontSize } from "metabase/visualizations/components/ScalarValue/sizing";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
-import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
+import { useResolvedGoalValues } from "metabase/visualizations/hooks/use-resolved-goal-values";
 import {
   compactifyValue,
   getColor,
@@ -68,7 +68,7 @@ function ScalarComponent(
     useIsTruncated<HTMLHeadingElement>({ ignoreHeightTruncation: true });
 
   const {
-    series: [{ card, data }],
+    series: [{ data }],
     settings,
     visualizationIsClickable,
     onVisualizationClick,
@@ -83,8 +83,7 @@ function ScalarComponent(
   const scalarSegments = isMultiSeries
     ? undefined
     : settings["scalar.segments"];
-  const goalData = useResolvedGoalData(
-    card.dataset_query,
+  const goalData = useResolvedGoalValues(
     data,
     getGoalSegmentBounds(scalarSegments),
   );
@@ -144,7 +143,11 @@ function ScalarComponent(
     jsx: true,
   };
 
-  const segments = resolveOpenEndedGoalSegments(goalData.data, scalarSegments);
+  const segments = resolveOpenEndedGoalSegments(
+    data,
+    goalData.sourceResults,
+    scalarSegments,
+  );
   const hasGoalErrors = getGoalErrors(goalData.results).length > 0;
   const color = getColor(value, segments);
   const tooltipContent = getTooltipContent(segments, formatOptions);

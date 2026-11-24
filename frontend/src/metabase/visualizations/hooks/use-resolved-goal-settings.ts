@@ -10,9 +10,9 @@ import {
 import type { Card, DatasetData } from "metabase-types/api";
 
 import {
-  type ResolvedGoalData,
-  useResolvedGoalData,
-} from "./use-resolved-goal-data";
+  type ResolvedGoalValues,
+  useResolvedGoalValues,
+} from "./use-resolved-goal-values";
 
 /**
  * Resolves `graph.goal_value` to a number for the chart model. A goal that
@@ -20,19 +20,20 @@ import {
  * Returns the given settings untouched when there is nothing to resolve.
  */
 export function useResolvedGoalSettings(
-  card: Pick<Card, "display" | "dataset_query">,
+  card: Pick<Card, "display">,
   data: DatasetData,
   settings: ComputedVisualizationSettings,
 ): {
-  status: ResolvedGoalData["status"];
+  status: ResolvedGoalValues["status"];
   settings: ComputedVisualizationSettings;
   errors: GoalRefError[];
 } {
   const needsResolving = needsGraphGoalResolution(card.display, settings);
   const goal = needsResolving ? (settings["graph.goal_value"] ?? null) : null;
 
-  const goalData = useResolvedGoalData(card.dataset_query, data, [goal]);
-  const results = goalData.status === "resolved" ? goalData.results : [];
+  const resolvedGoal = useResolvedGoalValues(data, [goal]);
+  const results =
+    resolvedGoal.status === "resolved" ? resolvedGoal.results : [];
   const errors = getGoalErrors(results);
   const value = results[0]?.value ?? null;
 
@@ -41,5 +42,5 @@ export function useResolvedGoalSettings(
     [settings, needsResolving, value],
   );
 
-  return { status: goalData.status, settings: resolvedSettings, errors };
+  return { status: resolvedGoal.status, settings: resolvedSettings, errors };
 }

@@ -8,7 +8,7 @@ import type {
 import {
   createMockColumn,
   createMockDatasetData,
-  createMockReferencedEntitiesResults,
+  createMockGoalSourceResults,
 } from "metabase-types/api/mocks";
 
 import {
@@ -95,47 +95,46 @@ describe("getGoalValue", () => {
   });
 
   it("should return the number when goal is numeric", () => {
-    expect(getGoalValue(50, data)).toBe(50);
-    expect(getGoalValue(0, data)).toBe(0);
-    expect(getGoalValue(-10, data)).toBe(-10);
+    expect(getGoalValue(50, data, {})).toBe(50);
+    expect(getGoalValue(0, data, {})).toBe(0);
+    expect(getGoalValue(-10, data, {})).toBe(-10);
   });
 
   it("should return column value when goal is a column name", () => {
-    expect(getGoalValue("count", data)).toBe(10);
-    expect(getGoalValue("total", data)).toBe(100.5);
-    expect(getGoalValue("average", data)).toBe(25.0);
+    expect(getGoalValue("count", data, {})).toBe(10);
+    expect(getGoalValue("total", data, {})).toBe(100.5);
+    expect(getGoalValue("average", data, {})).toBe(25.0);
   });
 
   it("should return 0 for non-existent column names", () => {
-    expect(getGoalValue("nonexistent", data)).toBe(0);
+    expect(getGoalValue("nonexistent", data, {})).toBe(0);
   });
 
   it("should handle null column values", () => {
     const rowsWithNull: RowValues[] = [[10, null, "test", 25.0]];
-    expect(getGoalValue("total", { ...data, rows: rowsWithNull })).toBe(0);
+    expect(getGoalValue("total", { ...data, rows: rowsWithNull }, {})).toBe(0);
   });
 
   it("should return 0 for Infinity in columns", () => {
     const rowsWithInfinity: RowValues[] = [[10, "Infinity", "test", 25.0]];
-    expect(getGoalValue("total", { ...data, rows: rowsWithInfinity })).toBe(0);
+    expect(getGoalValue("total", { ...data, rows: rowsWithInfinity }, {})).toBe(
+      0,
+    );
   });
 
   it("should return 0 when no goal is set", () => {
-    expect(getGoalValue(null, data)).toBe(0);
-    expect(getGoalValue(undefined, data)).toBe(0);
+    expect(getGoalValue(null, data, {})).toBe(0);
+    expect(getGoalValue(undefined, data, {})).toBe(0);
   });
 
-  it("should return the value another entity answers", () => {
-    const answeredData = createMockDatasetData({
-      ...data,
-      referenced_entities: createMockReferencedEntitiesResults({ value: 250 }),
-    });
+  it("should return the value of another entity's result", () => {
+    const sourceResults = createMockGoalSourceResults({ value: 250 });
 
-    expect(getGoalValue(GOAL_REF, answeredData)).toBe(250);
+    expect(getGoalValue(GOAL_REF, data, sourceResults)).toBe(250);
   });
 
-  it("should return 0 for a reference to another entity that is unanswered", () => {
-    expect(getGoalValue(GOAL_REF, data)).toBe(0);
+  it("should return 0 for a reference to another entity without a result", () => {
+    expect(getGoalValue(GOAL_REF, data, {})).toBe(0);
   });
 });
 

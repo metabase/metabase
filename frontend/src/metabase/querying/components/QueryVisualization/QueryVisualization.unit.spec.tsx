@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadataFromState } from "__support__/metadata";
+import { setupGoalSourceResultsEndpoint } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen, within } from "__support__/ui";
@@ -12,15 +13,15 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   Dataset,
-  DatasetData,
-  VisualizationSettings,
+  GoalForeignColumnRef,
+  GoalSourceResults,
 } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
-  createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
+  createMockFailedGoalSourceResult,
+  createMockGoalSourceResult,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -39,47 +40,51 @@ const state = createMockState({
 });
 const metadata = createMockMetadataFromState(state);
 
-const GOAL_SETTINGS: VisualizationSettings = {
-  "graph.dimensions": ["month"],
-  "graph.metrics": ["count"],
-  "graph.show_goal": true,
-  "graph.goal_value": { type: "card", id: 9, column: "goal" },
+const FAILING_GOAL: GoalForeignColumnRef = {
+  type: "card",
+  id: 9,
+  column: "goal",
+};
+const RESOLVING_GOAL: GoalForeignColumnRef = {
+  type: "card",
+  id: 10,
+  column: "goal",
 };
 
-const ANSWERED = createMockReferencedEntitiesResults({
-  column: "goal",
-  value: 250,
-});
+const GOAL_SOURCE_RESULTS: GoalSourceResults = {
+  card: {
+    [FAILING_GOAL.id]: createMockFailedGoalSourceResult(),
+    [RESOLVING_GOAL.id]: createMockGoalSourceResult({
+      column: "goal",
+      value: 250,
+    }),
+  },
+};
 
 const GOAL_WARNING = "Couldn't get the goal value. Click to open settings.";
 const TRUNCATION_WARNING = "Data truncated to 2 rows.";
 const NEGATIVE_COLOR = "var(--mantine-color-feedback-negative-text)";
 
-type ResultOpts = {
-  referencedEntities?: DatasetData["referenced_entities"];
+type SetupOpts = {
+  canOpenChartSettings?: boolean;
+  goal: GoalForeignColumnRef;
   rowsTruncated?: number;
 };
 
-type SetupOpts = ResultOpts & {
-  canOpenChartSettings?: boolean;
-};
-
 async function setup({
-  referencedEntities,
-  rowsTruncated,
   canOpenChartSettings = true,
-}: SetupOpts = {}) {
+  goal,
+  rowsTruncated,
+}: SetupOpts) {
+  setupGoalSourceResultsEndpoint(GOAL_SOURCE_RESULTS);
   const onOpenChartSettings = jest.fn<void, Parameters<OnOpenChartSettings>>();
-  const question = new Question(
-    {
-      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
-      display: "line",
-      visualization_settings: GOAL_SETTINGS,
-    },
-    metadata,
-  );
 
-  function getVisualization(result: Dataset) {
+  function getVisualization(
+    result: Dataset,
+    currentGoal: GoalForeignColumnRef,
+  ) {
+    const question = createQuestion(currentGoal);
+
     return (
       <QueryVisualization
         question={question}
@@ -94,16 +99,21 @@ async function setup({
 
   jest.useFakeTimers({ advanceTimers: true });
   const { rerender } = renderWithProviders(
-    getVisualization(createResult({ referencedEntities, rowsTruncated })),
+    getVisualization(createResult({ rowsTruncated }), goal),
   );
-  await waitForChartSize();
+  await waitForChart();
 
   async function rerenderWithResult(result: Dataset) {
-    rerender(getVisualization(result));
+    rerender(getVisualization(result, goal));
     await waitForChartSize();
   }
 
-  return { onOpenChartSettings, rerenderWithResult };
+  async function rerenderWithGoal(newGoal: GoalForeignColumnRef) {
+    rerender(getVisualization(createResult({ rowsTruncated }), newGoal));
+    await waitForChart();
+  }
+
+  return { onOpenChartSettings, rerenderWithGoal, rerenderWithResult };
 }
 
 describe("QueryVisualization", () => {
@@ -143,7 +153,7 @@ describe("QueryVisualization", () => {
 
   it("shows a red warning that opens the display settings when the goal value cannot be resolved", async () => {
     const { onOpenChartSettings } = await setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
+      goal: FAILING_GOAL,
     });
 
     const warning = getWarningsButton();
@@ -160,7 +170,7 @@ describe("QueryVisualization", () => {
 
   it("combines the goal warning with other warnings in one red icon", async () => {
     await setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
+      goal: FAILING_GOAL,
       rowsTruncated: 2,
     });
 
@@ -176,7 +186,7 @@ describe("QueryVisualization", () => {
 
   it("shows other warnings in a gray icon that opens nothing when the goal value resolves", async () => {
     await setup({
-      referencedEntities: ANSWERED,
+      goal: RESOLVING_GOAL,
       rowsTruncated: 2,
     });
 
@@ -190,13 +200,13 @@ describe("QueryVisualization", () => {
     expect(within(tooltip).queryByText(GOAL_WARNING)).not.toBeInTheDocument();
   });
 
-  it("hides the goal warning once the goal value resolves", async () => {
-    const { rerenderWithResult } = await setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
+  it("hides the goal warning once a goal that resolves is picked", async () => {
+    const { rerenderWithGoal } = await setup({
+      goal: FAILING_GOAL,
     });
     expect(getWarningsButton()).toBeInTheDocument();
 
-    await rerenderWithResult(createResult({ referencedEntities: ANSWERED }));
+    await rerenderWithGoal(RESOLVING_GOAL);
 
     expect(screen.getByText("Jan")).toBeInTheDocument();
     expect(queryWarningIcon()).not.toBeInTheDocument();
@@ -204,7 +214,7 @@ describe("QueryVisualization", () => {
 
   it("hides the goal warning when the query fails and the chart goes away", async () => {
     const { rerenderWithResult } = await setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
+      goal: FAILING_GOAL,
     });
     expect(getWarningsButton()).toBeInTheDocument();
 
@@ -215,7 +225,7 @@ describe("QueryVisualization", () => {
   });
 
   it("shows no warning when the goal value resolves", async () => {
-    await setup({ referencedEntities: ANSWERED });
+    await setup({ goal: RESOLVING_GOAL });
 
     expect(screen.getByText("Jan")).toBeInTheDocument();
     expect(queryWarningIcon()).not.toBeInTheDocument();
@@ -223,7 +233,7 @@ describe("QueryVisualization", () => {
 
   it("shows no goal warning when the chart settings cannot be opened", async () => {
     await setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
+      goal: FAILING_GOAL,
       canOpenChartSettings: false,
     });
 
@@ -259,7 +269,23 @@ function setupWithoutResult({
   );
 }
 
-function createResult({ referencedEntities, rowsTruncated }: ResultOpts = {}) {
+function createQuestion(goal: GoalForeignColumnRef) {
+  return new Question(
+    {
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+      display: "line",
+      visualization_settings: {
+        "graph.dimensions": ["month"],
+        "graph.metrics": ["count"],
+        "graph.show_goal": true,
+        "graph.goal_value": goal,
+      },
+    },
+    metadata,
+  );
+}
+
+function createResult({ rowsTruncated }: { rowsTruncated?: number } = {}) {
   return createMockDataset({
     data: createMockDatasetData({
       cols: [
@@ -270,10 +296,15 @@ function createResult({ referencedEntities, rowsTruncated }: ResultOpts = {}) {
         ["Jan", 1],
         ["Feb", 2],
       ],
-      referenced_entities: referencedEntities,
       rows_truncated: rowsTruncated,
     }),
   });
+}
+
+// the chart waits for its goal source results
+async function waitForChart() {
+  await waitForChartSize();
+  await screen.findByText("Jan");
 }
 
 // ExplicitSize sets the chart dimensions after mounting

@@ -6,6 +6,8 @@ import fetchMock from "fetch-mock";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import {
+  setupCardEndpoints,
+  setupGoalSourceResultsEndpoint,
   setupLastDownloadFormatEndpoints,
   setupTimelinesEndpoints,
 } from "__support__/server-mocks";
@@ -57,6 +59,7 @@ import {
   createMockDataset,
   createMockDatasetData,
   createMockDatetimeColumn,
+  createMockGoalSourceResults,
   createMockHeadingDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
@@ -1445,6 +1448,57 @@ describe("DashCard", () => {
       expect(
         screen.getByLabelText("Show visualization options"),
       ).toBeInTheDocument();
+    });
+
+    describe("dynamic goals", () => {
+      beforeAll(() => loadVisualizationComponents(["progress"]));
+
+      it("reuses the dashcard's goal source results in the visualization options preview", async () => {
+        const user = userEvent.setup({
+          advanceTimers: jest.advanceTimersByTime,
+        });
+        setupCardEndpoints(createMockCard({ id: 9, name: "Goal source" }));
+        setupGoalSourceResultsEndpoint(
+          createMockGoalSourceResults({ id: 9, value: 250 }),
+        );
+        const progressDashcard = createMockDashboardCard({
+          card: createMockCard({
+            display: "progress",
+            visualization_settings: {
+              "progress.goal": { type: "card", id: 9, column: "goal" },
+            },
+          }),
+        });
+        setup({
+          dashboard: { ...testDashboard, dashcards: [progressDashcard] },
+          dashcard: progressDashcard,
+          dashcardData: {
+            [progressDashcard.id]: {
+              [progressDashcard.card.id]: createMockDataset({
+                data: createMockDatasetData({
+                  cols: [createMockNumericColumn({ name: "count" })],
+                  rows: [[50]],
+                }),
+              }),
+            },
+          },
+          isEditing: true,
+        });
+        expect(await screen.findByText("Goal 250")).toBeInTheDocument();
+
+        await user.click(screen.getByLabelText("Show visualization options"));
+
+        await screen.findByTestId("chartsettings-sidebar");
+        expect(await screen.findAllByText("Goal 250")).toHaveLength(2);
+        const goalSourceCalls = fetchMock.callHistory.calls(
+          "path:/api/dynamic-goal/values",
+        );
+        expect(goalSourceCalls).toHaveLength(1);
+        expect(await goalSourceCalls[0].request?.json()).toEqual({
+          sources: [{ type: "card", id: 9 }],
+          dashboard_id: testDashboard.id,
+        });
+      });
     });
 
     it("should show visualization options, but no visualizer or edit actions, for text cards", async () => {

@@ -1,13 +1,8 @@
-import type {
-  DatasetData,
-  RawSeries,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { RawSeries, VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
-  createMockFailedReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -43,7 +38,6 @@ describe("ROW_CHART_DEFINITION", () => {
         setting?.getProps?.(series, SETTINGS, jest.fn(), {}, jest.fn()),
       ).toEqual({
         data: series[0].data,
-        datasetQuery: series[0].card.dataset_query,
         display: "row",
         formatOptions: expect.any(Object),
         showSelfColumns: false,
@@ -52,21 +46,19 @@ describe("ROW_CHART_DEFINITION", () => {
   });
 
   describe("checkRenderable", () => {
-    it("renders when the referenced query failed", () => {
-      const series = createSeries({
-        referenced_entities: createMockFailedReferencedEntitiesResults(),
-      });
+    it("renders with a goal that reads another entity", () => {
+      const series = createSeries();
 
       expect(() => checkRenderable(series, SETTINGS)).not.toThrow();
     });
   });
 });
 
-function createSeries(data: Partial<DatasetData> = {}): RawSeries {
+function createSeries(): RawSeries {
   return [
     createMockSingleSeries(
       createMockCard({ display: "row", visualization_settings: SETTINGS }),
-      { data: createMockDatasetData({ cols: COLS, rows: ROWS, ...data }) },
+      { data: createMockDatasetData({ cols: COLS, rows: ROWS }) },
     ),
   ];
 }

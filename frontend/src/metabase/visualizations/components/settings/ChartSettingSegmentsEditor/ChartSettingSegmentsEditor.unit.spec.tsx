@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  setupCardDataset,
   setupCardEndpoints,
+  setupGoalSourceResultsEndpoint,
   setupMeasureEndpoint,
 } from "__support__/server-mocks";
 import {
@@ -15,23 +15,22 @@ import {
 } from "__support__/ui";
 import type * as Analytics from "metabase/analytics";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
   ColumnSettings,
   DatasetData,
   GoalSegment,
+  GoalSourceResult,
+  GoalSourceResults,
   Measure,
-  ReferencedEntityResult,
 } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
-  createMockFailedReferencedEntityResult,
+  createMockFailedGoalSourceResult,
+  createMockGoalSourceResult,
   createMockMeasure,
-  createMockReferencedEntityResult,
 } from "metabase-types/api/mocks";
 
 import {
@@ -53,16 +52,18 @@ const DEFAULT_VALUE = [
 
 const CARD_ID = 9;
 const MEASURE_ID = 4;
-const DATASET_QUERY = Lib.createTestJsQuery(
-  SAMPLE_PROVIDER,
-  DEFAULT_TEST_QUERY,
-);
+const CARD_GOAL_SOURCE_RESULTS: GoalSourceResults = {
+  card: {
+    [CARD_ID]: createMockGoalSourceResult({ column: "total", value: 250 }),
+  },
+};
 
 type SetupOpts = {
   canRemoveAll?: boolean;
   card?: Card;
   data?: DatasetData;
   formatOptions?: ColumnSettings;
+  goalSourceResults?: GoalSourceResults | number;
   measure?: Measure;
   value?: GoalSegment[];
 };
@@ -72,11 +73,15 @@ function setup({
   card = createMockCard({ id: CARD_ID, name: "Orders" }),
   data,
   formatOptions,
+  goalSourceResults,
   measure = createMockMeasure({ id: MEASURE_ID, name: "Revenue" }),
   value = DEFAULT_VALUE,
 }: SetupOpts = {}) {
   setupCardEndpoints(card);
   setupMeasureEndpoint(measure);
+  if (goalSourceResults != null) {
+    setupGoalSourceResultsEndpoint(goalSourceResults);
+  }
 
   const onChange = jest.fn();
 
@@ -84,7 +89,6 @@ function setup({
     <ChartSettingSegmentsEditor
       canRemoveAll={canRemoveAll}
       data={data}
-      datasetQuery={DATASET_QUERY}
       display="gauge"
       formatOptions={formatOptions}
       value={value}
@@ -176,14 +180,14 @@ describe("ChartSettingSegmentsEditor", () => {
       {
         type: "card",
         id: CARD_ID,
-        createReferencedEntities: (result: ReferencedEntityResult) => ({
+        createGoalSourceResults: (result: GoalSourceResult) => ({
           card: { [CARD_ID]: result },
         }),
       },
       {
         type: "measure",
         id: MEASURE_ID,
-        createReferencedEntities: (result: ReferencedEntityResult) => ({
+        createGoalSourceResults: (result: GoalSourceResult) => ({
           measure: { [MEASURE_ID]: result },
         }),
       },
@@ -191,139 +195,79 @@ describe("ChartSettingSegmentsEditor", () => {
 
     describe.each(references)(
       "$type reference",
-      ({ type, id, createReferencedEntities }) => {
-        function setupReference(
-          column: string,
-          result: ReferencedEntityResult,
-        ) {
+      ({ type, id, createGoalSourceResults }) => {
+        function setupReference(column: string, result: GoalSourceResult) {
           return setup({
+            data,
+            goalSourceResults: createGoalSourceResults(result),
             value: [createMockSegment({ min: { type, id, column } })],
-            data: createMockDatasetData({
-              ...data,
-              referenced_entities: createReferencedEntities(result),
-            }),
           });
         }
 
-        it("reports a referenced query that failed without saying why", () => {
-          setupReference("total", createMockFailedReferencedEntityResult());
+        it("reports a goal source that failed without saying why", async () => {
+          setupReference("total", createMockFailedGoalSourceResult());
 
           expect(
-            screen.getByText("Couldn't load this value"),
+            await screen.findByText("Couldn't load this value"),
           ).toBeInTheDocument();
         });
 
-        it("reports a referenced value that isn't a number", () => {
+        it("reports a goal source value that isn't a number", async () => {
           setupReference(
             "total",
-            createMockReferencedEntityResult({
-              column: "total",
-              value: "nope",
+            createMockGoalSourceResult({ column: "total", value: "nope" }),
+          );
+
+          expect(
+            await screen.findByText("This value isn't a number"),
+          ).toBeInTheDocument();
+        });
+
+        it("surfaces the server's explanation for a goal source that failed", async () => {
+          setupReference(
+            "total",
+            createMockFailedGoalSourceResult({
+              error: "Goal source query returned 3 rows",
             }),
           );
 
           expect(
-            screen.getByText("This value isn't a number"),
+            await screen.findByText("Goal source query returned 3 rows"),
           ).toBeInTheDocument();
         });
 
-        it("surfaces the server's explanation for a referenced query that failed", () => {
+        it("shows the value of the goal source", async () => {
           setupReference(
             "total",
-            createMockFailedReferencedEntityResult({
-              error: "Referenced query returned 3 rows",
-            }),
+            createMockGoalSourceResult({ column: "total", value: 999 }),
           );
-
-          expect(
-            screen.getByText("Referenced query returned 3 rows"),
-          ).toBeInTheDocument();
-        });
-
-        it("resolves a reference the dataset can't answer by re-running the query with it attached", async () => {
-          setupCardDataset({
-            dataset: {
-              data: createMockDatasetData({
-                referenced_entities: createReferencedEntities(
-                  createMockReferencedEntityResult({
-                    column: "total",
-                    value: 999,
-                  }),
-                ),
-              }),
-            },
-          });
-          setup({
-            value: [createMockSegment({ min: { type, id, column: "total" } })],
-            data,
-          });
 
           const pill = screen.getByRole("button", {
             name: "Change value source",
           });
           expect(await within(pill).findByText("999")).toBeInTheDocument();
           expect(screen.queryByText(/Couldn't load/)).not.toBeInTheDocument();
-        });
-
-        it("resolves a column the dataset predates from the fresh answer", async () => {
-          setupCardDataset({
-            dataset: {
-              data: createMockDatasetData({
-                referenced_entities: createReferencedEntities({
-                  status: "completed",
-                  data: {
-                    cols: [
-                      createMockColumn({ name: "total" }),
-                      createMockColumn({ name: "avg" }),
-                    ],
-                    rows: [[250, 12]],
-                  },
-                }),
-              }),
-            },
-          });
-          setupReference(
-            "avg",
-            createMockReferencedEntityResult({ column: "total", value: 250 }),
+          expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(
+            0,
           );
-
-          const pill = screen.getByRole("button", {
-            name: "Change value source",
-          });
-          expect(await within(pill).findByText("12")).toBeInTheDocument();
-          expect(
-            screen.queryByText(/no longer exists/),
-          ).not.toBeInTheDocument();
         });
 
-        it("reports a referenced column that no longer exists", async () => {
-          setupCardDataset({
-            dataset: {
-              data: createMockDatasetData({
-                referenced_entities: createReferencedEntities(
-                  createMockReferencedEntityResult({
-                    column: "total",
-                    value: 250,
-                  }),
-                ),
-              }),
-            },
-          });
-          setup({
-            value: [createMockSegment({ min: { type, id, column: "gone" } })],
-            data,
-          });
+        it("reports a goal source column that no longer exists", async () => {
+          setupReference(
+            "gone",
+            createMockGoalSourceResult({ column: "total", value: 250 }),
+          );
 
           expect(
             await screen.findByText("This column no longer exists"),
           ).toBeInTheDocument();
         });
 
-        it("reports a failure instead of spinning forever when the resolving query fails", async () => {
-          fetchMock.post("path:/api/dataset", 500);
+        it("reports a failure instead of spinning forever when fetching the goal sources fails", async () => {
           setup({
-            value: [createMockSegment({ min: { type, id, column: "total" } })],
             data,
+            goalSourceResults: 500,
+            value: [createMockSegment({ min: { type, id, column: "total" } })],
           });
 
           expect(
@@ -334,50 +278,49 @@ describe("ChartSettingSegmentsEditor", () => {
     );
   });
 
-  it("collapses sibling bound requests into one query for all unanswered references", async () => {
-    setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          referenced_entities: {
-            card: {
-              [CARD_ID]: createMockReferencedEntityResult({
-                column: "total",
-                value: 250,
-              }),
-            },
-            measure: {
-              [MEASURE_ID]: createMockReferencedEntityResult({
-                column: "revenue",
-                value: 999,
-              }),
-            },
-          },
-        }),
-      },
-    });
+  it("fetches the goal sources of every bound in one request", async () => {
     setup({
-      value: [
-        createMockSegment({
-          min: { type: "card", id: CARD_ID, column: "total" },
-          max: { type: "measure", id: MEASURE_ID, column: "revenue" },
-        }),
-      ],
       data: createMockDatasetData({
         cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
         rows: [[10]],
       }),
+      goalSourceResults: {
+        card: {
+          [CARD_ID]: createMockGoalSourceResult({
+            column: "total",
+            value: 250,
+          }),
+        },
+        measure: {
+          [MEASURE_ID]: createMockGoalSourceResult({
+            column: "revenue",
+            value: 999,
+          }),
+        },
+      },
+      value: [
+        createMockSegment({
+          min: { type: "measure", id: MEASURE_ID, column: "revenue" },
+          max: { type: "card", id: CARD_ID, column: "total" },
+        }),
+        createMockSegment({
+          min: { type: "card", id: CARD_ID, column: "total" },
+          max: 300,
+        }),
+      ],
     });
 
     const pills = screen.getAllByRole("button", {
       name: "Change value source",
     });
-    expect(await within(pills[0]).findByText("250")).toBeInTheDocument();
-    expect(await within(pills[1]).findByText("999")).toBeInTheDocument();
+    expect(await within(pills[0]).findByText("999")).toBeInTheDocument();
+    expect(await within(pills[1]).findByText("250")).toBeInTheDocument();
+    expect(await within(pills[2]).findByText("250")).toBeInTheDocument();
 
-    const calls = fetchMock.callHistory.calls("path:/api/dataset");
+    const calls = fetchMock.callHistory.calls("path:/api/dynamic-goal/values");
     expect(calls).toHaveLength(1);
-    expect(await calls[0].request?.json()).toMatchObject({
-      referenced_entities: [
+    expect(await calls[0].request?.json()).toEqual({
+      sources: [
         { type: "card", id: CARD_ID },
         { type: "measure", id: MEASURE_ID },
       ],
@@ -493,15 +436,8 @@ describe("ChartSettingSegmentsEditor", () => {
       data: createMockDatasetData({
         cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
         rows: [[10]],
-        referenced_entities: {
-          card: {
-            [CARD_ID]: createMockReferencedEntityResult({
-              column: "total",
-              value: 250,
-            }),
-          },
-        },
       }),
+      goalSourceResults: CARD_GOAL_SOURCE_RESULTS,
       value: [dynamicMaxSegment],
     });
 
@@ -578,14 +514,6 @@ describe("ChartSettingSegmentsEditor", () => {
     const data = createMockDatasetData({
       cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
       rows: [[10]],
-      referenced_entities: {
-        card: {
-          [CARD_ID]: createMockReferencedEntityResult({
-            column: "total",
-            value: 250,
-          }),
-        },
-      },
     });
     const value = [
       createMockSegment({
@@ -603,6 +531,7 @@ describe("ChartSettingSegmentsEditor", () => {
       const { onChange } = setup({
         card: createMockCard({ id: CARD_ID, name: "Orders", type: "metric" }),
         data,
+        goalSourceResults: CARD_GOAL_SOURCE_RESULTS,
         value,
       });
 
@@ -631,7 +560,11 @@ describe("ChartSettingSegmentsEditor", () => {
     });
 
     it("does not track deleting a range with static bounds", async () => {
-      const { onChange } = setup({ data, value });
+      const { onChange } = setup({
+        data,
+        goalSourceResults: CARD_GOAL_SOURCE_RESULTS,
+        value,
+      });
 
       await userEvent.click(
         screen.getByRole("button", { name: "Remove range 2" }),

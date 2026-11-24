@@ -25,6 +25,28 @@ describe("PublicOrEmbeddedQuestion", () => {
     setupLastDownloadFormatEndpoints();
   });
 
+  it("fetches the goal source results of the question from its public goal values route", async () => {
+    fetchMock.get(`path:/api/public/card/${FAKE_UUID}/goal-values`, {});
+
+    await setupCommon({
+      card: {
+        display: "progress",
+        visualization_settings: {
+          "progress.goal": { type: "card", id: 9, column: "goal" },
+        },
+      },
+    });
+
+    expect(
+      fetchMock.callHistory.calls(
+        `path:/api/public/card/${FAKE_UUID}/goal-values`,
+      ),
+    ).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(0);
+  });
+
   it("should render data", async () => {
     await setupCommon();
     expect(await screen.findByText("John W.")).toBeInTheDocument();

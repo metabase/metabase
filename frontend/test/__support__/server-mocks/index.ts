@@ -23,6 +23,7 @@ export * from "./database";
 export * from "./dependencies";
 export * from "./dataset";
 export * from "./document";
+export * from "./dynamic-goal";
 export * from "./email";
 export * from "./embed";
 export * from "./field";

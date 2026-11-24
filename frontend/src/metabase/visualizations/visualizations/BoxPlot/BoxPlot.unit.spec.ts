@@ -1,11 +1,6 @@
-import type {
-  DatasetData,
-  RawSeries,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { RawSeries, VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
-  createMockFailedReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 import {
@@ -144,7 +139,6 @@ describe("BoxPlot", () => {
         setting?.getProps?.(series, GOAL_SETTINGS, jest.fn(), {}, jest.fn()),
       ).toEqual({
         data: series[0].data,
-        datasetQuery: series[0].card.dataset_query,
         display: "boxplot",
         formatOptions: expect.any(Object),
         showSelfColumns: false,
@@ -155,17 +149,15 @@ describe("BoxPlot", () => {
   describe("checkRenderable", () => {
     const { checkRenderable } = BOXPLOT_CHART_DEFINITION;
 
-    it("renders when the referenced query failed", () => {
-      const series = createGoalSeries({
-        referenced_entities: createMockFailedReferencedEntitiesResults(),
-      });
+    it("renders with a goal that reads another entity", () => {
+      const series = createGoalSeries();
 
       expect(() => checkRenderable(series, GOAL_SETTINGS)).not.toThrow();
     });
   });
 });
 
-function createGoalSeries(data: Partial<DatasetData> = {}): RawSeries {
+function createGoalSeries(): RawSeries {
   return [
     createMockSingleSeries(
       createMockCard({
@@ -179,7 +171,6 @@ function createGoalSeries(data: Partial<DatasetData> = {}): RawSeries {
             ["A", 10],
             ["A", 20],
           ],
-          ...data,
         }),
       },
     ),

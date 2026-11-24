@@ -24,23 +24,22 @@ import {
   trackDynamicGoalSet,
   trackDynamicGoalUnset,
 } from "metabase/visualizations/analytics";
-import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered-goal-value";
+import { useResolvedGoalValue } from "metabase/visualizations/hooks/use-resolved-goal-values";
 import {
-  type ReferencedEntityKind,
+  type GoalSourceKind,
   getGoalErrorMessage,
-  resolveGoalValue,
+  getGoalSources,
+  resolveSelfColumnValue,
 } from "metabase/viz-core";
 import type {
   CardId,
   ColumnSettings,
   DatasetData,
-  DatasetQuery,
   GoalForeignColumnRef,
   GoalForeignEntityRef,
+  GoalSourceType,
   GoalValue,
   MeasureId,
-  ReferencedEntity,
-  ReferencedEntityType,
   VisualizationDisplay,
 } from "metabase-types/api";
 import {
@@ -56,7 +55,7 @@ import { StaticGoalValueInput } from "./StaticGoalValueInput";
 import type { ColumnOption, PickedItem } from "./types";
 import { useDynamicGoalSource } from "./use-dynamic-goal-source";
 import { useEntityColumnValues } from "./use-entity-column-values";
-import { useReferencedEntity } from "./use-referenced-entity";
+import { useGoalSourceInfo } from "./use-goal-source-info";
 import { getCardGoalColumnOptions, getNumericColumnOptions } from "./utils";
 
 const ROOT_MENU_MIN_WIDTH = 225;
@@ -66,12 +65,11 @@ type MenuLevel = "root" | "self" | "entity";
 
 type PickedEntity = GoalForeignEntityRef & { name: string };
 
-type SoleColumn = { name: string; kind: ReferencedEntityKind };
+type SoleColumn = { name: string; kind: GoalSourceKind };
 
 export type GoalValueInputProps = {
   "aria-label"?: string;
   data: DatasetData;
-  datasetQuery: DatasetQuery | undefined;
   display: VisualizationDisplay;
   excludedSelfColumn?: string;
   /**
@@ -81,9 +79,10 @@ export type GoalValueInputProps = {
    * labels on the chart).
    */
   formatOptions?: ColumnSettings;
+  // Sources of all neighboring GoalValueInput instances, so they share one goal-resolving request.
+  goalSources?: GoalForeignEntityRef[];
   id: string;
   placeholder?: string;
-  referencedEntities?: ReferencedEntity[];
   showSelfColumns?: boolean;
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
@@ -92,13 +91,12 @@ export type GoalValueInputProps = {
 export const GoalValueInput = ({
   "aria-label": ariaLabel,
   data,
-  datasetQuery,
   display,
   excludedSelfColumn,
   formatOptions,
+  goalSources,
   id,
   placeholder,
-  referencedEntities,
   showSelfColumns = true,
   value,
   onChange,
@@ -127,24 +125,18 @@ export const GoalValueInput = ({
   const hasRef = foreignRef != null || isSelfRef;
 
   const entity: GoalForeignEntityRef | null = pickedEntity ?? foreignRef;
-  const entityInfo = useReferencedEntity(entity);
+  const entityInfo = useGoalSourceInfo(entity);
   const entityName = entityInfo.name ?? pickedEntity?.name;
-  const sourceInfo = useReferencedEntity(foreignRef);
+  const sourceInfo = useGoalSourceInfo(foreignRef);
   const currentSource = useDynamicGoalSource(value);
   const sourceUrl = isEmbedding() ? undefined : sourceInfo.url;
-  const resolveEntityColumnValue = useEntityColumnValues(
-    datasetQuery,
-    data,
-    entity,
-    {
-      enabled: menuLevel === "entity" && entityInfo.columns.length > 0,
-    },
-  );
+  const resolveEntityColumnValue = useEntityColumnValues(entity, {
+    enabled: menuLevel === "entity" && entityInfo.columns.length > 0,
+  });
 
-  const resolved = useAnsweredGoalValue({
+  const resolved = useResolvedGoalValue({
     data,
-    datasetQuery,
-    referencedEntities,
+    sources: goalSources ?? getGoalSources([value]),
     value,
   });
   const selfColumnLabel = isSelfRef
@@ -262,7 +254,7 @@ export const GoalValueInput = ({
 
   // Resolves with the column when entity only has 1 column - null otherwise
   const fetchSoleColumn = async (
-    type: ReferencedEntityType,
+    type: GoalSourceType,
     entityId: CardId | MeasureId,
   ): Promise<SoleColumn | null> => {
     try {
@@ -291,8 +283,7 @@ export const GoalValueInput = ({
       return;
     }
 
-    const type: ReferencedEntityType =
-      item.model === "measure" ? "measure" : "card";
+    const type: GoalSourceType = item.model === "measure" ? "measure" : "card";
     const pickToken = ++pickTokenRef.current;
 
     const soleColumn = await fetchSoleColumn(type, item.id);
@@ -423,7 +414,9 @@ export const GoalValueInput = ({
                   key={column.name}
                   formatOptions={formatOptions}
                   label={column.label}
-                  resolvedValue={resolveGoalValue(data, column.name).value}
+                  resolvedValue={
+                    resolveSelfColumnValue(data, column.name).value
+                  }
                   selected={value === column.name}
                   onClick={() => selectSelfColumn(column.name)}
                 />
@@ -498,7 +491,7 @@ function getPillTooltip({
   selfColumnLabel,
 }: {
   entityColumns: ColumnOption[];
-  entityKind: ReferencedEntityKind | undefined;
+  entityKind: GoalSourceKind | undefined;
   entityName: string | undefined;
   foreignRef: GoalForeignColumnRef | null;
   selfColumnLabel: string | null;

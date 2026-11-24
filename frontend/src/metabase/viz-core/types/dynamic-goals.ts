@@ -4,13 +4,9 @@ import type {
   CardType,
   DatasetData,
   MeasureId,
-  ReferencedEntityType,
 } from "metabase-types/api";
 
-export type GoalData = Pick<
-  DatasetData,
-  "cols" | "rows" | "referenced_entities"
->;
+export type GoalData = Pick<DatasetData, "cols" | "rows">;
 
 // A bound left empty stays null; at most one bound is null.
 export type ResolvedOpenEndedGoalSegment = {
@@ -25,7 +21,8 @@ export type ResolvedGoalSegment = ResolvedOpenEndedGoalSegment & {
   max: number;
 };
 
-export type ReferencedEntityKind = CardType | "measure";
+// Ideally should exclude "model" from CardType, but it would require type casting in multiple places
+export type GoalSourceKind = CardType | "measure";
 
 export type GoalRefErrorReason =
   | "query-failed"
@@ -37,14 +34,14 @@ export type GoalRefErrorReason =
 
 export type GoalRefError =
   | {
-      type?: Extract<ReferencedEntityType, "card">;
+      type?: "card";
       id?: CardId;
       column: string;
       reason: GoalRefErrorReason;
       message?: string;
     }
   | {
-      type?: Extract<ReferencedEntityType, "measure">;
+      type?: "measure";
       id?: MeasureId;
       column: string;
       reason: GoalRefErrorReason;
@@ -54,7 +51,7 @@ export type GoalRefError =
 export type GoalValueResult = {
   value: number | null;
   error?: GoalRefError;
-  isUnanswered?: boolean;
+  isLoading?: boolean;
 };
 
 export type GoalCard = {

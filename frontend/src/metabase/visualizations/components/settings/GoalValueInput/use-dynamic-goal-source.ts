@@ -5,7 +5,7 @@ import {
   isGoalSelfColumnRef,
 } from "metabase-types/guards";
 
-import { useReferencedEntity } from "./use-referenced-entity";
+import { useGoalSourceInfo } from "./use-goal-source-info";
 
 /**
  * The kind of source a dynamic goal value comes from, for analytics.
@@ -17,7 +17,7 @@ export function useDynamicGoalSource(
   value: GoalValue | null,
 ): DynamicGoalSource | null {
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
-  const { kind } = useReferencedEntity(foreignRef);
+  const { kind } = useGoalSourceInfo(foreignRef);
 
   if (foreignRef != null) {
     return kind ?? foreignRef.type;

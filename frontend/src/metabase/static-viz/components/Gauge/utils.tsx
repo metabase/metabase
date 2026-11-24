@@ -2,6 +2,7 @@ import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 import Color from "color";
 
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import { STATIC_VIZ_GOAL_SOURCE_RESULTS } from "metabase/static-viz/lib/resolve-goal-settings";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import { resolveColorFromCssVariable } from "metabase/ui/utils/colors";
@@ -172,6 +173,7 @@ export function resolveGaugeSegments(
 ): ResolvedGoalSegment[] {
   const openEndedSegments = resolveOpenEndedGoalSegments(
     data,
+    STATIC_VIZ_GOAL_SOURCE_RESULTS,
     segments,
     getColor,
   );

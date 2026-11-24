@@ -7,9 +7,8 @@ import { getSegmentColor } from "metabase/viz-core";
 import type {
   ColumnSettings,
   DatasetData,
-  DatasetQuery,
+  GoalForeignEntityRef,
   GoalSegment,
-  ReferencedEntity,
   VisualizationDisplay,
 } from "metabase-types/api";
 
@@ -22,11 +21,10 @@ type Props = {
   canRemove: boolean;
   colors: string[];
   data: DatasetData | undefined;
-  datasetQuery: DatasetQuery | undefined;
   display: VisualizationDisplay;
   formatOptions: ColumnSettings | undefined;
+  goalSources: GoalForeignEntityRef[];
   index: number;
-  referencedEntities: ReferencedEntity[];
   segment: GoalSegment;
   onChange: (changes: Partial<GoalSegment>) => void;
   onRemove: () => void;
@@ -36,11 +34,10 @@ export function SegmentEditor({
   canRemove,
   colors,
   data,
-  datasetQuery,
   display,
   formatOptions,
+  goalSources,
   index,
-  referencedEntities,
   segment,
   onChange,
   onRemove,
@@ -97,12 +94,11 @@ export function SegmentEditor({
         <SegmentBoundInput
           aria-label={t`Range ${index + 1} minimum`}
           data={data}
-          datasetQuery={datasetQuery}
           display={display}
           formatOptions={formatOptions}
+          goalSources={goalSources}
           id={`segment-min-${index}`}
           placeholder={t`Min`}
-          referencedEntities={referencedEntities}
           value={segment.min}
           onChange={(min) => onChange({ min })}
         />
@@ -114,12 +110,11 @@ export function SegmentEditor({
         <SegmentBoundInput
           aria-label={t`Range ${index + 1} maximum`}
           data={data}
-          datasetQuery={datasetQuery}
           display={display}
           formatOptions={formatOptions}
+          goalSources={goalSources}
           id={`segment-max-${index}`}
           placeholder={t`Max`}
-          referencedEntities={referencedEntities}
           value={segment.max}
           onChange={(max) => onChange({ max })}
         />
