@@ -55,8 +55,6 @@
   [select-fn table-ids limit]
   (into [] (take limit) (sort-by :id (app-db/select-batched select-fn table-ids))))
 
-;;; ------------------------------------------------ Fingerprints ------------------------------------------------
-
 (defn- base-types->descendants
   "Given a set of `base-types`, an expanded set including those types and all their descendants in the type
   hierarchy, as qualified strings so HoneySQL doesn't confuse them for columns."
@@ -67,9 +65,9 @@
         base-types))
 
 (defn- fingerprint-version-clauses
-  "Honey SQL `:or` disjuncts, one per fingerprint version older than the latest that hasn't already been superseded,
-  matching Fields whose `base_type` (or a descendant) was re-fingerprinted at that version. `version->base-types` is
-  a map of fingerprint version to the set of base types re-fingerprinted at that version."
+  "HoneySQL `:or` disjuncts, one per fingerprint version of `version->base-types` (a map of fingerprint version to the
+  base types re-fingerprinted at it) that is older than the latest and not yet superseded, each matching the Fields
+  whose `base_type`, or an ancestor of it, was re-fingerprinted at that version."
   [version->base-types]
   (let [versions+base-types (reverse (sort-by first (seq version->base-types)))
         already-seen        (atom #{})]
@@ -94,7 +92,7 @@
                              (u/qualified-name :type/*))]])
 
 (defn- needs-fingerprint-update-clause
-  "Honey SQL clause matching Fields whose fingerprint needs to be re-calculated: active, non-`PK`/no-semantic-type,
+  "HoneySQL clause matching Fields whose fingerprint needs to be re-calculated: active, non-`PK`/no-semantic-type,
   non-retired/sensitive-visibility, non-fingerprint-unsupported `base_type`, and, unless `refingerprint?`, without a
   fingerprint or whose fingerprint version can be updated per `version->base-types` (a map of fingerprint version to
   the set of base types that should be re-fingerprinted at that version)."
@@ -107,8 +105,8 @@
   [:map-of :int [:set [:or :keyword :string]]])
 
 (mu/defn fingerprint-field-counts :- ::field-counts
-  "The number of Fields whose fingerprint needs to be re-calculated of each of the Tables with `table-ids` that has
-  any. See [[needs-fingerprint-update-clause]] for the matching criteria."
+  "The number of Fields that [[needs-fingerprint-update-clause]] matches of each of the Tables with `table-ids` that
+  has any, by Table id."
   [table-ids           :- ::table-ids
    refingerprint?      :- :boolean
    version->base-types :- ::version->base-types]
@@ -117,8 +115,8 @@
                                             (needs-fingerprint-update-clause refingerprint? version->base-types))))
 
 (mu/defn fields-to-fingerprint :- [:sequential (ms/InstanceOf :model/Field)]
-  "The first `limit` Fields by id of each of the Tables with `table-ids` whose fingerprint needs to be re-calculated.
-  See [[needs-fingerprint-update-clause]] for the matching criteria."
+  "The first `limit` Fields by id that [[needs-fingerprint-update-clause]] matches of each of the Tables with
+  `table-ids`."
   [table-ids           :- ::table-ids
    refingerprint?      :- :boolean
    version->base-types :- ::version->base-types
@@ -129,11 +127,9 @@
                                   (needs-fingerprint-update-clause refingerprint? version->base-types))
                          limit))
 
-;;; ------------------------------------------------ Classification ------------------------------------------------
-
 (mu/defn incomplete-analysis-fields :- [:sequential (ms/InstanceOf :model/Field)]
-  "Up to `limit` active, visible Fields of the Tables with `table-ids` fingerprinted at `fingerprint-version` but not yet
-  analyzed, lowest id first, after `after-id`."
+  "Up to `limit` active, visible Fields of the Tables with `table-ids` fingerprinted at `fingerprint-version` but not
+  yet analyzed, lowest id first, after `after-id`."
   [table-ids           :- ::table-ids
    fingerprint-version :- :int
    after-id            :- [:int {:min 0}]
@@ -161,10 +157,8 @@
                                             [:not-in :visibility_type ["sensitive" "retired"]]
                                             [:= :semantic_type (u/qualified-name :type/Name)])))
 
-;;; ------------------------------------------------ Field values ------------------------------------------------
-
 (defn- normal-fields-clause
-  "Honey SQL clause matching the active, normal-visibility Fields of the Tables with `table-ids`."
+  "HoneySQL clause matching the active, normal-visibility Fields of the Tables with `table-ids`."
   [table-ids]
   [:and
    [:in :table_id [:auto/param table-ids]]
@@ -181,8 +175,6 @@
   [table-ids :- ::table-ids
    limit     :- ms/PositiveInt]
   (first-fields-by-table table-ids normal-fields-clause limit))
-
-;;; ---------------------------------------------- Data sensitivity ----------------------------------------------
 
 (mu/defn data-sensitivity-fields :- [:sequential (ms/InstanceOf :model/Field)]
   "Up to `limit` active, non-retired Fields of the Tables with `table-ids` the data-sensitivity classifier still has to

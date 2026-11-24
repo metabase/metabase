@@ -214,8 +214,19 @@
   [select-fn ids]
   (into [] (mapcat (comp select-fn vec)) (partition-all select-partition-size (sequence (distinct) ids))))
 
+(defn select-batched-by-keys
+  "The rows `select-fn` returns for the map `m`, with the collection under each of its keys `ks` bound in partitions of
+  at most [[select-partition-size]], in one vector."
+  [select-fn m ks]
+  (if-let [[k & more] (seq ks)]
+    (if-let [values (seq (get m k))]
+      (select-batched #(select-batched-by-keys select-fn (assoc m k (set %)) more) values)
+      (recur select-fn m more))
+    (select-fn m)))
+
 (defn select-batched-map
-  "The entries of the maps `select-fn` returns for each partition of `ids`, as [[select-batched]] reads them, in one map."
+  "The entries of the maps `select-fn` returns for each partition of `ids`, as [[select-batched]] reads them, in one
+  map."
   [select-fn ids]
   (into {} (select-batched select-fn ids)))
 
@@ -266,7 +277,8 @@
 
 (defn insert-returning-instances!
   "Insert the `rows` of `model` with one statement for each set of columns they have, and return the new instances in
-  the order of `rows`, read back with one select; Toucan's function of this name returns them in any order."
+  the order of `rows`, read back through [[select-batched]]; Toucan's function of this name returns them in any
+  order."
   [model rows]
   (if (empty? rows)
     []

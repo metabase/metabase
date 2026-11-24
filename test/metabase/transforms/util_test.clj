@@ -834,8 +834,6 @@
             (is (nil? (:schema table))
                 "Table schema should remain nil when physical table isn't in default schema")))))))
 
-;;; ------------------------------------- Source readability of a list of transforms -------------------------------------
-
 (defn- matrix-row
   [i db-id query]
   {:name   (str "readability matrix " i)

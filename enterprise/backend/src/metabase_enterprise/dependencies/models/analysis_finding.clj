@@ -66,8 +66,8 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn upsert-analyses!
-  "Given the `result` and `finding-details` that `id->analysis` maps the ids of entities of `entity-type` to, upsert the
-  AnalysisFindings, with one statement for them and one delete and one insert for their errors."
+  "Given the `result` and `finding-details` that `id->analysis` maps the ids of entities of `entity-type` to, upsert
+  the AnalysisFindings and replace their errors, for all of them together."
   [entity-type  :- :keyword
    id->analysis :- [:map-of ms/PositiveInt [:map {:closed true}
                                             [:result          :boolean]

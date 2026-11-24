@@ -180,8 +180,8 @@
                                                     (lens-stamped-threads thread-ids))))))))
 
 (defn- exploration-ids-visible
-  "The subset of `exploration-ids` whose threads the current user sees the derived data of, from one read of their
-  threads and one gate call over all of them."
+  "The subset of `exploration-ids` whose threads the current user sees the derived data of, with their threads read
+  together and one gate call over all of them."
   [exploration-ids]
   (let [exploration-id->thread-ids (explorations.db/thread-ids-by-exploration-id exploration-ids)
         visible-thread-ids         (thread-ids-with-visible-derived-data (into #{} cat (vals exploration-id->thread-ids)))]
@@ -190,11 +190,10 @@
           exploration-ids)))
 
 (defn doc-content-visibility-fn
-  "A predicate that says whether the current user may see the content of a document, answered for all of `documents`
-  at once: a document owned by an exploration (the Summary) embeds verbatim result values, so its content follows the
-  derived-data visibility of the exploration's threads, and a document outside explorations is unaffected. Installed
-  via [[metabase.documents.core/register-doc-content-visibility-fn!]] at init. Reads nothing until it is first called,
-  and then reads the threads of all the explorations involved once."
+  "A predicate, installed with [[metabase.documents.core/register-doc-content-visibility-fn!]], of whether the current
+  user may see the content of one of `documents`: a Summary, which embeds result values, follows the derived-data
+  visibility of its Exploration's threads, read for all the Explorations together when it is first called, and any
+  other document is visible."
   [documents]
   (if api/*is-superuser?*
     (fn [document] (boolean (or (contains? document :exploration_id) (:id document))))
@@ -221,11 +220,6 @@
 
           :else
           false)))))
-
-(defn doc-content-visible-to-current-user?
-  "Whether the current user may see the content of `document`, as [[doc-content-visibility-fn]] answers for one."
-  [document]
-  ((doc-content-visibility-fn [document]) document))
 
 (defn gate-comment-contexts
   "Withhold `:context` from `comments` on `exploration-id` whose data the current user may not see.

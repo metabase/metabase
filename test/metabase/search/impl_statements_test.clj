@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- statements
-  "The number of app-DB statements `thunk` runs."
+  "The number of app DB statements `thunk` runs."
   [thunk]
   (t2/with-call-count [call-count]
     (thunk)

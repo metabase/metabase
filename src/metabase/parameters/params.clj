@@ -213,7 +213,7 @@
                         remove-dimensions-nonpublic-columns))))
 
 (defn- param-id->fields
-  "The map of Parameter ID -> Fields of `param-id->field-ids`, the Fields taken from `field-id->field`."
+  "The map of parameter id -> Fields of `param-id->field-ids`, the Fields taken from `field-id->field`."
   [param-id->field-ids field-id->field]
   (m/map-vals #(into [] (keep field-id->field) %) param-id->field-ids))
 

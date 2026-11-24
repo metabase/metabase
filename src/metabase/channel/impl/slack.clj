@@ -298,7 +298,7 @@
                                  ;; placeholder block so the remaining cards still deliver (#74007).
                                  (mapcat (fn [part]
                                            (try
-                                             (part->sections! all-params part (:timezone payload))
+                                             (part->sections! all-params part)
                                              (catch Throwable e
                                                (log/errorf "Error rendering dashboard subscription part for Slack; substituting error placeholder: %s" (ex-message e))
                                                [(text->markdown-section (str (tru "An error occurred while displaying this card.")))])))

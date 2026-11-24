@@ -194,8 +194,8 @@
   (insert-table! database table {:sample? (sync.db/database-sample? (:id database))}))
 
 (mu/defn- reactivation-changes :- :map
-  "The changes that mark an existing inactive Table active again, refreshing its cruft-dependent columns. `existing`
-  is the app-DB Table instance we already hold; `:sample?` is whether `database` is the Sample Database."
+  "The changes that mark `existing`, an inactive Table instance we already hold, active again and refresh its
+  cruft-dependent columns, where `:sample?` is whether `database` is the Sample Database."
   [database          :- i/DatabaseInstance
    existing          :- (ms/InstanceOf :model/Table)
    {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
@@ -207,7 +207,7 @@
                                                :data_source    :ingested)))
 
 (mu/defn- reactivate-tables!
-  "Mark the existing inactive Tables `existing`, app-DB Table instances we already hold, active again in one update,
+  "Mark the existing inactive Tables `existing`, Table instances we already hold, active again with one call,
   refreshing their cruft-dependent columns; `:sample?` is whether `database` is the Sample Database."
   [database :- i/DatabaseInstance
    existing :- [:sequential (ms/InstanceOf :model/Table)]
@@ -410,11 +410,9 @@
   archive-tables-threshold [-14 :day])
 
 (mu/defn- archive-tables! :- :int
-  "Mark tables that have been deactivated for longer than the configured threshold as archived
-  and suffixes their names. Skips tables with `transform_target = true` (provisional transform
-  output entries) since transforms still reference them by their original name. All of them are
-  written in one update, or one at a time when it fails, so that a name clash fails only its own
-  table. Returns the number of tables archived."
+  "Archive the Tables deactivated for longer than the configured threshold, suffixing their names and skipping
+  provisional transform targets, with one update call, or one Table at a time when it fails so that a name clash fails
+  only its own Table, and return the number archived."
   [database :- i/DatabaseInstance]
   (let [;; we use UTC offset time for suffix, may not match db time but
         ;; it doesn't matter much, the source of time truth is `archived_at`,

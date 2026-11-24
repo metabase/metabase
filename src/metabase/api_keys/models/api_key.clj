@@ -227,8 +227,8 @@
                           opts))))
 
 (defn- move-key-users!
-  "Make the User created for each key of `updates` that sets `::api-keys/group-id`, stored in `id->stored`, a member of
-  exactly All Users and that group, with one removal and one addition for all keys."
+  "Make the User created for each key of `updates` that sets `::api-keys/group-id`, stored in `id->stored`, a member
+  of exactly All Users and that group, removing and adding the memberships of all keys together."
   [updates id->stored]
   (when-let [moving (not-empty (filterv #(and (::api-keys/group-id %) (:user_id (id->stored (:id %)))) updates))]
     (let [all-users-id (u/the-id (perms/all-users-group))

@@ -112,33 +112,35 @@
         (throw (ex-info "Invalid re-derived result metadata" {:card-id id :error error})))
       metadata)))
 
-(mu/defn- store-result-metadata! :- :any
-  "Mark the entities directly depending on the Cards `card-id->update`, a map of Card id to its `:state` and re-derived
-  result metadata `:metadata`, stale, then, under the cards' row locks, store the metadata through the Card model of
-  those still in the state it was re-derived from with one call, or else mark them stale, so they are re-derived from
-  what a save or a run stored meanwhile."
+(mu/defn- store-result-metadata! :- :nil
+  "Lock the rows of the Cards `card-id->update`, a map of Card id to its `:state` and re-derived result metadata
+  `:metadata`, in the order of their ids, as a save locks its Card before its dependents, mark the entities directly
+  depending on them stale, then store the metadata through the Card model of those still in the state it was
+  re-derived from with one call, or else mark them stale, so they are re-derived from what a save or a run stored
+  meanwhile."
   [card-id->update :- [:map-of ::lib.schema.id/card [:map {:closed true}
                                                      [:state    ::dependencies.schema/card-state]
                                                      [:metadata ::lib.schema.metadata/card.result-metadata]]]]
   (let [card-ids (set (keys card-id->update))]
     (t2/with-transaction [_]
-      (models.result-metadata-status/mark-dependents-result-metadata-statuses-stale! :card card-ids)
-      (models.analysis-finding-status/mark-dependents-analysis-finding-statuses-stale! :card card-ids)
       (let [current           (dependencies.db/card-states (vec card-ids) true)
             {same true
              changed false} (group-by (fn [[card-id {:keys [state]}]] (= state (get current card-id)))
                                       card-id->update)]
+        (models.result-metadata-status/mark-dependents-result-metadata-statuses-stale! :card card-ids)
+        (models.analysis-finding-status/mark-dependents-analysis-finding-statuses-stale! :card card-ids)
         (when (seq same)
           (queries.card/update-cards! (mapv (fn [[card-id {:keys [metadata]}]]
                                               {:id card-id :result_metadata metadata :updated_at :updated_at})
                                             same)
                                       {:writer :sync}))
         (when (seq changed)
-          (models.result-metadata-status/mark-result-metadata-statuses-stale! {:card (set (map key changed))}))))))
+          (models.result-metadata-status/mark-result-metadata-statuses-stale! {:card (set (map key changed))}))))
+    nil))
 
 (mu/defn- rederived-card-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]
   "The re-derived result metadata of the Card `card`, or nil when it needs none."
-  [card :- [:maybe :map]]
+  [card :- [:maybe (ms/InstanceOf :model/Card)]]
   (lib-be/with-metadata-provider-cache
     (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
       (rederived-result-metadata card))))
@@ -155,10 +157,10 @@
     (throw e)))
 
 (mu/defn update-result-metadata! :- nat-int?
-  "Delete the statuses of deleted cards, then re-derive up to `batch-size` MBQL cards whose ResultMetadataStatus counts
-  a write, is missing or is outdated, clearing each one's `stale` count unless a write raised it meanwhile, or counting
-  its failure, returning how many statuses it took, deleted ones included. The re-derived metadata is stored together,
-  or for each card when that fails."
+  "Delete the statuses of deleted cards, then re-derive up to `batch-size` MBQL cards whose ResultMetadataStatus
+  counts a write, is missing or is outdated, clearing each one's `stale` count unless a write raised it meanwhile, or
+  counting its failure, returning how many statuses it took, deleted ones included, the re-derived metadata stored
+  together, or for each card when that fails."
   [batch-size :- ms/PositiveInt]
   (let [deleted-ids (dependencies.db/result-metadata-deleted-card-ids batch-size)
         statuses    (models.result-metadata-status/take-pending-result-metadata-statuses!

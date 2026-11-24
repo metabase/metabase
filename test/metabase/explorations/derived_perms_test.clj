@@ -350,9 +350,14 @@
 
 ;;; --------------------------------- Summary-document content gate ---------------------------------
 
+(defn- doc-content-visible-to-current-user?
+  "Whether the current user may see the content of `document`, as the visibility function answers for it alone."
+  [document]
+  ((derived-perms/doc-content-visibility-fn [document]) document))
+
 (defn- doc-content-visible? [document user-kw]
   (request/with-current-user (mt/user->id user-kw)
-    (derived-perms/doc-content-visible-to-current-user? document)))
+    (doc-content-visible-to-current-user? document)))
 
 (deftest doc-content-gate-does-not-fail-open-on-a-partial-select-test
   (testing "a Summary document whose exploration the viewer may not see"
@@ -406,7 +411,7 @@
 (defn- exploration-of-thread [thread-id]
   (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id))
 
-(deftest content-gate-answers-many-documents-as-one-at-a-time-test
+(deftest content-gate-answers-many-documents-as-one-by-one-test
   (testing "the gate answered for a list of Summary documents gives each the verdict it gets alone"
     (mt/with-no-data-perms-for-all-users!
       (let [group (perms-group/all-users)]
@@ -440,7 +445,7 @@
                              (mapv (derived-perms/doc-content-visibility-fn docs) docs)))
                       (is (= (mapv reference-content-visible? docs)
                              (mapv (derived-perms/doc-content-visibility-fn docs) docs)))
-                      (is (= (mapv derived-perms/doc-content-visible-to-current-user? docs)
+                      (is (= (mapv doc-content-visible-to-current-user? docs)
                              (mapv (derived-perms/doc-content-visibility-fn docs) docs)))
                       (testing "hydrated :can_read of all of them matches that of each alone"
                         (is (= (mapv #(mi/can-read? (first (t2/hydrate [%] :can_read))) docs)

@@ -350,7 +350,7 @@
   nil)
 
 (defenterprise hash-input-for-database-routing
-  "Returns a hash input that will be used for fields of the Database with `_database-id` subject to database routing"
+  "Returns a hash input that will be used for fields of the Database with `_database-id` subject to database routing."
   metabase-enterprise.database-routing.models
   [_database-id]
   nil)
@@ -481,18 +481,10 @@
         field-values))
 
 (defn field-values-change
-  "What persisting raw distinct values for a single field changes. Caller passes raw values fetched from the
-  warehouse; this function applies the in-memory cap via `limit-values`, detects whether the
-  warehouse-side row LIMIT fired (by counting raw values against `*distinct-limit*`), and
-  combines both signals into `:has_more_values`. Compares the result against `existing-fv` and
-  returns `{:result r}` with `r` one of `::fv-skipped`, `::fv-updated`, `::fv-created` or `::fv-deleted`, and the
-  `:delete` Field id, `:create` row or `:update` row that [[save-field-values-changes!]] writes.
-
-  - `existing-fv`: the current FieldValues row for this field, or `nil` if none exists.
-  - `raw-values`: raw distinct values from the warehouse (no pre-capping required).
-
-  Note that this only persists *Full* FieldValues. Advanced FieldValues for the same field are
-  deleted as a side effect of [[delete-field-values!]] when the capped value set is empty."
+  "What persisting `raw-values`, the raw distinct values of one Field from the warehouse, changes against
+  `existing-fv`, its full FieldValues or nil: `{:result r}` with `r` one of `::fv-skipped`, `::fv-updated`,
+  `::fv-created` or `::fv-deleted`, and the `:delete` Field id, `:create` row or `:update` row that
+  [[save-field-values-changes!]] writes."
   [field existing-fv raw-values]
   (let [field-name      (or (:name field) (:id field))
         row-cap-hit?    (>= (count raw-values) *distinct-limit*)
@@ -550,7 +542,8 @@
             (find-or-create-full-field-values! field_id has_more_values values)))))))
 
 (defn save-field-values-changes!
-  "Write `changes`, each what [[field-values-change]] returns for a Field, with one delete, one insert and one update."
+  "Write `changes`, each what [[field-values-change]] returns for a Field, with one delete call, one insert call and
+  one update call."
   [changes]
   (let [deletes (into [] (keep :delete) changes)
         creates (into [] (keep :create) changes)
@@ -759,15 +752,14 @@
                        {:before-delete #(events/publish-event! :event/field-values-delete (events/delete-event %))}))
 
 (mu/defn ids-of-fields :- [:sequential ms/PositiveInt]
-  "The ids of every FieldValues of the Fields with `field-ids`, read in batches of [[mdb/delete-partition-size]]."
+  "The ids of every FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (into [] (mapcat #(warehouse-schema.db/field-values-ids-of-fields (vec %))) (partition-all mdb/delete-partition-size field-ids)))
+  (warehouse-schema.db/field-values-ids-of-fields field-ids))
 
 (mu/defn ids-of-tables :- [:sequential ms/PositiveInt]
-  "The ids of the FieldValues of the Fields of the Tables with `table-ids`, read in batches of
-  [[mdb/delete-partition-size]]."
+  "The ids of the FieldValues of the Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (into [] (mapcat #(warehouse-schema.db/field-values-ids-of-tables (vec %))) (partition-all mdb/delete-partition-size table-ids)))
+  (warehouse-schema.db/field-values-ids-of-tables table-ids))
 
 (mu/defn ids-of-database :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of every Field of the Database with `database-id`."
@@ -777,17 +769,13 @@
 (mu/defn advanced-ids-of-fields :- [:sequential ms/PositiveInt]
   "The ids of the advanced FieldValues of the Fields with `field-ids`, which their full FieldValues replace."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (into []
-        (mapcat #(warehouse-schema.db/field-values-ids-of-types (vec %) advanced-field-values-types))
-        (partition-all mdb/delete-partition-size field-ids)))
+  (warehouse-schema.db/field-values-ids-of-types field-ids advanced-field-values-types))
 
 (mu/defn ids-by-field :- [:map-of ::lib.schema.id/field [:sequential ms/PositiveInt]]
-  "The ids of the FieldValues of each of the Fields with `field-ids` that has any, by Field id, read in batches of
-  [[mdb/delete-partition-size]]."
+  "The ids of the FieldValues of each of the Fields with `field-ids` that has any, by Field id."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (-> (group-by :field_id (into []
-                                (mapcat #(warehouse-schema.db/field-values-ids-and-field-ids (vec %)))
-                                (partition-all mdb/delete-partition-size field-ids)))
+  (-> (group-by :field_id (when (seq field-ids)
+                            (warehouse-schema.db/field-values-ids-and-field-ids field-ids)))
       (update-vals #(mapv :id %))))
 
 (mu/defn expired-advanced-ids-of-database :- [:sequential ms/PositiveInt]

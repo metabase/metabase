@@ -419,7 +419,7 @@
   (str/join \. (qualified-name-components field)))
 
 (defn field-id->database-id
-  "Return the ID of the Database this Field belongs to, read in one query."
+  "The id of the Database this Field belongs to, read in one query."
   [field-id]
   {:pre [(integer? field-id)]}
   (get (warehouse-schema.db/field-database-ids #{field-id}) field-id))
@@ -480,10 +480,9 @@
   (clear-for-deactivated-fields! :model/FieldUserSettings field-ids))
 
 (defn- fields-by-ids
-  "The Fields with `ids` by id, read in batches of [[mdb/delete-partition-size]] ids, so that any number of them stays
-  under the parameter limit of a statement."
+  "The Fields with `ids` by id."
   [ids]
-  (into {} (map #(warehouse-schema.db/fields-by-ids (vec %))) (partition-all mdb/delete-partition-size ids)))
+  (warehouse-schema.db/fields-by-ids (vec ids)))
 
 (defn- updated-field
   "The Field `previous`, an instance as the function read it, as an update of `changes` leaves it, with the columns its
@@ -759,9 +758,9 @@
   (set-position-column! :custom_position field-id->position))
 
 (defn- child-field-ids
-  "The ids of the Fields nested directly under the Fields with `ids`, read in batches of [[mdb/delete-partition-size]]."
+  "The ids of the Fields nested directly under the Fields with `ids`."
   [ids]
-  (into #{} (mapcat #(warehouse-schema.db/child-field-ids (set %))) (partition-all mdb/delete-partition-size ids)))
+  (warehouse-schema.db/child-field-ids (set ids)))
 
 (defn- field-ids-and-descendants
   "`ids` with the ids of every Field nested under them at any depth, read one level of nesting at a time."

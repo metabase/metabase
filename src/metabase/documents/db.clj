@@ -322,7 +322,10 @@
                                :collection_position (collection/position-clause positions)}
               {:collection_position [direction :collection_position 1]}))
 
-(mu/defn positioned-documents-in-collections :- [:sequential :map]
+(mu/defn positioned-documents-in-collections :- [:sequential [:map {:closed true}
+                                                              [:id                  ms/PositiveInt]
+                                                              [:collection_id       [:maybe ms/PositiveInt]]
+                                                              [:collection_position ms/PositiveInt]]]
   "The `:id`, `:collection_id` and `:collection_position` of the Documents that have a position in the Collections with
   `collection-ids`, nil for the root."
   [collection-ids :- [:sequential [:maybe ::lib.schema.id/collection]]]

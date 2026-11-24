@@ -84,7 +84,7 @@
   (-> table table->fields fields->our-metadata))
 
 (mu/defn our-metadata-by-table-id :- [:map-of ::lib.schema.id/table [:set common/TableMetadataFieldWithID]]
-  "The [[our-metadata]] of each of the Tables with `table-ids` by Table id, read in one query, an empty set for a Table
+  "The [[our-metadata]] of each of the Tables with `table-ids` by Table id, read together, an empty set for a Table
   with no active Field."
   [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
   (let [table-id->fields (group-by :table_id (sync.db/active-fields-metadata-for-tables table-ids))]

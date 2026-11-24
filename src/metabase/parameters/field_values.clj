@@ -85,9 +85,9 @@
                           extra))
 
 (defn- hash-inputs-by-table
-  "Returns a function from each of `fields` to its [[hash-input-for-field-values]], computed once per table, the
-  Database parts once per Database. A Field's Database comes from its hydrated `:table`, else from one query for all
-  the tables. The hash inputs of one table's fields differ only in `:field-id`."
+  "A function from each of `fields` to its [[hash-input-for-field-values]], computed once per Table and its Database
+  part once per Database, the Database of a Field coming from its hydrated `:table` or else read for all the remaining
+  Tables together."
   [fields]
   {:pre [(every? :table_id fields)]}
   (let [table-id->fields      (group-by :table_id fields)
@@ -236,7 +236,7 @@
 
 (defn get-or-create-field-values-by-field-id!
   "Calls [[get-or-create-field-values!]] for each of `fields`, resolving the current user's restrictions once per table.
-  Active FieldValues of unrestricted fields are read in one query instead, without updating their `last_used_at`.
+  Active FieldValues of unrestricted fields are read together instead, without updating their `last_used_at`.
   Returns a map of field id to FieldValues, with an empty map for a field that gets none. Throws if a field has no
   `:table_id`."
   [fields]

@@ -43,8 +43,8 @@
    {:default nil}))
 
 (defenterprise hash-input-for-database-routing
-  "Enterprise version. Returns a hash input that will be used for fields of the Database with `db-id` subject to
-  database routing. The destination is nil while the `:database-routing` feature is unavailable."
+  "Enterprise version: the hash input for the FieldValues of the Database with `db-id` when it is subject to database
+  routing, with a nil destination while the `:database-routing` feature is unavailable."
   :feature :none
   [db-id]
   (when-let [destination-db-id (some-> db-id driver.u/lib-database router-db->destination-db-id)]

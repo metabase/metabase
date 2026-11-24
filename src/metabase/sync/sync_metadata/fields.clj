@@ -86,8 +86,8 @@
       db-metadata)))
 
 (mu/defn- sync-and-update-limited! :- ms/IntGreaterThanOrEqualToZero
-  "Sync Field instances for a Table and update their metadata properties from `db-metadata`, already limited by
-  [[limit-fields-to-sync]]. Returns number of Fields synced."
+  "Sync the Field instances of a Table and update their metadata from `db-metadata`, already limited by
+  [[limit-fields-to-sync]], returning the number of Fields synced."
   [database    :- i/DatabaseInstance
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
@@ -150,7 +150,7 @@
 
 (defn- table-resolver
   "A function of the name and schema of a column group of `chunk` to the synced Table of `database` it belongs to, the
-  candidate Tables of the whole chunk read in one query; it matches over hidden Tables too, so a hidden Table's columns
+  candidate Tables of the whole chunk read together; it matches over hidden Tables too, so a hidden Table's columns
   are never given to a visible Table whose name differs only in case."
   [database chunk]
   (let [lower-names (into [] (comp (map (comp t2.util/lower-case-en :table-name first)) (distinct)) chunk)
@@ -180,8 +180,8 @@
       nil)))
 
 (defn- sync-tables-one-at-a-time!
-  "Sync the Fields of each of the Table `entries` on its own, logging the failure of one and going on with the others.
-  Returns the number of Fields synced."
+  "Sync the Fields of each of the Table `entries` on its own, logging the failure of one and going on with the others,
+  and return the number of Fields synced."
   [database entries]
   (sync-util/sum-for [{:keys [table db-metadata]} entries]
     (try
@@ -191,9 +191,9 @@
         0))))
 
 (defn- sync-tables-together!
-  "Sync the Fields of all the Table `entries`, none with nested Fields: our metadata of all of them is read in one query,
-  again after any Field was created, reactivated or retired, and their changes written together. Returns the number of
-  Fields synced."
+  "Sync the Fields of all the Table `entries`, none with nested Fields, reading our metadata of all of them together,
+  again after any Field was created, reactivated or retired, and writing their changes together, and return the number
+  of Fields synced."
   [database entries]
   (let [table-ids         (mapv (comp u/the-id :table) entries)
         add-our-metadata  (fn []
@@ -205,8 +205,8 @@
        (sync-metadata/update-metadata-of-tables! database (if (pos? synced) (add-our-metadata) entries)))))
 
 (defn- sync-chunk!
-  "Sync the Fields of the Tables of `chunk`, the column groups of up to [[chunk-max-tables]] Tables of `database`: their
-  Tables are read in one query, Tables with nested Fields (all of them when `nested?`) synced one at a time, and the
+  "Sync the Fields of the Tables of `chunk`, the column groups of up to [[chunk-max-tables]] Tables of `database`:
+  their Tables are read together, Tables with nested Fields (all of them when `nested?`) synced one at a time, and the
   others together, or one at a time when that fails."
   [database nested? chunk]
   (let [resolve-table (table-resolver database chunk)

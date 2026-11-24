@@ -86,7 +86,8 @@
   (app-db/select-batched #(t2/select [:model/TableIndex :id :status :error_message] :id [:in [:auto/param %]]) ids))
 
 (defn- update-by-changes!
-  "Apply `changes` to the TableIndexes of `rows` with one plain update through the model, `where` narrowing it."
+  "Apply `changes` to the TableIndexes of `rows` with one plain update through the model per partition, `where`
+  narrowing it."
   [rows changes where]
   (when (seq rows)
     (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TableIndex (into {:id [:in (mapv :id %)]} where) changes) rows)))

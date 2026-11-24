@@ -893,7 +893,7 @@
               (is (= [:event/sandbox-delete]
                      (events.tu/published-topics! #(sandboxes/delete-sandboxes! ids)))))))))))
 
-(defn- create-sandboxes-one-row-at-a-time!
+(defn- create-sandboxes-row-by-row!
   "Insert each of `rows` after taking native query access away from its group on the Database of its Table where the
   group has it on that Table, one row after another."
   [rows]
@@ -915,7 +915,7 @@
                  (fn [rows]
                    (frequencies (map (juxt :perm_type :perm_value :db_id :table_id :schema_name) rows))))))
 
-(deftest create-sandboxes-matches-one-row-at-a-time-on-mixed-batch-test
+(deftest create-sandboxes-matches-row-by-row-on-mixed-batch-test
   (mt/with-temp [:model/Database {db-1 :id} {}
                  :model/Database {db-2 :id} {}
                  :model/Table    {a-1 :id}  {:db_id db-1 :schema "PUBLIC" :name "A1"}
@@ -945,13 +945,13 @@
                             {:group_id granular :table_id a-1}
                             {:group_id native-sandboxed-on-two-dbs :table_id b-2}])
             batch        (groups! "batch")
-            one-at-a-time (groups! "one at a time")]
+            row-by-row (groups! "one at a time")]
         (set-up! batch)
-        (set-up! one-at-a-time)
+        (set-up! row-by-row)
         (sandboxes/create-sandboxes! (rows batch))
-        (create-sandboxes-one-row-at-a-time! (rows one-at-a-time))
+        (create-sandboxes-row-by-row! (rows row-by-row))
         (testing "every group holds the same permission rows as when its sandboxes are created one at a time"
-          (is (= (stored-permissions-by-role one-at-a-time [db-1 db-2])
+          (is (= (stored-permissions-by-role row-by-row [db-1 db-2])
                  (stored-permissions-by-role batch [db-1 db-2]))))
         (testing "native access is taken away only on the Databases of the new sandboxes where the group had it"
           (let [value (fn [role table-id db-id]

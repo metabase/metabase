@@ -41,15 +41,6 @@
   (dependencies.db/take-pending-dependency-statuses!
    entity-type batch-size models.dependency/current-dependency-analysis-version))
 
-(mu/defn clear-status! :- :boolean
-  "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id`, clearing its
-  `stale` count unless a write raised it."
-  [entity-type :- ::deps.dependency-types/dependency-types
-   entity-id   :- ms/PositiveInt
-   stale       :- ms/IntGreaterThanOrEqualToZero]
-  (dependencies.db/clear-dependency-status!
-   entity-type entity-id stale models.dependency/current-dependency-analysis-version))
-
 (mu/defn clear-statuses!
   "Record that the dependency job computed the dependencies of the entities `entity-type` whose ids are the keys of
   `id->stale`, clearing each `stale` count unless a write raised it."
@@ -65,7 +56,7 @@
 
 (mu/defn mark-data-app-dependency-statuses-stale!
   "Mark the DependencyStatuses of the DataApps whose resource collection is one of the Collections with
-  `collection-ids` stale, in one UPDATE for each 1,000 of them."
+  `collection-ids` stale, in one UPDATE for each partition of them."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (dependencies.db/mark-data-app-dependency-statuses-stale! collection-ids))
 

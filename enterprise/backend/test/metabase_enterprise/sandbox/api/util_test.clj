@@ -41,8 +41,8 @@
           (mt/with-full-data-perms-for-all-users!
             (is (not (sandbox.api.util/sandboxed-user?))))))))
   (testing "If a user is in another group with another sandbox defined on the table, the user should be considered sandboxed"
-    ;; This (conflicting sandboxes) is an invalid state for the QP but `enforce-sandbox?` should return true in order
-    ;; to fail closed
+    ;; This (conflicting sandboxes) is an invalid state for the QP but `enforced-sandboxes` should keep the sandbox in
+    ;; order to fail closed
     (mt/with-model-cleanup [:model/User]
       (let [[user] (user/create-users! [{:email "enforce-sandbox-test-3@example.com"}])]
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}

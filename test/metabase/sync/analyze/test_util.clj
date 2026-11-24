@@ -29,7 +29,7 @@
       (f (driver.u/lib-database db-id)))))
 
 (defn statement-count
-  "The number of app-DB statements `(step! database)` issues over a Database of `n-tables` Tables of `n-fields` Fields,
+  "The number of app DB statements `(step! database)` issues over a Database of `n-tables` Tables of `n-fields` Fields,
   `(field-row j)` merged into the `j`th Field of each, after `(prepare! database)`."
   [n-tables n-fields field-row prepare! step!]
   (do-with-database n-tables n-fields field-row

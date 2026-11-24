@@ -107,7 +107,8 @@
   100)
 
 (defn- users-collection-id->permission
-  "The permission of each of `user-infos` on each of the Collections with `collection-ids`, none of them nil, by user id."
+  "The permission of each of `user-infos` on each of the Collections with `collection-ids`, none of them nil, by user
+  id."
   [user-infos collection-ids]
   (let [empty-answer (zipmap collection-ids (repeat :none))]
     (reduce (fn [acc {:keys [user-id id rank]}]
@@ -147,8 +148,8 @@
 
 (mu/defn collection-permissions-for-users :- [:map-of ms/PositiveInt [:map-of [:maybe ms/PositiveInt] [:enum :read-and-write :read :none]]]
   "For each of `user-infos`, each a user with an id, the answer of [[collection-permissions-for-user]] for the
-  Collections with `collection-ids`, by user id, from one query per 100 users and 10,000 distinct Collection ids, and
-  one more per 100 users when a nil id is asked."
+  Collections with `collection-ids`, by user id, from one query per [[users-per-query]] users and partition of
+  distinct Collection ids, and one more per [[users-per-query]] users when a nil id is asked."
   [user-infos                       :- [:sequential [:map {:closed true}
                                                      [:user-id          ms/PositiveInt]
                                                      [:is-superuser?    :boolean]

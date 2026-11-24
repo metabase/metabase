@@ -269,8 +269,8 @@
   (cached-database (cached-value [:table-by-db-ids table-id] #(actions.db/table-database-id table-id))))
 
 (defn- assoc-table-databases
-  "Reads the Database id of every distinct Table of `arg-maps` in one query and puts it in each arg map as `:database`,
-  for the table and data-grid row actions. An unknown Table is left to the normalizer, which fails as before."
+  "`arg-maps` of a table or data-grid row action, each with the Database id of its Table as `:database`, read for all
+  the distinct Tables together, an unknown Table being left to the normalizer to refuse."
   [action-kw arg-maps]
   (let [data-grid? (isa? actions.hierarchy/hierarchy action-kw :data-grid.row/common)
         table?     (isa? actions.hierarchy/hierarchy action-kw :table.row/common)]

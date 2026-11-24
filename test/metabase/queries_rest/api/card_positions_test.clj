@@ -2,6 +2,7 @@
   "Positions of the rows of a Collection after Cards move, pinned to what moving the Cards one by one left."
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -123,8 +124,8 @@
         (is (= positions (run-scenario! endpoint dashboard? (get scenarios label))))))))
 
 (defn- pinned-move-statements
-  "The statements of moving to an empty Collection, as a non-admin, `n` pinned Cards that sit one in each of `n` Collections,
-  or all in one when not `distinct-sources?`, after one move as warm-up."
+  "The statements of moving to an empty Collection, as a non-admin, `n` pinned Cards that sit one in each of `n`
+  Collections, or all in one when not `distinct-sources?`, after one move as warm-up."
   [n distinct-sources?]
   (letfn [(collection! []
             (let [id (t2/insert-returning-pk! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:name (str "c " (random-uuid))}))]
@@ -152,3 +153,34 @@
         (let [one-source-growth (- (pinned-move-statements 6 false) (pinned-move-statements 2 false))
               many-growth       (- (pinned-move-statements 6 true) (pinned-move-statements 2 true))]
           (is (<= many-growth one-source-growth)))))))
+
+(defn- duplicate-freed-positions!
+  "The pinned Cards left in a Collection after `moved` of the pinned Cards `rows`, `[name position]`, move out through the endpoint,
+  and in a twin Collection after the same Cards are deleted and each freed position closed one by one, the highest first."
+  [rows moved]
+  (let [collection! (fn [] (t2/insert-returning-pk! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:name (str "c " (random-uuid))})))
+        card!       (fn [coll-id [nm position]]
+                      [nm (t2/insert-returning-pk! :model/Card (merge (mt/with-temp-defaults :model/Card)
+                                                                      {:name nm :collection_id coll-id :collection_position position}))])
+        source      (collection!)
+        twin        (collection!)
+        dest        (collection!)
+        ids         (into {} (map #(card! source %)) rows)
+        freed       (keep (fn [[nm position]] (when (contains? (set moved) nm) position)) rows)]
+    (doseq [row rows] (card! twin row))
+    (mt/user-http-request :crowberto :post 200 "card/collections" {:card_ids (mapv ids moved) :collection_id dest})
+    (t2/delete! :model/Card :collection_id twin :name [:in moved])
+    (doseq [position (reverse (sort freed))]
+      (collection/reconcile-position-for-collection! twin position nil))
+    {:endpoint (snapshot source)
+     :one-by-one (snapshot twin)}))
+
+(deftest ^:synchronous duplicate-freed-positions-test
+  (mt/with-model-cleanup [:model/Card :model/Collection]
+    (testing "two pinned Cards at one position move out together"
+      (let [{:keys [endpoint one-by-one]} (duplicate-freed-positions! [["c1" 3] ["c2" 3] ["c3" 4] ["c4" 5]] ["c1" "c2"])]
+        (is (= [["c3" 3] ["c4" 3]] one-by-one))
+        (is (= one-by-one endpoint))))
+    (testing "duplicates among other freed positions, with pinned Cards between and below them"
+      (let [{:keys [endpoint one-by-one]} (duplicate-freed-positions! [["a" 1] ["b" 2] ["c" 4] ["d" 4] ["e" 5] ["f" 5] ["g" 6] ["h" 7]] ["b" "d" "f" "c"])]
+        (is (= one-by-one endpoint))))))

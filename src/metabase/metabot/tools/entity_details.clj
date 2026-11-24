@@ -340,10 +340,9 @@
         (tree-seq coll? seq x)))
 
 (defn- metric-join-required-columns
-  "Return accessible dimensions grouped by the explicit joins needed to use them.
-
-  Exclude join keys and columns already reachable without the join. Only include joins that can be exported. Column
-  permissions come from `column-context`, a [[column-permission-context]], when it covers the columns."
+  "The accessible dimensions grouped by the exportable explicit joins needed to use them, without join keys and
+  columns reachable without the join, with column permissions from `column-context`, a [[column-permission-context]],
+  when it covers the columns."
   [metadata-provider defq base-reachable-ids column-context]
   (when defq
     (let [explicit-joins (filter #(nil? (:fk-field-id %)) (lib/joins defq -1))]
@@ -468,7 +467,8 @@
     (contains? (metabot.tools.u/readable-source-cards #{card-id}) card-id)))
 
 (defn metric-details
-  "Get metric details as returned by tools."
+  "Get metric details as returned by tools, with column permissions from `column-context`, a
+  [[column-permission-context]] read for these columns and others (see [[metric-columns]]), when given."
   ([id] (metric-details id nil))
   ([id options]
    (when-let [card (metabot.tools.u/get-card id :metric)]
@@ -477,8 +477,7 @@
    (metric-details card metadata-provider options nil nil))
   ([card metadata-provider options card-read-verdicts table-query-verdicts]
    (metric-details card metadata-provider options card-read-verdicts table-query-verdicts nil nil))
-  ;; `card-read-verdicts`: see [[card-readable?]]; `table-query-verdicts`: see [[table-queryable?]];
-  ;; `column-context`: a [[column-permission-context]] read for these columns and others, see [[metric-columns]].
+  ;; `card-read-verdicts`: see [[card-readable?]]; `table-query-verdicts`: see [[table-queryable?]].
   ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?
                                    with-segments?]
                             :or   {field-values-fn                 add-field-values

@@ -25,17 +25,9 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id :model/Table :id table-id))
 
-(defn- select-spec-batched
-  "The rows `select-fn` returns for `metadata-spec`, with each of its `ks` lists bound in partitions of at most
-  [[app-db/select-partition-size]], in one vector."
-  ([select-fn metadata-spec]
-   (select-spec-batched select-fn metadata-spec [:id :name :table-ids :card-ids]))
-  ([select-fn metadata-spec ks]
-   (if-let [[k & more] (seq ks)]
-     (if-let [values (seq (get metadata-spec k))]
-       (app-db/select-batched #(select-spec-batched select-fn (assoc metadata-spec k (set %)) more) values)
-       (recur select-fn metadata-spec more))
-     (select-fn metadata-spec))))
+(def ^:private metadata-spec-list-keys
+  "The keys of a metadata spec that hold lists, which reads bind in partitions."
+  [:id :name :table-ids :card-ids])
 
 (defn- metric-where
   "The `:where` map for the metric Cards picked out by `metadata-spec` (its `:id`, `:name`,
@@ -59,7 +51,8 @@
                      [:name      {:optional true} [:maybe [:set :string]]]
                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]
                      [:card-ids  {:optional true} [:maybe [:set ::lib.schema.id/card]]]]]
-  (select-spec-batched #(t2/select :metadata/metric (h2x/assert-map-or-nil! (metric-where %))) metadata-spec))
+  (app-db/select-batched-by-keys #(t2/select :metadata/metric (h2x/assert-map-or-nil! (metric-where %)))
+                                 metadata-spec metadata-spec-list-keys))
 
 (defn- measure-where
   "The `:where` map for the `:metadata/measure` rows picked out by `metadata-spec` (its `:id`, `:name`, and
@@ -80,4 +73,5 @@
                      [:id        {:optional true} [:maybe [:set ms/PositiveInt]]]
                      [:name      {:optional true} [:maybe [:set :string]]]
                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]]]
-  (select-spec-batched #(t2/select :metadata/measure (h2x/assert-map-or-nil! (measure-where %))) metadata-spec))
+  (app-db/select-batched-by-keys #(t2/select :metadata/measure (h2x/assert-map-or-nil! (measure-where %)))
+                                 metadata-spec metadata-spec-list-keys))

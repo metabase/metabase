@@ -8,7 +8,6 @@
   namespace should ignore nested fields entirely; the will be invoked with those Fields as appropriate."
   (:require
    [medley.core :as m]
-   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
@@ -263,18 +262,27 @@
           (retire-fields! table db-metadata our-metadata)
           (sync-nested-field-instances! table db-metadata our-metadata))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                 SYNCING THE TOP-LEVEL FIELDS OF SEVERAL TABLES                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (def ^:private TableEntry
-  "Schema for a Table being synced with the metadata of its Fields from the DB and from the application database."
-  [:map
+  "Schema for a Table being synced with the metadata of its Fields from the DB and from the app DB."
+  [:map {:closed true}
    [:table        i/TableInstance]
    [:db-metadata  [:set i/TableMetadataField]]
    [:our-metadata [:set common/TableMetadataFieldWithID]]])
 
-(mu/defn- table-plan :- :map
+(def ^:private TablePlan
+  "Schema for what syncing the top-level Fields of a Table has to insert, reactivate and retire."
+  [:map {:closed true}
+   [:table         i/TableInstance]
+   [:new-fields    [:sequential i/TableMetadataField]]
+   [:to-retire     [:sequential common/TableMetadataFieldWithID]]
+   [:to-reactivate {:optional true} [:sequential (ms/InstanceOf :model/Field)]]
+   [:to-insert     {:optional true} [:sequential i/TableMetadataField]]])
+
+(def ^:private InactiveFields
+  "Schema for inactive Fields by `[table-id lower-name]`."
+  [:map-of [:tuple ::lib.schema.id/table :string] [:sequential (ms/InstanceOf :model/Field)]])
+
+(mu/defn- table-plan :- TablePlan
   "The Table of `entry` with the Fields of its DB metadata that our metadata lacks, `:new-fields`, and the Fields of our
   metadata the DB metadata lacks, `:to-retire`."
   [{:keys [table db-metadata our-metadata]} :- TableEntry]
@@ -284,23 +292,21 @@
      :new-fields (into [] (remove (comp known-fields common/canonical-name)) db-metadata)
      :to-retire  (filterv #(not (common/matching-field-metadata % db-metadata)) our-metadata)}))
 
-(mu/defn- inactive-fields-by-table-and-name :- :map
-  "The inactive top-level Fields named like the new Fields of `plans`, by `[table-id lower-name]`, read in one query per
-  [[mdb/delete-partition-size]] names."
-  [plans :- [:sequential :map]]
+(mu/defn- inactive-fields-by-table-and-name :- InactiveFields
+  "The inactive top-level Fields named like the new Fields of `plans`, by `[table-id lower-name]`."
+  [plans :- [:sequential TablePlan]]
   (let [plans     (filterv (comp seq :new-fields) plans)
         table-ids (mapv (comp u/the-id :table) plans)
         names     (into [] (comp (mapcat :new-fields) (map common/canonical-name) (distinct)) plans)]
     (group-by (juxt :table_id :lower_name)
-              (into []
-                    (mapcat #(sync.db/inactive-top-level-fields-by-lower-name-for-tables table-ids (vec %)))
-                    (partition-all mdb/delete-partition-size names)))))
+              (when (seq names)
+                (sync.db/inactive-top-level-fields-by-lower-name-for-tables table-ids names)))))
 
-(mu/defn- add-reactivations :- :map
+(mu/defn- add-reactivations :- TablePlan
   "`plan` with the `inactive` Fields its new Fields reactivate, `:to-reactivate`, and the new Fields left to insert,
   `:to-insert`."
-  [inactive :- :map
-   {:keys [table new-fields] :as plan} :- :map]
+  [inactive :- InactiveFields
+   {:keys [table new-fields] :as plan} :- TablePlan]
   (let [to-reactivate (into []
                             (comp (mapcat #(get inactive [(u/the-id table) (common/canonical-name %)]))
                                   (m/distinct-by :id))
@@ -311,9 +317,9 @@
            :to-insert     (into [] (remove reactivated?) new-fields))))
 
 (mu/defn sync-instances-of-tables! :- ms/IntGreaterThanOrEqualToZero
-  "[[sync-instances!]] of the top-level Fields of each of `entries`, none of which has nested Fields: the new Fields of
-  all of them are inserted in one call, and the reactivated and retired ones updated in one. Returns the number of
-  Fields created, reactivated or retired."
+  "[[sync-instances!]] of the top-level Fields of each of `entries`, none of which has nested Fields, inserting the
+  new Fields of all of them with one call and updating the reactivated and retired ones with one, and returning the
+  number of Fields created, reactivated or retired."
   [entries :- [:sequential TableEntry]]
   (let [plans    (mapv table-plan entries)
         plans    (mapv (partial add-reactivations (inactive-fields-by-table-and-name plans)) plans)

@@ -106,9 +106,9 @@
               role)))))))
 
 (defenterprise hash-input-for-impersonation
-  "Returns a hash-key for FieldValues if the current user uses impersonation for the Database with `db-id`, holding the
-  role so that each role caches its own values. The role is nil while the `:advanced-permissions` feature is
-  unavailable."
+  "The hash input for the FieldValues of the Database with `db-id` when the current user is impersonated there,
+  holding the role so that each role caches its own values, with a nil role while the `:advanced-permissions` feature
+  is unavailable."
   :feature :none
   [db-id]
   (when-let [role (and api/*current-user-id*

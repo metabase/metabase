@@ -253,10 +253,9 @@
   10)
 
 (defn- fetch-table-metadata-rows
-  "Fetch query-metadata rows for `table-ids` in request order. Always goes through the
-   defenterprise fetcher so EE column-level sandboxing applies; `include-hidden?` includes hidden
-   fields. Ids that don't resolve to a readable table land in `:missing` — indistinguishable
-   between absent and unreadable. Returns `{:rows [...] :missing [ids]}`."
+  "The query-metadata rows of `table-ids` in request order, fetched through the defenterprise fetcher so that EE
+  column-level sandboxing applies, with hidden fields when `include-hidden?`, as `{:rows [...] :missing [ids]}` where
+  `:missing` holds the ids of absent and of unreadable tables alike."
   [table-ids include-hidden?]
   (let [rows  (schema.table/batch-fetch-table-query-metadatas table-ids {:include-hidden-fields? include-hidden?})
         by-id (u/index-by :id rows)]

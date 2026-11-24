@@ -276,7 +276,7 @@
 
 (mu/defn update-group-permissions!
   "Set the McpGroupPermission of the group of each of `rows` to the values of its row, one statement per distinct
-  change."
+  change and partition of groups."
   [rows :- [:sequential [:map {:closed true}
                          [:group_id    ms/PositiveInt]
                          [:mcp_enabled {:optional true} :boolean]
@@ -292,7 +292,7 @@
               {:where [:not (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (defn user-id->tenant-id
-  "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the
+  "Map of user id to `tenant_id` for `user-ids`. An empty collection asks nothing of the
   database and answers `{}` — `[:in ()]` is not valid SQL.
 
   Throws unless `user-ids` is a collection of integers. The ids are spliced into an `[:in …]` clause,

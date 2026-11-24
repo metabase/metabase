@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.task-history.core :as task-history]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -249,7 +250,7 @@
                (is (not (str/includes? (render!) "Made with")))))))))))
 
 (defn- statements-of-alert-send!
-  "The app-DB statements of sending an alert created by `creator-id` to `n-handlers` email handlers."
+  "The app DB statements of sending an alert created by `creator-id` to `n-handlers` email handlers."
   [creator-id n-handlers]
   (notification.tu/with-notification-testing-setup!
     (notification.tu/with-card-notification
@@ -269,25 +270,33 @@
           (#'notification.send/send-notification-sync! notification))
         (call-count)))))
 
+(defn- statements-of-task-histories!
+  "The number of app DB statements of recording `n` task histories, the accepted cost of `n` email handlers."
+  [n]
+  (t2/with-call-count [call-count]
+    (dotimes [_ n]
+      (task-history/with-task-history {:task "channel-send"} nil))
+    (call-count)))
+
 (deftest alert-send-statements-per-email-handler-test
-  (testing "an extra email handler of an alert costs its two task history statements"
+  (testing "an extra email handler of an alert costs no more than its task history"
     (statements-of-alert-send! (mt/user->id :crowberto) 2)
     (let [two (statements-of-alert-send! (mt/user->id :crowberto) 2)
           six (statements-of-alert-send! (mt/user->id :crowberto) 6)]
-      (is (<= (- six two) (* 2 (- 6 2)))))))
+      (is (<= (- six two) (- (statements-of-task-histories! 6) (statements-of-task-histories! 2)))))))
 
 (deftest alert-send-statements-per-email-handler-download-levels-test
   (mt/when-ee-evailable
-   (testing "an extra email handler of an alert sent for a non-admin creator costs its two task history statements"
+   (testing "an extra email handler of an alert sent for a non-admin creator costs no more than its task history"
      (mt/with-premium-features #{:advanced-permissions}
        (let [creator-id (mt/user->id :rasta)]
          (statements-of-alert-send! creator-id 2)
          (let [two (statements-of-alert-send! creator-id 2)
                six (statements-of-alert-send! creator-id 6)]
-           (is (<= (- six two) (* 2 (- 6 2))))))))))
+           (is (<= (- six two) (- (statements-of-task-histories! 6) (statements-of-task-histories! 2))))))))))
 
 (defn- statements-of-dashboard-email!
-  "The app-DB statements of rendering a dashboard email with `n` csv attachments of one Database."
+  "The app DB statements of rendering a dashboard email with `n` csv attachments of one Database."
   [n]
   (let [mp        (mt/metadata-provider)
         query     (lib/query mp (lib.metadata/table mp (mt/id :venues)))

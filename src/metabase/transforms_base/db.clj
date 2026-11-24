@@ -14,12 +14,10 @@
   (t2/select-one-fn :source [:model/Transform :id :source] :id transform-id))
 
 (mu/defn transform-sources
-  "The map from each of `transform-ids` that exists to its source, read in one statement for each 1000 ids."
+  "The map from each of `transform-ids` that exists to its source."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (into {}
-        (mapcat (fn [ids]
-                  (t2/select-pk->fn :source [:model/Transform :id :source] :id [:in [:auto/param (vec ids)]])))
-        (partition-all 1000 transform-ids)))
+  (mdb/select-batched-map #(t2/select-pk->fn :source [:model/Transform :id :source] :id [:in [:auto/param %]])
+                          transform-ids))
 
 (mu/defn transforms-for-ordering
   "The id, name, target, target Table id, source Database id, and table dependencies of every Transform."

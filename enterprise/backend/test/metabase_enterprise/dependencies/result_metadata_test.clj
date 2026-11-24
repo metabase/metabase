@@ -828,3 +828,20 @@
               large (run! 40)]
           (is (= (:count small) (:count large)))
           (is (= [10 40] [(:updated small) (:updated large)])))))))
+
+(deftest store-locks-cards-before-marking-dependents-test
+  (testing "storing re-derived cards locks their rows before it marks their dependents stale, as a save of a card does"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
+        (run-jobs!)
+        (reprocess! card-id)
+        (let [statements (deps.test/app-db-statements
+                          #(do-with-inference (fn [infer query card] (rename-column (infer query card) "TOTAL" "Changed"))
+                                              rederive!))
+              position   (fn [re] (first (keep-indexed (fn [i sql] (when (re-find re sql) i)) statements)))
+              lock       (position #"(?is)^SELECT .*\bFROM\s+[\"`]?report_card[\"`]?.*\bFOR UPDATE\b")
+              mark       (position #"(?is)^UPDATE\s+[\"`]?result_metadata_status[\"`]?.*\bEXISTS\b")]
+          (is (some? lock))
+          (is (some? mark))
+          (is (< lock mark))
+          (is (= "Changed" (:display_name (column card-id "TOTAL")))))))))

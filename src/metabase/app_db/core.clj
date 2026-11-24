@@ -90,6 +90,7 @@
   qualify
   query
   select-batched
+  select-batched-by-keys
   select-batched-map
   select-batched-reducible
   select-batched-set

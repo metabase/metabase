@@ -351,7 +351,7 @@
             (is (= (restore! 2) (restore! 6)))))))))
 
 (defn- archive-call-count
-  "The statements that rasta's question whether he may archive `snippets` takes, which must be allowed."
+  "The number of statements it takes to ask whether rasta may archive `snippets`, which must be allowed."
   [snippets]
   (mt/with-test-user :rasta
     (t2/with-call-count [call-count]

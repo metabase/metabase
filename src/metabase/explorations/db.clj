@@ -117,11 +117,6 @@
    ids   :- [:sequential ms/PositiveInt]]
   (mdb/select-batched #(t2/select model :id [:in %]) ids))
 
-(mu/defn thread-exploration-id-row
-  "The `:exploration_id` row of the ExplorationThread with `thread-id`, or nil."
-  [thread-id :- ms/PositiveInt]
-  (t2/select-one [:model/ExplorationThread :exploration_id] :id thread-id))
-
 (mu/defn thread-terminal-state
   "The ID, cancel time, and completion time of the ExplorationThread with `thread-id`."
   [thread-id :- ms/PositiveInt]
@@ -260,11 +255,6 @@
   [block-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationBlock :id block-id))
 
-(mu/defn block-thread-id-row
-  "The `:exploration_thread_id` row of the ExplorationBlock with `block-id`, or nil."
-  [block-id :- ms/PositiveInt]
-  (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id block-id))
-
 (mu/defn block-metrics
   "The metric selections of the ExplorationBlock with `block-id`."
   [block-id :- ms/PositiveInt]
@@ -366,7 +356,7 @@
   [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQuery :id query-id))
 
-(mu/defn queries-by-id :- [:map-of ms/PositiveInt :any]
+(mu/defn queries-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/ExplorationQuery)]
   "The ExplorationQueries with `query-ids`, by id."
   [query-ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched-map #(t2/select-pk->fn identity :model/ExplorationQuery :id [:in [:auto/param %]]) query-ids))
@@ -522,7 +512,7 @@
   [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQueryResult :exploration_query_id query-id))
 
-(mu/defn query-results-by-query-id :- [:map-of ms/PositiveInt :any]
+(mu/defn query-results-by-query-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/ExplorationQueryResult)]
   "The ExplorationQueryResults of the ExplorationQueries with `query-ids`, by query id."
   [query-ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched-map #(t2/select-fn->fn :exploration_query_id identity :model/ExplorationQueryResult
@@ -569,7 +559,7 @@
   [stored-result-id :- ms/PositiveInt]
   (t2/select-one :model/StoredResult :id stored-result-id))
 
-(mu/defn stored-results-by-id :- [:map-of ms/PositiveInt :any]
+(mu/defn stored-results-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/StoredResult)]
   "The StoredResults with `stored-result-ids`, by id."
   [stored-result-ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched-map #(t2/select-pk->fn identity :model/StoredResult :id [:in [:auto/param %]]) stored-result-ids))

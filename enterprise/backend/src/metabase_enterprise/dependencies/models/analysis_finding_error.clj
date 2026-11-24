@@ -58,7 +58,7 @@
 
 (mu/defn replace-errors-for-entities!
   "Delete the existing errors of the entities of `entity-type` that `id->errors` maps to their new `errors`, in the
-  form of [[replace-errors-for-entity!]], and insert those, with one delete and one insert."
+  form of [[replace-errors-for-entity!]], and insert those, for all of them together."
   [entity-type :- ::deps.dependency-types/dependency-types
    id->errors  :- [:map-of ms/PositiveInt [:sequential ::error-input]]]
   (t2/with-transaction [_conn]

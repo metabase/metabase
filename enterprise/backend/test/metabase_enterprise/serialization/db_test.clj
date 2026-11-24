@@ -2,16 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.db :as serialization.db]
-   [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]))
-
-(defn- partitioned!
-  "Call `f` with every partition size of the app DB set to 2."
-  [f]
-  (with-redefs [mdb.query/select-partition-size 2
-                mdb/select-partition-size       2]
-    (f)))
 
 (deftest ^:synchronized reads-over-partitions-test
   (mt/with-temp [:model/Collection {coll1 :id} {}
@@ -25,14 +16,14 @@
     (testing "a set over partitions of both lists"
       (is (= #{card1 card2}
              (serialization.db/card-ids-in-collections [card1 card2 card3 card4] [coll1 coll2 coll3])
-             (partitioned! #(serialization.db/card-ids-in-collections [card1 card2 card3 card4] [coll1 coll2 coll3])))))
+             (mt/with-partition-size 2 (serialization.db/card-ids-in-collections [card1 card2 card3 card4] [coll1 coll2 coll3])))))
     (testing "a subtree as a union over partitions"
       (is (= #{coll1 coll2 coll3 coll4}
              (serialization.db/collection-subtree-ids [coll1 coll4 coll2] false)
-             (partitioned! #(serialization.db/collection-subtree-ids [coll1 coll4 coll2] false)))))
+             (mt/with-partition-size 2 (serialization.db/collection-subtree-ids [coll1 coll4 coll2] false)))))
     (testing "a map from partitions"
       (is (= {(:entity_id card) card1}
-             (select-keys (partitioned! #(serialization.db/entity-id->pk :model/Card [(:entity_id card)]))
+             (select-keys (mt/with-partition-size 2 (serialization.db/entity-id->pk :model/Card [(:entity_id card)]))
                           [(:entity_id card)])))
       (is (= #{card1 card2 card3}
-             (partitioned! #(serialization.db/existing-ids :model/Card [card1 card2 card3])))))))
+             (mt/with-partition-size 2 (serialization.db/existing-ids :model/Card [card1 card2 card3])))))))

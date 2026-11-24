@@ -460,8 +460,8 @@
   [_ _])
 
 (defenterprise pre-update-check-sandboxes-constraints
-  "Throws when a change of the result metadata of a Card of `card-changes`, `[stored-card changes]` pairs, stops it matching the
-  Tables of its sandboxes, which OSS never does."
+  "Throws when a change of the result metadata of a Card of `card-changes`, `[stored-card changes]` pairs, stops it
+  matching the Tables of its sandboxes, which OSS never does."
   metabase-enterprise.sandbox.models.sandbox
   [_])
 
@@ -903,8 +903,8 @@
         (some? (:virtual_card settings)))))
 
 (defn- shared-dashboards-timelines-readable?
-  "Whether the current user reads the timelines that the public or embedded Dashboards of `dashboard-cards`, `[dashboard
-  cards]` pairs, show to anyone for their `cards`, from one read of the timelines."
+  "Whether the current user reads the timelines that the public or embedded Dashboards of `dashboard-cards`,
+  `[dashboard cards]` pairs, show to anyone for their `cards`, with the timelines read together."
   [dashboard-cards]
   (or (not api/*current-user-id*)
       (timelines-readable? (into #{}
@@ -1077,7 +1077,7 @@
 (defn- dashboards-move-permitted?
   "Whether the current user may do what the changes of each of `card-changes`, `[card changes]` pairs, do to the
   Dashboard of the Card: write the Dashboards it appears in, and read the timelines it shows on the Dashboard it moves
-  into when that is shared, from one read of the Dashboards each way and of the timelines."
+  into when that is shared, with the Dashboards each way and the timelines read together."
   [card-changes]
   (let [moving (filterv (fn [[card changes]]
                           (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided)))
@@ -1134,7 +1134,7 @@
 
 (defn can-update-cards?
   "Whether the current user may apply to each Card of `card-changes`, `[card changes]` pairs of Cards hydrated with
-  `:can_write`, its own changes, as [[mi/can-update?]] answers for one, from one read of what the Cards depend on."
+  `:can_write`, its own changes, as [[mi/can-update?]] answers for one, with what the Cards depend on read together."
   [card-changes]
   (and (let [owner-writable        (summary-owner-writable card-changes)
              dashboard-move-permitted (dashboards-move-permitted? card-changes)]
@@ -1150,8 +1150,8 @@
 
 (defn first-update-refused
   "The first of `card-changes`, `[card changes]` pairs of Cards hydrated with `:can_write`, that [[mi/can-update?]]
-  refuses, throwing the 404 it throws for a Collection that does not exist, from one read of the Collections, nil when
-  it refuses none."
+  refuses, throwing the 404 it throws for a Collection that does not exist, nil when it refuses none, with the
+  Collections read together and the other rules asked pair by pair up to the first refusal."
   [card-changes]
   (some (fn [[[card changes :as pair] move]]
           (cond
@@ -2017,9 +2017,7 @@
                                   (comp (filter (fn [{:keys [changes]}] (some #(contains? changes %) alert-affecting-columns)))
                                         (map (comp :id :before)))
                                   entries))]
-    (let [by-card  (queries.db/active-card-notifications-by-card ids)
-          hydrated (u/index-by :id (notification.models/hydrate-notification (into [] cat (vals by-card))))]
-      (update-vals by-card (fn [notifications] (mapv (comp hydrated :id) notifications))))))
+    (notification.models/notifications-for-cards ids)))
 
 (defn- notify-stopped-alerts!
   "Tells the recipients of `notifications`, those of the alerts of the Cards among `entries` read before the change,
@@ -2508,8 +2506,8 @@
     (write-followers! delete-followers! :model/DashboardCard (vec dashcard-ids))))
 
 (defn- remove-dashcards!
-  "Deletes the DashboardCards and DashboardCardSeries that show a Card of `leaving`, `[card-id dashboard-id]` pairs, on
-  that Dashboard, and a Card of `leaving-others`, such pairs too, on any other Dashboard, with one read of each."
+  "Deletes the DashboardCards and DashboardCardSeries that show a Card of `leaving`, `[card-id dashboard-id]` pairs,
+  on that Dashboard, and a Card of `leaving-others`, such pairs too, on any other Dashboard, each read together."
   [leaving leaving-others]
   (when (or (seq leaving) (seq leaving-others))
     (let [card-ids   (vec (into #{} (map first) (concat leaving leaving-others)))
@@ -2604,10 +2602,10 @@
 
 (defn place-updated-dashboard-questions!
   "Puts each Card `before` of `card-updates`, `[before updates]` pairs of a Card and the columns of an update with its
-  `:dashboard_tab_id`, on the Dashboard that its `updates` move it to and takes its DashboardCards off the Dashboard it
-  leaves, or all the others when `delete-old-dashcards?`, throwing a 400 for a tab with no Dashboard, for a Card on
-  other Dashboards moved into one, and for a change a dashboard question does not allow, with one read of the
-  Dashboards and one write of each kind of row."
+  `:dashboard_tab_id`, on the Dashboard that its `updates` move it to and takes its DashboardCards off the Dashboard
+  it leaves, or all the others when `delete-old-dashcards?`, throwing a 400 for a tab with no Dashboard, for a Card on
+  other Dashboards moved into one, and for a change a dashboard question does not allow, with the Dashboards read
+  together and each kind of row written with one call."
   [card-updates delete-old-dashcards?]
   (let [placements (mapv (fn [[before updates]] (dashboard-placement before updates delete-old-dashcards?)) card-updates)
         entries    (into [] (keep :place) placements)]

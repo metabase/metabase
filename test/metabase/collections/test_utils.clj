@@ -130,7 +130,7 @@
   `(do-with-library (fn [~binding] ~@body)))
 
 (defn- new-collection!
-  "The id of a new top level Collection that the All Users group writes when `writable?` and only reads otherwise."
+  "The id of a new top-level Collection that the All Users group writes when `writable?` and only reads otherwise."
   [writable?]
   (let [id (t2/insert-returning-pk! :model/Collection
                                     (merge (mt/with-temp-defaults :model/Collection) {:name (str "bulk " (random-uuid))}))]

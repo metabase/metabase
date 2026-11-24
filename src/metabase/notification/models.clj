@@ -850,16 +850,11 @@
                                      [:sequential ::notification.schema/notification]]]
   (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 
-(mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
-  "Find all active card notifications for a given card-id."
-  [card-id :- pos-int?]
-  (hydrate-notification (notification.db/active-card-notifications-for-card card-id)))
-
 (mu/defn notifications-for-cards :- [:map-of ::lib.schema.id/card [:sequential ::FullyHydratedNotification]]
   "The active card notifications of the Cards with `card-ids`, fully hydrated, by the id of their Card."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (let [notifications (into [] (mapcat #(notification.db/active-card-notifications-for-cards (vec %)))
-                            (partition-all mdb/update-partition-size (distinct card-ids)))]
+  (let [notifications (when (seq card-ids)
+                        (notification.db/active-card-notifications-for-cards card-ids))]
     (if (seq notifications)
       (group-by (comp :card_id :payload) (hydrate-notification notifications))
       {})))

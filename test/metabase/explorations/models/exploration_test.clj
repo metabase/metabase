@@ -281,7 +281,7 @@
         (is (= archived-id (stored)))))))
 
 (defn- archive-call-count
-  "The statements that rasta's question whether he may archive `explorations` takes, which must be allowed."
+  "The number of statements it takes to ask whether rasta may archive `explorations`, which must be allowed."
   [explorations]
   (mt/with-current-user (mt/user->id :rasta)
     (t2/with-call-count [call-count]

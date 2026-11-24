@@ -1254,7 +1254,6 @@
     (apply mt/user-http-request :rasta args)
     (call-count)))
 
-;; Not ^:parallel: `GET /api/database` and `GET /api/table` list every Database and Table in the app DB.
 (deftest ^:synchronized database-encoding-statement-count-test
   (testing "GET /api/database and GET /api/table cost as many statements for 6 Databases with settings as for 2"
     (mt/with-premium-features #{:advanced-permissions}

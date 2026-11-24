@@ -54,7 +54,8 @@
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn table-field-names->cols
-  "Return a mapping of field names to corresponding cols for the table with `table-id` of the database with `database-id`."
+  "Return a mapping of field names to corresponding cols for the table with `table-id` of the database with
+  `database-id`."
   [database-id table-id]
   (into {} (for [col (request/as-admin
                        (qp.preprocess/query->expected-cols
@@ -197,8 +198,9 @@
     (check-result-metadata-still-matches-sandboxed-tables card-id new-result-metadata)))
 
 (defenterprise pre-update-check-sandboxes-constraints
-  "Throws when a change of the result metadata of any of `card-changes`, `[stored-card changes]` pairs, gives a Card result
-  metadata that no longer matches the Tables of the sandboxes that use it, with one read of the sandboxes."
+  "Throws when a change of the result metadata of any of `card-changes`, `[stored-card changes]` pairs, gives a Card
+  result metadata that no longer matches the Tables of the sandboxes that use it, with the sandboxes and their Tables
+  read together."
   :feature :sandboxes
   [card-changes]
   (let [checked               (filterv (fn [[_ changes]] (contains? changes :result_metadata)) card-changes)
@@ -340,7 +342,7 @@
 
 (defn- remove-native-access-of-groups!
   "Take native query access away from the group of each of `rows` on the Database of its Table where it has it, and
-  return the rows, with the Databases and permissions of all rows read once and written in one batch."
+  return the rows, with the Databases and permissions of all rows read once and written together."
   [rows]
   (when-let [pairs (not-empty (into [] (comp (map (juxt :group_id :table_id)) (distinct)) rows))]
     (let [table-id->db-id (sandbox.db/table-database-ids (mapv second pairs))

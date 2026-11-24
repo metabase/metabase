@@ -389,7 +389,8 @@
          not-empty)))
 
 (defn- hydrate-root-collections
-  "`entities` with the root collection of `collection-namespace`, hydrated once, as the `:collection` of those at the root."
+  "`entities` with the root collection of `collection-namespace`, hydrated once, as the `:collection` of those at the
+  root."
   [entities collection-namespace]
   (let [root (collection.root/hydrated-root-collection collection-namespace)]
     (map #(collection.root/hydrate-root-collection % root) entities)))

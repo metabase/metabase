@@ -2480,10 +2480,6 @@
               (is (=? {:name "Edited" :last_checkpoint_value "9" :target_table_id table-id}
                       (t2/select-one :model/Transform :id id))))))))))
 
-;;; ------------------------------------------------------------
-;;; Statement counts of the read endpoints
-;;; ------------------------------------------------------------
-
 (deftest list-transforms-statement-count-test
   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]

@@ -96,14 +96,9 @@
   [block-id card-id (some-> dimension-id str) (some-> query-type name)])
 
 (defn- reconcile-pages!
-  "Find-or-create a page per distinct [[page-key]] in `rows` (first-seen order within a
-  page's block sets the `position` of newly-created pages); returns a `key -> page-id` map.
-  An existing page keeps its id and position. The pages of the rows' blocks are read once and the
-  missing ones created in one call.
-
-  Select-then-insert with no unique index backing it (`dimension_id` is a text column, which
-  MySQL can't uniquely index): two planners in here at once would both miss and both insert. Safe
-  only because [[lock-thread-for-planning!]] keeps them out — see there."
+  "Find or create a page per distinct [[page-key]] of `rows`, reading the pages of the rows' blocks once and creating
+  the missing ones in one call, and return a `key -> page-id` map, safe without a unique index only under
+  [[lock-thread-for-planning!]]."
   [rows]
   (let [by-block   (group-by first (distinct (map page-key rows)))
         positioned (for [[_block-id ks] by-block

@@ -1,23 +1,13 @@
 (ns metabase.notification.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.notification.db :as notification.db]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
-
-(defn- partitioned!
-  "Call `f` with every partition size of the app DB set to `size`."
-  [size f]
-  (with-redefs [mdb.query/select-partition-size size
-                mdb/select-partition-size       size
-                mdb/delete-partition-size       size
-                mdb/update-partition-size       size]
-    (f)))
 
 (defn- email-handler
   [email]
@@ -34,6 +24,6 @@
                                  {:count (notification.db/admin-notifications-count {:recipient_notification_ids notification-ids})
                                   :email (notification.db/handler-notification-ids-for-email "nobody@example.com" handler-ids)})]
           (is (= {:count 3, :email notification-ids} (read-all)))
-          (is (= (read-all) (partitioned! 2 read-all)))
+          (is (= (read-all) (mt/with-partition-size 2 (read-all))))
           (is (< (t2/with-call-count [calls] (read-all) (calls))
-                 (t2/with-call-count [calls] (partitioned! 2 read-all) (calls)))))))))
+                 (t2/with-call-count [calls] (mt/with-partition-size 2 (read-all)) (calls)))))))))

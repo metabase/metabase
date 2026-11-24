@@ -57,14 +57,14 @@
     (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})))
 
 (defn- save-pairs!
-  "Write `pairs`, each a Field and its update row, in one update."
+  "Write `pairs`, each a Field and its update row, with one call."
   [pairs]
   (field/update-fields! (mapv second pairs) {:fields (mapv first pairs)}))
 
 (defn- save-categories!
-  "Write the category of each of `results`, `[field category]` pairs of Fields of `tables`, `:PUBLIC` for nil, in one
-  update, or Table by Table when that fails, leaving out the Fields whose classification threw; return `results` with
-  `::not-saved` as the result of the Fields of the Tables whose write failed."
+  "Write the category of each of `results`, `[field category]` pairs of Fields of `tables`, `:PUBLIC` for nil, with
+  one call, or Table by Table when that fails, leaving out the Fields whose classification threw; return `results`
+  with `::not-saved` as the result of the Fields of the Tables whose write failed."
   [tables results]
   (let [pairs  (into []
                      (keep (fn [[field category]]
@@ -120,8 +120,9 @@
           tables)))
 
 (mu/defn scan-table! :- Stats
-  "Label every unscanned Field in `table`. `fields-scanned` counts every selected field, `fields-labeled` those that
-  matched a category, `fields-failed` those whose classification or write threw; the remainder were written `:PUBLIC`."
+  "Label every unscanned Field in `table`, returning stats where `fields-scanned` counts every selected Field,
+  `fields-labeled` those that matched a category and `fields-failed` those whose classification or write threw, the
+  remainder being written `:PUBLIC`."
   [table :- i/TableInstance
    & {:keys [force? ignore-setting?]} :- [:maybe ScanOptions]]
   (if (skip? ignore-setting?)

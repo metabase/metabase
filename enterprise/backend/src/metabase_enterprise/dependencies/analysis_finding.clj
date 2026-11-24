@@ -11,6 +11,7 @@
    [metabase.dependencies.core :as dependencies]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -33,7 +34,7 @@
                             [:entity-id   ms/PositiveInt]
                             [:analysis    [:map {:closed true}
                                            [:result          :boolean]
-                                           [:finding-details :any]]]]
+                                           [:finding-details [:maybe [:set ::lib.schema.validate/error-with-source]]]]]]
   "Analyze the Toucan entity `entity` with the `:analysis` of its spec, reusing the caller's metadata provider cache
   when it has one, returning its type, id and the finding to record."
   [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
@@ -114,23 +115,27 @@
   (when-not (instance? Exception e)
     (throw e)))
 
-(mu/defn- store-analyses-and-clear! :- :any
+(mu/defn- store-analyses-and-clear! :- :nil
   "Store the findings `analyses` of the entities of `entity-type`, a map of entity id to finding, then clear their
   `stale` counts."
   [entity-type :- ::dependencies.schema/entity-type
    stale       :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
-   analyses    :- [:map-of ms/PositiveInt :map]]
+   analyses    :- [:map-of ms/PositiveInt [:map {:closed true}
+                                           [:result          :boolean]
+                                           [:finding-details [:maybe
+                                                              [:set ::lib.schema.validate/error-with-source]]]]]]
   (t2/with-transaction [_conn]
     (models.analysis-finding/upsert-analyses! entity-type analyses)
     (models.analysis-finding-status/clear-analysis-finding-statuses!
      entity-type
      (into {} (map (fn [id] [id (stale id)])) (keys analyses))
-     models.analysis-finding/*current-analysis-finding-version*)))
+     models.analysis-finding/*current-analysis-finding-version*))
+  nil)
 
 (mu/defn analyze-batch! :- nat-int?
-  "Analyze up to `batch-size` analyzable entities whose AnalysisFindingStatus counts a write, is missing or is outdated,
-  clearing each one's `stale` count unless a write raised it meanwhile, or counting its failure, returning how many it
-  took. The findings of each type are stored together, or for each entity when that fails."
+  "Analyze up to `batch-size` analyzable entities whose AnalysisFindingStatus counts a write, is missing or is
+  outdated, clearing each one's `stale` count unless a write raised it meanwhile, or counting its failure, returning
+  how many it took, the findings of each type stored together, or for each entity when that fails."
   [batch-size :- pos-int?]
   ;; The cache spans the select too: reading an entity attaches a `MetadataProvider` to its query
   ;; (see `metabase.lib-be.models.transforms/transform-query`), so selecting outside the cache gives every entity in

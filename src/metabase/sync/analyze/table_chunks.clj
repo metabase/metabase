@@ -41,9 +41,9 @@
             tables))
 
 (defn save-by-table!
-  "Call `save!` with `rows` at once, or with the rows of each Table, by `row-table-id`, when that throws an Exception or
-  when they are of one Table, logging a failure as one of saving `what` of the Table `name-table` names by its id; return the ids of
-  the Tables whose rows were not saved."
+  "Call `save!` with `rows` at once, or with the rows of each Table, by `row-table-id`, when that throws an Exception
+  or when they are of one Table, logging a failure as one of saving `what` of the Table `name-table` names by its id;
+  return the ids of the Tables whose rows were not saved."
   [what name-table row-table-id save! rows]
   (let [by-table    (group-by row-table-id rows)
         save-table! (fn [[table-id table-rows]]

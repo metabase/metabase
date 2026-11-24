@@ -62,14 +62,6 @@
    current-version :- ms/PositiveInt]
   (dependencies.db/clear-result-metadata-statuses! id->stale current-version))
 
-(mu/defn clear-result-metadata-status! :- :boolean
-  "Record that the result metadata job re-derived the Card with `card-id` with the logic of `current-version`, clearing
-  its count of `stale` writes unless a write raised it, returning whether it cleared it."
-  [card-id         :- ::lib.schema.id/card
-   stale           :- ms/IntGreaterThanOrEqualToZero
-   current-version :- ms/PositiveInt]
-  (dependencies.db/clear-result-metadata-status! card-id stale current-version))
-
 (mu/defn delete-result-metadata-statuses!
   "Delete the ResultMetadataStatuses of the Cards with `card-ids`, returning the number deleted."
   [card-ids :- [:sequential ::lib.schema.id/card]]

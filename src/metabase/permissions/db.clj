@@ -592,7 +592,10 @@
    also-under-paths :- [:sequential :string]]
   (t2/select-pks-vec :model/Permissions {:where (related-permissions-where group-id path also-under-paths)}))
 
-(mu/defn related-permission-rows :- [:sequential [:map [:id ms/PositiveInt] [:group_id ms/PositiveInt] [:object :string]]]
+(mu/defn related-permission-rows :- [:sequential [:map {:closed true}
+                                                  [:id       ms/PositiveInt]
+                                                  [:group_id ms/PositiveInt]
+                                                  [:object   :string]]]
   "The `:id`, `:group_id` and `:object` of the Permissions rows related, as [[related-permission-ids]] matches them, to
   any of `related`, `[group-id path also-under-paths]` triples."
   [related :- [:sequential {:min 1} [:tuple ms/PositiveInt :string [:sequential :string]]]]
@@ -819,7 +822,7 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
 
-(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection :map]
+(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection (ms/InstanceOf :model/Collection)]
   "The Collections with `collection-ids`, by id."
   [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
   (mdb/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in [:auto/param %]]) collection-ids))
@@ -1159,7 +1162,10 @@
                                   :where  [:in :perms_collection.id %]})
                       collection-ids))
 
-(mu/defn collection-ranks-for-users :- [:sequential [:map [:user-id ms/PositiveInt] [:id ms/PositiveInt] [:rank :int]]]
+(mu/defn collection-ranks-for-users :- [:sequential [:map {:closed true}
+                                                     [:user-id ms/PositiveInt]
+                                                     [:id      ms/PositiveInt]
+                                                     [:rank    :int]]]
   "For each of `users`, each with a user id, and each of the Collections with `collection-ids`, the rank
   [[collection-ranks]] gives, from one statement."
   [users          :- [:sequential [:and ::collection-user [:map [:user-id ms/PositiveInt]]]]
@@ -1174,9 +1180,11 @@
                                                         :where  [:in :perms_collection.id collection-ids]})
                                     users)})))
 
-(mu/defn root-collection-objects-for-users :- [:sequential [:map [:user-id ms/PositiveInt] [:object :string]]]
+(mu/defn root-collection-objects-for-users :- [:sequential [:map {:closed true}
+                                                            [:user-id ms/PositiveInt]
+                                                            [:object  :string]]]
   "The permission objects among `objects` that a group of each of the Users with `user-ids` holds a row for, from one
-  statement."
+  statement per partition of `user-ids`."
   [user-ids :- [:sequential ms/PositiveInt]
    objects  :- [:sequential :string]]
   (mapv (fn [{:keys [user_id object]}] {:user-id user_id :object object})

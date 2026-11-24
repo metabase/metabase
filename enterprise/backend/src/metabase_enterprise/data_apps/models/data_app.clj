@@ -106,14 +106,25 @@
                                              (or api/*is-superuser?*
                                                  (contains? readable (:id app))))))))))
 
-(methodical/defmethod t2/simple-hydrate [:model/DataApp :can_write]
-  [_model k app]
-  (assoc app k (boolean api/*is-superuser?*)))
+(methodical/defmethod t2/batched-hydrate [:model/DataApp :can_write]
+  "Whether the current user can write each of `apps`, one answer for all of them: a superuser on an instance that is not
+  read-only."
+  [_model k apps]
+  (let [writable? (boolean (and api/*is-superuser?* (not (remote-sync/read-only?))))]
+    (for [app apps]
+      (when app
+        (assoc app k writable?)))))
+
+(defn- enabled-change-writable?
+  "Whether the current user can apply `changes` that only enable or disable an app, which a read-only instance still
+  accepts as `enabled` is not synced."
+  [changes]
+  (boolean (and api/*is-superuser?*
+                (every? #{:enabled} (keys changes)))))
 
 (defmethod mi/can-update? :model/DataApp
-  [app changes]
-  (boolean (and (mi/can-write? app)
-                (every? #{:enabled} (keys changes)))))
+  [_app changes]
+  (enabled-change-writable? changes))
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."

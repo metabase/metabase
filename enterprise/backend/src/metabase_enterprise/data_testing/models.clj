@@ -99,7 +99,7 @@
 (defn query-subject-allows?
   "Whether `subject-check` holds for `subject`, a card or a segment, hydrated with `k`, and the current user may run
   `query`, the subject's query, and write the native SQL of a test against the Database of `query`, as `native?`, by
-  default [[can-run-native-query?]], answers for a Database id. False when `subject` is nil."
+  default [[can-run-native-query?]], answers for a Database id, and false when `subject` is nil."
   ([subject-check k subject query]
    (query-subject-allows? subject-check k subject query can-run-native-query?))
   ([subject-check k subject query native?]

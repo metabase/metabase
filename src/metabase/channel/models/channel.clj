@@ -181,26 +181,17 @@
 (methodical/defmethod t2/batched-hydrate [:model/Channel :can_read]
   "Whether the current user can read each of `channels`, answered once for all of them."
   [_model k channels]
-  (let [answer (can-manage-channels?)]
-    (for [channel channels]
-      (when channel
-        (vary-meta channel assoc k answer)))))
+  (mi/vary-meta-each channels k (can-manage-channels?)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Channel :can_write]
   "Whether the current user can write each of `channels`, answered once for all of them."
   [_model k channels]
-  (let [answer (can-manage-channels?)]
-    (for [channel channels]
-      (when channel
-        (assoc channel k answer)))))
+  (mi/assoc-each channels k (can-manage-channels?)))
 
 (methodical/defmethod t2/batched-hydrate [:model/ChannelTemplate :can_write]
   "Whether the current user can write each of `templates`, answered once for all of them."
   [_model k templates]
-  (let [answer (can-manage-channels?)]
-    (for [template templates]
-      (when template
-        (assoc template k answer)))))
+  (mi/assoc-each templates k (can-manage-channels?)))
 
 (defmethod mi/can-create? :model/Channel
   [_model _channel]

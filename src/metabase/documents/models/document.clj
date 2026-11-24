@@ -97,9 +97,9 @@
   (atom (fn [_documents] (fn [_document] true))))
 
 (defn register-doc-content-visibility-fn!
-  "Install the content-visibility gate (see [[doc-content-visibility-fn]]). Called once at the
-  consuming module's init. `f` takes the documents a caller is about to ask about and returns a predicate that takes
-  one of them and says whether the current user may see its rendered content, reading for all of them at once."
+  "Install `f`, the content-visibility gate (see [[doc-content-visibility-fn]]), at the consuming module's init: it
+  takes the documents a caller is about to ask about and returns a predicate of whether the current user may see the
+  rendered content of one of them, reading for all of them together."
   [f]
   (reset! doc-content-visibility-fn f))
 
@@ -163,7 +163,7 @@
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
 (defn- content-visible-fn
-  "A predicate like [[content-visible?]] that reads the Exploration ids of `documents` lacking one in a single query."
+  "A predicate like [[content-visible?]] that reads the Exploration ids of `documents` lacking one together."
   [documents]
   (let [ids                (into [] (comp (remove #(contains? % :exploration_id)) (keep :id)) documents)
         id->exploration-id (documents.db/exploration-ids-by-document-id ids)
@@ -547,12 +547,9 @@
 
 (defn clone-cards!
   "Saves a copy of each of `source-cards`, existing cards the user can already read, e.g. when copying a document, in
-  one call, and returns the new cards in order.
-
-  Checks nothing about the user: the caller has run [[check-clone-cards]], which checks create access to the target
-  collection but, unlike the checks of new cards, not the authoring checks (run permission on the query, parameter
-  source-card and parameter field permissions), since the query and parameters come from an existing card the caller
-  passed a read check on rather than from the request (UXW-5037)."
+  one call, and returns the new cards in order, checking nothing about the user, which [[check-clone-cards]] has done
+  without the authoring checks of new cards, since the query and parameters come from cards the caller passed a read
+  check on (UXW-5037)."
   [source-cards creator]
   (create-card-rows! (mapv #(new-document-card-row % creator) source-cards)))
 

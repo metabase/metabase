@@ -127,72 +127,72 @@
                           (and metric? table-ids) (conj [:= :source_card_id nil]))]
     (reduce sql.helpers/where {} where-clauses)))
 
-(defn- select-spec-batched
-  "The rows `select-fn` returns for `metadata-spec`, with each of its `ks` lists bound in partitions of at most
-  [[app-db/select-partition-size]], in one vector."
-  ([select-fn metadata-spec]
-   (select-spec-batched select-fn metadata-spec [:id :name :table-ids :card-ids]))
-  ([select-fn metadata-spec ks]
-   (if-let [[k & more] (seq ks)]
-     (if-let [values (seq (get metadata-spec k))]
-       (app-db/select-batched #(select-spec-batched select-fn (assoc metadata-spec k (set %)) more) values)
-       (recur select-fn metadata-spec more))
-     (select-fn metadata-spec))))
+(def ^:private metadata-spec-list-keys
+  "The keys of a metadata spec that hold lists, which reads bind in partitions."
+  [:id :name :table-ids :card-ids])
 
 (mu/defn tables
   "The `:metadata/table` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (select-spec-batched #(t2/select :metadata/table (h2x/assert-map-or-nil! (metadata-where :metadata/table database-id %)))
-                       metadata-spec))
+  (app-db/select-batched-by-keys
+   #(t2/select :metadata/table (h2x/assert-map-or-nil! (metadata-where :metadata/table database-id %)))
+   metadata-spec metadata-spec-list-keys))
 
 (mu/defn columns
   "The `:metadata/column` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (select-spec-batched #(t2/select :metadata/column (h2x/assert-map-or-nil! (metadata-where :metadata/column database-id %)))
-                       metadata-spec))
+  (app-db/select-batched-by-keys
+   #(t2/select :metadata/column (h2x/assert-map-or-nil! (metadata-where :metadata/column database-id %)))
+   metadata-spec metadata-spec-list-keys))
 
 (mu/defn cards
   "The `:metadata/card` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (select-spec-batched #(t2/select :metadata/card (h2x/assert-map-or-nil! (metadata-where :metadata/card database-id %)))
-                       metadata-spec))
+  (app-db/select-batched-by-keys
+   #(t2/select :metadata/card (h2x/assert-map-or-nil! (metadata-where :metadata/card database-id %)))
+   metadata-spec metadata-spec-list-keys))
 
 (mu/defn metrics
   "The `:metadata/metric` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (select-spec-batched #(t2/select :metadata/metric (h2x/assert-map-or-nil! (metadata-where :metadata/metric database-id %)))
-                       metadata-spec))
+  (app-db/select-batched-by-keys
+   #(t2/select :metadata/metric (h2x/assert-map-or-nil! (metadata-where :metadata/metric database-id %)))
+   metadata-spec metadata-spec-list-keys))
 
 (mu/defn segments
   "The `:metadata/segment` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (select-spec-batched #(t2/select :metadata/segment (h2x/assert-map-or-nil! (metadata-where :metadata/segment database-id %)))
-                       metadata-spec))
+  (app-db/select-batched-by-keys
+   #(t2/select :metadata/segment (h2x/assert-map-or-nil! (metadata-where :metadata/segment database-id %)))
+   metadata-spec metadata-spec-list-keys))
 
 (mu/defn measures
   "The `:metadata/measure` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (select-spec-batched #(t2/select :metadata/measure (h2x/assert-map-or-nil! (metadata-where :metadata/measure database-id %)))
-                       metadata-spec))
+  (app-db/select-batched-by-keys
+   #(t2/select :metadata/measure (h2x/assert-map-or-nil! (metadata-where :metadata/measure database-id %)))
+   metadata-spec metadata-spec-list-keys))
 
 (mu/defn native-query-snippets
   "The `:metadata/native-query-snippet` rows picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (select-spec-batched #(t2/select :metadata/native-query-snippet
-                                   (h2x/assert-map-or-nil! (metadata-where :metadata/native-query-snippet database-id %)))
-                       metadata-spec))
+  (app-db/select-batched-by-keys
+   #(t2/select :metadata/native-query-snippet
+               (h2x/assert-map-or-nil! (metadata-where :metadata/native-query-snippet database-id %)))
+   metadata-spec metadata-spec-list-keys))
 
 (mu/defn transforms
   "The `:metadata/transform` rows picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (select-spec-batched #(t2/select :metadata/transform
-                                   (h2x/assert-map-or-nil! (metadata-where :metadata/transform database-id %)))
-                       metadata-spec))
+  (app-db/select-batched-by-keys
+   #(t2/select :metadata/transform
+               (h2x/assert-map-or-nil! (metadata-where :metadata/transform database-id %)))
+   metadata-spec metadata-spec-list-keys))

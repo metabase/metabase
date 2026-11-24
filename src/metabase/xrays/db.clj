@@ -176,8 +176,8 @@
   (t2/select :model/Card :table_id table-id :type [:in card-types] :archived false))
 
 (mu/defn unarchived-cards-for-tables-of-types
-  "The unarchived Cards of the Tables with `table-ids` whose type is one of `card-types`. A nil among `table-ids`
-  stands for the Cards without a resolved table id."
+  "The unarchived Cards of the Tables with `table-ids` whose type is one of `card-types`, a nil among `table-ids`
+  standing for the Cards without a resolved table id."
   [table-ids  :- [:sequential [:maybe ::lib.schema.id/table]]
    card-types :- [:sequential :keyword]]
   (let [ids (into [] (comp (remove nil?) (distinct)) table-ids)]

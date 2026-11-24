@@ -2021,7 +2021,7 @@
            users.schema
            util
            util.config}
-   :model-exports #{:model/Notification :model/NotificationCard :model/NotificationHandler}
+   :model-exports #{:model/Notification :model/NotificationHandler}
    :model-imports #{:model/Card
                     :model/Channel
                     :model/ChannelTemplate
@@ -2371,7 +2371,6 @@
                     :model/ModerationReview
                     :model/NativeQuerySnippet
                     :model/Notification
-                    :model/NotificationCard
                     :model/Revision
                     :model/Table
                     :model/Timeline}}
@@ -3082,7 +3081,6 @@
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldUserSettings
-                    :model/FieldValues
                     :model/Table
                     :model/TableUserSettings}}
 

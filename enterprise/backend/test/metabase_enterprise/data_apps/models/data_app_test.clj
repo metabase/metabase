@@ -152,6 +152,21 @@
         (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_read))))
         (is (not (mi/can-write? (t2/hydrate (t2/select-one :model/DataApp :id id) :can_write))))))))
 
+(deftest can-write-false-on-read-only-remote-sync-instance-test
+  (mt/with-temp [:model/DataApp {id :id} {}]
+    (let [can-write? (fn [superuser?]
+                       (binding [api/*is-superuser?* superuser?]
+                         (:can_write (t2/hydrate (t2/select-one :model/DataApp :id id) :can_write))))]
+      (mt/with-premium-features #{:data-apps :remote-sync}
+        (testing "superuser writes on instance that is not read-only"
+          (is (true? (can-write? true))))
+        (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                           remote-sync-type :read-only]
+          (testing "superuser does not write on read-only instance"
+            (is (false? (can-write? true))))
+          (testing "non-superuser does not write on read-only instance"
+            (is (false? (can-write? false)))))))))
+
 (deftest can-update-allows-only-enabling-and-disabling-by-superuser-test
   (mt/with-temp [:model/DataApp {id :id} {}]
     (let [can-update? (fn [superuser? changes]

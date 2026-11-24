@@ -758,7 +758,7 @@
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage Lib.
     (persisted-info/invalidate! (map :id models))
     ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
-    ;; Unclear why `fix-name` is required, would expect it to get this from the field's display name, as it does for
+    ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
     ;; the initial upload.
     (let [fix-name #(update % :display_name warehouse-schema.humanization/name->human-readable-name)]
       (queries.card/update-cards! (vec (for [card models]

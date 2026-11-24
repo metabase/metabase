@@ -602,9 +602,8 @@
     (assoc :collection_id collection-id)))
 
 (defn- maybe-populate-collection-id
-  "`card-updates`, which may contain either or both of a `collection_id` and a `dashboard_id`. If either one is set,
-  let's validate that they match using `actual-collection-id` and make sure that the `card-updates` contains the
-  updated `collection_id`."
+  "`card-updates` with the `collection_id` that `actual-collection-id` gives them when they set a `collection_id` or a
+  `dashboard_id`."
   [card-before-update card-updates]
   (populate-collection-id card-before-update
                           card-updates
@@ -660,41 +659,52 @@
                                  [search-model [:= :this.id id]])))
         card))))
 
+(defn- moves-into-dashboard?
+  "Whether `changes` of `card` put it in another Dashboard."
+  [[card changes]]
+  (and (:dashboard_id changes)
+       (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided))))
+
 (defn move-cards!
-  "Moves the Cards with `card-ids` to the Collection or Dashboard that `card-updates`, a `:collection_id` and a
-  `:dashboard_id`, name, as [[update-card!]] does for each of them, taking their DashboardCards off the Dashboards they
-  leave, but checking all of them together and writing them with one call. The Cards that have a position in their
-  Collection go to the end of the new one, in the order they had, or lose it in a Dashboard, and the gaps they leave in
-  the old Collections are closed once."
+  "Moves the Cards with `card-ids` to the Collection or Dashboard that `card-updates` (a `:collection_id` and a
+  `:dashboard_id`) name, as [[update-card!]] does for each but checked together and written with one call: their
+  DashboardCards leave the Dashboards they leave, positioned Cards go to the end of the new Collection in their order
+  or lose their position in a Dashboard, and the gaps in the old Collections are closed."
   [card-ids card-updates]
-  (let [cards (t2/hydrate (let [id->card (queries-rest.db/cards-by-id (vec (distinct card-ids)))]
-                            (mapv #(api/check-404 (id->card %)) (distinct card-ids)))
-                          :can_write :in_dashboards)]
-    (run! api/write-check cards)
-    (let [collection-id (when (or (contains? card-updates :collection_id)
-                                  (contains? card-updates :dashboard_id))
-                          (queries/actual-collection-id card-updates))
-          card-changes  (mapv #(vector % (populate-collection-id % card-updates collection-id)) cards)]
-      (queries/check-allowed-to-update-cards! card-changes)
-      (let [card-changes (mapv (fn [[card changes]]
-                                 [card (merge changes
-                                              (when (and (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided))
-                                                         (:dashboard_id changes))
-                                                (api/check-400 (not (:archived changes)))
-                                                {:archived false}))])
-                               card-changes)
-            moves        (into []
-                               (keep (fn [[card changes]]
-                                       (when (and (:collection_position card)
-                                                  (not= (:collection_id card) (:collection_id changes))
-                                                  (contains? changes :collection_id))
-                                         {:id (:id card) :collection_id (:collection_id card) :to (:collection_id changes)})))
-                               card-changes)
-            positions    (when (seq moves) (collection/moved-positions moves))]
-        (queries.card/place-updated-dashboard-questions! card-changes true)
-        (queries.card/update-cards! (mapv (fn [[card changes]] (assoc (queries.card/card-changes changes) :id (:id card)))
-                                          card-changes))
-        (when positions (collection/write-positions! positions))))))
+  (let [ids           (distinct card-ids)
+        id->card      (into {} (map (juxt :id identity))
+                            (t2/hydrate (vec (vals (queries-rest.db/cards-by-id (vec ids)))) :can_write :in_dashboards))
+        refused-id    (first (remove #(some-> (id->card %) mi/can-write?) ids))
+        cards         (mapv id->card (take-while #(not= % refused-id) ids))
+        collection-id (when (and (seq cards)
+                                 (or (contains? card-updates :collection_id)
+                                     (contains? card-updates :dashboard_id)))
+                        (queries/actual-collection-id card-updates))
+        card-changes  (mapv #(vector % (populate-collection-id % card-updates collection-id)) cards)
+        archive-at    (first (keep-indexed (fn [i pair] (when (and (moves-into-dashboard? pair) (:archived (second pair))) i)) card-changes))
+        checked       (if archive-at (subvec card-changes 0 (inc archive-at)) card-changes)]
+    (when (seq checked)
+      (queries/check-allowed-to-update-cards! checked))
+    (when archive-at
+      (api/check-400 false))
+    (when refused-id
+      (api/write-check (api/check-404 (id->card refused-id))))
+    (let [card-changes (mapv (fn [[card changes]]
+                               [card (cond-> changes
+                                       (moves-into-dashboard? [card changes]) (assoc :archived false))])
+                             card-changes)
+          moves        (into []
+                             (keep (fn [[card changes]]
+                                     (when (and (:collection_position card)
+                                                (not= (:collection_id card) (:collection_id changes))
+                                                (contains? changes :collection_id))
+                                       {:id (:id card) :collection_id (:collection_id card) :to (:collection_id changes)})))
+                             card-changes)
+          positions    (when (seq moves) (collection/moved-positions moves))]
+      (queries.card/place-updated-dashboard-questions! card-changes true)
+      (queries.card/update-cards! (mapv (fn [[card changes]] (assoc (queries.card/card-changes changes) :id (:id card)))
+                                        card-changes))
+      (when positions (collection/write-positions! positions)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -742,10 +752,9 @@
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
 
 (defn- collection-position-updates
-  "For cards that have a position in the previous collection, the updates that add them to the end of the new collection,
-  trying to preserve the order from the original collections. Note it's possible for there to be multiple collections
-  (and thus duplicate collection positions) merged into this new collection. No special tie breaker logic for when
-  that's the case, just use the order the DB returned it in"
+  "The updates that add the Cards that had a position in their previous Collection to the end of the new one, in the
+  order of their old positions, ties between Cards of several old Collections falling in the order the database
+  returned them."
   [new-collection-id-or-nil sorted-cards]
   (let [max-position      (:max_position (queries-rest.db/max-collection-position new-collection-id-or-nil))
         ;; collection_position for the next card in the collection

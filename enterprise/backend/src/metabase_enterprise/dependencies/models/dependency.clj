@@ -269,7 +269,7 @@
 
 (mu/defn replace-dependencies-for-entities! :- [:maybe :int]
   "Replace the dependencies of the entities of type `entity-type` with the ones that `id->dependencies` maps their ids
-  to, with one read, one delete and one insert, returning the number inserted, or nil when none are."
+  to, reading, deleting and inserting for all of them together, returning the number inserted, or nil when none are."
   [entity-type      :- ::dependencies.schema/entity-type
    id->dependencies :- [:map-of ms/PositiveInt DependenciesByType]]
   (let [current     (group-by :from_entity_id

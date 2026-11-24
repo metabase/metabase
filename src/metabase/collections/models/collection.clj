@@ -199,15 +199,9 @@
           parse-long))
 
 (defn root-collection-types
-  "The `:type` of the top-level ancestor Collection of each of `records`, in order, the types of the ancestors read in
-  one query. Used by the search ranking specs to power the `:library` scorer for items nested inside library trees.
-
-  Resolution rules, per record:
-    - `:collection_id` `nil`  →  `nil` (item has no collection)
-    - location is `\"/\"` or `nil`  →  the collection's own `:collection_type` (it IS a root)
-    - otherwise  →  the type of the first id of the materialized path
-
-  Reads `:collection_id`, `:collection_location`, `:collection_type` from the ingestion records."
+  "The `:type` of the top-level ancestor Collection of each of the ingestion `records`, in order, from their
+  `:collection_id`, `:collection_location` and `:collection_type`: nil without a Collection, the Collection's own type
+  when it is top-level, else the type of the first id of its location."
   [records]
   (let [root-ids    (into #{}
                           (keep (fn [{:keys [collection_id collection_location]}]
@@ -225,9 +219,9 @@
           records)))
 
 (defn table-root-collection-types
-  "The `:type` of the top-level ancestor of the collection that holds each of `records`' parent table, in order, as
-  [[root-collection-types]] reads it. Reads `:table_collection_id`, `:table_collection_location`,
-  `:table_collection_type` from the ingestion records."
+  "The `:type` of the top-level ancestor of the Collection that holds the parent Table of each of the ingestion
+  `records`, in order, from their `:table_collection_id`, `:table_collection_location` and `:table_collection_type`,
+  as [[root-collection-types]] reads it."
   [records]
   (root-collection-types (mapv (fn [{:keys [table_collection_id table_collection_location table_collection_type]}]
                                  {:collection_id       table_collection_id
@@ -537,18 +531,18 @@
   (hydrate-can-write collections))
 
 (methodical/defmethod t2/batched-hydrate [metabase.collections.models.collection.root.RootCollection :can_read]
-  "Whether the current user reads each of `collections`, led by a root Collection."
+  "Whether the current user reads each of `collections`, a list dispatched on its first row, a root Collection."
   [_model _k collections]
   (hydrate-can-read collections))
 
 (methodical/defmethod t2/batched-hydrate [metabase.collections.models.collection.root.RootCollection :can_write]
-  "Whether the current user writes each of `collections`, led by a root Collection."
+  "Whether the current user writes each of `collections`, a list dispatched on its first row, a root Collection."
   [_model _k collections]
   (hydrate-can-write collections))
 
 (defn content-readable-collection-ids
   "The ids among `collection-ids`, a nil id for the root Collection of the `:root-namespace` option included, of the
-  Collections whose content the current user reads, from one permission query: those they read and, with the
+  Collections whose content the current user reads, from one permission read: those they read and, with the
   `:audit-rules?` option, as for Cards and Dashboards, that aren't the hidden audit Collection."
   [collection-ids {:keys [audit-rules?] :as options}]
   (let [permissions (perms/collection-permissions-for-user (api/current-user-info) (vec collection-ids)
@@ -562,7 +556,7 @@
 
 (defn content-writable-collection-ids
   "The ids among `collection-ids`, a nil id for the root Collection of the `:root-namespace` option included, of the
-  Collections whose content the current user writes, from one permission query and, on a read-only instance, one
+  Collections whose content the current user writes, from one permission read and, on a read-only instance, one
   more: those they write, that remote sync leaves writable and, with the `:audit-rules?` option, as for Cards and
   Dashboards, that aren't the audit Collection."
   [collection-ids {:keys [audit-rules?] :as options}]
@@ -620,11 +614,11 @@
 
 (defn can-write-all-collections-or-root?
   "Whether the current user can write every one of the Collections with `collection-ids`, nil for the root Collection
-  of the `:root-namespace` option, as [[can-write-collection-or-root?]] answers for one, from one read of the
-  Collections, false when one does not exist, which that function answers with a 404."
+  of the `:root-namespace` option, as [[can-write-collection-or-root?]] answers for one, with the Collections read
+  together, false when one does not exist, which that function answers with a 404."
   [collection-ids {:keys [root-namespace]}]
   (let [ids    (into [] (comp (remove nil?) (distinct)) collection-ids)
-        stored (into {} (mapcat #(collections.db/collections-by-ids (vec %))) (partition-all mdb/update-partition-size ids))]
+        stored (collections.db/collections-by-ids ids)]
     (and (= (count stored) (count ids))
          (every? mi/can-write? (t2/hydrate (vec (vals stored)) :can_write))
          (or (not-any? nil? collection-ids)
@@ -1059,8 +1053,8 @@
   (run! create-personal-collections-batch! (partition-all mdb/delete-partition-size (distinct user-ids))))
 
 (defn- personal-collection-ids-creating-missing
-  "A map from each of the Users with `user-ids` to the id of its Personal Collection, creating the missing ones in one
-  batch and reading back any that another request created at the same time."
+  "A map from each of the Users with `user-ids` to the id of its Personal Collection, creating the missing ones
+  together and reading back any that another request created at the same time."
   [user-ids]
   (let [owned   (collections.db/personal-collection-ids-by-owner user-ids)
         missing (into [] (remove #(contains? owned %)) user-ids)]
@@ -2008,7 +2002,7 @@
 
 (defn move-answers
   "For each `[row changes]` pair of `pairs`, what [[can-move?]] answers, `:not-found` where it throws the 404 for a
-  Collection that does not exist, from one read of the Collections."
+  Collection that does not exist, with the Collections read together."
   [pairs]
   (let [moving?  (fn [[row changes]]
                    (api/column-will-change? (:collection_id row) (get changes :collection_id ::api/not-provided)))
@@ -2017,7 +2011,7 @@
                                 (remove nil?)
                                 (distinct))
                        pairs)
-        stored   (into {} (mapcat #(collections.db/collections-by-ids (vec %))) (partition-all mdb/update-partition-size ids))
+        stored   (collections.db/collections-by-ids ids)
         writable (into {} (map (juxt :id (comp boolean mi/can-write?))) (t2/hydrate (vec (vals stored)) :can_write))
         root     (when (some #(and (moving? %) (or (nil? (:collection_id (first %))) (nil? (:collection_id (second %))))) pairs)
                    (boolean (mi/can-write? (t2/hydrate (root-collection-with-ui-details nil) :can_write))))
@@ -2416,15 +2410,19 @@
     (shift-positions-in-collection! model collection-id positions direction)))
 
 (defn position-updates
-  "The `{:id :collection_position}` of each of `rows`, with an `:id` and a `:collection_position`, whose position changes
-  once the sorted `freed-positions` are taken out of the Collection: each loses one for every freed position below it."
+  "The `{:id :collection_position}` of each of `rows`, with an `:id` and a `:collection_position`, whose position
+  changes once the sorted `freed-positions` are closed one by one, the highest first, each moving down by one the rows
+  above it."
   [rows freed-positions]
-  (into []
-        (keep (fn [{:keys [id collection_position]}]
-                (let [new-position (- collection_position (count (take-while #(< % collection_position) freed-positions)))]
-                  (when (not= new-position collection_position)
-                    {:id id :collection_position new-position}))))
-        rows))
+  (let [descending (reverse freed-positions)]
+    (into []
+          (keep (fn [{:keys [id collection_position]}]
+                  (let [new-position (reduce (fn [position freed] (if (> position freed) (dec position) position))
+                                             collection_position
+                                             descending)]
+                    (when (not= new-position collection_position)
+                      {:id id :collection_position new-position}))))
+          rows)))
 
 (defmulti positioned-rows-in-collections
   "The `:id`, `:collection_id` and `:collection_position` of the rows of `model` that have a position in the Collections
@@ -2449,8 +2447,9 @@
       :else                               [:or [:= :collection_id nil] [:in :collection_id [:auto/param ids]]])))
 
 (defn- shift-after-move
-  "`state`, the Collection and position of the positioned rows by `[model id]`, after the Card `card-key` leaves the Collection `old-id`,
-  which closes its gap, and enters `new-id`, where it makes room for its position, as the single Card path does."
+  "`state`, the Collection and position of the positioned rows by `[model id]`, after the Card `card-key` leaves the
+  Collection `old-id`, which closes its gap, and enters `new-id`, where it makes room for its position, as the single
+  Card path does."
   [state card-key old-id new-id]
   (let [position (get-in state [card-key :collection_position])]
     (-> (update-vals state
@@ -2480,9 +2479,12 @@
                end)))
 
 (mu/defn moved-positions :- [:map-of :keyword [:map-of ms/PositiveInt ms/PositiveInt]]
-  "The positions, `{model {id position}}`, that the rows in the Collections the Cards `moves` leave and enter have after
-  the Cards move one after the other, see [[positions-after-moves]], from one read per model."
-  [moves :- [:sequential [:map [:id ms/PositiveInt] [:collection_id [:maybe ms/PositiveInt]] [:to [:maybe ms/PositiveInt]]]]]
+  "The positions, `{model {id position}}`, that the rows in the Collections the Cards `moves` leave and enter have
+  after the Cards move one after the other, see [[positions-after-moves]], each model's rows read together."
+  [moves :- [:sequential [:map {:closed true}
+                          [:id            ms/PositiveInt]
+                          [:collection_id [:maybe ms/PositiveInt]]
+                          [:to            [:maybe ms/PositiveInt]]]]]
   (let [collection-ids (into #{} (mapcat (juxt :collection_id :to)) moves)]
     (positions-after-moves (into []
                                  (mapcat (fn [model]
@@ -2492,15 +2494,17 @@
                            moves)))
 
 (mu/defn write-positions!
-  "Gives the rows the positions `model->id->position`, as [[moved-positions]] answers, with one write per model."
+  "Gives the rows the positions `model->id->position`, as [[moved-positions]] answers, with one call of its write
+  function per model."
   [model->id->position :- [:map-of :keyword [:map-of ms/PositiveInt ms/PositiveInt]]]
   (doseq [[model id->position] model->id->position]
     (update-positions! model id->position)))
 
 (mu/defn reconcile-freed-positions!
   "Closes the gaps that the positions `collection-id->freed-positions` hold, the positions that rows left in each
-  Collection, nil for the root, leave, from one read and one write per model that has a position in its Collection,
-  giving every row the position that reconciling the freed positions one by one, the highest first, gives it."
+  Collection, nil for the root, leave, reading and writing the rows of each model that has a position in its
+  Collection together, giving every row the position that reconciling the freed positions one by one, the highest
+  first, gives it."
   [collection-id->freed-positions :- [:map-of [:maybe ms/PositiveInt] [:sequential ms/PositiveInt]]]
   (when (seq collection-id->freed-positions)
     (let [collection-id->freed (update-vals collection-id->freed-positions (comp vec sort))
@@ -3123,8 +3127,7 @@
   permissions in one transaction, publishing their delete event right before the first statement."
   [collection-ids :- [:sequential ms/PositiveInt]]
   (t2/with-transaction [_conn]
-    (let [id->stored (into {} (map collections.db/collections-by-ids)
-                           (map vec (partition-all mdb/delete-partition-size (distinct collection-ids))))]
+    (let [id->stored (collections.db/collections-by-ids collection-ids)]
       (check-collection-deletes (vals id->stored))
       (when (seq id->stored)
         (let [ids     (into (set (keys id->stored))

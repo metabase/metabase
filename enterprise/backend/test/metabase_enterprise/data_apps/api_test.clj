@@ -92,6 +92,10 @@
             (is (=? {:enabled false} (mt/user-http-request :crowberto :put 200 url {:enabled false})))
             (is (false? (enabled)))
             (is (=? {:enabled true} (mt/user-http-request :crowberto :put 200 url {:enabled true})))
+            (is (true? (enabled))))
+          (testing "non-superuser cannot disable app on read-only instance"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 url {:enabled false})))
             (is (true? (enabled)))))))))
 
 (deftest data-app-write-endpoints-require-feature-token-test

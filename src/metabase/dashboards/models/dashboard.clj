@@ -467,8 +467,9 @@
                            (update event :changes into (:changes (events/touch-event touched))))))
 
 (defn- publish-cards!
-  "Publish the audit event of the dashcards `added` to and of those `removed` from the Dashboards of `dashboards`, a map
-  from id to the instance, one event for each of them holding an entry `:object` with its `:dashcards` for each Dashboard."
+  "Publish the audit event of the dashcards `added` to and of those `removed` from the Dashboards of `dashboards`, a
+  map from id to the instance, one event for each of them holding an entry `:object` with its `:dashcards` for each
+  Dashboard."
   [dashboards added removed]
   (doseq [[topic dashcards] [[:event/dashboard-add-cards added] [:event/dashboard-remove-cards removed]]
           :when (seq dashcards)]

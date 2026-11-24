@@ -629,7 +629,7 @@
            (is (= before (t2/count :model/Notification)))))))))
 
 (defn- update-call-count
-  "The statements that rasta's question whether he may deactivate `notifications` takes, which must be allowed."
+  "The number of statements it takes to ask whether rasta may deactivate `notifications`, which must be allowed."
   [notifications]
   (mt/with-test-user :rasta
     (t2/with-call-count [call-count]

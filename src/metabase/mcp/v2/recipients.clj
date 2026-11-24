@@ -14,9 +14,8 @@
 
 (defn- classify
   "Classify one entry of a tool's `recipients` list as `[:user user-id]` or `[:email address]`, where
-   `active-user-ids` holds the ids of active users among the list's.
-   Throws a teaching error for anything else, including an id no active user has — that one would
-   otherwise surface as a foreign key violation at insert time."
+  `active-user-ids` holds the active users among the list's ids, throwing a teaching error for anything else, an id of
+  no active user included."
   [active-user-ids recipient]
   (cond
     (int? recipient)

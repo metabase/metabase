@@ -154,7 +154,8 @@
       (vec (sort-by pk-of instances)))))
 
 (mu/defn update-rows!
-  "Update `rows` of `model`, each its primary key and the columns to change, with one update per distinct change, running the model's hooks."
+  "Update `rows` of `model`, each its primary key and the columns to change, through the model's hooks, with one
+  update per distinct change and partition of rows."
   [model :- :keyword
    rows  :- [:sequential ::row]]
   (app-db/update-grouped! model rows))

@@ -254,12 +254,6 @@
                                   :group-by [:card_id]})
                       card-ids))
 
-(defn card-dashboards
-  "The Dashboards `card` appears in, hydrating `:in_dashboards` unless it is already present."
-  [card]
-  (or (:in_dashboards card)
-      (:in_dashboards (t2/hydrate card :in_dashboards))))
-
 (mu/defn dashboards-for-cards
   "Rows of `:card_id` plus Dashboard columns for every Dashboard each of `card-ids` appears on, directly or as a series."
   [card-ids :- [:sequential ::lib.schema.id/card]]
@@ -404,18 +398,6 @@
                                                                                    :where  [:in :card_id %]}]) card-ids)
     #{}))
 
-(mu/defn active-card-notifications-by-card
-  "The active card Notifications attached to the Cards with `card-ids`, by the ID of the Card."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (let [payloads        (mdb/select-batched #(t2/select [:model/NotificationCard :id :card_id] :card_id [:in %]) card-ids)
-        payload->card   (into {} (map (juxt :id :card_id)) payloads)]
-    (group-by (comp payload->card :payload_id)
-              (mdb/select-batched #(t2/select :model/Notification
-                                              :active true
-                                              :payload_type :notification/card
-                                              :payload_id [:in %])
-                                  (mapv :id payloads)))))
-
 (mu/defn parameter-cards-for-card
   "The ParameterCards drawing values from the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
@@ -495,7 +477,8 @@
 
 (mu/defn backfill-queries-and-average-execution-times!
   "Set the query text of each Query identified by the `[query-hash query-json c0 c1]` entries of `entries`, and its
-  average execution time to `c0 * average_execution_time + c1`, rounded and cast to an integer, in one statement."
+  average execution time to `c0 * average_execution_time + c1`, rounded and cast to an integer, in one statement per
+  partition of entries."
   [entries :- [:sequential {:min 1} [:tuple bytes? :string number? number?]]]
   (run! #(t2/query {:update (t2/table-name :model/Query)
                     :set    {:query                  (into [:case]
@@ -888,7 +871,10 @@
    positions     :- ::collections.schema/positions]
   (t2/select :model/Card :collection_id collection-id :collection_position (collection/position-clause positions)))
 
-(mu/defn positioned-cards-in-collections :- [:sequential :map]
+(mu/defn positioned-cards-in-collections :- [:sequential [:map {:closed true}
+                                                          [:id                  ms/PositiveInt]
+                                                          [:collection_id       [:maybe ms/PositiveInt]]
+                                                          [:collection_position ms/PositiveInt]]]
   "The `:id`, `:collection_id` and `:collection_position` of the Cards that have a position in the Collections with
   `collection-ids`, nil for the root."
   [collection-ids :- [:sequential [:maybe ::lib.schema.id/collection]]]

@@ -39,7 +39,8 @@
   (mdb/select-batched #(t2/select :model/MetabotPermissions :group_id [:in [:auto/param %]]) group-ids))
 
 (mu/defn update-permission-values!
-  "Apply `updates`, each the `:id` of a MetabotPermissions row and its new `:perm_value`, one statement per value."
+  "Apply `updates`, each the `:id` of a MetabotPermissions row and its new `:perm_value`, one statement per value and
+  partition of rows."
   [updates :- [:sequential [:map {:closed true}
                             [:id ms/PositiveInt]
                             [:perm_value ::metabot-ee.schema/metabot-permissions.perm-value]]]]

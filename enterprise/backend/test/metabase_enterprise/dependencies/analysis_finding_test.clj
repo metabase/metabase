@@ -64,17 +64,17 @@
           old       (java.time.OffsetDateTime/parse "2020-01-01T00:00:00Z")
           stored    #(t2/select-one [:model/AnalysisFinding :result :analyzed_at] :entity_type :card :entity_id entity-id)]
       (testing "the first call inserts the row with its time"
-        (dependencies.db/upsert-finding! :card entity-id true)
+        (dependencies.db/upsert-findings! :card {entity-id true})
         (is (= 1 (t2/count :model/AnalysisFinding :entity_type :card :entity_id entity-id)))
         (is (true? (:result (stored))))
         (is (some? (:analyzed_at (stored)))))
       (t2/update! :model/AnalysisFinding {:entity_type :card :entity_id entity-id} {:analyzed_at old})
       (testing "the same result keeps the stored time"
-        (dependencies.db/upsert-finding! :card entity-id true)
+        (dependencies.db/upsert-findings! :card {entity-id true})
         (is (= 1 (t2/count :model/AnalysisFinding :entity_type :card :entity_id entity-id)))
         (is (= (.toInstant old) (.toInstant ^java.time.OffsetDateTime (:analyzed_at (stored))))))
       (testing "a different result is stored with a newer time"
-        (dependencies.db/upsert-finding! :card entity-id false)
+        (dependencies.db/upsert-findings! :card {entity-id false})
         (is (= 1 (t2/count :model/AnalysisFinding :entity_type :card :entity_id entity-id)))
         (is (false? (:result (stored))))
         (is (.isAfter (.toInstant ^java.time.OffsetDateTime (:analyzed_at (stored))) (.toInstant old)))))))

@@ -68,7 +68,7 @@
    Copy semantics, not create semantics: the query comes from a row the caller already passed a
    read check on, so they are not authoring it. `check-allowed-to-create-card!` would additionally
    demand run-permission on that query, which refuses a user who can read and run a native card but
-   lacks native authoring perms — the case `documents.models.document/clone-card!` calls out
+   lacks native authoring perms, the case `documents.models.document/clone-cards!` calls out
    (UXW-5037), and one `POST /api/card/:id/copy` allows. Destination create-permission is still
    enforced."
   [card collection-id new-name]

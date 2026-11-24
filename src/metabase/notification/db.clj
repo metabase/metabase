@@ -179,16 +179,6 @@
   [notification-ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched #(t2/select :model/Notification :id [:in %] :payload_type :notification/card) notification-ids))
 
-(mu/defn active-card-notifications-for-card
-  "The active card Notifications attached to the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select :model/Notification
-             :active true
-             :payload_type :notification/card
-             :payload_id [:in ^:allow-subquery {:select [:id]
-                                                :from   [:notification_card]
-                                                :where  [:= :card_id card-id]}]))
-
 (mu/defn active-card-notifications-for-cards
   "The active card Notifications attached to the Cards with `card-ids`."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
@@ -274,7 +264,7 @@
 
 (mu/defn delete-notification-cards-for-notifications!
   "Delete the NotificationCards that are the payloads of the card Notifications with `notification-ids`, in one
-  statement, returning the number deleted."
+  statement per partition of ids, returning the number deleted."
   [notification-ids :- [:sequential ms/PositiveInt]]
   (mdb/sum-batched mdb/delete-partition-size (fn [chunk]
                                                (let [payload-ids [:in ^:allow-subquery {:select [:payload_id]

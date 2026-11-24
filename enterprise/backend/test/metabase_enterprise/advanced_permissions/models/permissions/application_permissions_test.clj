@@ -102,7 +102,7 @@
         (filter #(str/starts-with? (second %) "/application/"))
         (t2/select-fn-set (juxt :group_id :object) :model/Permissions :group_id [:in group-ids])))
 
-(defn- update-one-at-a-time!
+(defn- update-one-by-one!
   "Grant or revoke each application permission of the graph `groups` one at a time."
   [groups]
   (doseq [[group-id group-changes] groups
@@ -111,13 +111,13 @@
       :yes (perms/grant-application-permissions! group-id perm-type)
       :no  (perms/revoke-application-permissions! group-id perm-type))))
 
-(defn- rows-after-one-at-a-time!
-  "The application rows of the groups with `group-ids` after [[update-one-at-a-time!]] with `groups`, rolled back."
+(defn- rows-after-one-by-one!
+  "The application rows of the groups with `group-ids` after [[update-one-by-one!]] with `groups`, rolled back."
   [groups group-ids]
   (let [rows (atom nil)]
     (try
       (t2/with-transaction [_conn]
-        (update-one-at-a-time! groups)
+        (update-one-by-one! groups)
         (reset! rows (application-rows group-ids))
         (throw (ex-info "rollback" {::rollback true})))
       (catch clojure.lang.ExceptionInfo e
@@ -125,7 +125,7 @@
           (throw e))))
     @rows))
 
-(deftest update-graph!-stores-rows-of-one-at-a-time-update-test
+(deftest update-graph!-stores-rows-of-per-permission-update-test
   (testing "updating application permissions of several groups stores what granting and revoking one at a time stores"
     (mt/with-temp [:model/PermissionsGroup {granted-1 :id} {}
                    :model/PermissionsGroup {granted-2 :id} {}
@@ -138,7 +138,7 @@
             changes   {granted-1 {:setting :yes :monitoring :yes}
                        granted-2 {:setting :yes :subscription :no}
                        revoked   {:setting :no}}
-            expected  (rows-after-one-at-a-time! changes group-ids)]
+            expected  (rows-after-one-by-one! changes group-ids)]
         (mt/with-current-user (mt/user->id :crowberto)
           (g-perms/update-graph! (update (g-perms/graph) :groups #(merge-with merge % changes))))
         (is (= expected (application-rows group-ids)))

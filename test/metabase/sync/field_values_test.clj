@@ -325,8 +325,6 @@
                       ["update-field-values" {:throwable #(instance? Exception %)}]]}
              (sync/update-field-values! (:id (data/db)))))))))
 
-;;; ---------------------------------- fields-to-scan ----------------------------------
-
 (deftest fields-to-scan-respects-limit-test
   (testing "returns at most `limit` active, normal-visibility fields so very wide tables don't load every field"
     (mt/with-temp [:model/Table {table-id :id} {}
@@ -444,8 +442,6 @@
               "Every FV-eligible field is reported as probed; sync-fields-grouped-by-table! drops the rest")
           (is (>= (:queries counts) 2)
               "More fields than *batch-size* should produce more than one query"))))))
-
-;;; ---------------------------------- statement counts ----------------------------------
 
 (defn- list-or-plain-field
   "Every other Field a list Field, the others plain text Fields that should have no FieldValues."

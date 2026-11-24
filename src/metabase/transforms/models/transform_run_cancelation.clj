@@ -22,26 +22,40 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn mark-cancel-started-runs! :- :nil
-  "Mark each started run of `run-ids` for cancelation."
+(mu/defn- write-cancelations! :- :nil
+  "Mark each started run of `run-ids` for cancelation with one write call of each kind, counting each request as ok."
+  [run-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (transforms.db/insert-cancelations-for-active-runs! run-ids)
+  (transforms.db/mark-runs-canceling! run-ids)
+  (doseq [run-id run-ids]
+    (log/infof "Cancelation requested for transform run %s" run-id)
+    (analytics/inc! :metabase-transforms/cancelation-requests {:status "ok"})))
+
+(mu/defn mark-cancel-started-runs! :- :boolean
+  "Mark each started run of `run-ids` for cancelation together, returning false without counting an error when that
+  throws an Exception, so the caller marks them one by one, and counting each as an error when it throws an Error."
   [run-ids :- [:sequential ms/PositiveInt]]
-  (when (seq run-ids)
-    (try
-      (transforms.db/insert-cancelations-for-active-runs! run-ids)
-      (transforms.db/mark-runs-canceling! run-ids)
-      (doseq [run-id run-ids]
-        (log/infof "Cancelation requested for transform run %s" run-id)
-        (analytics/inc! :metabase-transforms/cancelation-requests {:status "ok"}))
-      (catch Throwable t
-        (doseq [_ run-ids]
-          (analytics/inc! :metabase-transforms/cancelation-requests {:status "error"}))
-        (throw t))))
-  nil)
+  (or (empty? run-ids)
+      (try
+        (write-cancelations! run-ids)
+        true
+        (catch Exception e
+          (log/warnf "Failed to mark transform runs %s for cancelation together, marking them one by one: %s"
+                     (vec run-ids) (ex-message e))
+          false)
+        (catch Throwable t
+          (doseq [_ run-ids]
+            (analytics/inc! :metabase-transforms/cancelation-requests {:status "error"}))
+          (throw t)))))
 
 (mu/defn mark-cancel-started-run! :- :nil
-  "Mark a started run for cancelation."
+  "Mark a started run for cancelation, counting the request as an error when that throws."
   [run-id :- ms/PositiveInt]
-  (mark-cancel-started-runs! [run-id]))
+  (try
+    (write-cancelations! [run-id])
+    (catch Throwable t
+      (analytics/inc! :metabase-transforms/cancelation-requests {:status "error"})
+      (throw t))))
 
 (mu/defn delete-cancelation!
   "Delete a cancelation once it has been handled."

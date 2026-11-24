@@ -2,7 +2,6 @@
   "Application database queries for the sync module, which reads the user settings of Tables and Fields to leave the
   values users set alone."
   (:require
-   [clojure.set :as set]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
@@ -126,17 +125,6 @@
    table-name  :- :string]
   (t2/select-one-pk :model/Table :db_id database-id :name table-name :active true))
 
-(mu/defn active-tables-by-lower-name-and-schema
-  "The active Tables of the Database with `database-id` whose lower-cased name and schema match, hidden ones included."
-  [database-id  :- ::lib.schema.id/database
-   lower-name   :- :string
-   lower-schema :- [:maybe :string]]
-  (t2/select :model/Table
-             :db_id database-id
-             :%lower.name lower-name
-             :%lower.schema lower-schema
-             :active true))
-
 (mu/defn active-tables-by-lower-names
   "The active Tables of the Database with `database-id` whose lower-cased name is one of `lower-names`, hidden ones
   included, each with its lower-cased name and schema as the database computes them under `:lower_name` and
@@ -257,65 +245,6 @@
                                      :id [:in %])
                          field-ids))
 
-(defn- base-types->descendants
-  "Given a set of `base-types`, an expanded set including those types and all their descendants in the type
-  hierarchy, as qualified strings so HoneySQL doesn't confuse them for columns."
-  [base-types]
-  (into #{}
-        (comp (mapcat (fn [base-type] (cons base-type (descendants base-type))))
-              (map u/qualified-name))
-        base-types))
-
-(defn- fingerprint-version-clauses
-  "Honey SQL `:or` disjuncts, one per fingerprint version older than the latest that hasn't already been superseded,
-  matching Fields whose `base_type` (or a descendant) was re-fingerprinted at that version. `version->base-types` is
-  a map of fingerprint version to the set of base types re-fingerprinted at that version."
-  [version->base-types]
-  (let [versions+base-types (reverse (sort-by first (seq version->base-types)))
-        already-seen        (atom #{})]
-    (into [:or]
-          (keep (fn [[version base-types]]
-                  (let [not-yet-seen (set/difference (base-types->descendants base-types) @already-seen)]
-                    (when (seq not-yet-seen)
-                      (swap! already-seen set/union not-yet-seen)
-                      [:and
-                       [:< :fingerprint_version version]
-                       [:in :base_type not-yet-seen]]))))
-          versions+base-types)))
-
-(def ^:private fields-to-fingerprint-base-clause
-  [:and
-   [:= :active true]
-   [:or
-    [:not (app-db/isa :semantic_type :type/PK)]
-    [:= :semantic_type nil]]
-   [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not-in :base_type (conj (app-db/type-keyword->descendants :type/fingerprint-unsupported)
-                             (u/qualified-name :type/*))]])
-
-(defn- needs-fingerprint-update-clause
-  "Honey SQL clause matching Fields whose fingerprint needs to be re-calculated: active, non-`PK`/no-semantic-type,
-  non-retired/sensitive-visibility, non-fingerprint-unsupported `base_type`, and, unless `refingerprint?`, without a
-  fingerprint or whose fingerprint version can be updated per `version->base-types` (a map of fingerprint version to
-  the set of base types that should be re-fingerprinted at that version)."
-  [refingerprint? version->base-types]
-  (cond-> fields-to-fingerprint-base-clause
-    (not refingerprint?) (conj (fingerprint-version-clauses version->base-types))))
-
-(mu/defn fields-needing-fingerprint-update
-  "Up to `limit` active, visible Fields of the Table with `table-id` whose fingerprint needs to be re-calculated,
-  ordered by ID. See [[needs-fingerprint-update-clause]] for the full matching criteria."
-  [table-id           :- ::lib.schema.id/table
-   refingerprint?     :- :boolean
-   version->base-types :- [:map-of :int [:set [:or :keyword :string]]]
-   limit              :- ms/PositiveInt]
-  (t2/select :model/Field
-             {:where    [:and
-                         [:= :table_id table-id]
-                         (needs-fingerprint-update-clause refingerprint? version->base-types)]
-              :order-by [[:id :asc]]
-              :limit    limit}))
-
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
@@ -347,16 +276,6 @@
                         [:= :active true]]})
    table-ids))
 
-(mu/defn normal-fields-for-table
-  "Up to `limit` active, normal-visibility Fields of the Table with `table-id`, ordered by ID."
-  [table-id :- ::lib.schema.id/table
-   limit    :- ms/PositiveInt]
-  (t2/select :model/Field
-             :table_id table-id
-             :active true
-             :visibility_type "normal"
-             {:order-by [[:id :asc]], :limit limit}))
-
 (mu/defn inactive-fields-by-lower-name
   "The inactive Fields of the Table with `table-id` under `parent-id` whose lower-cased name is one of `lower-names`."
   [table-id    :- ::lib.schema.id/table
@@ -384,26 +303,6 @@
                                                  [:= :active false]]})
                             (distinct lower-names)))
    table-ids))
-
-(mu/defn incomplete-analysis-fields-for-table
-  "The active, visible Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not yet analyzed."
-  [table-id            :- ::lib.schema.id/table
-   fingerprint-version :- :int]
-  (t2/select :model/Field
-             :table_id table-id
-             :active true
-             :visibility_type [:not-in ["sensitive" "retired"]]
-             :fingerprint_version fingerprint-version
-             :last_analyzed nil))
-
-(mu/defn name-field-count-for-table
-  "The number of active, visible Fields of the Table with `table-id` whose semantic type is `:type/Name`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/count :model/Field
-            :table_id table-id
-            :active true
-            :visibility_type [:not-in ["sensitive" "retired"]]
-            :semantic_type :type/Name))
 
 (mr/def ::cursor
   "A keyset-pagination cursor over Field ids: zero starts before the first Field, since ids are positive."
@@ -502,15 +401,15 @@
   [schema table column]
   [(some-> schema u/lower-case-en) (u/lower-case-en table) (u/lower-case-en column)])
 
-(mu/defn fk-target-changes-for-entries :- [:sequential [:map
+(mu/defn fk-target-changes-for-entries :- [:sequential [:map {:closed true}
                                                         [:id ::lib.schema.id/field]
                                                         [:changes :map]
                                                         [:entry :map]]]
-  "For each of `entries`, foreign key metadata with the `:fk-table-schema`, `:fk-table-name` and `:fk-column-name` of a
-  Field and the `:pk-` ones of the Field it points at, in the Database with `db-id`: the id of the Field and the changes
-  that point it at the target, with the entry, leaving out an entry whose Fields are missing, that already points
-  there, or whose Field has a user-set target. Reads the Fields of all entries, then their rows and settings, in one
-  query each per partition of at most [[app-db/select-partition-size]] names or ids."
+  "For each of `entries`, foreign key metadata with the `:fk-table-schema`, `:fk-table-name` and `:fk-column-name` of
+  a Field and the `:pk-` ones of the Field it points at, in the Database with `db-id`: the id of the Field and the
+  changes that point it at the target, with the entry, leaving out an entry whose Fields are missing, that already
+  points there, or whose Field has a user-set target, with the Fields of all entries, then their rows and settings,
+  read together."
   [db-id   :- ::lib.schema.id/database
    entries :- [:sequential :map]]
   (if (empty? entries)
@@ -588,20 +487,6 @@
                              :where  [:and
                                       [:= :s.field_id :metabase_field.id]
                                       [:not= :s.data_sensitivity nil]]}])
-
-(mu/defn fields-to-scan-for-data-sensitivity
-  "The active, non-retired Fields of the Table with `table-id` the data-sensitivity classifier still has to scan,
-  without a label a user set, ordered by ID."
-  [table-id       :- ::lib.schema.id/table
-   rescan-public? :- [:maybe :boolean]]
-  (t2/select :model/Field
-             {:where    [:and
-                         [:= :table_id table-id]
-                         [:= :active true]
-                         [:not= :visibility_type "retired"]
-                         (data-sensitivity-to-scan-clause rescan-public?)
-                         [:not (user-set-data-sensitivity-clause)]]
-              :order-by [[:id :asc]]}))
 
 (mu/defn table-ids-with-fields-to-scan-for-data-sensitivity
   "The IDs of the active Tables of the Database with `database-id` that have active, non-retired Fields the
@@ -684,23 +569,3 @@
   [database-id :- ::lib.schema.id/database
    schema      :- :string]
   (set (t2/select-pks-set :model/Table :db_id [:auto/param database-id] :schema [:auto/param schema])))
-
-;;; ---------------------------------------------- FieldValues ----------------------------------------------
-
-(mu/defn field-values-exist?
-  "Whether the Field with `field-id` has FieldValues."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldValues :field_id field-id))
-
-(defn- before-max-age-value
-  "Honey SQL `[:< …]` value expression matching a timestamp more than `max-age-days` days before now."
-  [max-age-days]
-  [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)])
-
-(mu/defn advanced-field-values-count-before
-  "The number of FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
-  [field-id     :- ::lib.schema.id/field
-   types        :- [:set :keyword]
-   max-age-days :- :int]
-  (t2/count :model/FieldValues :field_id field-id :type [:in types]
-            :created_at (before-max-age-value max-age-days)))

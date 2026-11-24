@@ -1419,7 +1419,7 @@
                               :removed []
                               :next-id -1})]
     ;; A card placed on a shared dashboard exposes its selected timeline events, so the same read check the REST
-    ;; writer applies runs here too, once for all the cards added.
+    ;; writer applies runs here too.
     (queries/check-newly-exposed-dashcards-timeline-permissions!
      dashboard current (into [] (comp (filter (comp #{"add"} :action)) (map #(select-keys % [:card_id]))) mutations))
     (doseq [[mutation-index {:keys [action card_id dashcard_id display_size position text tab_id] :as mutation}]

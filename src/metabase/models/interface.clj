@@ -771,6 +771,21 @@
   [instances]
   (filterv can-write? (t2/hydrate instances :can_write)))
 
+(defn assoc-each
+  "Each of `instances` with `v` under `k`, nil ones left nil, for a hydration that answers once for all of them."
+  [instances k v]
+  (for [instance instances]
+    (when instance
+      (assoc instance k v))))
+
+(defn vary-meta-each
+  "Each of `instances` with `v` under `k` in its metadata, where `:can_read` hydrations keep their answer, nil ones left
+  nil."
+  [instances k v]
+  (for [instance instances]
+    (when instance
+      (vary-meta instance assoc k v))))
+
 (methodical/defmethod t2.hydrate/needs-hydration? [:default :can_read]
   "Whether `instance` lacks the answer `:can_read` hydration keeps in its metadata, since `:can_read` is not a key of
   the row."

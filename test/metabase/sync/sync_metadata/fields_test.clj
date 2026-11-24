@@ -771,9 +771,9 @@
   {:classname "org.h2.Driver" :subprotocol "h2" :subname (str "mem:" warehouse-name ";DB_CLOSE_DELAY=-1")})
 
 (defn- do-with-h2-warehouse!
-  "Call `(f database-id spec)` with a Database over a fresh in-memory H2 warehouse of `n` Tables `T0`, `T1`, ... of four
-  columns each, `ID`, `A`, `B` and `C`, whose JDBC `spec` it also gets. The Database is inserted and cleaned up rather
-  than made by `with-temp`, whose transaction would make sync read uncached what it caches outside one."
+  "Call `(f database-id spec)` with a Database, inserted and cleaned up by hand since the transaction of `with-temp`
+  would change what sync caches, over a fresh in-memory H2 warehouse with the JDBC `spec` and `n` Tables `T0`, `T1` and
+  so on of the columns `ID`, `A`, `B` and `C`."
   [warehouse-name n f]
   (let [spec (h2-warehouse-spec warehouse-name)]
     (jdbc/execute! spec ["DROP ALL OBJECTS"])
@@ -786,7 +786,7 @@
          spec))))
 
 (defn- sync-step-statement-counts!
-  "The number of app-DB statements each of `steps`, pairs of a key and a function of the Database, issues in order over
+  "The number of app DB statements each of `steps`, pairs of a key and a function of the Database, issues in order over
   a warehouse of `n` Tables after `(prepare! database-id spec)`, with what `(check database-id)` returns afterwards
   under `:check`."
   [n prepare! steps check]
@@ -882,7 +882,7 @@
            (is (= {"T0" 4 "T1" 0 "T2" 4 "T3" 4}
                   (into {} (map (juxt identity field-count)) ["T0" "T1" "T2" "T3"])))))))))
 
-(deftest sync-fields-falls-back-to-one-table-at-a-time-test
+(deftest sync-fields-falls-back-to-table-by-table-test
   (mt/test-driver :h2
     (testing "when syncing the Tables of a chunk together fails, each of them is synced on its own"
       (do-with-h2-warehouse!

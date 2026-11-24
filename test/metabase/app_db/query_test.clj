@@ -214,6 +214,18 @@
   (testing "no ids make no call"
     (is (= [] (mdb.query/select-batched (fn [_] (throw (ex-info "called" {}))) [])))))
 
+(deftest ^:synchronized select-batched-by-keys-test
+  (with-redefs [mdb.query/select-partition-size 2]
+    (let [calls (atom [])
+          rows  (mdb.query/select-batched-by-keys (fn [m] (swap! calls conj m) [m])
+                                                  {:id [1 2 3] :name nil :other :x}
+                                                  [:id :name])]
+      (testing "each key's collection is bound in partitions and keys without values are left alone"
+        (is (= [{:id #{1 2} :name nil :other :x} {:id #{3} :name nil :other :x}] @calls))
+        (is (= @calls rows))))
+    (testing "a map without values under the keys is read once"
+      (is (= [{:other :x}] (mdb.query/select-batched-by-keys vector {:other :x} [:id]))))))
+
 (deftest ^:synchronized insert-returning-instances-over-partitions-test
   (testing "rows read back over partitions keep the order of the rows inserted"
     (t2/with-transaction [_conn nil {:rollback-only true}]

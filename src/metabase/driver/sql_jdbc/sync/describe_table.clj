@@ -243,7 +243,7 @@
                 :preview-display false})))))))
 
 (defn- table-database
-  "The Database of `table`: its hydrated `:db` when it carries one, else read from the application database."
+  "The Database of `table`: its hydrated `:db` when it carries one, else read from the app DB."
   [table]
   (or (:db table)
       (driver-api/table->database table)))

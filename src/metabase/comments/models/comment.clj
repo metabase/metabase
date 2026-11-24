@@ -109,7 +109,8 @@
   (boolean (some-> (target comment) (t2/hydrate :can_read) mi/can-read?)))
 
 (defn- writable-target-keys
-  "The `[target_type target_id]` of the entities `comments` are on that the current user writes, loaded together per type."
+  "The `[target_type target_id]` of the entities `comments` are on that the current user writes, loaded together per
+  type."
   [comments]
   (into #{}
         (for [[target-type rows] (group-by :target_type comments)

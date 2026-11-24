@@ -125,8 +125,8 @@
     (string? x) (try (Long/parseLong (str/trim x)) (catch NumberFormatException _ nil))))
 
 (defn run-distinct-batch
-  "Execute one UNION ALL query covering `fields` from one `table` of a Database of `driver`. The caller is responsible for
-  ensuring `(count fields)` ≤ [[*batch-size*]] (the per-query arm cap) and that all `fields`
+  "Execute one UNION ALL query covering `fields` from one `table` of a Database of `driver`. The caller is
+  responsible for ensuring `(count fields)` <= [[*batch-size*]] (the per-query arm cap) and that all `fields`
   belong to `table`.
 
   Returns `{field-id → {:values [decoded …] :raw-count N}}` with all input fields pre-seeded so

@@ -97,7 +97,7 @@
              (:fields (driver/describe-table driver database effective-table)))))))))
 
 (def ^:private describe-table-batch-size
-  "How many Tables [[describe-fields-using-describe-table]] reads from the application database at a time."
+  "How many Tables [[describe-fields-using-describe-table]] reads from the app DB at a time."
   1000)
 
 (defn- describe-fields-using-describe-table

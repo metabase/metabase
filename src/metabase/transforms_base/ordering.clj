@@ -161,9 +161,9 @@
         (let [{:keys [database_id schema table]} table-ref]
           (get (:by-triple target-refs) [database_id schema table])))))
 
-(mu/defn- with-sources-of-uncached :- [:map-of ::lib.schema.id/transform ::transforms-base.schema/transform-row]
-  "The `transforms` by id, those without cached `:table_dependencies` and without a `:source` given theirs, read in one
-  statement for all of them."
+(mu/defn- assoc-sources-of-uncached :- [:map-of ::lib.schema.id/transform ::transforms-base.schema/transform-row]
+  "The `transforms` by id, those without cached `:table_dependencies` and without a `:source` given theirs, read
+  together."
   [transforms :- [:sequential ::transforms-base.schema/transform-row]]
   (let [id->transform (u/index-by :id transforms)
         sourceless    (into [] (comp (filter #(and (nil? (:table_dependencies %)) (not (:source %))))
@@ -212,7 +212,7 @@
   (logging, metrics, error responses)."
   [start-ids      :- [:or [:sequential ::lib.schema.id/transform] [:set ::lib.schema.id/transform]]
    all-transforms :- [:sequential ::transforms-base.schema/transform-row]]
-  (let [id->xf        (with-sources-of-uncached all-transforms)
+  (let [id->xf        (assoc-sources-of-uncached all-transforms)
         output-tables (output-table-map (map #(select-keys % [:id :target_table_id]) all-transforms))
         target-refs   (target-ref-map all-transforms)
         all-ids       (into #{} (map :id) all-transforms)]

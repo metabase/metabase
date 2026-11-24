@@ -265,7 +265,7 @@
 
 (mu/defn update-pulses-for-dashboards!
   "Apply the changes of each Dashboard in `changes-by-dashboard`, a map of Dashboard id to changes with the same keys,
-  to the Pulses of that Dashboard in one statement, leaving `updated_at` untouched."
+  to the Pulses of that Dashboard in one statement per partition of Dashboards, leaving `updated_at` untouched."
   [changes-by-dashboard :- [:map-of {:min 1} ::lib.schema.id/dashboard (mut/dissoc ::pulse.schema/pulse.update :id)]]
   (let [columns  (vec (distinct (mapcat keys (vals changes-by-dashboard))))
         value-of (fn [changes-of-chunk column]
@@ -586,7 +586,10 @@
   [channel-ids :- [:sequential ms/PositiveInt]]
   (app-db/select-batched #(t2/select-pks-vec :model/PulseChannel :channel_id [:in %]) channel-ids))
 
-(mu/defn positioned-pulses-in-collections :- [:sequential :map]
+(mu/defn positioned-pulses-in-collections :- [:sequential [:map {:closed true}
+                                                           [:id                  ms/PositiveInt]
+                                                           [:collection_id       [:maybe ms/PositiveInt]]
+                                                           [:collection_position ms/PositiveInt]]]
   "The `:id`, `:collection_id` and `:collection_position` of the Pulses that have a position in the Collections with
   `collection-ids`, nil for the root."
   [collection-ids :- [:sequential [:maybe ::lib.schema.id/collection]]]

@@ -75,8 +75,8 @@
   "Replace the contents of `query` with a blank query of the same type, so the query contents themselves (SQL,
   filters, aggregations, template tags, etc.) are never exposed to the general public. MBQL queries keep only their
   source table or source card, plus a placeholder `:count` aggregation per original aggregation, so the frontend can
-  still tell MBQL and native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs.
-  A source table is looked up in `id->table`, a map of table ids to their metadata."
+  still tell MBQL and native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs, a
+  source table being looked up in `id->table`, a map of table ids to their metadata."
   [query id->table]
   (if (lib/native? query)
     (lib/native-query query "-")

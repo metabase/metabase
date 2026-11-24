@@ -13,11 +13,10 @@
    [toucan2.core :as t2]))
 
 (mu/defn persisted-info-listing
-  "Up to `limit` PersistedInfo listing rows (id, database, definition, active, state, error, refresh window,
-  table name, creator, card name/archived/type, database name, and collection id/name/authority level) for
-  unarchived model Cards, optionally narrowed to `persisted-info-id`, `db-ids`, and/or `card-id`, newest
-  refresh first, paginated from `offset` by `limit`.
-  A nil `db-ids` leaves the listing unnarrowed by Database, and an empty `db-ids` lists nothing."
+  "Up to `limit` PersistedInfo listing rows (id, database, definition, active, state, error, refresh window, table
+  name, creator, card name/archived/type, database name, and collection id/name/authority level) for unarchived model
+  Cards, optionally narrowed to `persisted-info-id`, `db-ids`, and/or `card-id`, newest refresh first, paginated from
+  `offset` by `limit`, where a nil `db-ids` does not narrow by Database and an empty one lists nothing."
   [persisted-info-id :- [:maybe ms/PositiveInt]
    db-ids            :- [:maybe [:sequential ::lib.schema.id/database]]
    card-id           :- [:maybe ::lib.schema.id/card]

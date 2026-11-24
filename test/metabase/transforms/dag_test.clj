@@ -1,10 +1,13 @@
 (ns metabase.transforms.dag-test
   (:require
+   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
+   [metabase.transforms.canceling :as canceling]
    [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.dag :as dag]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.dag-run :as dag-run]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
@@ -206,3 +209,51 @@
           (finally
             (t2/delete! :model/TransformRun :dag_run_id run-id)
             (t2/delete! :model/TransformDagRun :id run-id)))))))
+
+(defn- cancel-with-failing-writes!
+  "Cancel a DAG run of three member runs, each with a cancel channel, calling `insert!` with the member run ids and the
+  ids of each insert of cancelations before it, and return the member run ids, whether `cancel!` threw, the members
+  whose channel got the signal and the members marked canceling."
+  [insert!]
+  (mt/with-temp [:model/Transform {seed :id} {:name "seed"}
+                 :model/Transform {tid-a :id} {:name "member-a"}
+                 :model/Transform {tid-b :id} {:name "member-b"}
+                 :model/Transform {tid-c :id} {:name "member-c"}]
+    (let [{run-id :id} (dag-run/start-dag-run! seed :upstream nil 3)]
+      (try
+        (let [run-ids  (mapv #(:id (transform-run/start-run! % {:dag_run_id run-id :run_method :manual}))
+                             [tid-a tid-b tid-c])
+              channels (into {} (map (fn [id] [id (a/promise-chan)])) run-ids)
+              insert   (mt/original-fn #'transforms.db/insert-cancelations-for-active-runs!)]
+          (doseq [[id chan] channels]
+            (canceling/chan-start-run! id chan))
+          (try
+            (let [threw? (mt/with-dynamic-fn-redefs [transforms.db/insert-cancelations-for-active-runs!
+                                                     (fn [ids] (insert! run-ids ids) (insert ids))]
+                           (try
+                             (coordinated-run/cancel! :model/TransformDagRun :dag_run_id run-id)
+                             false
+                             (catch Exception _ true)))]
+              {:run-ids   run-ids
+               :threw?    threw?
+               :signalled (into #{} (keep (fn [[id chan]] (when (= :cancel! (a/poll! chan)) id))) channels)
+               :canceling (t2/select-fn-set :id :model/TransformRun :id [:in run-ids] :status :canceling)})
+            (finally
+              (run! canceling/chan-end-run! run-ids))))
+        (finally
+          (t2/delete! :model/TransformRun :dag_run_id run-id)
+          (t2/delete! :model/TransformDagRun :id run-id))))))
+
+(deftest cancel-falls-back-to-each-member-test
+  (testing "cancel! marks and signals each member on its own when marking them together throws"
+    (let [{:keys [run-ids threw? signalled canceling]}
+          (cancel-with-failing-writes! (fn [_run-ids ids] (when (next ids) (throw (ex-info "Write failed" {})))))]
+      (is (false? threw?))
+      (is (= (set run-ids) signalled canceling))))
+  (testing "falling back, cancel! cancels and signals members before one whose own write fails, then throws"
+    (let [{:keys [run-ids threw? signalled canceling]}
+          (cancel-with-failing-writes! (fn [run-ids ids]
+                                         (when (or (next ids) (= ids [(second run-ids)]))
+                                           (throw (ex-info "Write failed" {})))))]
+      (is (true? threw?))
+      (is (= #{(first run-ids)} signalled canceling)))))

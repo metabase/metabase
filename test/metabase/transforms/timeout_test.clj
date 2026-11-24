@@ -159,8 +159,8 @@
           (is (= [10 40] [(:audits small) (:audits large)])))))))
 
 (defn- timeout-audit-model-ids!
-  "Reap three stale runs while `wrap` wraps the audit log functions, and return the run ids, the second one apart, with the
-  ids of the runs that got an audit row and the statuses of the runs."
+  "Reap three stale runs while `wrap` wraps the audit log functions, and return the run ids, the second one apart, with
+  the ids of the runs that got an audit row and the statuses of the runs."
   [wrap]
   (let [transform-ids (t2/insert-returning-pks! :model/Transform
                                                 (for [_ (range 3)] (mt/with-temp-defaults :model/Transform)))

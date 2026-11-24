@@ -257,7 +257,8 @@
               (is (contains? (set embedded-ids) (get new-cards-by-name "Archived Card"))))))))))
 
 (defn- copy-statement-count!
-  "The number of app-DB statements of copying a Document with `n` cards, the first `n-archived` of them archived, as `user`."
+  "The number of app DB statements of copying a Document with `n` cards, the first `n-archived` of them archived, as
+  `user`."
   [user n n-archived]
   (let [mp         (mt/metadata-provider)
         query      (lib/query mp (lib.metadata/table mp (mt/id :venues)))
@@ -297,8 +298,12 @@
     (mt/with-model-cleanup [:model/Document :model/Card]
       (mt/with-temp [:model/Document {doc-id :id} {:name "Source Document"
                                                    :content_type prose-mirror/prose-mirror-content-type}
-                     :model/Card {live-id :id} {:name "Live" :document_id doc-id :dataset_query (mt/mbql-query venues)}
-                     :model/Card {gone-id :id} {:name "Gone" :document_id doc-id :dataset_query (mt/mbql-query users)
+                     :model/Card {live-id :id} {:name "Live" :document_id doc-id
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
+                     :model/Card {gone-id :id} {:name "Gone" :document_id doc-id
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :users))))
                                                 :archived true :archived_directly true}]
         (let [copied (mt/user-http-request :crowberto :post 200 (format "document/%d/copy" doc-id) {})
               by-name (m/index-by :name (t2/select :model/Card :document_id (:id copied)))]

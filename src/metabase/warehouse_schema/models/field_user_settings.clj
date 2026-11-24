@@ -194,8 +194,8 @@
           1)))))
 
 (defn- remove-remappings-ended-by-all!
-  "[[remove-remappings-ended-by!]] for each `[field settings]` of `field+settings`, with one read and one statement per
-  kind for all of them, returning `writes` with the writes of the settings."
+  "[[remove-remappings-ended-by!]] for each `[field settings]` of `field+settings`, with the settings read together
+  and one write call per kind for all of them, returning `writes` with the writes of the settings."
   [writes field+settings]
   (let [semantic       (filterv (fn [[_field settings]] (contains? settings :semantic_type)) field+settings)
         fk-ended       (into [] (keep (fn [[{:keys [id semantic_type]} settings]]
@@ -228,9 +228,9 @@
       (seq fk-ended) (user-settings-writes/delete-empty! writes-spec fk-ended))))
 
 (mu/defn upsert-field-user-settings-for-fields! :- [:maybe :int]
-  "[[upsert-field-user-settings!]] for each `[field settings]` of `field+settings`, whose Fields are distinct, with one
-  read and one statement per kind for the settings, one update of the Fields per distinct change, and one event of
-  each kind; returns the number of Fields written."
+  "[[upsert-field-user-settings!]] for each `[field settings]` of `field+settings`, whose Fields are distinct, with
+  the settings read together and one write call per kind, one update of the Fields per distinct change, and one event
+  of each kind; returns the number of Fields written."
   [field+settings :- [:sequential [:tuple
                                    ::warehouse-schema.schema/field
                                    (mut/dissoc ::warehouse-schema.schema/field.update :id)]]]
@@ -344,8 +344,7 @@
 (mu/defn ids-of-fields :- [:sequential ms/PositiveInt]
   "The ids of the FieldUserSettings of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (into [] (comp (mapcat #(warehouse-schema.db/field-user-settings-for-fields (vec %))) (map :id))
-        (partition-all mdb/delete-partition-size field-ids)))
+  (mapv :id (warehouse-schema.db/field-user-settings-for-fields field-ids)))
 
 (mu/defn delete-field-user-settings! :- :nil
   "Delete the FieldUserSettings with `ids` in one transaction, publishing their delete event, leaving their Fields as

@@ -130,8 +130,8 @@
           [card-part])))
 
 (defn metadata-providers
-  "Map of Database id to a metadata provider for the Databases of the `parts` that want a result attachment, each
-  provider reading its Database once for all of them. A Database whose provider cannot be made is left out."
+  "A map of Database id to a metadata provider for the Databases of the `parts` that want a result attachment, leaving
+  out a Database whose provider cannot be made."
   [parts]
   (into {}
         (comp (filter attachment-wanted?)
@@ -167,8 +167,8 @@
             (map vector indexes levels))))
 
 (defn result-attachment
-  "Create result attachments for an email. `download-level` is the subscription creator's download level for the query
-  of `part`, from [[download-levels]], which gates the attachment at send time. `providers` is the optional result of
+  "The result attachments of `part` for an email, gated at send time by `download-level`, the subscription creator's
+  download level for its query from [[download-levels]], and built with `providers`, the optional result of
   [[metadata-providers]]."
   ([part download-level]
    (result-attachment part download-level nil))

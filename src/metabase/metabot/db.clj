@@ -1112,7 +1112,10 @@
                  :most_recent true
                  {:order-by [[:id :desc]]}))
 
-(mu/defn latest-review-status-rows :- [:sequential :map]
+(mu/defn latest-review-status-rows :- [:sequential [:map {:closed true}
+                                                    [:id                ms/PositiveInt]
+                                                    [:moderated_item_id ms/PositiveInt]
+                                                    [:status            [:maybe :string]]]]
   "The `:moderated_item_id`, `:status` and `:id` rows of the most recent moderation reviews of the items with
   `item-ids` of `item-type`."
   [item-ids :- [:sequential ms/PositiveInt]

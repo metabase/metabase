@@ -256,7 +256,7 @@
 (mu/defn collections-outside-content-rules :- [:sequential :map]
   "The id, namespace, type and `archived` flag of the Collections among `collection-ids` that are archived, in a
   namespace outside `allowed-namespaces`, keywords where nil is the default namespace, or of a type among
-  `blocked-types`, strings: the Collections that a check of the content put in them has to look at, in one query."
+  `blocked-types`, strings: the Collections that a check of the content put in them has to look at."
   [collection-ids     :- [:sequential ms/PositiveInt]
    allowed-namespaces :- [:set [:maybe :keyword]]
    blocked-types      :- [:sequential :string]]

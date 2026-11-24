@@ -10,7 +10,8 @@
    [toucan2.core :as t2]))
 
 (defn- hydrate-dashboard-permissions
-  "`cards`, each with its `:in_dashboards` hydrated with `:can_read` and `:can_write`, from one read of the permissions."
+  "`cards`, each with its `:in_dashboards` hydrated with `:can_read` and `:can_write`, with the permissions read
+  together."
   [cards]
   (let [id->dashboard (u/index-by :id (t2/hydrate (vec (mapcat :in_dashboards cards)) :can_read :can_write))]
     (mapv (fn [card] (update card :in_dashboards #(mapv (comp id->dashboard :id) %))) cards)))

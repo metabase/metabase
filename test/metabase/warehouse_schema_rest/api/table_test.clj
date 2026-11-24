@@ -1710,7 +1710,6 @@
                          (request-statement-count :get 200 path)))]
           (is (= (counts 14) (counts 28))))))))
 
-;; Not ^:parallel: `GET /api/table` lists every Table in the app DB.
 (deftest ^:synchronized table-list-statement-count-test
   (testing "GET /api/table costs as many statements for Tables in 6 Databases as in 2"
     (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}

@@ -174,7 +174,8 @@
     nil))
 
 (mu/defn submit-all! :- :nil
-  "Submit each of `objects` as [[submit!]] does, processing them in one batch when it would process them on this thread."
+  "Submit each of `objects` as [[submit!]] does, processing them in one batch when it would process them on this
+  thread."
   [grouper-wrapper :- ::grouper-wrapper
    objects         :- [:sequential submit-object]]
   (if (or (batch-processing.settings/synchronous-batch-updates) (mdb/in-transaction?))

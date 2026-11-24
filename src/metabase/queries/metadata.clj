@@ -22,14 +22,14 @@
 ;; of audit database, we don't want to allow users to modify its queries.
 (mu/defn- get-native-perms-info :- [:enum :write :none]
   "Calculate `:native_permissions` field for the passed database describing the current user's permissions for running
-  native (e.g. SQL) queries. Will be either `:write` or `:none`. `:write` means you can run ad-hoc native queries,
+  native (e.g. SQL) queries, from `db-id->create-queries`, the current user's `:perms/create-queries` value on every
+  Table of each Database. Will be either `:write` or `:none`. `:write` means you can run ad-hoc native queries,
   and save new Cards with native queries; `:none` means you can do neither.
 
   For the curious: the use of `:write` and `:none` is mainly for legacy purposes, when we had data-access-based
   permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
-  Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms.
-  `db-id->create-queries` holds the current user's `:perms/create-queries` value on every Table of each Database."
+  Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
   [db-id->create-queries :- [:map-of :int :keyword]
    db                    :- :metabase.warehouses.schema/database]
   (if (and (not (:is_audit db))

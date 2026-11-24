@@ -39,7 +39,8 @@
   (t2/select [:model/Sandbox :id :table_id] :card_id card-id))
 
 (mu/defn sandboxes-using-cards
-  "A map of Card id to the `:id` and `:table_id` of the Sandboxes built on it, for the Cards with `card-ids` that have some."
+  "A map of Card id to the `:id` and `:table_id` of the Sandboxes built on it, for the Cards with `card-ids` that have
+  some."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (if (seq card-ids)
     (group-by :card_id (mdb/select-batched #(t2/select [:model/Sandbox :id :table_id :card_id] :card_id [:in [:auto/param %]])

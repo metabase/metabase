@@ -179,8 +179,8 @@
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows slashes inside a segment, so `/:slug`
 ;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status` and `generate` routes.
 (api.macros/defendpoint :put ["/:slug" :slug slug-regex] :- DataAppResponse
-  "Enable or disable a data app. A disabled app is served to superusers only. Anything else about an app changes only
-  through a repository import."
+  "Enable or disable a data app, which is served to superusers only while disabled and otherwise changes only through
+  a repository import."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    {:keys [enabled]} :- UpdateDataAppRequest]

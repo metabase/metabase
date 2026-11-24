@@ -866,9 +866,9 @@
                                   :object          object})))
 
 (defn- databases-by-ids
-  "The Databases with `ids` by id, read in batches of [[mdb/delete-partition-size]] ids."
+  "The Databases with `ids` by id."
   [ids]
-  (into {} (map #(warehouses.db/databases-by-ids (vec %))) (partition-all mdb/delete-partition-size ids)))
+  (warehouses.db/databases-by-ids (vec ids)))
 
 (defn- stored-databases
   "The stored Databases that `updates` change, by id: those of `held`, the Databases the caller read, and the others

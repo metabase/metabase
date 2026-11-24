@@ -458,15 +458,7 @@
   (let [model (into [(dependencies/entity-model entity-type)] columns)]
     (into [] (mapcat #(t2/select model :id [:in %])) (partition-all 1000 ids))))
 
-(mu/defn entity-with-columns
-  "The `columns` of the entity of the entity type `entity-type` with `id`, or nil."
-  [entity-type :- ::deps.dependency-types/dependency-types
-   columns     :- [:sequential :keyword]
-   id          :- ::deps.dependency-types/entity-id]
-  (t2/select-one (into [(dependencies/entity-model entity-type)] columns)
-                 :id id))
-
-(mu/defn cards :- [:map-of ::lib.schema.id/card :map]
+(mu/defn cards :- [:map-of ::lib.schema.id/card (ms/InstanceOf :model/Card)]
   "The Cards with `card-ids`, by Card id."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
   (mdb/select-batched-map #(t2/select-pk->fn identity :model/Card :id [:in %]) card-ids))
@@ -496,14 +488,6 @@
   (mdb/select-batched-map #(t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in %]) field-ids))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
-
-(mu/defn dependencies-from
-  "The `:id`, `:to_entity_type`, and `:to_entity_id` of the Dependencies of the entity `entity-type` `entity-id`."
-  [entity-type :- ::dependencies.schema/entity-type
-   entity-id   :- ms/PositiveInt]
-  (t2/select [:model/Dependency :id :to_entity_type :to_entity_id]
-             :from_entity_type entity-type
-             :from_entity_id entity-id))
 
 (mu/defn dependencies-from-entities
   "The `:id`, `:from_entity_id`, `:to_entity_type`, and `:to_entity_id` of the Dependencies of the entities
@@ -601,18 +585,6 @@
                                     [:in :d.to_entity_id batch]
                                     [:= :d.from_entity_type (u/qualified-key table :entity_type)]
                                     [:= :d.from_entity_id (u/qualified-key table :entity_id)]]}]}))))
-
-(mu/defn- clear-stale! :- :boolean
-  "Record that a job processed the entity `entity-type` `entity-id` with its logic of `current-version`, clearing the
-  `stale` count of its status in the status `model` when it is still the `stale` the job picked it with, so a write
-  while it was processed has the job process it again, returning whether it cleared it."
-  [model           :- StatusModel
-   entity-type     :- ::dependencies.schema/entity-type
-   entity-id       :- ms/PositiveInt
-   stale           :- ms/IntGreaterThanOrEqualToZero
-   current-version :- ms/PositiveInt]
-  (pos? (t2/update! model :entity_type entity-type :entity_id entity-id :stale stale
-                    {:stale 0 :fail_count 0 :analysis_version current-version})))
 
 (mu/defn- record-failure! :- :boolean
   "Record that a job failed to process the entity `entity-type` `entity-id`, giving up on it until a write changes it
@@ -780,7 +752,7 @@
 (mu/defn clear-dependency-statuses!
   "Record that the dependency job computed the dependencies of the entities `entity-type` whose ids are the keys of
   `id->stale` with the analysis of `current-version`, clearing each count of `stale` writes unless a write raised it,
-  with one update for each distinct count."
+  with one update for each distinct count and partition of ids."
   [entity-type     :- ::dependencies.schema/entity-type
    id->stale       :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
    current-version :- ms/PositiveInt]
@@ -788,15 +760,6 @@
           batch       (partition-all mdb/update-partition-size ids)]
     (t2/update! :model/DependencyStatus :entity_type entity-type :entity_id [:in (vec batch)] :stale stale
                 {:stale 0 :fail_count 0 :analysis_version current-version})))
-
-(mu/defn clear-dependency-status! :- :boolean
-  "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id` with the analysis
-  of `current-version`, clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
-  [entity-type     :- ::dependencies.schema/entity-type
-   entity-id       :- ms/PositiveInt
-   stale           :- ms/IntGreaterThanOrEqualToZero
-   current-version :- ms/PositiveInt]
-  (clear-stale! :model/DependencyStatus entity-type entity-id stale current-version))
 
 (mu/defn dependency-pending? :- :boolean
   "Whether an entity of the type `entity-type` has no DependencyStatus, or one that counts a write or records a version
@@ -834,18 +797,10 @@
    max-failures :- ms/PositiveInt]
   (record-failure! :model/ResultMetadataStatus :card card-id max-failures))
 
-(mu/defn clear-result-metadata-status! :- :boolean
-  "Record that the result metadata job re-derived the Card with `card-id` with the logic of `current-version`, clearing
-  its count of `stale` writes unless a write raised it, returning whether it cleared it."
-  [card-id         :- ::lib.schema.id/card
-   stale           :- ms/IntGreaterThanOrEqualToZero
-   current-version :- ms/PositiveInt]
-  (clear-stale! :model/ResultMetadataStatus :card card-id stale current-version))
-
 (mu/defn clear-result-metadata-statuses!
   "Record that the result metadata job re-derived the Cards whose ids are the keys of `id->stale` with the logic of
   `current-version`, clearing each count of `stale` writes unless a write raised it, with one update for each distinct
-  count."
+  count and partition of ids."
   [id->stale       :- [:map-of ::lib.schema.id/card ms/IntGreaterThanOrEqualToZero]
    current-version :- ms/PositiveInt]
   (doseq [[stale ids] (u/group-by val key conj [] id->stale)
@@ -880,16 +835,16 @@
                                 field-ids)))
 
 (mu/defn card-states :- [:map-of ::lib.schema.id/card ::dependencies.schema/card-state]
-  "The `updated_at` and `result_metadata` of each of the Cards with `card-ids`, by Card id, locking their rows until the
-  transaction ends when `lock?`. The id is read as `:card_id`, since a Card read with its `:id` and some of the columns
-  its schema governs must have all of them."
+  "The `updated_at` and `result_metadata` of each of the Cards with `card-ids`, by Card id, read in the order of their
+  ids and, when `lock?`, locking their rows in that order until the transaction ends, the id read as `:card_id` since a
+  Card read with its `:id` and some of the columns its schema governs must have all of them."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]
    lock?    :- :boolean]
   (into {}
         (map (fn [card] [(:card_id card) (select-keys card [:updated_at :result_metadata])]))
         (mdb/select-batched #(t2/select [:model/Card [:id :card_id] :updated_at :result_metadata]
-                                        (cond-> {:where [:in :id %]} lock? (assoc :for :update)))
-                            card-ids)))
+                                        (cond-> {:where [:in :id %] :order-by [[:id :asc]]} lock? (assoc :for :update)))
+                            (sort card-ids))))
 
 ;;; ------------------------------------------- Analysis finding job -------------------------------------------
 
@@ -937,14 +892,6 @@
     (t2/query (upsert-findings-sql (mdb/db-type) entity-type rows)))
   nil)
 
-(mu/defn upsert-finding!
-  "Insert or update the AnalysisFinding of the entity `entity-type` `entity-id` with `result`, in one statement, stamping
-  `analyzed_at` when it inserts or the `result` changes."
-  [entity-type :- ::dependencies.schema/entity-type
-   entity-id   :- ms/PositiveInt
-   result      :- :boolean]
-  (upsert-findings! entity-type {entity-id result}))
-
 (mu/defn take-pending-analysis-finding-statuses! :- [:sequential ::dependencies.schema/pending-status]
   "Up to `batch-size` entities of the type `entity-type` without an AnalysisFindingStatus, or whose status counts a
   write or records an analysis below `current-version`, and whose dependencies the analysis of `dependency-version`
@@ -964,19 +911,10 @@
    max-failures :- ms/PositiveInt]
   (record-failure! :model/AnalysisFindingStatus entity-type entity-id max-failures))
 
-(mu/defn clear-analysis-finding-status! :- :boolean
-  "Record that the analysis job analyzed the entity `entity-type` `entity-id` with the analysis of `current-version`,
-  clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
-  [entity-type     :- ::dependencies.schema/entity-type
-   entity-id       :- ms/PositiveInt
-   stale           :- ms/IntGreaterThanOrEqualToZero
-   current-version :- ms/PositiveInt]
-  (clear-stale! :model/AnalysisFindingStatus entity-type entity-id stale current-version))
-
 (mu/defn clear-analysis-finding-statuses!
   "Record that the analysis job analyzed the entities `entity-type` whose ids are the keys of `id->stale` with the
   analysis of `current-version`, clearing each count of `stale` writes unless a write raised it, with one update for
-  each distinct count."
+  each distinct count and partition of ids."
   [entity-type     :- ::dependencies.schema/entity-type
    id->stale       :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
    current-version :- ms/PositiveInt]
@@ -1066,9 +1004,3 @@
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
   (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id [:in %]) entity-ids))
-
-(mu/defn delete-finding-errors-for-entity!
-  "Delete the AnalysisFindingErrors of the entity `entity-type` `entity-id`, returning the number deleted."
-  [entity-type :- ::dependencies.schema/entity-type
-   entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id entity-id))

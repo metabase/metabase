@@ -105,7 +105,7 @@
   Options:
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
       user can edit the data model of (default false)
-    - `include-hidden-fields?` - if true, includes fields with visibility_type :hidden (default false)"
+    - `include-hidden-fields?` - if true, includes fields with visibility_type :hidden (default false)."
   ([ids]
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields? include-hidden-fields?]}]
@@ -138,7 +138,7 @@
   Options:
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
       user can edit the data model of (default false)
-    - `include-hidden-fields?` - if true, includes fields with visibility_type :hidden (default false)"
+    - `include-hidden-fields?` - if true, includes fields with visibility_type :hidden (default false)."
   metabase-enterprise.sandbox.api.table
   [ids opts]
   (batch-fetch-query-metadatas* ids opts))
@@ -189,7 +189,7 @@
 
 (defn readable-schemas
   "The `[database-id schema-name]` pairs among `schemas` of the schemas the current user can know exist, as
-  [[can-read-schema?]] answers for each, in a fixed number of queries."
+  [[can-read-schema?]] answers for each, in a number of queries that does not grow with the schemas of a Database."
   [schemas]
   (let [schemas   (vec (distinct schemas))
         values    (perms/some-table-in-schemas-permissions-for-user (perms/user-info api/*current-user-id*)

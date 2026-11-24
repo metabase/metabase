@@ -128,7 +128,7 @@
   (filter-visible (xrays.db/unarchived-segments-for-table (:id table))))
 
 (defn- tables-in-order
-  "The Tables with `table-ids`, in their order, loaded in one query."
+  "The Tables with `table-ids`, in their order, loaded together."
   [table-ids]
   (let [id->table (when (seq table-ids) (m/index-by :id (xrays.db/tables (set table-ids))))]
     (keep id->table table-ids)))

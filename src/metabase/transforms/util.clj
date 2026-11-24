@@ -42,7 +42,7 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::source-models
-  "The source Databases and Tables of some transforms by ID, as [[prefetch-source-models]] loads them, and a delay of
+  "The source Databases and Tables of some transforms by id, as [[prefetch-source-models]] loads them, and a delay of
   [[source-query-permissions-ok?]] for each distinct source query by [[source-query-key]]."
   [:map {:closed true}
    [:model/Database [:maybe [:map-of ::lib.schema.id/database :metabase.warehouses.schema/database]]]
@@ -109,8 +109,7 @@
 
 (mu/defn- native-source-query-permissions-ok? :- :boolean
   "Whether the current user passes the query processor's permission check for the native source `query` as it is,
-  without preprocessing it. For a query that [[shares-database-permission-answer?]], preprocessing adds nothing that the
-  check looks at."
+  unpreprocessed, which is enough for a query that [[shares-database-permission-answer?]]."
   [query :- :metabase.lib.schema/query]
   (when-not api/*current-user-id*
     (throw (ex-info "A transform needs to be run with a bound user"
@@ -123,7 +122,8 @@
       false)))
 
 (defn- source-query-key
-  "What identifies the source `query` of a transform for its permission answer: the query without its metadata, printed."
+  "What identifies the source `query` of a transform for its permission answer: the query without its metadata,
+  printed."
   [query]
   (pr-str (dissoc query :lib/metadata)))
 
@@ -205,9 +205,8 @@
                        (u/index-by :id (t2/hydrate (transforms.db/tables table-ids) :can_query)))}))
 
 (mu/defn add-source-readable :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]
-  "Add :source_readable field to a transform or collection of transforms.
-  The field indicates whether the current user can read the source tables/database
-  referenced by the transform. A collection reads its sources from `models-cache` when given, else loads them once."
+  "Add `:source_readable`, whether the current user can read the source tables and database of the transform, to a
+  transform or a collection of them, whose sources come from `models-cache` when given and are otherwise loaded once."
   ([transform-or-transforms :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]]
    (add-source-readable transform-or-transforms
                         (when (sequential? transform-or-transforms)

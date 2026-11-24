@@ -109,9 +109,9 @@
     (f card-before-update card-updates)))
 
 (defn check-allowed-to-update-cards!
-  "Throws a 403 unless the current user may apply to each of `card-changes`, `[card changes]` pairs of Cards hydrated with
-  `:can_write`, its changes, from one read of what the Cards depend on, publishing the failure for the first Card that
-  they may not."
+  "Throws a 403 unless the current user may apply to each of `card-changes`, `[card changes]` pairs of Cards hydrated
+  with `:can_write`, its changes, with what the Cards depend on read together, publishing the failure for the first
+  Card that they may not."
   [card-changes]
   (when-not (queries.card/can-update-cards? card-changes)
     (events/publish-event! :event/update-permission-failure

@@ -126,8 +126,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn- fields-to-fingerprint :- [:map-of :int [:sequential i/FieldInstance]]
-  "Up to `limit` Fields of each of `tables`, by Table id, for which we should generate (and save) fingerprints, ordered
-  by id so the selection is stable across syncs. This should include NEW fields that are active and visible."
+  "Up to `limit` Fields of each of `tables` to fingerprint, new active and visible ones included, by Table id, ordered
+  by id so that the selection is stable across syncs."
   [tables :- [:sequential i/TableInstance]
    limit  :- ms/PositiveInt]
   (group-by :table_id (analyze/fields-to-fingerprint (mapv :id tables)
@@ -146,9 +146,9 @@
              (sync-util/name-for-logging table) limit limit))
 
 (defn- table-fingerprints
-  "Fingerprint the first `limit` of `fields` of `table` without saving them: `:rows`, the update rows that save them,
-  and `:stats`. On a non-transient error the rows advance the fingerprint version of the Fields so we don't re-attempt
-  every sync; transient errors are left untouched to retry next sync."
+  "The fingerprints of the first `limit` of `fields` of `table`, unsaved, as `:rows` (the update rows that save them)
+  and `:stats`, where a non-transient error makes the rows advance the fingerprint version of the Fields and a
+  transient one leaves them for the next sync."
   [table fields limit]
   (tracing/with-span :sync "sync.fingerprint.table" {:db/id (:db_id table) :sync/table (:name table)}
     (when (> (count fields) limit)
@@ -183,7 +183,7 @@
       result)))
 
 (defn- save-fingerprints-of-tables!
-  "Save the rows of `results`, the fingerprints of some Tables, in one update, or Table by Table when that fails,
+  "Save the rows of `results`, the fingerprints of some Tables, with one call, or Table by Table when that fails,
   returning the results."
   [results]
   (if (and (next results)

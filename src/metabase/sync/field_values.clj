@@ -27,9 +27,8 @@
     (= ::field-values/fv-deleted result) {:deleted 1}))
 
 (defn- fields-to-scan
-  "Up to `limit` active, normal-visibility Fields of each of `tables`, by Table id, ordered by id so the selection is
-  stable across syncs. Bounding the count keeps wide tables (e.g. document databases with huge/dynamic schemas) from
-  loading every Field into memory and issuing a warehouse request per field."
+  "Up to `limit` active, normal-visibility Fields of each of `tables`, by Table id, ordered by id so that the
+  selection is stable across syncs and a wide Table loads a bounded number of Fields."
   [tables limit]
   (group-by :table_id (analyze/normal-fields (mapv :id tables) limit)))
 
@@ -114,13 +113,7 @@
 (defn- table-field-values-changes
   "Fetch distinct values for `fields` from `table` and return `{:queries n :changes pairs}`: the number of warehouse
   queries and, for each of `fields`, a pair of the Field and what [[field-values/field-values-change]] returns for it,
-  or the Throwable fetching or comparing its values threw.
-
-  Dispatch: SQL drivers that meet `can-batch-distinct?` use the UNION ALL batch path for fields
-  without a `:parent_id`. Nested-JSON child fields (`:parent_id` set) and the entire field set
-  for non-batchable tables go through the portable per-field MBQL path — that path goes through
-  the QP, which builds correct column references for nested-JSON fields (`run-distinct-batch`'s
-  hand-rolled HoneySQL CAST does not)."
+  or the Throwable fetching or comparing its values threw."
   [database table fields fvs-map]
   (if (empty? fields)
     {:queries 0 :changes []}
@@ -230,9 +223,8 @@
     true))
 
 (mu/defn- update-field-values-for-tables!
-  "Update the FieldValues for all Fields (as needed) of `tables`, reading their Fields and FieldValues at once.
-  SQL drivers use a single UNION ALL query per Table covering every list-eligible field with an active
-  FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries."
+  "Update the FieldValues of the Fields of `tables` that need it, reading their Fields and FieldValues together, with
+  one UNION ALL query per Table on SQL drivers and one DISTINCT query per Field elsewhere."
   [database :- i/DatabaseInstance
    tables   :- [:sequential i/TableInstance]]
   (let [limit             (sync.settings/scan-max-fields-per-table)

@@ -41,7 +41,7 @@
   (audit-entity :model/Collection default-custom-reports-entity-id))
 
 (defn default-audit-collection
-  "Default audit collection (instance analytics) collection, read in one query."
+  "The default audit (instance analytics) Collection, read in one query."
   []
   (audit-entity :model/Collection default-audit-collection-entity-id))
 

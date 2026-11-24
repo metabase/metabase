@@ -76,8 +76,8 @@
 
 (defn insert-bookmarks!
   "Give each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`, a bookmark and return the bookmarks,
-  the existing one when there already is one, with one read and one insert for each type of bookmark, without a read
-  check of the item, which callers do, and throwing for an unrecognized `:type`."
+  the existing one when there already is one, reading and inserting the rows of each type of bookmark together,
+  without a read check of the item, which callers do, and throwing for an unrecognized `:type`."
   [rows]
   (run! (comp bookmark-model+item-key :type) rows)
   (let [by-type  (group-by :type rows)
@@ -111,7 +111,8 @@
 
 (defn delete-bookmarks!
   "Delete the bookmark of each of `rows`, a `:type` of bookmark, an `:item_id` and a `:user_id`, with one statement
-  for each type of bookmark, doing nothing for one that has none and throwing for an unrecognized `:type`."
+  for each type of bookmark and partition of rows, doing nothing for one that has none and throwing for an
+  unrecognized `:type`."
   [rows]
   (run! (comp bookmark-model+item-key :type) rows)
   (doseq [[type group] (group-by :type rows)

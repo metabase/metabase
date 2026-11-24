@@ -695,8 +695,6 @@
            nil
            {:table-ids #{3} :table-query-ids #{3} :card-ids #{10} :native? true :referenced-card-ids #{21}}]))))
 
-;;; ------------------------------------------ Run permissions of many queries ------------------------------------------
-
 (defn- run-check-outcome
   "What `thunk`, a run permissions check, does: `:allowed`, or the message, data without the query, and cause message
   of what it throws."
@@ -811,7 +809,29 @@
             (is (= (- (check! 6) (check! 2))
                    (- (preprocess! 6) (preprocess! 2))))))))))
 
-;;; ------------------------------------------ Parameter Field permissions -------------------------------------------
+(deftest card-read-check-hydrates-inside-query-database-store-test
+  (testing "Card read check hydrates `:can_read` inside metadata provider store of query's Database"
+    (mt/with-temp [:model/Database   {db-b-id :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:collection_id coll-id
+                                                    :dataset_query (lib/query (mt/metadata-provider)
+                                                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+      (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+      (mt/with-test-user :rasta
+        (let [readable-ids (mt/original-fn #'collection/content-readable-collection-ids)
+              opening      (fn [database-id]
+                             (fn [& args]
+                               (mt/with-metadata-provider database-id
+                                 (apply readable-ids args))))]
+          (testing "hydration opening store of same Database is allowed"
+            (mt/with-dynamic-fn-redefs [collection/content-readable-collection-ids (opening (mt/id))]
+              (is (nil? (query-perms/check-card-read-perms (mt/id) card-id)))
+              (is (nil? (query-perms/check-cards-read-perms (mt/id) [card-id])))))
+          (testing "hydration opening store of other Database throws"
+            (mt/with-dynamic-fn-redefs [collection/content-readable-collection-ids (opening db-b-id)]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"Attempting to initialize metadata provider with new Database"
+                                    (query-perms/check-card-read-perms (mt/id) card-id))))))))))
 
 (defn- per-table-parameter-field-check
   "The check of parameter Fields that preprocesses a query of each of their Tables, as it was before it read the Tables'

@@ -132,12 +132,11 @@
   (into {} (remove (fn [[k v]] (= v (get stored k)))) row))
 
 (defn- tables-for
-  "The Tables, by id, of those of the settings `rows` that write a column of a two-column pair, read in batches of
-  [[mdb/delete-partition-size]] ids."
+  "The Tables, by id, of those of the settings `rows` that write a column of a two-column pair."
   [rows]
   (into {}
-        (comp (mapcat #(warehouse-schema.db/tables (set %))) (map (juxt :id identity)))
-        (partition-all mdb/delete-partition-size (into #{} (comp (filter pair-columns-written?) (keep :table_id)) rows))))
+        (map (juxt :id identity))
+        (warehouse-schema.db/tables (into #{} (comp (filter pair-columns-written?) (keep :table_id)) rows))))
 
 (def ^:private writes-spec
   "The spec of TableUserSettings for [[metabase.warehouse-schema.user-settings-writes]]."
@@ -340,8 +339,7 @@
 (mu/defn ids-of-tables :- [:sequential ms/PositiveInt]
   "The ids of the TableUserSettings of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (into [] (comp (mapcat #(warehouse-schema.db/table-user-settings-for-tables (set %))) (map :id))
-        (partition-all mdb/delete-partition-size table-ids)))
+  (mapv :id (warehouse-schema.db/table-user-settings-for-tables (set table-ids))))
 
 (mu/defn delete-table-user-settings! :- :nil
   "Delete the TableUserSettings with `ids` in one transaction, publishing their delete event, leaving their Tables as

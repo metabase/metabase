@@ -1059,7 +1059,7 @@
         (is (= [true] (mapv #(-> % :object :archived_directly) (mapcat :changes @*update-events*))))))))
 
 (defn- archive-call-count
-  "The statements that rasta's question whether he may archive `documents` takes, which must be allowed."
+  "The number of statements it takes to ask whether rasta may archive `documents`, which must be allowed."
   [documents]
   (mt/with-current-user (mt/user->id :rasta)
     (t2/with-call-count [call-count]

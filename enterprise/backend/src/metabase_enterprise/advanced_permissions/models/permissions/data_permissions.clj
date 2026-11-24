@@ -33,7 +33,7 @@
       :one-million-rows))
 
 (defenterprise download-perms-levels
-  "The user's download permission level for each of `queries`, in order, from one bulk question for all of them."
+  "The user's download permission level for each of `queries`, in order, answered for all of them together."
   :feature :advanced-permissions
   [queries user-id]
   (let [sources         (mapv download-perms-sources queries)

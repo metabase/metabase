@@ -3277,7 +3277,6 @@
     (apply mt/user-http-request :rasta args)
     (call-count)))
 
-;; Not ^:parallel: `GET /api/database` lists every Database in the app DB.
 (deftest ^:synchronized database-list-statement-count-test
   (testing "GET /api/database costs as many statements for 6 restricted Databases as for 2"
     (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}

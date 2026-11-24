@@ -264,8 +264,8 @@
      (cancel/delete-cancelation! run-id))))
 
 (mu/defn- publish-timeout-events! :- :nil
-  "Publish one `:event/transform-run-timeout` for `runs`. Wrapped so that audit-log handler
-  failures don't bubble into the caller's timeout flow."
+  "Publish one `:event/transform-run-timeout` for `runs`, catching a failure of its handlers so that it does not fail
+  the caller's timeout flow."
   [runs :- [:sequential ::transforms.schema/transform-run]]
   (when (seq runs)
     (try
@@ -292,8 +292,8 @@
          (publish-timeout-events! [run]))))))
 
 (mu/defn- reap-transform-runs! :- [:maybe [:sequential ::transforms.schema/transform-run]]
-  "Reap active transform runs by `stale-column` into a timeout carrying `message`, publishing one timeout
-  event for all of them. See [[metabase.run-tracking.core/reap-orphaned!]]."
+  "Reap the active transform runs that [[metabase.run-tracking.core/reap-orphaned!]] finds by `stale-column` into a
+  timeout carrying `message`, publishing one timeout event for all of them."
   [stale-column :- [:enum :start_time :last_heartbeat]
    age          :- ms/PositiveInt
    unit         :- :keyword

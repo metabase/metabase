@@ -3,7 +3,6 @@
   (:require
    [metabase.lib.core :as lib]
    [metabase.notification.card :as notification.card]
-   [metabase.notification.models :as models.notification]
    [metabase.util.malli :as mu]))
 
 (defn- card-archived? [old-card new-card]
@@ -60,17 +59,6 @@
       (goal-missing? old-card new-card)
       (multiple-breakouts? new-card)))
 
-(def ^:private alert-affecting-columns
-  "The columns of a Card an update of which can delete the alerts of the Card."
-  [:archived :display :visualization_settings :dataset_query])
-
-(defn alerts-of-card-being-changed
-  "The notifications of the alerts of `card`, which `card-updates` may delete through the Card hooks, read before the
-  update so that their recipients can be told after it, or nil when the updates leave the alerts alone."
-  [card card-updates]
-  (when (some #(contains? card-updates %) alert-affecting-columns)
-    (seq (models.notification/notifications-for-card (:id card)))))
-
 (defn- alerts-deleted-reason
   "Why the change from `old-card` to `new-card` deletes the alerts of the Card, nil when it does not."
   [old-card new-card]
@@ -79,9 +67,9 @@
     (card-change-broke-alert? old-card new-card) :card-changed))
 
 (defn notify-alerts-deleted!
-  "Tells the recipients of the notifications, which [[alerts-of-card-being-changed]] read before the update, that the
-  alerts were deleted when a change archives the Card or invalidates its alerts, as the Card hooks have then deleted
-  them, with one event for each reason. `changes` holds an `[old-card new-card notifications]` triple for each Card."
+  "Tells the recipients of the notifications of each `[old-card new-card notifications]` triple of `changes`, read
+  before the update, that the alerts were deleted when the change archives the Card or invalidates its alerts, with
+  one event for each reason."
   [actor changes]
   (doseq [[reason triples] (group-by (fn [[old-card new-card]] (alerts-deleted-reason old-card new-card))
                                      (filter (comp seq #(nth % 2)) changes))

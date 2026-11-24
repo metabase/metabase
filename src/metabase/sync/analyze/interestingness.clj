@@ -32,13 +32,13 @@
     (interestingness/dimension-interestingness field)))
 
 (defn- save-scores!
-  "Write the scores of `pairs`, each a Field and its update row, in one update."
+  "Write the scores of `pairs`, each a Field and its update row, with one call."
   [pairs]
   (field/update-fields! (mapv second pairs) {:fields (mapv first pairs)}))
 
 (mu/defn- score-and-save! :- [:sequential i/FieldInstance]
-  "Score `fields` and write their scores in one update, or Table by Table when that fails, `name-table` naming a Table by
-  its id in the log, returning the Fields whose scoring or saving failed."
+  "Score `fields` and write their scores with one call, or Table by Table when that fails, `name-table` naming a Table
+  by its id in the log, returning the Fields whose scoring or saving failed."
   [name-table :- ifn?
    fields     :- [:sequential i/FieldInstance]]
   (let [scored (mapv (juxt identity score) fields)

@@ -146,7 +146,7 @@
 
 (defn- mentioned-ids-who-can-read
   "Restrict mentioned user ids to active users who can themselves read `entity`: those with read access to its
-  Collection, from one read of the Users and one of their Collection permissions, and, for a Document owned by an
+  Collection, with the Users and their Collection permissions read together, and, for a Document owned by an
   Exploration, whose content gate answers for each user, those it lets through."
   [entity mention-ids]
   (when (seq mention-ids)

@@ -2,19 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]
    [metabase.transforms.db :as transforms.db]))
-
-(defn- partitioned!
-  "Call `f` with every partition size of the app DB set to 2."
-  [f]
-  (with-redefs [mdb.query/select-partition-size 2
-                mdb/select-partition-size       2
-                mdb/delete-partition-size       2
-                mdb/update-partition-size       2]
-    (f)))
 
 (deftest ^:synchronized reads-over-partitions-test
   (let [now (t/instant)]
@@ -34,18 +23,18 @@
       (let [ids [tf1 tf2 tf3]]
         (testing "a map from partitions"
           (is (= (transforms.db/transform-names-by-id ids)
-                 (partitioned! #(transforms.db/transform-names-by-id ids)))))
+                 (mt/with-partition-size 2 (transforms.db/transform-names-by-id ids)))))
         (testing "a set from partitions"
           (is (= #{tag1 tag2 tag3}
-                 (partitioned! #(transforms.db/existing-tag-ids [tag1 tag2 tag3])))))
+                 (mt/with-partition-size 2 (transforms.db/existing-tag-ids [tag1 tag2 tag3])))))
         (testing "rows ordered across partitions"
           (is (= [0 1 2]
                  (mapv :position (transforms.db/transform-tag-links ids))
-                 (mapv :position (partitioned! #(transforms.db/transform-tag-links ids))))))
+                 (mapv :position (mt/with-partition-size 2 (transforms.db/transform-tag-links ids))))))
         (testing "a reducible over partitions"
           (is (= #{run1 run2 run3}
                  (into #{} (map :id) (transforms.db/latest-runs-reducible (set ids)))
-                 (partitioned! #(into #{} (map :id) (transforms.db/latest-runs-reducible (set ids)))))))
+                 (mt/with-partition-size 2 (into #{} (map :id) (transforms.db/latest-runs-reducible (set ids)))))))
         (testing "grouped rows from partitions"
           (is (= (into #{} (map (juxt :transform_id :last_start)) (transforms.db/last-start-times ids))
-                 (into #{} (map (juxt :transform_id :last_start)) (partitioned! #(transforms.db/last-start-times ids))))))))))
+                 (into #{} (map (juxt :transform_id :last_start)) (mt/with-partition-size 2 (transforms.db/last-start-times ids))))))))))

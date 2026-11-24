@@ -211,8 +211,8 @@
   - `:attached?` whether this card's results are exported as a file attachment. Attached cards run to the
     attachment row limit; body-only cards get the interactive display limits since only a preview is rendered.
   - `:dashboard` the Dashboard row, `:id->card` the unarchived Cards of the dashcard and its series by id, and
-    `:dashcard-id->series-card-ids` the series Card ids by dashcard id, read once by [[execute-dashboard]]. When
-    omitted they are read here.
+    `:dashcard-id->series-card-ids` the series Card ids by dashcard id, as [[execute-dashboard]] reads them once, each
+    read here when omitted.
 
   This function should be executed under pulse's creator permissions."
   ([dashcard parameters]

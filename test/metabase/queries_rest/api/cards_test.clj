@@ -89,6 +89,43 @@
                                                              :dashboard_id dest-dash-id})
         (is (= #{nil} (t2/select-fn-set :dashboard_id :model/Card :id [:in [card-1-id card-2-id]])))))))
 
+(deftest move-cards-first-failure-decides-test
+  (testing "POST /api/cards/move answers with the refusal of the first Card in request order, as moving them one by one did"
+    (mt/with-temp [:model/Collection {coll-id :id}      {}
+                   :model/Collection {locked-id :id}    {}
+                   :model/Card       {writable :id}     {}
+                   :model/Card       {unwritable :id}   {:collection_id coll-id}
+                   :model/Card       {in-locked :id}    {}
+                   :model/Dashboard  {locked-dash :id}  {:collection_id locked-id}
+                   :model/DashboardCard _               {:card_id in-locked :dashboard_id locked-dash}
+                   :model/Dashboard  {dest-dash-id :id} {}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (perms/revoke-collection-permissions! (perms-group/all-users) locked-id)
+      (let [missing 2147483647
+            move!   (fn [status card-ids]
+                      (mt/user-http-request :rasta :post status "cards/move" {:card_ids card-ids :dashboard_id dest-dash-id}))]
+        (testing "unwritable first, missing second"
+          (is (= "You don't have permissions to do that."
+                 (move! 403 [unwritable missing]))))
+        (testing "missing first, unwritable second"
+          (is (= "Not found."
+                 (move! 404 [missing unwritable]))))
+        (testing "writable first, missing second"
+          (is (= "Not found."
+                 (move! 404 [writable missing]))))
+        (testing "refused by its Dashboard first, missing second"
+          (is (= "You don't have permissions to do that."
+                 (move! 403 [in-locked missing]))))
+        (testing "missing first, refused by its Dashboard second"
+          (is (= "Not found."
+                 (move! 404 [missing in-locked]))))
+        (testing "refused by its Dashboard first, unwritable second, then the other way round"
+          (is (= "You don't have permissions to do that."
+                 (move! 403 [in-locked unwritable])))
+          (is (= "You don't have permissions to do that."
+                 (move! 403 [unwritable in-locked]))))
+        (is (= #{nil} (t2/select-fn-set :dashboard_id :model/Card :id [:in [writable unwritable in-locked]])))))))
+
 (deftest bulk-move-endpoint-works-5
   (testing "mixed permissions"
     (testing "one card is in a dashboard you don't have permissions on"
@@ -321,6 +358,35 @@
             (let [few  (move! 2)
                   many (move! 6)]
               (is (= few many)))))))))
+
+(deftest ^:synchronous leave-dashboards-audit-test
+  (testing "archiving a dashboard question and moving dashboard questions to a Collection publish one remove event with an audit row for each Dashboard"
+    (mt/with-premium-features #{:audit-app}
+      (mt/user-http-request :rasta :get 200 "user/current")
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+        (mt/with-model-cleanup [:model/Card :model/Dashboard :model/AuditLog]
+          (let [dashboard-question! (fn []
+                                      (let [dashboard-id (insert-dashboard! coll-id)
+                                            card-id      (t2/insert-returning-pk! :model/Card
+                                                                                  (merge (mt/with-temp-defaults :model/Card)
+                                                                                         {:name "leaving" :collection_id coll-id :dashboard_id dashboard-id}))]
+                                        (t2/insert! :model/DashboardCard (merge (mt/with-temp-defaults :model/DashboardCard)
+                                                                                {:card_id card-id :dashboard_id dashboard-id}))
+                                        [card-id dashboard-id]))
+                removals            (fn [request]
+                                      (let [[[card-id dashboard-id] & others :as pairs] (repeatedly 3 dashboard-question!)
+                                            topics (count-events-by-topic! #(request card-id (mapv first pairs)))]
+                                        {:events (get topics :event/dashboard-remove-cards)
+                                         :audit  (t2/count :model/AuditLog :topic "dashboard-remove-cards" :model "Dashboard"
+                                                           :model_id [:in (conj (mapv second others) dashboard-id)])}))]
+            (testing "archive"
+              (is (= {:events 1 :audit 1}
+                     (removals (fn [card-id _] (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:archived true}))))))
+            (testing "move to a Collection"
+              (is (= {:events 1 :audit 3}
+                     (removals (fn [_ card-ids]
+                                 (mt/user-http-request :rasta :post 200 "cards/move" {:card_ids card-ids :collection_id coll-id :dashboard_id nil}))))))))))))
 
 (deftest ^:synchronous add-dashcards-to-dashboards-audit-test
   (testing "adding dashcards to many Dashboards publishes one event and takes as many statements as for few, with one audit row for each Dashboard"

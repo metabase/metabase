@@ -345,8 +345,8 @@
 
 (defn- check-application-access-changes
   "Throws as [[grant-application-permissions!]] and [[revoke-application-permissions!]] would for the first of
-  `changes`, `[group-id perm-type value]` triples, that they refuse, where the groups with `revoking-group-ids` hold rows
-  a revoke deletes, with the groups read once."
+  `changes`, `[group-id perm-type value]` triples, that they refuse, where the groups with `revoking-group-ids` hold
+  rows a revoke deletes, with the groups read once."
   [changes revoking-group-ids]
   (let [granting-ids (into #{} (keep (fn [[group-id perm-type value]]
                                        (when (and (= value :yes) (not= perm-type :subscription))
@@ -362,8 +362,8 @@
                (assert-not-admin-group {:group_id group-id}))))))
 
 (defn- grant-paths!
-  "Grants each `[group-id path]` of `grants` in one insert, or one at a time as [[grant-permissions!]] does when that
-  insert fails."
+  "Grants each `[group-id path]` of `grants` with one call, or one at a time as [[grant-permissions!]] does when that
+  call fails."
   [grants]
   (when (seq grants)
     (try
@@ -384,8 +384,8 @@
         related (for [[group-id path value] paths
                       :when (= value :no)]
                   [group-id path (conj (perms.u/->v2-path path) path)])
-        rows    (into [] (comp (mapcat #(permissions.db/related-permission-rows (vec %))) (distinct))
-                      (partition-all app-db/update-partition-size related))]
+        rows    (when (seq related)
+                  (permissions.db/related-permission-rows related))]
     (check-application-access-changes changes (into #{} (map :group_id) rows))
     (doseq [[group-id group-rows] (group-by :group_id rows)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id (into #{} (map :object) group-rows))))
@@ -478,9 +478,8 @@
   (let [ids        (into [] (comp (map second) (remove :metabase.collections.models.collection.root/is-root?)
                                   (map u/the-id) (distinct))
                          changes)
-        chunks     (partition-all app-db/update-partition-size ids)
-        collection (into {} (mapcat #(permissions.db/collections-by-id (vec %))) chunks)
-        personal   (into #{} (mapcat #(permissions.db/personal-or-descendant-collection-ids (set %))) chunks)
+        collection (when (seq ids) (permissions.db/collections-by-id ids))
+        personal   (permissions.db/personal-or-descendant-collection-ids (set ids))
         tenant?    (permissions.db/group-tenant-flags (into #{} (map first) changes))]
     (doseq [[group-id collection-or-id access] changes
             :let [root?    (:metabase.collections.models.collection.root/is-root? collection-or-id)
@@ -491,8 +490,9 @@
         (check-tenant-group-collection-grant (get tenant? group-id) resolved access)))))
 
 (mu/defn grant-collection-read-permissions-to-groups!
-  "Grant read access, as [[grant-collection-read-permissions!]] does, for each `[group-id collection-or-id]` of `grants`:
-  every pair is checked before anything is written, then the rows that the groups do not hold yet are inserted at once."
+  "Grant read access, as [[grant-collection-read-permissions!]] does, for each `[group-id collection-or-id]` of
+  `grants`: every pair is checked before anything is written, then the rows that the groups do not hold yet are
+  inserted at once."
   [grants :- [:sequential [:tuple ms/PositiveInt permissions.path/CollectionOrID]]]
   (when (seq grants)
     (check-collection-access-changes (map (fn [[group-id collection-or-id]] [group-id collection-or-id :read]) grants))
@@ -518,22 +518,21 @@
   (grant-collection-read-permissions-to-groups! [[(u/the-id group-or-id) collection-or-id]]))
 
 (defn- revoke-collection-accesses!
-  "Deletes the Permissions rows related to the read-write path of each of `changes`, as [[revoke-collection-permissions!]]
-  does for one, with one read of them."
+  "Deletes the Permissions rows related to the read-write path of each of `changes`, as
+  [[revoke-collection-permissions!]] does for one, reading them together."
   [changes]
   (when-let [related (seq (for [[group-id collection-or-id] changes
                                 :let [path (permissions.path/collection-readwrite-path collection-or-id)]]
                             [group-id path (conj (perms.u/->v2-path path) path)]))]
-    (let [rows (into [] (mapcat #(permissions.db/related-permission-rows (vec %)))
-                     (partition-all app-db/update-partition-size related))]
+    (let [rows (permissions.db/related-permission-rows related)]
       (doseq [[group-id group-rows] (group-by :group_id rows)]
         (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id (into #{} (map :object) group-rows))))
       (when (seq rows)
         (delete-permissions! (mapv :id rows))))))
 
 (defn- grant-collection-accesses!
-  "Grants each of `changes` whose access is `:write` or `:read`, in one insert, or one at a time as
-  [[grant-permissions!]] does when that insert fails."
+  "Grants each of `changes` whose access is `:write` or `:read` with one call, or one at a time as
+  [[grant-permissions!]] does when that call fails."
   [changes]
   (let [grants (for [[group-id collection-or-id access] changes
                      :when (#{:read :write} access)]
@@ -618,8 +617,7 @@
   Collection that moves into the tenant-specific namespace keeps no Permissions rows at all."
   [objects :- [:sequential :string]]
   (t2/with-transaction [_conn]
-    (transduce (map (comp permissions.db/delete-permissions-with-objects! vec)) + 0
-               (partition-all app-db/delete-partition-size objects))))
+    (permissions.db/delete-permissions-with-objects! objects)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -33,7 +33,7 @@
 
 (mu/defn- drop-stale-dependents!
   "Drop the edges to the `entities` of `entity-type` from their dependents that its spec's `:after-dependencies` says
-  no longer hold, with one read and one delete."
+  no longer hold, reading and deleting for all of them together."
   [entity-type :- ::deps.dependency-types/dependency-types
    entities    :- [:sequential Entity]]
   (when-let [after-dependencies (deps.calculation/after-dependencies entity-type)]
@@ -59,7 +59,7 @@
    entity-ids  :- [:set ms/PositiveInt]]
   (deps.calculation/hydrate-entities entity-type (dependencies.db/entities entity-type entity-ids)))
 
-(mu/defn- store-dependencies! :- :any
+(mu/defn- store-dependencies! :- :nil
   "Store the dependencies of the entities hydrated by [[hydrated-entities]], the pairs `entities+deps` of an entity and
   its dependencies, marking an entity with a new upstream stale for its result metadata and analysis, or for a snippet
   the analysis of what expands it, which an upstream change made before the edge existed never marked."
@@ -82,7 +82,8 @@
                        {}
                        (filter (comp new-ids :id) (map first entities+deps))))))))
       (models.dependency/replace-dependencies-for-entities! entity-type id->deps)
-      (drop-stale-dependents! entity-type (mapv first entities+deps)))))
+      (drop-stale-dependents! entity-type (mapv first entities+deps)))
+    nil))
 
 (mu/defn- remove-deleted-entity-batch! :- ms/IntGreaterThanOrEqualToZero
   "Drop the dependencies and status of up to `batch-size` deleted entities of `entity-type`, returning how many were
@@ -121,19 +122,20 @@
   (when-not (instance? Exception e) ;; re-throw Errors
     (throw e)))
 
-(mu/defn- store-and-clear! :- :any
+(mu/defn- store-and-clear! :- :nil
   "Store the dependencies `entities+deps`, then clear the `stale` count of their entities."
   [entity-type   :- ::deps.dependency-types/dependency-types
    stale         :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
    entities+deps :- [:sequential [:tuple Entity :map]]]
   (store-dependencies! entity-type entities+deps)
   (models.dependency-status/clear-statuses! entity-type
-                                            (into {} (map (fn [[entity _]] [(:id entity) (stale (:id entity))])) entities+deps)))
+                                            (into {} (map (fn [[entity _]] [(:id entity) (stale (:id entity))])) entities+deps))
+  nil)
 
 (mu/defn- update-entity-batch! :- ms/IntGreaterThanOrEqualToZero
   "Compute the dependencies of up to `batch-size` pending entities of `entity-type`, clearing each one's `stale` count
-  unless a write raised it meanwhile, or counting its failure, returning how many it took. The dependencies are
-  stored together, or for each entity when that fails."
+  unless a write raised it meanwhile, or counting its failure, returning how many it took, the dependencies stored
+  together, or for each entity when that fails."
   [entity-type :- ::deps.dependency-types/dependency-types
    batch-size  :- ms/PositiveInt]
   (lib-be/with-metadata-provider-cache

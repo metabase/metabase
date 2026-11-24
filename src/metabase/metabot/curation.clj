@@ -78,7 +78,7 @@
     (first (collection/location-path->ids location))))
 
 (defn- root-collection-types
-  "`root-id → type` of the top-level ancestors of the Collections of `coll-id->info`, read once."
+  "The type of the top-level ancestors of the Collections of `coll-id->info`, by ancestor id, read together."
   [coll-id->info]
   (let [root-ids (into #{} (keep (comp root-id-of :location)) (vals coll-id->info))]
     (if (seq root-ids)

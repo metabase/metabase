@@ -553,29 +553,43 @@
    required-perms               :- ::required-perms]
   (has-perm-for-query-with? (single-check-answers query required-perms) query perm-type required-perms))
 
+(defn- hydrate-can-read
+  "`cards` hydrated with `:can_read` together, or, when that throws, each one alone, a Card whose hydration throws
+  carrying what it threw under `::hydration-error` in its metadata."
+  [cards]
+  (try
+    (vec (t2/hydrate cards :can_read))
+    (catch Throwable _
+      (mapv (fn [card]
+              (try
+                (t2/hydrate card :can_read)
+                (catch Throwable e
+                  (vary-meta card assoc ::hydration-error e))))
+            cards))))
+
 (defn- card-read-answers
   "`{[database-id card-id] card}` for each `[database-id card-ids]` of `database-card-ids`: the Card [[card]] gives in
-  that Database, hydrated with `:can_read` together with all the others, or what looking it up throws."
+  that Database, hydrated with `:can_read` in that Database's store together with the others of it, or what looking
+  it up throws."
   [database-card-ids]
   (let [database-id->card-ids (reduce (fn [m [database-id card-ids]] (update m database-id (fnil into []) card-ids))
                                       {}
-                                      database-card-ids)
-        entries               (into []
-                                    (mapcat (fn [[database-id card-ids]]
-                                              (let [card-ids (vec (distinct card-ids))]
-                                                (try
-                                                  (qp.store/with-metadata-provider database-id
-                                                    (lib.metadata/bulk-metadata (qp.store/metadata-provider) :metadata/card card-ids)
-                                                    (mapv (fn [card-id]
-                                                            [[database-id card-id] (try (card database-id card-id)
-                                                                                        (catch Throwable e e))])
-                                                          card-ids))
-                                                  (catch Throwable e
-                                                    (mapv (fn [card-id] [[database-id card-id] e]) card-ids))))))
-                                    database-id->card-ids)
-        found                 (filterv #(not (instance? Throwable (second %))) entries)]
-    (merge (into {} entries)
-           (zipmap (map first found) (t2/hydrate (mapv second found) :can_read)))))
+                                      database-card-ids)]
+    (into {}
+          (mapcat (fn [[database-id card-ids]]
+                    (let [card-ids (vec (distinct card-ids))]
+                      (try
+                        (qp.store/with-metadata-provider database-id
+                          (lib.metadata/bulk-metadata (qp.store/metadata-provider) :metadata/card card-ids)
+                          (let [entries (mapv (fn [card-id]
+                                                [[database-id card-id] (try (card database-id card-id)
+                                                                            (catch Throwable e e))])
+                                              card-ids)
+                                found   (filterv #(not (instance? Throwable (second %))) entries)]
+                            (into entries (map vector (map first found) (hydrate-can-read (mapv second found))))))
+                        (catch Throwable e
+                          (mapv (fn [card-id] [[database-id card-id] e]) card-ids))))))
+          database-id->card-ids)))
 
 (defn- check-cards-readable
   "Throws, as [[check-cards-read-perms]] does, unless the current user reads each Card of `card-ids` in the Database
@@ -586,6 +600,8 @@
           id->card @(:cards answers)
           cards    (mapv #(get id->card [database-id %]) card-ids)]
       (when-let [e (first (filter #(instance? Throwable %) cards))]
+        (throw e))
+      (when-let [e (some (comp ::hydration-error meta) cards)]
         (throw e))
       (doseq [[card-id card] (map vector card-ids cards)]
         (when-not (mi/can-read? card)
@@ -776,8 +792,8 @@
                       required-perms)))))
 
 (defn- check-prepared-run-check
-  "Throws what [[check-run-permissions-for-query]] throws for the query of `prepared`, one of [[prepared-run-checks]], from
-  `answers`."
+  "Throws what [[check-run-permissions-for-query]] throws for the query of `prepared`, one of [[prepared-run-checks]],
+  from `answers`."
   [answers {:keys [error query expanded? required-perms]}]
   (when error
     (throw error))
@@ -791,8 +807,8 @@
 
 (mu/defn check-run-permissions-for-queries :- :nil
   "[[check-run-permissions-for-query]] for each of `queries` in order, throwing what it throws for the first one it
-  refuses. Each query is preprocessed on its own, all of them as one admin; the permissions they need are read for all
-  of them at once."
+  refuses, with each query preprocessed on its own as an admin and the permissions they need read for all of them
+  together."
   ([queries :- [:sequential ::query]]
    (check-run-permissions-for-queries queries nil))
   ([queries :- [:sequential ::query]

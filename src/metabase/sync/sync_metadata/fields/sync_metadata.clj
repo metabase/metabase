@@ -276,9 +276,12 @@
         our-metadata))
 
 (mu/defn- write-field-changes! :- ms/IntGreaterThanOrEqualToZero
-  "Write the [[field-changes]] `collected`: one drop of the user values that no longer apply per distinct set of them
-  and one update. Returns the number of Fields updated."
-  [collected :- [:sequential :map]]
+  "Write the [[field-changes]] `collected`, with one drop of the user values that no longer apply per distinct set of
+  them and one bulk update, and return the number of Fields updated."
+  [collected :- [:sequential [:map {:closed true}
+                              [:id      ::lib.schema.id/field]
+                              [:updates :map]
+                              [:unset   {:optional true} [:sequential :keyword]]]]]
   (doseq [[unset changes] (group-by :unset (filter :unset collected))]
     (field-user-settings/unset-field-user-settings-for-fields! (mapv :id changes) unset))
   (sync.updates/update-fields-by-id-unless-user-set! (into {} (map (juxt :id :updates)) collected)))
@@ -295,10 +298,10 @@
   (write-field-changes! (collect-field-changes database table db-metadata our-metadata)))
 
 (mu/defn update-metadata-of-tables! :- ms/IntGreaterThanOrEqualToZero
-  "[[update-metadata!]] of each of `entries`, a Table with its `:db-metadata` and `:our-metadata`, the changes of all
-  their Fields written together. Returns total number of Fields updated."
+  "[[update-metadata!]] of each of `entries`, a Table with its `:db-metadata` and `:our-metadata`, writing the changes
+  of all their Fields together and returning the number of Fields updated."
   [database :- i/DatabaseInstance
-   entries  :- [:sequential [:map
+   entries  :- [:sequential [:map {:closed true}
                              [:table        i/TableInstance]
                              [:db-metadata  [:set i/TableMetadataField]]
                              [:our-metadata [:set common/TableMetadataFieldWithID]]]]]

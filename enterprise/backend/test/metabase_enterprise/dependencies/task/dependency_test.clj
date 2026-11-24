@@ -1426,7 +1426,8 @@
     (backfill-all-existing-entities!)
     (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "100")]
       (mt/with-premium-features #{:dependencies}
-        (let [query (mt/mbql-query orders)
+        (let [mp    (mt/metadata-provider)
+              query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
               run!  (fn [n]
                       (backfill-all-existing-entities!)
                       (let [ids (t2/insert-returning-pks!

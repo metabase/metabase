@@ -20,6 +20,13 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- data-app-readable?
+  "Whether the non-superuser with `user-id` can read the DataApp with `app-id`, answered for that one app."
+  [user-id app-id]
+  (t2/exists? :model/DataApp {:where [:and
+                                      [:= :id app-id]
+                                      [:in :id (data-apps.db/readable-data-app-ids-select user-id false)]]}))
+
 (defn- access-group-ids [app]
   (into #{} (map :id) (group-access/assigned-groups app)))
 
@@ -450,7 +457,7 @@
         (is (:granted small))
         (is (:granted large))))))
 
-(deftest add-groups-grants-the-rows-of-each-group-test
+(deftest add-groups-grants-rows-of-each-group-test
   (testing "adding a mix of internal and tenant groups stores what granting read to each group stores"
     (mt/with-premium-features #{:data-apps :tenants}
       (mt/with-temporary-setting-values [use-tenants true]
@@ -532,5 +539,5 @@
           (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
           (is (= [true false true false true false] (:values (hydrate 6))))
           (testing "each app gets the answer the per-app check gave"
-            (is (= (mapv #(data-apps.db/data-app-readable? (mt/user->id :rasta) (:id %)) apps)
+            (is (= (mapv #(data-app-readable? (mt/user->id :rasta) (:id %)) apps)
                    (:values (hydrate 6))))))))))

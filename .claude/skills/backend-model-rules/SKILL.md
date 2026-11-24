@@ -1,6 +1,6 @@
 ---
 name: backend-model-rules
-description: Where a rule about a Toucan 2 model lives and how to write it. Hooks hold defaults, derived columns and what the row and its stored version answer, and never call the app DB; boundary schemas (API request, SerDes and revisions spec `:schema`) check single values; the write functions in the model file's Writes section take lists, hold everything that needs other rows, and publish the lifecycle events by hand; a parent's file is the only entry point to its children; `mi/can-*?` methods hold per-user rules; no read or write path runs statements that grow with its rows, and `db.clj` functions partition the id lists they take. Use when adding or changing a model, a column, a hook, a write function, a schema, a permission check, an endpoint or tool that reads or writes a list of a model, a `db.clj` function that takes a list, a cascade, archiving, events, a per-model spec, or a test of any of these. Preloaded by every `*-backend-expert` agent.
+description: Where a rule about a Toucan 2 model lives and how to write it. Hooks hold defaults, derived columns and what the row and its stored version answer, and never call the app DB; boundary schemas (API request, SerDes and revisions spec `:schema`) check single values; the write functions in the model file's Writes section take lists, hold everything that needs other rows, and publish the lifecycle events by hand; a parent's file is the only entry point to its children; `mi/can-*?` methods hold per-user rules; no read or write path runs a number of statements that grows with its rows, and `db.clj` functions partition the id lists they take. Use when adding or changing a model, a column, a hook, a write function, a schema, a permission check, an endpoint or tool that reads or writes a list of a model, a `db.clj` function that takes a list, a cascade, archiving, events, a per-model spec, or a test of any of these. Preloaded by every `*-backend-expert` agent.
 ---
 
 # Model rules
@@ -401,7 +401,8 @@ number of statements, whatever its length.
     reorder, a layout per dashcard, dimensions per metric); rows that get the same value share one statement;
   - lib and the query processor: lazy loading in the metadata provider, preprocessing a query, inferring
     `result_metadata`. Do not change that code or stub it in a count test; pass it queries over the same sources;
-  - one statement per partition (`create-`, `update-`, `delete-`, `select-partition-size`);
+  - one statement per partition (`create-`, `update-`, `delete-`, `select-partition-size`), and one per distinct
+    change when rows of one call get different changes;
   - a nested tree loaded or written one layer at a time: a statement per level (collection depth, a dependency
     chain), never per node;
   - a single-row entry point called n times by its caller, and the per-row work of a scheduled job.
@@ -409,11 +410,11 @@ number of statements, whatever its length.
   (`mi/define-batched-hydration-method`) with one read for all rows; a simple, per-row hydration only computes from
   what the row already holds.
 - A permission question is never asked once per row. Hydrate `:can_read` / `:can_write` once and use the bulk forms
-  (`mi/can-update-all?`, `mi/can-update-each?`, `query-perms/check-run-permissions-for-queries`, the `perms/…`
-  functions that take maps or vectors). The bulk answer is exactly the per-row one: the same rows refused, the same
+  (`mi/can-update-all?`, `mi/can-update-each?`, `query-perms/check-run-permissions-for-queries`, the `perms/` functions
+  that take maps or vectors). The bulk answer is exactly the per-row one: the same rows refused, the same
   status and message, for the first row in order. Test it on a mixed batch against the per-row check.
 - One event per bulk operation, never one per row. What the payload carries (`:objects`, ids, before and after) is
-  decided per case; a consumer that needs more reads it once for the whole batch, and writes its rows in one insert
+  decided per case; a consumer that needs more reads it once for the whole batch, and writes its rows in one call
   (`record-each!` for audit rows, which skips a row that cannot be built and keeps the others).
 - Pass what was read down as arguments, or hydrate in bulk. No new dynamic var or `binding` to carry per-request
   values, and no memo that never expires over a column that can change.
@@ -422,21 +423,26 @@ number of statements, whatever its length.
 
 ### Lists in `db.clj`
 
-A `db.clj` function that takes a list of ids expects it to be longer than one statement allows, and partitions it
+A `db.clj` function that takes a list of ids is written for a list too long for one statement, and partitions it
 itself by `app-db/select-partition-size` (10000). The caller passes the whole list and gets the same shape back.
 Partition as close to the statement as possible: in the `db.clj` function that builds it, so that no endpoint,
-write function, hydration or other consumer above it changes or partitions on its own.
+write function, hydration or other consumer above it has to change or to partition the list.
 Other lists (names, keys, pairs, locations) are partitioned the same way only when they can be of any length; a
 fixed enum, a page, or a list the code itself bounds needs nothing.
 
-- A plain `id IN (…)` read: `(app-db/select-batched #(t2/select :model/X :id [:in %]) ids)`, which returns the rows
-  of every partition in one vector. A map or a set is built with `into` over the partitions; an `exists?` is `some`
-  over them; a count is the sum only when no row can match two partitions.
+- A plain `id IN (...)` read: `(app-db/select-batched #(t2/select :model/X :id [:in %]) ids)`, which reads each id
+  once and returns the rows of every partition in one vector. A map comes from `app-db/select-batched-map`, a set
+  from `app-db/select-batched-set` (nil when empty, as Toucan's set selects), a reducible from
+  `app-db/select-batched-reducible`, and the row count of a partitioned write from `app-db/sum-batched`. A read that
+  needs the partitions themselves (`some` for an `exists?`, pairs of two lists) takes them from
+  `app-db/select-partitions`; a count is the sum only when no row can match two partitions.
+- A list that fits one partition keeps the statement it had: the SQL `NOT IN`, `ORDER BY`, `LIMIT` and `OFFSET` stay
+  in SQL, and only a longer list takes the partitioned route.
 - ORDER BY, LIMIT, DISTINCT and GROUP BY apply to the whole result: redo them in Clojure over the combined rows when
   that is exact (the same keys and directions, NULLs and collation included), or leave the statement and say why.
 - `NOT IN` cannot be partitioned and concatenated, as each partition returns the other partitions' ids. Read without
   the exclusion and remove the ids in Clojure when another condition bounds the result; otherwise use an anti-join
-  (`NOT EXISTS`), never `NOT IN (SELECT …)`.
+  (`NOT EXISTS`), never `NOT IN (SELECT ...)`.
 - A permission read combined across partitions keeps its rule: `every?` for "all of", `some` for "any of", the same
   ordering function for "most permissive".
 - Writes go through the batched helpers, which partition already.

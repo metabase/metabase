@@ -3690,29 +3690,38 @@
         (is (= #{1 2} (set (map dest ["a1" "b1"]))))))))
 
 (deftest bulk-move-pinned-cards-statement-count-test
-  (testing "POST /api/card/collections takes no more than the position update of each pinned Card and its paired select more statements for many pinned Cards than for few, permission checks included"
+  (testing "POST /api/card/collections takes no more statements for many pinned Cards than for few beyond those of giving each Card its position, permission checks included"
     (mt/with-temp [:model/Collection {to-id :id} {}]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
       (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Pulse :model/Document :model/Collection]
-        (let [move! (fn [n]
-                      (let [from-id (t2/insert-returning-pk! :model/Collection
-                                                             (merge (mt/with-temp-defaults :model/Collection)
-                                                                    {:name (str "from " (random-uuid))}))
-                            _       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-id)
-                            ids     (mapv (fn [i]
-                                            (t2/insert-returning-pk! :model/Card
-                                                                     (merge (mt/with-temp-defaults :model/Card)
-                                                                            {:name (str "pinned " i) :collection_id from-id :collection_position (inc i)})))
-                                          (range n))]
-                        (doseq [[offset model] (map-indexed vector [:model/Dashboard :model/Pulse :model/Document])]
-                          (t2/insert! model (merge (mt/with-temp-defaults model)
-                                                   {:collection_id from-id :collection_position (+ n offset 1)})))
-                        (events.tu/real-statement-count!
-                         #(mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id}))))]
+        (let [pinned!   (fn [n]
+                          (let [from-id (t2/insert-returning-pk! :model/Collection
+                                                                 (merge (mt/with-temp-defaults :model/Collection)
+                                                                        {:name (str "from " (random-uuid))}))]
+                            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-id)
+                            {:from-id from-id
+                             :ids     (mapv (fn [i]
+                                              (t2/insert-returning-pk! :model/Card
+                                                                       (merge (mt/with-temp-defaults :model/Card)
+                                                                              {:name (str "pinned " i) :collection_id from-id :collection_position (inc i)})))
+                                            (range n))}))
+              move!     (fn [n]
+                          (let [{:keys [from-id ids]} (pinned! n)]
+                            (doseq [[offset model] (map-indexed vector [:model/Dashboard :model/Pulse :model/Document])]
+                              (t2/insert! model (merge (mt/with-temp-defaults model)
+                                                       {:collection_id from-id :collection_position (+ n offset 1)})))
+                            (events.tu/real-statement-count!
+                             #(mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id}))))
+              position! (fn [n]
+                          (let [updates (vec (map-indexed (fn [i id] {:id id :collection_position (+ n i 1)})
+                                                          (:ids (pinned! n))))]
+                            (mt/with-test-user :rasta
+                              (events.tu/real-statement-count! #(card/update-cards! updates)))))]
           (move! 2)
+          (position! 2)
           (let [few  (min (move! 10) (move! 10))
                 many (min (move! 40) (move! 40))]
-            (is (<= (- many few) (* 2 (- 40 10))))))))))
+            (is (<= (- many few) (- (position! 40) (position! 10))))))))))
 
 (deftest bulk-move-pinned-cards-refuses-unwritable-collection-test
   (testing "POST /api/card/collections moves nothing and keeps the positions when one pinned Card is in a Collection that is not writable"

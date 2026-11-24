@@ -58,15 +58,6 @@
    current-version :- ms/PositiveInt]
   (dependencies.db/clear-analysis-finding-statuses! entity-type id->stale current-version))
 
-(mu/defn clear-analysis-finding-status! :- :boolean
-  "Record that the analysis job analyzed the entity `entity-type` `entity-id` with the analysis of `current-version`,
-  clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
-  [entity-type     :- ::dependencies.schema/entity-type
-   entity-id       :- ms/PositiveInt
-   stale           :- ms/IntGreaterThanOrEqualToZero
-   current-version :- ms/PositiveInt]
-  (dependencies.db/clear-analysis-finding-status! entity-type entity-id stale current-version))
-
 (mu/defn delete-analysis-finding-statuses!
   "Delete the AnalysisFindingStatuses of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type

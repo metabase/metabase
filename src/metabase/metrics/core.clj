@@ -341,9 +341,9 @@
 (defn sync-dimensions!
   "Sync an entity's dimensions to the database. Behaviour differs by entity type:
 
-   - `:metadata/measure` — fully synced on every load; see [[sync-measure-dimensions!]].
-   - `:metadata/metric` (v2 Cards) — curated; seeded once via [[seed-metric-dimensions!]], then kept
-     authoritative via [[refresh-metric-dimensions!]].
+   - `:metadata/measure`: fully synced on every load; see [[measure-dimension-changes]].
+   - `:metadata/metric` (v2 Cards): curated; seeded once via [[seed-metric-dimensions]], then kept
+     authoritative via [[refresh-metric-dimensions]].
 
    Arguments:
    - `metadata-type` - `:metadata/metric` or `:metadata/measure`

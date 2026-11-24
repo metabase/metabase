@@ -21,8 +21,7 @@
     (audit-log/create-audit-logs! [row])))
 
 (defn- record-each!
-  "Record the audit row that `build-row` makes of each of `items`, in one insert.
-  An item whose row cannot be built is skipped, and when the insert fails each row is inserted on its own."
+  "Record the audit row that `build-row` makes of each of `items`, skipping an item whose row cannot be built."
   [build-row items]
   (let [rows (into []
                    (keep (fn [item]
@@ -33,15 +32,7 @@
                                nil))))
                    items)]
     (when (seq rows)
-      (try
-        (audit-log/create-audit-logs! rows)
-        (catch Exception e
-          (log/warnf "Failed to insert %d audit rows in one statement, inserting them one by one: %s" (count rows) (ex-message e))
-          (doseq [row rows]
-            (try
-              (audit-log/create-audit-logs! [row])
-              (catch Exception e
-                (log/warnf "Failed to insert an audit row: %s" (ex-message e))))))))))
+      (audit-log/create-audit-logs! rows))))
 
 (defn- row-of
   "The row that the lifecycle `event` is about."
@@ -246,9 +237,9 @@
 (events/derive! :event/dashboard-remove-cards ::dashboard-cards-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-cards-event
-  "Record the dashcards that a write added to or removed from Dashboards, with the name and the description of their
-  Cards, one row for each entry of `:objects`, each an `:object` with its `:dashcards`, in one insert, as [[record-each!]]
-  does, reading the Cards once. An event without `:objects` is one such entry itself."
+  "Record the dashcards that a write added to or removed from Dashboards, with the name and description of their
+  Cards, read together, one row for each entry of `:objects` (an `:object` with its `:dashcards`; an event without
+  `:objects` is one such entry), as [[record-each!]] does."
   [topic {:keys [objects object dashcards user-id]}]
   (when (and user-id (premium-features/log-enabled?))
     (let [entries (or objects [{:object object :dashcards dashcards}])
@@ -314,7 +305,7 @@
 
 (defn- record-manual!
   "Record the audit row of `topic` and the event `params` of a manual action, with what its spec stores of its object,
-  or one row for each of its `:objects`, in one insert, as [[record-each!]] does."
+  or one row for each of its `:objects`, as [[record-each!]] does."
   [topic {:keys [object objects] :as params}]
   (when (premium-features/log-enabled?)
     (if objects
@@ -364,8 +355,8 @@
 (events/derive! :event/notification-unsubscribe ::notification-event)
 
 (methodical/defmethod events/publish-event! ::notification-event
-  "Record one row for each of the `:objects` of the event, each an `:object` with its `:previous-object`, in one
-  insert, as [[record-each!]] does. An event without `:objects` is one such item itself."
+  "Record one row for each of the `:objects` of the event (an `:object` with its `:previous-object`; an event without
+  `:objects` is one such item), as [[record-each!]] does."
   [topic {:keys [objects user-id] :as event}]
   (when (premium-features/log-enabled?)
     (record-each! (fn [{:keys [object previous-object]}]
@@ -385,7 +376,7 @@
 (events/derive! :event/notification-create ::notification-create-event)
 
 (methodical/defmethod events/publish-event! ::notification-create-event
-  "Record one row for each Notification that `:objects` (or `:object`) holds, in one insert, as [[record-each!]] does."
+  "Record one row for each Notification that `:objects` (or `:object`) holds, as [[record-each!]] does."
   [topic {:keys [object objects user-id]}]
   (when (premium-features/log-enabled?)
     (record-each! (fn [notification]
@@ -450,8 +441,7 @@
 (events/derive! :event/session-revoked ::session-revoked-event)
 
 (methodical/defmethod events/publish-event! ::session-revoked-event
-  "Record one row for each User whose sessions `:objects` holds with their `:count`, in one insert, as [[record-each!]]
-  does."
+  "Record one row for each User whose sessions `:objects` holds with their `:count`, as [[record-each!]] does."
   [topic {:keys [user-id details objects]}]
   (when (premium-features/log-enabled?)
     (record-each! (fn [{:keys [id count]}]
@@ -585,7 +575,7 @@
 (events/derive! :event/transform-run-timeout ::transform-run-timeout-event)
 
 (methodical/defmethod events/publish-event! ::transform-run-timeout-event
-  "Record one row for each run that `:objects` (or `:object`) holds, in one insert, as [[record-each!]] does."
+  "Record one row for each run that `:objects` (or `:object`) holds, as [[record-each!]] does."
   [topic {:keys [object objects user-id]}]
   (when (premium-features/log-enabled?)
     (record-each! (fn [run]

@@ -129,8 +129,8 @@
              (field-values-call-count! 6))))))
 
 (defn- impersonated-field-values-call-count!
-  "The number of statements `read!` issues for the current user with one Field of each of `n` fresh Tables whose advanced
-  FieldValues for that user are stored, checking that it returns them."
+  "The number of statements `read!` issues for the current user with one Field of each of `n` fresh Tables whose
+  advanced FieldValues for that user are stored, checking that it returns them."
   [n read!]
   (mt/with-model-cleanup [:model/Table]
     (let [fields (vec (for [i (range n)]

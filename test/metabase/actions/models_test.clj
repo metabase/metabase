@@ -948,7 +948,7 @@
             (is (= (restore! 2) (restore! 6)))))))))
 
 (defn- archive-call-count
-  "The statements that a superuser's question whether he may archive `actions` takes, which must be allowed."
+  "The number of statements it takes to ask whether a superuser may archive `actions`, which must be allowed."
   [actions]
   (mt/with-test-user :crowberto
     (t2/with-call-count [call-count]

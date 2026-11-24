@@ -20,7 +20,7 @@
        (some? previous-object)))
 
 (defn moment-details
-  "The details to store for each of the `events` of a publication of a Table, read from one select."
+  "The details to store for each of the `events` of a publication of a Table, read together."
   [events]
   (let [tables (warehouse-schema.db/tables-by-ids (into [] (comp (map (comp :table_id :object)) (distinct)) events))]
     (mapv #(select-keys (get tables (:table_id (:object %))) [:id :name :db_id]) events)))

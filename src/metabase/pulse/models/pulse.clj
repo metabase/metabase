@@ -563,7 +563,8 @@
                 (map #(dissoc % :recipients) channels)))))
 
 (defn maybe-strip-pulses-sensitive-metadata
-  "[[maybe-strip-sensitive-metadata]] for `pulses`, with the Collections they are in read from one permission query."
+  "[[maybe-strip-sensitive-metadata]] for `pulses`, with the permissions of the Collections they are in read
+  together."
   [pulses]
   (let [alert-cards (alert-cards (filter is-alert? pulses))
         owners      (map #(if (is-alert? %) (get alert-cards (:id %)) %) pulses)

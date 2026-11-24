@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- action-database-joins
@@ -90,7 +91,7 @@
   (app-db/select-batched-map #(t2/select-pk->fn :collection_id [:model/Card :id :collection_id] :id [:in [:auto/param %]])
                              card-ids))
 
-(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection :map]
+(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection (ms/InstanceOf :model/Collection)]
   "The Collections with `collection-ids` that exist, by id."
   [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
   (app-db/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in [:auto/param %]]) collection-ids))

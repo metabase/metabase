@@ -241,10 +241,9 @@
             (messages/send-you-were-added-card-notification-email! notification added-recipients @api/*current-user*)))))))
 
 (defn publish-notification-updates!
-  "Post-update side effects for notifications: recipient emails on `:active` transitions (or recipient diffs) of each
-  `[updated existing]` pair of `pairs`, then one `:event/notification-update` audit event for all of them. Shared
-  between the self-service PUT endpoint and the admin bulk endpoint so the contract can't drift. Both notifications of
-  a pair should be hydrated (see [[models.notification/hydrate-notification]])."
+  "Send the recipient emails for the `:active` transition or the recipient changes of each `[updated existing]` pair
+  of hydrated notifications in `pairs`, then publish one `:event/notification-update` for all of them, for the PUT
+  endpoint and the admin bulk endpoint alike."
   [pairs]
   (doseq [[updated existing] pairs
           :when (card-notification? existing)]

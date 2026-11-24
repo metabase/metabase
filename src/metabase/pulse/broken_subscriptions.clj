@@ -18,7 +18,8 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse
   - The pulse's channels, hydrated with `:recipients`
-  `user-id->user` is the creator and recipient users by id, `channel-id->user-ids` the recipient user ids by channel id."
+  `user-id->user` is the creator and recipient users by id, `channel-id->user-ids` the recipient user ids by channel
+  id."
   [user-id->user channel-id->user-ids {bad-pulse-id :id pulse-name :name :keys [parameters creator_id]} channels]
   {:pulse-id       bad-pulse-id
    :pulse-name     pulse-name
@@ -121,8 +122,8 @@
      :recipient-count (transduce (map second) + counts)}))
 
 (defn- visible-enabled-channels
-  "The enabled channels of the readable pulses in `broken`, by pulse id, with the recipients a sandboxed or tenant-scoped
-   user isn't shown left out."
+  "The enabled channels of the readable pulses in `broken`, by pulse id, with the recipients a sandboxed or
+  tenant-scoped user isn't shown left out."
   [broken readable-ids]
   (let [pulses (for [{:keys [pulse-id channels]} broken
                      :when (contains? readable-ids pulse-id)]

@@ -354,7 +354,8 @@
                                      ::permissions.schema/data-permission-value]
   "The `perm-type` value that each group gives on each Table of `group-table-pairs`, `[group-id table-id]` pairs, as
   `{[group-id table-id] value}`: what [[table-permissions-for-groups]] answers for that group alone, with the Database
-  of each Table from `table-id->db-id` and the rows of all pairs read in two queries per 1,000 Tables."
+  of each Table from `table-id->db-id` and the rows of all pairs read in two queries per chunk of Tables that
+  [[chunked]] makes."
   [group-table-pairs :- [:sequential [:tuple ms/PositiveInt ::lib.schema.id/table]]
    perm-type         :- ::permissions.schema/data-permission-type
    table-id->db-id   :- TableIdToDatabaseId]
@@ -398,7 +399,7 @@
 (mu/defn some-table-in-schemas-permissions-for-user :- [:map-of [:tuple ::lib.schema.id/database [:maybe :string]]
                                                         ::permissions.schema/data-permission-value]
   "[[some-table-in-schema-permission-for-user]] of each of `schemas`, `[database-id schema-name]` pairs, as `{pair
-  value}`, in two queries per 1,000 Databases."
+  value}`, in two queries per chunk of Databases that [[chunked]] makes."
   [{:keys [user-id] :as user-info} :- ::permissions.schema/data-user-info
    perm-type                       :- ::permissions.schema/data-permission-type
    schemas                         :- [:sequential [:tuple ::lib.schema.id/database [:maybe :string]]]]
@@ -788,8 +789,8 @@
            (sort > (distinct db-ids)))))
 
 (mu/defn set-database-permissions! :- :nil
-  "Set `perm-type` to `value` for each `[group-id db-id]` of `group-db-pairs`, as [[set-database-permission!]] does for
-  one pair, with the permissions of all pairs read once and written in one delete and one insert."
+  "Set `perm-type` to `value` for each `[group-id db-id]` of `group-db-pairs`, as [[set-database-permission!]] does
+  for one pair, with the permissions of all pairs read together and written with one delete call and one create call."
   [group-db-pairs :- [:sequential [:tuple ms/PositiveInt ::lib.schema.id/database]]
    perm-type      :- ::permissions.schema/data-permission-type
    value          :- :keyword]
@@ -1301,7 +1302,7 @@
   :full)
 
 (defenterprise download-perms-levels
-  "The download permission that the given user has for each of `queries`, in order. OSS returns :full for each."
+  "The download permission level of the user for each of `queries`, in order, which is `:full` in OSS."
   metabase-enterprise.advanced-permissions.models.permissions.data-permissions
   [queries _user-id]
   (mapv (constantly :full) queries))

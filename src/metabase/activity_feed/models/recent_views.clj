@@ -65,9 +65,8 @@
   20)
 
 (defn- duplicate-model-ids
-  "Returns a set of IDs of duplicate models among the RecentViews `rows` of one user and context, newest first.
-   Duplicate means that the same model and model_id shows up more than once. This returns the ids for the copies that
-   are not the most recent entry."
+  "The ids of the RecentViews `rows` of one user and context, newest first, that repeat the model and model id of a
+  newer row."
   [rows]
   (->> rows
        (group-by (juxt :model :model_id))
@@ -135,9 +134,9 @@
         rv-models))
 
 (defn ids-to-prune
-  "Returns IDs to prune for the `[user-id context]` pairs `user-contexts`, which includes 2 things:
-  1. duplicated views for (user-id, model, model_id, context), this will return the IDs of all duplicates except the newest.
-  2. views that are older than the most recent *recent-views-stored-per-user-per-model* views for the user. "
+  "The ids of the RecentViews to prune for the `[user-id context]` pairs `user-contexts`: every duplicate of a user,
+  model, model id and context but the newest, and the views beyond the newest
+  [[*recent-views-stored-per-user-per-model*]] of each type."
   [user-contexts]
   (let [wanted (into #{} (map (fn [[user-id context]] [user-id (name context)])) user-contexts)]
     (->> (activity-feed.db/recent-views-for-users-contexts (into [] (comp (map first) (distinct)) wanted)
@@ -337,7 +336,7 @@
 
 (mu/defn update-users-recent-views-of-each!
   "Updates the RecentViews table for a given user with a new view of each of the `model` rows with `model-ids`, and
-  prunes old views, in one batch."
+  prunes old views, together."
   [user-id   :- [:maybe ms/PositiveInt]
    model     :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection :model/Document]
    model-ids :- [:sequential ms/PositiveInt]

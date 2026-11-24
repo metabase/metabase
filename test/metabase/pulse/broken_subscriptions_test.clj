@@ -251,8 +251,8 @@
                     (pulse.broken-subscriptions/handle-broken-subscriptions! dash-id {"gone" {:id "gone"}})))))))))
 
 (defn- insert-broken-subscriptions!
-  "Insert `n` subscriptions of the Dashboard `dashboard-id` created by `creator-id`, each with the filter `gone`, an email
-  channel for the Users `user-ids` and a Slack channel, and return their ids."
+  "Insert `n` subscriptions of the Dashboard `dashboard-id` created by `creator-id`, each with the filter `gone`, an
+  email channel for the Users `user-ids` and a Slack channel, and return their ids."
   [n creator-id dashboard-id user-ids]
   (let [pulse-ids   (t2/insert-returning-pks! :model/Pulse
                                               (for [_ (range n)]

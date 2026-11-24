@@ -579,9 +579,9 @@
   (t2/update! :model/TransformRun :transform_id transform-id {:start_time run-time :end_time run-time}))
 
 (mu/defn set-table-dependencies!
-  "Store each JSON string of `id->dependencies-json` as the cached table dependencies of the Transforms it is the value
-  of, returning the number updated, with one statement against their table for each distinct string and 1,000 of its
-  ids that publishes no event."
+  "Store each JSON string of `id->dependencies-json` as the cached table dependencies of the Transforms it is the
+  value of, returning the number updated, with one statement against their table for each distinct string and
+  partition of its ids that publishes no event."
   [id->dependencies-json :- [:map-of ::lib.schema.id/transform :string]]
   (transduce (map (fn [[dependencies-json ids]]
                     (mdb/sum-batched mdb/update-partition-size #(t2/update! (t2/table-name :model/Transform) :id [:in [:auto/param %]]

@@ -316,12 +316,13 @@
           (is (not-any? #(and (map? %) (contains? % :schema)) (tree-seq coll? seq errors))))))))
 
 (deftest dashboard-param-fields-statements-do-not-grow-with-dashboards-test
-  (let [parameters [{:id "p1" :type :number/= :name "P1" :slug "p1"}]
+  (let [mp         (mt/metadata-provider)
+        parameters [{:id "p1" :type :number/= :name "P1" :slug "p1"}]
         mappings   (fn [card-id field-name]
                      [{:card_id      card-id
                        :parameter_id "p1"
                        :target       [:dimension [:field (mt/id :venues field-name) nil]]}])]
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
                    :model/Dashboard {d1 :id} {:parameters parameters}
                    :model/Dashboard {d2 :id} {:parameters parameters}
                    :model/Dashboard {d3 :id} {:parameters parameters}

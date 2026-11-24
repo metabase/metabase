@@ -594,10 +594,9 @@
     {:id id :field_order (some-> field_order keyword)}))
 
 (defn- tables-by-ids
-  "The Tables with `ids` by id, read in batches of [[mdb/delete-partition-size]] ids, so that any number of them stays
-  under the parameter limit of a statement."
+  "The Tables with `ids` by id."
   [ids]
-  (into {} (map #(warehouse-schema.db/tables-by-ids (vec %))) (partition-all mdb/delete-partition-size ids)))
+  (warehouse-schema.db/tables-by-ids (vec ids)))
 
 (defn- prepare-table-updates!
   "Set the positions of the Fields of the Tables, among the `id->stored` ones, that `updates` give another field order,

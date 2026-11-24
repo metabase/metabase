@@ -100,8 +100,8 @@
       (= :type/Name (:semantic_type result)) (update :tables-with-name conj table-id))))
 
 (defn- save-field-updates!
-  "Save `updates`, pairs of a Field of one of `tables` and the values classification sets on it, in one update, or Table
-  by Table when that fails."
+  "Save `updates`, pairs of a Field of one of `tables` and the values classification sets on it, with one call, or
+  Table by Table when that fails."
   [tables updates]
   (table-chunks/save-by-table! "the classification of the Fields" (table-chunks/table-name tables) (comp :table_id first)
                                sync.updates/update-fields-unless-user-set! updates))
@@ -152,7 +152,7 @@
                               true))))
 
 (mu/defn- classify-tables-of-chunk! :- :int
-  "Run various classifiers on `tables` and save the values they set in one update, returning the number of Tables they
+  "Run various classifiers on `tables` and save the values they set with one call, returning the number of Tables they
   set values on or failed on."
   [tables :- [:sequential i/TableInstance]]
   (let [outcomes (mapv (juxt identity table-classification) tables)
