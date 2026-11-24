@@ -33,6 +33,7 @@
    [metabase.activity-feed.collection-recent-views]
    [metabase.activity-feed.db :as activity-feed.db]
    [metabase.activity-feed.recent-views.spec :as recent-views.spec]
+   [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.batch-processing.core :as grouper]
    [metabase.config.core :as config]
@@ -343,7 +344,7 @@
    model     :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection :model/Document]
    model-ids :- [:sequential ms/PositiveInt]
    context   :- [:enum :view :selection]]
-  (when user-id
+  (when (and user-id (not api/*previewing-admin-id*))
     (grouper/submit-all! @recent-views-queue (for [model-id model-ids]
                                                {:user-id   user-id
                                                 :model     model

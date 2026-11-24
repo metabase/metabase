@@ -126,7 +126,7 @@
                      [:sequential ::view-log.schema/view-log.create]]]
   (span/with-span!
     {:name "record-view!"}
-    (when (premium-features/log-enabled?)
+    (when (and (premium-features/log-enabled?) (not api/*previewing-admin-id*))
       (doseq [view (u/one-or-many view-or-views)]
         (grouper/submit! @record-view-queue (-> view
                                                 (assoc :timestamp (t/offset-date-time))

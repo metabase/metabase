@@ -4663,6 +4663,7 @@
    :api #{metabase-enterprise.permission-debug.api}
    :uses #{api
            app-db
+           events
            lib
            lib.schema
            models

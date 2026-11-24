@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events.core :as events]
    [metabase.session.core :as session]
    [metabase.users.schema :as users.schema]
    [metabase.util.i18n :refer [tru]]
@@ -118,15 +119,20 @@
    request]
   (check-browser-session! request)
   (check-preview-target! body)
-  (let [admin-session-key-hash (:metabase/authed-session-key-hash request)]
-    (if group_id
-      (stand-in/start-group-preview! {:group-id               group_id
-                                      :attributes             attributes
-                                      :admin-user-id          api/*current-user-id*
-                                      :admin-session-key-hash admin-session-key-hash})
-      (session/start-preview! {:user-id                user_id
-                               :admin-user-id          api/*current-user-id*
-                               :admin-session-key-hash admin-session-key-hash}))))
+  (let [admin-session-key-hash (:metabase/authed-session-key-hash request)
+        preview                (if group_id
+                                 (stand-in/start-group-preview! {:group-id               group_id
+                                                                 :attributes             attributes
+                                                                 :admin-user-id          api/*current-user-id*
+                                                                 :admin-session-key-hash admin-session-key-hash})
+                                 (session/start-preview! {:user-id                user_id
+                                                          :admin-user-id          api/*current-user-id*
+                                                          :admin-session-key-hash admin-session-key-hash}))]
+    (events/publish-event! :event/permission-preview-start
+                           {:user-id  api/*current-user-id*
+                            :model    (if group_id :model/PermissionsGroup :model/User)
+                            :model-id (or group_id user_id)})
+    preview))
 
 (api.macros/defendpoint :delete "/preview/session/:id" :- ::api/generic-204-no-content
   "End the preview `id` that the current admin started."

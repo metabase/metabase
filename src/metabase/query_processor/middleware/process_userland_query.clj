@@ -96,7 +96,8 @@
   "Save a `QueryExecution` row containing `execution-info`. Saves are batched and written asynchronously, so they may
   not be visible for up to [[save-execution-metadata-interval-seconds]] (and may be lost on non-graceful shutdown);
   this is analytics data, so we consider that an acceptable trade for not paying for an INSERT per query execution.
-  Tests can bind [[qp.util/*execute-async?*]] to `false` to save synchronously on the current thread."
+  Tests can bind [[qp.util/*execute-async?*]] to `false` to save synchronously on the current thread. Nothing is
+  saved while an admin previews the app as someone."
   [execution-info]
   (let [;; Capture SDK info and compute the running time now, on the query execution thread: by the time the batch is
         ;; processed the request (and its dynamic bindings and clock) is long gone. `include-sdk-info` also runs in
@@ -108,9 +109,10 @@
                             analytics.core/include-sdk-info
                             add-running-time
                             (cond-> json-query (assoc :json_query json-query)))]
-    (if qp.util/*execute-async?*
-      (grouper/submit! @save-execution-metadata-queue execution-info')
-      (save-execution-metadata!* [execution-info']))))
+    (cond
+      api/*previewing-admin-id* nil
+      qp.util/*execute-async?*  (grouper/submit! @save-execution-metadata-queue execution-info')
+      :else                     (save-execution-metadata!* [execution-info']))))
 
 (defn flush-execution-metadata!
   "Block until every `QueryExecution` submitted by [[save-execution-metadata!]] so far has been written. Needed by
