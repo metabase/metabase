@@ -2268,6 +2268,13 @@
 (defn- desired-col-alias-ident [col]
   (h2x/identifier :field (:lib/desired-column-alias col)))
 
+(defn- cte-binding
+  "A `WITH` binding of `hsql` as `cte-name`. Renames the columns if their names are ambiguous."
+  [cte-name hsql columns-metadata]
+  (if (needs-cte-for-duplicate-cols? columns-metadata)
+    [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
+    [cte-name hsql]))
+
 (defn- stage-source-form
   [driver hsql stage]
   (let [table-alias      (->honeysql driver (h2x/identifier :table-alias source-query-alias))
@@ -2277,8 +2284,7 @@
       {}
 
       (needs-cte-for-duplicate-cols? columns-metadata)
-      {:with [[[source-query-alias {:columns (mapv desired-col-alias-ident columns-metadata)}]
-               hsql]]
+      {:with [(cte-binding source-query-alias hsql columns-metadata)]
        :from [[table-alias]]}
 
       :else
@@ -2316,14 +2322,9 @@
            [(->honeysql driver (h2x/identifier :table-alias source-query-alias))]]]})
 
 (defn- stage-cte
-  "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" becomes \"__mb_stage_N AS (SELECT a FROM t)\".
-  Applies the fix for duplicate column names similar to `stage-source-form`."
+  "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" becomes \"__mb_stage_N AS (SELECT a FROM t)\"."
   [hsql stage]
-  (let [cte-name         (::cte-name stage)
-        columns-metadata (get-in stage [:lib/stage-metadata :columns])]
-    (if (needs-cte-for-duplicate-cols? columns-metadata)
-      [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
-      [cte-name hsql])))
+  (cte-binding (::cte-name stage) hsql (get-in stage [:lib/stage-metadata :columns])))
 
 (defn- stages->honeysql-ctes
   "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from."
@@ -2361,26 +2362,20 @@
     (cond-> hsql
       (and (map? hsql) (seq @ctes)) (assoc :with @ctes))))
 
-(defn- assign-cte-names*
-  "Gives each stage that compiles to a CTE a unique `::cte-name`, starting at `__mb_stage_<n>`."
-  [stages n]
-  (let [last-idx (dec (count stages))]
-    (reduce (fn [[stages n] [idx stage]]
-              (let [[joins n] (reduce (fn [[joins n] join]
-                                        (let [[join-stages n] (assign-cte-names* (:stages join) n)]
-                                          [(conj joins (assoc join :stages join-stages)) n]))
-                                      [[] n]
-                                      (:joins stage))
-                    stage     (cond-> stage
-                                (seq joins)      (assoc :joins joins)
-                                (< idx last-idx) (assoc ::cte-name (str stage-cte-prefix n)))]
-                [(conj stages stage) (cond-> n (< idx last-idx) inc)]))
-            [[] n]
-            (map-indexed vector stages))))
-
 (defn- assign-cte-names
+  "Gives each stage that compiles to a CTE, i.e. every stage but the last of a query or join, a unique `::cte-name`."
   [stages]
-  (first (assign-cte-names* stages 0)))
+  (let [n (volatile! 0)]
+    (letfn [(name-stage [stage]
+              (let [cte-name (str stage-cte-prefix @n)]
+                (vswap! n inc)
+                (assoc stage ::cte-name cte-name)))
+            (name-stages [stages]
+              (into (mapv name-stage (butlast stages)) (take-last 1 stages)))]
+      (:stages (perf/postwalk (fn [form]
+                                (cond-> form
+                                  (and (map? form) (vector? (:stages form))) (update :stages name-stages)))
+                              {:stages stages})))))
 
 (defn- native-stage-has-cte?
   "Whether the raw SQL of `stage` contains `WITH`. A false positive only makes the query use subselects."
