@@ -1162,7 +1162,7 @@
     ;; Should an aggregation with no breakouts over a previous stage go in its own stage CTE? This is for databases
     ;; like Postgres that do not use an index for MIN/MAX when the aggregation is in a SELECT that has a WITH clause.
     ;; Only applies to queries compiled with `:stage-ctes`.
-    :stage-ctes/single-row-aggregation
+    :stage-ctes/nest-single-row-aggregation
     ;;
     ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
     ;;

@@ -2258,7 +2258,7 @@
   [driver query]
   (and (use-stage-ctes? driver (:stages query) query)
        (driver/database-supports? driver
-                                  :stage-ctes/single-row-aggregation
+                                  :stage-ctes/nest-single-row-aggregation
                                   (driver-api/database (driver-api/metadata-provider)))))
 
 (defmethod preprocess :sql

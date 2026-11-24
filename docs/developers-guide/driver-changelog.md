@@ -7,7 +7,7 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
-- New driver feature `:stage-ctes/single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
+- New driver feature `:stage-ctes/nest-single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
   aggregation with no breakouts over a previous stage in its own stage CTE. This is for databases like Postgres that
   do not use an index for `MIN`/`MAX` when the aggregation is in a `SELECT` that has a `WITH` clause. The default is
   `false`.
