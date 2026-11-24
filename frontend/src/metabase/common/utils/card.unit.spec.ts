@@ -13,9 +13,7 @@ import {
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 describe("deserializeCardFromQuery", () => {
-  const MBQL_QUERY = Lib.toLegacyQuery(
-    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
-  );
+  const MBQL_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const CARD_PAYLOAD = {
     dataset_query: MBQL_QUERY,
     display: "bar",

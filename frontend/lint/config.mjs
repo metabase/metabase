@@ -117,15 +117,6 @@ const baseMetabaseRestrictedConfig = {
       message: "Please import from `metabase/ui` instead.",
     },
     {
-      name: "@emotion/styled",
-      message: "Please style components using css modules.",
-    },
-    {
-      name: "@emotion/react",
-      message:
-        "Please use components from `metabase/ui` instead and style them using css modules.",
-    },
-    {
       name: "@storybook/test",
       message:
         "Please use `testing-library/react` or `@testing-library/user-event`",
@@ -703,15 +694,6 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             dayjsRestrictedPath,
-            {
-              name: "@emotion/styled",
-              message: "Please style components using css modules.",
-            },
-            {
-              name: "@emotion/react",
-              message:
-                "Please use components from `metabase/ui` instead and style them using css modules.",
-            },
           ],
         },
       ],
@@ -752,15 +734,6 @@ const configs = [
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
-            },
-            {
-              name: "@emotion/styled",
-              message: "Please style components using css modules.",
-            },
-            {
-              name: "@emotion/react",
-              message:
-                "Please use components from `metabase/ui` instead and style them using css modules.",
             },
             {
               name: "@storybook/test",

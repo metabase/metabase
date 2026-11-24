@@ -18,8 +18,8 @@ import type {
 import { COMPARISON_TYPES } from "../constants";
 
 import { AnotherColumnForm } from "./AnotherColumnForm";
+import { ComparisonMenuItem } from "./ComparisonMenuItem";
 import S from "./ComparisonPicker.module.css";
-import { MenuItemStyled } from "./MenuItem.styled";
 import { PeriodsAgoMenuOption } from "./PeriodsAgoMenuOption";
 import { StaticNumberForm } from "./StaticNumberForm";
 
@@ -260,11 +260,15 @@ function renderMenuOption({
   };
 
   return (
-    <MenuItemStyled key={type} aria-selected={isSelected} onClick={handleClick}>
+    <ComparisonMenuItem
+      key={type}
+      aria-selected={isSelected}
+      onClick={handleClick}
+    >
       <Text fw="bold" ml="0.5rem">
         {name}
       </Text>
-    </MenuItemStyled>
+    </ComparisonMenuItem>
   );
 }
 

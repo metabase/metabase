@@ -13,6 +13,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
@@ -55,7 +56,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (users-rest.db/rename-collection! (:id collection) new-collection-name))))))
+          (collection/update-collections! [{:id (:id collection) :name new-collection-name}] nil))))))
 
 ;;; ------------ Serialize User Attribute Provenance ------------------
 
@@ -491,11 +492,11 @@
   [user-id tenant-id]
   (perms/allow-changing-all-users-group-members
     (perms/allow-changing-all-external-users-group-members
-     (perms/remove-user-from-all-groups! user-id)
+     (perms-group-membership/remove-users-from-groups! [user-id] (vec (user/group-ids user-id)))
      (when tenant-id
-       (perms/add-user-to-group! user-id (perms/all-external-users-group)))
+       (perms-group-membership/add-users-to-groups! [{:user user-id :group (perms/all-external-users-group)}]))
      (when (nil? tenant-id)
-       (perms/add-user-to-group! user-id (perms/all-users-group))))))
+       (perms-group-membership/add-users-to-groups! [{:user user-id :group (perms/all-users-group)}])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -545,7 +546,7 @@
                     "email" (tru "Email address already associated to another user.")))
       (t2/with-transaction [_conn]
         (when (seq changes)
-          (users-rest.db/update-user! id changes)
+          (user/update-users! [(assoc changes :id id)])
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
@@ -555,8 +556,8 @@
         (when (and (contains? updatable :is_data_analyst) (contains? body :is_data_analyst))
           (let [data-analyst-group-id (:id (perms/data-analyst-group))]
             (if is_data_analyst
-              (perms/add-user-to-group! id data-analyst-group-id)
-              (perms/remove-user-from-group! id data-analyst-group-id))))
+              (perms-group-membership/add-users-to-groups! [{:user id :group data-analyst-group-id}])
+              (perms-group-membership/remove-users-from-groups! [id] [data-analyst-group-id]))))
         (users/maybe-set-user-group-memberships! id user_group_memberships is_superuser))))
   (-> (users/fetch-user :id id)
       (t2/hydrate :user_group_memberships)))
@@ -566,15 +567,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (users-rest.db/update-user! (u/the-id existing-user)
-                              {:is_active     true
-                               :is_superuser  false
-                               ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
-                               ;; (see metabase#3323)
-                               :sso_source   (case (:sso_source existing-user)
-                                               :google (when (sso/google-auth-enabled) :google)
-                                               :ldap   (when (sso/ldap-enabled) :ldap)
-                                               (:sso_source existing-user))})
+  (user/update-users! [{:id            (u/the-id existing-user)
+                        :is_active     true
+                        :is_superuser  false
+                        ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
+                        ;; (see metabase#3323)
+                        :sso_source   (case (:sso_source existing-user)
+                                        :google (when (sso/google-auth-enabled) :google)
+                                        :ldap   (when (sso/ldap-enabled) :ldap)
+                                        (:sso_source existing-user))}])
   ;; now return the existing user whether they were originally active or not
   (users/fetch-user :id (u/the-id existing-user)))
 
@@ -684,8 +685,8 @@
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
-  (api/check-404 (users-rest.db/user-exists? id))
-  (users-rest.db/update-personal-user! id {:is_active false})
+  (when (= :personal (:type (api/check-404 (users-rest.db/user-active-type-and-sso-source id))))
+    (user/update-users! [{:id id :is_active false}]))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -707,5 +708,6 @@
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
     (api/update-check (api/check-404 (users/fetch-user :id id)) {k false})
     (check-not-internal-user id)
-    (api/check-500 (pos? (users-rest.db/update-personal-user! id {k false}))))
+    (let [user-ids (api/check-500 (not-empty (user/user-ids-of-type [id] :personal)))]
+      (user/update-users! (for [user-id user-ids] {:id user-id k false}))))
   {:success true})

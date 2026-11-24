@@ -8,6 +8,9 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   ;; Loaded first, so that `original-describe-database` captures the driver's method.
+   [metabase.driver.motherduck]
    [metabase.driver.sql-jdbc.connection-test :as connection-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table-test :as describe-table-test]
@@ -20,7 +23,8 @@
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util.log :as log]
-   [metabase.util.random :as u.random])
+   [metabase.util.random :as u.random]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection)))
 
@@ -296,6 +300,46 @@
   created-databases
   (atom #{}))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        First sync of shared datasets                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Tests in other JVMs and CI jobs create and drop tables in the shared datasets. If one of those tables is dropped
+;; between the time the first sync lists it and the time sync reads it, the read fails, and the test harness then fails
+;; the whole dataset. So the first sync of a shared dataset lists only the tables in its definition.
+
+(defonce ^:private ^{:doc "Shared database name -> table names in its dataset definition."}
+  shared-dataset-tables
+  (atom {}))
+
+(defn- remember-shared-dataset-tables!
+  "Records the table names of `dbdef` under its shared database name, if `dbdef` is static."
+  [dbdef]
+  (when (static? dbdef)
+    (swap! shared-dataset-tables assoc
+           (qualified-db-name dbdef)
+           (into #{}
+                 (map #(ddl.i/format-name :motherduck (:table-name %)))
+                 (:table-definitions dbdef)))))
+
+(defn- first-sync-tables
+  "Returns `tables` limited to those in the dataset definition when `database` is a shared dataset that has not
+  finished its first sync; otherwise returns `tables`."
+  [database tables]
+  (let [dataset-tables (get @shared-dataset-tables (get-in database [:details :dbname]))]
+    ;; `database` is a lib metadata database, which has no :initial_sync_status, so read the status from the app DB.
+    (if (and dataset-tables
+             (not= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id database))))
+      (into #{} (filter (comp dataset-tables :name)) tables)
+      tables)))
+
+(defonce ^:private ^{:arglists '([driver database])} original-describe-database
+  (get-method driver/describe-database* :motherduck))
+
+(defmethod driver/describe-database* :motherduck
+  [driver database]
+  (update (original-describe-database driver database) :tables #(first-sync-tables database %)))
+
 (defn- load-db! [driver dbdef options]
   (apply load-data/create-db! driver (update dbdef :table-definitions parents-first) options))
 
@@ -343,6 +387,8 @@
 
 (defmethod tx/dataset-already-loaded? :motherduck
   [driver dbdef]
+  ;; The test harness calls this method before the first sync of every dataset.
+  (remember-shared-dataset-tables! dbdef)
   (if (static? dbdef)
     ;; A shared database exists only once its load has finished; see create-shared-db!.
     (database-exists? (qualified-db-name dbdef))

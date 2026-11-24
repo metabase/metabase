@@ -6,9 +6,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.request.session :as session]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -115,9 +117,9 @@
     (is (thrown-with-msg?
          Exception
          #"does not exist"
-         (t2/insert! :model/Segment {:name       "Bad Segment"
-                                     :creator_id (mt/user->id :rasta)
-                                     :definition (segment-filter-definition (mt/id :venues) Integer/MAX_VALUE)})))
+         (first (segment/create-segments! [{:name       "Bad Segment"
+                                            :creator_id (mt/user->id :rasta)
+                                            :definition (segment-filter-definition (mt/id :venues) Integer/MAX_VALUE)}]))))
     (is (not (t2/exists? :model/Segment :name "Bad Segment")))))
 
 (deftest insert-segment-referencing-segment-test
@@ -135,14 +137,14 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (t2/update! :model/Segment :id segment-id {:definition (segment-filter-definition (mt/id :venues) 99999)})))))
+           (segment/update-segments! [{:id segment-id :definition (segment-filter-definition (mt/id :venues) 99999)}])))))
   (testing "Updating a segment to reference itself should fail"
     (mt/with-temp [:model/Segment {segment-id :id} {:name "Segment"
                                                     :definition (price-definition)}]
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Segment :id segment-id {:definition (segment-filter-definition (mt/id :venues) segment-id)})))))
+           (segment/update-segments! [{:id segment-id :definition (segment-filter-definition (mt/id :venues) segment-id)}])))))
   (testing "Updating a segment to create an indirect cycle should fail"
     (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
                                                       :definition (price-definition)}
@@ -151,7 +153,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Segment :id segment-1-id {:definition (segment-filter-definition (mt/id :venues) segment-2-id)}))))))
+           (segment/update-segments! [{:id segment-1-id :definition (segment-filter-definition (mt/id :venues) segment-2-id)}]))))))
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 
@@ -175,7 +177,7 @@
                      :model/Segment segment {:name "Test Segment"
                                              :creator_id (mt/user->id :rasta)
                                              :definition (price-definition)}]
-        (perms/add-user-to-group! analyst-id group-id)
+        (perms-group-membership/add-users-to-groups! [{:user analyst-id :group group-id}])
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
           (mt/when-ee-evailable
@@ -214,7 +216,7 @@
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/User {analyst-id :id} {:is_data_analyst true}]
-        (perms/add-user-to-group! analyst-id group-id)
+        (perms-group-membership/add-users-to-groups! [{:user analyst-id :group group-id}])
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
           (mt/when-ee-evailable
@@ -239,3 +241,74 @@
     (mt/with-test-user :rasta
       (is (false? (mi/can-create? :model/Segment {:name "Test Segment"
                                                   :definition (price-definition)}))))))
+
+(deftest update-segments-runs-fixed-statements-test
+  (letfn [(archiving [n]
+            (let [segments (doall (for [i (range n)]
+                                    (first (segment/create-segments! [{:name (str "archived " i) :creator_id (mt/user->id :rasta)
+                                                                       :definition (price-definition)}]))))
+                  ids      (mapv :id segments)]
+              (try
+                (t2/with-call-count [call-count]
+                  (segment/update-segments! (mapv (fn [id] {:id id :archived true}) ids))
+                  (call-count))
+                (finally
+                  (segment/delete-segments! ids)))))]
+    (archiving 1)
+    (is (= (archiving 2) (archiving 6)))))
+
+(deftest update-segments-mixed-stored-state-test
+  (mt/with-temp [:model/Segment {a :id} {:name "A" :archived true :definition (price-definition)}
+                 :model/Segment {b :id} {:name "B" :archived false :definition (price-definition)}]
+    (segment/update-segments! (mapv (fn [id] {:id id :archived true :name "Same"}) [a b]))
+    (is (= [[true "Same"] [true "Same"]]
+           (mapv (juxt :archived :name) (t2/select :model/Segment :id [:in [a b]] {:order-by [:id]}))))))
+
+(deftest update-segments-for-import-test
+  (mt/with-temp [:model/Segment {a :id} {:name "A" :definition (price-definition)}
+                 :model/Segment {b :id} {:name "B" :definition (price-definition)}]
+    (segment/update-segments! [{:id a :name "A2"} {:id b :name "B2"}] {:writer :import})
+    (is (= ["A2" "B2"] (mapv :name (t2/select :model/Segment :id [:in [a b]] {:order-by [:id]}))))))
+
+(deftest revert-goes-through-update-test
+  (mt/with-temp [:model/Segment {id :id} {:name "Reverted" :definition (price-definition)}]
+    (let [snapshot (select-keys (t2/select-one :model/Segment :id id) [:name :description :definition :archived :table_id
+                                                                       :caveats :points_of_interest :show_in_getting_started])]
+      (segment/update-segments! [{:id id :name "Changed"}])
+      (is (= "Changed" (t2/select-one-fn :name :model/Segment :id id)))
+      (#'segment/revert-segment! id (mt/user->id :rasta) snapshot)
+      (is (= "Reverted" (t2/select-one-fn :name :model/Segment :id id))))))
+
+(deftest create-segments-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/Segment]
+    (let [creator-id           (mt/user->id :rasta)
+          [plain archived]     (segment/create-segments! [{:name "Plain" :creator_id creator-id :definition (price-definition)}
+                                                          {:name "Archived" :creator_id creator-id :definition (price-definition)
+                                                           :archived true :caveats "Careful"}])]
+      (is (= ["Plain" "Archived"] (map :name [plain archived])))
+      (is (=? {:archived false :show_in_getting_started false :caveats nil}
+              (t2/select-one :model/Segment :id (:id plain))))
+      (is (=? {:archived true :show_in_getting_started false :caveats "Careful"}
+              (t2/select-one :model/Segment :id (:id archived)))))))
+
+(deftest can-query-needs-query-permissions-on-definition-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-temp [:model/User    {analyst-id :id} {:is_data_analyst true}
+                   :model/Segment segment          {:name       "Test Segment"
+                                                    :creator_id (mt/user->id :rasta)
+                                                    :definition (price-definition)}]
+      (mt/with-test-user :rasta
+        (testing "no data permissions"
+          (is (false? (mi/can-query? (t2/hydrate segment :can_query)))))
+        (testing "view data with query builder permissions"
+          (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                        :perms/create-queries :query-builder}
+            (is (true? (mi/can-query? (t2/hydrate segment :can_query)))))))
+      (mt/when-ee-evailable
+       (mt/with-premium-features #{:advanced-permissions}
+         (testing "data analyst who reads the Table by managing its metadata, without query permissions"
+           (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                         :perms/create-queries :no}
+             (session/with-current-user analyst-id
+               (is (true? (mi/can-read? (t2/hydrate segment :can_read))))
+               (is (false? (mi/can-query? (t2/hydrate segment :can_query))))))))))))

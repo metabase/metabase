@@ -25,7 +25,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.notification.api.notification :as notification-api]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
@@ -418,24 +417,23 @@
 (defn- bulk-update!
   "Apply `update-map` to all card-type notifications in `ids` in a single SQL update. Returns the
   hydrated before-state so the caller can drive post-commit side effects via
-  [[notification-api/publish-notification-update!]]."
+  [[notification-api/publish-notification-updates!]]."
   [update-map ids]
   ;; Guard empty `ids`: `[:in :id []]` is degenerate SQL, and there's nothing to select/update or
   ;; publish side effects for. (The endpoint schema also enforces `:min 1`.)
   (if (empty? ids)
     []
-    (events/with-batched-events
-      (let [before (-> (notification.db/card-notifications ids)
-                       models.notification/hydrate-notification
-                       vec)]
-        (notification.db/update-card-notifications! ids update-map)
-        before))))
+    (let [before (-> (notification.db/card-notifications ids)
+                     models.notification/hydrate-notification
+                     vec)]
+      (models.notification/update-notifications! (mapv #(assoc update-map :id (:id %)) before))
+      before)))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
   "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes
   through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz
   triggers. Recipient emails and `:event/notification-update` audit events are
-  published via the shared [[notification-api/publish-notification-update!]] helper so this
+  published via the shared [[notification-api/publish-notification-updates!]] helper so this
   endpoint's side-effect contract can't drift from `PUT /api/notification/:id`."
   [_route _query
    {:keys [notification_ids action creator_id]} :-
@@ -449,8 +447,9 @@
         after      (->> (notification.db/notifications-by-id (mapv :id before))
                         models.notification/hydrate-notification
                         (m/index-by :id))]
-    (doseq [b    before
-            :let [a (get after (:id b))]
-            :when a]
-      (notification-api/publish-notification-update! a b))
+    (notification-api/publish-notification-updates!
+     (for [b    before
+           :let [a (get after (:id b))]
+           :when a]
+       [a b]))
     {:updated (count before)}))

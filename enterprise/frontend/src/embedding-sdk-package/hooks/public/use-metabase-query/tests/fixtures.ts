@@ -247,16 +247,14 @@ const cardMetadata = (
     id,
     name,
     ...(aggregation && { type: "metric" }),
-    dataset_query: Lib.toLegacyQuery(
-      Lib.createTestQuery(BASE_PROVIDER, {
-        stages: [
-          {
-            source: { type: "table", id: sourceTable },
-            ...(aggregation && { aggregations: [aggregation] }),
-          },
-        ],
-      }),
-    ),
+    dataset_query: Lib.createTestJsQuery(BASE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: sourceTable },
+          ...(aggregation && { aggregations: [aggregation] }),
+        },
+      ],
+    }),
   });
 
 const QUESTIONS = {

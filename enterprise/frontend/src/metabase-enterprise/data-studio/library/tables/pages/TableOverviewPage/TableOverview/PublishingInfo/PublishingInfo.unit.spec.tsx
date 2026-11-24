@@ -7,7 +7,10 @@ import {
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { Card } from "metabase/ui";
 import type { TablePublishingInfo } from "metabase-types/api";
-import { createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 import { PublishingInfo } from "./PublishingInfo";
 
@@ -28,7 +31,9 @@ function setup({
   publishingInfo?: TablePublishingInfo | null;
   isError?: boolean;
 } = {}) {
-  const table = createMockTable({ is_published: isPublished });
+  const table = createMockTable({
+    collection: isPublished ? createMockCollection() : null,
+  });
   if (isError) {
     setupTablePublishingInfoEndpointError(table.id);
   } else {

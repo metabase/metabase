@@ -8,17 +8,17 @@
    [metabase.api.macros :as api.macros]
    [metabase.notification.api :as notification.api]
    [metabase.pulse.db :as pulse.db]
+   [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
 (defn- notification->pulse
-  "Convert a notification to the legacy pulse structure for backward compatibility."
-  [notification]
+  "Convert a notification to the legacy pulse structure for backward compatibility, with the `card` of its payload."
+  [notification card]
   (let [subscription      (-> notification :subscriptions first)
-        notification-card (-> notification :payload)
-        card              (->> notification :payload :card_id pulse.db/card)]
+        notification-card (-> notification :payload)]
     (merge
      (select-keys notification [:id :creator_id :creator :created_at :updated_at])
      {:name                nil
@@ -85,14 +85,16 @@
    {:keys [archived user_id]} :- [:map {:closed true}
                                   [:archived {:default false} [:maybe ms/BooleanValue]]
                                   [:user_id  {:optional true} [:maybe ms/PositiveInt]]]]
-  (let [user-id (if api/*is-superuser?*
-                  user_id
-                  api/*current-user-id*)]
-    (->> (notification.api/list-notifications
-          {:payload_type   :notification/card
-           :legacy-user-id user-id
-           :legacy-active  (not archived)})
-         (map notification->pulse)
+  (let [user-id       (if api/*is-superuser?*
+                        user_id
+                        api/*current-user-id*)
+        notifications (notification.api/list-notifications
+                       {:payload_type   :notification/card
+                        :legacy-user-id user-id
+                        :legacy-active  (not archived)})
+        cards         (u/index-by :id (pulse.db/cards (into [] (keep (comp :card_id :payload)) notifications)))]
+    (->> notifications
+         (map #(notification->pulse % (get cards (-> % :payload :card_id))))
          (remove nil?))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -103,9 +105,8 @@
   "Fetch an alert by ID"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (-> (notification.api/get-notification id)
-      api/read-check
-      notification->pulse))
+  (let [notification (api/read-check (notification.api/get-notification id))]
+    (notification->pulse notification (some-> notification :payload :card_id pulse.db/card))))
 
 (api.macros/defendpoint :delete "/:id/subscription" :- ::api/generic-204-no-content
   "For users to unsubscribe themselves from the given alert."

@@ -21,11 +21,11 @@
   Otherwise return an empty map."
   []
   (let [custom-reports     (audit/default-custom-reports-collection)
-        question-overview  (audit/memoized-select-audit-entity :model/Dashboard ee-audit/default-question-overview-entity-id)
-        dashboard-overview (audit/memoized-select-audit-entity :model/Dashboard ee-audit/default-dashboard-overview-entity-id)]
+        question-overview  (audit/audit-entity :model/Dashboard ee-audit/default-question-overview-entity-id)
+        dashboard-overview (audit/audit-entity :model/Dashboard ee-audit/default-dashboard-overview-entity-id)]
     (merge
      {}
-     (when (some-> (audit/default-custom-reports-collection) (t2/hydrate :can_read) mi/can-read?)
+     (when (some-> custom-reports (t2/hydrate :can_read) mi/can-read?)
        {(:slug custom-reports) (:id custom-reports)})
      (when (some-> (audit/default-audit-collection) (t2/hydrate :can_read) mi/can-read?)
        {(u/slugify (:name question-overview)) (:id question-overview)

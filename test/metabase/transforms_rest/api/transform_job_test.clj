@@ -1,15 +1,17 @@
 (ns metabase.transforms-rest.api.transform-job-test
   (:require
    [clojure.test :refer :all]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.test :as mt]
    [metabase.transforms.jobs :as jobs]
    [metabase.transforms.models.transform-job]
    [metabase.transforms.models.transform-run]
    [metabase.transforms.models.transform-tag]
    [metabase.transforms.schedule :as transforms.schedule]
-   [metabase.transforms.test-util :refer [parse-instant
-                                          utc-timestamp
-                                          with-transforms-api-users!]]
+   [metabase.transforms.test-util :as transforms.tu :refer [parse-instant
+                                                            utc-timestamp
+                                                            with-transforms-api-users!]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -588,8 +590,8 @@
             (mt/user-http-request user :post 404 (str "transform-job/" job-id "/runs/999999/cancel"))
             (mt/user-http-request user :post 404 (str "transform-job/" other-job-id "/runs/" run-id "/cancel"))))))))
 
-(deftest cancel-job-run-requires-write-permission-test
-  (testing "POST /api/transform-job/:job-id/runs/:run-id/cancel requires write permission on the job"
+(deftest cancel-job-run-requires-read-permission-test
+  (testing "POST /api/transform-job/:job-id/runs/:run-id/cancel requires read permission on the job"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/TransformJob {job-id :id} {:name "Auth Test" :schedule "0 0 0 * * ?"}
                      :model/TransformJobRun {run-id :id} {:job_id     job-id
@@ -599,6 +601,60 @@
                                                           :start_time (parse-instant "2025-09-01T10:00:00")}]
         (mt/user-http-request :rasta :post 403
                               (str "transform-job/" job-id "/runs/" run-id "/cancel"))))))
+
+(deftest job-run-endpoints-need-read-access-to-job-test
+  (testing "running a job and canceling its run need read access to the job, not write access"
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+        (mt/with-temp [:model/Transform                {transform-id :id} {:name "Tagged"}
+                       :model/TransformTag             {tag-id :id}       {:name "job run check tag"}
+                       :model/TransformTransformTag    _                  {:transform_id transform-id :tag_id tag-id :position 0}
+                       :model/TransformJob             {job-id :id}       {:name "Run Check" :schedule "0 0 0 * * ?"}
+                       :model/TransformJobTransformTag _                  {:job_id job-id :tag_id tag-id :position 0}
+                       :model/TransformJobRun          {run-id :id}       {:job_id     job-id
+                                                                           :status     "started"
+                                                                           :is_active  true
+                                                                           :run_method "manual"
+                                                                           :start_time (parse-instant "2025-09-01T10:00:00")}]
+          (testing "a user who cannot read the job"
+            (mt/user-http-request :rasta :post 403 (str "transform-job/" job-id "/run"))
+            (mt/user-http-request :rasta :post 403 (str "transform-job/" job-id "/runs/" run-id "/cancel")))
+          (testing "a missing job"
+            (mt/user-http-request :crowberto :post 404 (str "transform-job/" Integer/MAX_VALUE "/run")))
+          (mt/when-ee-evailable
+           (mt/with-data-analyst-role! (mt/user->id :lucky)
+             (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms :no}
+               (testing "premise: the analyst cannot write the job"
+                 (mt/user-http-request :lucky :put 403 (str "transform-job/" job-id) {:name "Renamed"}))
+               (testing "responses say the analyst may run the job"
+                 (is (true? (:can_query (mt/user-http-request :lucky :get 200 (str "transform-job/" job-id)))))
+                 (is (true? (:can_query (some #(when (= job-id (:id %)) %)
+                                              (mt/user-http-request :lucky :get 200 "transform-job"))))))
+               (testing "an analyst who reads the job, on an instance where remote sync keeps synced content read-only"
+                 (mt/with-dynamic-fn-redefs [remote-sync/read-only? (constantly true)]
+                   (mt/user-http-request :lucky :post 204 (str "transform-job/" job-id "/runs/" run-id "/cancel"))
+                   (is (= :canceled (t2/select-one-fn :status :model/TransformJobRun :id run-id)))
+                   (mt/with-model-cleanup [:model/TransformJobRun]
+                     (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [& _] {::jobs/status :succeeded})]
+                       (is (pos-int? (:job_run_id (mt/user-http-request :lucky :post 202
+                                                                        (str "transform-job/" job-id "/run")))))))))))))))))
+
+(deftest list-jobs-statement-count-test
+  (testing "GET /api/transform-job hydrates its permission keys with no statement per job"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+      (mt/with-temp [:model/TransformJob _ {:name "Count 1" :schedule "0 0 0 * * ?"}
+                     :model/TransformJob _ {:name "Count 2" :schedule "0 0 0 * * ?"}
+                     :model/TransformJob _ {:name "Count 3" :schedule "0 0 0 * * ?"}]
+        (mt/with-test-user :crowberto
+          (let [count-list (fn []
+                             (t2/with-call-count [call-count]
+                               (doall (t2/hydrate (vec (t2/select :model/TransformJob)) :tag_ids :last_run :can_query))
+                               (call-count)))
+                few        (count-list)]
+            (mt/with-temp [:model/TransformJob _ {:name "Count 4" :schedule "0 0 0 * * ?"}
+                           :model/TransformJob _ {:name "Count 5" :schedule "0 0 0 * * ?"}
+                           :model/TransformJob _ {:name "Count 6" :schedule "0 0 0 * * ?"}]
+              (is (= few (count-list))))))))))
 
 (deftest built-in-jobs-and-tags-seeded-test
   (testing "the built-in Hourly/Daily/Weekly/Monthly jobs and tags are pre-seeded (migration data)"
@@ -619,3 +675,21 @@
         (is (seq (:schedule job)) (str job-name " should carry a schedule"))
         (is (t2/exists? :model/TransformJobTransformTag :job_id (:id job) :tag_id (:id tag))
             (str job-name " should be linked to the " tag-name " tag"))))))
+
+(mt/when-ee-evailable
+ (deftest job-transforms-statement-count-test
+   (mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-python :hosting}
+     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+       (mt/with-model-cleanup [:model/Transform :model/TransformJob]
+         (with-transforms-api-users! [user]
+           (mt/with-temp [:model/TransformTag {tag-id :id} {:name "job transforms count tag"}
+                          :model/TransformJob {job-id :id} {:name "job transforms count job" :schedule "0 0 0 * * ?"}
+                          :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 1}]
+             (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                           :perms/create-queries :query-builder-and-native}
+               (let [[few many] (transforms.tu/statements-at-two-sizes
+                                 (fn [n]
+                                   (transforms.tu/create-count-test-transforms! n {:tag_ids [tag-id] :source {:type :python :source-tables [] :body "pass"}})
+                                   #(mt/user-http-request user :get 200 (format "transform-job/%d/transforms" job-id)))
+                                 #(t2/update! (t2/table-name :model/Transform) {:table_dependencies nil}))]
+                 (is (= few many)))))))))))

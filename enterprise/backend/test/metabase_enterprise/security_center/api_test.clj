@@ -10,7 +10,9 @@
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -65,6 +67,8 @@
         (testing "superuser can list advisories"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/security-center/advisories")]
             (is (contains? response :last_checked_at))
+            (is (contains? response :last_sync_attempted_at))
+            (is (contains? response :last_sync_error))
             (is (= 3 (count (:advisories response))))
             (is (= "SC-0000-001" (-> response :advisories first :advisory_id)))))
         (testing "non-superuser gets 403"
@@ -174,6 +178,36 @@
         (mt/user-http-request :rasta :post 403
                               "ee/security-center/advisories/acknowledge"
                               {:advisory_ids ["SC-0000-001"]})))))
+
+(deftest acknowledge-advisories-statement-count-test
+  (mt/with-premium-features #{:admin-security-center :audit-app}
+    (mt/with-model-cleanup [:model/SecurityAdvisory :model/AuditLog]
+      (let [statements (fn [n]
+                         (let [advisory-ids (vec (for [i (range n)] (format "SC-COUNT-%d-%d" n i)))]
+                           (t2/insert! :model/SecurityAdvisory
+                                       (for [advisory-id advisory-ids]
+                                         {:advisory_id       advisory-id
+                                          :severity          "high"
+                                          :title             "Title"
+                                          :description       "Description"
+                                          :remediation       "Remediation"
+                                          :affected_versions [{"min" "1.50.0" "fixed" "1.58.0"}]
+                                          :match_status      "active"
+                                          :published_at      #t "2026-03-24T00:00:00Z"
+                                          :updated_at        #t "2026-03-24T00:00:00Z"}))
+                           (t2/with-call-count [call-count]
+                             (mt/user-http-request :crowberto :post 200 "ee/security-center/advisories/acknowledge"
+                                                   {:advisory_ids advisory-ids})
+                             (u/prog1 (call-count)
+                               (is (= (set advisory-ids)
+                                      (set (map (comp :advisory_id :details)
+                                                (t2/select :model/AuditLog :topic "security-advisory-acknowledge"
+                                                           :model "SecurityAdvisory"
+                                                           :model_id [:in (t2/select-pks-vec :model/SecurityAdvisory
+                                                                                             :advisory_id [:in advisory-ids])])))))))))]
+        (statements 2)
+        (testing "POST /api/ee/security-center/advisories/acknowledge costs as many statements for 10 advisories as for 40"
+          (is (= (statements 10) (statements 40))))))))
 
 (deftest sync-endpoint-test
   (testing "POST /api/ee/security-center/advisories/sync"

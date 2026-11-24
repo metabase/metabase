@@ -113,6 +113,14 @@
       collection/maybe-localize-tenant-collection-name
       collection/maybe-mark-collection-as-library-root))
 
+(defn prep-collections-for-export
+  "Bulk version of [[prep-collection-for-export]]."
+  [colls]
+  (->> colls
+       collection/personal-collections-with-ui-details
+       collection/maybe-localize-tenant-collection-names
+       (map collection/maybe-mark-collection-as-library-root)))
+
 (defn shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
 
@@ -129,6 +137,6 @@
   ```"
   [colls]
   (->> colls
-       (map prep-collection-for-export)
+       prep-collections-for-export
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))

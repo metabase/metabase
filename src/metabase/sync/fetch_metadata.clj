@@ -96,6 +96,10 @@
                                           :schema-names [effective-schema]))
              (:fields (driver/describe-table driver database effective-table)))))))))
 
+(def ^:private describe-table-batch-size
+  "How many Tables [[describe-fields-using-describe-table]] reads from the app DB at a time."
+  1000)
+
 (defn- describe-fields-using-describe-table
   "Replaces [[metabase.driver/describe-fields]] for drivers that haven't implemented it. Uses [[driver/describe-table]]
   instead. Also includes nested field column metadata."
@@ -103,20 +107,22 @@
   ;; Realize everything in a vector to close the connection. But only keep the ids because the maps can hog memory.
   (let [table-ids (mapv :id (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names))]
     (eduction
-     (mapcat (fn [table-id]
-               (try
-                 (let [table (sync.db/table table-id)
-                       table-fields (table-fields-metadata database table)]
-                   ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
-                   ;; connection is closed before moving to the next table.
-                   (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
-                         table-fields))
-                 (catch Throwable e
-                   ;; an unreachable warehouse fails every table the same way; abort so sync can retry later
-                   (when (sync-util/transient-exception? e)
-                     (throw e))
-                   (log/warn (str "Could not fetch fields from table " table-id ": " (ex-message e)))
-                   nil))))
+     (comp
+      (partition-all describe-table-batch-size)
+      (mapcat #(sync.db/tables-by-schema-and-name (vec %)))
+      (mapcat (fn [table]
+                (try
+                  (let [table-fields (table-fields-metadata database table)]
+                    ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
+                    ;; connection is closed before moving to the next table.
+                    (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
+                          table-fields))
+                  (catch Throwable e
+                    ;; an unreachable warehouse fails every table the same way; abort so sync can retry later
+                    (when (sync-util/transient-exception? e)
+                      (throw e))
+                    (log/warn (str "Could not fetch fields from table " (:id table) ": " (ex-message e)))
+                    nil)))))
      table-ids)))
 
 (mu/defn fields-metadata

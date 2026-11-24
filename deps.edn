@@ -454,9 +454,9 @@
   ;;
   ;;    clojure -M:ee:doc api-documentation
   ;;
-  ;; or run every documentation command in one JVM
+  ;; or run every documentation command in one JVM, with the driver modules for the database feature support page
   ;;
-  ;;    clojure -M:ee:doc all-documentation
+  ;;    clojure -M:ee:drivers:doc all-documentation
   :doc
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"

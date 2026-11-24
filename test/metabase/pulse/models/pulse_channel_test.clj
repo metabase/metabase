@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
@@ -74,7 +75,7 @@
 ;; create a channel then select its details
 (defn- create-channel-then-select!
   [channel]
-  (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
+  (when-let [new-channel-id (:id (first (pulse-channel/create-pulse-channels! [channel])))]
     (-> (t2/select-one :model/PulseChannel :id new-channel-id)
         (t2/hydrate :recipients)
         (update :recipients #(sort-by :email %))
@@ -84,7 +85,7 @@
 
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
-  (pulse-channel/update-pulse-channel! channel)
+  (pulse-channel/update-pulse-channels! [channel])
   (-> (t2/select-one :model/PulseChannel :id id)
       (t2/hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
@@ -102,8 +103,7 @@
    :recipients     []
    :channel_id     nil})
 
-;; create-pulse-channel!
-(deftest create-pulse-channel!-test
+(deftest create-pulse-channels!-test
   (mt/with-premium-features #{}
     (mt/with-temp [:model/Pulse {:keys [id]}]
       (mt/with-model-cleanup [:model/Pulse]
@@ -149,7 +149,7 @@
                    :details       {:channel "#general"}
                    :recipients    []}))))))))
 
-(deftest update-pulse-channel!-test
+(deftest update-pulse-channels!-test
   (mt/with-premium-features #{}
     (mt/with-temp [:model/Pulse {pulse-id :id}]
       (testing "simple starting case where we modify the schedule hour and add a recipient"
@@ -198,7 +198,7 @@
                    :recipients    [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
       (testing "hourly schedules don't require day/hour settings (should be nil), fully change recipients"
         (mt/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
-          (pulse-channel/update-recipients! channel-id [(mt/user->id :rasta)])
+          (t2/insert! :model/PulseChannelRecipient {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)})
           (is (= (merge default-pulse-channel
                         {:recipients    [(user-details :crowberto)]
                          :channel_type  :email
@@ -232,11 +232,16 @@
                    :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
                    :details       {:channel "#metabaserocks"}}))))))))
 
-(deftest update-recipients!-test
+(deftest update-pulse-channels-recipients-test
   (mt/with-temp [:model/Pulse        {pulse-id :id} {}
                  :model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
     (letfn [(upd-recipients! [recipients]
-              (pulse-channel/update-recipients! channel-id recipients)
+              (pulse-channel/update-pulse-channels! [{:id            channel-id
+                                                      :channel_type  :email
+                                                      :enabled       true
+                                                      :schedule_type :daily
+                                                      :schedule_hour 12
+                                                      :recipients    (mapv (fn [user-id] {:id user-id}) recipients)}])
               (t2/select-fn-set :user_id :model/PulseChannelRecipient, :pulse_channel_id channel-id))]
       (doseq [[new-recipients expected] {[]                  nil
                                          [:rasta]            [:rasta]
@@ -330,64 +335,80 @@
      (task/init! ::task.send-pulses/SendPulses)
      ~@body))
 
+(defn- update-channel-schedule!
+  "Update the PulseChannel `pc-id` of `channel-type` to `schedule`, enabled or not, through its write function."
+  [pc-id channel-type schedule enabled?]
+  (pulse-channel/update-pulse-channels! [(merge {:id             pc-id
+                                                 :channel_type   channel-type
+                                                 :enabled        enabled?
+                                                 :schedule_day   nil
+                                                 :schedule_frame nil}
+                                                (update schedule :schedule_type keyword))]))
+
 (deftest e2e-single-pc-trigger-test
   (with-send-pulse-setup!
-    (mt/with-temp [:model/Pulse        {pulse-id :id} {}
-                   :model/PulseChannel {pc-id :id}    (merge {:pulse_id       pulse-id
-                                                              :channel_type   :email}
-                                                             daily-at-6pm)]
-      (testing "Creating a PulseChannel will creates a trigger"
-        (is (= #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id])}
-               (send-pulse-triggers pulse-id))))
-      (testing "updating the schedule of a trigger will remove it from the existing trigger and create a new one"
-        (t2/update! :model/PulseChannel :id pc-id daily-at-7pm)
-        (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
-                (send-pulse-triggers pulse-id))))
-      (testing "disable PC will delete its trigger"
-        (t2/update! :model/PulseChannel :id pc-id {:enabled false})
-        (is (empty? (send-pulse-triggers pulse-id))))
-      (testing "reenable PC will add its trigger"
-        (t2/update! :model/PulseChannel :id pc-id {:enabled true})
-        (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
-                (send-pulse-triggers pulse-id))))
-      (testing "remove the trigger if PC is deleted"
-        (t2/delete! :model/PulseChannel :id pc-id)
-        (is (empty? (send-pulse-triggers pulse-id)))))))
+    (mt/with-temp [:model/Pulse {pulse-id :id} {}]
+      (mt/with-model-cleanup [:model/PulseChannel]
+        (let [pc-id (:id (first (pulse-channel/create-pulse-channels! [(merge {:pulse_id     pulse-id
+                                                                               :channel_type :email
+                                                                               :enabled      true}
+                                                                              daily-at-6pm)])))]
+          (testing "Creating a PulseChannel will creates a trigger"
+            (is (= #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id])}
+                   (send-pulse-triggers pulse-id))))
+          (testing "updating the schedule of a trigger will remove it from the existing trigger and create a new one"
+            (update-channel-schedule! pc-id :email daily-at-7pm true)
+            (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
+                    (send-pulse-triggers pulse-id))))
+          (testing "disable PC will delete its trigger"
+            (update-channel-schedule! pc-id :email daily-at-7pm false)
+            (is (empty? (send-pulse-triggers pulse-id))))
+          (testing "reenable PC will add its trigger"
+            (update-channel-schedule! pc-id :email daily-at-7pm true)
+            (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
+                    (send-pulse-triggers pulse-id))))
+          (testing "remove the trigger if PC is deleted"
+            (pulse-channel/delete-pulse-channels! [pc-id])
+            (is (empty? (send-pulse-triggers pulse-id)))))))))
 
 (deftest e2e-multiple-pcs-test
   (with-send-pulse-setup!
-    (mt/with-temp [:model/Pulse        {pulse-id :id} {}
-                   :model/PulseChannel {pc-id-1 :id}  (merge {:pulse_id       pulse-id
-                                                              :channel_type   :email}
-                                                             daily-at-6pm)]
-      (testing "pc 1 will have its own channel to start with"
-        (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])}
-                (send-pulse-triggers pulse-id))))
-      (testing "add a new pc with the same time will update the existing trigger"
-        (mt/with-temp [:model/PulseChannel {pc-id-2 :id} (merge {:pulse_id     pulse-id
-                                                                 :channel_type :slack}
-                                                                daily-at-6pm)]
-          (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
-                  (send-pulse-triggers pulse-id)))
-          (t2/delete! :model/PulseChannel :id pc-id-2)
-          (testing "deleting channel-2 should remove the id, but keep the existing trigger"
+    (mt/with-temp [:model/Pulse {pulse-id :id} {}]
+      (mt/with-model-cleanup [:model/PulseChannel]
+        (let [pc-id-1 (:id (first (pulse-channel/create-pulse-channels! [(merge {:pulse_id     pulse-id
+                                                                                 :channel_type :email
+                                                                                 :enabled      true}
+                                                                                daily-at-6pm)])))]
+          (testing "pc 1 will have its own channel to start with"
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])}
-                    (send-pulse-triggers pulse-id))))))
-      (testing "add a new pc then change its schedule"
-        (mt/with-temp [:model/PulseChannel {pc-id-2 :id} (merge {:pulse_id     pulse-id
-                                                                 :channel_type :slack}
-                                                                daily-at-6pm)]
-          (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
-                  (send-pulse-triggers pulse-id)))
-          (testing "change schedule of a trigger will remove it from the existing trigger and create a new one"
-            (t2/update! :model/PulseChannel :id pc-id-2 daily-at-7pm)
-            (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])
-                      (pulse->trigger-info pulse-id daily-at-7pm [pc-id-2])}
                     (send-pulse-triggers pulse-id))))
-          (testing "change it back to the original schedule will remove the trigger and update channel-ids of the existing one"
-            (t2/update! :model/PulseChannel :id pc-id-2 daily-at-6pm)
-            (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
-                    (send-pulse-triggers pulse-id)))))))))
+          (testing "add a new pc with the same time will update the existing trigger"
+            (let [pc-id-2 (:id (first (pulse-channel/create-pulse-channels! [(merge {:pulse_id     pulse-id
+                                                                                     :channel_type :slack
+                                                                                     :enabled      true}
+                                                                                    daily-at-6pm)])))]
+              (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
+                      (send-pulse-triggers pulse-id)))
+              (pulse-channel/delete-pulse-channels! [pc-id-2])
+              (testing "deleting channel-2 should remove the id, but keep the existing trigger"
+                (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])}
+                        (send-pulse-triggers pulse-id))))))
+          (testing "add a new pc then change its schedule"
+            (let [pc-id-2 (:id (first (pulse-channel/create-pulse-channels! [(merge {:pulse_id     pulse-id
+                                                                                     :channel_type :slack
+                                                                                     :enabled      true}
+                                                                                    daily-at-6pm)])))]
+              (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
+                      (send-pulse-triggers pulse-id)))
+              (testing "change schedule of a trigger will remove it from the existing trigger and create a new one"
+                (update-channel-schedule! pc-id-2 :slack daily-at-7pm true)
+                (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])
+                          (pulse->trigger-info pulse-id daily-at-7pm [pc-id-2])}
+                        (send-pulse-triggers pulse-id))))
+              (testing "change it back to the original schedule will remove the trigger and update channel-ids of the existing one"
+                (update-channel-schedule! pc-id-2 :slack daily-at-6pm true)
+                (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
+                        (send-pulse-triggers pulse-id)))))))))))
 
 (defn- status-code
   "The `:status-code` of the exception `thunk` throws, or nil when it throws none."
@@ -401,7 +422,7 @@
 (defn- channel-row
   "A PulseChannel row with every schedule column, nil unless `overrides` sets it."
   [overrides]
-  (merge {:channel_type :email :schedule_type :daily :schedule_hour 8 :schedule_day nil :schedule_frame nil} overrides))
+  (merge {:id 1 :channel_type :email :schedule_type :daily :schedule_hour 8 :schedule_day nil :schedule_frame nil} overrides))
 
 (deftest ^:parallel channel-schema-test
   (doseq [[testing-name overrides] {"channel type that does not exist"       {:channel_type :sms}
@@ -439,7 +460,7 @@
       (testing (pr-str overrides)
         (is (nil? (normalize-status ::pulse.schema/pulse-channel.update (channel-row overrides)))))))
   (testing "body without every schedule column leaves combination to hook"
-    (is (nil? (normalize-status ::pulse.schema/pulse-channel.update {:schedule_type :weekly})))))
+    (is (nil? (normalize-status ::pulse.schema/pulse-channel.update {:id 1 :schedule_type :weekly})))))
 
 (deftest update-rules-test
   (mt/with-temp [:model/Pulse        {pulse-id :id}   {}
@@ -471,3 +492,54 @@
                                                {:schedule_type :monthly, :schedule_frame :mid}))))
           (testing "moves no trigger"
             (is (= triggers (send-pulse-triggers pulse-id)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (with-send-pulse-setup!
+    (mt/with-model-cleanup [:model/Pulse :model/PulseChannel :model/PulseChannelRecipient]
+      (let [pulses!  (fn [n] (mapv :id (t2/insert-returning-instances! :model/Pulse (vec (repeatedly n #(mt/with-temp-defaults :model/Pulse))))))
+            row      (fn [i pulse-id]
+                       {:pulse_id      pulse-id
+                        :channel_type  (if (even? i) :email :slack)
+                        :schedule_type :daily
+                        :schedule_hour 18
+                        :enabled       true
+                        :details       (if (even? i) {} {:channel "#general"})
+                        :recipients    (if (even? i) [{:id (mt/user->id :rasta)} {:email "foo@bar.com"}] [])})
+            rows     (fn [ids] (vec (map-indexed row ids)))
+            create!  (fn [n] (pulse-channel/create-pulse-channels! (rows (pulses! n))))]
+        (testing "creating PulseChannels"
+          (let [counted (fn [n] (let [ids (pulses! n)] (events.tu/statement-count! #(pulse-channel/create-pulse-channels! (rows ids)))))]
+            (counted 2)
+            (is (= (counted 2) (counted 6)))))
+        (testing "updating PulseChannels, some of them with other recipients and some left as they are"
+          (let [counted (fn [n]
+                          (let [channels (pulse-channel/create-pulse-channels! (vec (map #(row 0 %) (pulses! n))))
+                                updates  (vec (map-indexed (fn [i {:keys [id channel_type]}]
+                                                             {:id            id
+                                                              :channel_type  channel_type
+                                                              :schedule_type :daily
+                                                              :schedule_hour (if (even? i) 18 7)
+                                                              :enabled       true
+                                                              :details       (if (= :email channel_type) {} {:channel "#general"})
+                                                              :recipients    (if (= :email channel_type)
+                                                                               (if (even? i) [{:id (mt/user->id :rasta)} {:email "foo@bar.com"}] [{:id (mt/user->id :lucky)}])
+                                                                               [])})
+                                                           channels))]
+                            (events.tu/statement-count! #(pulse-channel/update-pulse-channels! updates))))]
+            (counted 2)
+            (is (= (counted 2) (counted 6)))))
+        (testing "enabling and disabling the PulseChannels of Pulses, some of them already in that state"
+          (let [counted (fn [n enabled?]
+                          (let [channels (create! n)
+                                ids      (mapv :pulse_id channels)]
+                            (pulse-channel/set-pulse-channels-enabled! (vec (take-nth 2 ids)) (not enabled?))
+                            (events.tu/statement-count! #(pulse-channel/set-pulse-channels-enabled! ids enabled?))))]
+            (counted 2 true)
+            (is (= (counted 2 true) (counted 6 true)))
+            (is (= (counted 2 false) (counted 6 false)))))
+        (testing "deleting PulseChannels"
+          (let [counted (fn [n]
+                          (let [ids (mapv :id (create! n))]
+                            (events.tu/statement-count! #(pulse-channel/delete-pulse-channels! ids))))]
+            (counted 2)
+            (is (= (counted 2) (counted 6)))))))))

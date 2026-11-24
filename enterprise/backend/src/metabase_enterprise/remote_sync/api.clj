@@ -82,10 +82,6 @@
   [model]
   (u/lower-case-en (name model)))
 
-(def ^:private items-batch-size
-  "The most primary keys the `:synced-items` of a remote sync spec gets at once."
-  1000)
-
 (defn- items
   "The rows of `refs`, `[model pk]` pairs, by ref, as the `:synced-items` of the spec of their model returns them, a batch of
   primary keys at a time, none for the rows of a model without `:synced-items`."
@@ -94,7 +90,7 @@
         (for [[model refs] (group-by first (distinct refs))
               :let  [items (:synced-items (remote-sync/spec model))]
               :when items
-              pks   (partition-all items-batch-size (map second refs))
+              pks   (partition-all serialization/batch-size (map second refs))
               row   (items (vec pks))]
           [(row-ref model row) row])))
 

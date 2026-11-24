@@ -29,6 +29,15 @@ export function nativeQuery(
   return ML.native_query(databaseId, metadata, innerQuery);
 }
 
+/**
+ * Whether the query is a single native stage and nothing else. Unlike
+ * `queryDisplayInfo(query).isNative`, this is false when MBQL stages follow a
+ * native first stage.
+ */
+export function isNativeOnlyQuery(query: Query): boolean {
+  return ML.native_only_query_QMARK_(query);
+}
+
 export function rawNativeQuery(query: Query): string {
   return ML.raw_native_query(query);
 }

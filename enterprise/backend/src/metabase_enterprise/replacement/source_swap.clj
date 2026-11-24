@@ -7,7 +7,7 @@
   leaves unchanged keeps dependencies that are already those of its row."
   (:require
    [metabase-enterprise.replacement.entity :as replacement.entity]
-   [metabase.events.core :as events]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,7 +19,7 @@
   ([entity-ref old-source new-source]
    (swap-source! entity-ref (replacement.entity/row entity-ref) old-source new-source))
   ([[entity-type _entity-id] row old-source new-source]
-   (events/with-batched-events
+   (t2/with-transaction [_conn]
      (let [spec (replacement.entity/entity-spec entity-type)]
        (when-let [swap (and row (:swap-source spec))]
          (when-some [writes (swap (replacement.entity/hydrated spec row) old-source new-source)]

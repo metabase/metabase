@@ -161,7 +161,7 @@ export const TEST_NATIVE_CARD = createMockCard({
 });
 
 export const TEST_NATIVE_CARD_DATASET = createMockDataset({
-  json_query: Lib.toLegacyQuery(TEST_NATIVE_QUERY),
+  json_query: Lib.toJsQuery(TEST_NATIVE_QUERY),
   database_id: SAMPLE_DB_ID,
   status: "completed",
   row_count: 1,

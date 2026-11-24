@@ -75,8 +75,8 @@ Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `ai-features-enabled`.
-- [Configuration file name](./config-file.md): `ai-features-enabled`
+- [Exported as](../installation-and-operation/serialization.md): `ai-features-enabled?`.
+- [Configuration file name](./config-file.md): `ai-features-enabled?`
 
 Whether AI features are enabled.
 
@@ -313,7 +313,7 @@ If set to 0, Metabase will keep all rows.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `bcc-enabled`
+- [Configuration file name](./config-file.md): `bcc-enabled?`
 
 Whether or not bcc emails are enabled, default behavior is that it is.
 
@@ -495,8 +495,8 @@ Whether or not the default GeoJSON maps are enabled.
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `deprecated-agent-api-enabled`.
-- [Configuration file name](./config-file.md): `deprecated-agent-api-enabled`
+- [Exported as](../installation-and-operation/serialization.md): `deprecated-agent-api-enabled?`.
+- [Configuration file name](./config-file.md): `deprecated-agent-api-enabled?`
 
 Whether the deprecated Agent API stays available. The Agent API is deprecated and will be removed in Metabase 67; use the MCP server for agents instead. Off by default; an admin turns it on to keep using the Agent API until it is removed.
 
@@ -673,8 +673,8 @@ Custom SMTP server username.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `embedded-metabot-enabled`.
-- [Configuration file name](./config-file.md): `embedded-metabot-enabled`
+- [Exported as](../installation-and-operation/serialization.md): `embedded-metabot-enabled?`.
+- [Configuration file name](./config-file.md): `embedded-metabot-enabled?`
 
 Whether Metabot is enabled for embedding.
 
@@ -855,6 +855,21 @@ Maximum number of fields per table to fingerprint. If a table has more eligible 
 - Default: `false`
 
 Have we sent a follow up email to the instance admin?
+
+### `MB_GEOJSON_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Controls which networks Metabase may connect to for custom map GeoJSON files.
+Options:
+- external-only (only globally reachable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+Defaults to external-only on Metabase Cloud and allow-private when self-hosted.
+
+Set this when custom maps must load GeoJSON from a server on this machine (allow-all), or to restrict them to public hosts (external-only). Defaults to external-only on Metabase Cloud and allow-private when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies.
 
 ### `MB_GOOGLE_AUTH_AUTO_CREATE_ACCOUNTS_DOMAIN`
 
@@ -1182,7 +1197,7 @@ String used to seed the private key used to validate JWT messages. A hexadecimal
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `jwt-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `jwt-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via JWT and doesn't have a Metabase account.
 
@@ -1383,7 +1398,7 @@ User lookup filter. The placeholder '{login}' will be replaced by the user suppl
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `ldap-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `ldap-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via LDAP and doesn't have a Metabase account.
 
@@ -1928,7 +1943,7 @@ Custom CORS origins for self-hosted MCP clients, space-separated.
 - Default: `[]`
 - [Configuration file name](./config-file.md): `mcp-apps-cors-enabled-clients`
 
-Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
+MCP clients whose MCP Apps may call Metabase across origins, as comma-separated keys: claude, chatgpt, and cursor-vscode (for both Cursor and VS Code).
 
 ### `MB_METABOT_ADVANCED_PERMISSIONS`
 
@@ -1952,8 +1967,8 @@ Maximum duration of a Metabot chat turn in milliseconds.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `metabot-enabled`.
-- [Configuration file name](./config-file.md): `metabot-enabled`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-enabled?`.
+- [Configuration file name](./config-file.md): `metabot-enabled?`
 
 Whether Metabot is enabled for regular usage.
 
@@ -1983,7 +1998,7 @@ The display name for Metabot, shown throughout the Metabase UI.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `metabot-query-execution-enabled`
+- [Configuration file name](./config-file.md): `metabot-query-execution-enabled?`
 
 Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.
 
@@ -2186,7 +2201,7 @@ JSON containing OIDC provider configurations.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `oidc-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `oidc-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via OIDC and doesn't have a Metabase account.
 
@@ -2596,7 +2611,7 @@ If enabled, Metabase will redirect users to your configured SAML Single Logout e
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `saml-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `saml-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via SAML and doesn't have a Metabase account.
 
@@ -2661,7 +2676,7 @@ This variable also controls the geocoding service that Metabase uses to know the
 
 - Type: boolean
 - Default: `null`
-- [Configuration file name](./config-file.md): `send-new-sso-user-admin-email`
+- [Configuration file name](./config-file.md): `send-new-sso-user-admin-email?`
 
 Should new email notifications be sent to admins, for all new SSO users?
 

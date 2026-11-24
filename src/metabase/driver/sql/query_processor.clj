@@ -2355,12 +2355,9 @@
   "Moves the `WITH` clauses of nested queries, e.g. multi-stage join sources, to one `WITH` clause at the top."
   [hsql]
   (let [ctes (volatile! [])
-        hsql (perf/postwalk (fn [form]
-                              (if (and (map? form) (:with form))
-                                (do (vswap! ctes into (:with form))
-                                    (dissoc form :with))
-                                form))
-                            hsql)]
+        hsql (match/replace-all hsql
+               {:with with} (do (vswap! ctes into with)
+                                (dissoc &match :with)))]
     (cond-> hsql
       (and (map? hsql) (seq @ctes)) (assoc :with @ctes))))
 

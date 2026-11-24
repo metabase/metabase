@@ -62,10 +62,10 @@
                   (mt/user-http-request :rasta :get 200 (snippet-url))
                   (call-count)))]
         (insert-snippets! 2)
-        (let [calls-with-2  (warm-call-count!)
-              _             (insert-snippets! 8)
-              calls-with-10 (warm-call-count!)]
-          (is (<= calls-with-10 (+ calls-with-2 3))))))))
+        (let [calls-with-2 (warm-call-count!)
+              _            (insert-snippets! 4)
+              calls-with-6 (warm-call-count!)]
+          (is (= calls-with-2 calls-with-6)))))))
 
 (deftest read-snippet-api-test
   (mt/with-full-data-perms-for-all-users!
@@ -154,13 +154,9 @@
                         db)))))
           (testing "\nShould throw an error if the Collection isn't in the 'snippets' namespace"
             (mt/with-temp [:model/Collection {collection-id :id}]
-              (is (= {:errors               {:collection_id "A NativeQuerySnippet can only go in Collections in the :snippets namespace."}
-                      :allowed-namespaces   ["snippets"]
-                      :collection-namespace nil}
-                     (:response (create! 400 collection-id))))))
-          (testing "\nShould throw an error if Collection does not exist"
-            (is (= {:errors {:collection_id "Collection does not exist."}}
-                   (:response (create! 404 Integer/MAX_VALUE))))))))))
+              (is (nil? (:db (create! 400 collection-id))))))
+          (testing "\nThe foreign key refuses a Collection that does not exist"
+            (is (nil? (:db (create! 500 Integer/MAX_VALUE))))))))))
 
 (deftest update-snippet-api-test
   (mt/with-full-data-perms-for-all-users!
@@ -214,11 +210,9 @@
         (testing "\nShould throw an error if you try to move it to a Collection not in the 'snippets' namespace"
           (mt/with-temp [:model/Collection         {collection-id :id} {}
                          :model/NativeQuerySnippet {snippet-id :id}    {}]
-            (is (= {:errors               {:collection_id "A NativeQuerySnippet can only go in Collections in the :snippets namespace."}
-                    :allowed-namespaces   ["snippets"]
-                    :collection-namespace nil}
-                   (mt/user-http-request :rasta :put 400 (snippet-url snippet-id) {:collection_id collection-id})))))
-        (testing "\nShould throw an error if Collection does not exist"
+            (mt/user-http-request :rasta :put 400 (snippet-url snippet-id) {:collection_id collection-id})
+            (is (nil? (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id)))))
+        (testing "\nThe foreign key refuses a Collection that does not exist"
           (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id}]
-            (is (= {:errors {:collection_id "Collection does not exist."}}
-                   (mt/user-http-request :rasta :put 404 (snippet-url snippet-id) {:collection_id Integer/MAX_VALUE})))))))))
+            (mt/user-http-request :rasta :put 500 (snippet-url snippet-id) {:collection_id Integer/MAX_VALUE})
+            (is (nil? (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id)))))))))

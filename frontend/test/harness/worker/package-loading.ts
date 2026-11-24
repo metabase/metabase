@@ -20,12 +20,12 @@ import { clockIsReal } from "./timers.ts";
  * new window.
  */
 export const WINDOW_BOUND_PACKAGES =
-  /\/node_modules\/(@testing-library|jest-canvas-mock|@emotion)\//;
+  /\/node_modules\/(@testing-library|jest-canvas-mock)\//;
 
 // The UI packages stay loaded, and project code can still write onto a
 // package's own objects while it loads, as the popover dropdown registration
 // does. The package would then keep pointing at one file's copy of that code.
-const SHARED_UI_PACKAGES = /\/node_modules\/(@mantine|@emotion)\//;
+const SHARED_UI_PACKAGES = /\/node_modules\/@mantine\//;
 
 const CLOCK_GLOBALS = [
   "setTimeout",

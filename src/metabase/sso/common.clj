@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.sso.db :as sso.db]
    [metabase.sso.ldap :as ldap]
    [metabase.sso.ldap.default-implementation :as ldap.impl]
@@ -19,27 +20,14 @@
   #{(u/the-id (perms/all-users-group))
     (u/the-id (perms/all-external-users-group))})
 
-(defn- sync-group-memberships*!
-  [user-or-id to-remove to-add]
-  (when (seq to-remove)
-    (log/debugf "Removing user %s from group(s) %s" (u/the-id user-or-id) to-remove)
-    (try
-      (perms/remove-user-from-groups! user-or-id to-remove)
-      (catch clojure.lang.ExceptionInfo e
-        ;; in case sync attempts to delete the last admin, the pre-delete hooks of
-        ;; [[metabase.permissions.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.
-        ;; but we don't want to block user from logging-in, so catch this exception and log a warning
-        (if (= (ex-message e) (str perms/fail-to-remove-last-admin-msg))
-          (log/warn "Attempted to remove the last admin during group sync!"
-                    "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
-          ;; Raise an error rather than swallowing it since it's worse to leave a user with more permissions than we expect them have
-          (throw e)))))
-  ;; When adding a user to a group we want to allow individual adds to fail with exceptions
-  ;; that we will log
+(defn- add-to-each-group!
+  "Add the user to each of the groups `to-add` on its own, logging rather than throwing the refusal of one, except a
+  tenant mismatch, so that one bad group does not block the login."
+  [user-or-id to-add]
   (doseq [group-or-id to-add]
     (log/debugf "Adding user %s to group %s" (u/the-id user-or-id) (u/the-id group-or-id))
     (try
-      (perms/add-user-to-group! user-or-id group-or-id)
+      (perms-group-membership/add-users-to-groups! [{:user user-or-id :group group-or-id}])
       (catch Throwable e
         ;; A tenant/group mismatch means the user landed in the wrong space (e.g. an SSO login whose
         ;; tenant assignment was lost); swallowing it would silently wedge the account (UXW-4898),
@@ -48,6 +36,27 @@
         (if (some (comp some? :group-is-tenant?) (:bad-user-group-pairs (ex-data e)))
           (throw e)
           (log/errorf "Error adding user %s to group %s: %s" (u/the-id user-or-id) (u/the-id group-or-id) (ex-message e)))))))
+
+(defn- sync-group-memberships*!
+  "Remove the user from the groups `to-remove` and add them to `to-add`, logging rather than throwing the refusal to
+  remove the last admin, so that the sync does not block the login."
+  [user-or-id to-remove to-add]
+  (when (seq to-remove)
+    (log/debugf "Removing user %s from group(s) %s" (u/the-id user-or-id) to-remove)
+    (try
+      (perms-group-membership/remove-users-from-groups! [user-or-id] (vec to-remove))
+      (catch clojure.lang.ExceptionInfo e
+        (if (= (ex-message e) (str perms/fail-to-remove-last-admin-msg))
+          (log/warn "Attempted to remove the last admin during group sync!"
+                    "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
+          ;; Raise an error rather than swallowing it since it's worse to leave a user with more permissions than we expect them have
+          (throw e)))))
+  (when (seq to-add)
+    (log/debugf "Adding user %s to group(s) %s" (u/the-id user-or-id) to-add)
+    (try
+      (perms-group-membership/add-users-to-groups! (for [group-or-id to-add] {:user user-or-id :group group-or-id}))
+      (catch Throwable _
+        (add-to-each-group! user-or-id to-add)))))
 
 (defn sync-group-memberships!
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is

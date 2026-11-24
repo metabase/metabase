@@ -196,30 +196,27 @@
       (is (not (str/includes? content "dashboard 42")))
       (is (not (str/includes? content "recently viewed"))))))
 
-(deftest ^:parallel inject-context-test
-  (testing "prepends the rendered context block to the message"
-    (let [injected (prompts/inject-context {:current_time      "2024-01-15 14:30:00"
-                                            :first_day_of_week "Monday"}
-                                           "Show me revenue")]
-      (is (str/starts-with? injected "<context>"))
-      (is (str/ends-with? injected "Show me revenue"))
-      (is (str/includes? injected "2024-01-15 14:30:00"))
-      (is (str/includes? injected "Monday")))))
+(deftest ^:parallel context-injection-test
+  (testing "renders the context block"
+    (let [block (prompts/context-injection {:current_time      "2024-01-15 14:30:00"
+                                            :first_day_of_week "Monday"})]
+      (is (str/starts-with? block "<context>"))
+      (is (str/includes? block "2024-01-15 14:30:00"))
+      (is (str/includes? block "Monday")))))
 
-(deftest ^:parallel inject-context-recent-views-test
-  (testing "recent views are injected into the message"
-    (let [recent   "Here are some items the user has recently viewed: card 7"
-          injected (prompts/inject-context {:recent_views recent} "Show me revenue")]
-      (is (str/starts-with? injected "<context>"))
-      (is (str/includes? injected recent)))))
+(deftest ^:parallel context-injection-recent-views-test
+  (testing "the block holds the recent views"
+    (let [recent "Here are some items the user has recently viewed: card 7"
+          block  (prompts/context-injection {:recent_views recent})]
+      (is (str/starts-with? block "<context>"))
+      (is (str/includes? block recent)))))
 
-(deftest ^:parallel inject-context-no-context-test
-  (testing "message is returned unchanged when there is nothing to inject"
-    (is (= "Hi" (prompts/inject-context {} "Hi")))
-    (is (= "Hi" (prompts/inject-context {:viewing_context ""
-                                         :current_time    ""
-                                         :recent_views    ""}
-                                        "Hi")))))
+(deftest ^:parallel context-injection-no-context-test
+  (testing "returns nil when there is nothing to show"
+    (is (nil? (prompts/context-injection {})))
+    (is (nil? (prompts/context-injection {:viewing_context ""
+                                          :current_time    ""
+                                          :recent_views    ""})))))
 
 (deftest ^:parallel build-system-message-content-test-8
   (testing "builds exploration system message"
