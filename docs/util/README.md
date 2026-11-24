@@ -50,3 +50,23 @@ Broken nav urls are reported as `docs/util/data/nav.yml:LINE`. If a page moved, 
 A url with the wrong capitalization can pass on macOS and still fail in CI, because Linux filenames are case-sensitive.
 
 The docs site generates the same heading ids as GitHub, so link to a heading by the id GitHub gives it: ``### 2. Add `MB_API_KEY` `` becomes `#2-add-mb_api_key`. Give a heading an explicit `{#id}` when you want a shorter or more stable one.
+
+## Docs images
+
+New and changed PNGs and GIFs under `docs/` go to the CDN, and the repo keeps a small pointer file at the same path. Existing images stay as they are until a PR changes them. This is off until the `DOCS_IMAGE_POINTERS` repo variable is `true`; until then, images work as they always have.
+
+Add or replace an image the usual way: put the PNG or GIF in the PR and link it from the Markdown. When you push to a PR, the `Docs images` workflow uploads it to `https://cdn.metabase.com/docs/<sha256>` and commits a small pointer file in its place, so pull before you push again. Links don't change.
+
+To move or delete an image, `git mv` or `git rm` the pointer.
+
+To edit an existing image, get the original back first:
+
+```bash
+node .github/scripts/docs-images.js fetch docs/path/to/image.png
+```
+
+Then edit it and push it like a new image.
+
+PRs from forks can't upload, so the check fails on any PNG or GIF the PR adds or changes. A maintainer has to push the branch to `metabase/metabase` to convert them.
+
+`docs/images/metabase-product-screenshot-updated.png` stays in the repo, because the repo README links it.
