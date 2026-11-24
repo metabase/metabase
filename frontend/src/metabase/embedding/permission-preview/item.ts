@@ -26,18 +26,27 @@ export function getItemFromContentPath(pathname: string) {
 }
 
 /**
- * The item a pasted link or ID names, as `type/id` (`dashboard/12`), or
- * `NOT_FOUND_ITEM` when it names none. A bare number is a question; models and
- * metrics open as questions.
+ * The item a pasted link names, as `type/id` (`dashboard/12`), or
+ * `NOT_FOUND_ITEM` when it names none. The root path is All collections;
+ * models and metrics open as questions.
  */
 export function getItemFromLink(input: string) {
   const text = input.trim();
 
-  if (/^\d+$/.test(text)) {
-    return `question/${text}`;
+  if (text === "") {
+    return NOT_FOUND_ITEM;
   }
 
-  const [type, slug] = getPathSegments(text);
+  const segments = getPathSegments(text);
+
+  if (!segments) {
+    return NOT_FOUND_ITEM;
+  }
+  if (segments.length === 0) {
+    return ALL_COLLECTIONS_ITEM;
+  }
+
+  const [type, slug] = segments;
   const id = slug?.match(ITEM_ID_PATTERN)?.[1];
 
   if (type === "collection" && (slug === "root" || slug === "all")) {
@@ -68,9 +77,9 @@ export function parseItem(item: string): PreviewItem | null {
   return null;
 }
 
-/** The link box's text for an item: the path a person would see in Metabase. */
+/** The address box's text for an item: the path a person would see in Metabase. */
 export function getLinkText(item: string) {
-  return `/${item}`;
+  return item === ALL_COLLECTIONS_ITEM ? "/" : `/${item}`;
 }
 
 function getPathSegments(text: string) {
@@ -79,6 +88,6 @@ function getPathSegments(text: string) {
       .split("/")
       .filter(Boolean);
   } catch {
-    return [];
+    return null;
   }
 }
