@@ -17,8 +17,7 @@ export type AnalysisState = {
   "columns.timestamp": string;
   /** What the analysis buckets events by. */
   granularity: DateTimeAbsoluteUnit;
-  /** Raw counts of people per period bucket, or each bucket's share of the total. */
-  "habit.values": "count" | "percent";
+  "habit.values": "count";
 };
 
 export function buildProductAnalyticsQuery(

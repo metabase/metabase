@@ -2,7 +2,7 @@ import { Button, Group } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Table, TableId } from "metabase-types/api";
 
-import type { CommonSettingsOptions, HabitSettings } from "../analyses/types";
+import type { CommonSettings, CommonSettingsOptions } from "../analyses/types";
 
 import { EventTablePicker } from "./EventTablePicker";
 import { ViewSqlButton } from "./ViewSqlButton";
@@ -10,14 +10,13 @@ import { CountingMenu } from "./toolbar/CountingMenu";
 import { DateRangeButton } from "./toolbar/DateRangeButton";
 import { FiltersButton } from "./toolbar/FiltersButton";
 import { GranularityButton } from "./toolbar/GranularityButton";
-import { HabitValuesMenu } from "./toolbar/HabitValuesMenu";
 
 type AnalysisToolbarProps = {
   table: Table | undefined;
   isTableLoading: boolean;
   isTablePickerInitiallyOpened: boolean;
   /** Undefined until the analysis's settings are computed. */
-  settings: HabitSettings | undefined;
+  settings: CommonSettings | undefined;
   options: CommonSettingsOptions;
   /** Undefined until the analysis's query is built. */
   query: Lib.Query | undefined;
@@ -25,7 +24,7 @@ type AnalysisToolbarProps = {
   baseQuery: Lib.Query | undefined;
   areFiltersExpanded: boolean;
   onTableChange: (tableId: TableId) => void;
-  onChangeSettings: (changes: Partial<HabitSettings>) => void;
+  onChangeSettings: (changes: Partial<CommonSettings>) => void;
   onToggleFilters: () => void;
   onAddFirstFilter: (baseQuery: Lib.Query) => void;
 };
@@ -62,12 +61,6 @@ export const AnalysisToolbar = ({
         />
       </Button.Group>
       {settings !== undefined && <CountingMenu value={settings.counting} />}
-      {settings !== undefined && (
-        <HabitValuesMenu
-          value={settings.habit_values}
-          onChange={(habit_values) => onChangeSettings({ habit_values })}
-        />
-      )}
     </Group>
     <Group gap="sm">
       {settings !== undefined && (

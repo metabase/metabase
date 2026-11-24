@@ -14,7 +14,6 @@ const SETTINGS: HabitSettings = {
   date_range: "past90days",
   counting: "person",
   granularity: "week",
-  habit_values: "count",
 };
 
 const createEventTable = (eventSettings: EventTableSettings) =>
