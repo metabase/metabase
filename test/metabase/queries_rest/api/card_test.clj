@@ -2647,13 +2647,13 @@
     (mt/with-model-cleanup [:model/Card]
       (notification.tu/with-channel-fixtures [:channel/email]
         (api.notification-test/with-send-messages-sync!
-          (let [card-id (t2/insert-returning-pk! :model/Card {:name                   "YOLO"
+          (let [query   (mbql-count-query (mt/id) (mt/id :checkins))
+                card-id (t2/insert-returning-pk! :model/Card {:name                   "YOLO"
                                                               :display                :table
                                                               :creator_id             (mt/user->id :crowberto)
                                                               :database_id            (mt/id)
                                                               :visualization_settings {}
-                                                              :dataset_query          (mbql-count-query (mt/id)
-                                                                                                        (mt/id :checkins))})]
+                                                              :dataset_query          query})]
             (notification.tu/with-temp-notification
               [notification {:notification {:payload      {:card_id card-id}
                                             :payload_type :notification/card
