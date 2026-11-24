@@ -71,9 +71,10 @@
    :code_challenge :code_challenge_method :resource])
 
 (defn- resource-or-nil
-  "A stored `resource` as a vector, or nil when it names none. oidc-provider checks a refresh's `resource` against the
-   token's whenever the token has one, and `[]` would count as one that contains nothing."
+  "A stored `resource` as a vector, or nil when it names none."
   [resource]
+  ;; oidc-provider checks a refresh's `resource` against the token's whenever the token has one, and `[]` would count
+  ;; as one that contains nothing.
   (not-empty (vec resource)))
 
 (defn- db-row->auth-code

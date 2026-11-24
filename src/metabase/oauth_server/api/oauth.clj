@@ -642,10 +642,12 @@
    token was issued for, which is the resource oidc-provider issues the new token for. Scopes the refresh token does not
    hold are then dropped too, as RFC 6749 section 3.3 allows, so a client that always refreshes with the same `scope`
    keeps working after the user declines part of it at consent; the response's `scope` says what was granted. Throws
-   `ex-info` carrying `:oauth-error` `invalid_scope` when no requested scope survives. When neither the request nor the
-   refresh token names a resource, the body names the one [[with-default-mcp-resource]] gives the requested scopes, so
-   the new tokens carry it. A refresh with no `scope` keeps every scope the token holds, so it names the MCP resource
-   only when every one of them, registered or not, is an MCP scope.
+   `ex-info` carrying `:oauth-error` `invalid_scope` when no requested scope survives.
+
+   When neither the request nor the refresh token names a resource, the body names the one [[with-default-mcp-resource]]
+   gives the requested scopes, so the new tokens carry it.
+   A refresh with no `scope` keeps every scope the token holds, so it names the MCP resource only when every one of
+   them, registered or not, is an MCP scope.
 
    Trimmed only once [[refreshable-token]] finds the request would reach oidc-provider's scope check, so a dead token,
    another client's token, or bad client credentials still get the library's own answer. A blank `scope` is dropped,
