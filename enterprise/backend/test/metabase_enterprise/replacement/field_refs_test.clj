@@ -13,7 +13,7 @@
 
 (defn- field-id-ref
   [mp field-id]
-  (-> (lib.metadata/field mp field-id) lib/ref lib/->legacy-MBQL))
+  (-> (lib.metadata/field mp field-id) lib/ref lib/->legacy-MBQL-ref))
 
 (defn- dimension-field-id-ref
   ([mp field-id]

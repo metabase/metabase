@@ -200,7 +200,7 @@
     ;; agent-created charts carry the display in `:visualization_settings :chart_type`;
     ;; charts seeded from the frontend viewing context (`seed-charts`) leave that nil
     ;; and keep the raw config under `:chart_config` instead
-    {:dataset_query (links/->legacy-mbql query)
+    {:dataset_query #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql query)
      :display       (or (some-> (get-in chart [:visualization_settings :chart_type]) keyword)
                         (some-> (get-in chart [:chart_config :display_type]) keyword)
                         :table)}))

@@ -16,7 +16,12 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
-import { mockGetBoundingClientRect, screen, waitFor } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type * as SdkSnowplow from "embedding-sdk-bundle/analytics/event";
 import { trackSdkMetaplowEvent } from "embedding-sdk-bundle/analytics/event";
 import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion/InteractiveQuestion";
@@ -415,7 +420,9 @@ describe("embedding_sdk_first_component_performance", () => {
       );
 
       // The second question shows its data first
-      expect(await screen.findByText("Test Row")).toBeInTheDocument();
+      expect(
+        within(await screen.findByRole("gridcell")).getByText("Test Row"),
+      ).toBeInTheDocument();
       expect(getPerformanceEvents()).toEqual([]);
 
       firstCardQuery.resolve(TEST_DATASET);
@@ -436,7 +443,9 @@ describe("embedding_sdk_first_component_performance", () => {
 
       rerender(<StaticQuestion key="second" questionId={OTHER_CARD.id} />);
 
-      expect(await screen.findByText("Test Row")).toBeInTheDocument();
+      expect(
+        within(await screen.findByRole("gridcell")).getByText("Test Row"),
+      ).toBeInTheDocument();
       expect(getPerformanceEvents()).toHaveLength(1);
     });
 
@@ -455,7 +464,9 @@ describe("embedding_sdk_first_component_performance", () => {
 
       rerender(<StaticQuestion key="second" questionId={OTHER_CARD.id} />);
 
-      expect(await screen.findByText("Test Row")).toBeInTheDocument();
+      expect(
+        within(await screen.findByRole("gridcell")).getByText("Test Row"),
+      ).toBeInTheDocument();
       expect(getPerformanceEvents()).toEqual([]);
     });
   });
@@ -490,7 +501,9 @@ describe("embedding_sdk_first_component_performance", () => {
       setPageVisibility("visible");
       cardQuery.resolve(TEST_DATASET);
 
-      expect(await screen.findByText("Test Row")).toBeInTheDocument();
+      expect(
+        within(await screen.findByRole("gridcell")).getByText("Test Row"),
+      ).toBeInTheDocument();
       expect(getPerformanceEvents()).toEqual([]);
     });
 
@@ -506,7 +519,9 @@ describe("embedding_sdk_first_component_performance", () => {
 
       renderSdkComponent(<StaticQuestion questionId={TEST_CARD.id} />);
 
-      expect(await screen.findByText("Test Row")).toBeInTheDocument();
+      expect(
+        within(await screen.findByRole("gridcell")).getByText("Test Row"),
+      ).toBeInTheDocument();
       expect(getPerformanceEvents()).toEqual([]);
     });
   });
@@ -522,7 +537,9 @@ describe("embedding_sdk_first_component_performance", () => {
 
       renderSdkComponent(<StaticQuestion questionId={TEST_CARD.id} />);
 
-      expect(await screen.findByText("Test Row")).toBeInTheDocument();
+      expect(
+        within(await screen.findByRole("gridcell")).getByText("Test Row"),
+      ).toBeInTheDocument();
       expect(getPerformanceEvents()).toEqual([]);
     });
 
@@ -538,7 +555,9 @@ describe("embedding_sdk_first_component_performance", () => {
 
       renderSdkComponent(<StaticQuestion questionId={TEST_CARD.id} />);
 
-      expect(await screen.findByText("Test Row")).toBeInTheDocument();
+      expect(
+        within(await screen.findByRole("gridcell")).getByText("Test Row"),
+      ).toBeInTheDocument();
       expect(getPerformanceEvents()).toEqual([]);
     });
   });

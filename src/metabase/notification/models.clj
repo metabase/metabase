@@ -7,6 +7,8 @@
    [malli.core :as mc]
    [malli.util :as mut]
    [medley.core :as m]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.change-log.core :as change-log]
    [metabase.channel.models.channel :as models.channel]
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -47,36 +49,6 @@
     (derive (if (= model :model/NotificationSubscription)
               :hook/created-at-timestamped?
               :hook/timestamped?))))
-
-(defmethod events/spec :model/Notification
-  [_model]
-  {:create :event/notification-row-create
-   :update :event/notification-row-update
-   :delete :event/notification-row-delete})
-
-(defmethod events/spec :model/NotificationCard
-  [_model]
-  {:create :event/notification-card-create
-   :update :event/notification-card-update
-   :delete :event/notification-card-delete})
-
-(defmethod events/spec :model/NotificationHandler
-  [_model]
-  {:create :event/notification-handler-create
-   :update :event/notification-handler-update
-   :delete :event/notification-handler-delete})
-
-(defmethod events/spec :model/NotificationRecipient
-  [_model]
-  {:create :event/notification-recipient-create
-   :update :event/notification-recipient-update
-   :delete :event/notification-recipient-delete})
-
-(defmethod events/spec :model/NotificationSubscription
-  [_model]
-  {:create :event/notification-subscription-create
-   :update :event/notification-subscription-update
-   :delete :event/notification-subscription-delete})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/Notification                                       ;;
@@ -969,3 +941,70 @@
   "Unsubscribe a user from a notification."
   [notification-id user-id]
   (notification.db/delete-user-recipients-for-notification! notification-id user-id))
+
+;;; ------------------------------------------------ Specs ------------------------------------------------
+
+(defmethod events/spec :model/Notification
+  [_model]
+  {:create :event/notification-row-create
+   :update :event/notification-row-update
+   :delete :event/notification-row-delete})
+
+(defmethod app-db-copy/spec :model/Notification [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/Notification [_model]
+  {:track [:payload_type :active :internal_id :payload_id :creator_id]
+   :skip  []})
+
+(defmethod events/spec :model/NotificationSubscription
+  [_model]
+  {:create :event/notification-subscription-create
+   :update :event/notification-subscription-update
+   :delete :event/notification-subscription-delete})
+
+(defmethod app-db-copy/spec :model/NotificationSubscription [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/NotificationSubscription [_model]
+  {:track [:notification_id :type :event_name :cron_schedule :ui_display_type]
+   :skip  []})
+
+(defmethod events/spec :model/NotificationHandler
+  [_model]
+  {:create :event/notification-handler-create
+   :update :event/notification-handler-update
+   :delete :event/notification-handler-delete})
+
+(defmethod app-db-copy/spec :model/NotificationHandler [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/NotificationHandler [_model]
+  {:track [:channel_type :notification_id :channel_id :template_id :active]
+   :skip  []})
+
+(defmethod events/spec :model/NotificationRecipient
+  [_model]
+  {:create :event/notification-recipient-create
+   :update :event/notification-recipient-update
+   :delete :event/notification-recipient-delete})
+
+(defmethod app-db-copy/spec :model/NotificationRecipient [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/NotificationRecipient [_model]
+  {:track [:notification_handler_id :type :user_id :permissions_group_id :details]
+   :skip  []})
+
+(defmethod events/spec :model/NotificationCard
+  [_model]
+  {:create :event/notification-card-create
+   :update :event/notification-card-update
+   :delete :event/notification-card-delete})
+
+(defmethod app-db-copy/spec :model/NotificationCard [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/NotificationCard [_model]
+  {:track [:card_id :send_once :send_condition :disable_links]
+   :skip  []})

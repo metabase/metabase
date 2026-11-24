@@ -4,10 +4,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.db :as qp.db]
+   [metabase.revisions.models.revision :as revision]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.db :as search.db]
@@ -48,6 +51,11 @@
     (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async! (fn [updates] (swap! calls conj (set updates)))]
       (thunk))
     @calls))
+
+(defn- enqueued-search-models
+  "The search models of the documents that the updates in `enqueued`, as [[capture-enqueues!]] returns them, name."
+  [enqueued]
+  (into #{} (comp cat (map first)) enqueued))
 
 (defn- cascading-documents-of
   "What [[search/cascading-documents]] enumerates for the card with `card-id`."
@@ -189,8 +197,40 @@
           (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
                  (capture-enqueues! #(t2/update! :model/ModerationReview :id new-id {:status nil})))))))))
 
+(deftest update-of-unindexed-column-reindexes-test
+  (testing "an edit that changes no indexed column still refreshes the indexed last editor and update time"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [dash-id (:id (mt/user-http-request :rasta :post 200 "dashboard" {:name (mt/random-name)}))
+              indexed #(t2/select-one [(search.index/active-table) :last_editor_id :model_updated_at]
+                                      :model "dashboard" :model_id (str dash-id))]
+          (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:width "full"})
+          (is (= {:last_editor_id   (mt/user->id :crowberto)
+                  :model_updated_at (t/instant (t2/select-one-fn :updated_at :report_dashboard :id dash-id))}
+                 (update (indexed) :model_updated_at t/instant))))))))
+
+(deftest update-of-unread-joined-column-enqueues-only-readers-test
+  (testing "an update reindexes the documents that read a column it set, not the ones it is joined into"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card       _            {:collection_id coll-id}
+                     :model/Dashboard  _            {:collection_id coll-id}]
+        ;; Only the collection's own document reads its description; the card and the dashboard in it read its name,
+        ;; type, location and authority level.
+        (is (= #{"collection"}
+               (enqueued-search-models
+                (capture-enqueues! #(t2/update! :model/Collection :id coll-id {:description "described"})))))))))
+
+(deftest self-assigned-updated-at-enqueues-nothing-test
+  (testing "a write that keeps `updated_at` as it is reindexes nothing when no document reads the column it sets"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        ;; No search spec reads `result_metadata`: search reads it from the app DB at query time.
+        (is (= [] (capture-enqueues! #(qp.db/set-card-result-metadata! card-id []))))
+        (is (not= [] (capture-enqueues! #(t2/update! :model/Card :id card-id {:name "renamed"}))))))))
+
 (deftest revision-writes-enqueue-nothing-test
-  (testing "a Revision publishes no event: the write of its entity refreshes the document it feeds"
+  (testing "a Revision written or deleted by Toucan publishes no event: the prune of old Revisions costs no read"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {card-id :id} {}]
         (is (= [] (capture-enqueues! #(t2/insert! :model/Revision {:model    "Card"
@@ -198,6 +238,64 @@
                                                                    :user_id  (mt/user->id :crowberto)
                                                                    :object   {}}))))
         (is (= [] (capture-enqueues! #(t2/delete! :model/Revision :model "Card" :model_id card-id))))))))
+
+(deftest revision-create-reindexes-its-dashboard-test
+  (testing "a series edit writes no row of a dashboard's document, which the Revision that records it reindexes"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id}   {}
+                     :model/Card {series-id :id} {}]
+        (mt/with-model-cleanup [:model/Dashboard]
+          (let [dash-id (:id (mt/user-http-request :rasta :post 200 "dashboard" {:name (mt/random-name)}))
+                put!    (fn [dashcard-id series]
+                          (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
+                                                {:dashcards [{:id      dashcard-id
+                                                              :card_id card-id
+                                                              :row     0
+                                                              :col     0
+                                                              :size_x  4
+                                                              :size_y  4
+                                                              :series  series}]}))]
+            (put! -1 [])
+            (let [dashcard-id (t2/select-one-pk :model/DashboardCard :dashboard_id dash-id)]
+              (is (= #{"dashboard"}
+                     (enqueued-search-models (capture-enqueues! #(put! dashcard-id [{:id series-id}]))))))))))))
+
+(deftest revision-create-reindexes-its-entity-by-id-test
+  (testing "the Revision of a dashboard reindexes it by its own id, whichever Revision the event is for"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Revised Dashboard"}]
+        (let [row  (fn [object] {:model "Dashboard" :model_id dash-id :user_id (mt/user->id :crowberto) :object object})
+              older (row {:name "older"})]
+          (t2/insert! :model/Revision [older (row {:name "newer"})])
+          (is (= [#{["dashboard" [:= dash-id :this.id]]}]
+                 (capture-enqueues! #(revision/publish-created! older))))
+          (revision/publish-created! older)
+          (is (= 1 (indexed-count "dashboard" dash-id))
+              "a newer Revision does not make the document of the older one's event unpurgeable")))))
+  (testing "a Revision of an entity that feeds no document reindexes nothing"
+    (is (= [] (capture-enqueues! #(revision/publish-created! {:model "Segment" :model_id 1 :user_id 1}))))))
+
+(deftest revision-create-reindexes-only-documents-that-read-it-test
+  (testing "the Revision of a model reindexes the model's own documents, not its indexed values or actions"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card       {card-id :id} {:name "Indexed Model", :type :model}
+                     :model/ModelIndex _             {:model_id   card-id
+                                                      :pk_ref     (mt/$ids $venues.id)
+                                                      :value_ref  (mt/$ids $venues.name)
+                                                      :schedule   "0 0 0 * * ? *"
+                                                      :state      "indexed"
+                                                      :creator_id (mt/user->id :rasta)}]
+        (is (= #{"card" "dataset" "metric"}
+               (enqueued-search-models
+                (capture-enqueues! #(revision/publish-created! {:model    "Card"
+                                                                :model_id card-id
+                                                                :user_id  (mt/user->id :crowberto)})))))))))
+
+(deftest revision-readers-test
+  (testing "the search models that read a Revision are the ones whose spec joins it"
+    (is (= {"Card"      #{"card" "dataset" "metric"}
+            "Dashboard" #{"dashboard"}}
+           (#'search.events/revision-readers)))))
 
 ;;; Purges
 

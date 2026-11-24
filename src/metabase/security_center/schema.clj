@@ -11,8 +11,12 @@
 (mr/def ::semver
   [:re #"^\d+(?:\.\d+)*$"])
 
+(def severities
+  "Every severity of an advisory or a health check, highest first."
+  [:critical :high :medium :low])
+
 (mr/def ::severity
-  [:enum :critical :high :medium :low])
+  (into [:enum] severities))
 
 (mr/def ::match-status
   [:enum :unknown :active :resolved :not_affected :error])
@@ -95,3 +99,50 @@
    [:last_notified_at  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:download_jar_urls {:optional true} [:maybe ::download-jar-urls]]])
+
+;;; Health checks
+
+(mr/def ::health-check-id
+  [:enum
+   :supported-version :encryption-secret-key :session-secret-key :legacy-startup-encryption
+   :https-site-url :https-redirect :sso-login :scim-provisioning :mfa-required
+   :read-only-connections :all-users-permissions])
+
+(def health-check-statuses
+  "Every status a health check can have. `:unknown` means the check could not tell."
+  [:pass :fail :unknown])
+
+(mr/def ::health-check-status
+  (into [:enum] health-check-statuses))
+
+(mr/def ::health-check-entity-type
+  [:enum :database :collection :group])
+
+(mr/def ::health-check-item
+  "The `entity_` keys are named as in task runs. `entity_id` is `\"root\"` for the root collection."
+  [:map {:closed true}
+   [:status      ::health-check-status]
+   [:message     {:optional true} :string]
+   [:entity_type {:optional true} ::health-check-entity-type]
+   [:entity_id   {:optional true} [:or ms/PositiveInt [:= "root"]]]
+   [:entity_name {:optional true} :string]])
+
+(mr/def ::health-check-docs
+  "`page` and `anchor` are what the frontend's `useDocsUrl` takes."
+  [:map {:closed true}
+   [:page   :string]
+   [:anchor {:optional true} :string]])
+
+(mr/def ::health-check
+  "A check as the API returns it. `items` has at least one entry, so a check always reports something."
+  [:map {:closed true}
+   [:id               ::health-check-id]
+   [:severity         ::severity]
+   [:title            :string]
+   [:description      :string]
+   [:remediation      :string]
+   [:docs             ::health-check-docs]
+   [:requires_restart :boolean]
+   [:status           ::health-check-status]
+   [:checked_at       ms/TemporalInstant]
+   [:items            [:sequential {:min 1} ::health-check-item]]])

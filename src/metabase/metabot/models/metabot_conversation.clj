@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-conversation
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
@@ -13,12 +14,6 @@
 (doto :model/MetabotConversation
   (derive :metabase/model)
   (derive :hook/events))
-
-(defmethod events/spec :model/MetabotConversation
-  [_model]
-  {:create :event/metabot-conversation-create
-   :update :event/metabot-conversation-update
-   :delete :event/metabot-conversation-delete})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
@@ -62,3 +57,15 @@
    conversations k
    #(metabot.db/user-summaries-by-id (keep :user_id conversations))
    :user_id {:default nil}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/MetabotConversation
+  [_model]
+  {:create :event/metabot-conversation-create
+   :update :event/metabot-conversation-update
+   :delete :event/metabot-conversation-delete})
+
+(defmethod app-db-copy/spec :model/MetabotConversation [_model]
+  {:skip?    false
+   :sequence false})

@@ -1,6 +1,6 @@
 ---
 title: Modular embedding
-summary: Getting started with modular embedding for embedding Metabase entities into external applications
+summary: Embed and customize Metabase components, like dashboards, the query builder, and AI chat, in your own app.
 redirect_from:
   - /docs/latest/embedding/embedded-analytics-js
 ---
@@ -22,11 +22,13 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 The first time you turn this on in Pro or Enterprise, Metabase asks you to accept the usage terms.
 
+On self-hosted Metabases, you can also turn on modular embedding with the [`MB_ENABLE_EMBEDDING_MODULAR`](../configuring-metabase/environment-variables.md#mb_enable_embedding_modular) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 **For guest embeds**: You're done! Skip to [Create a new embed](#create-a-new-embed) or see the [Guest embedding guide](./guest-embedding.md) for detailed setup instructions.
 
 **For authenticated embeds** (Pro/Enterprise only), some more steps:
 
-3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
+3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost`, which Metabase allows by default. On self-hosted Metabases, you can block `localhost` with the [`MB_DISABLE_CORS_ON_LOCALHOST`](../configuring-metabase/environment-variables.md#mb_disable_cors_on_localhost) environment variable.
 4. If embedding on a different domain, see [Embedding Metabase in a different domain](./authentication.md#embedding-metabase-in-a-different-domain).
 
 ## Create a new embed
@@ -65,9 +67,9 @@ If you're on Metabase OSS/Starter plans, you can select light or dark themes for
 
 On Metabase Pro/Enterprise, you can also:
 
-- Pick a [saved theme](./appearance.md#embedding-themes) you've created in **Embedding hub > Appearance**.
+- Pick a [saved theme](./appearance.md#save-a-theme-in-metabase) you've created in **Embedding hub > Appearance**.
 - Pick specific colors for brand, text, and background in the embed wizard.
-- Add more [advanced theme options](./appearance.md#advanced-theming) by editing the generated snippet later.
+- Add more [advanced theme options](./appearance.md#set-colors-and-fonts) by editing the generated snippet later.
 
 All the customization options you select in this wizard will be reflected in the code snippet that the embed wizard will generate for you, and you'll be able to add more options later.
 

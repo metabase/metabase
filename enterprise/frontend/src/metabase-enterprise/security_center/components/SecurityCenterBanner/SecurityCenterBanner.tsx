@@ -5,6 +5,7 @@ import { Banner } from "metabase/common/components/Banner";
 import { Link } from "metabase/common/components/Link";
 import { getPlan, useSetting } from "metabase/settings";
 import { Anchor, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { useListSecurityAdvisoriesQuery } from "../../api";
 import { isAffected } from "../../utils";
@@ -44,7 +45,7 @@ export function SecurityCenterBanner() {
       key="link"
       component={Link}
       fw="bold"
-      to="/admin/security-center?open=notifications"
+      to={Urls.securityCenterNotifications()}
       c="inherit"
       td="underline"
     >

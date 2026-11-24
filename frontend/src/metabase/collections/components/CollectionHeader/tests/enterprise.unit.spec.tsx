@@ -100,14 +100,15 @@ describe("instance analytics custom reports collection", () => {
     expect(screen.queryByText("Move")).not.toBeInTheDocument();
   });
 
-  it("should not show archive button", async () => {
+  it("should not show the move to trash button", async () => {
     setup(defaultOptions);
     await userEvent.click(getIcon("ellipsis"));
     await screen.findByRole("menu");
 
     expect(getIcon("lock")).toBeInTheDocument();
-    expect(queryIcon("archive")).not.toBeInTheDocument();
-    expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+    expect(screen.getByText("Edit permissions")).toBeInTheDocument();
+    expect(queryIcon("trash")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
   });
 });
 

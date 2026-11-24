@@ -30,6 +30,7 @@ export {
   type MemoryTestRouterHolder,
 } from "./create-router";
 export { queryToSearch, toFacadeLocation } from "./location";
+export { hasUnsavedChanges } from "./route-leave-guards";
 export { createLocationMirror, type LocationMirror } from "./location-mirror";
 export {
   getCanGoBack,

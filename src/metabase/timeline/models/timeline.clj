@@ -1,11 +1,15 @@
 (ns metabase.timeline.models.timeline
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.timeline.collection-items :as timeline.collection-items]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
@@ -21,12 +25,6 @@
   (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
-
-(defmethod events/spec :model/Timeline
-  [_model]
-  {:create :event/timeline-create
-   :update :event/timeline-update
-   :delete :event/timeline-delete})
 
 (t2/define-after-select :model/Timeline
   [timeline]
@@ -101,29 +99,52 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serialization/spec :model/Timeline [_]
-  {:schema    ::timeline.schema/external-timeline
-   :copy      [:archived :archived_directly :default :description :entity_id :icon :name]
-   :transform {:collection_id (serialization/fk-transform :model/Collection)
-               :creator_id    serialization/user-transform}
-   :children  {:events :model/TimelineEvent}
-   :defaults  {:archived false :archived_directly false :default false}})
-
-(defmethod serialization/import-dependencies :model/Timeline [_ entities]
+(defn- import-dependencies
+  "The Collection each of the Timeline `entities` depends on, if any."
+  [entities]
   (mapv (fn [{:keys [collection_id]}]
           (when collection_id
             [[:model/Collection collection_id]]))
         entities))
 
-(defmethod serialization/export-dependencies :model/Timeline [_ timelines]
+(defn- export-dependencies
+  "The Collection each of the `timelines` depends on, if any."
+  [timelines]
   (mapv (fn [{:keys [collection_id]}]
           (when collection_id
             #{[:model/Collection collection_id]}))
         timelines))
 
-;;; ------------------------------------------------- Remote sync ----------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Timeline
+  [_model]
+  {:create :event/timeline-create
+   :update :event/timeline-update
+   :delete :event/timeline-delete})
+
+(defmethod app-db-copy/spec :model/Timeline [_model]
+  {:skip? false})
+
+(defmethod serialization/spec :model/Timeline [_]
+  {:schema              ::timeline.schema/external-timeline
+   :copy                [:archived :archived_directly :default :description :entity_id :icon :name]
+   :transform           {:collection_id (serialization/fk-transform :model/Collection)
+                         :creator_id    serialization/user-transform}
+   :children            {:events :model/TimelineEvent}
+   :defaults            {:archived false :archived_directly false :default false}
+   :import-dependencies import-dependencies
+   :export-dependencies export-dependencies})
 
 (defmethod remote-sync/spec :model/Timeline
   [_model]
   {:synced-items         timeline.db/synced-timeline-items
    :synced-filter-clause timeline.db/synced-timelines-clause})
+
+(defmethod collection-items/spec :model/Timeline [_model]
+  {"timeline" {:rank    8
+               :items   timeline.db/collection-timeline-items
+               :hydrate timeline.collection-items/hydrate}})
+
+(defmethod eid-translation/spec :model/Timeline [_model]
+  {:names [:timeline]})

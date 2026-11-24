@@ -1363,7 +1363,7 @@
                                            :query_type :native}]
             (is (=? {:min {:name "min" :type "number"}}
                     (:template_tags (content-one {:items [{:type "question" :id (:id card)}]}))))))
-        (testing "pMBQL shape: a tag vector on the native stage (what question_write stores)"
+        (testing "MBQL 5 shape: a tag vector on the native stage (what question_write stores)"
           (mt/with-temp [:model/Card card {:dataset_query {:lib/type :mbql/query
                                                            :database (mt/id)
                                                            :stages   [{:lib/type      :mbql.stage/native

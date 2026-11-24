@@ -1,17 +1,19 @@
 (ns metabase.sql-tools.settings
   "Settings for the sql-tools module.
 
-  ## Swapping Between Macaw and SQLGlot
+  ## Choosing the SQL parser backend
 
   The SQL parser backend can be switched using the `MB_SQL_TOOLS_PARSER_BACKEND` env var:
 
   ```bash
-  # Use SQLGlot (default)
+  # SQLGlot (default)
   MB_SQL_TOOLS_PARSER_BACKEND=sqlglot
 
-  # Use Macaw (legacy)
+  # Macaw (legacy)
   MB_SQL_TOOLS_PARSER_BACKEND=macaw
   ```
+
+  Any other backend in [[metabase.sql-parsing.core/backends]] is also accepted.
 
   This is useful for:
   - Running tests with a specific backend:
@@ -23,10 +25,11 @@
   Once SQLGlot is stable, this env var will be removed and Macaw deprecated."
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util.i18n :refer [tru]]))
 
 (def ^:private available-parser-backends
-  #{:macaw :sqlglot})
+  (conj sql-parsing/backends :macaw))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parser-backend-override*

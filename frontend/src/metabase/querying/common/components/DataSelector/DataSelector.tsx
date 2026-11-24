@@ -811,7 +811,7 @@ export class UnconnectedDataSelector extends Component<
         className={className}
         style={style}
         showDropdownIcon={!readOnly && hasTriggerExpandControl}
-        iconSize={isMantine ? "1rem" : triggerIconSize}
+        iconSize={triggerIconSize}
         isMantine={isMantine}
       >
         {TriggerComponent && (

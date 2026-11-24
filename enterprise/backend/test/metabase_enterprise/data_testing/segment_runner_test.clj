@@ -100,9 +100,9 @@
           ;; The message can also quote the compiled SQL, which names every column, so match only the warehouse's
           ;; naming of the missing column: `column "ADDRESS"` (H2), `column people.address` (Postgres), `column
           ;; 'people.address'` (MySQL), `Identifier 'test_data.people.address'` (ClickHouse), `column name 'ADDRESS'`
-          ;; (SQL Server, whose "column name" would otherwise match the NAME column).
+          ;; (SQL Server, whose "column name" would otherwise match the NAME column), `column named "address"` (DuckDB).
           (is (re-find #"(?i)(?:column|identifier)\s+['\"`\[]?(?:\w+\.)*(?:name|email|address|city)\b"
-                       (str/replace message #"(?i)column name" "column"))
+                       (str/replace message #"(?i)column named?\b" "column"))
               message))))))
 
 (defn- validated-outcome!
@@ -115,7 +115,7 @@
                                                       :inputs       inputs
                                                       :expectations expectations}]
     (let [segment (t2/select-one :model/Segment :id segment-id)]
-      (if-let [{:keys [error-type]} (data-testing.test-util/refusal #(data-testing.runner/validate-test :segment segment inputs expectations))]
+      (if-let [{:keys [error-type]} (data-testing.test-util/refusal #(data-testing.runner/validate-test :segment segment {:inputs inputs :expectations expectations}))]
         {:refused error-type}
         (binding [api/*current-user-id* (mt/user->id :crowberto)]
           (let [result (atom nil)]
@@ -143,7 +143,7 @@
                                                  (lib/filterable-columns orders))
                                            "Gizmo"))}))
 
-(deftest a-segment-test-through-a-foreign-key-runs-once-accepted-test
+(deftest a-segment-test-through-a-foreign-key-needs-every-column-of-the-joined-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [[int-type text-type] (data-testing.test-util/cast-types)
           mp                   (mt/metadata-provider)
@@ -171,9 +171,12 @@
       (testing "control: with every products column declared, the test runs and finds the one Gizmo order"
         (is (= {:status :passed}
                (validated-outcome! (gizmo-orders) [orders (products every-product-column)] one-order))))
-      (testing "with only the products columns the filter reads declared, the test is refused when saved, or else it runs to a result"
-        (let [outcome (validated-outcome! (gizmo-orders) [orders (products [product-pk category])] one-order)]
-          (is (runs-once-accepted? outcome) (pr-str outcome)))))))
+      (testing (str "with only the products columns the filter reads declared, the test is refused when saved: the "
+                    "join through the foreign key selects every products column")
+        ;; The refusal depends on the query processor adding every column of the joined table to an implicit join
+        ;; (#67002).
+        (is (= {:refused ::data-testing.errors/missing-input-columns}
+               (validated-outcome! (gizmo-orders) [orders (products [product-pk category])] one-order)))))))
 
 (deftest a-segment-test-validation-accepts-runs-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)

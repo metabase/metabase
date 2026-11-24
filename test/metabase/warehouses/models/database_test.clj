@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.models.database :as database]
+   [metabase.warehouses.serialization :as warehouses.serialization]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -930,10 +931,11 @@
   (testing "serdes import refuses a SQLite Database on a hosted instance (SEC-1175); self-hosted and non-SQLite are fine"
     (mt/with-premium-features #{:hosting}
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite is not available"
-                            (database/assert-sqlite-not-hosted! {:engine :sqlite :name "x" :details {:db "/etc/hosts"}})))
-      (is (nil? (database/assert-sqlite-not-hosted! {:engine :postgres :name "x"}))))
+                            (warehouses.serialization/assert-sqlite-not-hosted!
+                             {:engine :sqlite :name "x" :details {:db "/etc/hosts"}})))
+      (is (nil? (warehouses.serialization/assert-sqlite-not-hosted! {:engine :postgres :name "x"}))))
     (mt/with-premium-features #{}
-      (is (nil? (database/assert-sqlite-not-hosted! {:engine :sqlite :name "x"}))))))
+      (is (nil? (warehouses.serialization/assert-sqlite-not-hosted! {:engine :sqlite :name "x"}))))))
 
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"
