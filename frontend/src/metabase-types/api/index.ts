@@ -1,3 +1,5 @@
+// ISO8601 timestamp
+export type ISO8601Time = string;
 export * from "./actions";
 export * from "./activity";
 export * from "./admin";
@@ -18,6 +20,8 @@ export * from "./content-translation";
 export * from "./custom-viz-plugin";
 export * from "./dashboard";
 export * from "./data-app";
+export * from "./data-test";
+export * from "./data-test-run";
 export * from "./database";
 export * from "./dataset";
 export * from "./dependencies";
@@ -33,6 +37,7 @@ export * from "./field";
 export * from "./fonts";
 export * from "./formatting";
 export * from "./geojson";
+export * from "./glossary";
 export * from "./group";
 export * from "./icon";
 export * from "./index-manager";
@@ -54,6 +59,7 @@ export * from "./parameters";
 export * from "./performance";
 export * from "./permissions";
 export * from "./persist";
+export * from "./public-link";
 export * from "./query";
 export * from "./remote-sync";
 export * from "./replacement";
@@ -82,6 +88,3 @@ export * from "./util";
 export * from "./visualization";
 export * from "./visualization-settings";
 export * from "./visualizer";
-
-// ISO8601 timestamp
-export type ISO8601Time = string;

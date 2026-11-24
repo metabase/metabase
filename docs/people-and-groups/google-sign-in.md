@@ -1,5 +1,6 @@
 ---
 title: Google Sign-In
+summary: Let people log in to Metabase with their Google account, and create accounts automatically on first sign-in.
 redirect_from:
   - /docs/latest/administration-guide/10-single-sign-on
   - /docs/latest/people-and-groups/google-and-ldap
@@ -38,11 +39,15 @@ Once you have your Google API `Client ID` (ending in `.apps.googleusercontent.co
 4. On the **Sign in with Google** card, click **Set up**.
 5. In the **Client ID** field, paste your Google API Client ID.
 
+On self-hosted Metabases, you can also set the client ID with the [`MB_GOOGLE_AUTH_CLIENT_ID`](../configuring-metabase/environment-variables.md#mb_google_auth_client_id) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## Creating Metabase accounts with Google Sign-in
 
 > On [paid plans](https://www.metabase.com/pricing), you're [charged for each active account](https://www.metabase.com/how-billing-works#what-counts-as-a-user-account).
 
 If people's Google account email addresses are from a specific domain, and you want to allow them to sign up on their own, you can enter that domain in the **Domain** field.
+
+On self-hosted Metabases, you can also set the domain with the [`MB_GOOGLE_AUTH_AUTO_CREATE_ACCOUNTS_DOMAIN`](../configuring-metabase/environment-variables.md#mb_google_auth_auto_create_accounts_domain) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 Once set up, existing Metabase users signed in to a Google account that matches the email they used to set up their Metabase account will be able to sign in with just a click.
 

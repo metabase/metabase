@@ -19,8 +19,7 @@
             (let [mp (mt/metadata-provider)
                   original-sql "SELECT * FROM users WHERE id = 1"
                   query-id "q1"
-                  queries-state {query-id (-> (lib/native-query mp original-sql)
-                                              lib/->legacy-MBQL)}
+                  queries-state {query-id (lib/native-query mp original-sql)}
 
                   {result :action-result}
                   (edit-sql-query/edit-sql-query
@@ -50,8 +49,7 @@
             (let [mp (mt/metadata-provider)
                   original-sql "SELECT id, id FROM users WHERE id = 1"
                   query-id "q3"
-                  queries-state {query-id (-> (lib/native-query mp original-sql)
-                                              lib/->legacy-MBQL)}
+                  queries-state {query-id (lib/native-query mp original-sql)}
 
                   {result :action-result}
                   (edit-sql-query/edit-sql-query
@@ -66,11 +64,10 @@
             (let [mp (mt/metadata-provider)
                   original-sql "SELECT id, id FROM users"
                   query-id "q4"
-                  queries-state {query-id (-> (lib/native-query mp original-sql)
-                                              lib/->legacy-MBQL)}]
+                  queries-state {query-id (lib/native-query mp original-sql)}]
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"found multiple times"
+                   #"appears more than once"
                    (edit-sql-query/edit-sql-query
                     {:query-id query-id
                      :queries-state queries-state
@@ -87,8 +84,7 @@
                   original-sql "SELECT * FROM users"
                   new-sql "SELECT id, name FROM customers"
                   query-id "q5"
-                  queries-state {query-id (-> (lib/native-query mp original-sql)
-                                              lib/->legacy-MBQL)}
+                  queries-state {query-id (lib/native-query mp original-sql)}
 
                   {result :action-result}
                   (replace-sql-query/replace-sql-query
@@ -115,8 +111,7 @@
           (testing "replaces SQL and updates name/description"
             (let [mp (mt/metadata-provider)
                   query-id "q6"
-                  queries-state {query-id (-> (lib/native-query mp "SELECT 1")
-                                              lib/->legacy-MBQL)}
+                  queries-state {query-id (lib/native-query mp "SELECT 1")}
 
                   {result :action-result}
                   (replace-sql-query/replace-sql-query

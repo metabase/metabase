@@ -1,11 +1,14 @@
 (ns metabase.dashboards.models.dashboard-tab-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
+   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (use-fixtures
@@ -32,30 +35,15 @@
   `(do-with-dashtab-in-personal-collection (fn [~binding] ~@body)))
 
 (deftest perms-test
-  (with-dashtab-in-personal-collection {:keys [collection dashboard dashtab] :as _dashtab}
-    (testing "dashtab's permission is the permission of dashboard they're on"
-      (is (= (mi/perms-objects-set dashtab :read)
-             (mi/perms-objects-set dashboard :read)))
-      (is (= (mi/perms-objects-set dashtab :write)
-             (mi/perms-objects-set dashboard :write))))
-    (testing (str "Check that if a Dashtab of a Dashboard is in a Collection, someone who would not be able to see it under the old "
-                  "artifact-permissions regime will be able to see it if they have permissions for that Collection")
-      (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
-        (mi/perms-objects-set dashtab :read)
-        (is (true? (mi/can-read? dashtab)))
-        (is (= false (mi/can-write? dashtab)))))
-    (testing "Do we have *write* Permissions for a dashtab if we have *write* Permissions for the Collection it's in?"
-      (binding [api/*current-user-permissions-set* (delay #{(perms/collection-readwrite-path collection)})]
-        (is (true? (mi/can-read? dashtab)))
-        (is (true? (mi/can-write? dashtab)))))
+  (with-dashtab-in-personal-collection {:keys [dashtab] :as _dashtab}
     (testing "A user that can't see the Collection that the Dashboard is in can't read and write the dashtab"
       (mt/with-current-user (mt/user->id :lucky)
-        (is (= false (mi/can-read? dashboard)))
-        (is (= false (mi/can-write? dashboard)))))
+        (is (= false (mi/can-read? (t2/hydrate dashtab :can_read))))
+        (is (= false (mi/can-write? (t2/hydrate dashtab :can_write))))))
     (testing "A user that can see the Collection that the Dashboard is in can read and write the dashtab"
       (mt/with-current-user (mt/user->id :rasta)
-        (is (true? (mi/can-read? dashboard)))
-        (is (true? (mi/can-write? dashboard)))))))
+        (is (true? (mi/can-read? (t2/hydrate dashtab :can_read))))
+        (is (true? (mi/can-write? (t2/hydrate dashtab :can_write))))))))
 
 (deftest dependency-test
   (testing "Deleting a dashtab should delete the associated dashboardcards"
@@ -116,3 +104,46 @@
              {:id    empty-tab-id
               :cards []}]
             (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)))))
+
+(deftest ^:parallel dashtab-columns-schema-test
+  (testing "DashboardTab has name and position that is not negative"
+    (doseq [bad [{:name " "} {:position -1}]]
+      (testing (pr-str bad)
+        (is (not (mr/validate ::dashboards.schema/dashboard-tab.update (assoc bad :id 1))))))
+    (is (mr/validate ::dashboards.schema/dashboard-tab.update {:id 1 :name "Tab" :position 0}))))
+
+(deftest dashtab-dashboard-is-frozen-test
+  (testing "DashboardTab stays in its Dashboard"
+    (mt/with-temp [:model/Dashboard dash  {}
+                   :model/Dashboard other {}
+                   :model/DashboardTab tab {:dashboard_id (u/the-id dash)}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move"
+                            (t2/update! :model/DashboardTab :id (u/the-id tab) {:dashboard_id (u/the-id other)})))
+      (is (= (u/the-id dash) (t2/select-one-fn :dashboard_id :model/DashboardTab :id (u/the-id tab)))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+    (mt/with-model-cleanup [:model/DashboardTab]
+      (let [rows    (fn [n] (mapv (fn [i] {:dashboard_id dashboard-id :name (str "Tab " i) :position i}) (range n)))
+            fresh!  (fn [n] (mapv :id (dashboard-tab/create-dashboard-tabs! (rows n))))
+            counted (fn [f]
+                      (f 1)
+                      (is (= (f 2) (f 6))))]
+        (testing "creating tabs"
+          (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(dashboard-tab/create-dashboard-tabs! rows))))))
+        (testing "updating tabs, some already holding the new value"
+          (counted (fn [n]
+                     (let [ids (fresh! n)]
+                       (dashboard-tab/update-dashboard-tabs! (mapv (fn [id] {:id id :name "Same"}) (take-nth 2 ids)))
+                       (events.tu/statement-count!
+                        #(dashboard-tab/update-dashboard-tabs! (mapv (fn [id] {:id id :name "Same"}) ids)))))))
+        (testing "deleting tabs"
+          (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(dashboard-tab/delete-dashboard-tabs! ids))))))
+        (testing "replacing the tabs of a dashboard"
+          (counted (fn [n]
+                     (let [ids     (fresh! n)
+                           current (mapv (fn [id] (t2/select-one [:model/DashboardTab :id :name :position] :id id)) ids)
+                           new-tabs (concat (map-indexed (fn [i tab] (cond-> tab (even? i) (assoc :name "Renamed"))) (rest current))
+                                            [{:id -1 :name "New" :position 99}])]
+                       (events.tu/statement-count!
+                        #(dashboard-tab/replace-dashboard-tabs! [{:dashboard_id dashboard-id :current-tabs current :new-tabs (vec new-tabs)}]))))))))))

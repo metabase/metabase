@@ -3,18 +3,18 @@
   (:require
    [metabase.actions-rest.db :as actions-rest.db]
    [metabase.actions.core :as actions]
+   [metabase.actions.models :as actions.models]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -32,13 +32,13 @@
                            [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
                            [:type     {:optional true} [:maybe ::actions.schema/type]]
                            [:archived {:default false} :boolean]]]
-  (let [model      (when model-id
-                     (api/read-check :model/Card model-id))
-        action-ids (actions-rest.db/action-ids-visible-to-user
+  (when model-id
+    (api/read-check :model/Card model-id))
+  (let [action-ids (actions-rest.db/action-ids-visible-to-user
                     {:type action-type, :model-id model-id, :archived archived})
         actions    (when (seq action-ids)
-                     (actions/select-actions-for-ids (when model [model]) action-ids))]
-    (t2/hydrate (filterv mi/can-read? actions) :creator :can_write)))
+                     (actions/select-actions-for-ids action-ids))]
+    (t2/hydrate (mi/readable actions) :creator :can_write)))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
@@ -56,11 +56,7 @@
       (t2/hydrate :creator :can_write)
       api/read-check))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:action-id"
+(api.macros/defendpoint :delete "/:action-id" :- ::api/generic-204-no-content
   "Delete an Action."
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
@@ -69,33 +65,27 @@
                             {:event     :action-deleted
                              :type      (:type action)
                              :action_id action-id})
-    (actions-rest.db/delete-action! action-id)
-    (events/publish-event! :event/action-delete {:object action :user-id api/*current-user-id*}))
+    (actions.models/delete-actions! [action-id]))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
   "Create a new action."
   [_route-params
    _query-params
-   {:keys [parameters database_id]
+   {:keys [parameters]
     action-type :type
     :as action} :- ::actions.schema/action.create-request]
-  (when (and (nil? database_id)
-             (= action-type :query))
-    (throw (ex-info (tru "Must provide a database_id for query actions")
-                    {:type        action-type
-                     :status-code 400})))
   (api/create-check :model/Action action)
   (actions/check-implicit-actions-supported action)
+  (actions/check-implicit-action-table-pk action)
   (actions/check-action-databases-enabled action)
-  (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
+  (let [action-id (:id (first (actions.models/create-actions! [(assoc action :creator_id api/*current-user-id*)])))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
                              :type           action-type
                              :action_id      action-id
                              :num_parameters (count parameters)})
-    (u/prog1 (actions/select-action :id action-id)
-      (events/publish-event! :event/action-create {:object <> :user-id api/*current-user-id*}))))
+    (actions/select-action :id action-id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -108,13 +98,16 @@
    _query-params
    action :- ::actions.schema/action.update-request]
   (let [existing-action (api/write-check :model/Action id)
-        action          (api/updates-with-archived-directly existing-action action)]
+        action          (api/updates-without-collection-when-archiving existing-action action)]
     (api/update-check existing-action action)
-    (when (some #(contains? action %) [:dataset_query :database_id :type :kind :model_id])
-      (actions/check-action-databases-enabled (merge (actions/select-action :id id) action)))
-    (actions/update! (assoc action :id id) existing-action))
+    (api/check-400 (not (and (:archived action) (get action :model_id (:model_id existing-action))))
+                   (tru "A model''s action can''t be archived. Delete it instead."))
+    (when (some #(contains? action %) [:dataset_query :database_id :type :kind :model_id :table_id])
+      (let [merged (merge (actions/select-action :id id) action)]
+        (actions/check-implicit-action-table-pk merged)
+        (actions/check-action-databases-enabled merged)))
+    (actions.models/update-action! id action nil))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
-    (events/publish-event! :event/action-update {:object action :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/action
                             {:event          :action-updated
                              :type           type
@@ -140,17 +133,15 @@
   (let [action (api/read-check :model/Action id :archived false)]
     (actions/check-actions-enabled action)
     {:uuid (or (:public_uuid action)
-               (u/prog1 (str (random-uuid))
-                 (actions-rest.db/set-action-public-uuid! id <> api/*current-user-id*)))}))
+               (let [uuid (str (random-uuid))]
+                 (api/update-check action {:public_uuid uuid, :made_public_by_id api/*current-user-id*})
+                 (actions.models/update-actions! [{:id id :public_uuid uuid :made_public_by_id api/*current-user-id*}] nil)
+                 uuid))}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/public_link"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :delete "/:id/public_link" :- ::api/generic-204-no-content
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ::actions.schema/id]]]
@@ -159,7 +150,7 @@
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
-  (actions-rest.db/set-action-public-uuid! id nil nil)
+  (actions.models/update-actions! [{:id id :public_uuid nil :made_public_by_id nil}] nil)
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/:action-id/execute/values" :- [:map-of :string :any]
@@ -171,7 +162,9 @@
                            [:action-id ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map {:closed true}
-                            [:parameters ::actions.schema/prefetch-parameter-values]]]
+                            [:parameters ::actions.schema/prefetch-parameter-values]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-action action-id))
   (actions/check-actions-enabled action-id)
   (-> (actions/select-action :id action-id :archived false)
       api/read-check
@@ -201,6 +194,20 @@
                      (contains? slug->id k)  (get slug->id k)
                      :else                   k)))))
 
+(api.macros/defendpoint :post "/execute" :- :map
+  "Execute the ad-hoc `action`, without saving it. Superusers only."
+  {:scope api-scope/data-app}
+  [_route-params
+   _query-params
+   {:keys [action parameters]} :- [:map {:closed true}
+                                   [:action ::actions.schema/action.adhoc]
+                                   [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]
+   request]
+  (api/check-superuser)
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-action action))
+  (let [action (actions/adhoc-action action)]
+    (actions/execute-action! action (remap-parameter-keys action (update-keys parameters name)))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -214,8 +221,10 @@
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map {:closed true}
-                                               [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]]
+                                               [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]
+   request]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
+        _           (some-> (data-apps/request-data-app request) (data-apps/check-action resolved-id))
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed

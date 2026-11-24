@@ -1,7 +1,12 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
-import { createMockCollection } from "metabase-types/api/mocks";
+import type { PublicLinkRefusalResponse } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockPublicLinkRefusal,
+} from "metabase-types/api/mocks";
 
 import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
@@ -12,7 +17,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
 
   describe("non-admins", () => {
     it("shows a sharing menu with both copy options when a public link exists", async () => {
-      setupQuestionSharingMenu({
+      await setupQuestionSharingMenu({
         canManageSubscriptions: false,
         isPublicSharingEnabled: true,
         hasPublicLink: true,
@@ -28,7 +33,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
     });
 
     it("copies the public link from the menu instead of opening a popover", async () => {
-      setupQuestionSharingMenu({
+      await setupQuestionSharingMenu({
         canManageSubscriptions: false,
         isPublicSharingEnabled: true,
         hasPublicLink: true,
@@ -49,7 +54,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
     });
 
     it("copies the app link directly without an admin prompt when public sharing is disabled", async () => {
-      setupQuestionSharingMenu({
+      await setupQuestionSharingMenu({
         isPublicSharingEnabled: false,
         hasPublicLink: true,
         canManageSubscriptions: false,
@@ -69,7 +74,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
     });
 
     it("copies the app link directly without an admin prompt when there is no public link", async () => {
-      setupQuestionSharingMenu({
+      await setupQuestionSharingMenu({
         isPublicSharingEnabled: true,
         canManageSubscriptions: false,
         hasPublicLink: false,
@@ -89,8 +94,81 @@ describe("QuestionSharingMenu > Enterprise", () => {
   });
 
   describe("admins", () => {
+    const REFUSED = createMockPublicLinkRefusal({
+      id: 10,
+      name: "Tenant warehouse",
+    });
+    const ALLOWED: PublicLinkRefusalResponse = { refusal: null };
+
+    const routingExplanation =
+      /Tenant warehouse has database routing enabled and does not allow anonymous access/;
+
+    it("disables creating a public link when the server refuses one", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEnterprise: true,
+        publicLinkRefusal: REFUSED,
+      });
+      await openMenu();
+
+      expect(await screen.findByText(routingExplanation)).toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: /Create a public link/ }),
+      ).toHaveAttribute("data-disabled", "true");
+      expect(
+        screen.getByRole("link", { name: "Allow anonymous access" }),
+      ).toHaveAttribute("href", "/admin/databases/10");
+
+      await userEvent.click(screen.getByText("Create a public link"));
+      expect(
+        screen.queryByTestId("public-link-popover-content"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("offers a public link when the server allows one", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEnterprise: true,
+        publicLinkRefusal: ALLOWED,
+      });
+      await openMenu();
+
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(
+            "express:/api/public-link-refusal/:model/:id",
+          ),
+        ).toHaveLength(1),
+      );
+      await fetchMock.callHistory.flush(true);
+
+      expect(screen.getByText("Create a public link")).toBeInTheDocument();
+      expect(screen.queryByText(routingExplanation)).not.toBeInTheDocument();
+    });
+
+    it("leaves an existing public link reachable, without asking, where a new one would be refused", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEnterprise: true,
+        hasPublicLink: true,
+        publicLinkRefusal: REFUSED,
+      });
+      await openMenu();
+
+      expect(screen.getByText("Public link")).toBeInTheDocument();
+      expect(screen.queryByText(routingExplanation)).not.toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.calls(
+          "express:/api/public-link-refusal/:model/:id",
+        ),
+      ).toHaveLength(0);
+    });
+
     it("should not allow sharing instance analytics question", async () => {
-      setupQuestionSharingMenu({
+      await setupQuestionSharingMenu({
         isAdmin: true,
         isPublicSharingEnabled: true,
         isEmbeddingEnabled: true,

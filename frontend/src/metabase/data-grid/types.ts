@@ -249,7 +249,7 @@ export interface DataGridOptions<TData = any, TValue = any> {
 
   /**
    * Custom render function to wrap content during measurement, applied on top of the default
-   * EmotionCacheProvider and ThemeProvider. Use this to add your own custom context providers
+   * ThemeProvider. Use this to add your own custom context providers
    * that affect rendering or styling of the measured content.
    */
   measurementRenderWrapper?: (
@@ -323,7 +323,7 @@ export type ScrollToDestinations = {
 
 export interface DataGridInstance<TData> {
   table: Table<TData>;
-  gridRef: RefObject<HTMLDivElement>;
+  gridRef: RefObject<HTMLDivElement | null>;
   virtualGrid: VirtualGrid;
   measureRoot: React.ReactNode;
   columnsReordering: ColumnsReordering;

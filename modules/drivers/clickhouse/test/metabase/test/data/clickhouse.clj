@@ -33,8 +33,16 @@
 (defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-materialized-view-fields]
   [_driver _feature _db] false)
 
+(defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-pks]
+  [_driver _feature _db] true)
+
 (defmethod driver/database-supports? [:clickhouse :metabase.query-processor.parameters-test/get-parameter-count]
   [_driver _feature _db] false)
+
+;; Python transforms swap in a new table with a drop and then a rename, since this driver doesn't support
+;; `:atomic-renames`.
+(defmethod driver/database-supports? [:clickhouse :test/python-transforms-without-atomic-renames]
+  [_driver _feature _database] true)
 
 (defmethod qp.alternative-date-test/iso-8601-text-fields-expected-rows :clickhouse
   [_driver]
@@ -53,6 +61,7 @@
    :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
    :jdbc_ignore_unsupported_values "true"
    :jdbc_schema_term               "schema",
+   :jdbc_metadata_use_show_statements false,
    :ignore_unknown_config_key      true
    :max_open_connections           100
    :remember_last_set_roles        true
@@ -83,6 +92,7 @@
      {:user user})
    (when-let [password (mt/db-test-env-var :clickhouse :password)]
      {:password password})
+   {:clickhouse-settings "join_use_nulls=1"}
    (when (= context :db)
      (let [database-name (ddl.i/format-name driver database-name)]
        {:db database-name

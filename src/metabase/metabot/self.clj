@@ -204,10 +204,11 @@
            ;; A streamed `:error` part means the provider failed mid-response (e.g. an OpenAI
            ;; `response.failed`) without throwing, so nothing else logs it. Surface it here so it
            ;; shows up in the server logs alongside the metric and the persisted turn error.
+           ;; Only these fields: the others of a provider's error object can name an account or a project.
            (log/error "Metabot LLM stream returned an error"
                       {:model  (:model tracking-opts "unknown")
                        :source (:tag tracking-opts "none")
-                       :error  (:error part)})
+                       :error  (select-keys (:error part) [:message :code :type :status :error-code])})
            (analytics/inc! :metabase-metabot/llm-errors
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
@@ -280,33 +281,64 @@
                  :ai-proxied            (boolean ai-proxy?)})))
            part))))
 
+(defn track-ai-service-event!
+  "Fires one :snowplow/ai_service_event named `event` for the turn in `tracking-opts`, with the envelope every
+  Metabot event shares: the hashed license token, the request id in its hex form, source, user, session, profile.
+  Fires only when :source and :request-id are present. `event-fields` carries what is the event's own:
+  :result, :duration-ms, :event-details. One envelope keeps the events of a turn joinable on request_id.
+
+  Never throws: a report must not change the outcome of the turn it reports. The envelope reads settings
+  before `track-event!` and its own guard run, so a failure there is caught here, logged, and returns false,
+  the same contract as `track-event!`."
+  [{:keys [request-id session-id source profile-id]} event event-fields]
+  (boolean
+   (when (and (some? source)
+              (some? request-id))
+     (try
+       (analytics.core/track-event! :snowplow/ai_service_event
+                                    (merge {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
+                                            :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
+                                            :source                        source
+                                            :event                         event
+                                            :user-id                       api/*current-user-id*
+                                            :session-id                    session-id
+                                            :profile                       (some-> profile-id name)}
+                                           event-fields))
+       (catch Throwable e
+         (log/warnf e "Error sending %s ai_service_event" event)
+         false)))))
+
 (defn- report-tool-usage-xf
   "Transducer that fires an agent_used_tool :snowplow/ai_service_event per tool call.
   Only fires when :source and :request-id are present in tracking-opts. A tool name outside `tools` is
-  model output that may carry user data, so it is reported as \"unknown\"."
-  [{:keys [request-id session-id source profile-id iteration]} tools]
+  model output that may carry user data, so it is reported as \"unknown\".
+
+  A failed call also reports its error's class and code from `tools.runtime/invoke`.
+  The codes are namespaced keywords, so moving or renaming one changes the reported value.
+  They describe the whole call, not the failed items inside a batched call.
+  The message and the recovery text never leave the instance.
+
+  A call that ran the query repair reports `repairs`, the names of the repair passes that changed its query
+  (`metabase.agent-lib.representations.repair/repairs`): `[]` when none did. The key is absent for a tool that
+  runs no repair and for a failed call. The names are code constants, so a rename of a pass changes the
+  reported value."
+  [{:keys [iteration] :as tracking-opts} tools]
   (map (fn [part]
-         (when (and (some? source)
-                    (some? request-id)
-                    (= (:type part) :tool-output))
-           (analytics.core/track-event! :snowplow/ai_service_event
-                                        {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
-                                         :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
-                                         :source                        source
-                                         :event                         "agent_used_tool"
-                                         :user-id                       api/*current-user-id*
-                                         :session-id                    session-id
-                                         :profile                       (some-> profile-id name)
-                                         :duration-ms                   (some-> (:duration-ms part) long)
-                                         ;; A failed call carries `:error` on its result — success
-                                         ;; is the absence of it, as it is everywhere else.
-                                         :result                        (if (get-in part [:result :error])
-                                                                          "error"
-                                                                          "success")
-                                         :event-details                 (cond-> {"tool_name" (if (contains? tools (:function part))
-                                                                                               (:function part)
-                                                                                               "unknown")}
-                                                                          (some? iteration) (assoc "step" iteration))}))
+         (when (= (:type part) :tool-output)
+           (let [{:keys [class code] :as error} (get-in part [:result :error])
+                 repairs                        (get-in part [:result :structured-output :repairs])]
+             (track-ai-service-event! tracking-opts "agent_used_tool"
+                                      {:duration-ms   (some-> (:duration-ms part) long)
+                                       ;; A failed call carries `:error` on its result — success
+                                       ;; is the absence of it, as it is everywhere else.
+                                       :result        (if error "error" "success")
+                                       :event-details (cond-> {"tool_name" (if (contains? tools (:function part))
+                                                                             (:function part)
+                                                                             "unknown")}
+                                                        (some? iteration) (assoc "step" iteration)
+                                                        (some? repairs)   (assoc "repairs" repairs)
+                                                        error             (assoc "error_class" (name class)
+                                                                                 "error_code"  (u/qualified-name code)))})))
          part)))
 
 (defn- with-retries
@@ -380,6 +412,118 @@
     (or (some-> status (>= 500)) (provider-unavailable-error-types error-type))
     :unavailable))
 
+(defn- error-object
+  "The provider's `error` object in the body of an error response."
+  [body]
+  ;; Mistral puts its error at the top level, not under `error`.
+  (or (:error body) body))
+
+(def ^:private kind-only-failures
+  "The kind of provider failure for each HTTP status, and each error type or code of a provider, that has no
+  user-facing message in [[provider-error]]."
+  ;; A 403 gets a kind and no message: its cause can be a blocked region, which the `:auth` message does not describe.
+  {403                           :auth
+   404                           :not-found
+   408                           :unavailable
+   "rate_limit_error"            :rate-limit
+   "rate_limit_exceeded"         :rate-limit
+   "authentication_error"        :auth
+   "invalid_api_key"             :auth
+   "not_found_error"             :not-found
+   "model_not_found"             :not-found
+   ;; Mistral's 400 for a model that does not exist. https://docs.mistral.ai/resources/error-glossary
+   "invalid_model"               :not-found
+   ;; Z.AI's 400 "Unknown Model". https://docs.z.ai/api-reference/api-code
+   "1211"                        :not-found
+   "server_error"                :unavailable
+   ;; Z.AI's finish reason for a failure upstream of it. https://docs.z.ai/api-reference/llm/chat-completion
+   "network_error"               :unavailable
+   ;; The exception types that Bedrock's `InvokeModelWithResponseStream` streams after its 200.
+   ;; https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ResponseStream.html
+   "throttlingException"         :rate-limit
+   "serviceUnavailableException" :unavailable
+   "internalServerException"     :unavailable
+   "modelTimeoutException"       :unavailable
+   "modelStreamErrorException"   :unavailable})
+
+(defn- streamed-status
+  "The HTTP status of a failure that the provider streamed after its 200, or nil.
+
+  OpenRouter and Gemini stream the HTTP status as an integer `error.code`. Other providers send their own integer
+  codes there, such as Z.AI's 1261 and 1113, so only a code in the HTTP status range is a status."
+  [{error-code :code}]
+  (when (and (int? error-code) (<= 100 error-code 599))
+    error-code))
+
+(defn- content-rejection?
+  "True when the `error` is one of OpenRouter's 403s for the content of the exchange: input that its moderation
+  flagged, a content filter that flagged the input or the output, or a model refusal that the provider sent as an
+  error."
+  ;; The content is at fault, not the credentials. The same refusal is model output on other providers.
+  ;; https://openrouter.ai/docs/api_reference/errors-and-debugging ("Moderation errors", "Typed error codes")
+  [{{:keys [reasons flagged_input error_type]} :metadata}]
+  (boolean (or (seq reasons)
+               flagged_input
+               (#{"content_policy_violation" "refusal"} error_type))))
+
+(defn- unknown-model?
+  "True when the `error` is OpenRouter's 400 for a model ID that does not exist."
+  ;; OpenRouter sends no code for it, only this text (probed 2026-11-24, stream and non-stream):
+  ;; {"error": {"message": "does-not-exist-123 is not a valid model ID", "code": 400}}
+  [status {:keys [message]}]
+  (and (= 400 status)
+       (boolean (re-find #"is not a valid model ID" (str message)))))
+
+(defn- provider-failure-kind
+  "Classify a provider failure as `:billing`, `:rate-limit`, `:auth`, `:not-found` or `:unavailable`, or nil when
+  the provider rejected a request that Metabot made, such as a malformed, too long, flagged or refused one.
+
+  Reads the same `status` and `error` as [[provider-failure]], and the [[streamed-status]] when `status` is nil.
+
+  All rules read a status, a type or a code, with two exceptions that read the message text, because the provider
+  sends a plain 400 with no code: Anthropic's used-up credit balance, which [[provider-failure]] matches for
+  `:billing`, and OpenRouter's [[unknown-model?]] for `:not-found`. When a provider changes that text, the failure
+  gets no kind."
+  [status {error-type :type error-code :code :as error}]
+  (let [status (or status (streamed-status error))]
+    (when-not (and (= 403 status) (content-rejection? error))
+      (or (provider-failure status error)
+          (when (unknown-model? status error) :not-found)
+          ;; A provider can send its own numeric code as a number or as a string, so read it as a string too.
+          (some kind-only-failures [status error-type error-code (some-> error-code str)])))))
+
+(def ^:private transport-error-codes
+  "The `:error-code` of each exception for a request that Metabot sent and that got no response from the provider:
+  the provider is unreachable, or the connection timed out or broke.
+
+  [[core/rethrow-api-error!]] sets `:provider-request-failed`. The Ollama and vLLM adapters set their own codes, and
+  the Google adapter sets one for its token request."
+  #{:provider-request-failed
+    :google-token-request-failed
+    :ollama-unreachable :ollama-timeout :ollama-stream-interrupted
+    :vllm-unreachable :vllm-timeout :vllm-stream-interrupted})
+
+(defn call-failure
+  "The kind of provider failure that made the LLM call throw `e`, or nil when the provider is not at fault.
+
+  The `:error-code` of a provider API exception gives one of three cases:
+  - `:provider-api-error`: the provider answered with an HTTP error. The kind is its [[provider-failure-kind]].
+  - one of the [[transport-error-codes]]: `:request-failed`.
+  - any other code: `:not-configured`. Metabot threw the exception before it sent a request, because a setting of
+    the provider connection is absent or has a value that Metabot refuses (no API key, a stale
+    `llm-metabot-provider`, an invalid region, a base URL on a network that the policy does not allow).
+
+  Unlike [[provider-error]], this is the same on the managed provider: it says whose the failure is, not what to
+  tell the user."
+  [e]
+  (let [{:keys [api-error status body error-code]} (ex-data e)]
+    (when api-error
+      (cond
+        ;; Not the presence of `:status`: an exception of Metabot's own can have one, such as `:llm-host-not-allowed`.
+        (= :provider-api-error error-code) (provider-failure-kind status (error-object body))
+        (transport-error-codes error-code) :request-failed
+        :else                              :not-configured))))
+
 (def ^:private context-overflow-message
   "The overflow 400 text of providers that send no structured code for it.
 
@@ -416,8 +560,7 @@
   "True when a provider API error's ex-data is a 400 for a prompt that does not fit the model's context window."
   [{:keys [status body]}]
   (and (= status 400)
-       ;; Mistral puts its error at the top level, not under `error`.
-       (context-overflow-object? (or (:error body) body))))
+       (context-overflow-object? (error-object body))))
 
 (defn- context-full-error
   "The user-facing `{:message :error-code}` for a conversation too long for the model's context window."
@@ -444,7 +587,7 @@
   ([e]
    (let [{:keys [api-error provider status body]} (ex-data e)]
      (when (and api-error provider)
-       (provider-error provider status (:error body)))))
+       (provider-error provider status (error-object body)))))
   ([provider status error]
    (when-let [failure (provider-failure status error)]
      (let [managed?      (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
@@ -472,21 +615,34 @@
 (defn- streamed-error
   "The user-facing `{:message :error-code}` for an `error` object streamed after a 200, or nil.
 
-  A context overflow gets [[context-full-error]]; there is no status to check. OpenRouter sends every failure after
-  its 200 inside the stream, with a typed `error.metadata.error_type`
-  (https://openrouter.ai/docs/api_reference/errors-and-debugging)."
+  A context overflow gets [[context-full-error]], whatever the status. Other failures are classified with the
+  [[streamed-status]], as [[provider-failure-kind]] does. OpenRouter sends every failure after its 200 inside the
+  stream, with a typed `error.metadata.error_type` (https://openrouter.ai/docs/api_reference/errors-and-debugging)."
   [provider error]
   (if (context-overflow-object? error)
     (context-full-error)
-    (provider-error provider nil error)))
+    (provider-error provider (streamed-status error) error)))
 
-(defn- provider-error-xf
-  "Transducer that replaces the error on a streamed `:error` part with [[streamed-error]]'s, when it has one."
+(defn- classified-error-part
+  "The streamed `:error` `part` with its `:error` reduced to what Metabot stores and shows: the [[streamed-error]], or
+  else the provider's `:message` and any `:error-code` of Metabot's own. The other fields of the provider's error
+  object can name an account or a project, so they do not go past this step.
+
+  Has the [[provider-failure-kind]] as `:provider-failure`, except for a context overflow, which is the request's
+  fault."
+  [provider {:keys [error] :as part}]
+  (let [kind (when-not (context-overflow-object? error)
+               (provider-failure-kind nil error))]
+    (cond-> (assoc part :error (or (streamed-error provider error)
+                                   (select-keys error [:message :error-code])))
+      kind (assoc :provider-failure kind))))
+
+(defn- streamed-error-xf
+  "Transducer that classifies each streamed `:error` part with [[classified-error-part]]."
   [provider]
   (map (fn [part]
-         (if-let [error (when (= :error (:type part))
-                          (streamed-error provider (:error part)))]
-           (assoc part :error error)
+         (if (= :error (:type part))
+           (classified-error-part provider part)
            part))))
 
 (defn- missing-required-permission
@@ -526,6 +682,15 @@
   [fn-name opts]
   (when-not (:required-permission opts)
     (log/warnf "%s invoked without :required-permission (source=%s tag=%s) — every LLM call should declare which metabot permission gates it."
+               fn-name (pr-str (:source opts)) (pr-str (:tag opts)))))
+
+(defn- warn-when-missing-request-id
+  "Every LLM call should carry the `:request-id` of its agent loop: a message limit leaves that loop out of its count,
+  so a call without one counts its own loop's earlier calls and can be blocked mid-turn. Logs a warn pointing at the
+  source/tag when the caller forgets. Shared by [[call-llm]] and [[call-llm-structured-with-trace]]."
+  [fn-name opts]
+  (when-not (:request-id opts)
+    (log/warnf "%s invoked without :request-id (source=%s tag=%s) — every LLM call should carry the id of its agent loop."
                fn-name (pr-str (:source opts)) (pr-str (:tag opts)))))
 
 (defn llm-call-unavailable-reason
@@ -580,7 +745,8 @@
                            log/warn pointing at the caller's source/tag.
 
   `llm-opts` is an optional map of provider-facing call options — see
-  [[parse-provider-model]]'s adapters for what each one honors.
+  [[parse-provider-model]]'s adapters for what each one honors. With `:tool-choice \"none\"` the tools are still
+  declared, but no tool runs, even when a provider that ignores the field returns a call.
 
   Returns a reducible that, when consumed, traces the full LLM round-trip as an
   OTel span and retries transient errors with exponential backoff. Global usage
@@ -591,7 +757,8 @@
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
   ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
    (warn-when-missing-required-permission "call-llm" tracking-opts)
-   (or (when-let [limit-msg (usage/check-usage-limits!)]
+   (warn-when-missing-request-id "call-llm" tracking-opts)
+   (or (when-let [limit-msg (usage/check-usage-limits! (:request-id tracking-opts))]
          (error-reducible limit-msg "ai_usage_limit_reached"))
        (when-let [missing (missing-required-permission (:required-permission tracking-opts))]
          (error-reducible (format "Permission denied: %s required" missing) "permission_denied"))
@@ -608,11 +775,11 @@
                                      tool-choice)           (assoc :tool_choice tool-choice)
                                 (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
                make-source    (fn []
-                                (eduction (comp (core/tool-executor-xf tools)
+                                (eduction (comp (core/tool-executor-xf (if (= "none" tool-choice) {} tools))
                                                 (core/lite-aisdk-xf)
                                                 (core/stamp-tool-titles-xf tools)
                                                 (report-aisdk-errors-xf tracking-opts)
-                                                (provider-error-xf provider)
+                                                (streamed-error-xf provider)
                                                 (report-token-usage-xf tracking-opts)
                                                 (report-tool-usage-xf tracking-opts tools))
                                           (stream-fn streaming-opts)))]
@@ -714,7 +881,8 @@
   provider system prompt, keeping untrusted content in the user channel."
   [provider-and-model messages json-schema temperature max-tokens opts]
   (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
-  (when-let [limit-msg (usage/check-usage-limits!)]
+  (warn-when-missing-request-id "call-llm-structured-with-trace" opts)
+  (when-let [limit-msg (usage/check-usage-limits! (:request-id opts))]
     (throw (ex-info limit-msg
                     {:type       :metabot/usage-limit-reached
                      :error-code "ai_usage_limit_reached"
@@ -751,6 +919,7 @@
           (let [parts    (into []
                                (comp (core/aisdk-xf)
                                      (report-aisdk-errors-xf tracking-opts)
+                                     (streamed-error-xf provider)
                                      (report-token-usage-xf tracking-opts))
                                (stream-fn streaming-opts))
                 result   (some (fn [{:keys [type arguments]}]

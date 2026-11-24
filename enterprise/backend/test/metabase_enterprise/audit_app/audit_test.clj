@@ -22,6 +22,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2])
   (:import
@@ -40,15 +41,16 @@
     (finally
       (mbc/ensure-audit-db-installed!))))
 
-(defmacro with-audit-db-restoration! [& body]
+(defmacro with-audit-db-restoration!
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
+  [& body]
   `(do-with-audit-db-restoration! (fn [] ~@body)))
 
 (deftest audit-db-installation-test
   (mt/test-drivers #{:postgres :h2 :mysql}
     (testing "Audit DB content is not installed when it is not found"
-      (t2/delete! :model/Database :is_audit true)
+      (database/delete-databases! (t2/select-pks-vec :model/Database :is_audit true))
       ;; reset checksum
       (audit/last-analytics-checksum! 0)
       (with-redefs [ee-audit/analytics-dir-resource nil]
@@ -58,7 +60,7 @@
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
             "No cards created for Audit DB."))
-      (t2/delete! :model/Database :is_audit true)
+      (database/delete-databases! (t2/select-pks-vec :model/Database :is_audit true))
       (audit/last-analytics-checksum! 0))
     (testing "Audit DB content is installed when it is found"
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
@@ -67,6 +69,16 @@
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
+    (testing "Fields of the audit views get the external Dimensions that remap them to names"
+      (let [field-id (fn [table-name field-name]
+                       (t2/select-one-pk :model/Field
+                                         :%lower.name field-name
+                                         :table_id    (t2/select-one-pk :model/Table
+                                                                        :db_id       audit/audit-db-id
+                                                                        :%lower.name table-name)))]
+        (is (=? {:type                    :external
+                 :human_readable_field_id (field-id "v_content" "name")}
+                (t2/select-one :model/Dimension :field_id (field-id "v_query_log" "card_qualified_id"))))))
     (testing "Cards in the audit collection have non-empty :result_metadata after installation"
       (let [audit-cards             (t2/select (card-schema/selection [:name]) :database_id audit/audit-db-id)
             audit-cards-no-metadata (filter (comp empty? :result_metadata) audit-cards)]
@@ -127,7 +139,7 @@
 
 (deftest no-sync-tasks-for-audit-db
   ;; clear out the old audit-db instance so that a new one can setup triggers with the temp scheduler
-  (t2/delete! :model/Database :id audit/audit-db-id)
+  (database/delete-databases! (t2/select-pks-vec :model/Database :id audit/audit-db-id))
   (mt/with-temp-scheduler!
     (#'task.sync-databases/job-init)
     (with-audit-db-restoration!
@@ -145,7 +157,7 @@
 
 (deftest checksum-not-recorded-when-load-fails-test
   (mt/test-drivers #{:postgres :h2 :mysql}
-    (t2/delete! :model/Database :is_audit true)
+    (database/delete-databases! (t2/select-pks-vec :model/Database :is_audit true))
     (testing "If audit content loading throws an exception, the checksum should not be stored"
       (audit/last-analytics-checksum! 0)
       (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal! (fn [& _] (throw (Exception. "Audit loading failed")))]
@@ -171,7 +183,7 @@
         resource "migrations/instance_analytics_views"
         entries  [["users/v1/postgres-users.sql"           "select 1;"]
                   ["dashboards/v1/postgres-dashboards.sql" "select 2;"]]
-        jar-url  (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))
+        jar-url  (.toURL (java.net.URI. (format "jar:%s!/%s" (.toUri jar-path) resource)))
         expected (hash (sort-by first (mapv (fn [[rel sql]] [rel sql]) entries)))]
     (try
       (with-open [out (-> jar-path
@@ -203,7 +215,7 @@
                            (.putNextEntry out (JarEntry. (str resource "/" rel)))
                            (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
                            (.closeEntry out)))
-                       [jar-path (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))]))
+                       [jar-path (.toURL (java.net.URI. (format "jar:%s!/%s" (.toUri jar-path) resource)))]))
           [jar-a url-a] (make-jar [["a.sql" "select 1;"]])
           [jar-b url-b] (make-jar [["b.sql" "select 1;"]])]
       (try
@@ -233,7 +245,7 @@
             syncs    (atom 0)]
         (ee.audit.settings/last-analytics-views-checksum! 0)
         ;; any engine other than the host's takes the ::updated path
-        (t2/update! :model/Database (:id audit-db) {:engine (if (= :postgres (mdb/db-type)) "h2" "postgres")})
+        (t2/update! :model/Database :id (:id audit-db) {:engine (if (= :postgres (mdb/db-type)) "h2" "postgres")})
         (mt/with-dynamic-fn-redefs [ee-audit/views-checksum (constantly 12345)
                                     sync.core/sync-database! (fn [& _] (swap! syncs inc))]
           (is (= ::ee-audit/updated (#'ee-audit/maybe-install-audit-db!)))
@@ -345,8 +357,8 @@
                                         :query    {:source-table orig-id}}}]
           (testing "precondition: an interrupted host-adjust + schema sync duplicates the view row"
             ;; flip the schema to a value the host driver will not report, so the sync diff mismatches
-            (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
-            (sync/sync-database! (t2/select-one :model/Database :is_audit true) {:scan :schema})
+            (t2/update! :model/Table :id orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
+            (sync/sync-database! (:id (t2/select-one :model/Database :is_audit true)) {:scan :schema})
             (is (= 2 (t2/count :model/Table :db_id audit/audit-db-id :name (:name v-content)))
                 "stale-schema sync should produce a duplicate pair")
             (is (false? (t2/select-one-fn :active :model/Table :id orig-id))
@@ -383,8 +395,8 @@
                         :table_id      orig-id
                         :dataset_query {:database audit/audit-db-id :type :query :query {:source-table orig-id}}}]
           (testing "precondition: a real Mode A duplicate pair, customer card on the new/active row"
-            (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
-            (sync/sync-database! (t2/select-one :model/Database :is_audit true) {:scan :schema})
+            (t2/update! :model/Table :id orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
+            (sync/sync-database! (:id (t2/select-one :model/Database :is_audit true)) {:scan :schema})
             (let [rows   (t2/select [:model/Table :id :active] :db_id audit/audit-db-id
                                     {:where [:= [:lower :name] "v_content"]})
                   new-id (:id (first (filter :active rows)))]
@@ -435,7 +447,7 @@
   ;; is interrupted, the checksum must stay put so the next boot re-runs the load and the adjust.
   (mt/test-drivers #{:postgres :h2 :mysql}
     (try
-      (t2/delete! :model/Database :is_audit true)
+      (database/delete-databases! (t2/select-pks-vec :model/Database :is_audit true))
       (audit/last-analytics-checksum! 0)
       (testing "an interrupted adjust-audit-db-to-host! does not advance the checksum"
         (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal!  (fn [& _] {:seen [] :errors []})
@@ -446,7 +458,7 @@
               "checksum stays 0 so the next boot re-runs the load and host-adjust")))
       (finally
         ;; restore a clean, installed audit DB for sibling tests regardless of how this test exits
-        (t2/delete! :model/Database :is_audit true)
+        (database/delete-databases! (t2/select-pks-vec :model/Database :is_audit true))
         (audit/last-analytics-checksum! 0)
         (mbc/ensure-audit-db-installed!)))))
 
@@ -470,10 +482,10 @@
       ;; "Boot 2": the full, un-stubbed pipeline, spying on audit-DB syncs.
       (let [audit-db-syncs (atom 0)
             real-sync      (mt/original-fn #'sync.core/sync-database!)]
-        (mt/with-dynamic-fn-redefs [sync.core/sync-database! (fn [db & [opts]]
-                                                               (when (:is_audit db)
+        (mt/with-dynamic-fn-redefs [sync.core/sync-database! (fn [db-id & [opts]]
+                                                               (when (= db-id (:id audit-db))
                                                                  (swap! audit-db-syncs inc))
-                                                               (real-sync db opts))]
+                                                               (real-sync db-id opts))]
           (mbc/ensure-audit-db-installed!))
         (testing "the boot after an interrupted engine-changed sync re-syncs the audit DB"
           (is (pos? @audit-db-syncs)))))))

@@ -66,10 +66,15 @@
 .ModalLoadingAndErrorWrapper {
   display: flex;
   flex-direction: column;
-  height: calc(50vh + 11.25rem);
+  /* The body plus the footer, so the modal keeps its size once loaded */
+  height: calc(50vh + 4rem);
 
   /* The loading skeleton or error message fills the space of the modal it stands in for */
   & > * {
     flex: 1;
   }
+}
+
+.hiddenContent {
+  visibility: hidden;
 }

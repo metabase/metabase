@@ -1,5 +1,6 @@
 ---
 title: Public sharing
+summary: Share a question, dashboard, or document with anyone through a link or iframe, no Metabase account required.
 redirect_from:
   - /docs/latest/administration-guide/12-public-links
   - /docs/latest/embedding/12-public-links
@@ -36,6 +37,8 @@ Open the public link in a new tab to test the download.
 To share a dashboard via a public link, admins can click on the **Share** button in the top right menu.
 
 ![Sharing a dashboard](./images/dashboard-sharing.png)
+
+Public dashboards show the [events](../exploration-and-organization/events-and-timelines.md#events-in-public-links-and-embeds) each question was saved with to anyone who has the link, even people who can't access the timeline's collection.
 
 To embed a dashboard, see [guest embedding](./guest-embedding.md).
 
@@ -250,6 +253,8 @@ To disable public sharing:
 4. Toggle off **Public sharing**.
 
 Once toggled on, the **Public sharing** section will display Metabase questions, dashboards, documents, and actions with active public links.
+
+On self-hosted Metabases, you can also turn public sharing on or off with the [`MB_ENABLE_PUBLIC_SHARING`](../configuring-metabase/environment-variables.md#mb_enable_public_sharing) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 If you disable public sharing, then re-enable public sharing, all your previously generated public links will still work (as long as you didn't deactivate them).
 

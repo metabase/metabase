@@ -3,6 +3,7 @@ import { useLatest } from "react-use";
 import { isEqual } from "underscore";
 
 import {
+  buildClickParameters,
   buildControlledParameters,
   buildParametersPayload,
 } from "embedding-sdk-bundle/lib/controlled-parameters";
@@ -13,11 +14,21 @@ import type { ParameterValuesMap } from "metabase-types/api";
 
 import type { SqlParameterValues } from "../../types";
 
+export type NavigatedSqlEntityOptions = {
+  rawClickParameters: SqlParameterValues;
+  onParametersChange: (
+    payload: SqlParameterChangePayload & {
+      clickParameters: SqlParameterValues;
+    },
+  ) => void;
+};
+
 type Options = {
   sqlParameters: SqlParameterValues | null | undefined;
   onSqlParametersChange:
     | ((payload: SqlParameterChangePayload) => void)
     | undefined;
+  navigatedEntity?: NavigatedSqlEntityOptions;
   question: Question | undefined;
   parameterValues: ParameterValuesMap;
   updateParameterValues: (next: ParameterValuesMap) => void;
@@ -33,6 +44,7 @@ type Options = {
 export const useSdkControlledSqlParameters = ({
   sqlParameters,
   onSqlParametersChange,
+  navigatedEntity,
   question,
   parameterValues,
   updateParameterValues,
@@ -57,6 +69,7 @@ export const useSdkControlledSqlParameters = ({
     parameterDefinitions,
     parameterValues,
     onSqlParametersChange,
+    navigatedEntity,
     lastSqlParametersPushRef,
   });
 };
@@ -126,6 +139,7 @@ const useObserveAppliedSqlParameters = ({
   parameterDefinitions,
   parameterValues,
   onSqlParametersChange,
+  navigatedEntity,
   lastSqlParametersPushRef,
 }: {
   question: Question | undefined;
@@ -134,6 +148,7 @@ const useObserveAppliedSqlParameters = ({
   onSqlParametersChange:
     | ((payload: SqlParameterChangePayload) => void)
     | undefined;
+  navigatedEntity: NavigatedSqlEntityOptions | undefined;
   lastSqlParametersPushRef: MutableRefObject<SqlParameterValues | null>;
 }) => {
   // Tracks question id change, so we can fire event with `source: initial-state`
@@ -141,6 +156,7 @@ const useObserveAppliedSqlParameters = ({
   const emittedValuesRef = useRef<ParameterValuesMap | null>(null);
 
   const callbackRef = useLatest(onSqlParametersChange);
+  const navigatedEntityRef = useLatest(navigatedEntity);
 
   useEffect(() => {
     if (!question || parameterDefinitions.length === 0) {
@@ -162,8 +178,22 @@ const useObserveAppliedSqlParameters = ({
       parameterDefinitions,
     );
 
+    const emit = (source: SqlParameterChangePayload["source"]) => {
+      const event = { source, ...payload };
+      callbackRef.current?.(event);
+
+      const navigated = navigatedEntityRef.current;
+      navigated?.onParametersChange({
+        ...event,
+        clickParameters: buildClickParameters(
+          navigated.rawClickParameters,
+          parameterDefinitions,
+        ),
+      });
+    };
+
     if (isLoadEvent) {
-      callbackRef.current?.({ source: "initial-state", ...payload });
+      emit("initial-state");
 
       return;
     }
@@ -173,15 +203,16 @@ const useObserveAppliedSqlParameters = ({
 
     if (lastSqlParametersPush !== null) {
       if (!isEqual(payload.parameters, lastSqlParametersPush)) {
-        callbackRef.current?.({ source: "auto-change", ...payload });
+        emit("auto-change");
       }
 
       return;
     }
 
-    callbackRef.current?.({ source: "manual-change", ...payload });
+    emit("manual-change");
   }, [
     callbackRef,
+    navigatedEntityRef,
     question,
     parameterDefinitions,
     parameterValues,

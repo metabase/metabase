@@ -1,6 +1,9 @@
 (ns metabase.collections.schema
   (:require
+   [malli.util :as mut]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -79,7 +82,6 @@
    [:archived :boolean]
    [:copy {:optional true} :boolean]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_preview {:optional true} [:maybe :boolean]]
    [:fully_parameterized {:optional true} [:maybe :boolean]]
    [:based_on_upload {:optional true} [:maybe [:or ms/PositiveInt :string]]]
    [:collection {:optional true} [:maybe ::Collection]]
@@ -108,7 +110,8 @@
     [:id                   ::lib.schema.id/collection]
     [:can_write            {:optional true} :boolean]
     [:is_personal          {:optional true} [:maybe :boolean]]
-    [:effective_location   {:optional true} [:maybe :string]]]])
+    [:effective_location   {:optional true} [:maybe :string]]
+    [:effective_ancestors  {:optional true} [:sequential [:ref ::collection-or-root]]]]])
 
 (mr/def ::root-collection
   "The placeholder for the Root Collection, which has no row, as `metabase.collections.models.collection.root` builds it."
@@ -127,27 +130,74 @@
    [:can_restore         {:optional true} :boolean]
    [:can_delete          {:optional true} :boolean]])
 
+(mr/def ::effective-ancestor
+  "A collection that `:effective_ancestors` lists, other than the Root Collection placeholder."
+  [:map {:closed true}
+   [:id                ::lib.schema.id/collection]
+   [:name              :string]
+   [:type              [:maybe :string]]
+   [:personal_owner_id [:maybe ms/PositiveInt]]
+   [:can_write         {:optional true} :boolean]])
+
 (mr/def ::collection-or-root
   "A Collection row, or the Root Collection placeholder."
   [:multi {:dispatch (fn [x] (if (:metabase.collections.models.collection.root/is-root? x) :root :row))}
    [:root [:ref ::root-collection]]
    [:row  [:ref ::collection]]])
 
+(mr/def ::collection.type
+  "The `:type` column of a Collection: nil for a regular Collection, or one of these special types, or `remote-synced`,
+  which a write turns into the `is_remote_synced` flag."
+  [:enum {:decode/normalize lib.schema.common/normalize-string-key}
+   "trash" "tenant-specific-root-collection" "instance-analytics"
+   "library" "library-data" "library-metrics" "library-dashboards" "remote-synced"])
+
+(mr/def ::collection.name
+  ms/NonBlankString)
+
 (mr/def ::collection.update
-  "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional."
+  "A Collection by its `id` with the columns to change, each optional."
   [:map {:closed true}
-   [:name                 {:optional true} [:maybe :string]]
+   [:id                   ::lib.schema.id/collection]
+   [:name                 {:optional true} [:maybe ::collection.name]]
    [:description          {:optional true} [:maybe :string]]
    [:archived             {:optional true} [:maybe :boolean]]
    [:location             {:optional true} [:maybe :string]]
    [:personal_owner_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:slug                 {:optional true} [:maybe :string]]
-   [:namespace            {:optional true} [:maybe [:or :keyword :string]]]
-   [:authority_level      {:optional true} [:maybe [:or :keyword :string]]]
+   [:namespace            {:optional true} [:maybe [:or ::lib.schema.common/keyword :string]]]
+   [:authority_level      {:optional true} [:maybe [:or ::lib.schema.common/keyword :string]]]
    [:entity_id            {:optional true} [:maybe :string]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:type                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:type                 {:optional true} [:maybe ::collection.type]]
    [:is_sample            {:optional true} [:maybe :boolean]]
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]
    [:is_remote_synced     {:optional true} [:maybe :boolean]]])
+
+(mr/def ::collection.create
+  "What a caller gives to create a Collection: the columns of an update without the `:id`, and a name."
+  [:merge
+   (mut/dissoc ::collection.update :id)
+   [:map {:closed true}
+    [:name ::collection.name]]])
+
+(mr/def ::external-collection
+  "A Collection as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::collection [:archive_operation_id :archived :archived_directly :authority_level :description
+                                :entity_id :is_remote_synced :is_sample :name :namespace :slug :type
+                                :personal_owner_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:parent_id {:optional true} [:maybe ::lib.schema.id/collection]]]]])
+(mr/def ::positions
+  "A range of `collection_position` values as plain data: from `:from` up to `:to`, either bound left out for none."
+  [:map {:closed true}
+   [:from {:optional true} ms/PositiveInt]
+   [:to   {:optional true} ms/PositiveInt]])
+
+(mr/def ::position-direction
+  "Which way a shift moves positions: `:+` adds one to each, `:-` subtracts one."
+  [:enum :+ :-])

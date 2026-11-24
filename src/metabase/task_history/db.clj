@@ -2,6 +2,9 @@
   "Application database queries for the task history module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
+   [metabase.app-db.core :as mdb]
+   [metabase.run-tracking.core :as rt]
    [metabase.task-history.schema :as task-history.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -11,28 +14,29 @@
 (mu/defn database-names-by-id
   "A map of id to name for the Databases with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Database :id [:in ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :name :model/Database :id [:in %]) ids))
 
 (mu/defn card-names-by-id
   "A map of id to name for the Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Card :id [:in ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :name :model/Card :id [:in %]) ids))
 
 (mu/defn dashboard-names-by-id
   "A map of id to name for the Dashboards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Dashboard :id [:in ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :name :model/Dashboard :id [:in %]) ids))
 
 (mu/defn task-counts-for-runs
   "The total, successful, and failed TaskHistory counts of the TaskRuns with `run-ids`, grouped by run."
   [run-ids :- [:sequential ms/PositiveInt]]
-  (t2/query {:select   [:run_id
-                        [[:count :id] :task_count]
-                        [[:sum [:case [:= :status (h2x/literal "success")] [:inline 1] :else [:inline 0]]] :success_count]
-                        [[:sum [:case [:= :status (h2x/literal "failed")] [:inline 1] :else [:inline 0]]] :failed_count]]
-             :from     :task_history
-             :where    [:in :run_id run-ids]
-             :group-by [:run_id]}))
+  (mdb/select-batched #(t2/query {:select   [:run_id
+                                             [[:count :id] :task_count]
+                                             [[:sum [:case [:= :status (h2x/literal "success")] [:inline 1] :else [:inline 0]]] :success_count]
+                                             [[:sum [:case [:= :status (h2x/literal "failed")] [:inline 1] :else [:inline 0]]] :failed_count]]
+                                  :from     :task_history
+                                  :where    [:in :run_id %]
+                                  :group-by [:run_id]})
+                      run-ids))
 
 (defn- run-where
   ;; columns are qualified because the entity_name/task_count sorts add joins whose tables may share column names
@@ -95,14 +99,15 @@
    limit          :- [:maybe ms/PositiveInt]
    offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/TaskRun
-             (cond-> (merge (run-where filters) (runs-order-by sort-column sort-direction))
-               limit  (assoc :limit limit)
-               offset (assoc :offset offset))))
+             (h2x/assert-map-or-nil!
+              (cond-> (merge (run-where filters) (runs-order-by sort-column sort-direction))
+                limit  (assoc :limit limit)
+                offset (assoc :offset offset)))))
 
 (mu/defn task-run-count
   "The number of TaskRuns matching `filters` (see [[run-where]] for the supported keys)."
   [filters :- RunFilters]
-  (t2/count :model/TaskRun (or (run-where filters) {})))
+  (t2/count :model/TaskRun (h2x/assert-map-or-nil! (or (run-where filters) {}))))
 
 (mu/defn task-run
   "The TaskRun with `id`, or nil."
@@ -133,10 +138,10 @@
                                                   :offset   offset
                                                   :order-by [[:ended_at :desc]]}))
 
-(mu/defn delete-task-history-ended-before!
-  "Delete the TaskHistory rows that ended at or before `ended-before`."
+(mu/defn task-history-ids-ended-before :- [:sequential ms/PositiveInt]
+  "The ids of the TaskHistory rows that ended at or before `ended-before`."
   [ended-before :- ms/TemporalInstant]
-  (t2/delete! (t2/table-name :model/TaskHistory) :ended_at [:<= ended-before]))
+  (vec (t2/select-pks-vec :model/TaskHistory :ended_at [:<= ended-before])))
 
 (def ^:private join-sort-columns
   "Sort columns that require a LEFT JOIN to `metabase_database`, mapped to the joined column to order by."
@@ -188,16 +193,41 @@
   (t2/select-fn-vec :task [:model/TaskHistory :task] {:group-by [:task]
                                                       :order-by [:task]}))
 
-(mu/defn update-task-history!
-  "Apply `changes` to the TaskHistory row with `id`."
+(defn- now-clause
+  "A HoneySQL form for the app DB's time at the start of the statement, which unlike `now()` on Postgres moves on
+  inside a transaction."
+  []
+  (case (mdb/db-type)
+    :postgres :%statement_timestamp
+    (h2x/current-datetime-honeysql-form (mdb/db-type))))
+
+(defn- duration-clause
+  "A HoneySQL form for the whole milliseconds, never negative, from the stored `started_at` of a TaskHistory row to the
+  database's now, which within one statement is the same instant as the `ended_at` it sets."
+  []
+  (let [db-type (mdb/db-type)
+        now     (now-clause)]
+    [:greatest
+     [:inline 0]
+     (case db-type
+       :postgres [:cast [:floor [:* [:inline 1000] [::h2x/extract :epoch [:- now :started_at]]]] :integer]
+       :mysql    [:floor [:/ [::h2x/timestampdiff :microsecond :started_at now] [:inline 1000]]]
+       :h2       [:datediff (h2x/literal "millisecond") :started_at now])]))
+
+(mu/defn end-task-history!
+  "Record the end of the TaskHistory row with `id` with `changes`: `ended_at` is the database's now and `duration` the
+  milliseconds since its `started_at`, unless `changes` gives them."
   [id      :- ms/PositiveInt
-   changes :- ::task-history.schema/task-history.update]
-  (t2/update! :model/TaskHistory id changes))
+   changes :- (mut/dissoc ::task-history.schema/task-history.update :started_at)]
+  (t2/update! :model/TaskHistory :id id (merge {:ended_at (now-clause)
+                                                :duration (duration-clause)}
+                                               changes)))
 
 (mu/defn insert-task-history!
-  "Insert the TaskHistory `row` and return its id."
+  "Insert the TaskHistory `row`, started at the database's now unless it gives `started_at`, and return its id."
   [row :- ::task-history.schema/task-history.update]
-  (t2/insert-returning-pk! :model/TaskHistory row))
+  (t2/insert-returning-pk! :model/TaskHistory
+                           (merge {:started_at (now-clause)} row)))
 
 (mu/defn insert-task-run!
   "Insert the TaskRun `row` and return its id."
@@ -210,11 +240,12 @@
   (t2/select-fn-set :status :model/TaskHistory :run_id run-id))
 
 (mu/defn finish-started-task-run!
-  "Set the status and end time of the started TaskRun with `run-id`."
-  [run-id   :- ms/PositiveInt
-   status   :- :keyword
-   ended-at :- ms/TemporalInstant]
-  (t2/update! :model/TaskRun {:id run-id :status :started} {:status status, :ended_at ended-at}))
+  "Set the status of the started TaskRun with `run-id` and its end time to the database's now, the clock that set its
+  start."
+  [run-id :- ms/PositiveInt
+   status :- :keyword]
+  (t2/update! :model/TaskRun {:id run-id :status :started} {:status   status
+                                                            :ended_at (now-clause)}))
 
 (mu/defn heartbeat-started-task-runs!
   "Touch `updated_at` of the started TaskRuns of `process-uuid` with the app DB's now, returning the number updated."
@@ -225,6 +256,17 @@
   "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, ended at the app DB's now, returning
   the number updated."
   [run-ids :- [:set ms/PositiveInt]]
-  (t2/update! :model/TaskHistory
-              {:status :started, :run_id [:in run-ids]}
-              {:status :unknown, :ended_at :%now}))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/TaskHistory
+                                                          {:status :started, :run_id [:in %]}
+                                                          {:status :unknown, :ended_at :%now}) run-ids))
+
+(mu/defn set-started-task-runs-terminal!
+  "Apply the `terminal` column values to the started TaskRuns with `run-ids`, returning the number updated."
+  [run-ids  :- [:sequential ms/PositiveInt]
+   terminal :- [:map {:closed true}
+                [:status    {:optional true} [:maybe [:or :string :keyword]]]
+                [:end_time  {:optional true} [:maybe [:or :string :keyword]]]
+                [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
+                [:is_active {:optional true} [:maybe :boolean]]
+                [:message   {:optional true} [:maybe :string]]]]
+  [(mdb/sum-batched mdb/update-partition-size #(first (t2/query (rt/terminal-statement :model/TaskRun [:status "started"] % terminal))) run-ids)])

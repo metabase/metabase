@@ -1,7 +1,6 @@
 import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 
-import { findErrorMessage } from "metabase/api/utils/errors";
 import { getUser } from "metabase/current-user";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import type { State } from "metabase/redux/store";
@@ -21,8 +20,7 @@ export const getDetailViewState = (state: State) => {
 };
 
 export const getErrorMessage = (state: State) => {
-  const errorPage = getErrorPage(state);
-  return findErrorMessage(errorPage?.data) ?? errorPage?.data;
+  return getErrorPage(state)?.message;
 };
 
 export const getIsNavbarOpen: Selector<State, boolean> = createSelector(

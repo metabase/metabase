@@ -5,15 +5,22 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
+   [metabase.documents.api.document :as api.document]
+   [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
+   [metabase.public-sharing.test-util :as public-sharing.test-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
 
@@ -122,6 +129,23 @@
         (mt/user-http-request :crowberto
                               :get 404 "document/99999")))))
 
+(deftest get-document-runs-content-gate-once-test
+  (testing "one GET /api/document/:id adjudicates the document's content once"
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+        (mt/with-temp [:model/Document   {document-id :id} {:name          "Test Document"
+                                                            :collection_id coll-id
+                                                            :document      (documents.test-util/text->prose-mirror-ast "Doc 1")}]
+          (let [gate  @#'m.document/doc-content-visibility-fn
+                orig  @gate
+                calls (atom 0)]
+            (try
+              (reset! gate (fn [_docs] (fn [_doc] (swap! calls inc) true)))
+              (mt/user-http-request :rasta :get 200 (format "document/%s" document-id))
+              (is (= 1 @calls))
+              (finally
+                (reset! gate orig)))))))))
+
 (defn- recent-view
   "The RecentViews row, if any, for `user-id` viewing document `document-id`. Document reads record a recent
   view (asynchronously via grouper, so these tests force synchronous batching), giving us a reliable signal
@@ -208,7 +232,7 @@
                                                          :dataset_query (mt/mbql-query venues)
                                                          :archived true}]
         ;; Ensure the source document embeds the cards we expect to be copied (and one archived card that should not).
-        (t2/update! :model/Document doc-id
+        (t2/update! :model/Document :id doc-id
                     {:document {:type "doc"
                                 :content [{:type "cardEmbed" :attrs {:id card-1-id :name nil}}
                                           {:type "paragraph"}
@@ -233,6 +257,62 @@
               (is (contains? (set embedded-ids) (get new-cards-by-name "Card 1")))
               (is (contains? (set embedded-ids) (get new-cards-by-name "Card 2")))
               (is (contains? (set embedded-ids) (get new-cards-by-name "Archived Card"))))))))))
+
+(defn- copy-statement-count!
+  "The number of app DB statements of copying a Document with `n` cards, the first `n-archived` of them archived, as
+  `user`."
+  [user n n-archived]
+  (let [mp         (mt/metadata-provider)
+        query      (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        collection (collection/user->personal-collection (mt/user->id user))]
+    (mt/with-temp [:model/Document {doc-id :id} {:name         "Source Document"
+                                                 :collection_id (:id collection)
+                                                 :content_type prose-mirror/prose-mirror-content-type}]
+      (doseq [i (range n)]
+        (t2/insert! :model/Card {:name                   (str "Card " i)
+                                 :type                   :question
+                                 :document_id            doc-id
+                                 :collection_id          (:id collection)
+                                 :creator_id             (mt/user->id user)
+                                 :database_id            (mt/id)
+                                 :dataset_query          query
+                                 :display                "table"
+                                 :visualization_settings {}
+                                 :archived               (< i n-archived)
+                                 :archived_directly      (< i n-archived)}))
+      (events.tu/real-statement-count!
+       #(mt/user-http-request user :post 200 (format "document/%d/copy" doc-id)
+                              {:collection_id (:id collection)})))))
+
+(deftest copy-document-statement-count-test
+  (testing "POST /api/document/:id/copy costs the same number of statements for more cards, archived or not"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (doseq [user [:crowberto :rasta]]
+        (copy-statement-count! user 2 1)
+        (testing (str "as " (name user))
+          (is (= (copy-statement-count! user 3 1)
+                 (copy-statement-count! user 9 7)))
+          (is (= (copy-statement-count! user 3 0)
+                 (copy-statement-count! user 9 0))))))))
+
+(deftest copy-document-keeps-cards-and-archived-state-test
+  (testing "POST /api/document/:id/copy copies every card in order with its archived state"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Source Document"
+                                                   :content_type prose-mirror/prose-mirror-content-type}
+                     :model/Card {live-id :id} {:name "Live" :document_id doc-id
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
+                     :model/Card {gone-id :id} {:name "Gone" :document_id doc-id
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :users))))
+                                                :archived true :archived_directly true}]
+        (let [copied (mt/user-http-request :crowberto :post 200 (format "document/%d/copy" doc-id) {})
+              by-name (m/index-by :name (t2/select :model/Card :document_id (:id copied)))]
+          (is (= #{"Live" "Gone"} (set (keys by-name))))
+          (is (=? {:archived false :archived_directly false} (get by-name "Live")))
+          (is (=? {:archived true :archived_directly true} (get by-name "Gone")))
+          (is (not-any? #{live-id gone-id} (map :id (vals by-name)))))))))
 
 (deftest copy-document-permissions-test
   (testing "POST /api/document/:id/copy - permission checks"
@@ -467,7 +547,7 @@
             (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id))))))
         (testing "moving to non-existent collection fails gracefully"
           (mt/user-http-request :crowberto
-                                :put 400 (format "document/%s" document-id)
+                                :put 404 (format "document/%s" document-id)
                                 {:collection_id 99999})
           ;; Verify nothing changed
           (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
@@ -629,9 +709,8 @@
                                                                 :attrs {:id -10}}]}
                                           :cards {-10 {:name "Ad hoc Card"
                                                        ;; Lib, not the deprecated `mt/mbql-query`
-                                                       :dataset_query (lib/->legacy-MBQL
-                                                                       (let [mp (mt/metadata-provider)]
-                                                                         (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+                                                       :dataset_query (let [mp (mt/metadata-provider)]
+                                                                        (lib/query mp (lib.metadata/table mp (mt/id :venues))))
                                                        :display :table
                                                        :visualization_settings {}}}})
             new-card-id (-> result :document :content first :attrs :id)]
@@ -1426,6 +1505,29 @@
               ;; Verify document wasn't moved
               (is (= write-col (:collection_id (t2/select-one :model/Document :id doc-id)))))))))))
 
+(deftest document-move-to-or-from-root-requires-root-write-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (perms/grant-collection-read-permissions! (perms/all-users-group) collection/root-collection)
+    (mt/with-temp [:model/Collection {write-col :id} {:name "Write Collection"}
+                   :model/Document   {doc-id :id}      {:name          "In a writable collection"
+                                                        :document      (documents.test-util/text->prose-mirror-ast "x")
+                                                        :collection_id write-col}
+                   :model/Document   {root-doc-id :id} {:name     "In root"
+                                                        :document (documents.test-util/text->prose-mirror-ast "x")}]
+      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) write-col)
+      (testing "moving a document into root without root write perms is forbidden"
+        (mt/user-http-request :rasta :put 403 (format "document/%s" doc-id) {:collection_id nil})
+        (is (= write-col (t2/select-one-fn :collection_id :model/Document :id doc-id))))
+      (testing "moving a document out of root without root write perms is forbidden"
+        (mt/user-http-request :rasta :put 403 (format "document/%s" root-doc-id) {:collection_id write-col})
+        (is (nil? (t2/select-one-fn :collection_id :model/Document :id root-doc-id))))
+      (testing "an update that doesn't mention collection_id doesn't move the document"
+        (mt/user-http-request :rasta :put 200 (format "document/%s" doc-id) {:name "Renamed"})
+        (is (= write-col (t2/select-one-fn :collection_id :model/Document :id doc-id))))
+      (testing "a user with root write perms can move a document into root"
+        (mt/user-http-request :crowberto :put 200 (format "document/%s" doc-id) {:collection_id nil})
+        (is (nil? (t2/select-one-fn :collection_id :model/Document :id doc-id)))))))
+
 (deftest rasta-document-read-permissions-test
   (testing "Document read permissions for non-admin user :rasta"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -1674,7 +1776,7 @@
           (is (true? (:archived doc)))
           (is (true? (:archived_directly doc)))
           (is (true? (:archived card)))
-          (is (true? (:archived_directly card)))))
+          (is (false? (:archived_directly card)))))
       (testing "unarchiving directly archived document works"
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
@@ -1697,24 +1799,36 @@
           (is (true? (:archived card)))
           (is (false? (:archived_directly card)))))
       (testing "directly archived documents stay archived when collection is unarchived"
-        ;; First, directly archive the document
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived false})
+        (mt/user-http-request :crowberto
+                              :put 200 (format "document/%s" doc-id)
+                              {:archived true})
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived true})
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived false})
+        (let [doc (t2/select-one :model/Document :id doc-id)
+              card (t2/select-one :model/Card :id card-id)]
+          (is (true? (:archived doc)))
+          (is (true? (:archived_directly doc)))
+          (is (true? (:archived card)))
+          (is (false? (:archived_directly card)))))
+      (testing "a document that is not archived in an archived collection is archived as following it"
+        (mt/user-http-request :crowberto
+                              :put 200 (format "collection/%s" coll-id)
+                              {:archived true})
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
                               {:archived false})
         (mt/user-http-request :crowberto
                               :put 200 (format "document/%s" doc-id)
                               {:archived true})
-        ;; Then unarchive the collection
-        (mt/user-http-request :crowberto
-                              :put 200 (format "collection/%s" coll-id)
-                              {:archived false})
-        ;; Document should remain archived because it was archived directly
-        (let [doc (t2/select-one :model/Document :id doc-id)
-              card (t2/select-one :model/Card :id card-id)]
-          (is (true? (:archived doc)))
-          (is (true? (:archived_directly doc)))
-          (is (true? (:archived card)))
-          (is (true? (:archived_directly card))))))))
+        (is (=? {:archived true, :archived_directly false}
+                (t2/select-one [:model/Document :archived :archived_directly] :id doc-id)))))))
 
 (deftest archived-documents-filtering-test
   (testing "Archived documents are properly filtered from various endpoints"
@@ -1749,24 +1863,27 @@
       (testing "archiving document publishes archive event"
         (mt/with-model-cleanup [:model/Document]
           (let [events (atom [])]
-            (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
-                                                                (swap! events conj {:topic topic :event event}))]
+            (with-redefs [events/publish-event! (fn [topic event]
+                                                  (swap! events conj {:topic topic :event event}))]
               (mt/user-http-request :crowberto
                                     :put 200 (format "document/%s" doc-id)
                                     {:archived true})
               ;; Should have published document-archive event
-              (is (some #(= :event/document-delete (:topic %)) @events))))))
+              (is (some #(and (= :event/document-update (:topic %))
+                              (some (comp true? :archived :object) (:changes (:event %))))
+                        @events))))))
       (testing "unarchiving document publishes update event"
         (mt/with-model-cleanup [:model/Document]
           (let [events (atom [])]
-            (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
-                                                                (swap! events conj {:topic topic :event event}))]
+            (with-redefs [events/publish-event! (fn [topic event]
+                                                  (swap! events conj {:topic topic :event event}))]
               (mt/user-http-request :crowberto
                                     :put 200 (format "document/%s" doc-id)
                                     {:archived false})
               ;; Should have published document-update event (not archive event)
-              (is (some #(= :event/document-update (:topic %)) @events))
-              (is (not (some #(= :event/document-delete (:topic %)) @events))))))))))
+              (is (some #(and (= :event/document-update (:topic %))
+                              (some (comp false? :archived :object) (:changes (:event %))))
+                        @events)))))))))
 
 (deftest document-archive-transaction-rollback-test
   (testing "Document archiving transaction rollback on failure"
@@ -1778,10 +1895,10 @@
       ;; Simulate a failure during card archiving
       (testing "failure during card archiving rolls back document archiving"
         (let [orig-update! (mt/original-fn #'t2/update!)]
-          (mt/with-dynamic-fn-redefs [t2/update! (fn [model id updates]
-                                                   (if (and (= model :model/Card) (:archived updates))
+          (mt/with-dynamic-fn-redefs [t2/update! (fn [model & args]
+                                                   (if (and (= model :model/Card) (:archived (last args)))
                                                      (throw (ex-info "Simulated card archive failure" {}))
-                                                     (orig-update! model id updates)))]
+                                                     (apply orig-update! model args)))]
             (mt/user-http-request :crowberto
                                   :put 500 (format "document/%s" doc-id)
                                   {:archived true})
@@ -1960,13 +2077,13 @@
                                                  :document (documents.test-util/text->prose-mirror-ast "Event test")
                                                  :archived true}]
       (let [events (atom [])]
-        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
-                                                            (swap! events conj {:topic topic :event event}))]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (swap! events conj {:topic topic :event event}))]
           (mt/user-http-request :crowberto :delete 204 (format "document/%s" doc-id))
           ;; Should have published document-delete event
           (is (some #(= :event/document-delete (:topic %)) @events))
           (let [delete-event (first (filter #(= :event/document-delete (:topic %)) @events))]
-            (is (= "Event Test Document" (get-in delete-event [:event :object :name])))
+            (is (= "Event Test Document" (get-in delete-event [:event :changes 0 :previous-object :name])))
             (is (= (mt/user->id :crowberto) (get-in delete-event [:event :user-id])))))))))
 
 (deftest document-position-reconciliation-on-create-test
@@ -2135,6 +2252,77 @@
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "document/%d/public-link" Integer/MAX_VALUE)))))))
 
+(defn- embed-cards-in-document!
+  [document-id card-ids]
+  (t2/update! :model/Document :id document-id
+              {:document (documents.test-util/cards->prose-mirror-ast card-ids)}))
+
+(deftest share-document-on-routed-database-test
+  (when config/ee-available?
+    (testing "POST /api/document/:id/public-link"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-premium-features #{:database-routing}
+          (testing "a Document embedding a question on a routed database that does not allow anonymous access cannot
+                 be shared"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Document       document {}
+                           :model/Card           card     {:document_id (:id document)}]
+              (embed-cards-in-document! (:id document) [(:id card)])
+              (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                     (mt/user-http-request :crowberto :post 400
+                                           (format "document/%d/public-link" (:id document)))))
+              (is (not (t2/exists? :model/Document :id (:id document), :public_uuid [:not= nil])))))
+          (testing "once an admin allows anonymous access it can"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id              (mt/id)
+                                                           :user_attribute           "db_name"
+                                                           :anonymous_access_granted true}
+                           :model/Document       document {}
+                           :model/Card           card     {:document_id (:id document)}]
+              (embed-cards-in-document! (:id document) [(:id card)])
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "document/%d/public-link" (:id document)))))))
+          (testing "a question the Document owns but does not embed is served by no public route, so it does not refuse"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Document       document {}
+                           :model/Card           _        {:document_id (:id document)}]
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "document/%d/public-link" (:id document)))))))
+          (testing "the permission check runs before the refusal, so a non-admin is refused generically and the
+                 explanation naming the database reaches only a viewer who could act on it"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Document       document {}
+                           :model/Card           card     {:document_id (:id document)}]
+              (embed-cards-in-document! (:id document) [(:id card)])
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403
+                                           (format "document/%d/public-link" (:id document)))))))
+          (testing "an already-shared Document still returns its existing link, so a dead one stays deletable"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Document       document (document-with-public-link {})
+                           :model/Card           card     {:document_id (:id document)}]
+              (embed-cards-in-document! (:id document) [(:id card)])
+              (is (= (:public_uuid document)
+                     (:uuid (mt/user-http-request :crowberto :post 200
+                                                  (format "document/%d/public-link" (:id document))))))))
+          (testing "a Document embedding nothing queries nothing, so it can"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Document       document {}]
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "document/%d/public-link" (:id document))))))))
+        (testing "without the database-routing feature it is still refused: the router refuses anonymous queries either way"
+          (mt/with-premium-features #{}
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Document       document {}
+                           :model/Card           card     {:document_id (:id document)}]
+              (embed-cards-in-document! (:id document) [(:id card)])
+              (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                     (mt/user-http-request :crowberto :post 400
+                                           (format "document/%d/public-link" (:id document)))))
+              (is (not (t2/exists? :model/Document :id (:id document), :public_uuid [:not= nil]))))))))))
+
 (deftest delete-public-link-test
   (testing "DELETE /api/document/:id/public-link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -2238,7 +2426,7 @@
             (is (= 200
                    (:status (mt/client-full-response :get (str "public/document/" uuid))))))
           (testing "Document is not accessible after archiving"
-            (t2/update! :model/Document (:id document) {:archived true})
+            (t2/update! :model/Document :id (:id document) {:archived true})
             (is (= "Not found."
                    (mt/client :get 404 (str "public/document/" uuid))))))))))
 
@@ -2270,7 +2458,7 @@
                                                    :document {:type "doc"
                                                               :content [{:type "cardEmbed"
                                                                          :attrs {:id card-id}}]}}]
-        (t2/update! :model/Card card-id {:document_id doc-id})
+        (t2/update! :model/Card :id card-id {:document_id doc-id})
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
           (testing "Read-only users can download"
             (perms/grant-collection-read-permissions! group coll-id)
@@ -2303,7 +2491,7 @@
                                      :format_rows false
                                      :pivot_results false})))
           (testing "Archived document returns 404"
-            (t2/update! :model/Document doc-id {:archived true})
+            (t2/update! :model/Document :id doc-id {:archived true})
             (mt/user-http-request :rasta
                                   :post 404
                                   (format "document/%s/card/%s/query/csv" doc-id card-id)
@@ -2326,7 +2514,7 @@
                                                       :document {:type "doc"
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {:id card-id}}]}}]
-           (t2/update! :model/Card card-id {:document_id doc-id})
+           (t2/update! :model/Card :id card-id {:document_id doc-id})
            (let [all-users-group (perms/all-users-group)]
              ;; Grant collection read permissions so user can access the document
              (perms/grant-collection-read-permissions! all-users-group coll-id)
@@ -2362,251 +2550,6 @@
                                                      :pivot_results false})]
                  (is (some? response))
                  (is (string? response)))))))))))
-
-(defn- prose-mirror-with-smartlink
-  "Create a ProseMirror AST with a smartlink to a card."
-  [text card-id]
-  {:type "doc"
-   :content [{:type "paragraph"
-              :content [{:type "text"
-                         :text text}
-                        {:type "smartLink"
-                         :attrs {:model "card"
-                                 :entityId card-id}}]}]})
-
-(deftest create-document-in-remote-synced-with-non-remote-synced-smartlink-test
-  (testing "POST /api/document/ - creating document in remote-synced collection with smartlink to non-remote-synced item"
-    (mt/when-ee-evailable
-     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-       (mt/with-model-cleanup [:model/Document]
-         (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                  :location "/"
-                                                                  :is_remote_synced true}
-                        :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                            :location "/"
-                                                            :type nil}
-                        :model/Card {card-id :id} {:name "Regular Card"
-                                                   :collection_id regular-id
-                                                   :dataset_query (mt/mbql-query venues)}]
-           (testing "Throws exception when document references non-remote-synced item"
-             (let [response (mt/user-http-request :crowberto
-                                                  :post 400 "document/"
-                                                  {:name "Doc with bad reference"
-                                                   :collection_id remote-synced-id
-                                                   :document (prose-mirror-with-smartlink "Link to card" card-id)})]
-               (is (= "Uses content that is not remote synced." (:message response))
-                   "Should report non-remote-synced dependencies")))))))))
-
-(deftest create-document-in-remote-synced-with-remote-synced-smartlink-test
-  (testing "POST /api/document/ - creating document in remote-synced collection with smartlink to remote-synced item"
-    (mt/when-ee-evailable
-     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-       (mt/with-model-cleanup [:model/Document]
-         (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                  :location "/"
-                                                                  :is_remote_synced true}
-                        :model/Card {card-id :id} {:name "Remote-Synced Card"
-                                                   :collection_id remote-synced-id
-                                                   :dataset_query (mt/mbql-query venues)}]
-           (testing "Successfully creates document when referencing remote-synced item"
-             (let [response (mt/user-http-request :crowberto
-                                                  :post 200 "document/"
-                                                  {:name "Doc with valid reference"
-                                                   :collection_id remote-synced-id
-                                                   :document (prose-mirror-with-smartlink "Link to card" card-id)})]
-               (is (= "Doc with valid reference" (:name response)))
-               (is (= remote-synced-id (:collection_id response)))))))))))
-
-(deftest create-document-in-regular-collection-with-any-smartlink-test
-  (testing "POST /api/document/ - creating document in regular collection can reference any item"
-    (mt/when-ee-evailable
-     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-       (mt/with-model-cleanup [:model/Document]
-         (mt/with-temp [:model/Collection {regular-id :id} {:name "Regular Collection"
-                                                            :location "/"
-                                                            :type nil}
-                        :model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                  :location "/"
-                                                                  :is_remote_synced true}
-                        :model/Card {remote-card-id :id} {:name "Remote-Synced Card"
-                                                          :collection_id remote-synced-id
-                                                          :dataset_query (mt/mbql-query venues)}
-                        :model/Card {regular-card-id :id} {:name "Regular Card"
-                                                           :collection_id regular-id
-                                                           :dataset_query (mt/mbql-query venues)}]
-           (testing "Can reference remote-synced item"
-             (let [response (mt/user-http-request :crowberto
-                                                  :post 200 "document/"
-                                                  {:name "Doc with remote ref"
-                                                   :collection_id regular-id
-                                                   :document (prose-mirror-with-smartlink "Link" remote-card-id)})]
-               (is (= "Doc with remote ref" (:name response)))))
-           (testing "Can reference regular item"
-             (let [response (mt/user-http-request :crowberto
-                                                  :post 200 "document/"
-                                                  {:name "Doc with regular ref"
-                                                   :collection_id regular-id
-                                                   :document (prose-mirror-with-smartlink "Link" regular-card-id)})]
-               (is (= "Doc with regular ref" (:name response)))))))))))
-
-(deftest update-document-in-remote-synced-with-non-remote-synced-smartlink-test
-  (testing "PUT /api/document/:id - updating document in remote-synced collection to add non-remote-synced reference"
-    (mt/when-ee-evailable
-     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                :location "/"
-                                                                :is_remote_synced true}
-                      :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                          :location "/"
-                                                          :type nil}
-                      :model/Document {doc-id :id} {:name "Test Document"
-                                                    :collection_id remote-synced-id
-                                                    :document (documents.test-util/text->prose-mirror-ast "Initial")}
-                      :model/Card {card-id :id} {:name "Regular Card"
-                                                 :collection_id regular-id
-                                                 :dataset_query (mt/mbql-query venues)}]
-         (testing "Throws exception when updating to reference non-remote-synced item"
-           (let [response (mt/user-http-request :crowberto
-                                                :put 400 (format "document/%s" doc-id)
-                                                {:document (prose-mirror-with-smartlink "Bad link" card-id)})]
-             (is (= "Uses content that is not remote synced." (:message response))))))))))
-
-(deftest update-document-in-remote-synced-with-remote-synced-smartlink-test
-  (testing "PUT /api/document/:id - updating document in remote-synced collection to add remote-synced reference"
-    (mt/when-ee-evailable
-     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                :location "/"
-                                                                :is_remote_synced true}
-                      :model/Document {doc-id :id} {:name "Test Document"
-                                                    :collection_id remote-synced-id
-                                                    :document (documents.test-util/text->prose-mirror-ast "Initial")}
-                      :model/Card {card-id :id} {:name "Remote-Synced Card"
-                                                 :collection_id remote-synced-id
-                                                 :dataset_query (mt/mbql-query venues)}]
-         (testing "Successfully updates when referencing remote-synced item"
-           (let [response (mt/user-http-request :crowberto
-                                                :put 200 (format "document/%s" doc-id)
-                                                {:document (prose-mirror-with-smartlink "Good link" card-id)})]
-             (is (= "Test Document" (:name response)))
-             (is (= remote-synced-id (:collection_id response))))))))))
-
-(deftest move-document-with-remote-synced-refs-out-of-remote-synced-collection-test
-  (testing "PUT /api/document/:id - moving document with remote-synced references out of remote-synced collection"
-    (mt/when-ee-evailable
-     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                :location "/"
-                                                                :is_remote_synced true}
-                      :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                          :location "/"
-                                                          :type nil}
-                      :model/Card {card-id :id} {:name "Remote-Synced Card"
-                                                 :collection_id remote-synced-id
-                                                 :dataset_query (mt/mbql-query venues)}
-                      :model/Document {doc-id :id} {:name "Doc with remote ref"
-                                                    :collection_id remote-synced-id
-                                                    :document (prose-mirror-with-smartlink "Link" card-id)}]
-         (testing "Does not throw an exception"
-           (mt/user-http-request :crowberto
-                                 :put 200 (format "document/%s" doc-id)
-                                 {:collection_id regular-id})
-           (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id))))))))))
-
-(deftest move-document-with-remote-synced-refs-to-root-collection-test
-  (testing "PUT /api/document/:id - moving document with remote-synced references to root collection"
-    (mt/when-ee-evailable
-     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                :location "/"
-                                                                :is_remote_synced true}
-                      :model/Card {card-id :id} {:name "Remote-Synced Card"
-                                                 :collection_id remote-synced-id
-                                                 :dataset_query (mt/mbql-query venues)}
-                      :model/Document {doc-id :id} {:name "Doc with remote ref"
-                                                    :collection_id remote-synced-id
-                                                    :document (prose-mirror-with-smartlink "Link" card-id)}]
-         (testing "Does not throw an exception"
-           (mt/user-http-request :crowberto
-                                 :put 200 (format "document/%s" doc-id)
-                                 {:collection_id nil})
-           (is (nil? (:collection_id (t2/select-one :model/Document :id doc-id))))))))))
-
-(deftest move-document-without-remote-synced-refs-out-of-remote-synced-collection-test
-  (testing "PUT /api/document/:id - moving document without remote-synced references out of remote-synced collection"
-    (mt/when-ee-evailable
-     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                :location "/"
-                                                                :is_remote_synced true}
-                      :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                          :location "/"
-                                                          :type nil}
-                      :model/Document {doc-id :id} {:name "Doc without refs"
-                                                    :collection_id remote-synced-id
-                                                    :document (documents.test-util/text->prose-mirror-ast "No references")}]
-         (testing "Successfully moves when document has no remote-synced references"
-           (let [response (mt/user-http-request :crowberto
-                                                :put 200 (format "document/%s" doc-id)
-                                                {:collection_id regular-id})]
-             (is (= regular-id (:collection_id response)))
-             (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))))))))))
-
-(deftest move-document-into-remote-synced-collection-with-non-remote-synced-refs-test
-  (testing "PUT /api/document/:id - moving document into remote-synced collection when it has non-remote-synced references"
-    (mt/when-ee-evailable
-     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                :location "/"
-                                                                :is_remote_synced true}
-                      :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                          :location "/"
-                                                          :type nil}
-                      :model/Card {card-id :id} {:name "Regular Card"
-                                                 :collection_id regular-id
-                                                 :dataset_query (mt/mbql-query venues)}
-                      :model/Document {doc-id :id} {:name "Doc with regular ref"
-                                                    :collection_id regular-id
-                                                    :document (prose-mirror-with-smartlink "Link" card-id)}]
-         (testing "Throws exception when moving into remote-synced collection"
-           (let [response (mt/user-http-request :crowberto
-                                                :put 400 (format "document/%s" doc-id)
-                                                {:collection_id remote-synced-id})]
-             (is (= "Uses content that is not remote synced." (:message response)))
-             ;; Verify document was NOT moved
-             (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))
-                 "Document should remain in regular collection"))))))))
-
-(deftest update-and-move-document-simultaneously-test
-  (mt/when-ee-evailable
-   (mt/with-temporary-setting-values [remote-sync-type :read-write]
-     (testing "PUT /api/document/:id - updating content and moving collection simultaneously"
-       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                :location "/"
-                                                                :is_remote_synced true}
-                      :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                          :location "/"
-                                                          :type nil}
-                      :model/Card {remote-card-id :id} {:name "Remote-Synced Card"
-                                                        :collection_id remote-synced-id
-                                                        :dataset_query (mt/mbql-query venues)}
-                      :model/Card {regular-card-id :id} {:name "Regular Card"
-                                                         :collection_id regular-id
-                                                         :dataset_query (mt/mbql-query venues)}
-                      :model/Document {doc-id :id} {:name "Test Doc"
-                                                    :collection_id remote-synced-id
-                                                    :document (documents.test-util/text->prose-mirror-ast "Initial")}]
-         (testing "Throws exception when adding non-remote-synced ref and staying in remote-synced collection"
-           (let [response (mt/user-http-request :crowberto
-                                                :put 400 (format "document/%s" doc-id)
-                                                {:document (prose-mirror-with-smartlink "Bad" regular-card-id)
-                                                 :collection_id remote-synced-id})]
-             (is (= "Uses content that is not remote synced." (:message response)))))
-         (testing "Does not throw when moving to a regular collection"
-           (mt/user-http-request :crowberto
-                                 :put 200 (format "document/%s" doc-id)
-                                 {:document (prose-mirror-with-smartlink "Good" remote-card-id)
-                                  :collection_id regular-id})))))))
 
 (deftest post-document-to-personal-collection-test
   (testing "POST /api/document/ - creating a document in a personal collection"
@@ -2757,7 +2700,7 @@
                                                          :dataset_query (mt/native-query
                                                                          {:query "SELECT COUNT(*) FROM VENUES"})
                                                          :display       :scalar}]
-          (t2/update! :model/Document doc-id {:document (card-embed-ast native-card-id)})
+          (t2/update! :model/Document :id doc-id {:document (card-embed-ast native-card-id)})
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
           (mt/with-restored-data-perms!
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
@@ -2782,7 +2725,7 @@
                                                   :document_id            doc-id
                                                   :dataset_query          (mt/mbql-query venues)
                                                   :visualization_settings {:timeline.selected_timeline_ids [timeline-id]}}]
-          (t2/update! :model/Document doc-id {:document (card-embed-ast card-id)})
+          (t2/update! :model/Document :id doc-id {:document (card-embed-ast card-id)})
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
           (perms/revoke-collection-permissions! (perms/all-users-group) timeline-coll-id)
           (let [result      (mt/user-http-request :rasta :post 200 (format "document/%d/copy" doc-id)
@@ -2876,3 +2819,126 @@
                                                 :collection_id coll-id
                                                 :document      (card-embed-ast mbql-card-id)})]
               (is (t2/exists? :model/Card :document_id (:id result))))))))))
+
+(defn- embedded-card-ids [ast]
+  (->> (tree-seq map? :content ast)
+       (filter #(= prose-mirror/card-embed-type (:type %)))
+       (map #(get-in % [:attrs :id]))))
+
+(deftest add-card-to-document-test
+  (mt/with-temp [:model/Document {document-id :id} {:name           "Test Document"
+                                                    :document       (documents.test-util/text->prose-mirror-ast "Doc")
+                                                    :is_placeholder true}
+                 :model/Card     {card-1 :id}      {:document_id document-id}
+                 :model/Card     {card-2 :id}      {:document_id document-id}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "add-card-to-document! returns the hydrated document"
+        (let [result (api.document/add-card-to-document! document-id card-1 nil)]
+          (is (=? {:id document-id :is_placeholder false :can_write true :creator map?} result))
+          (is (= [card-1] (embedded-card-ids (:document result))))))
+      (testing "add-card-to-document-row! returns the plain row, without hydrating it"
+        (let [result (api.document/add-card-to-document-row! document-id card-2 nil
+                                                             :extra-attrs {:chart_href "/x"})]
+          (is (=? {:id document-id :is_placeholder false} result))
+          (is (not-any? #(contains? result %) [:can_write :creator]))
+          (is (= [card-1 card-2]
+                 (embedded-card-ids (:document result))
+                 (embedded-card-ids (t2/select-one-fn :document :model/Document :id document-id)))))))))
+
+(deftest move-needs-write-access-to-both-collections-test
+  (testing "PUT /api/document/:id moves a Document only when the user writes its Collection and the target"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {old-id :id} {}
+                     :model/Collection {new-id :id} {}
+                     :model/Document {document-id :id} {:collection_id old-id}]
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-id)
+        (mt/user-http-request :rasta :put 403 (str "document/" document-id) {:collection_id new-id})
+        (is (= old-id (t2/select-one-fn :collection_id :model/Document :id document-id)))
+        (perms/revoke-collection-permissions! (perms/all-users-group) old-id)
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-id)
+        (mt/user-http-request :rasta :put 403 (str "document/" document-id) {:collection_id new-id})
+        (is (= old-id (t2/select-one-fn :collection_id :model/Document :id document-id)))
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-id)
+        (mt/user-http-request :rasta :put 200 (str "document/" document-id) {:collection_id new-id})
+        (is (= new-id (t2/select-one-fn :collection_id :model/Document :id document-id)))))))
+
+(deftest public-link-create-and-delete-publish-document-update-test
+  (testing "creating and removing a public link publish :event/document-update, as other document writes do"
+    (tu/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document {}]
+        (let [published (atom [])
+              original  (mt/original-fn #'events/publish-event!)]
+          (with-redefs [events/publish-event! (fn [topic event]
+                                                (when (= :event/document-update topic)
+                                                  (swap! published into (for [change (:changes event)]
+                                                                          [topic (some-> change :object :id)])))
+                                                (original topic event))]
+            (mt/user-http-request :crowberto :post 200 (format "document/%d/public-link" (:id document)))
+            (is (= [[:event/document-update (:id document)]] @published))
+            (reset! published [])
+            (mt/user-http-request :crowberto :post 200 (format "document/%d/public-link" (:id document)))
+            (is (empty? @published))
+            (mt/user-http-request :crowberto :delete 204 (format "document/%d/public-link" (:id document)))
+            (is (= [[:event/document-update (:id document)]] @published))))))))
+
+(deftest collection-archive-and-restore-publish-document-update-test
+  (testing "archiving and restoring collection publish :event/document-update for its documents"
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Document {document-id :id} {:collection_id collection-id}]
+      (let [published (atom [])
+            original  (mt/original-fn #'events/publish-event!)]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (when (= :event/document-update topic)
+                                                (swap! published into (map (comp :id :object) (:changes event))))
+                                              (original topic event))]
+          (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived true})
+          (is (= [document-id] @published))
+          (is (true? (t2/select-one-fn :archived :model/Document :id document-id)))
+          (reset! published [])
+          (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived false})
+          (is (= [document-id] @published)))))))
+
+(deftest document-cards-refusals-through-endpoints-test
+  (mt/with-model-cleanup [:model/Document :model/Card]
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-temp [:model/Collection {write-id :id}  {}
+                       :model/Collection {read-id :id}   {}
+                       :model/Card       {secret-id :id} {:collection_id (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))}
+                       :model/Document   {doc-id :id}    {:collection_id write-id
+                                                          :content_type  prose-mirror/prose-mirror-content-type
+                                                          :document      {:type "doc" :content []}}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) write-id)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) read-id)
+          (let [good    (fn [] {:name (mt/random-name) :display "table" :visualization_settings {} :dataset_query (mt/mbql-query venues)})
+                three   (fn [second-card third-card] {"-1" (good) "-2" second-card "-3" third-card})
+                orders  (fn [] (assoc (good) :dataset_query (mt/mbql-query orders)))
+                field   (fn [] (assoc (good) :parameters [{:id "p" :name "p" :slug "p" :type "category"
+                                                           :target [:dimension [:field (mt/id :orders :total) nil]]}]))
+                ast     (documents.test-util/cards->prose-mirror-ast [-1 -2 -3])
+                counts  (fn [] [(t2/count :model/Document) (t2/count :model/Card)])
+                post!   (fn [collection-id cards status]
+                          (mt/user-http-request :rasta :post status "document/"
+                                                {:name (mt/random-name) :collection_id collection-id :document ast :cards cards}))
+                put!    (fn [cards status]
+                          (mt/user-http-request :rasta :put status (format "document/%d" doc-id) {:document ast :cards cards}))
+                refused (fn [f expected-message]
+                          (let [before (counts)]
+                            (is (= expected-message (f)))
+                            (is (= before (counts)) "nothing is written")))]
+            (doseq [[label cards message]
+                    [["a query on a table the user cannot query" (three (orders) (good)) "You cannot save this Question because you do not have permissions to run its query."]
+                     ["a parameter field the user cannot see"    (three (field) (good))  "You must have data permissions to add a parameter referencing this Field."]
+                     ["a source card the user cannot read"       (three (assoc (good) :source_card_id secret-id) (good)) "You don't have permissions to do that."]
+                     ["the first refused card in order"          (three (orders) (field)) "You cannot save this Question because you do not have permissions to run its query."]]]
+              (testing (str "POST /api/document with " label)
+                (refused #(post! write-id cards 403) message))
+              (testing (str "PUT /api/document/:id with " label)
+                (refused #(put! cards 403) message)))
+            (testing "POST /api/document with cards in a collection the user cannot write"
+              (refused #(post! read-id (three (good) (good)) 403) "You don't have permissions to do that."))
+            (testing "cards the user may create are saved by both endpoints"
+              (is (some? (post! write-id (three (good) (good)) 200)))
+              (is (some? (put! (three (good) (good)) 200))))))))))

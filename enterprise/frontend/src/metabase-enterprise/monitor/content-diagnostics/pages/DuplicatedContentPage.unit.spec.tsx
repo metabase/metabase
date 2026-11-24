@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupContentDiagnosticsCountsEndpoint,
   setupListDuplicatedFindingsEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -90,6 +91,7 @@ function setup({
     value: lastUsedParams,
   });
 
+  setupContentDiagnosticsCountsEndpoint();
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const { router } = renderWithProviders(
@@ -250,6 +252,159 @@ describe("DuplicatedContentPage", () => {
     expect(
       within(collectionDuplicates).queryByText(/view/),
     ).not.toBeInTheDocument();
+  });
+
+  it("labels same-named cards by sub-kind and points each side at the other", async () => {
+    const NAME = "Hybrid report";
+    const findings = [
+      createMockContentDiagnosticsDuplicatedFinding({
+        id: 1,
+        entity_type: "card",
+        card_type: "question",
+        entity_id: 101,
+        entity_display_name: NAME,
+        details: {
+          duplicate_entities: [
+            createMockContentDiagnosticsDuplicateEntity({
+              id: 102,
+              name: NAME,
+              entity_type: "card",
+              card_type: "model",
+            }),
+          ],
+        },
+      }),
+      createMockContentDiagnosticsDuplicatedFinding({
+        id: 2,
+        entity_type: "card",
+        card_type: "model",
+        entity_id: 102,
+        entity_display_name: NAME,
+        details: {
+          duplicate_entities: [
+            createMockContentDiagnosticsDuplicateEntity({
+              id: 101,
+              name: NAME,
+              entity_type: "card",
+              card_type: "question",
+            }),
+          ],
+        },
+      }),
+      ...(["dashboard", "document"] as const).flatMap((entityType, index) =>
+        [0, 1].map((side) =>
+          createMockContentDiagnosticsDuplicatedFinding({
+            id: 10 + index * 2 + side,
+            entity_type: entityType,
+            entity_id: 200 + index * 2 + side,
+            entity_display_name: `Twin ${entityType}`,
+            details: {
+              duplicate_entities: [
+                createMockContentDiagnosticsDuplicateEntity({
+                  id: 200 + index * 2 + (1 - side),
+                  name: `Twin ${entityType}`,
+                  entity_type: entityType,
+                }),
+              ],
+            },
+          }),
+        ),
+      ),
+    ];
+    setup({ findings });
+
+    const list = await screen.findByRole("treegrid");
+    expect(await within(list).findAllByText(NAME)).toHaveLength(2);
+    expect(within(list).getAllByText("Twin dashboard")).toHaveLength(2);
+    expect(within(list).getAllByText("Twin document")).toHaveLength(2);
+    expect(within(list).getByRole("img", { name: "Question" })).toBeVisible();
+
+    const modelRow = within(list)
+      .getAllByRole("row", { name: new RegExp(NAME) })
+      .find((row) => within(row).queryByRole("img", { name: "Model" }));
+    if (modelRow == null) {
+      throw new Error("No row carries the Model icon");
+    }
+    await userEvent.click(within(modelRow).getByText(NAME));
+
+    const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
+    const duplicates = within(sidebarRegion).getByRole("region", {
+      name: "Duplicates",
+    });
+    expect(within(duplicates).getByText("Duplicates (1)")).toBeVisible();
+    const peerLink = within(duplicates).getByRole("link", {
+      name: `${NAME}, Question`,
+    });
+    expect(peerLink).toBeVisible();
+    expect(peerLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("/question/101"),
+    );
+  });
+
+  it("names the other transform as the duplicate of a selected transform", async () => {
+    const name = "Nightly transform";
+    setup({
+      findings: [
+        createMockContentDiagnosticsDuplicatedFinding({
+          id: 1,
+          entity_type: "transform",
+          entity_id: 10,
+          entity_display_name: name,
+          duplicate_count: 1,
+          details: {
+            view_count: undefined,
+            duplicate_entities: [
+              createMockContentDiagnosticsDuplicateEntity({
+                id: 11,
+                name,
+                entity_type: "transform",
+                view_count: undefined,
+              }),
+            ],
+          },
+        }),
+        createMockContentDiagnosticsDuplicatedFinding({
+          id: 2,
+          entity_type: "transform",
+          entity_id: 11,
+          entity_display_name: name,
+          duplicate_count: 1,
+          details: {
+            view_count: undefined,
+            duplicate_entities: [
+              createMockContentDiagnosticsDuplicateEntity({
+                id: 10,
+                name,
+                entity_type: "transform",
+                view_count: undefined,
+              }),
+            ],
+          },
+        }),
+      ],
+    });
+
+    const list = await screen.findByRole("treegrid");
+    const rows = await within(list).findAllByText(name);
+    expect(rows).toHaveLength(2);
+    // open the second finding, so the peer must be the first transform
+    await userEvent.click(rows[1]);
+
+    const sidebar = await screen.findByTestId("content-diagnostics-sidebar");
+    expect(within(sidebar).getByRole("link", { name })).toHaveAttribute(
+      "href",
+      "/data-studio/transforms/11",
+    );
+    const duplicates = within(sidebar).getByRole("region", {
+      name: "Duplicates",
+    });
+    expect(within(duplicates).getByText("Duplicates (1)")).toBeInTheDocument();
+    const peerLink = within(duplicates).getByRole("link", {
+      name: `${name}, Transform`,
+    });
+    expect(peerLink).toHaveAttribute("href", "/data-studio/transforms/10");
+    expect(peerLink).toHaveTextContent(name);
   });
 
   it("reports duplicates that aren't visible to the user", async () => {

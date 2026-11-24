@@ -2,10 +2,16 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.timelines :as tools.timelines]
    [metabase.test :as mt]))
+
+(defn- list-timelines
+  "Call the `list_timelines` tool and return what the model reads."
+  []
+  (:output (tools.core/handle tools.timelines/list-timelines-tool {} {})))
 
 (deftest list-timelines-tool-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -13,24 +19,17 @@
                    :model/Timeline   {tl-id :id}   {:name        "Product Launches"
                                                     :description "Key product launch dates"
                                                     :collection_id coll-id}]
-      (testing "returns timelines with id, name, description"
-        (let [result   (tools.timelines/list-timelines-tool {})
-              items    (:structured_output result)
-              matching (filter #(= tl-id (:id %)) items)]
-          (is (seq matching) "expected the test timeline to appear")
-          (is (= {:id tl-id :name "Product Launches" :description "Key product launch dates"}
-                 (first matching)))))
-      (testing "output contains XML-formatted text"
-        (let [{:keys [output]} (tools.timelines/list-timelines-tool {})]
-          (is (re-find #"<timelines>" output))
-          (is (re-find #"Product Launches" output))))
+      (testing "each timeline reaches the model as XML, with its id, name and description"
+        (let [output (list-timelines)]
+          (is (str/starts-with? output "<timelines>\n"))
+          (is (str/includes? output (str "<timeline id=\"" tl-id "\" name=\"Product Launches\">"
+                                         "Key product launch dates</timeline>")))
+          (is (str/ends-with? output "\n</timelines>"))))
       (testing "archived timelines are excluded by default"
         (mt/with-temp [:model/Timeline _ {:name          "Archived TL"
                                           :collection_id coll-id
                                           :archived      true}]
-          (let [items (:structured_output (tools.timelines/list-timelines-tool {}))
-                names (set (map :name items))]
-            (is (not (contains? names "Archived TL")))))))))
+          (is (not (str/includes? (list-timelines) "Archived TL"))))))))
 
 (defn- details
   "Call the converted `get_timeline_details` tool for `timeline-id`."
@@ -68,6 +67,17 @@
                    :message #(str/starts-with? % "Timeline ")}
                   (tools.error/classify e))))))))
 
+(deftest ^:parallel missing-timeline-recovery-test
+  (mt/with-dynamic-fn-redefs [tools.timelines/get-timeline-details (constantly nil)]
+    (doseq [tool-names [#{"search"} #{"list_timelines" "search"}]]
+      (testing (str "tools " tool-names)
+        (is (= {:class :recoverable
+                :code  :metabase.metabot.tools.recoverable.common/not-found
+                :text  (str "Timeline 7 was not found. It may not exist, or you may not have access to it."
+                            (when (contains? tool-names "list_timelines")
+                              "\nCall `list_timelines` to find the entity you want and use an id from the results."))}
+               (test-util/tool-failure tools.timelines/get-timeline-details-tool {:timeline_id 7} tool-names)))))))
+
 (deftest timeline-output-xml-escaping-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection    {coll-id :id} {:name "Escape Coll"}
@@ -80,7 +90,7 @@
                                                         :timestamp   #t "2025-06-01T00:00:00Z"
                                                         :icon        "star"}]
       (testing "list output escapes XML-special characters in names and descriptions"
-        (let [{:keys [output]} (tools.timelines/list-timelines-tool {})]
+        (let [output (list-timelines)]
           (is (re-find #"name=\"Q&amp;A &lt;&quot;Launches&quot;&gt;\"" output))
           (is (re-find #"Tags: &lt;b&gt; &amp; &quot;quotes&quot;" output))))
       (testing "details output escapes XML-special characters in timeline and event fields"

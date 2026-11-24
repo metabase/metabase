@@ -35,18 +35,17 @@
                      :model/PermissionsGroupMembership _ {:group_id group-id
                                                           :user_id user-id}]
         (let [rasta (mt/fetch-user :rasta)]
-          (models.notification/create-notification!
-           {:payload_type :notification/system-event}
-           [{:type       :notification-subscription/system-event
-             :event_name :event/user-invited}]
-           [{:channel_type :channel/email
-             :template_id  (:id tmpl)
-             :recipients   [{:type    :notification-recipient/user
-                             :user_id (mt/user->id :crowberto)}
-                            {:type                 :notification-recipient/group
-                             :permissions_group_id group-id}
-                            {:type    :notification-recipient/raw-value
-                             :details {:value "hi@metabase.com"}}]}])
+          (models.notification/create-notifications! [{:payload_type :notification/system-event
+                                                       :subscriptions [{:type       :notification-subscription/system-event
+                                                                        :event_name :event/user-invited}]
+                                                       :handlers [{:channel_type :channel/email
+                                                                   :template_id  (:id tmpl)
+                                                                   :recipients   [{:type    :notification-recipient/user
+                                                                                   :user_id (mt/user->id :crowberto)}
+                                                                                  {:type                 :notification-recipient/group
+                                                                                   :permissions_group_id group-id}
+                                                                                  {:type    :notification-recipient/raw-value
+                                                                                   :details {:value "hi@metabase.com"}}]}]}])
           (mt/with-temporary-setting-values
             [site-name "Metabase Test"]
             (mt/with-fake-inbox
@@ -72,18 +71,17 @@
                      :model/PermissionsGroupMembership _ {:group_id group-id
                                                           :user_id user-id}]
         (let [rasta (mt/fetch-user :rasta)]
-          (models.notification/create-notification!
-           {:payload_type :notification/system-event}
-           [{:type       :notification-subscription/system-event
-             :event_name :event/user-invited}]
-           [{:channel_type :channel/email
-             :template_id  (:id tmpl)
-             :recipients   [{:type    :notification-recipient/user
-                             :user_id (mt/user->id :crowberto)}
-                            {:type                 :notification-recipient/group
-                             :permissions_group_id group-id}
-                            {:type    :notification-recipient/raw-value
-                             :details {:value "hi@metabase.com"}}]}])
+          (models.notification/create-notifications! [{:payload_type :notification/system-event
+                                                       :subscriptions [{:type       :notification-subscription/system-event
+                                                                        :event_name :event/user-invited}]
+                                                       :handlers [{:channel_type :channel/email
+                                                                   :template_id  (:id tmpl)
+                                                                   :recipients   [{:type    :notification-recipient/user
+                                                                                   :user_id (mt/user->id :crowberto)}
+                                                                                  {:type                 :notification-recipient/group
+                                                                                   :permissions_group_id group-id}
+                                                                                  {:type    :notification-recipient/raw-value
+                                                                                   :details {:value "hi@metabase.com"}}]}]}])
           (mt/with-temporary-setting-values
             [site-name "Metabase Test"]
             (mt/with-fake-inbox

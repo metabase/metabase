@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useCreateTimelineEventMutation,
@@ -6,26 +8,29 @@ import {
 } from "metabase/api";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { useNavigate } from "metabase/router";
-import NewEventModal from "metabase/timelines/common/components/NewEventModal";
-import { NewEventModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
+import NewEventForm from "metabase/timelines/common/components/NewEventForm";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Collection, TimelineEventData } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
 
 interface NewEventWithTimelineModalContainerProps {
   params: ModalParams;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
-function NewEventWithTimelineModalContainer(
-  props: NewEventWithTimelineModalContainerProps,
-) {
+function NewEventWithTimelineModalContainer({
+  params,
+  onClose,
+}: NewEventWithTimelineModalContainerProps) {
   const navigate = useNavigate();
   const [createTimeline] = useCreateTimelineMutation();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
-  const collectionId = Urls.extractCollectionId(props.params.slug);
+  const collectionId = Urls.extractCollectionId(params.slug);
   const {
     data: collection,
     isLoading,
@@ -51,23 +56,29 @@ function NewEventWithTimelineModalContainer(
     navigate(Urls.timelinesInCollection(collection));
   };
 
-  if (isLoading || error || !collection) {
-    return (
-      <LoadingAndErrorWrapper
-        loading={isLoading}
-        error={error}
-        loader={<NewEventModalSkeleton onClose={props.onClose} />}
-      />
-    );
-  }
-
   return (
-    <NewEventModal
-      {...props}
-      source="collections"
-      collection={collection}
-      onSubmit={onSubmit}
-    />
+    <TimelineModal
+      title={t`New event`}
+      onClose={onClose}
+      animated={false}
+      density="relaxed"
+      tall={isLoading || !!error || !collection}
+    >
+      {isLoading || error || !collection ? (
+        <TimelineModalLoadingState
+          loading={isLoading}
+          error={error}
+          variant="form"
+        />
+      ) : (
+        <NewEventForm
+          source="collections"
+          collection={collection}
+          onSubmit={onSubmit}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

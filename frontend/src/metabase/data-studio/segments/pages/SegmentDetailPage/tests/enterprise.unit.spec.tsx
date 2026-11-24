@@ -1,19 +1,21 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import { createMockCollection } from "metabase-types/api/mocks";
 
 import { TEST_TABLE, setup } from "./setup";
 
 describe("SegmentDetailPage", () => {
   describe("readonly state", () => {
     describe("when remote sync is read-only and table is published", () => {
-      beforeEach(() => {
+      beforeEach(async () => {
         setup({
           remoteSyncType: "read-only",
           enterprisePlugins: ["remote_sync"],
           tokenFeatures: { remote_sync: true },
-          table: { ...TEST_TABLE, is_published: true },
+          table: { ...TEST_TABLE, collection: createMockCollection() },
         });
+        await screen.findByDisplayValue("High Value Orders");
       });
 
       it("has readonly segment name input", async () => {
@@ -45,7 +47,7 @@ describe("SegmentDetailPage", () => {
       it("does not show elements as read-only", async () => {
         setup({
           remoteSyncType: "read-only",
-          table: { ...TEST_TABLE, is_published: false },
+          table: { ...TEST_TABLE, collection: null },
         });
 
         expect(screen.getByDisplayValue("High Value Orders")).toBeEnabled();

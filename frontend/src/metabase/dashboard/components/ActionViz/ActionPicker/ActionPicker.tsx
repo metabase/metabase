@@ -10,7 +10,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { ListSkeleton } from "metabase/common/components/Skeletons";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { ActionCreator } from "metabase/querying/action-creator";
+import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
   Box,
@@ -80,6 +82,7 @@ function ModelActionPicker({
   actions: WritebackAction[];
   currentAction?: WritebackAction;
 }) {
+  const isAdmin = useSelector(getUserIsAdmin);
   const [editingActionId, setEditingActionId] = useState<number | undefined>(
     undefined,
   );
@@ -100,7 +103,7 @@ function ModelActionPicker({
     onClick(updatedAction);
   };
 
-  const newActionButton = (
+  const newActionButton = isAdmin && (
     <Button
       variant="subtle"
       m="0.25rem 0.75rem"
@@ -140,18 +143,20 @@ function ModelActionPicker({
                 data-testid={`action-item-${action.name}`}
               >
                 <span>{action.name}</span>
-                <ActionIcon
-                  variant="subtle"
-                  onClick={(event: MouseEvent<HTMLButtonElement>) => {
-                    // we have a click listener on the parent
-                    event.stopPropagation();
+                {action.can_write && (
+                  <ActionIcon
+                    variant="subtle"
+                    onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                      // we have a click listener on the parent
+                      event.stopPropagation();
 
-                    setEditingActionId(action.id);
-                    toggleIsActionCreatorVisible();
-                  }}
-                >
-                  <Icon name="pencil" />
-                </ActionIcon>
+                      setEditingActionId(action.id);
+                      toggleIsActionCreatorVisible();
+                    }}
+                  >
+                    <Icon name="pencil" />
+                  </ActionIcon>
+                )}
               </Flex>
             ))}
             {newActionButton}

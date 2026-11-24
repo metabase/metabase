@@ -10,7 +10,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
-   [metabase.session.db :as session.db]
+   [metabase.session.models.session :as models.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -81,6 +81,7 @@
       (let [message (str "Session management is a paid feature not currently available to your instance. "
                          "Please upgrade to use it. Learn more at metabase.com/upgrade/")]
         (doseq [[method path body] [[:get "ee/session-management"]
+                                    [:get "ee/session-management/counts"]
                                     [:post "ee/session-management/revoke" {}]]
                 user               [:crowberto :rasta]]
           (testing (str method " " path " as " user)
@@ -95,6 +96,73 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "ee/session-management")))
     (is (map? (mt/user-http-request :crowberto :get 200 "ee/session-management")))))
+
+(deftest counts-permissions-test
+  (testing "session counts are superuser-only"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 "ee/session-management/counts")))
+    (is (some? (mt/client :get 401 "ee/session-management/counts"))))
+  (testing "without the feature counts are unavailable even to a superuser"
+    (mt/with-premium-features #{}
+      (is (=? {:message some?}
+              (mt/user-http-request :crowberto :get 402 "ee/session-management/counts"))))))
+
+(deftest counts-test
+  (let [live-before  (:total (mt/user-http-request :crowberto :get 200 "ee/session-management"))
+        ended-before (:total (mt/user-http-request :crowberto :get 200 "ee/session-management" :status "ended"))]
+    (mt/with-temp [:model/User         {user-id :id} {}
+                   :model/AuthIdentity {mcp-id :id}  {:user_id user-id :provider "mcp"}]
+      (let [revocable (insert-session! user-id)]
+        (insert-session! user-id)
+        (insert-session! user-id :key_hashed nil :ended_at (ago 1 :hour) :end_reason "logout")
+        (insert-session! user-id :expires_at (ago 1 :hour))
+        (insert-session! user-id :created_at (ago 30 :day))
+        (insert-session! user-id :auth_identity_id mcp-id)
+        (insert-session! user-id :auth_identity_id mcp-id :key_hashed nil :ended_at (ago 1 :hour))
+        (testing "counts include unswept expiry and max age, exclude MCP, and count sessions rather than users"
+          (is (= {:active (+ live-before 2), :ended (+ ended-before 3)}
+                 (mt/user-http-request :crowberto :get 200 "ee/session-management/counts"))))
+        (testing "table filters and pagination do not narrow the tab populations"
+          (is (= {:active (+ live-before 2), :ended (+ ended-before 3)}
+                 (mt/user-http-request :crowberto :get 200 "ee/session-management/counts"
+                                       :user-id user-id :status "ended" :query "nobody"
+                                       :limit 1 :offset 100))))
+        (testing "revoking a live session moves it to the ended count"
+          (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:ids [revocable]})
+          (is (= {:active (inc live-before), :ended (+ ended-before 4)}
+                 (mt/user-http-request :crowberto :get 200 "ee/session-management/counts"))))))))
+
+(deftest counts-idle-and-deactivated-test
+  (mt/with-additional-premium-features #{:session-timeout-config}
+    (mt/with-temporary-setting-values [session-timeout {:amount 1 :unit "hours"}]
+      (let [live-before  (:total (mt/user-http-request :crowberto :get 200 "ee/session-management"))
+            ended-before (:total (mt/user-http-request :crowberto :get 200 "ee/session-management" :status "ended"))]
+        (mt/with-temp [:model/User {user-id :id} {}
+                       :model/User {inactive-user :id} {:is_active false}]
+          (insert-session! user-id :created_at (ago 2 :hour) :last_active_at (ago 1 :minute))
+          (insert-session! user-id :created_at (ago 2 :hour) :last_active_at (ago 2 :hour))
+          (insert-session! inactive-user)
+          (testing "idle and inactive-user rows are ended before a sweep records their ending"
+            (is (= {:active (inc live-before), :ended (+ ended-before 2)}
+                   (mt/user-http-request :crowberto :get 200 "ee/session-management/counts")))))))))
+
+(deftest counts-tenancy-test
+  (mt/with-additional-premium-features #{:tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (let [live-before  (:total (mt/user-http-request :crowberto :get 200 "ee/session-management"))
+            ended-before (:total (mt/user-http-request :crowberto :get 200 "ee/session-management" :status "ended"))]
+        (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Wren" :slug "wren-counts"}
+                       :model/User   {external :id}  {:tenant_id tenant-id}
+                       :model/User   {internal :id}  {}]
+          (insert-session! external)
+          (insert-session! internal)
+          (testing "the default population includes internal and external sessions"
+            (is (= {:active (+ live-before 2), :ended ended-before}
+                   (mt/user-http-request :crowberto :get 200 "ee/session-management/counts"))))
+          (t2/update! :model/Tenant :id tenant-id {:is_active false})
+          (testing "an inactive tenant's sessions move to ended"
+            (is (= {:active (inc live-before), :ended (inc ended-before)}
+                   (mt/user-http-request :crowberto :get 200 "ee/session-management/counts")))))))))
 
 (deftest shape-test
   (testing "each item carries the user, device, and expiry columns — and never the session credential"
@@ -211,7 +279,7 @@
         ;; `:event/user-credentials-revoked`, whose handler deletes the user's sessions outright (SEC-863). Going
         ;; through the model would leave no row for the liveness predicate to reject, so this test would pass even
         ;; with `[:= :user.is_active true]` deleted from `live-session-conditions`.
-        (t2/update! (t2/table-name :model/User) user-id {:is_active false})
+        (t2/update! (t2/table-name :model/User) :id user-id {:is_active false})
         (is (t2/exists? (t2/table-name :model/Session) :id session-id)
             "the session row survives deactivation; it is the predicate that must reject it")
         (let [response (list-sessions user-id)]
@@ -451,7 +519,7 @@
            (testing "tenancy=external shows only them"
              (is (= #{ext-session} (listed :tenancy "external"))))
            (testing "a session belonging to a deactivated tenant is not live at all"
-             (t2/update! :model/Tenant tenant-id {:is_active false})
+             (t2/update! :model/Tenant :id tenant-id {:is_active false})
              (is (= #{int-session} (listed))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -573,10 +641,10 @@
   (testing "a revoke bigger than one statement can name is still revoked in full, and counted in full"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [session-ids (vec (repeatedly 5 #(insert-session! user-id)))
-            end!        (mt/original-fn #'session/end-sessions-by-ids!)]
+            end!        (mt/original-fn #'models.session/end-sessions!)]
         ;; a real revoke batches at 1000 ids because every id is a bind parameter; two and a half batches of two
         ;; exercises the same code, including the short final batch, without inserting thousands of rows
-        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
+        (mt/with-dynamic-fn-redefs [models.session/end-sessions! (fn [ids reason ended-by]
                                                                    (end! ids reason ended-by 2))]
           (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
             (is (= 5 (:revoked response))
@@ -590,8 +658,8 @@
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [_matched (insert-session! user-id)
             raced    (atom nil)
-            end!     (mt/original-fn #'session/end-sessions-by-ids!)]
-        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
+            end!     (mt/original-fn #'models.session/end-sessions!)]
+        (mt/with-dynamic-fn-redefs [models.session/end-sessions! (fn [ids reason ended-by]
                                                                    (reset! raced (insert-session! user-id))
                                                                    (end! ids reason ended-by))]
           (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
@@ -606,10 +674,10 @@
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [kept (insert-session! user-id)
             gone (insert-session! user-id)
-            end! (mt/original-fn #'session/end-sessions-by-ids!)]
-        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
+            end! (mt/original-fn #'models.session/end-sessions!)]
+        (mt/with-dynamic-fn-redefs [models.session/end-sessions! (fn [ids reason ended-by]
                                                                    ;; a logout between the select and the update
-                                                                   (session.db/end-sessions! {:id [gone]} "logout" :self)
+                                                                   (end! [gone] "logout" :self)
                                                                    (end! ids reason ended-by))]
           (mt/with-log-messages-for-level [messages [metabase-enterprise.session-management.db :info]]
             (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
@@ -656,6 +724,27 @@
                   (is (= "User" model))
                   (is (= user-id model_id))
                   (is (= revoked (:count details))))))))))))
+
+(deftest revoke-audit-statement-count-test
+  (mt/with-additional-premium-features #{:audit-app}
+    (mt/with-model-cleanup [:model/AuditLog :model/User]
+      (let [statements (fn [n]
+                         (let [user-ids    (t2/insert-returning-pks! :model/User
+                                                                     (for [i (range n)]
+                                                                       {:first_name "Test"
+                                                                        :last_name  "User"
+                                                                        :email      (format "revoke-%d-%d@example.com" n i)
+                                                                        :password   "password"}))
+                               session-ids (mapv insert-session! user-ids)]
+                           (t2/with-call-count [call-count]
+                             (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:ids session-ids})
+                             (u/prog1 (call-count)
+                               (is (= (set user-ids)
+                                      (t2/select-fn-set :model_id :model/AuditLog
+                                                        :topic "session-revoked" :model_id [:in user-ids])))))))]
+        (statements 2)
+        (testing "POST /api/ee/session-management/revoke costs as many statements for 10 users as for 40"
+          (is (= (statements 10) (statements 40))))))))
 
 (deftest revoke-logs-without-audit-feature-test
   (testing "the revoke is logged even when the audit log is not being written"

@@ -16,8 +16,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
@@ -346,14 +347,39 @@
 
 (defmulti current-datetime-honeysql-form
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`. Should ideally
-  include the database type info on the form (ex: via [[h2x/with-type-info]])."
+  include the database type info on the form (ex: via [[h2x/with-type-info]]).
+
+  While [[qp.timezone/with-pinned-now]] pins the clock, returns instead a literal of the pinned moment, typed like the
+  driver's own form: the wall-clock time in the results timezone when that form is untyped or typed `timestamp` or
+  `datetime`, and otherwise an instant."
   {:added "0.34.2" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
+  (fn [driver]
+    (if (qp.timezone/pinned-now)
+      ::pinned-now
+      (driver/dispatch-on-initialized-driver driver)))
   :hierarchy #'driver/hierarchy)
 
 (defmethod current-datetime-honeysql-form :sql
   [_driver]
   :%now)
+
+(defn- zoned-type?
+  "Whether a current-time form of database type `database-type` holds an instant rather than a wall-clock time. Counts
+  an untyped form as a wall-clock time, which is right for Redshift's `GETDATE()`."
+  [database-type]
+  (boolean (and database-type
+                (not (contains? #{"timestamp" "datetime"} (u/lower-case-en database-type))))))
+
+(defmethod current-datetime-honeysql-form ::pinned-now
+  [driver]
+  (let [clock-form    ((get-method current-datetime-honeysql-form (driver/dispatch-on-initialized-driver driver))
+                       driver)
+        database-type (h2x/database-type clock-form)
+        now           (qp.timezone/now)]
+    (cond-> [:raw (inline-value driver (if (zoned-type? database-type)
+                                         (t/offset-date-time now)
+                                         (t/local-date-time now)))]
+      database-type (h2x/with-database-type-info database-type))))
 
 ;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
 (defmulti date
@@ -2045,7 +2071,7 @@
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
   ;; `:db` is normally absent on `:metadata/table` — sync doesn't populate it.
-  ;; A cross-DB rewriter can fill it to route the
+  ;; Workspace remap (and any future cross-DB rewriter) can fill it to route the
   ;; query at a database different from the connection's bound one. The
   ;; identifier helper drops nil components, so absent `:db` produces the same
   ;; `schema.table` shape as before.
@@ -2239,32 +2265,6 @@
       driver-api/add-alias-info
       :stages))
 
-(defmulti use-ctes-for-stages?
-  "Whether to compile the stages of a multi-stage query with CTEs instead of nested subselects, e.g.
-
-    WITH \"__mb_stage_0\" AS (SELECT \"a\", \"b\" FROM \"t\" WHERE \"b\" = 1)
-    SELECT \"a\", COUNT(*) FROM \"__mb_stage_0\" AS \"__mb_source\" GROUP BY \"a\"
-
-  instead of
-
-    SELECT \"a\", COUNT(*) FROM (SELECT \"a\", \"b\" FROM \"t\" WHERE \"b\" = 1) AS \"__mb_source\" GROUP BY \"a\"
-
-  Default is `false`. A driver should only opt in if its database accepts a `WITH` clause everywhere Metabase might
-  put a compiled query, not just at the top level of a statement:
-
-  * inside the parens of a `JOIN`, since a multi-stage join source compiles to `JOIN (WITH ... SELECT ...) AS j`
-  * as the body of another CTE, since a native first stage compiles to `WITH __mb_stage_0 AS (<native SQL>) ...` and
-    that native SQL may itself start with `WITH`
-  * inside a subquery, e.g. a card referenced from a native query via `{{#123}}` or a metadata probe
-  * after `CREATE TABLE ... AS` and `INSERT INTO ...`, for transforms and persisted models"
-  {:added "0.65.0", :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod use-ctes-for-stages? :sql
-  [_driver]
-  false)
-
 (defn- desired-col-alias-ident [col]
   (h2x/identifier :field (:lib/desired-column-alias col)))
 
@@ -2309,101 +2309,130 @@
 
 (def ^:private stage-cte-prefix "__mb_stage_")
 
-(defn- stage-cte-name
-  "Name of the CTE for the current nesting level and stage, e.g.
-   WITH
-   __mb_stage_0 AS (
-       WITH
-       __mb_stage_0_1 AS (...)
-       __mb_stage_1_1 AS (...)
-   )
-   __mb_stage_1 AS (...)"
-  [level stage-idx]
-  (cond-> (str stage-cte-prefix stage-idx)
-    (pos? level) (str "_" level)))
-
 (defn- cte-stage-source-form
   "The CTE is aliased as `__mb_source` so field refs can compile the same as with nested subselects."
-  [driver level prev-stage-idx]
-  {:from [[(->honeysql driver (h2x/identifier :table-alias (stage-cte-name level prev-stage-idx)))
+  [driver prev-cte-name]
+  {:from [[(->honeysql driver (h2x/identifier :table-alias prev-cte-name))
            [(->honeysql driver (h2x/identifier :table-alias source-query-alias))]]]})
 
 (defn- stage-cte
   "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" becomes \"__mb_stage_N AS (SELECT a FROM t)\".
   Applies the fix for duplicate column names similar to `stage-source-form`."
-  [level stage-idx hsql stage]
-  (let [cte-name         (stage-cte-name level stage-idx)
+  [hsql stage]
+  (let [cte-name         (::cte-name stage)
         columns-metadata (get-in stage [:lib/stage-metadata :columns])]
     (if (needs-cte-for-duplicate-cols? columns-metadata)
       [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
       [cte-name hsql])))
 
 (defn- stages->honeysql-ctes
-  "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from.
-   `level` is the CTE nesting level, it is added to each stage so that [[join-source]] can nest the joins properly"
-  [driver stages level]
+  "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from."
+  [driver stages]
   (let [stages   (vec stages)
         last-idx (dec (count stages))
         cte-body (fn [idx]
-                   (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver level (dec idx)))]
+                   (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver (::cte-name (stages (dec idx)))))]
                      (stage->honeysql driver prev-from (stages idx))))
-        ctes     (mapv #(stage-cte level % (cte-body %) (stages %)) (range last-idx))]
+        ctes     (mapv #(stage-cte (cte-body %) (stages %)) (range last-idx))]
     (update (cte-body last-idx) :with #(into ctes %))))
 
-(defn- stages->honeysql [driver stages level]
-  (let [stages (mapv #(assoc % ::cte-level level) stages)]
-    (if (and (use-ctes-for-stages? driver)
-             (> (count stages) 1))
-      (stages->honeysql-ctes driver stages level)
-      (stages->honeysql-subselects driver stages))))
+(defn- stages->honeysql*
+  [driver stages]
+  (if (::cte-name (first stages))
+    (stages->honeysql-ctes driver stages)
+    (stages->honeysql-subselects driver stages)))
 
 (defmethod join-source :sql
   [driver {:keys [stages]}]
-  (stages->honeysql driver stages (inc (::cte-level *inner-query* 0))))
+  (stages->honeysql* driver stages))
 
 (defn- all-stages
-  "`stages` together with the stages of every join in them"
+  "Gets all the stages of a query including the join stages."
   [stages]
-  (mapcat (fn [stage]
-            (cons stage (mapcat (comp all-stages :stages) (:joins stage))))
-          stages))
+  (mapcat #(cons % (mapcat (comp all-stages :stages) (:joins %))) stages))
 
-(defn- native-sql-cte-level
+(defn- hoist-ctes
+  "Moves the `WITH` clauses of nested queries, e.g. multi-stage join sources, to one `WITH` clause at the top."
+  [hsql]
+  (let [ctes (volatile! [])
+        hsql (match/replace-all hsql
+               {:with with} (do (vswap! ctes into with)
+                                (dissoc &match :with)))]
+    (cond-> hsql
+      (and (map? hsql) (seq @ctes)) (assoc :with @ctes))))
+
+(defn- stage-raw-sql
+  "The raw SQL that `stage->honeysql` compiles for `stage`, if any."
   [stage]
   (let [sql (or (:persisted-info/native stage)
-                (when (= (:lib/type stage) :mbql.stage/native)
-                  (:native stage)))]
-    (when (string? sql)
-      (when-let [levels (seq (for [[_ level] (re-seq (re-pattern (str stage-cte-prefix #"\d+(?:_(\d+))?")) sql)]
-                               (if level (parse-long level) 0)))]
-        (apply max levels)))))
+                (when (lib/native-stage? stage) (:native stage)))]
+    (when (string? sql) sql)))
 
-(defn- top-level-cte-level
-  "The CTE nesting level for the top-level stages of query. Normally 0, but we check if there are any CTEs
-   inside the native SQL of any stage in the query, and set it to one above that to avoid name collisions."
+(defn- native-sql-max-cte-number
+  [stage]
+  (when-let [sql (stage-raw-sql stage)]
+    (some->> (re-seq (re-pattern (str stage-cte-prefix #"(\d+)")) sql)
+             (map (comp parse-long second))
+             (apply max))))
+
+(defn- first-cte-number
+  "The number of the first stage CTE. Normally 0, but if the native SQL of any stage already has stage CTEs, we start
+  above them to avoid name collisions."
   [stages]
-  (if-let [levels (seq (keep native-sql-cte-level (all-stages stages)))]
-    (inc (apply max levels))
-    0))
+  (inc (reduce max -1 (keep native-sql-max-cte-number (all-stages stages)))))
+
+(defn- assign-cte-names*
+  "Gives each stage that compiles to a CTE a unique `::cte-name`, starting at `__mb_stage_<n>`."
+  [stages n]
+  (let [last-idx (dec (count stages))]
+    (reduce (fn [[stages n] [idx stage]]
+              (let [[joins n] (reduce (fn [[joins n] join]
+                                        (let [[join-stages n] (assign-cte-names* (:stages join) n)]
+                                          [(conj joins (assoc join :stages join-stages)) n]))
+                                      [[] n]
+                                      (:joins stage))
+                    stage     (cond-> stage
+                                (seq joins)      (assoc :joins joins)
+                                (< idx last-idx) (assoc ::cte-name (str stage-cte-prefix n)))]
+                [(conj stages stage) (cond-> n (< idx last-idx) inc)]))
+            [[] n]
+            (map-indexed vector stages))))
+
+(defn- assign-cte-names
+  [stages]
+  (first (assign-cte-names* stages (first-cte-number stages))))
+
+(defn- native-stage-has-cte?
+  "Whether the raw SQL of `stage` contains `WITH`. A false positive only makes the query use subselects."
+  [stage]
+  (boolean (some->> (stage-raw-sql stage) (re-find #"(?i)\bwith\b"))))
+
+(defn- use-stage-ctes?
+  [driver stages query]
+  (when-let [db (and (driver-api/initialized?) (driver-api/database (driver-api/metadata-provider)))]
+    (and (driver/database-supports? driver :stage-ctes db)
+         (or (driver/database-supports? driver :stage-ctes/nested db)
+             ;; If nested CTEs aren't supported, check that we don't have a card reference like {{#123}}
+             ;; and don't have a native stage with a CTE, otherwise we could end up with nested CTEs.
+             (and (not (get-in query [:middleware :card-reference?]))
+                  (not-any? native-stage-has-cte? (all-stages stages)))))))
+
+(defn- stages->honeysql
+  [driver stages query]
+  (if (use-stage-ctes? driver stages query)
+    (hoist-ctes (stages->honeysql* driver (assign-cte-names stages)))
+    (stages->honeysql* driver stages)))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver :- :keyword
-   query  :- ::qp.schema/any-query]
-  (if (:lib/type query)
-    (binding [driver/*driver* driver]
-      (let [stages (preprocess driver query)]
-        (log/trace "Compiling MBQL query")
-        (u/prog1 (stages->honeysql driver stages (top-level-cte-level stages))
-          (log/debug "Compiled HoneySQL form")
-          (driver-api/debug> (list '🍯 <>)))))
-    (let [metadata-provider (driver-api/metadata-provider)
-          database-id       (if (:type query)
-                              (:database query)
-                              (u/the-id (driver-api/database metadata-provider)))
-          inner-query       (or (:query query) query)
-          mbql5-query (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)]
-      (recur driver mbql5-query))))
+   query  :- ::lib.schema/query]
+  (binding [driver/*driver* driver]
+    (let [stages (preprocess driver query)]
+      (log/trace "Compiling MBQL query")
+      (u/prog1 (stages->honeysql driver stages query)
+        (log/debug "Compiled HoneySQL form")
+        (driver-api/debug> (list '🍯 <>))))))
 
 ;;;; MBQL -> Native
 
@@ -2412,9 +2441,9 @@
                           [:params [:maybe [:sequential :any]]]]
   "Transpile MBQL query into a native SQL statement. This is the `:sql` driver implementation
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
-  [driver      :- :keyword
-   outer-query :- ::qp.schema/any-query]
-  (let [honeysql-form (mbql->honeysql driver outer-query)
+  [driver :- :keyword
+   query  :- ::lib.schema/query]
+  (let [honeysql-form (mbql->honeysql driver query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))
 
@@ -2423,8 +2452,9 @@
 (defmethod driver/compile-transform :sql
   [driver {:keys [query output-db output-table]}]
   (let [{sql-query :query sql-params :params} query
-        ;; If `:output-db` is populated, qualify the output table with that DB
-        ;; so the CTAS lands in that database. The target namespace lives at the
+        ;; If the workspace remap populated `:output-db`, qualify the output
+        ;; table with that DB so the CTAS lands in the iso database. Used by
+        ;; MySQL workspace transforms today — the iso namespace lives at the
         ;; AST `:db` position and the canonical `output-table` is bare.
         ;;
         ;; 3-part `db.schema.name` writes (Snowflake / SQL Server / BigQuery

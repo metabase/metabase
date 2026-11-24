@@ -5,9 +5,10 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [mb.hawk.init]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test.initialize :as initialize]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -41,17 +42,17 @@
         existing-admin-ids         (t2/select-pks-set :model/User :is_superuser true)
         _                          (when (seq existing-admin-ids)
                                      (t2/update! (t2/table-name :model/User) {:id [:in existing-admin-ids]} {:is_superuser false}))
-        temp-admin                 (first (t2/insert-returning-instances! :model/User (merge (t2.with-temp/with-temp-defaults :model/User)
-                                                                                             attributes
-                                                                                             {:is_superuser true})))]
+        [temp-admin]                 (user/create-users! [(merge (t2.with-temp/with-temp-defaults :model/User)
+                                                                 attributes
+                                                                 {:is_superuser true})])]
     (try
       (thunk temp-admin)
       (finally
-        (t2/delete! :model/User (:id temp-admin))
+        (t2/delete! :model/User :id (:id temp-admin))
         (when (seq existing-admin-ids)
           (t2/update! (t2/table-name :model/User) {:id [:in existing-admin-ids]} {:is_superuser true}))
-        (perms/add-users-to-groups! (for [{:keys [user_id group_id is_group_manager]} existing-admin-memberships]
-                                      {:user user_id :group group_id :is-group-manager? is_group_manager}))))))
+        (perms-group-membership/add-users-to-groups! (for [{:keys [user_id group_id is_group_manager]} existing-admin-memberships]
+                                                       {:user user_id :group group_id :is-group-manager? is_group_manager}))))))
 
 (defmacro with-single-admin-user!
   "Creates an admin user (with details described in the `options-map`) and (temporarily) removes the administrative

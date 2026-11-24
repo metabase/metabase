@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg?component";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { MeasuredSkeleton } from "metabase/common/components/Skeletons";
@@ -17,7 +18,6 @@ import {
   Group,
   Icon,
   Menu,
-  Stack,
   Text,
   Title,
   TreeTable,
@@ -57,24 +57,6 @@ const SAMPLE_API_KEYS: ApiKey[] = [
   updated_at: "2026-10-14T16:32:00Z",
   updated_by: { id: -1, common_name: author },
 }));
-
-// TODO: replace with the shared `metabase/common/components/EmptyState` once it's migrated off Emotion (UXW-3641).
-function EmptyState() {
-  return (
-    <Center mih="20rem" data-testid="empty-table-warning">
-      <Stack align="center" gap="sm">
-        <Box c="text-primary" lh={0}>
-          <ApiKeysEmptyIllustration aria-hidden />
-        </Box>
-        <Text
-          c="text-disabled"
-          size="sm"
-          ta="center"
-        >{t`No API keys yet`}</Text>
-      </Stack>
-    </Center>
-  );
-}
 
 function ApiKeyActionsMenu({
   apiKey,
@@ -316,7 +298,17 @@ export const ManageApiKeys = () => {
                 onDelete={handleDelete}
               />
             ) : (
-              <EmptyState />
+              <Center mih="20rem" data-testid="empty-table-warning">
+                <EmptyState
+                  illustrationElement={
+                    <Box c="text-primary" lh={0}>
+                      <ApiKeysEmptyIllustration aria-hidden />
+                    </Box>
+                  }
+                  message={t`No API keys yet`}
+                  spacing="sm"
+                />
+              </Center>
             )}
           </MeasuredSkeleton>
         )}

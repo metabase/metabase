@@ -1,5 +1,6 @@
 ---
 title: Timezones
+summary: Every place a timezone gets set, from your database to the OS and JVM to Metabase's report timezone, plus the common pitfalls.
 redirect_from:
   - /docs/latest/operations-guide/handling-timezones
 ---
@@ -13,8 +14,8 @@ Metabase does its best to ensure proper and accurate reporting in whatever timez
 The following places where timezones are set can all impact the data you see:
 
 - `Database` - includes global database timezone settings, specific column type settings, and even individual data values.
-- `OS & JVM` - on whatever system is running Metabase the timezone settings of the Operating System as well as the Java Virtual Machine can impact your reports.
-- `Metabase` - inside Metabase the reporting timezone setting (if set) will influence how your data is reported.
+- `OS & JVM` - the timezone of the system running Metabase. Metabase uses the Java Virtual Machine (JVM) timezone, which is usually the same as the operating system's timezone. The JVM timezone can influence some scheduled tasks like syncs and scans. If you haven't set a [report timezone](./localization.md#set-default-instance-report-timezone), the JVM timezone also determines when subscriptions and alerts run. For query results, Metabase uses the JVM timezone when it can use neither the report timezone nor your database's own timezone.
+- `Metabase` - on [databases that support report timezone](./localization.md#set-default-instance-report-timezone), the report timezone setting is the timezone Metabase runs queries in. The report timezone also affects when some scheduled tasks run, like subscriptions and alerts.
 - `Metabase Cloud` - the timezone on the server that hosts your Metabase Cloud instance.
 
 ## Recommended settings

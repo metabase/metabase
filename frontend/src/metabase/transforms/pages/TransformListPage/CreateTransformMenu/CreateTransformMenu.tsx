@@ -58,7 +58,6 @@ export const CreateTransformMenu = () => {
         <Button
           aria-label={t`Create a transform`}
           disabled
-          size="lg"
           leftSection={<Icon name="add" size={16} />}
         >
           {t`New`}
@@ -74,7 +73,6 @@ export const CreateTransformMenu = () => {
           <Tooltip label={t`Create a transform`}>
             <Button
               aria-label={t`Create a transform`}
-              size="lg"
               leftSection={<Icon name="add" size={16} />}
             >
               {t`New`}

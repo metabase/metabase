@@ -1,4 +1,4 @@
-import type { PermissionSectionConfig } from "metabase/admin/permissions/types";
+import type { PermissionSectionConfig } from "metabase/permissions";
 import { isNotNull } from "metabase/utils/types";
 import type {
   DataPermissionValue,

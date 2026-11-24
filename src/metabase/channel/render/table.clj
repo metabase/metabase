@@ -1,12 +1,12 @@
 (ns metabase.channel.render.table
   (:require
    [clojure.string :as str]
-   [hiccup.core :refer [h]]
+   [hiccup.util :as hiccup.util]
    [medley.core :as m]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.style :as style]
    [metabase.formatter.core :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -84,7 +84,7 @@
                     {:font-weight 400
                      :color       style/color-text-light})
             :title "Row Index"}
-       (h "#")])
+       (hiccup.util/escape-html "#")])
     (map-indexed
      (fn [idx header-cell]
        (let [title (get column-names idx)
@@ -95,7 +95,7 @@
                        {:min-width :42px}
                        (get col->styles (:name col)))
                :title title}
-          (truncate-text (h title))]))
+          (truncate-text (hiccup.util/escape-html title))]))
      row)]])
 
 (defn calculate-pct-widths
@@ -145,7 +145,7 @@
            bar-width]    (calculate-pct-widths cell-width)]
       [:table {:style (style/style {:width (str cell-width "px") :border "0" :border-collapse "collapse"})}
        [:tr
-        [:td {:style (style/style {:width label-width :vertical-align "middle" :padding-right "10px"})} (h val)]
+        [:td {:style (style/style {:width label-width :vertical-align "middle" :padding-right "10px"})} (hiccup.util/escape-html val)]
         [:td {:style (style/style {:width bar-width :vertical-align "middle" :padding "0"})}
          [:table {:style (style/style {:width "100%" :border-collapse "collapse"})}
           [:tr
@@ -183,7 +183,7 @@
                                             :background-color (style/mb-primary-color)
                                             :border-radius "3px"})}]
                  [:td {:style (style/style {:width (format "%s%%" pct-left) :padding "0"})}]]]]])]]]]])
-    (h val)))
+    (hiccup.util/escape-html val)))
 
 (defn- image-url?
   "Whether a `view_as: \"image\"` cell may become an `<img src>`: only http(s), never an attacker-supplied
@@ -223,7 +223,7 @@
           (let [column       (nth columns col-idx)
                 column-name  (get column-names col-idx)
                 minibar-col  (first (filter #(= (:name column) (:name %)) minibar-cols))
-                col-settings (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name column-name}] {})]
+                col-settings (lib/column-settings-for-name viz-settings column-name)]
             [:td {:style (style/style
                           (row-style-for-type cell)
                           (get col->styles (:name column))
@@ -240,13 +240,13 @@
                (render-minibar cell (get-in minibar-col [:fingerprint :type :type/Number]) (get col->styles (:name column)))
 
                ;; View as image
-               (and (= (get col-settings ::mb.viz/view-as) "image")
+               (and (= (:view_as col-settings) "image")
                     (image-url? cell))
-               [:img {:src (h cell)
+               [:img {:src (hiccup.util/escape-html cell)
                       :style (style/style style/view-as-img-style)}]
 
                :else
-               (h cell))]))]))])
+               (hiccup.util/escape-html cell))]))]))])
 
 (defn- get-min-width
   "Get the min width for a column with text wrapping enabled. In the happy path, column widths are supplied in viz settings
@@ -279,17 +279,17 @@
   "Takes a vector of column definitions and visualization settings
   Returns a map of column identifier keys to style maps based on the visualization settings"
   [columns viz-settings]
-  (let [column-settings (get viz-settings ::mb.viz/column-settings)
+  (let [column-settings (:column_settings viz-settings)
         column-widths   (get viz-settings :table.column_widths)]
     (reduce
      (fn [acc [col-key col-setting]]
-       (let [column-name   (::mb.viz/column-name col-key)
+       (let [column-name   (:column-name (lib/parse-column-settings-key col-key))
              column-index  (first (keep-indexed
                                    (fn [idx col] (when (= (:name col) column-name) idx))
                                    columns))]
          (cond-> acc
            ;; text wrapping
-           (::mb.viz/text-wrapping col-setting)
+           (:text_wrapping col-setting)
            (assoc column-name (merge {:white-space "normal"}
                                      (cond
                                        (column-has-width column-widths column-index)
@@ -303,15 +303,15 @@
                                         :width     *text-wrapping-fallback-width*})))
 
            ;; text alignment
-           (::mb.viz/text-align col-setting)
-           (assoc column-name {:text-align (get-text-align (::mb.viz/text-align col-setting))})
+           (:text_align col-setting)
+           (assoc column-name {:text-align (get-text-align (:text_align col-setting))})
 
            ;; view as image
-           (= (::mb.viz/view-as col-setting) "image")
+           (= (:view_as col-setting) "image")
            (assoc column-name {:vertical-align "middle"})
 
            ;; minibar
-           (::mb.viz/show-mini-bar col-setting)
+           (:show_mini_bar col-setting)
            (assoc column-name (if (column-has-width column-widths column-index)
                                 {:width (nth column-widths column-index)
                                  :min-width (get-min-width column-widths column-index)}

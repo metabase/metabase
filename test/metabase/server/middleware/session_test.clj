@@ -15,9 +15,9 @@
    [metabase.server.db :as server.db]
    [metabase.server.middleware.session :as mw.session]
    [metabase.session.core :as session]
-   [metabase.session.events.revoke-on-deactivation] ; for side effects: deletes sessions on deactivation
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.honey-sql-2 :as h2x]
@@ -50,10 +50,10 @@
                      :created_at :%now})
         (testing "session authenticates while the user is active"
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
-        (t2/update! :model/User user-id {:is_active false})
+        (user/update-users! [{:id user-id :is_active false}])
         (testing "after deactivation the session no longer authenticates"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
-        (t2/update! :model/User user-id {:is_active true})
+        (user/update-users! [{:id user-id :is_active true}])
         (testing "after reactivation the same session STILL does not authenticate"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))))))
 
@@ -362,10 +362,10 @@
         (testing "authenticates while its synthetic user is active"
           (is (authed?)))
         (testing "deactivating the creator does NOT revoke the key — creator_id is attribution only"
-          (t2/update! :model/User creator-id {:is_active false})
+          (t2/update! :model/User :id creator-id {:is_active false})
           (is (authed?)))
         (testing "deactivating the key's own synthetic user DOES revoke it"
-          (t2/update! :model/User synthetic-id {:is_active false})
+          (t2/update! :model/User :id synthetic-id {:is_active false})
           (is (not (authed?))))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-2

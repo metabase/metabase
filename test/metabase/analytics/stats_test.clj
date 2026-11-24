@@ -539,6 +539,7 @@
   "Set of features intentionally excluded from the daily stats ping. If you add a new feature, either add it to the stats ping
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
+    :change-log
     :collection-cleanup
     :content-diagnostics
     :data-apps
@@ -660,16 +661,16 @@
                      :model/Collection {sub-coll-id :id}     {:name     "Sub folder"
                                                               :location (format "/%d/%d/" library-id metrics-coll-id)}
                      ;; Published table in library-data collection
-                     :model/Table      _                     {:db_id         db-id
-                                                              :name          "published_table"
-                                                              :active        true
+                     :model/Table      {table-id :id}        {:db_id  db-id
+                                                              :name   "published_table"
+                                                              :active true}
+                     :model/TableUserSettings _              {:table_id      table-id
                                                               :is_published  true
                                                               :collection_id data-coll-id}
                      ;; Unpublished table (should not count)
-                     :model/Table      _                     {:db_id        db-id
-                                                              :name         "unpublished_table"
-                                                              :active       true
-                                                              :is_published false}
+                     :model/Table      _                     {:db_id  db-id
+                                                              :name   "unpublished_table"
+                                                              :active true}
                      ;; Metric in library-metrics collection
                      :model/Card       _                     {:name                   "Metric 1"
                                                               :type                   :metric
@@ -708,9 +709,10 @@
               (#'stats/transform-metrics))))
     (testing "with transforms and recent runs"
       (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
-                                                          :table "test_table"}
+                                                          :type     "table"
+                                                          :name     "test_table"}
                                                  :name "Test SQL transform"
-                                                 :source {:type "query"
+                                                 :source {:type :query
                                                           :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
                      :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 1))
                                             :transform_id (:id transform)}]
@@ -718,9 +720,10 @@
                 (#'stats/transform-metrics)))))
     (testing "with old transform runs"
       (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
-                                                          :table "test_table"}
+                                                          :type     "table"
+                                                          :name     "test_table"}
                                                  :name "Test SQL transform"
-                                                 :source {:type "query"
+                                                 :source {:type :query
                                                           :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
                      :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 25))
                                             :transform_id (:id transform)}]

@@ -1,4 +1,5 @@
 (ns metabase.lib.convert-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.lib.convert/->legacy-MBQL {:namespaces [metabase.lib.convert-test]}}}}}}
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
@@ -121,12 +122,12 @@
                        {:name         "NAME"
                         :display-name "Name"
                         :type         :dimension
-                        :dimension    [:field 866 nil]
+                        :field-id     866
                         :widget-type  :string/=
                         :default      nil}}}
                      :database 76}
           converted (lib.convert/->mbql5 original)]
-      (is (=? {:stages [{:template-tags [{:dimension [:field {:lib/uuid string?} 866]}]}]}
+      (is (=? {:stages [{:template-tags [{:field-id 866}]}]}
               converted))
       (is (mr/validate :metabase.lib.schema/query converted)))))
 
@@ -134,7 +135,7 @@
   (is (= {:database 76
           :native {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
                    :template-tags {"NAME" {:default      nil
-                                           :dimension    [:field 866 nil]
+                                           :field-id     866
                                            :display-name "Name"
                                            :name         "NAME"
                                            :type         :dimension
@@ -145,7 +146,7 @@
            :stages   [{:native   "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
                        :template-tags
                        [{:default      nil
-                         :dimension    [:field {:lib/uuid "7ba4c681-b39e-418b-8b77-b98ad974eeb1"} 866]
+                         :field-id     866
                          :display-name "Name"
                          :name         "NAME"
                          :type         :dimension
@@ -411,7 +412,7 @@
        {:name "NAME"
         :display-name "Name"
         :type :dimension
-        :dimension [:field 866 nil]
+        :field-id  866
         :widget-type :string/=
         :default nil}}}
      :database 76}
@@ -1680,6 +1681,41 @@
                                                :lib/transformation-added-base-type true}
                                        "USER_ID"])))))
 
+(deftest ^:parallel ->legacy-MBQL-ref-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/expression "Tax Rate" (lib// (meta/field-metadata :orders :tax)
+                                                    (meta/field-metadata :orders :total)))
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))]
+    (testing "string-name :field ref keeps :base-type, even when the conversion to MBQL 5 added it"
+      (is (= [:field "USER_ID" {:base-type :type/Integer, :join-alias "ord1"}]
+             (lib.convert/->legacy-MBQL-ref [:field {:lib/uuid                           "47afe974-396c-4213-8736-859399ba5e7e"
+                                                     :base-type                          :type/Integer
+                                                     :join-alias                         "ord1"
+                                                     :lib/transformation-added-base-type true}
+                                             "USER_ID"]))))
+    (testing ":expression ref"
+      (is (= [:expression "Tax Rate" {:base-type :type/Float}]
+             (lib.convert/->legacy-MBQL-ref (lib/expression-ref query "Tax Rate")))))
+    (testing ":aggregation ref"
+      (let [sum-ref (lib/aggregation-ref query 1)]
+        (testing "becomes an index into the aggregation list inside with-aggregation-list"
+          (is (= [:aggregation 1]
+                 (lib.convert/with-aggregation-list (lib/aggregations query)
+                   (lib.convert/->legacy-MBQL-ref sum-ref)))))
+        (testing "cannot be converted outside of with-aggregation-list"
+          (is (thrown-with-msg?
+               #?(:clj Throwable :cljs :default)
+               #"Unable to find key"
+               (lib.convert/->legacy-MBQL-ref sum-ref))))))
+    ;; only Clojure validates `mu/defn` input schemas
+    #?(:clj
+       (testing "other refs like :metric are rejected"
+         (is (thrown-with-msg?
+              Throwable
+              #"Invalid input"
+              (lib.convert/->legacy-MBQL-ref [:metric {:lib/uuid "47afe974-396c-4213-8736-859399ba5e7e"} 1])))))))
+
 (deftest ^:parallel dimension->mbql5-test
   (is (=? [:dimension
            {:stage-number 0, :lib/uuid string?}
@@ -1719,7 +1755,7 @@
                                             :display-name "Checkin Date"
                                             :type         :dimension
                                             :widget-type  :date/all-options
-                                            :dimension    [:field 2 nil]}}}))))
+                                            :field-id     2}}}))))
 
 (deftest ^:parallel round-trip-offset-inside-case-inside-aggregation-test
   (testing "#42377 sum(case([Total] > 0, offset([Total], -1))) survives the legacy <-> MBQL 5 round-trip"

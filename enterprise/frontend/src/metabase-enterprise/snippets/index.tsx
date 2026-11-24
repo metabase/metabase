@@ -13,7 +13,6 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { CollectionRow } from "./components/CollectionRow";
 import { MoveSnippetModal } from "./components/MoveSnippetModal";
 import { SnippetCollectionHeaderMenu } from "./components/SnippetCollectionHeaderMenu";
-import { SnippetCollectionPermissionsModal } from "./components/SnippetCollectionPermissionsModal";
 import { SnippetCollectionPickerModal } from "./components/SnippetCollectionPickerModal";
 
 /**
@@ -24,8 +23,6 @@ export function initializePlugin() {
     // Add new menu option
     PLUGIN_SNIPPET_FOLDERS.isEnabled = true;
     PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal = SnippetCollectionPickerModal;
-    PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal =
-      SnippetCollectionPermissionsModal;
     PLUGIN_SNIPPET_FOLDERS.MoveSnippetModal = MoveSnippetModal;
     PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push((snippetSidebar) => ({
       icon: "folder",

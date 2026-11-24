@@ -52,15 +52,11 @@
 ;;; TODO -- this is not necessarily a 'task history' thing and maybe belongs in the `task` module's API rather than
 ;;; here... maybe a problem for another day.
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/unique-tasks"
+(api.macros/defendpoint :get "/unique-tasks" :- [:vector string?]
   "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique
   tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should
   reflect that."
-  [] :- [:vector string?]
+  []
   (perms/check-has-application-permission :monitoring)
   (task-history/unique-tasks))
 
@@ -187,6 +183,15 @@
      :status            status
      :started-at-start  start
      :started-at-end    end}))
+
+(api.macros/defendpoint :get "/counts" :- [:map {:closed true}
+                                           [:tasks ms/IntGreaterThanOrEqualToZero]
+                                           [:runs ms/IntGreaterThanOrEqualToZero]]
+  "Count all retained task history rows and task runs for the Monitor tabs."
+  [_route-params _query-params _body _request]
+  (perms/check-has-application-permission :monitoring)
+  {:tasks (task-history/total nil)
+   :runs (task-history.db/task-run-count (run-filters nil))})
 
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
   "List task runs with optional filters. Returns runs with hydrated entity names and task counts."

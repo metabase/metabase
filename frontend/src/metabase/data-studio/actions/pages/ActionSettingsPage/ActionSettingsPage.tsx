@@ -28,7 +28,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { WritebackQueryAction } from "metabase-types/api";
+import type { WritebackAction } from "metabase-types/api";
 
 import { ActionHeader } from "../../components/ActionHeader";
 import { ActionPageSkeleton } from "../../components/ActionPageSkeleton";
@@ -116,12 +116,12 @@ function SuccessMessageTitleSection({ children }: TitleSectionChildrenProps) {
 }
 
 type SectionProps = {
-  action: WritebackQueryAction;
+  action: WritebackAction;
   readOnly?: boolean;
 };
 
 type PublicSharingSectionProps = {
-  action: WritebackQueryAction;
+  action: WritebackAction;
   canMakePublic: boolean;
 };
 

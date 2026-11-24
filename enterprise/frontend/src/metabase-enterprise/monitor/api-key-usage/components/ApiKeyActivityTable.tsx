@@ -315,6 +315,7 @@ function ApiKeyActivityTreeTable({ rows }: { rows: ApiKeyActivityRow[] }) {
   return (
     <TreeTable
       instance={treeTableInstance}
+      static
       hierarchical={false}
       ariaLabel={t`API keys`}
       emptyState={<MonitorEmptyState label={t`No key activity`} />}

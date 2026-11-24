@@ -1,6 +1,6 @@
 (ns metabase.xrays.automagic-dashboards.schema
   (:require
-   [metabase.lib.core :as lib]
+   [malli.util :as mut]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -9,6 +9,7 @@
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.queries.schema]
    [metabase.segments.schema]
    [metabase.util.i18n :as i18n]
@@ -17,7 +18,7 @@
    [toucan2.core :as t2]))
 
 (mr/def ::string-or-18n-string
-  [:or :string [:fn {:error/message "localized string"} i18n/localized-string?]])
+  [:or :string [:fn {:error/message "localized string", :json-schema {:type "string"}} i18n/localized-string?]])
 
 (mr/def ::related-keys
   "What [[metabase.xrays.related]] and the candidate-table ranking pin on an entity they return."
@@ -39,12 +40,8 @@
    [:model/Query   [:ref ::adhoc-question]]])
 
 (mr/def ::filter-clause
+  "An MBQL 5 filter clause."
   [:and
-   {:decode/normalize (fn [x]
-                        (when (sequential? x)
-                          (if (map? (second x))
-                            x
-                            (lib/->mbql5 x))))}
    [:ref ::lib.schema.mbql-clause/clause]
    [:ref ::lib.schema.expression/boolean]])
 
@@ -53,8 +50,8 @@
 
 (mr/def ::root.cell-query-input
   "A `::root.cell-query` before [[metabase.xrays.automagic-dashboards.comparison/comparison-dashboard]] and friends
-  normalize it with `(lib/normalize ::root.cell-query ...)`: a raw, possibly-legacy filter clause as callers (API
-  params decoded from JSON, or a hand-written test clause) actually pass it in."
+  normalize it with `(lib/normalize ::root.cell-query ...)`: an MBQL 5 filter clause that may still be in its JSON
+  form, with strings for the keywords."
   ::lib.schema.common/possibly-unnormalized-clause)
 
 (mr/def ::root
@@ -265,7 +262,7 @@
     [:height        {:optional true} number?]
     [:width         {:optional true} number?]
     [:title         {:optional true} [:maybe ::string-or-18n-string]]
-    [:visualization {:optional true} [:tuple :string ms/VisualizationSettings]]
+    [:visualization {:optional true} [:tuple :string ::lib.schema.visualization/visualization-settings]]
     [:metrics       {:optional true} [:sequential :string]]
     [:filters       {:optional true} [:sequential :string]]
     [:description   {:optional true} [:maybe ::string-or-18n-string]]
@@ -325,7 +322,7 @@
    [:name                   {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ::lib.schema.id/collection]]
    [:display                {:optional true} [:maybe [:or :keyword :string]]]
-   [:visualization_settings {:optional true} ms/VisualizationSettings]
+   [:visualization_settings {:optional true} ::lib.schema.visualization/visualization-settings]
    [:query_type             {:optional true} [:maybe [:or :keyword :string]]]
    [:database_id            {:optional true} [:maybe ::lib.schema.id/database]]
    [:table_id               {:optional true} [:maybe ::lib.schema.id/table]]
@@ -351,7 +348,7 @@
    [:row                    {:optional true} nat-int?]
    [:size_x                 {:optional true} pos-int?]
    [:size_y                 {:optional true} pos-int?]
-   [:visualization_settings {:optional true} ms/VisualizationSettings]
+   [:visualization_settings {:optional true} ::lib.schema.visualization/visualization-settings]
    [:title                  {:optional true} string?]
    [:card-score             {:optional true} number?]
    [:dashboard_tab_id       {:optional true} [:maybe :int]]
@@ -416,7 +413,7 @@
   "A card [[metabase.xrays.transforms.dashboard]] lays out: a saved Card, or an unsaved source-table or text card, with its section layout keys."
   [:or
    [:merge :metabase.queries.schema/card ::transform-card.layout]
-   [:merge :metabase.queries.schema/card.update ::transform-card.layout]])
+   [:merge (mut/dissoc :metabase.queries.schema/card.update :id) ::transform-card.layout]])
 
 (mr/def ::card-template
   "A grounded, combined metric augmented with the extra keys the dashboard-populating code
@@ -434,7 +431,7 @@
      [:y_label                {:optional true} :string]
      [:series_labels          {:optional true} [:sequential :string]]
      [:text                   {:optional true} :string]
-     [:visualization-settings {:optional true} ms/VisualizationSettings]]]
+     [:visualization-settings {:optional true} ::lib.schema.visualization/visualization-settings]]]
    ::transform-card])
 
 (mr/def ::dashboard-template

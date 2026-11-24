@@ -321,7 +321,9 @@ describe("parseJunit with ignorePassingTests: false", () => {
   it("reports every test in a mostly-passing jest rerun, keeping `file`", () => {
     const tests = parseJunit(JEST_MOSTLY_PASSING, false);
     expect(
-      tests.map((t) => [t.name, t.status]).sort((a, b) => a[0]!.localeCompare(b[0]!)),
+      tests
+        .map((t) => [t.name, t.status])
+        .sort((a, b) => a[0]!.localeCompare(b[0]!)),
     ).toEqual([
       ["Button explodes", "failure"],
       ["Button is disabled", "passed"],

@@ -2,8 +2,18 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/common/collections/columns";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import {
+  COLLECTION_CONTENT_COLUMNS,
+  type CollectionContentTableColumn,
+  DEFAULT_VISIBLE_COLUMNS_LIST,
+} from "metabase/common/collections/columns";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import type { ItemWithLastEditInfo } from "metabase/common/components/LastEditInfoLabel/LastEditInfoLabel";
 import { dayjs } from "metabase/dayjs";
@@ -179,6 +189,35 @@ describe("BaseItemsTable", () => {
       expect(tooltip).toHaveTextContent(DESCRIPTION);
     });
 
+    it("renders a markdown link in the description tooltip and hides it on unhover", async () => {
+      const plainItem = getCollectionItem({
+        id: 1,
+        name: "Plain item",
+        description: null,
+      });
+      const linkedItem = getCollectionItem({
+        id: 2,
+        name: "Linked item",
+        description: "[link](https://metabase.com)",
+      });
+      setup({ items: [plainItem, linkedItem] });
+
+      const row = screen.getByRole("row", { name: /Linked item/ });
+      const icon = within(row).getByLabelText("info icon");
+      await userEvent.hover(icon);
+
+      const tooltip = await screen.findByRole("tooltip");
+      expect(
+        within(tooltip).getByRole("link", { name: "link" }),
+      ).toHaveAttribute("href", "https://metabase.com");
+      expect(tooltip).not.toHaveTextContent("[link]");
+
+      await userEvent.unhover(icon);
+      await waitFor(() => {
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      });
+    });
+
     it("shows markdown in description on hover", async () => {
       const DESCRIPTION = "**important** text";
       const ITEM = getCollectionItem({ description: DESCRIPTION });
@@ -192,6 +231,163 @@ describe("BaseItemsTable", () => {
 
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent("important text");
+    });
+
+    it("shows a multi-line markdown model description with headings on hover (metabase#34574)", async () => {
+      const otherItem = getCollectionItem({
+        id: 1,
+        name: "Other model",
+        description: "Other description",
+      });
+      const markdownItem = getCollectionItem({
+        id: 2,
+        name: "34574",
+        model: "dataset",
+        description: "# Hello\n## World\nThis is an **important** description!",
+      });
+      setup({ items: [otherItem, markdownItem] });
+
+      const row = screen.getByRole("row", { name: /34574/ });
+      await userEvent.hover(within(row).getByLabelText("info icon"));
+
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent("Hello");
+      expect(tooltip).toHaveTextContent("World");
+      expect(tooltip).toHaveTextContent("This is an important description!");
+      expect(tooltip).not.toHaveTextContent("#");
+      expect(tooltip).not.toHaveTextContent("Other description");
+    });
+  });
+
+  describe("last edited by", () => {
+    // jsdom has no layout: every cell is as wide as a narrow column, and its
+    // text is as wide as its length.
+    const COLUMN_WIDTH = 200;
+    const CHARACTER_WIDTH = 8;
+    const LONG_EMAIL = "averyverylongemail@veryverylongdomain.com";
+    const SHORT_EMAIL = "me@email.com";
+    let elementRectSpy: jest.SpyInstance;
+    let rangeRectSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      elementRectSpy = jest
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockReturnValue(new DOMRect(0, 0, COLUMN_WIDTH, 16));
+      rangeRectSpy = jest
+        .spyOn(Range.prototype, "getBoundingClientRect")
+        .mockImplementation(function (this: Range) {
+          const textLength = this.startContainer.textContent?.length ?? 0;
+          return new DOMRect(0, 0, textLength * CHARACTER_WIDTH, 16);
+        });
+    });
+
+    afterEach(() => {
+      elementRectSpy.mockRestore();
+      rangeRectSpy.mockRestore();
+    });
+
+    function getItemEditedBy(id: number, email: string) {
+      return getCollectionItem({
+        id,
+        name: `Item ${id}`,
+        "last-edit-info": {
+          id: 1,
+          first_name: null,
+          last_name: null,
+          email,
+          timestamp,
+        },
+      });
+    }
+
+    it("shows the editor's email when the editor has no name, with a tooltip only for a truncated email", async () => {
+      setup({
+        items: [
+          getItemEditedBy(1, LONG_EMAIL),
+          getItemEditedBy(2, SHORT_EMAIL),
+        ],
+      });
+
+      const longEmail = screen.getByText(LONG_EMAIL);
+      await userEvent.hover(longEmail);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(LONG_EMAIL);
+
+      await userEvent.unhover(longEmail);
+      await waitFor(() => {
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      });
+
+      await userEvent.hover(screen.getByText(SHORT_EMAIL));
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
+  });
+
+  it("renders the header in the order of COLLECTION_CONTENT_COLUMNS, which the skeleton rows follow", () => {
+    const HEADER_LABELS: Record<CollectionContentTableColumn, string> = {
+      type: "Type",
+      name: "Name",
+      description: "Description",
+      lastEditedBy: "Last edited by",
+      lastEditedAt: "Last edited at",
+      actionMenu: "",
+      archive: "",
+    };
+    setup({
+      items: [],
+      visibleColumnsMap: getVisibleColumnsMap([...COLLECTION_CONTENT_COLUMNS]),
+    });
+
+    const headerCells = within(
+      screen.getByTestId("items-table-head"),
+    ).getAllByRole("columnheader");
+    // The last header cell is the table's right edge, not a column.
+    const columnLabels = headerCells
+      .slice(0, -1)
+      .map((cell) => cell.textContent);
+
+    expect(columnLabels).toEqual(
+      COLLECTION_CONTENT_COLUMNS.map((column) => HEADER_LABELS[column]),
+    );
+  });
+
+  describe("skeleton", () => {
+    const selectableProps: Partial<BaseItemsTableProps> = {
+      collection: createMockCollection({ can_write: true }),
+      onToggleSelected: jest.fn<void, [CollectionItem]>(),
+    };
+
+    it.each([
+      { description: "when items can be selected", props: selectableProps },
+      { description: "when items can't be selected", props: {} },
+    ])(
+      "renders one placeholder cell per header cell $description",
+      ({ props }) => {
+        setup({ withSkeleton: true, items: [], ...props });
+
+        const headerCells = within(
+          screen.getByTestId("items-table-head"),
+        ).getAllByRole("columnheader");
+        // The placeholder rows are hidden from assistive technology.
+        const rows = within(
+          screen.getByTestId("items-table-skeleton"),
+        ).getAllByRole("row", { hidden: true });
+
+        expect(rows.length).toBeGreaterThan(0);
+        rows.forEach((row) => {
+          expect(
+            within(row).getAllByRole("cell", { hidden: true }),
+          ).toHaveLength(headerCells.length);
+        });
+      },
+    );
+
+    it("does not render the select all checkbox", () => {
+      setup({ withSkeleton: true, items: [], ...selectableProps });
+
+      expect(screen.getByTestId("items-table-skeleton")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Select all items"),
+      ).not.toBeInTheDocument();
     });
   });
 });

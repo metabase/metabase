@@ -22,6 +22,7 @@ const nodeProject = {
   testEnvironment: "node",
   transform: baseConfig.transform,
   transformIgnorePatterns: baseConfig.transformIgnorePatterns,
+  watchPathIgnorePatterns: baseConfig.watchPathIgnorePatterns,
 };
 
 /** @type {import('jest').Config} */
@@ -82,10 +83,18 @@ const config = {
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
         "<rootDir>/enterprise/frontend/src/custom-viz",
+        "<rootDir>/frontend/build",
         "<rootDir>/frontend/lint/tests",
         "<rootDir>/.github",
         MEMORY_TEST_PATTERN,
       ],
+    },
+    {
+      ...nodeProject,
+      // Build tooling reads real files and, for fonts, drives a WebAssembly
+      // decoder that rejects a jsdom Buffer.
+      displayName: "build-tooling",
+      testMatch: ["<rootDir>/frontend/build/**/*.unit.spec.{js,jsx,ts,tsx}"],
     },
     {
       ...nodeProject,
@@ -97,6 +106,27 @@ const config = {
       displayName: "ci-scripts",
       testMatch: ["<rootDir>/.github/**/*.unit.spec.{js,jsx,ts,tsx}"],
     },
+    // Specs that fail on purpose, for the test of the node:test runner, which
+    // runs them under both runners and compares the results.
+    ...(process.env.HARNESS_COMPAT
+      ? [
+          {
+            ...nodeProject,
+            displayName: "harness-compat",
+            testMatch: [
+              "<rootDir>/frontend/test/harness-compat/fixtures/**/*.fixture.js",
+            ],
+          },
+          {
+            ...nodeProject,
+            displayName: "harness-compat-dom",
+            testEnvironment: baseConfig.testEnvironment,
+            testMatch: [
+              "<rootDir>/frontend/test/harness-compat/dom-fixtures/**/*.fixture.js",
+            ],
+          },
+        ]
+      : []),
   ],
 };
 

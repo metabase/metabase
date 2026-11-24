@@ -522,10 +522,9 @@
   (testing (str "a fast query is not cached when a stored `:ttl` config sets `min_duration_ms` above its runtime "
                 "(regression for #78340)")
     (mt/with-model-cleanup [:model/CacheConfig]
-      (cache-config/store! (mt/user->id :crowberto)
-                           {:model    "root"
-                            :model_id 0
-                            :strategy {:type :ttl :multiplier 60 :min_duration_ms 20000}})
+      (cache-config/save-cache-config! {:model    "root"
+                                        :model_id 0
+                                        :strategy {:type :ttl :multiplier 60 :min_duration_ms 20000}})
       (with-mock-cache! [save-chan]
         (let [strategy (-> (cache-config/root-strategy)
                            cache-config/row->config
@@ -680,9 +679,9 @@
       ;; the QP pipeline on worker threads that don't inherit *local-redefs* — use with-redefs.
       ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-      (with-redefs [process-userland-query/save-execution-metadata!*          (fn [& args]
+      (with-redefs [process-userland-query/save-execution-metadata!*          (fn [query-executions]
                                                                                 (swap! save-execution-metadata-count inc)
-                                                                                (apply save-execution-metadata-original args)
+                                                                                (save-execution-metadata-original query-executions)
                                                                                 (deliver called-promise true))
                     query/save-queries-and-update-average-execution-times! (fn [entries]
                                                                              (swap! update-avg-execution-count + (count entries))

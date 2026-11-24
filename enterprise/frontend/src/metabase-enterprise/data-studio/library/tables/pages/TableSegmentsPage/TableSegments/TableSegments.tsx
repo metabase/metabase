@@ -9,7 +9,7 @@ import {
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ConcreteTableId, Table } from "metabase-types/api";
+import type { Table, TableId } from "metabase-types/api";
 
 type TableSegmentsProps = {
   table: Table;
@@ -17,7 +17,7 @@ type TableSegmentsProps = {
 
 export function TableSegments({ table }: TableSegmentsProps) {
   const canWriteSegments = useSelector((state) =>
-    getUserCanWriteSegments(state, table.is_published),
+    getUserCanWriteSegments(state, table.collection != null),
   );
   const segments = table.segments ?? [];
 
@@ -40,7 +40,7 @@ export function TableSegments({ table }: TableSegmentsProps) {
                   trackSegmentCreateStarted(
                     "data_studio_segments",
                     // Unjustified type cast. FIXME
-                    table.id as ConcreteTableId,
+                    table.id as TableId,
                   ),
               }
             : undefined

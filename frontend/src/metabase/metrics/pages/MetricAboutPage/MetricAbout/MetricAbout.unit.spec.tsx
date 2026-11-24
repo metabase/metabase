@@ -12,14 +12,15 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Card, Dataset, Field, Metric } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { Card, Dataset, DatasetColumn, Metric } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
-  createMockField,
   createMockMetric,
   createMockMetricDimension,
   createMockNumericColumn,
@@ -49,21 +50,21 @@ const mockUrls = {
   history: (id: number) => `/metric/${id}/history`,
 };
 
-function makeMetricCard(resultMetadata: Field[]): Card {
+function makeMetricCard(resultMetadata: DatasetColumn[]): Card {
   return createMockCard({
     id: 42,
     type: "metric",
     database_id: SAMPLE_DB_ID,
     table_id: ORDERS_ID,
     result_metadata: resultMetadata,
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-      },
-    },
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
+    }),
   });
 }
 
@@ -160,7 +161,7 @@ describe("MetricAbout", () => {
   it("renders the Explore button on the chart card for numeric metrics", async () => {
     setup(
       makeMetricCard([
-        createMockField({ name: "count", base_type: "type/Integer" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
       ]),
     );
 
@@ -173,7 +174,7 @@ describe("MetricAbout", () => {
   it("does not render the Explore button when the metric has no summable column", async () => {
     setup(
       makeMetricCard([
-        createMockField({ name: "category", base_type: "type/Text" }),
+        createMockColumn({ name: "category", base_type: "type/Text" }),
       ]),
     );
 
@@ -229,8 +230,8 @@ describe("MetricAbout", () => {
 
       setup(
         makeMetricCard([
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
-          createMockField({ name: "count", base_type: "type/Integer" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "count", base_type: "type/Integer" }),
         ]),
         TIME_SERIES,
         { metric, metricDataset: categoryDataset },
@@ -278,7 +279,7 @@ describe("MetricAbout", () => {
         ],
       });
 
-      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+      setup(makeMetricCard([createMockColumn({ name: "count" })]), undefined, {
         metric,
         metricDataset: TIME_SERIES,
       });
@@ -300,6 +301,95 @@ describe("MetricAbout", () => {
       expect(
         fetchMock.callHistory.calls("path:/api/card/42/query"),
       ).toHaveLength(0);
+    });
+
+    it("uses the configured time bucket of the default time dimension", async () => {
+      const defaultDimensionId = "created-at";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          createMockMetricDimension({
+            id: "total",
+            display_name: "Total",
+            effective_type: "type/Float",
+            semantic_type: null,
+            status: "status/active",
+          }),
+          createMockMetricDimension({
+            id: defaultDimensionId,
+            display_name: "Created At",
+            effective_type: "type/DateTime",
+            semantic_type: "type/CreationTimestamp",
+            default: true,
+            default_temporal_unit: "week",
+            status: "status/active",
+          }),
+        ],
+        dimension_mappings: [
+          {
+            dimension_id: "total",
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.TOTAL],
+          },
+          {
+            dimension_id: defaultDimensionId,
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.CREATED_AT],
+          },
+        ],
+      });
+      const weeklyDataset = createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({
+              name: "created_at",
+              display_name: "Created At: Week",
+              base_type: "type/DateTime",
+              unit: "week",
+            }),
+            createMockNumericColumn({ name: "count" }),
+          ],
+          rows: [
+            ["2024-01-01T00:00:00Z", 100],
+            ["2024-01-08T00:00:00Z", 150],
+          ],
+        }),
+      });
+
+      setup(makeMetricCard([createMockColumn({ name: "count" })]), undefined, {
+        metric,
+      });
+      fetchMock.modifyRoute("metric-dataset", {
+        response: (call) =>
+          isWeeklyProjectionOf(String(call.options.body), defaultDimensionId)
+            ? weeklyDataset
+            : SCALAR_DATASET,
+      });
+
+      expect(
+        await screen.findByRole("button", {
+          name: "Select dimension: Created At: Week",
+        }),
+      ).toHaveTextContent("Created At: Week");
+      expect(screen.getByTestId("visualization-root")).toHaveAttribute(
+        "data-viz-ui-name",
+        "Line",
+      );
+      expect(await getMetricDatasetRequest()).toEqual({
+        definition: expect.objectContaining({
+          projections: [
+            expect.objectContaining({
+              projection: [
+                [
+                  "dimension",
+                  expect.objectContaining({ "temporal-unit": "week" }),
+                  defaultDimensionId,
+                ],
+              ],
+            }),
+          ],
+        }),
+      });
     });
 
     it("preserves a curated joined-field label when showing a time bucket (UXW-4945)", async () => {
@@ -363,7 +453,7 @@ describe("MetricAbout", () => {
         }),
       });
 
-      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+      setup(makeMetricCard([createMockColumn({ name: "count" })]), undefined, {
         metric,
         metricDataset,
       });
@@ -448,7 +538,7 @@ describe("MetricAbout", () => {
         }),
       });
 
-      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+      setup(makeMetricCard([createMockColumn({ name: "count" })]), undefined, {
         metric,
         metricDataset,
       });
@@ -471,8 +561,8 @@ describe("MetricAbout", () => {
     it("shows a scalar when the curated default cannot be charted", async () => {
       setup(
         makeMetricCard([
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
-          createMockField({ name: "count", base_type: "type/Integer" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "count", base_type: "type/Integer" }),
         ]),
         TIME_SERIES,
         {
@@ -539,8 +629,8 @@ describe("MetricAbout", () => {
 
       setup(
         makeMetricCard([
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
-          createMockField({ name: "count", base_type: "type/Integer" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "count", base_type: "type/Integer" }),
         ]),
         TIME_SERIES,
         { metric, metricDataset: SCALAR_DATASET },
@@ -564,8 +654,8 @@ describe("MetricAbout", () => {
     it("shows a scalar when there are no curated dimensions", async () => {
       setup(
         makeMetricCard([
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
-          createMockField({ name: "count", base_type: "type/Integer" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "count", base_type: "type/Integer" }),
         ]),
         TIME_SERIES,
         {
@@ -593,3 +683,9 @@ describe("MetricAbout", () => {
     });
   });
 });
+
+function isWeeklyProjectionOf(body: string, dimensionId: string) {
+  return body.includes(
+    `"temporal-unit":"week"},${JSON.stringify(dimensionId)}]`,
+  );
+}

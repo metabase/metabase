@@ -42,10 +42,10 @@ import {
   getYAxisNameGap,
 } from "./axis";
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
-import { applyResponsiveYAxisTicks } from "./responsive-axis";
 import { buildEChartsSeries } from "./series";
 import { getTrendLinesOption } from "./trend-line";
 import type { EChartsSeriesOption } from "./types";
+import { applyYAxisTicks } from "./y-axis";
 
 export function getBrushStyle(renderingContext: RenderingContext) {
   const brandColor = Color(renderingContext.getColor("core-brand"));
@@ -365,12 +365,19 @@ export const getCartesianChartOption = (
     }
   }
 
+  // echarts crashes building a cartesian coordinate system that has an x-axis
+  // but no y-axis, which happens on a render with no visible series. Drop the
+  // lone x-axis so an empty chart renders instead of throwing.
+  if (yAxis.length === 0) {
+    xAxis = [];
+  }
+
   return {
     ...getSharedEChartsOptions(isAnimated, renderingContext),
     ...splitPanelOverrides,
     grid,
     xAxis,
-    yAxis: applyResponsiveYAxisTicks(yAxis, chartModel, chartLayout, settings),
+    yAxis: applyYAxisTicks(yAxis, chartModel, chartLayout, settings),
     dataset: buildEChartsDataset(chartModel),
     series: seriesOption,
   };

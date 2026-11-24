@@ -350,7 +350,7 @@
                 field-ref)))
           ;; broken legacy field refs in results medtadata should never have `:effective-type`
           (lib.options/update-options dissoc :effective-type)
-          lib.convert/->legacy-MBQL
+          lib.convert/->legacy-MBQL-ref
           (->> (fe-friendly-expression-ref col))))))
 
 ;; For unambiguous columns we should use broken legacy refs to maintain backward compatibility with legacy viz
@@ -557,3 +557,16 @@
              (->> col
                   (lib.normalize/normalize :metabase.query-processor.schema/result-metadata.column)))
      :cljs (lib.normalize/normalize ::lib.schema.metadata/column col)))
+
+(defn match-returned-columns
+  "For each of the newly returned columns `cols`, the returned column of `stored-cols` it stands for, or nil: the one
+  with the same desired column alias, or else the one with the same name when either has no alias."
+  [stored-cols cols]
+  (let [by-alias (m/index-by :lib/desired-column-alias (filter :lib/desired-column-alias stored-cols))
+        by-name  (m/index-by :name stored-cols)]
+    (mapv (fn [col]
+            (or (get by-alias (:lib/desired-column-alias col))
+                (let [stored-col (get by-name (:name col))]
+                  (when (not-every? :lib/desired-column-alias [col stored-col])
+                    stored-col))))
+          cols)))

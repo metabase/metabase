@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type JSX } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
@@ -8,10 +8,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { SelectList } from "metabase/common/components/SelectList";
 import { ListSkeleton } from "metabase/common/components/Skeletons";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { CollectionId, DatabaseId, TableId } from "metabase-types/api";
+import type { CollectionId, DatabaseId } from "metabase-types/api";
 
 import type { SavedEntityType } from "../types";
 
@@ -20,15 +20,15 @@ import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
   type: SavedEntityType;
-  selectedId?: TableId;
+  selectedSource?: DataSource;
   databaseId?: DatabaseId | null;
   collectionId?: CollectionId;
-  onSelect: (tableOrModelId: string) => void;
+  onSelect: (source: DataSource) => void;
 }
 
 export const SavedEntityList = ({
   type,
-  selectedId,
+  selectedSource,
   databaseId,
   collectionId,
   onSelect,
@@ -70,7 +70,8 @@ export const SavedEntityList = ({
           <Fragment>
             {filteredList.map((collectionItem) => {
               const { id, name, moderated_status } = collectionItem;
-              const virtualTableId = getQuestionVirtualTableId(id);
+              const source: DataSource =
+                type === "table" ? { type: "table", id } : { type: "card", id };
 
               return (
                 <SelectList.Item
@@ -80,14 +81,17 @@ export const SavedEntityList = ({
                   }}
                   key={id}
                   id={id}
-                  isSelected={selectedId === virtualTableId}
+                  isSelected={
+                    selectedSource?.type === source.type &&
+                    selectedSource.id === source.id
+                  }
                   size="small"
                   name={tc(name)}
                   icon={{
                     name: CARD_INFO[type].icon,
                     size: 16,
                   }}
-                  onSelect={() => onSelect(virtualTableId)}
+                  onSelect={() => onSelect(source)}
                   rightIcon={PLUGIN_MODERATION.getStatusIcon(
                     moderated_status ?? undefined,
                   )}

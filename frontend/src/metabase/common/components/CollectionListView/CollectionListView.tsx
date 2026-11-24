@@ -6,7 +6,10 @@ import {
   LoadingSkeleton,
   getSkeletonLineWidth,
 } from "metabase/common/components/Skeletons";
-import { VirtualizedGrid } from "metabase/common/components/VirtualizedGrid";
+import {
+  type GridItemOrder,
+  VirtualizedGrid,
+} from "metabase/common/components/VirtualizedGrid";
 import CS from "metabase/css/core/index.css";
 import {
   Box,
@@ -38,6 +41,7 @@ type CollectionListViewProps = {
   crumbs: Crumb;
   loading?: boolean;
   items: CollectionListItem[];
+  itemOrder?: GridItemOrder;
   containerStyle?: CSSProperties;
   containerClassName?: string;
 };
@@ -46,6 +50,7 @@ export const CollectionListView = ({
   crumbs,
   loading = false,
   items,
+  itemOrder,
   containerStyle,
   containerClassName,
 }: CollectionListViewProps) => {
@@ -84,6 +89,7 @@ export const CollectionListView = ({
         ) : (
           <VirtualizedGrid
             items={items}
+            itemOrder={itemOrder}
             keyExtractor={(item) => item.key}
             renderItem={renderItem}
             columnsPerRow={COLUMNS_PER_ROW}

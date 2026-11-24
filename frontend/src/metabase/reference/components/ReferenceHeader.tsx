@@ -18,7 +18,7 @@ const ReferenceHeader = ({ name, headerIcon }: ReferenceHeaderProps) => (
     <div className={cx(CS.relative, L.header)}>
       {headerIcon && (
         <div className={cx(CS.flex, CS.alignCenter, CS.mr2)}>
-          <Icon className={CS.textLight} name={headerIcon} size={21} />
+          <Icon className={CS.textSecondary} name={headerIcon} size={21} />
         </div>
       )}
       <div className={S.headerBody}>

@@ -1,6 +1,6 @@
 (ns metabase.channel.render.card
   (:require
-   [hiccup.core :refer [h]]
+   [hiccup.util :as hiccup.util]
    [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
@@ -21,7 +21,7 @@
 (defn- card-href
   [card]
   (when-let [card-id (u/id card)]
-    (h (urls/card-url card-id))))
+    (hiccup.util/escape-html (urls/card-url card-id))))
 
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type :- ::body/render-type
@@ -49,7 +49,7 @@
                                      :rel    "noopener noreferrer"}
                               (not (:channel.render/disable-links? options))
                               (assoc :href title-href))
-                         (h card-name)]]
+                         (hiccup.util/escape-html card-name)]]
                        [:td {:style (style/style {:text-align :right})}
                         (when (:channel.render/include-buttons? options)
                           [:img {:style (style/style {:width :16px})
@@ -147,7 +147,9 @@
 
         (and (some? maybe-dashcard)
              (= false (render.util/is-visualizer-dashcard? maybe-dashcard))
-             (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
+             (if (contains? maybe-dashcard :series-results)
+               (seq (:series-results maybe-dashcard))
+               (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard)))))
         (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above

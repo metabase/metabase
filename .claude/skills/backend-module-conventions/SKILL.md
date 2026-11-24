@@ -5,7 +5,7 @@ description: Where Metabase backend code goes and how it reaches the app DB. Cov
 
 # Backend module conventions
 
-This skill decides where a line of backend code lives and how it reaches the app DB. Project `CLAUDE.md`
+This skill decides where a line of backend code lives and how it reaches the app DB. Project `AGENTS.md`
 covers the module config keys, nested modules, test commands, and ratchets. When the two disagree, the
 source tree wins. Read the linter or test that enforces a rule before you trust any prose about it,
 including this file.
@@ -19,13 +19,16 @@ A module is `metabase.<module>` (OSS, `src/`) or `metabase-enterprise.<module>` 
 |---|---|
 | `<module>.core` | The public API. Other modules call only this (plus anything else listed in the module's `:api`). Often a `potemkin/import-vars` facade. |
 | `<module>.db` | Every app-DB query the module makes. See the next section. |
-| `<module>.models.*` | Toucan 2 model definitions: `methodical/defmethod t2/table-name`, hooks, transforms. |
+| `<module>.models.*` | Toucan 2 model definitions: `methodical/defmethod t2/table-name`, hooks, transforms, and the `Writes` section with the model's write functions (see `backend-model-rules`). |
 | `<module>.settings` | `defsetting`s. |
-| `<module>.init` | Requires the namespaces that register things as a side effect (settings, tasks, event handlers). `metabase.core.init` or `metabase-enterprise.core.init` requires it. |
+| `<module>.init` | Requires the namespaces that register things as a side effect: settings, tasks, event handlers, and every model file that implements a multimethod or defines hooks. `metabase.core.init` or `metabase-enterprise.core.init` requires it. |
 | `<module>.api`, or the nested `<module>.rest` module (`:ns-prefix "metabase.<module>-rest"`, dir `<module>_rest/`) | HTTP endpoints. Domain logic stays in the base module. The `.rest` child calls the parent's `.core`. |
 | `enterprise/<module>` | The EE companion of an OSS module. It nests under the OSS module, which exports it automatically. |
 
-If a setting, task, or event handler never takes effect, look for a missing link in the `.init` chain.
+If a setting, task, event handler, hook or multimethod implementation never takes effect, look for a missing link in
+the `.init` chain. A namespace that implements a multimethod of another namespace (`defmethod`, a Toucan hook, a
+`<feature>/spec`) takes effect only once it is loaded, so its module's `init.clj` requires it; do not rely on some
+other namespace happening to load it first. A test that depends on such an implementation requires that namespace.
 
 ## Keep app-DB access in `<module>.db`
 
@@ -42,6 +45,8 @@ Write `db` functions in the style of `src/metabase/settings/db.clj`:
 - Name functions after the domain question (`setting-value`, `delete-setting!`), not after SQL.
 - Keep branching, permission checks, and data shaping in the caller. A `db` function that grows an `if` belongs somewhere else.
 - Get cross-module data through the other module's `.core`, not its `db`. A few modules list their `db` in `:api` as legacy exceptions. Don't add more.
+- A `db` function that inserts, updates or deletes a model is called only from that model's write functions, and it writes only models of its own module. To write another module's model, call that model's write function from its model namespace, which `fix-modules-config` then records in the owner's `:api`; a kondo rule reports a Toucan write on a model of another module. Write statements use `t2/insert-returning-instances!` and its counterparts, so the write function has the rows it publishes.
+- A statement count must not grow with the number of rows: a `db` function takes the ids or rows of a whole batch.
 
 ### Bind values with `[:auto/param v]`
 
@@ -59,19 +64,15 @@ not the lint covers it yet:
 
 The docstring of `metabase.app-db.value-guard` explains what the guard refuses without any marker.
 
-## Add app-DB migrations as one file per change
+## Add app-DB migrations
 
-`./bin/lint-migrations-file.sh` enforces these rules. Run it after every change.
+Follow the `app-db-migrations` skill (`.claude/skills/app-db-migrations/SKILL.md`): changesets are version-less, live
+in year directories like `resources/migrations/2026/` (`./bin/mage new-migration <name>`), and are backported by
+cherry-picking the same file to each release branch. `./bin/lint-migrations-file.sh` enforces the rules. The versioned
+layout (`0NN/` directories, `vNN.` ids) only holds changesets that already shipped.
 
-- Create the file with `./bin/mage new-migration <NN> <snake_name>` (e.g. `./bin/mage new-migration 65 add_user_table`). It writes `resources/migrations/<NNN>/<yyyyMMdd>_<snake_name>.yaml` with a changeset stub. Fill in the TODOs.
-- Starting with v60, each change is its own file. `NNN` is the earliest release the change ships in. New work goes in the newest directory. Don't add to `001_update_migrations.yaml`. Its footer describes the legacy format.
-- Changeset IDs are `v<NN>.<suffix>`, where `NN` matches the directory and the suffix is a random 6-char lowercase alphanumeric string (e.g. `v65.m2xncr`). `new-migration` generates one for the first changeset. For extra changesets in the same file, make up a new suffix and grep `resources/migrations` to confirm it is unused. IDs are not ordered within a directory.
-- Don't edit a shipped changeset. Add a new one. (Liquibase does recompute checksums and some edits are technically harmless, but the line between "cosmetic" and "ran instances now diverge from fresh installs" is easy to misjudge, so just add a new changeset.) Never delete a shipped changeset either: instances keep the row in `DATABASECHANGELOG` forever; removing the id makes Liquibase log "not rolled back" and any replacement that recreates the same object fails with a duplicate-object error. To retire one when you must, add a NEW changeset that does `DELETE FROM DATABASECHANGELOG WHERE id IN (...)` the retired ids. Put it in the same file as the retired changeset when it ships in the same release (`063/20260714_field_fk_target_field_id_fk.yaml::v63.2026-07-22T12:00:00`), or in the current release's file when it retires an older release's changeset (`059_update_migrations.yaml::v59.2026-01-09T11:30:00` retires `v58.2026-01-09T12:00:00`).
-- To backport, copy the changesets into the older directory with `v<older>` IDs. Guard each copy with `preConditions: onFail: MARK_RAN` plus `not: changeSetExecuted` that points at the newer ID, so databases that already ran it skip it. `resources/migrations/064/20260911_glossary_entity_id.yaml` shows the pattern.
-- Give every `indexExists`, `primaryKeyExists`, and `uniqueConstraintExists` precondition a `tableName`, and every `foreignKeyConstraintExists` a `foreignKeyTableName`. Without it, Liquibase snapshots the whole schema, which takes seconds per check.
-- Prefer SQL changesets. A custom migration (`metabase.app-db.custom-migrations`, `define-migration` / `define-reversible-migration`) must use table names, never `:model/*` or other application code. Application code changes later, and then the migration breaks. Decrypt encrypted columns such as `metabase_database.details` and `setting.value` before reading them.
-- The whole `metabase.app-db.*` module, custom migrations included, is exempt from the `<module>.db` rule (the `app-db-namespaces` group in `.clj-kondo/config.edn`).
-- Test with the `test-migrations` macro (`metabase.app-db.schema-migrations-test.impl`) on H2 and Postgres. Add MySQL when the change touches DDL or JSON columns.
+The whole `metabase.app-db.*` module, custom migrations included, is exempt from the `<module>.db` rule (the
+`app-db-namespaces` group in `.clj-kondo/config.edn`).
 
 ## Cross module boundaries through `:api`
 
@@ -79,8 +80,8 @@ The docstring of `metabase.app-db.value-guard` explains what the guard refuses w
 - `./bin/mage modules-tree` prints the hierarchy. The `dev.deps-graph` and `dev.module-score` namespaces show who uses a module externally.
 - If a module needs something outside another module's `:api`, choose the first fix that works:
   1. Call something that is already public.
-  2. Add the var to that module's `.core`.
-  3. Invert the dependency with an event (`metabase.events`).
+  2. Add the var to that module's `.core` (a model's write functions are called from its model namespace instead, which becomes part of `:api`).
+  3. Invert the dependency: a multimethod in the namespace that needs the answer, implemented by the other side in its own namespace, or an event (`metabase.events`). Never `requiring-resolve`.
 
   Don't add a `:clj-kondo/ignore`.
 - If you change a suppression or a module escape hatch, run `./bin/mage kondo-ratchets`.

@@ -1,6 +1,7 @@
-import fetchMock, { type CallLog } from "fetch-mock";
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import type {
+  ContentDiagnosticsCountsResponse,
   InvalidateFindingsResponse,
   ListDuplicatedFindingsResponse,
   ListImbalancedFindingsResponse,
@@ -8,7 +9,25 @@ import type {
   ListStaleFindingsResponse,
 } from "metabase-types/api";
 
-type MockResponse<T> = T | ((call: CallLog) => T | Promise<T>);
+import type { MockResponse } from "./types";
+
+export function setupContentDiagnosticsCountsEndpoint(
+  response: MockResponse<ContentDiagnosticsCountsResponse> = {
+    stale: 0,
+    duplicated: 0,
+    slow: 0,
+    empty: 0,
+    sparse: 0,
+    crowded: 0,
+  },
+  options?: UserRouteConfig,
+) {
+  fetchMock.get("path:/api/ee/content-diagnostics/counts", response, options);
+}
+
+export function setupContentDiagnosticsCountsErrorEndpoint() {
+  fetchMock.get("path:/api/ee/content-diagnostics/counts", { status: 500 });
+}
 
 export function setupInvalidateFindingsEndpoint(
   response: MockResponse<InvalidateFindingsResponse | Response>,

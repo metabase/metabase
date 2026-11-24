@@ -2,6 +2,7 @@
   "Main namespace for interacting with collections"
   (:require
    [metabase.collections.create]
+   [metabase.collections.db]
    [metabase.collections.models.collection]
    [metabase.collections.update]
    [metabase.collections.util]
@@ -9,6 +10,7 @@
 
 (comment
   metabase.collections.create/keep-me
+  metabase.collections.db/keep-me
   metabase.collections.models.collection/keep-me
   metabase.collections.update/keep-me
   metabase.collections.util/keep-me)
@@ -19,35 +21,27 @@
  [metabase.collections.update
   update-collection!]
  [metabase.collections.models.collection
-  archive-or-unarchive-collection!
   has-remote-synced-collection?
-  check-for-remote-sync-update
-  check-non-remote-synced-dependencies
-  check-remote-synced-dependents
+  clear-remote-synced-collection!
   create-library-collection!
-  ensure-library-dashboards-collection!
   descendant-ids
-  ineligible-dependencies
   instance-analytics-collection-type
   library-collection
   library-collection-type
-  library-dashboards-collection-type
-  library-dashboards-collection?
+  library-collection-types
   library-data-collection-type
   library-metrics-collection-type
   location-path
   location-path->ids
-  moving-from-remote-synced?
-  moving-into-remote-synced?
-  non-remote-synced-dependencies
-  remote-synced-collection
-  remote-synced-collection?
-  remote-synced-dependents
+  set-remote-synced!
   shared-tenant-collection?
   slugify
   transforms-ns
+  trash-collection-id
   data-apps-ns
   data-actions-ns
   default-allowed-namespaces]
  [metabase.collections.util
-  annotate-dashboards])
+  annotate-dashboards
+  present-collection
+  with-effective-ancestors])

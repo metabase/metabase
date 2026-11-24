@@ -1,11 +1,17 @@
 (ns metabase.sync.analyze.interestingness-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
+   [metabase.driver.util :as driver.u]
    [metabase.interestingness.core :as interestingness]
    [metabase.interestingness.dimension :as dim]
    [metabase.sync.analyze.interestingness :as sync.interestingness]
+   [metabase.sync.analyze.test-util :as analyze.tu]
+   [metabase.sync.interface :as i]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
 ;;; Smoke tests for the canonical weight profiles. The sync step itself is verified
@@ -40,11 +46,11 @@
                    :model/Field    field    {:table_id (:id table)}]
       (is (nil? (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field))))
       (is (= {:fields-scored 1 :fields-failed 0}
-             (#'sync.interestingness/score-missing-leftovers! database)))
+             (#'sync.interestingness/score-missing-leftovers! (driver.u/lib-database (:id database)))))
       (is (some? (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field))))
       (testing "once scored, the field is no longer selected"
         (is (= {:fields-scored 0 :fields-failed 0}
-               (#'sync.interestingness/score-missing-leftovers! database)))))))
+               (#'sync.interestingness/score-missing-leftovers! (driver.u/lib-database (:id database)))))))))
 
 (deftest score-missing-leftovers-does-not-retry-failed-fields-test
   (testing "a field whose scoring attempt failed is not re-attempted by later leftovers passes in this process"
@@ -56,10 +62,10 @@
                                                                                 (swap! calls inc)
                                                                                 (throw (ex-info "boom" {})))]
           (is (= {:fields-scored 0 :fields-failed 1}
-                 (#'sync.interestingness/score-missing-leftovers! database)))
+                 (#'sync.interestingness/score-missing-leftovers! (driver.u/lib-database (:id database)))))
           (is (= 1 @calls))
           (is (= {:fields-scored 0 :fields-failed 0}
-                 (#'sync.interestingness/score-missing-leftovers! database)))
+                 (#'sync.interestingness/score-missing-leftovers! (driver.u/lib-database (:id database)))))
           (is (= 1 @calls) "the failed field should be skipped, not re-scored on every sync"))))))
 
 ;;; ------------------------------------------- leftovers pass: paging and limits -------------------------------------
@@ -82,7 +88,7 @@
       (with-group-size! 2
         (fn []
           (is (= {:fields-scored 5 :fields-failed 0}
-                 (#'sync.interestingness/score-missing-leftovers! database))
+                 (#'sync.interestingness/score-missing-leftovers! (driver.u/lib-database (:id database))))
               "a group size smaller than the field count must not stop the pass early")))
       (is (every? some? (map score-of [f1 f2 f3 f4 f5]))))))
 
@@ -96,7 +102,7 @@
                    :model/Field    _f4      {:table_id (:id table)}
                    :model/Field    _f5      {:table_id (:id table)}]
       (mt/with-temporary-setting-values [interestingness-max-fields-per-sync 2]
-        (let [stats (#'sync.interestingness/score-missing-leftovers! database)]
+        (let [stats (#'sync.interestingness/score-missing-leftovers! (driver.u/lib-database (:id database)))]
           (is (= 2 (:fields-scored stats)))
           (is (= 0 (:fields-failed stats)))
           (is (= 3 (:fields-remaining stats))
@@ -106,10 +112,10 @@
       (testing "the next run continues on the remainder rather than starting over"
         (mt/with-temporary-setting-values [interestingness-max-fields-per-sync 100]
           (is (= {:fields-scored 3 :fields-failed 0}
-                 (#'sync.interestingness/score-missing-leftovers! database)))))
+                 (#'sync.interestingness/score-missing-leftovers! (driver.u/lib-database (:id database)))))))
       (testing "and a run with nothing left to do reports no remainder"
         (is (= {:fields-scored 0 :fields-failed 0}
-               (#'sync.interestingness/score-missing-leftovers! database)))))))
+               (#'sync.interestingness/score-missing-leftovers! (driver.u/lib-database (:id database)))))))))
 
 (deftest score-missing-leftovers-keeps-going-past-a-failing-field-test
   (testing "a field whose scoring throws does not stop the rest of the run"
@@ -126,7 +132,7 @@
         (with-group-size! 1
           (fn []
             (is (= {:fields-scored 2 :fields-failed 1}
-                   (#'sync.interestingness/score-missing-leftovers! database))
+                   (#'sync.interestingness/score-missing-leftovers! (driver.u/lib-database (:id database))))
                 "the failing field must not halt the pass, nor stall the cursor on itself"))))
       (is (= [0.5 nil 0.5] (map score-of [f1 f2 f3]))))))
 
@@ -141,7 +147,7 @@
                                                :semantic_type :type/CreationTimestamp
                                                :fingerprint   fingerprint}]
         (is (= {:fields-scored 1 :fields-failed 0}
-               (#'sync.interestingness/score-missing-leftovers! database)))
+               (#'sync.interestingness/score-missing-leftovers! (driver.u/lib-database (:id database)))))
         (is (= (interestingness/dimension-interestingness
                 (t2/select-one :model/Field :id (:id field)))
                (score-of field)))))))
@@ -152,10 +158,64 @@
                    :model/Table    table    {:db_id (:id database)}
                    :model/Field    visible  {:table_id (:id table)}
                    :model/Field    hidden   {:table_id (:id table)}]
-      (t2/insert! :model/FieldUserSettings {:field_id        (:id hidden)
-                                            :visibility_type :sensitive})
+      (field-user-settings/upsert-field-user-settings! hidden {:visibility_type :sensitive})
       (is (= {:fields-scored 1 :fields-failed 0}
-             (#'sync.interestingness/score-missing-leftovers! database)))
+             (#'sync.interestingness/score-missing-leftovers! (driver.u/lib-database (:id database)))))
       (is (some? (score-of visible)))
       (is (nil? (score-of hidden))
           "the user-set visibility_type must still exclude the field after the rewrite"))))
+
+(defn- fingerprinted-field
+  "A text Field with a fingerprint of the latest version, not yet analyzed."
+  [_j]
+  {:fingerprint_version i/*latest-fingerprint-version*
+   :fingerprint         {:global {:distinct-count 2, :nil% 0.0}}
+   :last_analyzed       nil})
+
+(defn- analyzed-field
+  "[[fingerprinted-field]], analyzed already."
+  [j]
+  (assoc (fingerprinted-field j) :last_analyzed (t/offset-date-time)))
+
+(defn- score-fields-for-db!
+  [database]
+  (sync.interestingness/score-fields-for-db! database (constantly nil)))
+
+(deftest score-fields-statement-count-test
+  (testing "scoring interestingness issues as many statements for 16 Tables as for 4"
+    (testing "on first analysis"
+      (let [[small large] (analyze.tu/statement-counts-by-tables fingerprinted-field (constantly nil) score-fields-for-db!)]
+        (is (= small large))))
+    (testing "when nothing needs scoring"
+      (let [[small large] (analyze.tu/statement-counts-by-tables analyzed-field score-fields-for-db! score-fields-for-db!)]
+        (is (= small large))))))
+
+(deftest score-fields-for-db!-scores-every-table-test
+  (testing "scoring interestingness of a Database scores Fields of every Table in its sweep"
+    (mt/with-temp [:model/Database db      {}
+                   :model/Table    table-1 {:db_id (u/the-id db)}
+                   :model/Table    table-2 {:db_id (u/the-id db)}
+                   :model/Field    f1      (merge (fingerprinted-field 0) {:table_id (u/the-id table-1)})
+                   :model/Field    f2      (merge (fingerprinted-field 0) {:table_id (u/the-id table-2)})]
+      (is (= {:fields-scored 2, :fields-failed 0}
+             (score-fields-for-db! (driver.u/lib-database (u/the-id db)))))
+      (is (every? some? (t2/select-fn-vec :dimension_interestingness :model/Field :id [:in [(u/the-id f1) (u/the-id f2)]]))))))
+
+(deftest score-fields-for-db!-saves-other-tables-when-one-write-fails-test
+  (testing "scoring interestingness saves the scores of other Tables when saving those of one Table throws"
+    (mt/with-temp [:model/Database db      {}
+                   :model/Table    table-1 {:db_id (u/the-id db)}
+                   :model/Table    table-2 {:db_id (u/the-id db)}
+                   :model/Table    table-3 {:db_id (u/the-id db)}
+                   :model/Field    f1      (merge (fingerprinted-field 0) {:table_id (u/the-id table-1)})
+                   :model/Field    broken  (merge (fingerprinted-field 0) {:table_id (u/the-id table-2)})
+                   :model/Field    f3      (merge (fingerprinted-field 0) {:table_id (u/the-id table-3)})]
+      (let [update! (mt/original-fn #'field/update-fields!)]
+        (mt/with-dynamic-fn-redefs [field/update-fields! (fn [rows & opts]
+                                                           (when (some #(= (u/the-id broken) (:id %)) rows)
+                                                             (throw (ex-info "write failed" {})))
+                                                           (apply update! rows opts))]
+          (is (pos? (:fields-failed (score-fields-for-db! (driver.u/lib-database (u/the-id db))))))))
+      (is (= {(u/the-id f1) true (u/the-id broken) false (u/the-id f3) true}
+             (update-vals (t2/select-pk->fn :dimension_interestingness :model/Field :id [:in (map u/the-id [f1 broken f3])])
+                          some?))))))

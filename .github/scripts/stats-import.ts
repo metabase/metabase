@@ -15,7 +15,7 @@ const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 export type StatsRow = Record<string, unknown>;
 
 export interface ImportStatsOptions {
-  /** Table name as it appears in `/api/import/{table}`, e.g. `emotion_files`. */
+  /** Table name as it appears in `/api/import/{table}`, e.g. `bundle_sizes`. */
   table: string;
   rows: StatsRow[];
   /** Importer origin. Defaults to ENG_STATS_URL. */
@@ -64,7 +64,9 @@ async function attemptImport(
     });
   } catch (networkError) {
     const message =
-      networkError instanceof Error ? networkError.message : String(networkError);
+      networkError instanceof Error
+        ? networkError.message
+        : String(networkError);
     throw new ImportError(message, { retryable: true });
   }
 
@@ -84,7 +86,11 @@ async function attemptImport(
     inserted?: number;
     ignoredKeys?: string[];
   };
-  return { success: true, inserted: result.inserted, ignoredKeys: result.ignoredKeys };
+  return {
+    success: true,
+    inserted: result.inserted,
+    ignoredKeys: result.ignoredKeys,
+  };
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -93,8 +99,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * Imports `rows` into the `table` table, retrying transient API errors with
  * exponential backoff.
  *
- * Keys are matched leniently against the table's columns -- `Emotion Files`,
- * `emotionFiles` and `emotion_files` all land in `emotion_files` -- but values
+ * Keys are matched leniently against the table's columns -- `File Count`,
+ * `fileCount` and `file_count` all land in `file_count` -- but values
  * are matched strictly, and a key matching no column is an error rather than a
  * silent drop. Rows are appended; the importer has no replace mode.
  *
@@ -116,7 +122,9 @@ export async function importStats({
   }
 
   if (!baseUrl) {
-    throw new Error("ENG_STATS_URL is not set, so there is no importer to push to");
+    throw new Error(
+      "ENG_STATS_URL is not set, so there is no importer to push to",
+    );
   }
 
   // Tolerate a trailing slash: the origin comes from a hand-entered secret.

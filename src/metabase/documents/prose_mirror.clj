@@ -6,7 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.match :as match]))
 
 (def ^:private ExploreFilterScalar
   [:maybe [:or :string number? :boolean]])
@@ -30,20 +30,22 @@
    [:query_ids       {:optional true} [:maybe [:sequential :int]]]
    [:explore_filters {:optional true} [:maybe [:sequential [:ref ::card-embed.explore-filter]]]]])
 
+(mr/def ::node.entity-id
+  "The id of the entity a `cardEmbed` (`:id`) or `smartLink` (`:entityId`) node refers to."
+  [:maybe [:or :int :string]])
+
 (mr/def ::node.attrs
-  "The `attrs` of a ProseMirror node: the ones this code reads by name, the ones `metabase.explorations` writes onto a
-  static card embed, and whatever else the editor put there -- every node type has its own attributes and the editor
-  owns that set. Every key, declared or not, is a string, so the map never mixes keyword and string keys."
-  (ms/string-keyed-object
-   ["id"               {:optional true} [:maybe [:or :int :string]]]
-   ["_id"              {:optional true} [:maybe [:or :string :uuid]]]
-   ["model"            {:optional true} [:maybe :string]]
-   ["entityId"         {:optional true} [:maybe [:or :int :string]]]
-   ["label"            {:optional true} [:maybe :string]]
-   ["stored_result_id" {:optional true} [:maybe :int]]
-   ["chart_href"       {:optional true} [:maybe :string]]
-   ["child_target_id"  {:optional true} [:maybe :string]]
-   ["host_data"        {:optional true} [:maybe [:ref ::card-embed.host-data]]]))
+  "The `attrs` of a ProseMirror node: the ones this code reads by name, the ones `metabase.explorations` writes onto a static card embed, and whatever else the editor put there."
+  [:map {:closed false, :description "ProseMirror node attrs"}
+   [:id               {:optional true} ::node.entity-id]
+   [:_id              {:optional true} [:maybe [:or :string :uuid]]]
+   [:model            {:optional true} [:maybe :string]]
+   [:entityId         {:optional true} ::node.entity-id]
+   [:label            {:optional true} [:maybe :string]]
+   [:stored_result_id {:optional true} [:maybe :int]]
+   [:chart_href       {:optional true} [:maybe :string]]
+   [:child_target_id  {:optional true} [:maybe :string]]
+   [:host_data        {:optional true} [:maybe [:ref ::card-embed.host-data]]]])
 
 (mr/def ::ast
   "Schema for a prose-mirror document AST as it arrives at the API or is read back from the application database: a
@@ -106,7 +108,7 @@
                      :status-code 400}))))
 
 (defn update-ast
-  "Update a node that matches a predicate using a post-walk.
+  "Update a node that matches a predicate using [[metabase.util.match/replace-all]].
 
   Args:
   - document - a :model/Document, this will check that content type is valid for prose mirror
@@ -118,11 +120,8 @@
   [{:keys [document] :as doc} predicate updater]
   (assert-prose-mirror doc)
   (assoc doc :document
-         (walk/postwalk (fn ast-walker
-                          [node]
-                          (cond-> node
-                            (predicate node) updater))
-                        document)))
+         (match/replace-all document
+           (_ :guard predicate) (updater &match))))
 
 (defn collect-ast
   "Collect values from the ast lazily removes nils
@@ -151,26 +150,26 @@
   Returns a (possibly empty) string."
   [ast]
   (->> (tree-seq :content :content ast)
-       (mapcat (juxt :text #(get (:attrs %) "label")))
+       (mapcat (juxt :text #(:label (:attrs %))))
        (remove str/blank?)
        (str/join " ")))
 
 (defn node-entity-id
-  "The referenced entity id carried by a `smartLink` (`\"entityId\"`) or `cardEmbed` (`\"id\"`) node, or nil.
+  "The referenced entity id carried by a `smartLink` (`:entityId`) or `cardEmbed` (`:id`) node, or nil.
 
    Returning the id only when it is a positive integer keeps any downstream Toucan lookup parameterized."
   [{:keys [type attrs]}]
-  (let [id (get attrs (if (= smart-link-type type) "entityId" "id"))]
+  (let [id (get attrs (if (= smart-link-type type) :entityId :id))]
     (when (pos-int? id)
       id)))
 
 (defn card-ids
-  "Get the Card ids referenced by live-mode `cardEmbed` nodes (those with a positive `\"id\"`).
-  Static-mode embeds (with `\"stored_result_id\"`) are skipped — they don't reference a Card."
+  "Get the Card ids referenced by live-mode `cardEmbed` nodes (those with a positive `:id`).
+  Static-mode embeds (with `:stored_result_id`) are skipped — they don't reference a Card."
   [document]
   (collect-ast document #(when (and (= card-embed-type (:type %))
-                                    (pos-int? (get (:attrs %) "id")))
-                           (get (:attrs %) "id"))))
+                                    (pos-int? (:id (:attrs %))))
+                           (:id (:attrs %)))))
 
 (defn insert-card-embed
   "Insert an embed for the card with `card-id` into the document's prose-mirror ast.
@@ -179,8 +178,8 @@
   produces. `index` is a 0-based position among the ast's top-level blocks (0 inserts at the
   very top); a `nil` index appends the embed at the end and out-of-range indexes are clamped.
   An `_id` uuid is stamped on the node for per-node identity. `extra-attrs` (optional) are
-  merged onto the embed attrs after `\"id\"` / `\"_id\"` (e.g. `\"stored_result_id\"`, `\"chart_href\"`,
-  `\"child_target_id\"`, `\"host_data\"` for static exploration embeds).
+  merged onto the embed attrs after `:id` / `:_id` (e.g. `:stored_result_id`, `:chart_href`,
+  `:child_target_id`, `:host_data` for static exploration embeds).
 
   Args:
   - doc - a :model/Document, this will check that the content-type is valid for prose mirror
@@ -198,7 +197,7 @@
          at     (if (int? index)
                   (-> index (max 0) (min (count blocks)))
                   (count blocks))
-         attrs  (merge {"id" card-id "_id" (random-uuid)}
+         attrs  (merge {:id card-id :_id (random-uuid)}
                        extra-attrs)
          embed  {:type    "resizeNode"
                  :content [{:type  card-embed-type

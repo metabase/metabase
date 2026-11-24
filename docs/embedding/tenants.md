@@ -183,7 +183,7 @@ You can have multiple shared collections and nested shared collections. You can 
 
 _Admin settings > Remote Sync_
 
-You can set up [Remote sync](../installation-and-operation/remote-sync.md) for shared collections. This means you'll be able to develop shared content in one Metabase, push it to a GitHub repo, and then have the shared content in your production Metabase always synced with that repo. See [Remote sync docs](../installation-and-operation/remote-sync.md) for more details.
+You can set up [Remote sync](../data-modeling/semantic-layer/remote-sync.md) for shared collections. This means you'll be able to develop shared content in one Metabase, push it to a GitHub repo, and then have the shared content in your production Metabase always synced with that repo. See [Remote sync docs](../data-modeling/semantic-layer/remote-sync.md) for more details.
 
 ## Tenant attributes
 
@@ -281,6 +281,8 @@ To create tenant attributes from JWT SSO, include a claim `@tenant.attributes`:
   "last_name": "Mittens"
 }
 ```
+
+On self-hosted Metabases, you can change the `@tenant.attributes` key with the [`MB_JWT_ATTRIBUTE_TENANT_ATTRIBUTES`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_tenant_attributes) environment variable.
 
 If a tenant attribute with this name doesn't exist, Metabase will create the attribute and assign the value from the JWT claim. However, if the tenant attribute already exists, Metabase will **not** update the value.
 
@@ -387,6 +389,8 @@ To deactivate a tenant:
 4. Choose **Deactivate tenant**.
 
 All tenant users will be deactivated and won't be able to sign in anymore. Tenant users will not be permanently deleted (Metabase does not delete users, only deactivates), so even though the tenant users will be deactivated, you won't be able to create new users with the same email.
+
+Metabase reactivates the tenant and the users deactivated with it on the next SSO sign-in from anyone in the tenant, if [user provisioning](../people-and-groups/authenticating-with-jwt.md#creating-metabase-accounts-with-sso) is on. To keep a tenant deactivated, turn off user provisioning (which also stops Metabase from creating accounts for new people).
 
 ## Changing tenant strategy
 

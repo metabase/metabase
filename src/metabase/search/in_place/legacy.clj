@@ -5,8 +5,9 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
@@ -20,7 +21,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private honeysql-registry
@@ -139,7 +139,10 @@
    ;; returned for Table
    :is_published        :boolean
    :data_authority      :text
-   :data_layer          :text))
+   :data_layer          :text
+   ;; returned for DataApp
+   :slug                :text
+   :data_app_slug       :text))
 
 (def ^:private SearchColumn
   "Enum of every key of [[all-search-columns]]."
@@ -196,22 +199,18 @@
     query))
 
 (defn add-table-where-clauses
-  "Add a `WHERE` clause to the query to only return tables the current user has access to.
-   Also adds any CTEs required for permission filtering."
+  "Add a `WHERE` clause to the query to only return tables the current user has access to."
   [qry model search-ctx]
-  (let [col (case model "table" :table.id "search-index" :search_index.model_id)
-        {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx col)]
-    (cond-> qry
-      (seq with) (update :with (fnil into []) with)
-      true       (sql.helpers/where
-                  (case model
-                    "table" clause
-                    "search-index" [:or
-                                    [:= :search_index.model nil]
-                                    [:!= :search_index.model "table"]
-                                    [:and
-                                     [:= :search_index.model "table"]
-                                     clause]])))))
+  (let [col    (case model "table" :table.id "search-index" :search_index.model_id)
+        clause (search.permissions/permitted-tables-clause search-ctx col)]
+    (sql.helpers/where qry (case model
+                             "table" clause
+                             "search-index" [:or
+                                             [:= :search_index.model nil]
+                                             [:!= :search_index.model "table"]
+                                             [:and
+                                              [:= :search_index.model "table"]
+                                              clause]]))))
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
@@ -223,13 +222,15 @@
                                  "collection"    :collection.id
                                  "action"        :action.collection_id
                                  "search-index"  :search_index.collection_id
-                                 :collection_id)
+                                 (search.config/column-with-model-alias model :collection_id))
         permitted-clause       (if (= model "table")
                                  ;; Tables have their own permission filter (add-table-where-clauses).
                                  ;; Skip collection filtering to avoid blocking tables where the user
                                  ;; has data permissions but no collection access.
                                  [:= [:inline 1] [:inline 1]]
-                                 (search.permissions/permitted-collections-clause search-ctx collection-id-col))
+                                 (search.permissions/permitted-collections-clause
+                                  search-ctx collection-id-col
+                                  (if (= model "search-index") :search_index.model (h2x/literal (or model "")))))
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
     (-> honeysql-query
         (sql.helpers/where permitted-clause)
@@ -270,8 +271,10 @@
       (replace-select :last_edited_at :r.timestamp)
       (sql.helpers/left-join [:revision :r]
                              [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
-                              [:= :r.most_recent true]
-                              [:= :r.model (search-model/search-model->revision-model model)]])))
+                              [:= :r.model (search-model/search-model->revision-model model)]
+                              (revisions.sql/newest-revision-clause :r
+                                                                    (search-model/search-model->revision-model model)
+                                                                    (search.config/column-with-model-alias model :id))])))
 
 (mu/defn- with-moderated-status :- :map
   [query :- HoneySQLQuery
@@ -293,10 +296,11 @@
                                (map first)
                                ;; data_authority/data_layer are curation signals, not name/text fields —
                                ;; exclude them from exact-match ranking (and to keep in-place ordering stable).
+                               ;; data_app_slug repeats a data app's slug.
                                (remove #{:collection_authority_level :moderated_status
                                          :initial_sync_status :pk_ref :location
                                          :collection_location :data_authority
-                                         :data_layer :document}))
+                                         :data_layer :document :data_app_slug}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -356,6 +360,7 @@
         [:collection.type :collection_type]
         [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
+        [:card.database_id :database_id]
         :dashboard_id
         bookmark-col dashboardcard-count-col
         [:display :display_type]))
@@ -439,8 +444,8 @@
    [:table.schema :table_schema]
    [:table.name :table_name]
    [:table.description :table_description]
-   [:table.collection_id :collection_id]
-   [[:case [:and [:= :table.collection_id nil] [:= :table.is_published true]]
+   [:table_settings.collection_id :collection_id]
+   [[:case [:and [:= :table_settings.collection_id nil] [:= :table_settings.is_published true]]
      "Our analytics"
      :else
      :collection.name] :collection_name]
@@ -453,6 +458,10 @@
 (defmethod columns-for-model "transform"
   [_]
   [:id :name :description :created_at :updated_at])
+
+(defmethod columns-for-model "data-app"
+  [_]
+  [:id :name :description :created_at :updated_at :slug [:slug :data_app_slug]])
 
 (mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
@@ -562,6 +571,13 @@
   [_model search-ctx]
   (base-query-for-model "transform" search-ctx))
 
+(defmethod search-query-for-model "data-app"
+  [model search-ctx]
+  (-> (base-query-for-model model search-ctx)
+      (sql.helpers/where (search.permissions/permitted-data-apps-clause
+                          search-ctx
+                          (search.config/column-with-model-alias model :id)))))
+
 (defmethod search-query-for-model "database"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
@@ -583,14 +599,14 @@
       (with-last-editing-info "dashboard")))
 
 (defn- add-model-index-permissions-clause
-  [query {:keys [current-user-id is-superuser?]}]
+  [query {:keys [current-user-id is-superuser? is-data-analyst?]}]
   (sql.helpers/where
    query
-   (collection/visible-collection-filter-clause
-    :collection_id
-    {}
-    {:current-user-id current-user-id
-     :is-superuser?   is-superuser?})))
+   (perms/visible-collections-filter-clause :model.collection_id
+                                            {:user-id          current-user-id
+                                             :is-superuser?    (boolean is-superuser?)
+                                             :is-data-analyst? (boolean is-data-analyst?)}
+                                            {:root-namespace nil})))
 
 (defmethod search-query-for-model "indexed-entity"
   [model search-ctx]
@@ -604,21 +620,27 @@
 (defmethod search-query-for-model "measure"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join (warehouse-schema-overlay/table-query {:alias :table}) [:= :measure.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :measure.table_id :table.id])
+      (sql.helpers/left-join [(t2/table-name :model/TableUserSettings) :table_settings]
+                             [:= :table_settings.table_id :measure.table_id])))
 
 (defmethod search-query-for-model "segment"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join (warehouse-schema-overlay/table-query {:alias :table}) [:= :segment.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :segment.table_id :table.id])
+      (sql.helpers/left-join [(t2/table-name :model/TableUserSettings) :table_settings]
+                             [:= :table_settings.table_id :segment.table_id])))
 
 (defmethod search-query-for-model "table"
-  [model {:keys [current-user-perms table-db-id], :as search-ctx}]
-  (when (seq current-user-perms)
-    (-> (base-query-for-model model search-ctx)
-        (add-table-db-id-clause table-db-id)
-        (add-table-where-clauses model search-ctx)
-        (sql.helpers/left-join [:collection :collection] [:and :table.is_published [:= :table.collection_id :collection.id]])
-        (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
+  [model {:keys [table-db-id], :as search-ctx}]
+  (-> (base-query-for-model model search-ctx)
+      (add-table-db-id-clause table-db-id)
+      (add-table-where-clauses model search-ctx)
+      (sql.helpers/left-join [(t2/table-name :model/TableUserSettings) :table_settings]
+                             [:= :table_settings.table_id :table.id])
+      (sql.helpers/left-join [:collection :collection]
+                             [:and :table_settings.is_published [:= :table_settings.collection_id :collection.id]])
+      (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id])))
 
 (defn- extract-and-hoist-ctes
   "Extract :with clauses from a collection of queries and return a map with:

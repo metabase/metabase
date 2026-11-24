@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
@@ -57,8 +58,8 @@ export const LookAndFeelSettings = ({
   onChangeDisplayOptions,
 }: AppearanceSettingsProps): JSX.Element => {
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only appear to admins
-  const { url: docsUrl } = useDocsUrl("embedding/static-embedding", {
-    anchor: "customizing-the-appearance-of-static-embeds",
+  const { url: docsUrl } = useDocsUrl("embedding/guest-embedding", {
+    anchor: "customizing-appearance-of-guest-embeds",
     utm: {
       utm_source: "product",
       utm_medium: "docs",
@@ -93,11 +94,7 @@ export const LookAndFeelSettings = ({
 
           {canWhitelabel ? (
             <Select
-              label={
-                <Text fw="bold" mb="0.25rem" lh="1rem">
-                  {t`Font`}
-                </Text>
-              }
+              label={t`Font`}
               value={displayOptions.font}
               data={[
                 {

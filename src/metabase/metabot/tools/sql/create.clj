@@ -5,6 +5,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.recoverable.common :as recoverable]
    [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.util :as u]
@@ -19,29 +21,25 @@
   [database-id sql-content]
   (let [mp (lib-be/application-database-metadata-provider database-id)]
     (-> (lib/native-query mp sql-content)
-        ;; Going forward we should ensure consumers are fine processing MBQL 5.
-        ^{:clj-kondo/ignore [:discouraged-var]}
+        ;; ⚠⚠⚠ Going forward we NEED TO ensure consumers are fine processing MBQL 5, since `->legacy-MBQL` is getting
+        ;; removed very soon. ⚠⚠⚠
+        ^{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
         lib/->legacy-MBQL)))
 
 (defn- validate-database-access
-  "Check if the current user has access to the database."
   [database-id]
   (when-not (metabot.db/database-exists? database-id)
-    (throw (ex-info (tru "Database {0} not found" database-id)
-                    {:agent-error? true
-                     :database-id database-id})))
+    (recoverable/unknown-database! {:database-id database-id}))
   (try
     (api/read-check :model/Database database-id)
     (catch clojure.lang.ExceptionInfo e
-      ;; 403 is terminal like the native check below -- no retry grants access. 404 means the
-      ;; database vanished after the existence check, which re-listing databases can recover from.
-      (let [{:keys [status-code] :as data} (ex-data e)]
-        (throw (cond
-                 (= 403 status-code) (ex-info (tru "You do not have access to this database.")
-                                              (assoc data :agent-error? true :terminal-error? true)
-                                              e)
-                 (= 404 status-code) (ex-info (ex-message e) (assoc data :agent-error? true) e)
-                 :else               e)))))
+      (condp = (:status-code (ex-data e))
+        403 (tools/unrecoverable! ::database-access-denied
+                                  {:user-message (tru "You do not have access to this database.")
+                                   :data {:database-id database-id}
+                                   :cause e})
+        404 (recoverable/unknown-database! {:database-id database-id})
+        (throw e))))
   (metabot.tools.sql.common/check-native-query-access! database-id))
 
 (mu/defn create-sql-query :- ::metabot.tools.sql.common/operation-result
@@ -53,26 +51,28 @@
   - name: Name for the query (optional)
   - description: Description for the query (optional)
   - collection-id: Collection to save the query in (optional, defaults to user's personal collection)
+  - check-tables?: Whether to check the table references (optional, default true). The card and snippet
+    references are always checked.
 
   Returns a map with:
   - :query-id - The ID of the created query
   - :query-content - The SQL content
   - :database - Database ID"
-  [{:keys [database-id sql]} :- [:map {:closed true}
-                                 [:database-id :int]
-                                 [:sql :string]
-                                 [:name {:optional true} [:maybe :string]]]]
+  [{:keys [database-id sql check-tables?] :or {check-tables? true}} :- [:map {:closed true}
+                                                                        [:database-id :int]
+                                                                        [:sql :string]
+                                                                        [:name {:optional true} [:maybe :string]]
+                                                                        [:check-tables? {:optional true} :boolean]]]
   (log/info "Creating SQL query"
             {:database-id database-id
              :sql-length (count sql)})
 
   ;; Validate access
   (validate-database-access database-id)
+  (metabot.tools.sql.common/check-nonblank-sql! sql)
 
-  (let [dialect (metabot.tools.sql.validation/database-id->dialect database-id)
-
-        {:keys [valid? transpiled-sql] :as validation-result}
-        (metabot.tools.sql.validation/validate-sql dialect sql)]
+  (let [{:keys [valid? transpiled-sql] :as validation-result}
+        (metabot.tools.sql.validation/validate-database-sql database-id sql nil check-tables?)]
     (merge {:validation-result validation-result}
            (when valid?
              (let [;; Create the in-memory query structure

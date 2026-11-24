@@ -7,6 +7,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { Button, Center, Group, Icon, Skeleton, Tooltip } from "metabase/ui";
 
+import { trackDataActionExecuted } from "../../analytics";
 import { ActionHeader } from "../../components/ActionHeader";
 import { ActionPageSkeleton } from "../../components/ActionPageSkeleton";
 import { useActionDatabase } from "../../hooks/use-action-database";
@@ -65,6 +66,12 @@ export function ActionRunPage() {
         opened={isModalOpened}
         actionId={action.id}
         onClose={closeModal}
+        onSuccess={() =>
+          trackDataActionExecuted({
+            actionId: action.id,
+            triggeredFrom: "data_studio",
+          })
+        }
       />
     </PageContainer>
   );

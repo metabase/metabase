@@ -50,6 +50,10 @@ export function getVisibleParameters(
   );
 }
 
+export function getParametersWithValues(parameters: UiParameter[]) {
+  return parameters.filter((p) => p.value != null);
+}
+
 export function getParameterWidgetTitle(parameter: UiParameter) {
   const operator = deriveFieldOperatorFromParameter(parameter);
   const { verboseName } = operator || {};

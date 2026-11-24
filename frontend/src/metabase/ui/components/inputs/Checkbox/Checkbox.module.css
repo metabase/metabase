@@ -56,8 +56,9 @@
 }
 
 .input {
-  border: 1px solid var(--mb-color-border-neutral-strong);
-  background-color: var(--mb-color-background_surface-secondary);
+  border: 1px solid var(--mb-color-border-neutral-strongest);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: var(--mantine-shadow-xs);
 
   &:not(:disabled) {
     cursor: pointer;
@@ -74,6 +75,7 @@
   &:disabled {
     border-color: transparent;
     background-color: var(--mb-color-background_surface-disabled);
+    box-shadow: none;
   }
 }
 
@@ -128,8 +130,9 @@
 
   flex-shrink: 0;
   margin-top: rem(1px);
-  border: 1px solid var(--mb-color-border-neutral-strong);
-  background-color: var(--mb-color-background_surface-secondary);
+  border: 1px solid var(--mb-color-border-neutral-strongest);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: var(--mantine-shadow-xs);
 
   &[data-checked] {
     border-color: var(--mb-color-border-neutral-strong);
@@ -141,6 +144,7 @@
 
     border-color: transparent;
     background-color: var(--mb-color-background_surface-disabled);
+    box-shadow: none;
 
     /* Mantine pins the disabled+checked icon color per scheme with (0,5,0) specificity */
     [data-mantine-color-scheme] &[data-checked] > .icon {

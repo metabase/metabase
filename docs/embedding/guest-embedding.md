@@ -8,6 +8,8 @@ redirect_from:
 
 # Guest embeds
 
+Guest embeds are available on every Metabase plan. On the Open Source and Starter plans, guest embeds show a ["Powered by Metabase" banner](#removing-the-powered-by-metabase-banner). Guest viewers don't sign in to Metabase, so they don't count as users, and you aren't billed for them. To show each customer only its own data, sign the customer's ID into the embed's token as a [locked parameter](#locked-parameters).
+
 Guest embeds are a way to embed basic Metabase components in your app without requiring you to create a Metabase account for each person viewing the charts and dashboards. But not logging people in to your Metabase has some major tradeoffs: see [limitations](#guest-embed-limitations).
 
 > Looking for static embedding? It's [deprecated in favor of guest embeds](./introduction.md#static-embedding-is-deprecated).
@@ -129,13 +131,15 @@ Parameters on a guest embed start out **Disabled**: the widget is hidden, and no
 
 Locked parameters are how you restrict data in a guest embed. Your server puts the value in the `params` object of the token it signs, and Metabase applies the filter before anything reaches the browser.
 
+Your app decides who sees what, not Metabase. Metabase doesn't know who's viewing a guest embed, so your server code has to look up the viewer (for example, the customer's ID in your app's session) and put that value in the token. What Metabase does is check the token: it only loads a guest embed whose JWT is [signed with your embedding secret key](#regenerating-the-embedding-secret-key), it rejects a token that leaves out a locked parameter, and it rejects a value for a locked parameter that comes from the page (like `initial-parameters`, a widget, or the URL) instead of the token. So as long as your secret key stays on your server, a viewer can't change or remove a locked value.
+
 - For the walkthrough, check out [Restrict data on guest embeds](./parameters.md#restrict-data-on-guest-embeds).
 - For the rules Metabase applies to `params`, check out [Params in a signed token](./parameters-reference.md#params-in-a-signed-token).
 - To control a locked parameter from a widget you build yourself, check out [Change a locked value from your page](./parameters.md#change-a-locked-value-from-your-page).
 
 ## Refreshing or initializing the JWT from your server
 
-JWTs that you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data. Swapping in a new token from your page reloads the embed. That resets any selections the viewer made in Metabase's widgets. Values your page holds in the [`parameters` attribute](./parameters.md#control-values-from-your-app) are applied again. To keep the embed alive without reloading the page, you can configure a guest token endpoint on your server to hand out fresh JWTs on demand.
+JWTs that you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data. Swapping in a new token from your page reloads the embed. That resets any selections the viewer made in Metabase's widgets. Values your page holds in the [`parameters` attribute](./parameters.md#control-values-from-your-app) are applied again. To keep the embed alive without reloading the page, you can configure a guest token endpoint on your server to hand out fresh JWTs on demand. Token refresh is available on every plan.
 
 The endpoint can serve two flows:
 
@@ -334,7 +338,7 @@ To translate an embed, set the `locale` in `window.metabaseConfig`:
 </script>
 ```
 
-The `locale` setting works for all modular embeds (guest, SSO, and SDK). Metabase will automatically translate UI elements (like menus and buttons). To also translate content like dashboard titles and filter labels, you'll need to upload a [translation dictionary](./translations.md).
+The `locale` setting works for all modular embeds (guest, SSO, and SDK) on every plan. Metabase translates UI elements (like menus and buttons) automatically. On Pro and Enterprise plans, you can also translate content (like dashboard titles and filter labels) by uploading a [translation dictionary](./translations.md).
 
 ## How guest embedding works
 

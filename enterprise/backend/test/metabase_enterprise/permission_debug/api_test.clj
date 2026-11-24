@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.permission-debug.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -21,56 +22,59 @@
 
 (deftest permission-debug-card-read-scenarios-test
   (testing "GET /api/ee/permission_debug for card/read scenarios"
-    (mt/with-temp [:model/Collection collection {}
-                   :model/Card card {:collection_id (:id collection)}]
-      (testing "should return allow when user has read permission"
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
-                                             :user_id (str (mt/user->id :rasta))
-                                             :model_id (str (:id card))
-                                             :action_type "card/read")]
-          (is (= "allow" (:decision response)))
-          (is (= "card" (:model-type response)))
-          (is (= (str (:id card)) (:model-id response)))
-          (is (= '() (:segment response)))
-          (is (seq (:message response)))
-          (is (= {} (:data response)))
-          (is (= {} (:suggestions response)))))
-      (testing "should return denied when user lacks read permission"
-        (mt/with-temp [:model/Collection private-collection {}
-                       :model/Card private-card {:collection_id (:id private-collection)}]
-          (perms/revoke-collection-permissions! (perms/all-users-group) private-collection)
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
-                                               :user_id (str (mt/user->id :rasta))
-                                               :model_id (str (:id private-card))
-                                               :action_type "card/read")]
-            (is (= "denied" (:decision response)))
-            (is (= "card" (:model-type response)))
-            (is (seq (:message response))))
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) private-collection))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[collection] (collection/create-collections! [{:name "Test Collection"}])]
+        (mt/with-temp [:model/Card card {:collection_id (:id collection)}]
+          (testing "should return allow when user has read permission"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
+                                                 :user_id (str (mt/user->id :rasta))
+                                                 :model_id (str (:id card))
+                                                 :action_type "card/read")]
+              (is (= "allow" (:decision response)))
+              (is (= "card" (:model-type response)))
+              (is (= (str (:id card)) (:model-id response)))
+              (is (= '() (:segment response)))
+              (is (seq (:message response)))
+              (is (= {} (:data response)))
+              (is (= {} (:suggestions response)))))
+          (testing "should return denied when user lacks read permission"
+            (mt/with-model-cleanup [:model/Collection]
+              (let [[private-collection] (collection/create-collections! [{:name "Test Collection"}])]
+                (mt/with-temp [:model/Card private-card {:collection_id (:id private-collection)}]
+                  (perms/revoke-collection-permissions! (perms/all-users-group) private-collection)
+                  (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
+                                                       :user_id (str (mt/user->id :rasta))
+                                                       :model_id (str (:id private-card))
+                                                       :action_type "card/read")]
+                    (is (= "denied" (:decision response)))
+                    (is (= "card" (:model-type response)))
+                    (is (seq (:message response))))
+                  (perms/grant-collection-readwrite-permissions! (perms/all-users-group) private-collection))))))))))
 
 (deftest permission-debug-card-query-scenarios-test
   (testing "GET /api/ee/permission_debug for card/query scenarios"
-    (mt/with-temp [:model/Collection collection {}
-                   :model/Card card {:collection_id (:id collection)
-                                     :dataset_query (mt/mbql-query checkins {:filter [:> $date "2014-01-01"]})}]
-      (testing "should return allow when user has query permission"
-        (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
-                                             :user_id (str (mt/user->id :rasta))
-                                             :model_id (str (:id card))
-                                             :action_type "card/query")]
-          (is (= "allow" (:decision response)))
-          (is (= "card" (:model-type response)))
-          (is (= '() (:segment response)))
-          (is (= {} (:data response)))))
-      (testing "should return denied when table access is blocked"
-        (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
-                                             :user_id (str (mt/user->id :rasta))
-                                             :model_id (str (:id card))
-                                             :action_type "card/query")]
-          (is (= "denied" (:decision response)))
-          (is (seq (:data response))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[collection] (collection/create-collections! [{:name "Test Collection"}])]
+        (mt/with-temp [:model/Card card {:collection_id (:id collection)
+                                         :dataset_query (mt/mbql-query checkins {:filter [:> $date "2014-01-01"]})}]
+          (testing "should return allow when user has query permission"
+            (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
+                                                 :user_id (str (mt/user->id :rasta))
+                                                 :model_id (str (:id card))
+                                                 :action_type "card/query")]
+              (is (= "allow" (:decision response)))
+              (is (= "card" (:model-type response)))
+              (is (= '() (:segment response)))
+              (is (= {} (:data response)))))
+          (testing "should return denied when table access is blocked"
+            (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
+                                                 :user_id (str (mt/user->id :rasta))
+                                                 :model_id (str (:id card))
+                                                 :action_type "card/query")]
+              (is (= "denied" (:decision response)))
+              (is (seq (:data response))))))))))
 
 (deftest permission-debug-card-download-scenarios-test
   (testing "GET /api/ee/permission_debug for card/download-data scenarios"
@@ -114,7 +118,19 @@
              (mt/user-http-request :crowberto :get "ee/permission_debug"
                                    :user_id "invalid"
                                    :model_id "999"
-                                   :action_type "card/read"))))))
+                                   :action_type "card/read"))))
+    (testing "should reject a non-numeric model_id"
+      (is (=? {:errors {:model_id string?}}
+              (mt/user-http-request :crowberto :get 400 "ee/permission_debug"
+                                    :user_id "1"
+                                    :model_id "abc"
+                                    :action_type "card/read"))))
+    (testing "should reject a model_id with a trailing newline"
+      (is (=? {:errors {:model_id string?}}
+              (mt/user-http-request :crowberto :get 400 "ee/permission_debug"
+                                    :user_id "1"
+                                    :model_id "123\n"
+                                    :action_type "card/read"))))))
 
 (deftest permission-debug-response-schema-test
   (testing "GET /api/ee/permission_debug response schema validation"

@@ -4,7 +4,7 @@
    [buddy.core.nonce :as nonce]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.sso.core :as sso]
+   [metabase.sso.settings :as sso.settings]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.password :as u.password]))
 
@@ -20,7 +20,7 @@
                 ;; otherwise this always returns true.
                 (let [v (setting/get-value-of-type :boolean :enable-password-login)]
                   (if (and (some? v)
-                           (sso/sso-enabled?))
+                           (sso.settings/sso-enabled?))
                     v
                     true))))
 
@@ -42,14 +42,14 @@
         Also see the Changing session expiration documentation page.")
 
 (defsetting reset-token-ttl-hours
-  (deferred-tru "Number of hours a password reset is considered valid.")
+  "Number of hours a password reset is considered valid."
   :visibility :internal
   :type       :integer
   :default    48
   :audit      :getter)
 
 (defsetting mfa-challenge-signing-key
-  (deferred-tru "Key used to sign MFA challenge tokens. Generated automatically on first use.")
+  "Key used to sign MFA challenge tokens. Generated automatically on first use."
   :visibility :internal
   :type       :string
   :export?    false

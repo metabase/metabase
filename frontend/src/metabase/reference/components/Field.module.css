@@ -42,7 +42,7 @@
 
 .fieldActualName {
   composes: fieldNameTitle;
-  composes: textMonospace textLight from "style";
+  composes: textMonospace textSecondary from "style";
   font-size: 12px;
   letter-spacing: 1px;
 }

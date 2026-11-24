@@ -11,7 +11,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Flex } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { TimelineData } from "metabase-types/api";
 
@@ -49,23 +49,26 @@ export const TimelineForm = ({
     >
       {({ dirty }) => (
         <Form disabled={!dirty}>
-          <FormTextInput
-            name="name"
-            label={t`Name`}
-            placeholder={t`Product releases`}
-            autoFocus
-            mb="lg"
-          />
-          <FormTextarea
-            name="description"
-            label={t`Description`}
-            minRows={5}
-            mb="lg"
-            nullable
-          />
-          <IconField name="icon" title={t`Default icon`} options={icons} />
-          <Flex align="center" justify="flex-end" gap="sm">
-            <FormErrorMessage />
+          <Stack gap="xl">
+            <FormTextInput
+              name="name"
+              label={t`Name`}
+              placeholder={t`Product releases`}
+              // The form can mount after the modal opens (while loading), when the
+              // modal no longer looks for `data-autofocus`
+              autoFocus
+              data-autofocus
+            />
+            <FormTextarea
+              name="description"
+              label={t`Description`}
+              minRows={5}
+              nullable
+            />
+            <IconField name="icon" title={t`Default icon`} options={icons} />
+          </Stack>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
             {!isNew && (
               <FormArchiveButton onClick={onArchive}>
                 {t`Archive timeline and all events`}
@@ -79,7 +82,7 @@ export const TimelineForm = ({
               disabled={!dirty}
               variant="filled"
             />
-          </Flex>
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

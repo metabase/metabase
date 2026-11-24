@@ -382,7 +382,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       // A GUI target cannot consume the mapped value as a parameter, so it opens
       // as an ad-hoc question carrying the value as a filter instead.
       cy.wait("@datasetQuery").then(({ request }) => {
-        // Request body is a pMBQL query; a filter clause is
+        // Request body is an MBQL 5 query; a filter clause is
         // [operator, opts, fieldRef, value].
         const [{ filters }] = request.body.stages;
         const [filter] = filters;

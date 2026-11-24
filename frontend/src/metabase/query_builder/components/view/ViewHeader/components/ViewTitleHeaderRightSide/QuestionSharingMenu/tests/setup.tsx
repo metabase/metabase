@@ -1,8 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupNotificationChannelsEndpoints,
+  setupPublicLinkRefusalEndpoint,
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
@@ -14,7 +16,12 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { useSelector } from "metabase/redux";
 import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
-import type { Card, Notification, User } from "metabase-types/api";
+import type {
+  Card,
+  Notification,
+  PublicLinkRefusalResponse,
+  User,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockSettings,
@@ -104,10 +111,12 @@ export async function setupQuestionSharingMenu({
   hasPublicLink = false,
   question: questionOverrides = {},
   alerts = [],
+  publicLinkRefusal,
 }: {
   question?: Partial<Card>;
   hasPublicLink?: boolean;
   alerts?: Notification[];
+  publicLinkRefusal?: PublicLinkRefusalResponse;
 } & SettingsProps) {
   const card = createMockCard({
     name: "My Cool Question",
@@ -129,6 +138,10 @@ export async function setupQuestionSharingMenu({
   const user = checkNotNull(state.currentUser);
 
   setupListNotificationEndpoints({ card_id: card.id }, alerts);
+  setupPublicLinkRefusalEndpoint(
+    { model: "card", id: card.id },
+    publicLinkRefusal,
+  );
   setupUsersEndpoints([user]);
   setupUserRecipientsEndpoint({
     users: [user],
@@ -143,18 +156,22 @@ export async function setupQuestionSharingMenu({
 
   renderWithProviders(
     <div>
-      <QuestionSharingMenu question={new Question(card)} />
+      <QuestionSharingMenu
+        question={new Question(card, createMockMetadata())}
+      />
       <FakeSidebar />
     </div>,
     { storeInitialState: state },
   );
 
   // Wait for the admin menu button to settle so async endpoint mocks resolve
-  // inside act. Non-admin menus render synchronously, and model/archived
-  // questions render nothing at all.
+  // inside act. Non-admin menus render synchronously, and model, archived and
+  // instance analytics questions render nothing at all.
   const isModel = questionOverrides.type === "model";
   const isArchived = questionOverrides.archived === true;
-  if (isAdmin && !isModel && !isArchived) {
+  const isInstanceAnalytics =
+    questionOverrides.collection?.type === "instance-analytics";
+  if (isAdmin && !isModel && !isArchived && !isInstanceAnalytics) {
     await screen.findByTestId("sharing-menu-button");
   }
 }

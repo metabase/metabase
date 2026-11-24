@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupContentDiagnosticsCountsEndpoint,
   setupListSlowFindingsEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -89,6 +90,7 @@ function setup({
     value: lastUsedParams,
   });
 
+  setupContentDiagnosticsCountsEndpoint();
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const { router } = renderWithProviders(
@@ -180,6 +182,37 @@ describe("SlowContentPage", () => {
     expect(sidebarRegion).toHaveTextContent("Grace Creator");
     expect(sidebarRegion).toHaveTextContent("12.3s");
     expect(sidebarRegion).toHaveTextContent("7");
+  });
+
+  it("shows the run duration of a selected slow transform in the sidebar", async () => {
+    setup({
+      findings: [
+        createMockContentDiagnosticsSlowFinding({
+          id: 1,
+          entity_type: "card",
+          entity_id: 10,
+          entity_display_name: "Slow question",
+          duration_ms: 5000,
+        }),
+        createMockContentDiagnosticsSlowFinding({
+          id: 2,
+          entity_type: "transform",
+          entity_id: 20,
+          entity_display_name: "Nightly transform",
+          duration_ms: 2345,
+        }),
+      ],
+    });
+
+    const list = await screen.findByRole("treegrid");
+    await userEvent.click(await within(list).findByText("Nightly transform"));
+
+    const sidebar = await screen.findByTestId("content-diagnostics-sidebar");
+    expect(within(sidebar).getByText("Duration")).toBeInTheDocument();
+    expect(within(sidebar).getByText("2.3s")).toBeInTheDocument();
+    expect(
+      within(sidebar).getByRole("link", { name: "Nightly transform" }),
+    ).toHaveAttribute("href", "/data-studio/transforms/20");
   });
 
   it("sends the minimum duration filter to the server and reflects it in the Filter popover", async () => {

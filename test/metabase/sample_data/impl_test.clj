@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.plugins.impl :as plugins]
    [metabase.query-processor :as qp]
@@ -16,6 +17,7 @@
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses-rest.api-test :as api.database-test]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import (org.sqlite SQLiteException)))
 
@@ -36,7 +38,7 @@
   {:style/indent 1}
   [[db-binding] & body]
   `(mt/with-temp [:model/Database db# (sample-database-db)]
-     (sync/sync-database! db#)
+     (sync/sync-database! (:id db#))
      (let [~db-binding db#]
        ~@body)))
 
@@ -60,7 +62,7 @@
       (let [h2-db (t2/insert-returning-instance! :model/Database
                                                  {:name "Sample Database" :engine :h2 :is_sample true
                                                   :details (#'sample-data/try-to-extract-sample-database! :h2)})]
-        (sync/sync-database! h2-db)
+        (sync/sync-database! (:id h2-db))
         (let [orders-id  (t2/select-one-pk :model/Table :db_id (:id h2-db) :name "ORDERS")
               total-id   (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
               user-card  (t2/insert-returning-instance! :model/Card
@@ -97,7 +99,7 @@
       (let [sqlite-db (t2/insert-returning-instance! :model/Database
                                                      {:name "Sample Database" :engine :sqlite :is_sample true
                                                       :details (#'sample-data/try-to-extract-sample-database! :sqlite)})]
-        (sync/sync-database! sqlite-db)
+        (sync/sync-database! (:id sqlite-db))
         (let [orders-id (t2/select-one-pk :model/Table :db_id (:id sqlite-db) :name "ORDERS")
               total-id  (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
               user-card (t2/insert-returning-instance! :model/Card
@@ -154,7 +156,7 @@
         (let [h2-db (t2/insert-returning-instance! :model/Database
                                                    {:name "Sample Database" :engine :h2 :is_sample true
                                                     :details (#'sample-data/try-to-extract-sample-database! :h2)})]
-          (sync/sync-database! h2-db)
+          (sync/sync-database! (:id h2-db))
           (let [db-id     (:id h2-db)
                 orders-id (t2/select-one-pk :model/Table :db_id db-id :name "ORDERS")
                 people-id (t2/select-one-pk :model/Table :db_id db-id :name "PEOPLE")]
@@ -168,10 +170,10 @@
             (perms/set-table-permission! group orders-id :perms/view-data :blocked)
             (perms/set-table-permission! group orders-id :perms/create-queries :no)
             (let [effective (fn [schema]
-                              {:orders-view   (perms/table-permission-for-user (:id user) :perms/view-data db-id orders-id)
-                               :people-view   (perms/table-permission-for-user (:id user) :perms/view-data db-id people-id)
+                              {:orders-view   (get (perms/table-permissions-for-user (perms/user-info (:id user)) :perms/view-data {orders-id db-id}) orders-id)
+                               :people-view   (get (perms/table-permissions-for-user (perms/user-info (:id user)) :perms/view-data {people-id db-id}) people-id)
                                ;; what GET /api/database/:id/schemas visibility keys on
-                               :schema-create (perms/schema-permission-for-user (:id user) :perms/create-queries db-id schema)})
+                               :schema-create (perms/some-table-in-schema-permission-for-user (perms/user-info (:id user)) :perms/create-queries db-id schema)})
                   before    (effective "PUBLIC")]
               (is (= {:orders-view   :blocked
                       :people-view   :unrestricted
@@ -233,9 +235,9 @@
 (deftest sample-database-is-read-only-test
   (testing "The Sample Database connection is read-only: reads succeed but INSERT/UPDATE/DELETE are rejected"
     (mt/with-temp [:model/Database db (sample-database-db)]
-      (sync/sync-database! db)
+      (sync/sync-database! (:id db))
       (mt/with-db db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
           (testing "reads succeed"
             (is (= [2]
                    (->> (jdbc/query conn-spec "SELECT QUANTITY FROM ORDERS WHERE ID = 1;")
@@ -299,9 +301,12 @@
       (api.database-test/with-db-scheduler-setup!
         (sample-data/extract-and-sync-sample-database!)
         (testing "Sense check: a newly created database should have sync jobs scheduled"
-          (mt/with-temp [:model/Database db {}]
-            (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
-                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))
+          (let [db (first (database/create-databases! [{:name "Sense Check" :engine :h2 :details {}}]))]
+            (try
+              (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                     (task.sync-databases-test/query-all-db-sync-triggers-name db)))
+              (finally
+                (database/delete-databases! [(:id db)])))))
         (testing "The sample database should also have sync jobs scheduled"
           (let [sample-db (t2/select-one :model/Database :is_sample true)]
             (is (= (task.sync-databases-test/all-db-sync-triggers-name sample-db)

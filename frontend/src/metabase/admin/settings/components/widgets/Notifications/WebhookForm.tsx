@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { FormikHelpers } from "formik";
 import { useMemo, useState } from "react";
 import { c, jt, t } from "ttag";
@@ -80,7 +81,6 @@ const styles = {
   },
   labelProps: {
     fz: "0.875rem",
-    mb: "0.75rem",
   },
 };
 
@@ -199,7 +199,7 @@ export const WebhookForm = ({
   }, [error]);
 
   const docsUrl = useSelector((state) =>
-    getDocsUrl(state, { page: "questions/sharing/alerts" }),
+    getDocsUrl(state, { page: "questions/alerts" }),
   );
 
   const handleTest = async (
@@ -254,10 +254,7 @@ export const WebhookForm = ({
                   {...styles}
                   maw="21rem"
                 />
-                <Button
-                  size="lg"
-                  onClick={() => handleTest(values, setFieldError)}
-                >
+                <Button onClick={() => handleTest(values, setFieldError)}>
                   {testButtonLabel}
                 </Button>
               </Flex>

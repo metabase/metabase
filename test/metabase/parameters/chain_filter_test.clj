@@ -15,6 +15,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -70,6 +71,50 @@
     {:strategy (lib/raw-join-strategy a-join)
      :breakout (into #{} (mapcat lib/all-field-ids) (lib/breakouts source-query 0))
      :filters  (into #{} (mapcat lib/all-field-ids) (lib/filters source-query 0))}))
+
+(deftest ^:parallel orient-via-path-test
+  (let [a->b {:lhs {:table 1 :field 10} :rhs {:table 2 :field 20}}
+        b->c {:lhs {:table 2 :field 21} :rhs {:table 3 :field 30}}]
+    (testing "already-oriented path (first-LHS matches source) is unchanged"
+      (is (= [a->b b->c] (#'chain-filter/orient-via-path 1 [a->b b->c]))))
+    (testing "reverse-oriented path (last-RHS matches source) is reversed and flipped"
+      (is (= [{:lhs {:table 3 :field 30} :rhs {:table 2 :field 21}}
+              {:lhs {:table 2 :field 20} :rhs {:table 1 :field 10}}]
+             (#'chain-filter/orient-via-path 3 [a->b b->c]))))
+    (testing "empty path yields nil (same sentinel as 'can't orient')"
+      (is (nil? (#'chain-filter/orient-via-path 1 []))))
+    (testing "neither terminal matches source: nil, so the caller falls back to graph search"
+      (is (nil? (#'chain-filter/orient-via-path 99 [a->b b->c]))))))
+
+(deftest ^:parallel pinned-path-to-unneeded-table-test
+  (testing "A pinned path adds no join when it does not end at a Table the query must reach"
+    (mt/dataset test-data
+      (mt/$ids
+        (let [via-path [{:lhs {:table $$orders, :field %orders.user_id}
+                         :rhs {:table $$people, :field %people.id}}]
+              query    (#'chain-filter/chain-filter-mbql-query
+                        %people.name
+                        [(assoc (shorthand->constraint %people.source "Twitter") :via-path via-path)]
+                        {:via-path via-path})]
+          (is (empty? (lib/joins query 0)))
+          (is (= (chain-filter people.name {people.source "Twitter"})
+                 (chain-filter/chain-filter %people.name
+                                            [(assoc (shorthand->constraint %people.source "Twitter")
+                                                    :via-path via-path)]
+                                            :via-path via-path))))))))
+
+(deftest ^:parallel pinned-path-to-constraint-table-test
+  (testing "A pinned path is kept when it ends at the Table of a constraint"
+    (mt/dataset test-data
+      (mt/$ids
+        (let [via-path [{:lhs {:table $$orders, :field %orders.user_id}
+                         :rhs {:table $$people, :field %people.id}}]
+              query    (#'chain-filter/chain-filter-mbql-query
+                        %people.name
+                        [(shorthand->constraint %orders.total [:> 150])]
+                        {:via-path via-path})]
+          (is (= [$$orders]
+                 (map #(:id (lib/joined-thing query %)) (lib/joins query 0)))))))))
 
 (deftest ^:parallel special-form-filter-clause-test
   (testing "Can handle multi-arg string filters when chaining (#57287)"
@@ -322,13 +367,20 @@
       (is (= [:start->end]
              (#'chain-filter/traverse-graph graph :start :end 5))))))
 
+(defn- fk-graph
+  "The FK relationships of the current test Database, in both directions unless reverse joins are off."
+  ([]
+   (fk-graph chain-filter/*enable-reverse-joins*))
+  ([enable-reverse-joins?]
+   (#'chain-filter/database-fk-relationships (mt/id) enable-reverse-joins?)))
+
 (deftest ^:parallel find-joins-test
   (mt/dataset airports
     (mt/$ids nil
       (testing "airport -> municipality"
         (is (= [{:lhs {:table $$airport, :field %airport.municipality_id}
                  :rhs {:table $$municipality, :field %municipality.id}}]
-               (#'chain-filter/find-joins (mt/id) $$airport $$municipality)))))))
+               (#'chain-filter/find-joins (fk-graph) $$airport $$municipality)))))))
 
 (deftest ^:parallel find-joins-test-2
   (mt/dataset airports
@@ -340,7 +392,7 @@
                  :rhs {:table $$region, :field %region.id}}
                 {:lhs {:table $$region, :field %region.country_id}
                  :rhs {:table $$country, :field %country.id}}]
-               (#'chain-filter/find-joins (mt/id) $$airport $$country)))))))
+               (#'chain-filter/find-joins (fk-graph) $$airport $$country)))))))
 
 (deftest ^:parallel find-joins-test-3
   (mt/dataset airports
@@ -349,7 +401,7 @@
         (testing "municipality -> airport"
           (is (= [{:lhs {:table $$municipality, :field %municipality.id}
                    :rhs {:table $$airport, :field %airport.municipality_id}}]
-                 (#'chain-filter/find-joins (mt/id) $$municipality $$airport))))))))
+                 (#'chain-filter/find-joins (fk-graph) $$municipality $$airport))))))))
 
 (deftest ^:parallel find-joins-test-4
   (mt/dataset airports
@@ -362,14 +414,14 @@
                    :rhs {:table $$municipality, :field %municipality.region_id}}
                   {:lhs {:table $$municipality, :field %municipality.id}
                    :rhs {:table $$airport, :field %airport.municipality_id}}]
-                 (#'chain-filter/find-joins (mt/id) $$country $$airport))))))))
+                 (#'chain-filter/find-joins (fk-graph) $$country $$airport))))))))
 
 (deftest ^:parallel find-all-joins-test
   (testing "With reverse joins disabled"
     (binding [chain-filter/*enable-reverse-joins* false]
       (mt/$ids nil
         (is (= [{:lhs {:table $$venues, :field %venues.category_id}, :rhs {:table $$categories, :field %categories.id}}]
-               (#'chain-filter/find-all-joins (mt/metadata-provider) (mt/id) $$venues #{%categories.name %users.id})))))))
+               (#'chain-filter/find-all-joins (mt/metadata-provider) (fk-graph) $$venues #{%categories.name %users.id} #{})))))))
 
 (deftest ^:parallel find-all-joins-test-2
   (mt/dataset airports
@@ -380,7 +432,8 @@
                    :rhs {:table $$municipality, :field %municipality.id}}
                   {:lhs {:table $$municipality, :field %municipality.region_id}
                    :rhs {:table $$region, :field %region.id}}]
-                 (#'chain-filter/find-all-joins (mt/metadata-provider) (mt/id) $$airport #{%region.name %municipality.name %region.id}))))))))
+                 (#'chain-filter/find-all-joins (mt/metadata-provider) (fk-graph) $$airport
+                                                #{%region.name %municipality.name %region.id} #{}))))))))
 
 (deftest ^:parallel multi-hop-test
   (mt/dataset airports
@@ -572,13 +625,14 @@
     (mt/with-temp-vals-in-db :model/Field (mt/id :orders :user_id) {:semantic_type nil, :fk_target_field_id nil}
       (testing "sanity check: with the sync FK cleared, there's no remapping"
         (is (nil? (#'chain-filter/remapped-field-id (mt/id :orders :user_id)))))
-      (mt/with-temp [:model/FieldUserSettings _ {:field_id               (mt/id :orders :user_id)
-                                                 :semantic_type          :type/FK
-                                                 :semantic_type_set      true
-                                                 :fk_target_field_id     (mt/id :people :id)
-                                                 :fk_target_field_id_set true}]
+      (try
+        (field-user-settings/upsert-field-user-settings! {:id (mt/id :orders :user_id)}
+                                                         {:semantic_type      :type/FK
+                                                          :fk_target_field_id (mt/id :people :id)})
         (is (= (mt/id :people :name)
-               (#'chain-filter/remapped-field-id (mt/id :orders :user_id))))))))
+               (#'chain-filter/remapped-field-id (mt/id :orders :user_id))))
+        (finally
+          (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [(mt/id :orders :user_id)])))))))
 
 (deftest ^:parallel field-to-field-remapped-chain-filter-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
@@ -931,7 +985,7 @@
             (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :full)))))
         (testing "should create a linked-filter FieldValues when have constraints"
           ;; make sure we have a clean start
-          (field-values/clear-advanced-field-values-for-field! field-id)
+          (field-values/delete-field-values! (field-values/advanced-ids-of-fields [field-id]))
           ;; warm up the cache
           (chain-filter categories.name {venues.price 4})
           (mt/with-dynamic-fn-redefs [params.field-values/prepare-advanced-field-values (fn [& _args]
@@ -942,7 +996,7 @@
             (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :advanced)))))
         (testing "should search with the cached FieldValues when search without constraints"
           (mt/with-temp
-            [:model/Field       field (-> (t2/select-one :model/Field (mt/id :categories :name))
+            [:model/Field       field (-> (t2/select-one :model/Field :id (mt/id :categories :name))
                                           (dissoc :id)
                                           (assoc :name "NAME2"))
              :model/FieldValues  _    {:field_id (:id field)
@@ -953,7 +1007,7 @@
                    (chain-filter-search categories.name2 nil "oooood")))))
         (testing "search with constraints"
           ;; make sure we have a clean start
-          (field-values/clear-advanced-field-values-for-field! field-id)
+          (field-values/delete-field-values! (field-values/advanced-ids-of-fields [field-id]))
           (testing "should create a linked-filter FieldValues"
             ;; warm up the cache
             (chain-filter categories.name {venues.price 4})
@@ -980,7 +1034,7 @@
 (deftest use-cached-field-values-for-remapped-field-test
   (testing "fetching a remapped field should returns remapped values (#21528)"
     (mt/with-discard-model-updates! [:model/Field]
-      (t2/update! :model/Field (mt/id :venues :category_id) {:has_field_values "list"})
+      (t2/update! :model/Field :id (mt/id :venues :category_id) {:has_field_values "list"})
       (mt/with-column-remappings [venues.category_id categories.name]
         (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"]]
                 :has_more_values false}
@@ -1049,12 +1103,12 @@
           fvs              (t2/select :model/FieldValues :field_id field-id)]
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
       ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
-      (t2/update! :model/Field field-id {:has_field_values "list"})
+      (t2/update! :model/Field :id field-id {:has_field_values "list"})
       (t2/delete! :model/FieldValues :field_id field-id)
       (try
         (thunk)
         (finally
-          (t2/update! :model/Field field-id {:has_field_values has_field_values})
+          (t2/update! :model/Field :id field-id {:has_field_values has_field_values})
           (t2/insert! :model/FieldValues fvs))))))
 
 (defmacro ^:private with-clean-field-values-for-field!
@@ -1128,25 +1182,20 @@
                                 :fk :users}]
                               []]]
       (mt/$ids nil
-        (mt/with-dynamic-fn-redefs [chain-filter/database-fk-relationships @#'chain-filter/database-fk-relationships*
-                                    chain-filter/find-joins                (fn
-                                                                             ([a b c]
-                                                                              (#'chain-filter/find-joins* a b c false))
-                                                                             ([a b c d]
-                                                                              (#'chain-filter/find-joins* a b c d)))]
+        (do
           (testing "with both FKs active, both are returned"
             (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
                      :rhs {:table $$users, :field %users.id}}
                     {:lhs {:table $$messages, :field %messages.sender_id}
                      :rhs {:table $$users, :field %users.id}}]
-                   (->> (#'chain-filter/find-joins (mt/id) $$messages $$users)
+                   (->> (#'chain-filter/find-joins (fk-graph false) $$messages $$users)
                         (sort-by (comp :field :lhs))))))
           (try
             (t2/update! :model/Field {:id %messages.receiver_id} {:active false})
             (testing "check that it switches to sender only once receiver is inactive"
               (is (= [{:lhs {:table $$messages, :field %messages.sender_id}
                        :rhs {:table $$users, :field %users.id}}]
-                     (#'chain-filter/find-joins (mt/id) $$messages $$users))))
+                     (#'chain-filter/find-joins (fk-graph false) $$messages $$users))))
             (finally
               (t2/update! :model/Field {:id %messages.receiver_id} {:active true})))
           (try
@@ -1154,13 +1203,13 @@
             (testing "check that it switches to receiver only once sender is inactive"
               (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
                        :rhs {:table $$users, :field %users.id}}]
-                     (#'chain-filter/find-joins (mt/id) $$messages $$users))))
+                     (#'chain-filter/find-joins (fk-graph false) $$messages $$users))))
             (finally
               (t2/update! :model/Field {:id %messages.sender_id} {:active true})))
           ;; mark field
           (t2/update! :model/Field {:id %users.id} {:active false})
           (testing "there are no connections when PK is inactive"
-            (is (nil? (#'chain-filter/find-joins (mt/id) $$messages $$users)))))))))
+            (is (nil? (#'chain-filter/find-joins (fk-graph false) $$messages $$users)))))))))
 
 (deftest chain-filter-inactive-sibling-fk-target-test
   (testing "An inactive PK on one FK target must not poison unrelated FKs from the same source table (#80557)"
@@ -1175,22 +1224,16 @@
                                {:field-name "company_id" :base-type :type/Integer :fk :companies}]
                               []]]
       (mt/$ids nil
-        (mt/with-dynamic-fn-redefs [chain-filter/database-fk-relationships @#'chain-filter/database-fk-relationships*
-                                    chain-filter/find-joins                (fn
-                                                                             ([a b c]
-                                                                              (#'chain-filter/find-joins* a b c false))
-                                                                             ([a b c d]
-                                                                              (#'chain-filter/find-joins* a b c d)))]
-          (try
-            ;; Direct SQL bypasses the :model/Field before-update hook that would otherwise null
-            ;; dependent fk_target_field_id values — reproducing the customer state where an FK
-            ;; still points to a since-deactivated PK.
-            (mdb/query {:update :metabase_field :set {:active false} :where [:= :id %users.id]})
-            (is (= [{:lhs {:table $$messages, :field %messages.company_id}
-                     :rhs {:table $$companies, :field %companies.id}}]
-                   (#'chain-filter/find-joins (mt/id) $$messages $$companies)))
-            (finally
-              (mdb/query {:update :metabase_field :set {:active true} :where [:= :id %users.id]}))))))))
+        (try
+          ;; Direct SQL bypasses the :model/Field before-update hook that would otherwise null
+          ;; dependent fk_target_field_id values — reproducing the customer state where an FK
+          ;; still points to a since-deactivated PK.
+          (mdb/query {:update :metabase_field :set {:active false} :where [:= :id %users.id]})
+          (is (= [{:lhs {:table $$messages, :field %messages.company_id}
+                   :rhs {:table $$companies, :field %companies.id}}]
+                 (#'chain-filter/find-joins (fk-graph false) $$messages $$companies)))
+          (finally
+            (mdb/query {:update :metabase_field :set {:active true} :where [:= :id %users.id]})))))))
 
 (deftest ^:parallel database-fk-relationships-drops-inactive-target-rows-test
   (testing "FKs pointing to an inactive target don't leak nil-endpoint edges into the graph (#80557)"
@@ -1203,7 +1246,7 @@
       (mt/$ids nil
         (try
           (mdb/query {:update :metabase_field :set {:active false} :where [:= :id %users.id]})
-          (let [graph (@#'chain-filter/database-fk-relationships* (mt/id) true)]
+          (let [graph (#'chain-filter/database-fk-relationships (mt/id) true)]
             (is (not (contains? graph nil)))
             (is (not-any? #(contains? % nil) (vals graph))))
           (finally
@@ -1214,14 +1257,13 @@
 ;;; `chain-filter-mbql-query` bulk-loads all the Field/Table metadata it needs while building the query (see
 ;;; `find-all-joins`, `add-joins`, `add-filters`), so the number of app-DB calls is bounded: it does NOT grow with the
 ;;; number of constraints, nor with the number/depth of joins. A second build reuses the request-scoped
-;;; metadata-provider cache and makes no app-DB calls at all. If a metadata fetch regresses to
-;;; one-object-at-a-time, these exact counts change.
+;;; metadata-provider cache and reads only the Database of the Field and the FK graph again. If a metadata fetch
+;;; regresses to one-object-at-a-time, the counts of the two sizes compared below differ.
 
 (defn- chain-filter-mbql-query-call-counts
-  "Warm the process-global memoized caches (FK graph, `field-id->database-id`) for `field-id`/`constraints`, then
-  return the app-DB call counts of a first build (fresh provider cache) and a second build (warm cache)."
+  "The app DB call counts of a first build of the query of `field-id`/`constraints` (fresh provider cache) and a second
+  build (warm provider cache)."
   [field-id constraints]
-  (#'chain-filter/chain-filter-mbql-query field-id constraints nil)
   (lib-be/with-metadata-provider-cache
     {:first  (t2/with-call-count [call-count] (#'chain-filter/chain-filter-mbql-query field-id constraints nil) (call-count))
      :second (t2/with-call-count [call-count] (#'chain-filter/chain-filter-mbql-query field-id constraints nil) (call-count))}))
@@ -1229,72 +1271,63 @@
 (deftest ^:parallel chain-filter-mbql-query-no-constraints-test
   (mt/dataset test-data
     (mt/$ids
-      (let [{:keys [first second]} (chain-filter-mbql-query-call-counts %venues.name [])]
-        ;; - fetch the source Field (the one we return values of)
-        ;; - fetch the source Table
-        ;; - fetch the Database
-        (is (= 3 first))
-        (testing "a second build reuses the cached metadata and makes no app-DB calls"
-          (is (= 0 second)))))))
+      (let [none (chain-filter-mbql-query-call-counts %venues.name [])
+            one  (chain-filter-mbql-query-call-counts %venues.name [(shorthand->constraint %venues.price 3)])]
+        (testing "a second build reuses the cached metadata, so a constraint on the source Table adds no app DB call"
+          (is (= (:second none) (:second one)))
+          (is (< (:second none) (:first none))))))))
 
-(deftest ^:parallel chain-filter-mbql-query-one-constraint-test
+(deftest ^:parallel chain-filter-mbql-query-constraints-test
   (mt/dataset test-data
     (mt/$ids
-      ;; a constraint on the source Table does not add a join
-      (let [{:keys [first second]} (chain-filter-mbql-query-call-counts %venues.name [(shorthand->constraint %venues.price 3)])]
-        ;; - fetch the source Field
-        ;; - fetch the source Table
-        ;; - fetch the Database
-        ;; - bulk-fetch the constraint Field(s)
-        (is (= 4 first))
-        (testing "a second build reuses the cached metadata and makes no app-DB calls"
-          (is (= 0 second)))))))
+      (let [one   (chain-filter-mbql-query-call-counts %venues.name [(shorthand->constraint %venues.price 3)])
+            three (chain-filter-mbql-query-call-counts
+                   %venues.name
+                   [(shorthand->constraint %venues.price 3)
+                    (shorthand->constraint %venues.id 1)
+                    (shorthand->constraint %venues.latitude 1)])]
+        (testing "constraints on the source Table add no join and their Fields are bulk-loaded together"
+          (is (= (:first one) (:first three))))
+        (testing "a second build reuses the cached metadata, whatever the number of constraints"
+          (is (= (:second one) (:second three))))))))
 
-(deftest ^:parallel chain-filter-mbql-query-three-constraints-test
-  (mt/dataset test-data
-    (mt/$ids
-      (let [{:keys [first second]} (chain-filter-mbql-query-call-counts
-                                    %venues.name
-                                    [(shorthand->constraint %venues.price 3)
-                                     (shorthand->constraint %venues.id 1)
-                                     (shorthand->constraint %venues.latitude 1)])]
-        ;; same as the one-constraint case -- the constraint Fields are bulk-loaded together, not one at a time:
-        ;; - fetch the source Field
-        ;; - fetch the source Table
-        ;; - fetch the Database
-        ;; - bulk-fetch the (three) constraint Fields
-        (is (= 4 first))
-        (testing "a second build reuses the cached metadata and makes no app-DB calls"
-          (is (= 0 second)))))))
+(deftest ^:parallel chain-filter-mbql-query-joins-test
+  (let [one-join (mt/dataset test-data
+                   (mt/$ids
+                     (chain-filter-mbql-query-call-counts %venues.name [(shorthand->constraint %categories.name "BBQ")])))
+        two-hops (mt/dataset airports
+                   (mt/$ids
+                     (chain-filter-mbql-query-call-counts %airport.name [(shorthand->constraint %region.name "x")])))]
+    (testing "the join Fields and Tables are each bulk-loaded in one call, however many joins there are"
+      (is (= (:first one-join) (:first two-hops))))
+    (testing "a second build reuses the cached metadata, however many joins there are"
+      (is (= (:second one-join) (:second two-hops))))))
 
-(deftest ^:parallel chain-filter-mbql-query-one-join-test
-  (mt/dataset test-data
-    (mt/$ids
-      ;; a constraint on another Table (categories) forces a venues -> categories join
-      (let [{:keys [first second]} (chain-filter-mbql-query-call-counts %venues.name [(shorthand->constraint %categories.name "BBQ")])]
-        ;; - fetch the source Field
-        ;; - fetch the source Table
-        ;; - fetch the Database
-        ;; - bulk-fetch the constraint Field(s)
-        ;; - bulk-fetch the join Fields
-        ;; - bulk-fetch the join Table(s)
-        (is (= 6 first))
-        (testing "a second build reuses the cached metadata and makes no app-DB calls"
-          (is (= 0 second)))))))
+(defn- join-field-ids
+  "The ids of the Fields the joins of the first stage of `query` reference."
+  [query]
+  (into #{}
+        (keep (fn [x] (when (and (vector? x) (= :field (first x)) (int? (last x))) (last x))))
+        (tree-seq coll? seq (get-in query [:stages 0 :joins]))))
 
-(deftest ^:parallel chain-filter-mbql-query-multi-hop-joins-test
-  (mt/dataset airports
-    (mt/$ids
-      ;; airport -> municipality -> region is two joins
-      (let [{:keys [first second]} (chain-filter-mbql-query-call-counts %airport.name [(shorthand->constraint %region.name "x")])]
-        ;; same count as the single-join case -- the join Fields and Tables are each bulk-loaded in one call,
-        ;; regardless of how many joins there are:
-        ;; - fetch the source Field
-        ;; - fetch the source Table
-        ;; - fetch the Database
-        ;; - bulk-fetch the constraint Field(s)
-        ;; - bulk-fetch the join Fields (across both joins)
-        ;; - bulk-fetch the join Tables (both of them)
-        (is (= 6 first))
-        (testing "a second build reuses the cached metadata and makes no app-DB calls"
-          (is (= 0 second)))))))
+(deftest chain-filter-mbql-query-follows-fk-change-test
+  (testing "a build right after an FK changes joins through the new FK"
+    (mt/with-temp-test-data [["users"
+                              [{:field-name "name" :base-type :type/Text}]
+                              []]
+                             ["messages"
+                              [{:field-name "body"        :base-type :type/Text}
+                               {:field-name "sender_id"   :base-type :type/Integer :fk :users}
+                               {:field-name "receiver_id" :base-type :type/Integer}]
+                              []]]
+      (mt/$ids nil
+        (let [build (fn []
+                      (#'chain-filter/chain-filter-mbql-query %messages.body
+                                                              [(shorthand->constraint %users.name "x")]
+                                                              nil))]
+          (is (contains? (join-field-ids (build)) %messages.sender_id))
+          (t2/update! :model/Field %messages.sender_id {:semantic_type nil :fk_target_field_id nil})
+          (t2/update! :model/Field %messages.receiver_id {:semantic_type :type/FK :fk_target_field_id %users.id})
+          (let [field-ids (join-field-ids (build))]
+            (is (contains? field-ids %messages.receiver_id))
+            (is (not (contains? field-ids %messages.sender_id)))))))))

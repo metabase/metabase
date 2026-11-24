@@ -14,6 +14,7 @@
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -143,30 +144,6 @@
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
-(mu/defn- update-collection-permissions!
-  "Update the permissions for group ID with `group-id` on collection with ID
-  `collection-id` in the optional `collection-namespace` to `new-collection-perms`."
-  [collection-namespace :- [:maybe ms/KeywordOrString]
-   group-id :- ms/PositiveInt
-   collection-id :- [:or [:= :root] ms/PositiveInt]
-   new-collection-perms :- CollectionPermissions]
-  (let [collection-id (if (= collection-id :root)
-                        (assoc collection.root/root-collection :namespace collection-namespace)
-                        collection-id)]
-    ;; remove whatever entry is already there (if any) and add a new entry if applicable
-    (perms/revoke-collection-permissions! group-id collection-id)
-    (case new-collection-perms
-      :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
-      :read (perms/grant-collection-read-permissions! group-id collection-id)
-      :none nil)))
-
-(mu/defn- update-group-permissions!
-  [collection-namespace :- [:maybe ms/KeywordOrString]
-   group-id :- ms/PositiveInt
-   new-group-perms :- GroupPermissionsGraph]
-  (doseq [[collection-id new-perms] new-group-perms]
-    (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
-
 (defenterprise update-audit-collection-permissions!
   "OSS implementation of `audit-db/update-audit-collection-permissions!`, which is an enterprise feature, so does nothing in the OSS
   version. Returns the changes map unchanged."
@@ -177,17 +154,17 @@
   revision number, which is used for consistency checks when updating the graph."
   [current-revision-number]
   (when api/*current-user-id*
-    (permissions.db/insert-collection-permission-graph-revision-returning-instance!
-     {:id      (inc current-revision-number)
-      :user_id api/*current-user-id*
-      :before  ""
-      :after   ""})))
+    (first (c-perm-revision/create-collection-permission-graph-revisions!
+            [{:id      (inc current-revision-number)
+              :user_id api/*current-user-id*
+              :before  ""
+              :after   ""}]))))
 
 (defn fill-revision-details!
   "Updates perm revision, this is used for logging/auditing purposes, and can be quite expensive, so in practice is
    called after the revision number is updated."
   [revision-id before changes]
-  (future (permissions.db/update-collection-graph-revision! revision-id {:before before :after changes})))
+  (future (c-perm-revision/update-collection-permission-graph-revisions! [{:id revision-id :before before :after changes}])))
 
 (defn- personal-collection-ids
   "Return a set of IDs from `collection-ids` that are personal Collections or descendants of personal Collections.
@@ -226,6 +203,18 @@
                                (:name (perms-group/data-analyst))
                                "' group.")
                           {:status-code 400})))))))
+
+(def ^:private admin-only-write-namespaces
+  "The Collection namespaces only admins can write, so no group can be granted write on them."
+  #{"data-actions" "data-apps"})
+
+(defn- check-no-admin-only-namespace-write
+  "Throws a 400 when `changes` to the Collections of `collection-namespace` grant write in an admin-only namespace."
+  [collection-namespace changes]
+  (when (and (contains? admin-only-write-namespaces (some-> collection-namespace name))
+             (some #{:write} (mapcat vals (vals changes))))
+    (throw (ex-info (tru "You cannot grant write permissions on collections only admins can write.")
+                    {:status-code 400}))))
 
 (mu/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
@@ -273,12 +262,20 @@
                                                                 (filter (comp seq second))
                                                                 (into {})))]
      (check-data-analyst-library-permissions changes)
+     (check-no-admin-only-namespace-write collection-namespace changes)
      (when-not force? (perms.u/check-revision-numbers old-graph filtered-new-graph))
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]
-                           (doseq [[group-id changes] changes]
-                             (let [changes (update-audit-collection-permissions! group-id changes)]
-                               (update-group-permissions! collection-namespace group-id changes)))
+                           (perms/update-collection-accesses!
+                            (into []
+                                  (mapcat (fn [[group-id changes]]
+                                            (for [[collection-id access] (update-audit-collection-permissions! group-id changes)]
+                                              [group-id
+                                               (if (= collection-id :root)
+                                                 (assoc collection.root/root-collection :namespace collection-namespace)
+                                                 collection-id)
+                                               access])))
+                                  changes))
                            (:id (create-perms-revision! (:revision old-graph))))]
          ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
          (perms.u/log-permissions-changes diff-old changes)

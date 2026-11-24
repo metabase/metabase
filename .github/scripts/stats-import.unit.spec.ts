@@ -1,6 +1,9 @@
 import { importStats } from "./stats-import";
 
-const ok = (body: unknown = { inserted: 1 }) => ({ ok: true, json: async () => body });
+const ok = (body: unknown = { inserted: 1 }) => ({
+  ok: true,
+  json: async () => body,
+});
 const fail = (status: number) => ({
   ok: false,
   status,
@@ -11,7 +14,7 @@ const fail = (status: number) => ({
 const load = (over: Record<string, unknown> = {}) =>
   importStats({
     baseUrl: "https://stats.example.com",
-    table: "emotion_files",
+    table: "bundle_sizes",
     rows: [{ a: 1 }],
     retryDelayMs: 1,
     ...over,
@@ -33,7 +36,7 @@ describe("importStats requests", () => {
     await load({ baseUrl: undefined });
 
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://importer.example.com/api/import/emotion_files",
+      "https://importer.example.com/api/import/bundle_sizes",
     );
   });
 
@@ -44,7 +47,7 @@ describe("importStats requests", () => {
     await load({ baseUrl: "https://importer.example.com/" });
 
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://importer.example.com/api/import/emotion_files",
+      "https://importer.example.com/api/import/bundle_sizes",
     );
   });
 
@@ -52,7 +55,9 @@ describe("importStats requests", () => {
     const fetchMock = jest.fn();
     global.fetch = fetchMock;
 
-    await expect(load({ baseUrl: undefined })).rejects.toThrow("ENG_STATS_URL is not set");
+    await expect(load({ baseUrl: undefined })).rejects.toThrow(
+      "ENG_STATS_URL is not set",
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -68,7 +73,7 @@ describe("importStats requests", () => {
     });
 
     const [url, options] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://stats.example.com/api/import/emotion_files");
+    expect(url).toBe("https://stats.example.com/api/import/bundle_sizes");
     expect(options.method).toBe("PUT");
     expect(options.headers).toMatchObject({
       "x-api-key": "secret",
@@ -81,7 +86,10 @@ describe("importStats requests", () => {
     const fetchMock = jest.fn();
     global.fetch = fetchMock;
 
-    await expect(load({ rows: [] })).resolves.toEqual({ success: true, inserted: 0 });
+    await expect(load({ rows: [] })).resolves.toEqual({
+      success: true,
+      inserted: 0,
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -111,15 +119,22 @@ describe("importStats retries", () => {
       .mockResolvedValueOnce(ok());
     global.fetch = fetchMock;
 
-    await expect(load({ retries: 2 })).resolves.toMatchObject({ success: true });
+    await expect(load({ retries: 2 })).resolves.toMatchObject({
+      success: true,
+    });
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("retries throttling", async () => {
-    const fetchMock = jest.fn().mockResolvedValueOnce(fail(429)).mockResolvedValueOnce(ok());
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(fail(429))
+      .mockResolvedValueOnce(ok());
     global.fetch = fetchMock;
 
-    await expect(load({ retries: 2 })).resolves.toMatchObject({ success: true });
+    await expect(load({ retries: 2 })).resolves.toMatchObject({
+      success: true,
+    });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -130,7 +145,9 @@ describe("importStats retries", () => {
       .mockResolvedValueOnce(ok());
     global.fetch = fetchMock;
 
-    await expect(load({ retries: 2 })).resolves.toMatchObject({ success: true });
+    await expect(load({ retries: 2 })).resolves.toMatchObject({
+      success: true,
+    });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

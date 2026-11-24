@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import {
   GRAPH_GOAL_SETTINGS,
+  LEGEND_POSITION_SETTINGS,
   TOOLTIP_SETTINGS,
   type VisualizationSettingsDefinitions,
   getDefaultDimensionLabel,
@@ -339,4 +340,5 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => "full",
     readDependencies: ["graph.show_values"],
   },
+  ...LEGEND_POSITION_SETTINGS,
 };

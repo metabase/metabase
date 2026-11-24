@@ -21,6 +21,34 @@
    :recovery [{:uses #{"search"}        :text "Call `search` to find a widget id."}
               {:uses #{"read_resource"} :text "Or call `read_resource` on the widget collection."}]})
 
+(tools.error/defrecoverable runtime-test-quoted-failure!
+  "Quote a database error as `run_query` does."
+  {:payload [:map {:closed true} [:database-error :string]]
+   :quoted  {:database-error pr-str}}
+  [{:keys [database-error]}]
+  {:message  (str "The database said: " (pr-str database-error))
+   :recovery []})
+
+(tools.error/defrecoverable runtime-test-branching-quoted-failure!
+  "Quote a database error after a prefix chosen from its contents.
+   One prefix includes a class name."
+  {:payload [:map {:closed true} [:database-error :string]]
+   :quoted  {:database-error pr-str}}
+  [{:keys [database-error]}]
+  {:message  (str (if (str/includes? database-error "syntax")
+                    "clojure.lang.ExceptionInfo: The query has invalid syntax. "
+                    "The database said: ")
+                  (pr-str database-error))
+   :recovery []})
+
+(tools.error/defrecoverable runtime-test-misquoted-failure!
+  "Declare a quoted database error but write its value without quotes."
+  {:payload [:map {:closed true} [:database-error :string]]
+   :quoted  {:database-error pr-str}}
+  [{:keys [database-error]}]
+  {:message  (str "The database said: " database-error)
+   :recovery []})
+
 (defn- tool
   "A one-off `Tool` with `declared` and a body of `f`, for the runtime to drive."
   [declared f]
@@ -55,6 +83,23 @@
         (fn [_ _] (throw (ex-info "SELECT * FROM secrets failed: clojure.lang.ExceptionInfo at line 1"
                                   {:password "hunter2"})))))
 
+(def ^:private jvm-failing-tool
+  (tool {:name "jvm_failure" :description "Overflows its stack or gets interrupted."
+         :args [:map {:closed true} [:kind [:enum "overflow" "interrupt"]]]}
+        (fn [{:keys [kind]} _]
+          (throw (case kind
+                   "overflow"  (StackOverflowError.)
+                   "interrupt" (InterruptedException.))))))
+
+(def ^:private writing-tool
+  (tool {:name "write" :description "Writes, then fails."
+         :args [:map {:closed true} [:declared {:optional true} :boolean]]
+         :metabot/writes? true}
+        (fn [{:keys [declared]} _]
+          (if declared
+            (tools.error/unrecoverable! ::out-of-ink {:user-message "Out of ink."})
+            (throw (ex-info "Connection reset after the commit" {}))))))
+
 (def ^:private bad-shape-tool
   (tool {:name "bad_shape" :description "Returns something that is not a result."
          :args [:map {:closed true}]}
@@ -64,6 +109,11 @@
   (tool {:name "scoped" :description "Needs a scope."
          :args [:map {:closed true}] :scope "agent:sql:create"}
         (fn [_ _] {:output "ok"})))
+
+(def ^:private object-tool
+  (tool {:name "build" :description "Takes an object argument, and a list of them."
+         :args [:map {:closed true} [:query :map] [:filters {:optional true} [:sequential :map]]]}
+        (fn [{:keys [query]} _] {:output (str "keys: " (pr-str (keys query)))})))
 
 (def ^:private memory-tool
   (tool {:name "memory" :description "Reads the memory atom out of ctx."
@@ -91,7 +141,8 @@
 
 (def ^:private entries
   (tools/entries [happy-tool recoverable-tool unrecoverable-tool silent-unrecoverable-tool
-                  crashing-tool bad-shape-tool scoped-tool memory-tool multi-item-tool]))
+                  crashing-tool jvm-failing-tool writing-tool bad-shape-tool scoped-tool memory-tool object-tool
+                  multi-item-tool]))
 
 (def ^:private all-tool-names
   (into #{"search" "read_resource"} (keys entries)))
@@ -150,6 +201,31 @@
     (is (= "Invalid tool arguments: `m` is not a supported argument. `n` is required."
            (:output outcome)))))
 
+(deftest ^:parallel malformed-json-text-argument-test
+  (let [message (fn [problem]
+                  (str "Invalid tool arguments: `query` was sent as a string of JSON text, and " problem
+                       ". Fix the JSON and send the value itself, not a quoted string."))]
+    (testing "quoted JSON text that does not parse: the message says it was quoted and where it breaks"
+      (is (= (message "the text is not valid JSON near line 1, column 26")
+             (:output (invoke "build" {:query "{\"stages\": [{\"limit\": 1}]]}"})))))
+    (testing "text with leading whitespace"
+      (is (= (message "the text is not valid JSON near line 1, column 9")
+             (:output (invoke "build" {:query "  {\"a\": ]"})))))
+    (testing "text that ends early"
+      (is (= (message "the text ends before the JSON is complete")
+             (:output (invoke "build" {:query "{\"stages\": [1"})))))
+    (testing "a parse failure without a location, such as a number too long to read"
+      (is (= (message "the text is not valid JSON")
+             (:output (invoke "build" {:query (str "{\"limit\": " (apply str (repeat 1200 "1")) "}")})))))
+    (testing "a plain string keeps the type message"
+      (is (= "Invalid tool arguments: `query` invalid type; received a string."
+             (:output (invoke "build" {:query "orders"})))))
+    (testing "list elements that break the same way share one sentence"
+      (is (= (str "Invalid tool arguments: `filters[0]` and `[1]` were sent as strings of JSON text, and the text is "
+                  "not valid JSON near line 1, column 7. Fix the JSON and send the values themselves, not quoted "
+                  "strings.")
+             (:output (invoke "build" {:query {} :filters ["{\"a\": ]" "{\"b\": ]"]})))))))
+
 ;;; ------------------------------------------------ Recoverable ---------------------------------------------------
 
 (deftest ^:parallel recoverable-renders-message-then-steps-test
@@ -193,12 +269,34 @@
 (deftest ^:parallel an-undeclared-exception-is-unrecoverable-and-leaks-nothing-test
   (let [outcome (invoke "crash" {})]
     (is (= {:class :unrecoverable :code :internal} (:error outcome)))
-    (is (= "This call failed and the user was shown the error (:internal). Don't retry it."
+    (is (= (str "This call failed with an unexpected error. Don't retry the same call. "
+                "Try another approach, or tell the user it failed.")
            (:output outcome)))
     (testing "neither the exception message nor its ex-data reaches the model"
       (doseq [secret ["SELECT" "secrets" "clojure.lang" "hunter2"]]
         (is (not (str/includes? (:output outcome) secret))
             (str "leaked " secret))))))
+
+(deftest ^:parallel a-tool-that-writes-ends-the-turn-on-an-undeclared-failure-test
+  (testing "the write may have happened, so the user is told to check before trying again"
+    (is (= {:output "This call failed and the user was shown the error (:unconfirmed-write). Don't retry it."
+            :error  {:class        :unrecoverable
+                     :code         :unconfirmed-write
+                     :user-message (str "Something went wrong. The change may have been saved, "
+                                        "so check before you try again.")}}
+           (invoke "write" {}))))
+  (testing "a declared error passes through"
+    (is (= {:class :unrecoverable :code ::out-of-ink :user-message "Out of ink."}
+           (:error (invoke "write" {:declared true}))))))
+
+(deftest ^:parallel a-later-turn-replays-only-that-an-undeclared-failure-happened-test
+  (testing "the live instruction not to retry is for the turn that failed, so a later turn replays one neutral sentence"
+    (is (= "This call failed with an unexpected error."
+           (tools.runtime/replay-text (invoke "crash" {})))))
+  (testing "every other failure replays the text the model read live"
+    (doseq [[tool-name args] [["boom" {:id 9}] ["give_up" {}] ["write" {}] ["jvm_failure" {:kind "overflow"}]]]
+      (let [outcome (invoke tool-name args)]
+        (is (= (:output outcome) (tools.runtime/replay-text outcome)) tool-name)))))
 
 (deftest ^:parallel a-wrong-handler-result-is-our-bug-not-the-models-test
   (is (= {:class :unrecoverable :code :internal} (:error (invoke "bad_shape" {})))))
@@ -332,17 +430,35 @@
              (tools.runtime/render {:class :validation :code :invalid-arguments :message message}
                                    all-tool-names)))))))
 
+(deftest ^:parallel render-checks-all-but-the-quoted-text-test
+  (let [render (fn [code database-error]
+                 (tools.runtime/render (tools.error/classify
+                                        (try (tools.error/throw-recoverable! code {:database-error database-error})
+                                             (catch Throwable e e)))
+                                       all-tool-names))]
+    (testing "a class name inside a quoted database error is data, so the check lets it through"
+      (is (= (str "The database said: " (pr-str "Column \"clojure.lang.foo\" not found"))
+             (:output (render ::runtime-test-quoted-failure "Column \"clojure.lang.foo\" not found")))))
+    (testing "a class name written by the error body is rejected even when it depends on quoted text"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"may only carry authored text"
+           (render ::runtime-test-branching-quoted-failure "syntax error near SELECT"))))
+    (testing "a declared value stays in the checked text when the body writes it without quotes"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"may only carry authored text"
+           (render ::runtime-test-misquoted-failure "clojure.lang.ExceptionInfo: boom"))))))
+
 ;; Whether a declaration's text names a tool it has not declared is a property of the declaration,
 ;; not of a render, so `render` no longer checks it — see
 ;; `metabase.metabot.tools.error-test/a-declarations-text-is-profile-neutral-test`, which checks the
 ;; whole catalog against every tool name in the product rather than one call against one profile.
 
 (deftest ^:parallel render-caps-the-output-test
-  (let [long-message (apply str (repeat 5000 "x"))
-        outcome      (tools.runtime/render {:class :validation :code :invalid-arguments
-                                            :message long-message}
-                                           all-tool-names)]
-    (is (= 4000 (count (:output outcome))))))
+  (doseq [error [{:class :validation :code :invalid-arguments}
+                 {:class :recoverable :code ::tools/all-items-failed :recovery []}]]
+    (let [outcome (tools.runtime/render (assoc error :message (apply str (repeat 5000 "x")))
+                                        all-tool-names)]
+      (is (= 4000 (count (:output outcome)))))))
 
 (deftest ^:parallel runtime-codes-are-declared-test
   (testing "the agent loop and the adapters branch on these, so the list is shared rather than
@@ -350,16 +466,22 @@
     (is (= {:unknown-tool      :validation
             :invalid-arguments :validation
             :scope-denied      :unrecoverable
-            :internal          :unrecoverable}
+            :internal          :unrecoverable
+            :jvm-error         :unrecoverable
+            :interrupted       :unrecoverable
+            :unconfirmed-write :unrecoverable}
            tools.runtime/runtime-codes))
     (testing "and every one of them is reachable through invoke"
       ;; The scoped case needs a ctx that grants nothing; the rest run under the default
       ;; unrestricted one.
-      (is (= #{:unknown-tool :invalid-arguments :scope-denied :internal}
+      (is (= #{:unknown-tool :invalid-arguments :scope-denied :internal :jvm-error :interrupted :unconfirmed-write}
              (set (keep (fn [[tool-name args overrides]]
                           (get-in (tools.runtime/invoke entries (ctx overrides) tool-name args)
                                   [:error :code]))
                         [["nope" {}]
                          ["happy" {:m 1}]
                          ["scoped" {} {:user-scope #{}}]
-                         ["crash" {}]])))))))
+                         ["crash" {}]
+                         ["jvm_failure" {:kind "overflow"}]
+                         ["jvm_failure" {:kind "interrupt"}]
+                         ["write" {}]])))))))

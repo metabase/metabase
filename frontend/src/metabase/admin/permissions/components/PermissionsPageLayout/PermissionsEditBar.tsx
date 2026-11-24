@@ -1,13 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
-import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EditBar } from "metabase/common/components/EditBar";
+import {
+  PermissionsConfirm,
+  type PermissionsGraphDiff,
+  isEmbeddingHubPermissions,
+} from "metabase/permissions";
 import { Button } from "metabase/ui";
-
-import { PermissionsConfirm } from "../PermissionsConfirm";
 
 import S from "./PermissionsEditBar.module.css";
 

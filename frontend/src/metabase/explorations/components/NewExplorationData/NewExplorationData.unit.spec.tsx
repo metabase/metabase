@@ -3,7 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { setupExplorationDataEndpoint } from "__support__/server-mocks/metric";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useCreateExplorationMutation } from "metabase/api";
-import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
+import {
+  trackExplorationCreated,
+  trackExplorationPlanEdited,
+} from "metabase/explorations/analytics";
 import type { ExplorationBlock } from "metabase/explorations/hooks";
 import {
   createExploration,
@@ -68,10 +71,12 @@ function setup({
   blocks = [],
   timelines = [],
   messages = [],
+  name,
 }: {
   blocks?: ExplorationBlock[];
   timelines?: Timeline[];
   messages?: { role: "user" | "agent"; message: string }[];
+  name?: string;
 } = {}) {
   // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
@@ -101,7 +106,7 @@ function setup({
   // The Add* modals fetch this on mount even while closed.
   setupExplorationDataEndpoint([]);
 
-  const selection = makeMockSelection({ blocks, timelines });
+  const selection = makeMockSelection({ blocks, timelines, name });
 
   renderWithProviders(<NewExplorationData selection={selection} />);
 
@@ -434,6 +439,27 @@ describe("NewExplorationData (Research plan)", () => {
       expect(
         screen.getByRole("button", { name: "Start research" }),
       ).toBeDisabled();
+    });
+
+    it("creates the exploration under the plan's name and tracks its creation", async () => {
+      setup({
+        blocks: [mockExplorationBlock(revenueMetric, [dimCreatedAt])],
+        name: "New exploration",
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Start research" }),
+      );
+
+      await waitFor(() => {
+        expect(trackExplorationCreated).toHaveBeenCalledWith(
+          createExploration().id,
+        );
+      });
+      expect(createExplorationMock).toHaveBeenCalledTimes(1);
+      expect(createExplorationMock).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "New exploration" }),
+      );
     });
 
     it("is enabled when at least one block has a selection", () => {

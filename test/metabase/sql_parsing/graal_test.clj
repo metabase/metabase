@@ -11,6 +11,7 @@
    [metabase.analytics-interface.core :as analytics-interface]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-parsing.graal :as graal]
+   [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util.files :as u.files])
   (:import
@@ -52,7 +53,10 @@
           (Files/deleteIfExists zip-file))))))
 
 (deftest timeout-surfaces-even-when-metric-inc-fails-test
-  (testing (str "A fired Python-call timeout still surfaces as TimeoutException from the API even if "
+  ;; This test is about the GraalPy timeout and its metric. The Java backend has its own timeout, which
+  ;; `metabase.sql-parsing.sqlglot-java-test/slow-call-times-out-test` tests. So this test always runs on the GraalPy
+  ;; parser, whichever backend the setting selects.
+  (testing (str "A fired GraalPy Python-call timeout still surfaces as TimeoutException from the API even if "
                 "the timeout-metric bump throws — a misconfigured analytics registry must not shadow "
                 "the timeout (#77084).")
     (dynamic-redefs/with-dynamic-fn-redefs [;; force the timeout branch of do-with-python-context without waiting 30s
@@ -62,4 +66,21 @@
                                                                        (when (= k :metabase-sql-parsing/context-timeouts)
                                                                          (throw (Exception. "boom"))))]
       (is (thrown? TimeoutException
-                   (sql-parsing/referenced-tables "postgres" "SELECT 1"))))))
+                   (sql-parsing/referenced-tables (sql-parsing/parser :sqlglot) "postgres" "SELECT 1"))))))
+
+(deftest timeout-comes-from-setting-test
+  (testing "Python calls run under the timeout set by MB_SQL_PARSING_TIMEOUT_MS."
+    (let [timeout-ms (atom nil)]
+      (mt/with-temp-env-var-value! [mb-sql-parsing-timeout-ms 1234]
+        (dynamic-redefs/with-dynamic-fn-redefs [graal/with-timeout* (fn [ms _]
+                                                                      (reset! timeout-ms ms)
+                                                                      :metabase.sql-parsing.graal/timeout)]
+          (is (thrown-with-msg? TimeoutException #"after 1234ms"
+                                (sql-parsing/referenced-tables (sql-parsing/parser :sqlglot) "postgres" "SELECT 1")))))
+      (is (= 1234 @timeout-ms)))))
+
+(deftest expected-sqlglot-version-test
+  (testing "Sqlglot version is properly parsed from pyproject.toml"
+    (let [version (graal/expected-sqlglot-version)]
+      (is (string? version))
+      (is (re-matches #"\d+\.\d+\.\d+" version)))))

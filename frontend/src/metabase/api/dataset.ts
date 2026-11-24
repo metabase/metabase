@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import type {
   CardQueryMetadata,
   Dataset,
@@ -5,6 +6,7 @@ import type {
   FieldValue,
   GetRemappedParameterValueRequest,
   InternalDatasetQuery,
+  JsonQuery,
   NativeDatasetResponse,
 } from "metabase-types/api";
 
@@ -53,7 +55,7 @@ export const datasetApi = Api.injectEndpoints({
     }),
     getAdhocQuery: builder.query<
       Dataset,
-      (DatasetQuery | InternalDatasetQuery) & RtkCacheKeyed & IgnorableError
+      (JsonQuery | InternalDatasetQuery) & RtkCacheKeyed & IgnorableError
     >({
       query: ({ ignore_error, ...body }) => ({
         method: "POST",
@@ -61,16 +63,19 @@ export const datasetApi = Api.injectEndpoints({
         body,
         noEvent: ignore_error,
       }),
+      serializeQueryArgs: ({ queryArgs }) =>
+        Lib.canonicalizeLibUuids(queryArgs),
       providesTags: () => provideAdhocDatasetTags(),
-      // Dataset results can be large and the cache key is the full
-      // DatasetQuery, so cross-caller cache hits are rare. Evict
-      // immediately on unsubscribe to match the legacy fetch-and-discard
-      // behavior used by the imperative `runAdhocDatasetQuery` runner.
+      // Dataset results can be large, so evict immediately on unsubscribe
+      // to match the legacy fetch-and-discard behavior used by the
+      // imperative `runAdhocDatasetQuery` runner. Callers subscribed at
+      // the same time still share an entry when their queries differ only
+      // in Lib UUIDs (see `serializeQueryArgs`).
       keepUnusedDataFor: 0,
     }),
     getAdhocPivotQuery: builder.query<
       Dataset,
-      DatasetQuery & {
+      JsonQuery & {
         pivot_rows?: number[];
         pivot_cols?: number[];
         show_row_totals?: boolean;
@@ -84,6 +89,8 @@ export const datasetApi = Api.injectEndpoints({
         body,
         noEvent: ignore_error,
       }),
+      serializeQueryArgs: ({ queryArgs }) =>
+        Lib.canonicalizeLibUuids(queryArgs),
       providesTags: () => provideAdhocDatasetTags(),
       keepUnusedDataFor: 0,
     }),
@@ -96,7 +103,7 @@ export const datasetApi = Api.injectEndpoints({
       providesTags: (metadata) =>
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
     }),
-    getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
+    getNativeDataset: builder.query<NativeDatasetResponse, JsonQuery>({
       query: (body) => ({
         method: "POST",
         url: "/api/dataset/native",

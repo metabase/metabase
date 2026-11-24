@@ -9,8 +9,8 @@
     "../../../../frontend/src/types/**/*.d.ts",
     "../../../../frontend/src/embedding-sdk-shared/types/*.d.ts",
     "../../../../frontend/src/metabase/dayjs/index.ts",
-    "*/src/**/*.ts",
-    "*/src/**/*.tsx"
+    "data_apps/*/src/**/*.ts",
+    "data_apps/*/src/**/*.tsx"
   ],
   "exclude": [".build"]
 }

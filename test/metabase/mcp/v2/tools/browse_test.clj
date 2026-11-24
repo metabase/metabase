@@ -28,7 +28,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -183,15 +183,16 @@
   (testing "a collection the caller CAN read, nested under one they cannot, still appears — pulled up to its
             nearest visible ancestor, the way `collections->tree` renders A > C when B is hidden. Grouping
             children by their direct parent id would drop it from the tree entirely."
-    (mt/with-temp [:model/Collection top    {:name "browse-vis-top"}
-                   :model/Collection hidden {:name "browse-vis-hidden" :location (collection/children-location top)}
-                   :model/Collection _deep  {:name "browse-vis-deep" :location (collection/children-location hidden)}]
-      (perms/revoke-collection-permissions! (perms-group/all-users) hidden)
-      (let [names (surfaced-names (browse-as :rasta {:id (:id top) :mode "tree" :depth 3}))]
-        (is (not (contains? names "browse-vis-hidden"))
-            "the unreadable collection itself stays out")
-        (is (contains? names "browse-vis-deep")
-            "but its readable child is surfaced under the nearest visible ancestor")))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[top] (collection/create-collections! [{:name "browse-vis-top"}])
+            [hidden] (collection/create-collections! [{:name "browse-vis-hidden" :location (collection/children-location top)}])
+            _deep (collection/create-collections! [{:name "browse-vis-deep" :location (collection/children-location hidden)}])]
+        (perms/revoke-collection-permissions! (perms-group/all-users) hidden)
+        (let [names (surfaced-names (browse-as :rasta {:id (:id top) :mode "tree" :depth 3}))]
+          (is (not (contains? names "browse-vis-hidden"))
+              "the unreadable collection itself stays out")
+          (is (contains? names "browse-vis-deep")
+              "but its readable child is surfaced under the nearest visible ancestor"))))))
 
 (deftest ^:parallel tree-leaf-has-no-marker-test
   (testing "a childless node reports empty children and carries no truncation marker"
@@ -545,6 +546,35 @@
               (is (= [t] (map :id (:tables envelope)))
                   "25 copies of one table is one table — served, not rejected as over the cap"))))))))
 
+(deftest get-fields-include-hidden-statement-count-test
+  (testing "get_fields with include_hidden runs as many statements for 5 tables as for 20, the cap, with hidden fields"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/with-model-cleanup [:model/Table]
+        (mt/with-full-data-perms-for-all-users!
+          (let [statements (fn [n]
+                             (let [table-ids (t2/insert-returning-pks! :model/Table
+                                                                       (for [i (range n)]
+                                                                         {:db_id db-id :schema "public" :name (format "hidden_%d_%d" n i)
+                                                                          :active true}))]
+                               (t2/insert! :model/Field (for [table-id table-ids
+                                                              [position visibility] [[0 :normal] [1 :hidden]]]
+                                                          {:table_id        table-id
+                                                           :name            (str (name visibility) "_column")
+                                                           :base_type       :type/Integer
+                                                           :database_type   "INTEGER"
+                                                           :position        position
+                                                           :visibility_type visibility}))
+                               (mt/with-test-user :rasta
+                                 (t2/with-call-count [call-count]
+                                   (let [[envelope] (call! {:action         "get_fields"
+                                                            :table_ids      table-ids
+                                                            :include_hidden true})]
+                                     (is (= (repeat n ["normal_column" "hidden_column"])
+                                            (map #(map :name (:fields %)) (:tables envelope))))
+                                     (call-count))))))]
+            (statements 2)
+            (is (= (statements 5) (statements 20)))))))))
+
 ;;; ------------------------------------------------ Byte budget ---------------------------------------------------
 
 (deftest ^:parallel assemble-tables-within-budget-test
@@ -733,57 +763,57 @@
 (deftest browse-allows-router-blocks-destinations-test
   (testing "GHY-4138: the router is browsable, but its destination databases are unreachable
             directly through every action — and the caller here holds FULL data permissions, so the
-            refusal is provably the routing guard, not a permission failure"
+            refusal is provably the routing guard, not a permission failure; the destination's table row is
+            written without its model, whose insert grants permissions a destination cannot carry"
     (mt/with-temp [:model/Database {router :id}   {:name "Sales Router"}
                    :model/Table    {router-t :id} {:db_id router :schema "public" :name "router_orders"}
                    :model/Field    _              {:table_id router-t :name "id"
                                                    :base_type :type/Integer :position 0}
                    ;; two tenants' destinations; tenant B holds data tenant A must never see
                    :model/Database {tenant-a :id} {:name "Tenant A DB" :router_database_id router}
-                   :model/Database {tenant-b :id} {:name "Tenant B DB" :router_database_id router}
-                   :model/Table    {b-orders :id} {:db_id router :schema "public" :name "tenant_b_orders"}
-                   :model/Field    _              {:table_id b-orders :name "secret_amount"
-                                                   :base_type :type/Float :position 0}
-                   :model/Card     _              {:name "Tenant B Model" :type :model
-                                                   :database_id tenant-b :table_id b-orders}]
-      ;; The table is created on the router and moved: inserting it directly on a destination trips
-      ;; the after-insert permission grant, which destinations are forbidden to carry.
-      (t2/update! :model/Table b-orders {:db_id tenant-b})
-      (mt/with-full-data-perms-for-all-users!
-        (mt/with-test-user :rasta
-          (is (mi/can-read? (t2/select-one :model/Database :id tenant-b))
-              "precondition: the caller CAN read the destination — so a refusal below is the routing
-               guard collapsing it into not-found, not an ordinary permission denial")
-          (testing "happy path — the router database is fully browsable"
-            (let [[dbs]  (call! {:action "list_databases" :limit 500})
-                  db-ids (set (map :id (:data dbs)))]
-              (is (contains? db-ids router) "the router is listed")
-              (is (not (contains? db-ids tenant-a)) "tenant A's destination is not listed")
-              (is (not (contains? db-ids tenant-b)) "tenant B's destination is not listed"))
-            (let [[tables] (call! {:action "list_tables" :database_id router :schema "public"})]
-              (is (= ["router_orders"] (map :name (:data tables))) "the router's tables list"))
-            (let [[envelope] (call! {:action "get_fields" :table_ids [router-t]})]
-              (is (= ["id"] (map :name (:fields (first (:tables envelope)))))
-                  "the router's fields are served")))
-          (testing "adversarial — a directly-supplied destination id is refused across every action"
-            (are [action extra] (thrown-with-msg?
-                                 clojure.lang.ExceptionInfo
-                                 #"Database \d+ not found — it may not exist, or you may not have access to it\."
-                                 (tools.browse/browse-data (merge {:action action} extra) {}))
-              "list_schemas" {:database_id tenant-b}
-              "list_tables"  {:database_id tenant-b :schema "public"}
-              "list_models"  {:database_id tenant-b}))
-          (testing "adversarial — get_fields leaks nothing from a destination, even mixed with a
-                    legitimate router table in the same request"
-            (let [[envelope] (call! {:action "get_fields" :table_ids [router-t b-orders]})]
-              (is (= [router-t] (map :id (:tables envelope)))
-                  "only the router table is served")
-              (is (= [{:id b-orders
-                       :reason "not found — it may not exist, or you may not have access to it"}]
-                     (:omitted envelope))
-                  "the destination table is collapsed into not-found, never expanded")
-              (is (not (str/includes? (json/encode envelope) "secret_amount"))
-                  "the destination's column name never appears anywhere in the response"))))))))
+                   :model/Database {tenant-b :id} {:name "Tenant B DB" :router_database_id router}]
+      (let [b-orders (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                              {:db_id tenant-b :schema "public" :name "tenant_b_orders" :active true
+                                               :created_at :%now :updated_at :%now})]
+        (mt/with-temp [:model/Field    _ {:table_id b-orders :name "secret_amount"
+                                          :base_type :type/Float :position 0}
+                       :model/Card     _ {:name "Tenant B Model" :type :model
+                                          :database_id tenant-b :table_id b-orders}]
+          (mt/with-full-data-perms-for-all-users!
+            (mt/with-test-user :rasta
+              (is (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id tenant-b) :can_read))
+                  "precondition: the caller CAN read the destination — so a refusal below is the routing
+                   guard collapsing it into not-found, not an ordinary permission denial")
+              (testing "happy path — the router database is fully browsable"
+                (let [[dbs]  (call! {:action "list_databases" :limit 500})
+                      db-ids (set (map :id (:data dbs)))]
+                  (is (contains? db-ids router) "the router is listed")
+                  (is (not (contains? db-ids tenant-a)) "tenant A's destination is not listed")
+                  (is (not (contains? db-ids tenant-b)) "tenant B's destination is not listed"))
+                (let [[tables] (call! {:action "list_tables" :database_id router :schema "public"})]
+                  (is (= ["router_orders"] (map :name (:data tables))) "the router's tables list"))
+                (let [[envelope] (call! {:action "get_fields" :table_ids [router-t]})]
+                  (is (= ["id"] (map :name (:fields (first (:tables envelope)))))
+                      "the router's fields are served")))
+              (testing "adversarial — a directly-supplied destination id is refused across every action"
+                (are [action extra] (thrown-with-msg?
+                                     clojure.lang.ExceptionInfo
+                                     #"Database \d+ not found — it may not exist, or you may not have access to it\."
+                                     (tools.browse/browse-data (merge {:action action} extra) {}))
+                  "list_schemas" {:database_id tenant-b}
+                  "list_tables"  {:database_id tenant-b :schema "public"}
+                  "list_models"  {:database_id tenant-b}))
+              (testing "get_fields returns nothing from a destination, even mixed with a
+                        legitimate router table in the same request"
+                (let [[envelope] (call! {:action "get_fields" :table_ids [router-t b-orders]})]
+                  (is (= [router-t] (map :id (:tables envelope)))
+                      "only the router table is served")
+                  (is (= [{:id b-orders
+                           :reason "not found — it may not exist, or you may not have access to it"}]
+                         (:omitted envelope))
+                      "the destination table is collapsed into not-found, never expanded")
+                  (is (not (str/includes? (json/encode envelope) "secret_amount"))
+                      "the destination's column name never appears anywhere in the response"))))))))))
 
 (deftest browse-refuses-stub-databases-test
   (testing "GHY-4138: a stub database (a placeholder for in-progress creation) is unbrowsable the
@@ -1074,8 +1104,8 @@
         (testing "precondition — the fixture built the actor, not some other user"
           (mt/with-test-user :rasta
             (let [table (t2/select-one :model/Table :id t-id)]
-              (is (mi/can-read? table) "metadata permission alone satisfies can-read?")
-              (is (not (mi/can-query? table)) "...and does not satisfy can-query?"))))
+              (is (mi/can-read? (t2/hydrate table :can_read)) "metadata permission alone satisfies can-read?")
+              (is (not (mi/can-query? (t2/hydrate table :can_query))) "...and does not satisfy can-query?"))))
         (testing "the REST endpoint that serves these values refuses this caller"
           (mt/user-http-request :rasta :get 403 (format "field/%d/values" f-id)))
         (testing "so get_fields must refuse them too"

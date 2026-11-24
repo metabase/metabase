@@ -11,32 +11,39 @@
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
-(defn- enforce-sandbox?
-  "Takes all the group-ids a user belongs to and a sandbox, and determines whether the sandbox should be enforced for the user.
-  This is done by checking whether any *other* group provides `:unrestricted` access to the sandboxed table (without
-  its own sandbox). If so, we don't enforce the sandbox."
+(defn- groups-to-check
+  "The groups of `user-group-ids` whose access can lift `sandbox`: those with neither a sandbox on its Table nor an
+  impersonation on its Database."
   [{:as _sandbox :keys [table_id] {:keys [db_id]} :table} user-group-ids group-id->sandboxes group-id->impersonations]
-  ;; If any *other* non-sandboxed groups the user is in provide unrestricted view-data access to the table, we don't
-  ;; enforce the sandbox.
-  (let [sandboxed-groups (into #{} (for [[group-id sandboxes] group-id->sandboxes
-                                         :when (some #(= (:table_id %) table_id) sandboxes)]
-                                     group-id))
+  (let [sandboxed-groups    (into #{} (for [[group-id sandboxes] group-id->sandboxes
+                                            :when (some #(= (:table_id %) table_id) sandboxes)]
+                                        group-id))
         impersonated-groups (into #{} (for [[group-id impersonations] group-id->impersonations
                                             :when (some #(= (:db_id %) db_id) impersonations)]
-                                        group-id))
-        groups-to-exclude (set/union sandboxed-groups impersonated-groups)
-        groups-to-check (set/difference user-group-ids groups-to-exclude)]
-    (if (seq groups-to-check)
-      (not (perms/groups-have-permission-for-table? groups-to-check
-                                                    :perms/view-data
-                                                    :unrestricted
-                                                    db_id
-                                                    table_id))
-      true)))
+                                        group-id))]
+    (set/difference user-group-ids (set/union sandboxed-groups impersonated-groups))))
+
+(defn- enforced-sandboxes
+  "Those of `sandboxes` to enforce for a user in the groups `user-group-ids`: each whose groups to check give no
+  `:unrestricted` view-data access to its Table, read for all of them at once."
+  [sandboxes user-group-ids group-id->sandboxes group-id->impersonations]
+  (let [sandbox->groups (into {} (map (juxt identity #(groups-to-check % user-group-ids group-id->sandboxes
+                                                                       group-id->impersonations)))
+                              sandboxes)
+        pairs           (into [] (comp (mapcat (fn [[{:keys [table_id]} groups]] (map (fn [g] [g table_id]) groups)))
+                                       (distinct))
+                              sandbox->groups)
+        pair->value     (perms/group-table-permissions pairs :perms/view-data
+                                                       (into {} (map (juxt :table_id (comp :db_id :table))) sandboxes))
+        unrestricted?   (fn [pair]
+                          (perms/at-least-as-permissive? :perms/view-data (get pair->value pair) :unrestricted))]
+    (filter (fn [{:keys [table_id] :as sandbox}]
+              (not-any? #(unrestricted? [% table_id]) (sandbox->groups sandbox)))
+            sandboxes)))
 
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is cached
-  for the duration of a request in [[metabase.permissions.models.data-permissions/*sandboxes-for-user*]].
+  for the duration of a request in [[metabase.permissions.data-permissions/*sandboxes-for-user*]].
 
   WARNING: This should NOT be used directly for sandboxing enforcement. Use `*sandboxes-for-user*` or
   `enforced-sandboxes-for-tables` below, so that the cache is used."
@@ -59,8 +66,8 @@
                                                  (->> sandboxes
                                                       (filter :table_id)
                                                       (into #{})))))]
-      (filter #(enforce-sandbox? % user-group-ids group-id->sandboxes group-id->impersonations)
-              (reduce set/union #{} (vals group-id->sandboxes))))))
+      (enforced-sandboxes (reduce set/union #{} (vals group-id->sandboxes))
+                          user-group-ids group-id->sandboxes group-id->impersonations))))
 
 (defn enforced-sandboxes-for-tables
   "Given collection of table-ids, return the sandboxes that should be enforced for the current user on any of the tables. A

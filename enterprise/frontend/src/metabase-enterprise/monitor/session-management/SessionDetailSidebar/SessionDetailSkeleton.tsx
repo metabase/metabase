@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { getSkeletonLineWidth } from "metabase/common/components/Skeletons";
 import {
   DetailsRow,
   DetailsTable,
-} from "metabase/monitor/components/DetailSidebar";
+} from "metabase/common/components/DetailSidebar";
+import { getSkeletonLineWidth } from "metabase/common/components/Skeletons";
 import { Skeleton, Stack, Text } from "metabase/ui";
 
 /** Placeholder for `SessionTitle` and `SessionDetails` while the session loads. */

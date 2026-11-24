@@ -38,12 +38,18 @@ on:
 # These jobs gate on `inputs.suite` -- this workflow's own input. Only the called workflows reach
 # for `github.event.inputs.*`, because `inputs` there is their own `workflow_call` signature.
 jobs:
+  static-viz:
+    if: ${{ inputs.suite == 'backend' || inputs.suite == 'app-db' }}
+    uses: ./.github/workflows/static-viz.yml
+
   backend:
+    needs: static-viz
     if: ${{ inputs.suite == 'backend' }}
     uses: ./.github/workflows/backend.yml
     secrets: inherit
 
   app-db:
+    needs: static-viz
     if: ${{ inputs.suite == 'app-db' }}
     uses: ./.github/workflows/app-db.yml
     secrets: inherit

@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is]]
+   [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
-   [metabase.sql-parsing.core :as sql-parsing]))
+   [metabase.test :as mt]))
 
 ;;;; contains-template-tags?
 
@@ -61,6 +63,36 @@
    {:context "Snippet references should skip validation"
     :dialect "postgres" :sql "SELECT * FROM {{snippet: common_user_joins}}"
     :expected {:valid? true :dialect "postgres"}}
+   {:context "An unclosed optional clause should fail validation"
+    :dialect "postgres" :sql "SELECT count(*) FROM products [[WHERE category = {{cat}}"
+    :expected {:valid? false :dialect "postgres" :reason :invalid-template-syntax
+               :error-message #(str/includes? % "with no matching")}}
+   {:context "An unclosed variable should fail validation when no dialect is provided"
+    :dialect nil :sql "SELECT * FROM products WHERE category = {{cat"
+    :expected {:valid? false :dialect nil :reason :invalid-template-syntax}}
+   {:context "An empty variable in SQL with template tags should fail validation"
+    :dialect "postgres" :sql "SELECT * FROM products WHERE category = {{cat}} AND price = {{}}"
+    :expected {:valid? false :dialect "postgres" :reason :invalid-template-syntax
+               :error-message #(str/includes? % "expected a param name")}}
+   {:context "An optional clause without a variable in SQL with template tags should fail validation"
+    :dialect "postgres" :sql "SELECT * FROM products WHERE price > {{min}} [[AND category = 'Widget']]"
+    :expected {:valid? false :dialect "postgres" :reason :invalid-template-syntax
+               :error-message #(str/includes? % "must contain at least one")}}
+   {:context "A nested array literal without template tags should pass validation"
+    :dialect "postgres" :sql "SELECT ARRAY[[1,2],[3,4]] AS m"
+    :expected {:valid? true :dialect "postgres"}}
+   {:context "Brackets in a quoted identifier without template tags should pass validation"
+    :dialect nil :sql "SELECT 1 AS \"[[x]]\""
+    :expected {:valid? true :dialect nil}}
+   {:context "Brackets in a string literal should not fail validation"
+    :dialect "postgres" :sql "SELECT '[[' AS a, '{{' AS b FROM products"
+    :expected {:valid? true :dialect "postgres"}}
+   {:context "MotherDuck SQL is validated as DuckDB, including DuckDB-only syntax"
+    :dialect "motherduck" :sql "SELECT a, count(*) FROM t GROUP BY ALL QUALIFY row_number() OVER (ORDER BY a) <= 3"
+    :expected {:valid? true :dialect "motherduck"}}
+   {:context "MotherDuck SQL with syntax errors fails validation"
+    :dialect "motherduck" :sql "SELECT * FORM users"
+    :expected {:valid? false}}
    {:context "Validation should be skipped when no dialect is provided"
     :dialect nil :sql "SELECT * FROM users"
     :expected {:valid? true :dialect nil}}
@@ -83,6 +115,18 @@
       (is (=? expected
               (metabot.tools.sql.validation/validate-sql dialect sql))))))
 
+(deftest template-syntax-error-is-english-test
+  (testing "The parser message is English for a user with another locale"
+    (mt/with-mock-i18n-bundles! {"zz" {:messages {"Invalid query: found ''[['' or '''{{''' with no matching '']]'' or ''}}''"
+                                                  "TRANSLATED PARSER MESSAGE"}}}
+      (mt/with-user-locale "zz"
+        (testing "the parser itself returns the translation"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"TRANSLATED PARSER MESSAGE"
+                                (lib/parse-parameters "SELECT {{x"))))
+        (is (=? {:valid? false
+                 :error-message "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'"}
+                (metabot.tools.sql.validation/validate-sql "postgres" "SELECT {{x")))))))
+
 (def ^:private transpilation-cases
   "Testing _context_ describe a test case. Apart from that, pretty formatting is checked by comparisons of raw output
   strings in `:transpiled-sql`."
@@ -98,6 +142,7 @@
    {:context "Multiple SQL statements should be rejected"
     :dialect "postgres" :sql "SELECT 1; SELECT 2"
     :expected {:valid? false
+               :reason :multiple-statements
                :error-message "Multiple SQL statements are not supported. Please provide a single query."}}
    {:context "Transpilation should preserve the query's logical structure"
     :dialect "snowflake" :sql "SELECT a, b FROM t WHERE x > 1 ORDER BY a"
@@ -132,12 +177,30 @@
    {:context "CTE declarations and references keep their spelling"
     :dialect "postgres" :sql "WITH Orders AS (SELECT 1 AS id) SELECT id FROM ORDERS"
     :expected "WITH Orders AS (\n  SELECT\n    1 AS id\n)\nSELECT\n  id\nFROM ORDERS"}
+   {:context "unquoted identifiers and a table alias stay unquoted through an uppercase-folding dialect"
+    :dialect "snowflake" :sql "select SubTotal from Orders as O where o.Total > 0"
+    :expected "SELECT\n  SubTotal\nFROM Orders AS O\nWHERE\n  o.Total > 0"}
+   {:context "lowercase unquoted identifiers stay unquoted through an uppercase-folding dialect"
+    :dialect "snowflake" :sql "select subtotal from orders"
+    :expected "SELECT\n  subtotal\nFROM orders"}
+   {:context "mixed-case unquoted identifiers stay unquoted through a lowercase-folding dialect"
+    :dialect "postgres" :sql "SELECT SubTotal FROM Orders WHERE Total > 0"
+    :expected "SELECT\n  SubTotal\nFROM Orders\nWHERE\n  Total > 0"}
+   {:context "a CTE that reads a table keeps the table name unquoted"
+    :dialect "snowflake" :sql "WITH x AS (SELECT * FROM orders) SELECT subtotal FROM x"
+    :expected "WITH x AS (\n  SELECT\n    *\n  FROM orders\n)\nSELECT\n  subtotal\nFROM x"}
    {:context "table-valued functions transpile"
     :dialect "postgres" :sql "SELECT * FROM generate_series(1, 10) AS g(n)"
     :expected "SELECT\n  *\nFROM GENERATE_SERIES(1, 10) AS g(n)"}
    {:context "reserved words are quoted in the dialect's folded case, lowercase dialect"
     :dialect "postgres" :sql "select Order, user from t"
     :expected "SELECT\n  \"order\",\n  \"user\"\nFROM t"}
+   {:context "a lone reserved word is quoted in the dialect's folded case"
+    :dialect "postgres" :sql "SELECT order FROM t"
+    :expected "SELECT\n  \"order\"\nFROM t"}
+   {:context "a reserved word that is already quoted stays quoted"
+    :dialect "postgres" :sql "SELECT \"order\" FROM t"
+    :expected "SELECT\n  \"order\"\nFROM t"}
    {:context "reserved words are quoted in the dialect's folded case, uppercase dialect"
     :dialect "snowflake" :sql "select order from t"
     :expected "SELECT\n  \"ORDER\"\nFROM t"}
@@ -157,26 +220,73 @@
     (testing context
       (is (= expected (transpiled-sql dialect sql))))))
 
-(deftest ^:parallel transpiled-sql-resolves-test
-  (testing "transpiled SQL must resolve against the folded-case names the warehouse reports;
-           quoting it (the old identify=True behavior) makes exactly these fail"
-    (doseq [[dialect sql default-schema sqlglot-schema]
-            [["snowflake" "select subtotal from orders"
-              "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT"}}}]
-             ["snowflake" "select SubTotal from Orders as O where o.Total > 0"
-              "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT", "TOTAL" "FLOAT"}}}]
-             ["postgres" "SELECT subtotal AS \"Total\" FROM orders WHERE total > 0"
-              "public" {"public" {"orders" {"subtotal" "FLOAT", "total" "FLOAT"}}}]
-             ["postgres" "SELECT SubTotal FROM Orders WHERE Total > 0"
-              "public" {"public" {"orders" {"subtotal" "FLOAT", "total" "FLOAT"}}}]
-             ["postgres" "SELECT \"order\" FROM t"
-              "public" {"public" {"t" {"order" "FLOAT"}}}]
-             ["postgres" "SELECT order FROM t"
-              "public" {"public" {"t" {"order" "FLOAT"}}}]
-             ["postgres" "WITH Orders AS (SELECT 1 AS id) SELECT id FROM ORDERS"
-              "public" {"public" {"unrelated" {"x" "INT"}}}]
-             ["snowflake" "WITH x AS (SELECT * FROM orders) SELECT subtotal FROM x"
-              "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT"}}}]]]
-      (testing sql
-        (is (= "ok" (:status (sql-parsing/validate-query
-                              dialect (transpiled-sql dialect sql) default-schema sqlglot-schema))))))))
+;;;; system-table?
+
+(deftest system-table?-test
+  ;; Load the core drivers, so the hierarchy knows that they are JDBC drivers.
+  (run! driver/the-initialized-driver [:postgres :mysql])
+  (doseq [[driver default-schema written expected]
+          [[:postgres           "public" {:schema "pg_catalog" :table "pg_class"}                 true]
+           [:postgres           "public" {:table "pg_tables"}                                    true]
+           [:postgres           "public" {:schema "core" :table "pg_tables"}                     false]
+           [:postgres           "public" {:schema "sys" :table "tables"}                         false]
+           [:postgres           "public" {:schema "system" :table "tables"}                      false]
+           [:postgres           "public" {:table "accounts"}                                     false]
+           [:mysql              nil      {:schema "INFORMATION_SCHEMA" :table "TABLES"}          true]
+           [:mysql              nil      {:schema "mysql" :table "user"}                         true]
+           [:oracle             "SCOTT"  {:table "DUAL"}                                         true]
+           [:oracle             "SCOTT"  {:table "EMP"}                                          false]
+           [:bigquery-cloud-sdk nil      {:schema "region-us" :table "INFORMATION_SCHEMA.JOBS"}  true]
+           [:bigquery-cloud-sdk nil      {:table "INFORMATION_SCHEMA.SCHEMATA"}                  true]
+           [:bigquery-cloud-sdk nil      {:schema "mydataset" :table "orders"}                   false]]]
+    (testing (str driver " " written)
+      (is (= expected (#'metabot.tools.sql.validation/system-table? driver default-schema written))))))
+
+;;;; names-table?
+
+(deftest ^:parallel names-table?-test
+  (let [names-table? #'metabot.tools.sql.validation/names-table?]
+    (testing "on a database without schemas, such as MySQL, the qualifier that the SQL writes names the database"
+      (is (names-table? nil {:schema "mydb" :table "orders"} {:schema nil :table "orders"}))
+      (is (names-table? nil {:schema nil :table "orders"} {:schema nil :table "orders"})))
+    (testing "a spec without a schema, as the :macaw parser backend gives, is in the default schema"
+      (is (names-table? "public" {:schema nil :table "account"} {:table "account"}))
+      (is (not (names-table? "public" {:schema "core" :table "account"} {:table "account"}))))
+    (testing "where the database has schemas, the schemas must match"
+      (is (names-table? "public" {:schema nil :table "Account"} {:schema "public" :table "account"}))
+      (is (not (names-table? "public" {:schema nil :table "account"} {:schema "core" :table "account"})))
+      (is (not (names-table? "public" {:schema "public" :table "account"} {:schema "public" :table "orders"}))))))
+
+;;;; written-in?
+
+(deftest ^:parallel written-in?-test
+  (let [written-in? #'metabot.tools.sql.validation/written-in?]
+    (testing "a table name outside the template tags is written, in any letter case and quoted or not"
+      (is (written-in? "SELECT * FROM {{#5}} AS e JOIN account a ON TRUE" {:table "account"}))
+      (is (written-in? "SELECT * FROM {{#5}} AS e JOIN \"core\".\"Account\" a ON TRUE" {:table "account"}))
+      (is (written-in? "SELECT * FROM analytics.events_* WHERE TRUE" {:table "events_*"})))
+    (testing "a name inside a template tag is not written"
+      (is (not (written-in? "SELECT * FROM {{#5-events}} AS e" {:table "events"})))
+      (is (not (written-in? "SELECT * FROM t WHERE {{snippet: events}}" {:table "events"}))))
+    (testing "a name that only contains the table name is not the table name"
+      (is (not (written-in? "SELECT * FROM my_events_2" {:table "events"}))))))
+
+;;;; BigQuery wildcard tables
+
+(deftest ^:parallel existing-table?-wildcard-test
+  (let [existing-table? #'metabot.tools.sql.validation/existing-table?
+        known           [{:schema "analytics" :table "events_20240101"}]]
+    (testing "a BigQuery wildcard table exists when the name of a known table starts with its prefix"
+      (is (existing-table? :bigquery-cloud-sdk nil known {:schema "analytics" :table "events_*"}))
+      (is (existing-table? :bigquery-cloud-sdk nil known {:schema "analytics" :table "EVENTS_2024*"})))
+    (testing "a wildcard table that matches no known table, such as one with a typo, does not exist"
+      (is (not (existing-table? :bigquery-cloud-sdk nil known {:schema "analytics" :table "evnts_*"})))
+      (is (not (existing-table? :bigquery-cloud-sdk nil known {:schema "other" :table "events_*"}))))
+    (testing "only BigQuery has wildcard tables"
+      (is (not (existing-table? :snowflake "PUBLIC" [{:schema "PUBLIC" :table "events_1"}] {:table "events_*"}))))))
+
+(deftest known-tables-wildcard-test
+  (testing "a wildcard table finds the tables whose names start with its prefix"
+    (mt/with-temp [:model/Table _ {:db_id (mt/id) :schema "analytics" :name "events_20240101" :active true}]
+      (is (= [{:schema "analytics" :table "events_20240101"}]
+             (#'metabot.tools.sql.validation/known-tables (mt/id) [{:schema "analytics" :table "events_*"}]))))))

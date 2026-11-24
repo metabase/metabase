@@ -3,13 +3,18 @@
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.users.access-test-util :as access.tu]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -100,7 +105,7 @@
                 :emails   [{:value "scim-test@metabase.com"}]
                 :active   true
                 :locale   nil
-                :groups   [{:value   (t2/select-one-fn :entity_id :model/PermissionsGroup (:id group))
+                :groups   [{:value   (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
                             :display "Test Group"}]
                 :meta     {:resourceType "User"}}
                response)))))
@@ -278,6 +283,27 @@
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
             (is (= "User not found" (get response :detail)))))))))
 
+(deftest scim-deactivation-revokes-access-test
+  (with-scim-setup!
+    (doseq [[how deactivate!] {"PUT"   (fn [entity-id email]
+                                         (scim-client :put 200 (format "ee/scim/v2/Users/%s" entity-id)
+                                                      {:schemas  ["urn:ietf:params:scim:schemas:core:2.0:User"]
+                                                       :id       entity-id
+                                                       :userName email
+                                                       :name     {:givenName "Test" :familyName "User"}
+                                                       :emails   [{:value email}]
+                                                       :active   false}))
+                               "PATCH" (fn [entity-id _email]
+                                         (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id)
+                                                      {:schemas    ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
+                                                       :Operations [{:op "Replace" :value {"active" false}}]}))}]
+      (testing how
+        (mt/with-temp [:model/User {user-id :id email :email} {:first_name "Test" :last_name "User"}]
+          (mt/with-model-cleanup [:model/OAuthAccessToken]
+            (let [access (access.tu/give-access! user-id)]
+              (deactivate! (t2/select-one-fn :entity_id :model/User :id user-id) email)
+              (is (= access.tu/revoked (access.tu/access-state access))))))))))
+
 (deftest patch-user-test-without-path
   (with-scim-setup!
     (mt/with-temp [:model/User user {:email "testuser@metabase.com"
@@ -377,7 +403,7 @@
                {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
                 :id          entity-id
                 :displayName "Test Group"
-                :members     [{:value (t2/select-one-fn :entity_id :model/User (mt/user->id :rasta))
+                :members     [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))
                                :display "rasta@metabase.com"}]
                 :meta        {:resourceType "Group"}}
                response)))))
@@ -477,7 +503,7 @@
     (mt/with-temp [:model/User {existing-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}
                    :model/User {new-id :id}      {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
       (mt/with-premium-features #{:advanced-permissions}
-        (perms/add-user-to-group! existing-id (:id (perms-group/data-analyst))))
+        (perms-group-membership/add-users-to-groups! [{:user existing-id :group (:id (perms-group/data-analyst))}]))
       (mt/with-premium-features #{}
         (with-scim-setup!
           (let [before   (data-analyst-group-member-ids)
@@ -494,8 +520,8 @@
     (mt/with-temp [:model/User {keep-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}
                    :model/User {drop-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
       (mt/with-premium-features #{:advanced-permissions}
-        (perms/add-user-to-group! keep-id (:id (perms-group/data-analyst)))
-        (perms/add-user-to-group! drop-id (:id (perms-group/data-analyst))))
+        (perms-group-membership/add-users-to-groups! [{:user keep-id :group (:id (perms-group/data-analyst))}])
+        (perms-group-membership/add-users-to-groups! [{:user drop-id :group (:id (perms-group/data-analyst))}]))
       (mt/with-premium-features #{}
         (with-scim-setup!
           (put-data-analyst-group! 200 [keep-id])
@@ -509,7 +535,7 @@
   (testing "PUT /Groups/:id with an unchanged member list succeeds without :advanced-permissions"
     (mt/with-temp [:model/User {user-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
       (mt/with-premium-features #{:advanced-permissions}
-        (perms/add-user-to-group! user-id (:id (perms-group/data-analyst))))
+        (perms-group-membership/add-users-to-groups! [{:user user-id :group (:id (perms-group/data-analyst))}]))
       (mt/with-premium-features #{}
         (with-scim-setup!
           (let [before (data-analyst-group-member-ids)]
@@ -534,8 +560,8 @@
                      :model/User {keep-id :id} {}
                      :model/User {drop-id :id} {}]
         (mt/with-premium-features #{:advanced-permissions}
-          (perms/add-user-to-group! keep-id (:id group))
-          (perms/add-user-to-group! drop-id (:id group)))
+          (perms-group-membership/add-users-to-groups! [{:user keep-id :group (:id group)}])
+          (perms-group-membership/add-users-to-groups! [{:user drop-id :group (:id group)}]))
         (let [membership-id #(t2/select-one-pk :model/PermissionsGroupMembership
                                                :group_id (:id group) :user_id keep-id)
               original-id   (membership-id)
@@ -548,3 +574,24 @@
           (is (= original-id (membership-id)))
           (is (not (t2/exists? :model/PermissionsGroupMembership
                                :group_id (:id group) :user_id drop-id))))))))
+
+(deftest update-group-removes-members-in-one-write-test
+  (with-scim-setup!
+    (testing "a group push that removes n members publishes one membership delete event, at 2 and at 6 members"
+      (let [published (fn [n]
+                        (mt/with-model-cleanup [:model/User]
+                          (mt/with-temp [:model/PermissionsGroup group {:name (format "SCIM removal group %s" (random-uuid))}]
+                            (let [user-ids  (t2/insert-returning-pks! :model/User (for [_ (range n)] (mt/with-temp-defaults :model/User)))
+                                  _         (t2/insert! :model/PermissionsGroupMembership
+                                                        (for [user-id user-ids] {:user_id user-id :group_id (:id group)}))
+                                  entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+                                  body      {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                                             :id          entity-id
+                                             :displayName (:name group)
+                                             :members     [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :crowberto))}]}
+                                  topics    (events.tu/published-topics!
+                                             #(scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id) body))]
+                              (is (empty? (t2/select :model/PermissionsGroupMembership :group_id (:id group) :user_id [:in user-ids])))
+                              (get (frequencies topics) :event/group-membership-delete)))))]
+        (is (= 1 (published 2)))
+        (is (= (published 2) (published 6)))))))

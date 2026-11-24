@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -23,6 +24,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
    (java.sql ResultSet Connection)))
@@ -70,7 +72,7 @@
                      "REVIEWS" "USERS" "VENUES"}
                    (sql-jdbc.execute/do-with-connection-with-options
                     (or driver/*driver* :h2)
-                    (mt/db)
+                    (mt/id)
                     nil
                     (fn [^Connection conn]
                       ;; We have to mock this to make it work with all DBs
@@ -86,7 +88,7 @@
                      "REVIEWS" "USERS" "VENUES"}
                    (sql-jdbc.execute/do-with-connection-with-options
                     :h2
-                    (mt/db)
+                    (mt/id)
                     nil
                     (fn [^Connection conn]
                       (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables
@@ -103,7 +105,7 @@
                      {:name "PEOPLE", :schema "PUBLIC", :description nil, :is_writable true}
                      {:name "PRODUCTS", :schema "PUBLIC", :description nil, :is_writable true}
                      {:name "REVIEWS", :schema "PUBLIC", :description nil, :is_writable true}}
-                   (into #{} (:tables (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))))
+                   (into #{} (:tables (sql-jdbc.describe-database/describe-database :h2 (lib.metadata/database (mt/metadata-provider))))))))
 
 (defn- describe-database-with-open-resultset-count!
   "Just like `describe-database`, but instead of returning the database description returns the number of ResultSet
@@ -122,11 +124,11 @@
       ;; open before they would normally get closed
       (sql-jdbc.execute/do-with-connection-with-options
        driver
-       db
+       (driver.u/ensure-lib-database db)
        nil
        (fn [_conn]
          ;; `:tables` is a reducible -- realize it so `active-tables` actually opens (and closes) its ResultSets
-         (let [_ (into [] (:tables (sql-jdbc.describe-database/describe-database driver db)))]
+         (let [_ (into [] (:tables (sql-jdbc.describe-database/describe-database driver (driver.u/ensure-lib-database db))))]
            (reduce + (for [^ResultSet rs @resultsets]
                        (if (.isClosed rs) 0 1)))))))))
 
@@ -142,11 +144,11 @@
                        "drop table if exists \"birds\";"
                        "create table \"birds\" ();"]]
       (jdbc/execute! one-off-dbs/*conn* [statement]))
-    (sync/sync-database! (mt/db))
+    (sync/sync-database! (mt/id))
     (is (= 1 (count-active-tables-in-db (mt/id))))
     ;; We have to mock this as H2 doesn't have the notion of a user connecting to it
     (with-redefs [sql-jdbc.sync.interface/have-select-privilege? (constantly false)]
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (is (= 0 (count-active-tables-in-db (mt/id)))
           "We shouldn't sync tables for which we don't have select privilege"))))
 
@@ -157,12 +159,13 @@
       (is (= 0
              (describe-database-with-open-resultset-count! driver/*driver* (mt/db)))))))
 
-(defn- sync-and-assert-filtered-tables [database assert-table-fn]
-  (mt/with-temp [:model/Database db-filtered database]
-    (sync/sync-database! db-filtered {:scan :schema})
-    (let [tables (t2/select :model/Table :db_id (u/the-id db-filtered))]
-      (doseq [table tables]
-        (assert-table-fn table)))))
+(defn- sync-and-assert-filtered-tables! [database assert-table-fn]
+  (mt/with-model-cleanup [:model/Database :model/Secret]
+    (let [[db-filtered] (database/create-databases! [database])]
+      (sync/sync-database! (:id db-filtered) {:scan :schema})
+      (let [tables (t2/select :model/Table :db_id (u/the-id db-filtered))]
+        (doseq [table tables]
+          (assert-table-fn table))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]
@@ -217,7 +220,7 @@
           patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
       (testing "Filtering connections for schemas works as expected"
         (testing " with an inclusion filter"
-          (sync-and-assert-filtered-tables
+          (sync-and-assert-filtered-tables!
            {:name    (format "Test %s DB with dataset inclusion filters" driver)
             :engine  driver
             :details (filtered-db-details driver filter-type-prop "inclusion"
@@ -226,7 +229,7 @@
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (contains? #{\s \v \2} (first schema-name)))))))
         (testing " with an exclusion filter"
-          (sync-and-assert-filtered-tables
+          (sync-and-assert-filtered-tables!
            {:name    (format "Test %s DB with dataset exclusion filters" driver)
             :engine  driver
             :details (filtered-db-details driver filter-type-prop "exclusion"
@@ -242,14 +245,14 @@
                        (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
       (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                                  :+fns [default-have-select-privilege?]})
-        (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+        (let [{schema :schema, table-name :name} (t2/select-one :model/Table :id (mt/id :checkins))]
           (qp.store/with-metadata-provider (mt/id)
             (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
               (doseq [auto-commit [true false]]
                 (testing (pr-str {:auto-commit auto-commit :schema schema :name table-name})
                   (sql-jdbc.execute/do-with-connection-with-options
                    driver/*driver*
-                   (mt/db)
+                   (mt/id)
                    nil
                    (fn [^Connection conn]
                      ;; Databricks does not support setting auto commit to false. Catching the setAutoCommit
@@ -267,7 +270,8 @@
 (deftest sync-table-with-backslash-test
   ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-  (mt/test-drivers #{:postgres}
+  ;; MotherDuck has its own PK and FK queries
+  (mt/test-drivers #{:postgres :motherduck}
     (testing "table with backslash in name, PKs, FKS are correctly synced"
       (mt/with-temp-test-data [["human\\race"
                                 [{:field-name "humanraceid" :base-type :type/Integer :pk? true}
@@ -294,7 +298,7 @@
                                                  :-features [:table-privileges]})
         (let [closed-first (volatile! false)
               execute-select-probe-query (mt/original-fn #'sql-jdbc.describe-database/execute-select-probe-query)
-              all-tables (driver/describe-database driver/*driver* (mt/id))]
+              all-tables (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider)))]
           (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/execute-select-probe-query
                                       (fn [driver ^Connection conn query]
                                         (when-not @closed-first
@@ -302,15 +306,15 @@
                                           (.close conn))
                                         (execute-select-probe-query driver conn query))]
             (let [table-names #(into #{} (map :name) (:tables %))
-                  all-tables-sans-one (table-names (driver/describe-database driver/*driver* (mt/id)))]
+                  all-tables-sans-one (table-names (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider))))]
               ;; there is at maximum one missing table
               (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
 
 (defn- run-retry-have-select-privilege!
   [probe-errors query-canceled probe-error-fn]
-  (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+  (let [{schema :schema, table-name :name} (t2/select-one :model/Table :id (mt/id :checkins))]
     (sql-jdbc.execute/do-with-connection-with-options
-     driver/*driver* (mt/db) nil
+     driver/*driver* (mt/id) nil
      (fn [^Connection conn]
        (let [select-probes (atom 0)]
          ;; query-canceled? is a multimethod, so we can't use with-dynamic-fn-redefs for the pair.

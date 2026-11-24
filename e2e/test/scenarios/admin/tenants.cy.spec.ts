@@ -9,6 +9,7 @@ import {
   COLLECTION_GROUP_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { getPermissionRowPermissions } from "e2e/support/helpers";
+import { DataPermissionValue } from "metabase-types/api/permissions";
 
 const { STATIC_ORDERS_ID, STATIC_PRODUCTS_ID } = SAMPLE_DB_TABLES;
 
@@ -482,6 +483,15 @@ describe("Tenants - management", () => {
   it("should show 'All tenant users' in permission warning tooltip and modal for tenant groups on data permissions, in both the group and database views (UXW-2474, UXW-2624)", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
 
+    cy.updatePermissionsGraph({
+      [ALL_EXTERNAL_USERS_GROUP_ID!]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": DataPermissionValue.UNRESTRICTED,
+          "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
+      },
+    });
+
     cy.request("POST", "/api/permissions/group", {
       name: "Test Tenant Group",
       is_tenant_group: true,
@@ -716,7 +726,7 @@ describe("tenant users", () => {
       "jwt-attribute-firstname": "first_name",
       "jwt-attribute-lastname": "last_name",
       "jwt-enabled": true,
-      "jwt-identity-provider-uri": "localhost:4000",
+      "jwt-identity-provider-uri": H.AUTH_PROVIDER_URL,
       "jwt-shared-secret": JWT_SECRET,
       "jwt-user-provisioning-enabled?": true,
       "use-tenants": true,

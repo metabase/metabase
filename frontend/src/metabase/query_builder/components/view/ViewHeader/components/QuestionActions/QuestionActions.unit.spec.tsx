@@ -19,22 +19,33 @@ import {
   within,
 } from "__support__/ui";
 import { MODAL_TYPES } from "metabase/querying/constants";
-import type Question from "metabase-lib/v1/Question";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockNativeCard,
-  createMockTable,
-} from "metabase-types/api/mocks";
+import { createMockCard } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import * as modelActions from "../../../../../actions/models";
 
 import { QuestionActions } from "./QuestionActions";
 
+function createCard(opts?: Partial<Card>) {
+  return createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    ...opts,
+  });
+}
+
 const ICON_CASES_CARDS = [
-  createMockCard({ name: "GUI" }),
-  createMockNativeCard({ name: "SQL" }),
+  createCard({ name: "GUI" }),
+  createCard({
+    name: "SQL",
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT 1",
+    }),
+  }),
 ];
 
 const ICON_CASES_LABELS = [
@@ -84,7 +95,6 @@ function setup({
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
-      tables: [createMockTable({ id: `card__${card.id}` })],
       questions: [card],
     }),
     qb: createMockQueryBuilderState({
@@ -93,8 +103,7 @@ function setup({
   });
 
   const metadata = createMockMetadataFromState(state);
-  // Unjustified type cast. FIXME
-  const question = metadata.question(card.id) as Question;
+  const question = new Question(card, metadata);
   const onOpenModal = jest.fn();
   const onSetQueryBuilderMode = jest.fn();
 
@@ -102,7 +111,6 @@ function setup({
     <QuestionActions
       question={question}
       isBookmarked={false}
-      isShowingQuestionInfoSidebar={false}
       onOpenModal={onOpenModal}
       onToggleBookmark={jest.fn()}
       onSetQueryBuilderMode={onSetQueryBuilderMode}
@@ -135,7 +143,7 @@ describe("QuestionActions", () => {
   describe("model query & columns", () => {
     it("should allow to edit the model with write data & collection permissions", async () => {
       const { onSetQueryBuilderMode } = setup({
-        card: createMockCard({
+        card: createCard({
           type: "model",
           can_write: true,
         }),
@@ -162,7 +170,7 @@ describe("QuestionActions", () => {
 
     it("should not allow to edit the model without write collection permissions", async () => {
       setup({
-        card: createMockCard({
+        card: createCard({
           type: "model",
           can_write: false,
         }),
@@ -170,6 +178,8 @@ describe("QuestionActions", () => {
 
       await openActionsMenu();
 
+      // e.g. models in the instance analytics collection (metabase#36228)
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
       expect(
         screen.queryByText("Edit query definition"),
       ).not.toBeInTheDocument();
@@ -178,7 +188,7 @@ describe("QuestionActions", () => {
 
     it("should allow to edit metadata but not the query without data permissions", async () => {
       setup({
-        card: createMockCard({
+        card: createCard({
           type: "model",
           can_write: true,
         }),
@@ -197,7 +207,7 @@ describe("QuestionActions", () => {
   describe("turning into a model or question", () => {
     it("should allow to turn into a model with write data & collection permissions", async () => {
       const { onOpenModal } = setup({
-        card: createMockCard({
+        card: createCard({
           type: "question",
           can_write: true,
         }),
@@ -215,7 +225,7 @@ describe("QuestionActions", () => {
         .mockImplementation(() => async () => {});
 
       const { onOpenModal } = setup({
-        card: createMockCard({
+        card: createCard({
           type: "question",
           can_write: true,
         }),
@@ -237,7 +247,7 @@ describe("QuestionActions", () => {
         .spyOn(modelActions, "turnModelIntoQuestion")
         .mockImplementation(() => () => Promise.resolve());
       setup({
-        card: createMockCard({
+        card: createCard({
           type: "model",
           can_write: true,
         }),
@@ -251,7 +261,7 @@ describe("QuestionActions", () => {
 
     it("should not allow to turn into a model without write collection permissions", async () => {
       setup({
-        card: createMockCard({
+        card: createCard({
           type: "question",
           can_write: false,
         }),
@@ -264,7 +274,7 @@ describe("QuestionActions", () => {
 
     it("should not allow to turn into a question without write collection permissions", async () => {
       setup({
-        card: createMockCard({
+        card: createCard({
           type: "model",
           can_write: false,
         }),
@@ -279,7 +289,7 @@ describe("QuestionActions", () => {
 
     it("should allow to turn into a model without data permissions", async () => {
       const { onOpenModal } = setup({
-        card: createMockCard({
+        card: createCard({
           type: "question",
           can_write: true,
         }),
@@ -297,7 +307,7 @@ describe("QuestionActions", () => {
         .spyOn(modelActions, "turnModelIntoQuestion")
         .mockImplementation(() => () => Promise.resolve());
       setup({
-        card: createMockCard({
+        card: createCard({
           type: "model",
           can_write: true,
         }),
@@ -314,7 +324,7 @@ describe("QuestionActions", () => {
   describe("uploading data to an upload-backed model", () => {
     const UPLOAD_TABLE_ID = 42;
 
-    const uploadModelCard = createMockCard({
+    const uploadModelCard = createCard({
       id: 1,
       type: "model",
       can_write: true,
@@ -326,13 +336,13 @@ describe("QuestionActions", () => {
         card: uploadModelCard,
         cardsBasedOnUploadTable: [
           uploadModelCard,
-          createMockCard({
+          createCard({
             id: 2,
             name: "Original model",
             type: "model",
             based_on_upload: UPLOAD_TABLE_ID,
           }),
-          createMockCard({
+          createCard({
             id: 3,
             name: "Another duplicate",
             type: "model",
@@ -381,9 +391,41 @@ describe("QuestionActions", () => {
     });
   });
 
+  it("should allow to move a dashboard question but not to turn it into a model or add it to a dashboard", async () => {
+    setup({
+      card: createCard({
+        type: "question",
+        can_write: true,
+        dashboard_id: 1,
+      }),
+    });
+
+    await openActionsMenu();
+
+    expect(screen.getByText("Move")).toBeInTheDocument();
+    expect(screen.queryByText("Turn into a model")).not.toBeInTheDocument();
+    expect(screen.queryByText("Add to dashboard")).not.toBeInTheDocument();
+  });
+
+  it("should allow to turn a collection question into a model and add it to a dashboard", async () => {
+    setup({
+      card: createCard({
+        type: "question",
+        can_write: true,
+        dashboard_id: null,
+      }),
+    });
+
+    await openActionsMenu();
+
+    expect(screen.getByText("Move")).toBeInTheDocument();
+    expect(screen.getByText("Turn into a model")).toBeInTheDocument();
+    expect(screen.getByText("Add to dashboard")).toBeInTheDocument();
+  });
+
   it("should not render the menu when there are no menu items", () => {
     setup({
-      card: createMockCard({
+      card: createCard({
         type: "model",
         can_write: false,
       }),

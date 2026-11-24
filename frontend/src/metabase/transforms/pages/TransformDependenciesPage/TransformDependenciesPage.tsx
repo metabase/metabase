@@ -7,7 +7,6 @@ import { useTransformPermissions } from "metabase/transforms/hooks/use-transform
 import { Card, Center, Skeleton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "../../components/TransformHeader";
 import { TransformPageSkeleton } from "../../components/TransformSkeletons";
 
@@ -47,7 +46,6 @@ export function TransformDependenciesPage() {
   return (
     <PageContainer data-testid="transforms-dependencies-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
-      <TransformDisconnectedDatabaseBanner transform={transform} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.transformDependencies(transform.id),

@@ -3,22 +3,22 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
    [metabase-enterprise.action-v2.schema :as action-v2.schema]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id))
 
 (mu/defn active-table
   "The active Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id :active true))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -28,47 +28,47 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (app-db/select-batched #(t2/select :model/Field :id [:in %]) field-ids))
 
 (mu/defn pk-fields-for-table
   "The active primary key Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true))
 
 (mu/defn fields-by-name
   "The Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
-  (t2/select :model/Field :table_id table-id :name [:in field-names] {:from [(warehouse-schema-overlay/field-query)]}))
+  (app-db/select-batched #(t2/select :model/Field :table_id table-id :name [:in %]) (distinct field-names)))
 
 (mu/defn active-fields-in-position-order
   "The active Fields of the Table with `table-id`, in position order."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query)]
-                                                           :order-by [[:position]]}))
+  (t2/select :model/Field :table_id table-id :active true {:order-by [[:position]]}))
 
 (mu/defn field-requirements-by-name
   "A map of name to the name, required flag, and base type of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn->fn :name identity [:model/Field :name :database_required :base_type] :table_id table-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-fn->fn :name identity [:model/Field :name :database_required :base_type] :table_id table-id))
 
 (mu/defn category-list-field-ids-by-name
   "The `:id` and `:lower_name` rows of the category list Fields of the Table with `table-id` whose name matches one
   of `names`, case-insensitively."
   [table-id :- ::lib.schema.id/table
    names    :- [:sequential :string]]
-  (t2/query {:select [:id [[:lower :name] :lower_name]]
-             :from   [(warehouse-schema-overlay/field-query)]
-             :where  [:and
-                      [:= :table_id table-id]
-                      [:in [:lower :name] (map u/lower-case-en names)]
-                      [:in :has_field_values ["list" "auto-list"]]
-                      [:= :semantic_type "type/Category"]]}))
+  (app-db/select-batched #(t2/query {:select [:id [[:lower :name] :lower_name]]
+                                     :from   [(t2/table-name :model/Field)]
+                                     :where  [:and
+                                              [:= :table_id table-id]
+                                              [:in [:lower :name] %]
+                                              [:in :has_field_values ["list" "auto-list"]]
+                                              [:= :semantic_type "type/Category"]]})
+                         (distinct (map u/lower-case-en names))))
 
 (mu/defn field-values-of-fields
-  "The value lists of the FieldValues of the Fields with `field-ids`."
+  "The `:field_id` and `:values` of the FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select-fn-vec :values :model/FieldValues :field_id [:in field-ids]))
+  (app-db/select-batched #(t2/select [:model/FieldValues :field_id :values] :field_id [:in %]) field-ids))
 
 (defn- scope-and-user-expr
   [scope user-id]
@@ -148,11 +148,15 @@
    table-ids :- [:set ::lib.schema.id/table]
    row-pks   :- [:set ::action-v2.schema/undo.row-pk]
    batch-num :- ms/PositiveInt]
-  (t2/exists? :model/Undo
-              :table_id [:in table-ids]
-              :row_pk [:in row-pks]
-              :batch_num [(if undo? :> :<) batch-num]
-              :undone (not undo?)))
+  (boolean (some (fn [[table-ids row-pks]]
+                   (t2/exists? :model/Undo
+                               :table_id [:in table-ids]
+                               :row_pk [:in row-pks]
+                               :batch_num [(if undo? :> :<) batch-num]
+                               :undone (not undo?)))
+                 (for [table-ids (app-db/select-partitions table-ids)
+                       row-pks   (app-db/select-partitions row-pks)]
+                   [table-ids row-pks]))))
 
 (mu/defn lock-sequence-next-val
   "The next value of the raw sequence row named `sequence-name`, locked for update, or nil."

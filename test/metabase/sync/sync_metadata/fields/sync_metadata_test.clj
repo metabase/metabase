@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
@@ -9,6 +11,14 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
+
+(defn- updated-ids
+  "The ids an update by primary key writes: `pk`, a single id, or the ids of `[:in [:auto/param ids]]`."
+  [pk]
+  (if (and (vector? pk) (= :in (first pk)))
+    (let [ids (second pk)]
+      (if (and (vector? ids) (= :auto/param (first ids))) (second ids) ids))
+    [pk]))
 
 (defn- updates-that-will-be-performed!
   ([new-metadata-from-sync metadata-in-application-db]
@@ -21,19 +31,31 @@
                                        (seq db-settings) (assoc :settings db-settings))
                   :model/Table table (assoc table :db_id (u/the-id db))]
      (let [update-operations (atom [])]
-       (mt/with-dynamic-fn-redefs [t2/update! (fn [model id updates]
-                                                (swap! update-operations conj [(name model) id updates])
+       (mt/with-dynamic-fn-redefs [t2/update! (fn [model _pk-column id updates]
+                                                (doseq [id (updated-ids id)]
+                                                  (swap! update-operations conj [(name model) id updates]))
                                                 (count updates))]
-         (#'sync-metadata/update-field-metadata-if-needed!
-          db
+         (sync-metadata/update-metadata!
+          (driver.u/lib-database (:id db))
           table
-          new-metadata-from-sync
-          metadata-in-application-db)
+          #{new-metadata-from-sync}
+          #{metadata-in-application-db})
          @update-operations)))))
+
+(defn- perform-updates!
+  "Run sync's metadata update for one Field against the app DB, without stubbing its writes."
+  [new-metadata-from-sync metadata-in-application-db]
+  (mt/with-temp [:model/Database db    {}
+                 :model/Table    table {:db_id (u/the-id db) :field_order :alphabetical}]
+    (sync-metadata/update-metadata!
+     (driver.u/lib-database (:id db))
+     table
+     #{new-metadata-from-sync}
+     #{metadata-in-application-db})))
 
 (deftest database-type-changed-test
   (testing "test that if database-type changes we will update it in the DB"
-    (is (= [["Field" 1 {:database_type "Integer"}]]
+    (is (= [["Field" 9999999 {:database_type "Integer"}]]
            (updates-that-will-be-performed!
             {:name                       "My Field"
              :database-type              "Integer"
@@ -44,7 +66,7 @@
             {:name                       "My Field"
              :database-type              "NULL"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :database-is-auto-increment false})))))
@@ -60,26 +82,26 @@
 
 (deftest database-position-changed-test
   (testing "test that if database-position changes and table.field_order=database we will update the position too"
-    (is (= [["Field" 1 {:database_position 1
-                        :position          1}]]
+    (is (= [["Field" 9999999 {:database_position 1
+                              :position          1}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:database-position 1})
             (merge default-metadata {:database-position 0
                                      :position          0
-                                     :id                1})
+                                     :id                9999999})
             {:field_order :database})))
     (testing "but not if the table's fields should not be sorted according to the database"
-      (is (= [["Field" 1 {:database_position 1}]]
+      (is (= [["Field" 9999999 {:database_position 1}]]
              (updates-that-will-be-performed!
               (merge default-metadata {:database-position 1})
               (merge default-metadata {:database-position 0
                                        :position          0
-                                       :id                1})
+                                       :id                9999999})
               {:field_order :alphabetical}))))))
 
 (deftest database-required-changed-test
   (testing "test that if database-required changes we will update it in the DB"
-    (is (= [["Field" 1 {:database_required false}]]
+    (is (= [["Field" 9999999 {:database_required false}]]
            (updates-that-will-be-performed!
             {:name                       "My Field"
              :database-type              "Integer"
@@ -90,7 +112,7 @@
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :position                   0
              :database-position          0
              :database-required          true
@@ -98,7 +120,7 @@
 
 (deftest database-is-auto-increment-changed-test
   (testing "test that if database-required changes we will update it in the DB"
-    (is (= [["Field" 1 {:database_is_auto_increment true}]]
+    (is (= [["Field" 9999999 {:database_is_auto_increment true}]]
            (updates-that-will-be-performed!
             {:name                       "My Field"
              :database-type              "Integer"
@@ -109,11 +131,11 @@
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :database-is-auto-increment false})))
-    (is (= [["Field" 1 {:database_is_auto_increment false}]]
+    (is (= [["Field" 9999999 {:database_is_auto_increment false}]]
            (updates-that-will-be-performed!
             {:name              "My Field"
              :database-type     "Integer"
@@ -124,7 +146,7 @@
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :database-is-auto-increment true})))))
@@ -143,7 +165,7 @@
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :json-unfolding             false
@@ -163,7 +185,7 @@
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :database-is-auto-increment true
@@ -171,48 +193,48 @@
 
 (deftest update-database-partitioned-test
   (testing "update from nil -> boolean"
-    (is (= [["Field" 1 {:database_partitioned false}]]
+    (is (= [["Field" 9999999 {:database_partitioned false}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:database-partitioned false})
-            (merge default-metadata {:database-partitioned nil :id 1})))))
+            (merge default-metadata {:database-partitioned nil :id 9999999})))))
   (testing "flip the state"
-    (is (= [["Field" 1 {:database_partitioned false}]]
+    (is (= [["Field" 9999999 {:database_partitioned false}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:database-partitioned false})
-            (merge default-metadata {:database-partitioned true :id 1}))))))
+            (merge default-metadata {:database-partitioned true :id 9999999}))))))
 
 (deftest update-nfc-path-test
   (testing "nil -> vector"
-    (is (= [["Field" 1 {:nfc_path ["payload" "user"]}]]
+    (is (= [["Field" 9999999 {:nfc_path ["payload" "user"]}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:nfc-path ["payload" "user"]})
-            (merge default-metadata {:id 1})))))
+            (merge default-metadata {:id 9999999})))))
   (testing "vector -> nil"
-    (is (= [["Field" 1 {:nfc_path nil}]]
+    (is (= [["Field" 9999999 {:nfc_path nil}]]
            (updates-that-will-be-performed!
             default-metadata
-            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 9999999})))))
   (testing "vector -> different vector"
-    (is (= [["Field" 1 {:nfc_path ["payload" "account"]}]]
+    (is (= [["Field" 9999999 {:nfc_path ["payload" "account"]}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:nfc-path ["payload" "account"]})
-            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 9999999})))))
   (testing "no change when path is identical"
     (is (= []
            (updates-that-will-be-performed!
             (merge default-metadata {:nfc-path ["payload" "user"]})
-            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 9999999})))))
   (testing "no change when driver emits keywords and DB has equivalent strings"
     (is (= []
            (updates-that-will-be-performed!
             (merge default-metadata {:nfc-path [:payload :user]})
-            (merge default-metadata {:nfc-path ["payload" "user"] :id 1}))))))
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 9999999}))))))
 
 (deftest nil-database-type-test
   (testing (str "test that if `database-type` comes back as `nil` in the metadata from the sync process, we won't try "
                 "to set a `nil` value in the DB -- this is against the rules -- we should set `NULL` instead. See "
                 "`TableMetadataField` schema.")
-    (is (= [["Field" 1 {:database_type "NULL"}]]
+    (is (= [["Field" 9999999 {:database_type "NULL"}]]
            (updates-that-will-be-performed!
             {:name                       "My Field"
              :database-type              nil
@@ -225,7 +247,7 @@
              :database-type              "Integer"
              :base-type                  :type/Integer
              :database-position          0
-             :id                         1
+             :id                         9999999
              :database-required          false
              :database-is-auto-increment false
              :json-unfolding             false}))))
@@ -243,7 +265,7 @@
             {:name                       "My Field"
              :database-type              "NULL"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :database-is-auto-increment false
@@ -252,25 +274,25 @@
 (deftest crufty-field-sets-preview-display-false-test
   (testing "When a field becomes crufty (matches auto-cruft pattern), preview_display should be set to false"
     (testing "field with preview_display=true should have it set to false when crufty"
-      (is (= [["Field" 1 {:visibility_type :details-only
-                          :preview_display false}]]
+      (is (= [["Field" 9999999 {:visibility_type :details-only
+                                :preview_display false}]]
              (updates-that-will-be-performed!
               ;; new metadata from sync - field name matches auto-cruft pattern
               (merge default-metadata {:name "updated_at"})
               ;; existing field in application DB with preview_display=true
               (merge default-metadata {:name            "updated_at"
-                                       :id              1
+                                       :id              9999999
                                        :visibility-type :normal
                                        :preview-display true})
               {:field_order :alphabetical}
               ;; database settings with auto-cruft pattern matching "updated_at"
               {:auto-cruft-columns ["updated_at"]}))))
     (testing "field already with preview_display=false should not be updated again"
-      (is (= [["Field" 1 {:visibility_type :details-only}]]
+      (is (= [["Field" 9999999 {:visibility_type :details-only}]]
              (updates-that-will-be-performed!
               (merge default-metadata {:name "updated_at"})
               (merge default-metadata {:name            "updated_at"
-                                       :id              1
+                                       :id              9999999
                                        :visibility-type :normal
                                        :preview-display false})
               {:field_order :alphabetical}
@@ -292,7 +314,7 @@
              :database-type     "Integer"
              :base-type         :type/Integer
              :semantic-type     :type/Price
-             :id                1
+             :id                9999999
              :database-position 0
              :json-unfolding    false
              :database-required false
@@ -301,38 +323,32 @@
 (deftest base-type-change-will-trigger-fingerprint-and-analyze-test
   (testing "A base type of a field changes only when the field is dropped then a new field with the name is created (#37047).
            In this case, we should make sure effective type is set to base type"
-    (mt/with-temp [:model/Field {field-id :id} {}]
-      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
-      (is (= [["FieldUserSettings"
-               field-id
-               {:effective_type    nil
-                :coercion_strategy nil
-                :semantic_type     nil
-                :semantic_type_set false}]
-              ["Field"
-               field-id
-               {:base_type           :type/Text
-                :effective_type      :type/Text
-                :coercion_strategy   nil
-                :fingerprint_version 0
-                :fingerprint         nil
-                :semantic_type       nil}]]
-             (updates-that-will-be-performed!
-              (merge default-metadata
-                     {:base-type      :type/Text
-                      :effective-type :type/Text})
-              (merge default-metadata
-                     {:id             field-id
-                      :base-type      :type/Integer
-                      :effective-type :type/Integer})))))
+    (mt/with-temp [:model/Field {field-id :id} {:base_type :type/Integer :effective_type :type/Integer}]
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Category})
+      (perform-updates!
+       (merge default-metadata
+              {:base-type      :type/Text
+               :effective-type :type/Text})
+       (merge default-metadata
+              {:id             field-id
+               :base-type      :type/Integer
+               :effective-type :type/Integer}))
+      (is (=? {:base_type           :type/Text
+               :effective_type      :type/Text
+               :coercion_strategy   nil
+               :fingerprint_version 0
+               :fingerprint         nil
+               :semantic_type       nil}
+              (t2/select-one :model/Field :id field-id)))
+      (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id))))
     (testing "and sync will re-fingerprint and analyze this field"
       (mt/with-temp-test-data [["table"
                                 [{:field-name "field"
                                   :base-type  :type/Text}]
                                 [["ngoc@metabase.com"]]]]
         (try
-          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
-          (let [original-field (t2/select-one :model/Field (mt/id :table :field))]
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
+          (let [original-field (t2/select-one :model/Field :id (mt/id :table :field))]
             (testing "sanity check: the original state"
               (is (=? {:semantic_type  :type/Email
                        :fingerprint    (mt/malli=? :map)
@@ -342,15 +358,15 @@
             ;; drop the column and create a new one with the same name
             (sql-jdbc.execute/do-with-connection-with-options
              :h2
-             (mt/db)
+             (lib.metadata/database (mt/metadata-provider))
              {}
              (fn [conn]
                (doseq [sql ["ALTER TABLE \"TABLE\" DROP COLUMN \"FIELD\";"
                             "ALTER TABLE \"TABLE\" ADD COLUMN \"FIELD\" INTEGER;"
                             "INSERT INTO \"TABLE\"(field) VALUES(1);"]]
                  (next.jdbc/execute! conn [sql]))))
-            (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
-            (let [new-field (t2/select-one :model/Field (mt/id :table :field))]
+            (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
+            (let [new-field (t2/select-one :model/Field :id (mt/id :table :field))]
               (testing "updated field is re-fingerprinted and analyzed"
                 (is (=? {:semantic_type  nil
                          :fingerprint    (mt/malli=? :map)
@@ -359,28 +375,27 @@
                         new-field))
                 (is (not= (:fingerprint original-field) (:fingerprint new-field))))))
           (finally
-            (t2/delete! :model/Database (mt/id))))))))
+            (t2/delete! :model/Database :id (mt/id))))))))
 
 (deftest untyped-field-getting-its-base-type-keeps-user-settings-test
   (testing "A Field that never had a real base type, like one serdes synthesized for a stub database, keeps its user settings"
     (mt/with-temp [:model/Field {field-id :id} {:base_type :type/* :active false}]
-      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
-      (is (= [["Field"
-               field-id
-               {:base_type           :type/Text
-                :effective_type      :type/Text
-                :coercion_strategy   nil
-                :fingerprint_version 0
-                :fingerprint         nil
-                :semantic_type       nil}]]
-             (updates-that-will-be-performed!
-              (merge default-metadata
-                     {:base-type      :type/Text
-                      :effective-type :type/Text})
-              (merge default-metadata
-                     {:id             field-id
-                      :base-type      :type/*
-                      :effective-type :type/*})))))))
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Category})
+      (perform-updates!
+       (merge default-metadata
+              {:base-type      :type/Text
+               :effective-type :type/Text})
+       (merge default-metadata
+              {:id             field-id
+               :base-type      :type/*
+               :effective-type :type/*}))
+      (is (=? {:base_type           :type/Text
+               :effective_type      :type/Text
+               :fingerprint_version 0
+               :semantic_type       :type/Category}
+              (t2/select-one :model/Field :id field-id)))
+      (is (=? {:semantic_type :type/Category :semantic_type_set true}
+              (t2/select-one :model/FieldUserSettings :field_id field-id))))))
 
 (deftest create-or-replace-table-updates-effective-type-test
   (testing "GHY-3388: when a column's database type changes in place (e.g. TEXT -> numeric via
@@ -393,8 +408,8 @@
                                 :base-type  :type/Text}]
                               [["100"] ["200"] ["300"]]]]
       (try
-        (sync/sync-database! (mt/db))
-        (let [original-field (t2/select-one :model/Field (mt/id :my_table :text_column))]
+        (sync/sync-database! (mt/id))
+        (let [original-field (t2/select-one :model/Field :id (mt/id :my_table :text_column))]
           (testing "sanity check: original column is text"
             (is (=? {:base_type      :type/Text
                      :effective_type :type/Text}
@@ -405,15 +420,15 @@
           ;; not translate to H2, so we use ALTER COLUMN to achieve the same "in-place update" effect.
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
-           (mt/db)
+           (lib.metadata/database (mt/metadata-provider))
            {}
            (fn [conn]
              (doseq [sql ["DROP TABLE \"MY_TABLE\";"
                           "CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" DECIMAL(38,2));"
                           "INSERT INTO \"MY_TABLE\"(text_column) VALUES(100.00),(200.00),(300.00);"]]
                (next.jdbc/execute! conn [sql]))))
-          (sync/sync-database! (mt/db))
-          (let [new-field (t2/select-one :model/Field (mt/id :my_table :text_column))]
+          (sync/sync-database! (mt/id))
+          (let [new-field (t2/select-one :model/Field :id (mt/id :my_table :text_column))]
             (testing "after sync, base_type and effective_type both reflect the new numeric column
                      and stale coercion/semantic type are cleared"
               (is (=? {:id                (:id original-field)
@@ -424,32 +439,32 @@
                       new-field))))
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
-           (mt/db)
+           (lib.metadata/database (mt/metadata-provider))
            {}
            (fn [conn]
              (doseq [sql ["DROP TABLE \"MY_TABLE\";"]]
                (next.jdbc/execute! conn [sql]))))
-          (t2/delete! :model/Table (:table_id original-field))
+          (t2/delete! :model/Table :id (:table_id original-field))
           (t2/delete! :model/Field :table_id (:table_id original-field))
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
-           (mt/db)
+           (lib.metadata/database (mt/metadata-provider))
            {}
            (fn [conn]
              (doseq [sql ["CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" TEXT);"
                           "INSERT INTO \"MY_TABLE\"(text_column) VALUES('100'),('200'),('300');"]]
                (next.jdbc/execute! conn [sql]))))
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
-           (mt/db)
+           (lib.metadata/database (mt/metadata-provider))
            {}
            (fn [conn]
              (doseq [sql ["DROP TABLE \"MY_TABLE\";"
                           "CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" DECIMAL(38,2));"
                           "INSERT INTO \"MY_TABLE\"(text_column) VALUES(100.00),(200.00),(300.00);"]]
                (next.jdbc/execute! conn [sql]))))
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           (let [new-field (t2/select-one :model/Field :name "TEXT_COLUMN")]
             (testing "after sync, base_type and effective_type both reflect the new numeric column
                      and stale coercion/semantic type are cleared"
@@ -459,7 +474,7 @@
                        :semantic_type     nil}
                       new-field)))))
         (finally
-          (t2/delete! :model/Database (mt/id)))))))
+          (t2/delete! :model/Database :id (mt/id)))))))
 
 (deftest sync-self-heals-effective-type-drift-test
   (testing "GHY-3388: when a field is in the broken state (effective_type ≠ base_type with no
@@ -467,25 +482,27 @@
            heal effective_type to match base_type. This catches drifted state from older
            Metabase versions that the customer's instance carries forward."
     (testing "broken row gets healed even when base_type does not change"
-      (mt/with-temp [:model/Field {field-id :id} {}]
-        (field-user-settings/upsert-user-settings {:id field-id} {:effective_type :type/Text})
-        (is (= [["FieldUserSettings" field-id {:effective_type nil :coercion_strategy nil}]
-                ["Field" field-id {:effective_type :type/Number}]]
-               (updates-that-will-be-performed!
-                (merge default-metadata
-                       {:base-type :type/Number})
-                (merge default-metadata
-                       {:id                field-id
-                        :base-type         :type/Number
-                        :effective-type    :type/Text
-                        :coercion-strategy nil}))))))
+      (mt/with-temp [:model/Field             {field-id :id} {:base_type :type/Number :effective_type :type/Number}
+                     :model/FieldUserSettings _              {:field_id field-id :effective_type :type/Text}]
+        (t2/update! (t2/table-name :model/Field) :id field-id {:effective_type "type/Text"})
+        (perform-updates!
+         (merge default-metadata
+                {:base-type :type/Number})
+         (merge default-metadata
+                {:id                field-id
+                 :base-type         :type/Number
+                 :effective-type    :type/Text
+                 :coercion-strategy nil}))
+        (is (=? {:base_type :type/Number :effective_type :type/Number :coercion_strategy nil}
+                (t2/select-one :model/Field :id field-id)))
+        (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id)))))
     (testing "row with a real coercion_strategy is left alone — effective_type ≠ base_type is legitimate"
       (is (= []
              (updates-that-will-be-performed!
               (merge default-metadata
                      {:base-type :type/Text})
               (merge default-metadata
-                     {:id                1
+                     {:id                9999999
                       :base-type         :type/Text
                       :effective-type    :type/Number
                       :coercion-strategy :Coercion/String->Number})))))
@@ -495,7 +512,7 @@
               (merge default-metadata
                      {:base-type :type/Number})
               (merge default-metadata
-                     {:id                1
+                     {:id                9999999
                       :base-type         :type/Number
                       :effective-type    :type/Number
                       :coercion-strategy nil})))))
@@ -506,7 +523,7 @@
                      (merge default-metadata
                             {:base-type :type/Number})
                      (merge default-metadata
-                            {:id                1
+                            {:id                9999999
                              :base-type         :type/Text
                              :effective-type    :type/Text
                              :coercion-strategy nil}))]
@@ -516,7 +533,7 @@
 (deftest base-type-change-leaves-data-sensitivity-test
   (testing "the override write on a base type change does not include data_sensitivity"
     (mt/with-temp [:model/Field {field-id :id} {:data_sensitivity :PII}]
-      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Category})
       (let [updates (updates-that-will-be-performed!
                      (merge default-metadata
                             {:base-type      :type/Text
@@ -533,25 +550,25 @@
                                 :base-type  :type/Text}]
                               [["ngoc@metabase.com"]]]]
       (try
-        (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+        (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
         (let [field-id (mt/id :table :field)]
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PII"})
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
-           (mt/db)
+           (lib.metadata/database (mt/metadata-provider))
            {}
            (fn [conn]
              (doseq [sql ["ALTER TABLE \"TABLE\" DROP COLUMN \"FIELD\";"
                           "ALTER TABLE \"TABLE\" ADD COLUMN \"FIELD\" INTEGER;"
                           "INSERT INTO \"TABLE\"(field) VALUES(1);"]]
                (next.jdbc/execute! conn [sql]))))
-          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
           (is (=? {:base_type        :type/Integer
                    :effective_type   :type/Integer
-                   :data_sensitivity nil}
+                   :data_sensitivity :PII}
                   (t2/select-one :model/Field :id field-id)))
           (is (=? {:effective_type   nil
                    :data_sensitivity :PII}
                   (t2/select-one :model/FieldUserSettings :field_id field-id))))
         (finally
-          (t2/delete! :model/Database (mt/id)))))))
+          (t2/delete! :model/Database :id (mt/id)))))))

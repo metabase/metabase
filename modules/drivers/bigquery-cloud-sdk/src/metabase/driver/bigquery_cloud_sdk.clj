@@ -10,6 +10,10 @@
    [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
+   ;; Side-effects: registers BigQuery driver multimethods for workspace
+   ;; isolation (`init-workspace-isolation!`, `grant-workspace-read-access!`,
+   ;; `destroy-workspace-isolation!`).
+   [metabase.driver.bigquery-cloud-sdk.workspaces]
    [metabase.driver.common :as driver.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
@@ -23,17 +27,21 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf])
+   [metabase.util.performance :as perf]
+   [metabase.warehouses.models.database :as database])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
+   (com.google.auth.oauth2 ImpersonatedCredentials GoogleCredentials)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetListOption
@@ -92,27 +100,68 @@
   "Where `ServiceAccountCredentials` exchanges the signed JWT when the credentials JSON names no `token_uri`."
   "https://oauth2.googleapis.com/token")
 
-(defn- service-account-token-uri
-  "The URI [[bigquery.common/service-account-json->service-account-credential]] will POST a signed assertion to.
-  `ServiceAccountCredentials/fromStream` honors a `token_uri` out of the credentials JSON, so this is a destination
-  chosen by whoever supplied the credentials rather than a fixed Google endpoint."
-  [service-account-json]
-  (or (when-not (str/blank? service-account-json)
-        (perf/not-empty (get (json/decode service-account-json) "token_uri")))
-      default-token-uri))
+(defn- json-urls
+  "Every string that looks like an HTTP(S) URL anywhere inside decoded JSON `x`."
+  [x]
+  (into [] (filter #(and (string? %) (re-find #"(?i)^https?://" %))) (tree-seq coll? seq x)))
+
+(defn- credential-urls
+  "The URLs the credentials in `details` make Metabase connect to while authenticating."
+  [{:keys [service-account-json credential-config-json] :as details}]
+  (case (:auth-mode details)
+    ;; `ServiceAccountCredentials/fromStream` honors a `token_uri` out of the key, so where the signed assertion gets
+    ;; POSTed is a destination chosen by whoever supplied the credentials rather than a fixed Google endpoint.
+    ("service-account" nil) [(or (perf/not-empty (get (json/decode service-account-json)
+                                                      "token_uri"))
+                                 default-token-uri)]
+    ;; A credential configuration file is URLs all the way down: the token exchange endpoint, the service account
+    ;; impersonation endpoint, and often the place the subject token is fetched from (e.g. a cloud metadata server).
+    ;; Every one of them was chosen by whoever supplied the file, so report them all rather than a known subset.
+    "credential-config" (json-urls (json/decode credential-config-json))
+    ;; Application Default Credentials come from the Metabase server's own environment, not from `details`.
+    "application-default" []))
 
 (defmethod driver/connection-hosts :bigquery-cloud-sdk
-  [_driver {:keys [host service-account-json]}]
-  (driver/hosts-from-details
-   {:api-host   (if (str/blank? host) default-api-host host)
-    :token-host (service-account-token-uri service-account-json)}
-   [:api-host :token-host]))
+  [_driver {:keys [host] :as details}]
+  (into (driver/hosts-from-details {:api-host (if (str/blank? host) default-api-host host)} [:api-host])
+        (keep u.http/->hostname)
+        (credential-urls details)))
+
+(defn- maybe-scope-creds [{:keys [auth-mode credential-config-json] :as details}]
+  ;; A service account key needs scopes. Credentials the environment hands out, like the GCE/GKE metadata
+  ;; server's, can come with scopes of their own, and then the library asks us not to add any.
+  ;; If the WIF config sets scopes of its own, trust the admin's choice; skip .createScoped.
+  (let [^GoogleCredentials base-creds (bigquery.common/database-details->credentials details)
+        config-scopes (if (= "credential-config" auth-mode)
+                        (:scope (json/decode credential-config-json))
+                        [])]
+    (when-not (and (seq config-scopes)
+                   (= bigquery-scopes (filter (set bigquery-scopes) config-scopes)))
+      (log/warn "BigQuery credential config does not contain needed scopes"
+                {:scopes config-scopes}))
+    (if (or (perf/empty? config-scopes) (.createScopedRequired base-creds))
+      (.createScoped base-creds bigquery-scopes)
+      base-creds)))
 
 (mu/defn- database-details->client
   ^BigQuery [details :- :metabase.lib.schema.common/database-details]
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
-  (let [base-creds   (bigquery.common/database-details->service-account-credential details)
-        creds        (.createScoped base-creds bigquery-scopes)
+  (let [base-creds   (bigquery.common/database-details->credentials details)
+        ;; Check if we should impersonate a different service account
+        ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
+        ;; so the 1-hour lifetime is just the initial token validity period.
+        ;; Each query creates a fresh client, and the credentials handle refresh internally.
+        impersonating? (some? (:impersonate-service-account details))
+        final-creds  (if impersonating?
+                       (let [target-sa (:impersonate-service-account details)]
+                         (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
+                         (ImpersonatedCredentials/create
+                          (.createScoped base-creds bigquery-scopes)
+                          target-sa
+                          nil  ;; delegates (not needed)
+                          (java.util.ArrayList. bigquery-scopes)
+                          3600))  ;; 1 hour token lifetime
+                       (maybe-scope-creds details))
         mb-version   (:tag driver-api/mb-version-info)
         run-mode     (name driver-api/run-mode)
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
@@ -121,22 +170,31 @@
         universe-domain (or (:universe-domain details)
                             (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
                             (System/getProperty "google.cloud.universe_domain"))
-        read-timeout-ms driver.settings/*query-timeout-ms*
         transport-options (-> (HttpTransportOptions/newBuilder)
-                              (.setReadTimeout read-timeout-ms)
+                              (.setReadTimeout driver.settings/*query-timeout-ms*)
                               (.build))
         bq-bldr      (doto (BigQueryOptions/newBuilder)
-                       (.setCredentials creds)
+                       (.setCredentials final-creds)
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
     (when universe-domain
       (.setUniverseDomain bq-bldr universe-domain))
+    ;; `ImpersonatedCredentials` doesn't carry a project id (it derives identity
+    ;; from the impersonation target SA, not from a key file), so the Google SDK
+    ;; would throw "A project ID is required for this service but could not be
+    ;; determined from the builder or the environment" when building the client.
+    ;; Fall back to the base SA's project id, which is what every non-impersonated
+    ;; call site is implicitly relying on through `getOptions.getProjectId`.
+    (when impersonating?
+      (when-let [pid (or (:project-id details)
+                         (.getProjectId base-creds))]
+        (.setProjectId bq-bldr ^String pid)))
     (when-let [host (perf/not-empty (:host details))]
       (.setHost bq-bldr host))
     (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
       ;; Jobs are created and billed in this project; queried tables can live elsewhere.
       (.setProjectId bq-bldr billing-project-id))
-    (.. bq-bldr build getService)))
+    (-> bq-bldr .build .getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Transducing Query Results                                              |
@@ -784,7 +842,7 @@
 
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
-  (let [database (driver-api/table->database table)
+  (let [database (driver.u/lib-database (:db_id table))
         bq-table (get-table database dataset-id table-name)]
     (if (or (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
                ;; We couldn't easily test if the following two can show up as
@@ -1095,13 +1153,16 @@
             (thunk)
             (throw e)))))))
 
-(defmethod driver/execute-reducible-query :bigquery-cloud-sdk
-  [_driver {{sql :query, :keys [params]} :native, :as outer-query} _context respond]
+(mu/defmethod driver/execute-reducible-query :bigquery-cloud-sdk
+  [_driver                                              :- :keyword
+   {[{sql :native, params :params}] :stages, :as query} :- ::lib.schema/native-only-query
+   _context                                             :- ::driver/execute-reducible-query.context
+   respond                                              :- ::driver/execute-reducible-query.respond-fn]
   (let [database (driver-api/database (driver-api/metadata-provider))]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (:include-user-id-and-hash (driver.conn/effective-details database) true)
-                  (str sql "\n\n-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query))
+                  (str sql "\n\n-- " (driver-api/query->remark :bigquery-cloud-sdk query))
                   sql)]
         (*process-native* respond database sql params (driver-api/canceled-chan))))))
 
@@ -1124,6 +1185,7 @@
                               ;; clustering is the only index-equivalent, inlined as CLUSTER BY (no standalone DDL)
                               :index/fetch                      true
                               :index/inline-create              true
+                              :mbql-5-native-query-execution    true
                               :metadata/key-constraints         false
                               :metadata/table-existence-check   true
                               :native-pivot-tables              true
@@ -1140,6 +1202,7 @@
                               ;; tests expect the converted values.
                               :set-timezone                     true
                               :split-part                       true
+                              :stage-ctes                       true
                               ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
                               ;; falls back to a native `COUNT(*)` on the CTAS path.
                               ;; TODO: fix `execute-raw-queries!` to return accurate row counts for DDL
@@ -1147,7 +1210,10 @@
                               :transforms/accurate-rows-affected false
                               :transforms/python                true
                               :transforms/table                 true
-                              :transforms/testing               false}]
+                              :transforms/testing               false
+                              ;; Workspace isolation using service account impersonation
+                              ;; Tearing down workspaces is not working right currently
+                              :workspace                        false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk
@@ -1206,14 +1272,14 @@
                               (assoc :dataset-filters-type "inclusion")
                               (assoc :dataset-filters-patterns dataset-id)
                               (dissoc :dataset-id))]
-      (bigquery.db/update-database-details! db-id updated-details)
+      (database/update-databases! [{:id db-id :details updated-details}])
       (assoc database :details updated-details))))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])
 ;; Issue: https://github.com/metabase/metabase/issues/39392
 ;; This normalize is a legacy migration (OAuth -> service-account, dataset-id -> filters); it
-;; runs only against `:details` because the overlay maps (`:write-data-details`, `:admin-details`)
-;; never carry these legacy fields, and `convert-dataset-id-to-filters!` writes side effects
+;; runs only against `:details` because the overlay map (`:write-data-details`)
+;; never carries these legacy fields, and `convert-dataset-id-to-filters!` writes side effects
 ;; specific to the primary details.
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
   [_driver database]
@@ -1393,14 +1459,14 @@
   (let [base      (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
         cluster   (clustering-clause indexes)
         sql       (if cluster (str base " " cluster) base)
-        database  (bigquery.db/database database-id)
+        database  (driver.u/lib-database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
   (let [sql       (driver/compile-drop-table driver table-name)
-        database  (bigquery.db/database database-id)
+        database  (driver.u/lib-database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))
 
@@ -1455,7 +1521,7 @@
   ;; update their metadata caches frequently enough for timely transform runs (or interactive previews).
   ;; rather than waiting many minutes, we trade torward consistency by using SQL DML, whose table metadata
   ;; is consistent, and we do not see cached non-existence and things like that causing trouble.
-  (let [database   (bigquery.db/database db-id)
+  (let [database   (driver.u/lib-database db-id)
         col-kws    (perf/mapv (comp keyword name :name) columns)
         num-cols   (count col-kws)
         ;; bigquery allows 10k query parameters per request
@@ -1516,6 +1582,8 @@
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver conn-spec schema]
   ;; Check if dataset exists using the BigQuery API before trying to create.
+  ;; This is important for workspace isolation where the impersonated SA has
+  ;; access to an existing isolated dataset but cannot create new datasets.
   (let [client     (database-details->client conn-spec) ;; for bigquery, connection spec *is* the details
         project-id (bigquery.common/get-project-id conn-spec)
         dataset-id (DatasetId/of project-id schema)]
@@ -1537,6 +1605,16 @@
   [_driver]
   ;; https://cloud.google.com/bigquery/docs/tables
   1024)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Workspace Isolation                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; BigQuery workspace isolation uses service account impersonation instead of SQL GRANT statements.
+;;; Each workspace gets its own service account (created automatically) with table-level read permissions.
+;;;
+;;; Required GCP setup for the main service account:
+;;; - Roles: `roles/bigquery.admin`, `roles/iam.serviceAccountAdmin`, `roles/resourcemanager.projectIamAdmin`
+;;; - APIs: `bigquery.googleapis.com`, `iam.googleapis.com`, `cloudresourcemanager.googleapis.com`
 
 (defmethod driver/llm-sql-dialect-resource :bigquery-cloud-sdk [_]
   "metabot/prompts/dialects/bigquery.md")

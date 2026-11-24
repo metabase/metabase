@@ -5,6 +5,10 @@
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -77,11 +81,13 @@
                                  :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
                                           [:report_card :c] [:= :c.id :s.card_id]]
                                  :where  [:= :pg.id (u/the-id &group)]})
-            {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata (:dataset_query card))]
+            {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
+                                                (:dataset_query card)
+                                                (:result_metadata card))]
         (mt/with-test-user :crowberto
           (if metadata
             (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
-            (card.metadata/save-metadata-async! metadata-future card))))
+            (queries.card/save-metadata-async! [{:future metadata-future :card card}]))))
       (testing "Users with restricted access to the columns of a table via a native query sandbox should only see
                columns included in the sandboxing question"
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
@@ -132,3 +138,75 @@
                    "VENUES.CATEGORY_ID" "VENUES.ID" "VENUES.LATITUDE" "VENUES.LONGITUDE" "VENUES.NAME" "VENUES.PRICE"}
                  (->> (table/batch-fetch-table-query-metadatas [(mt/id :venues) (mt/id :checkins)] nil)
                       upper-case-field-names))))))))
+
+(defn- fields-query
+  "A query of the test Table `table-kw` returning only its Fields `field-kws`."
+  [table-kw field-kws]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+        (lib/with-fields (mapv #(lib.metadata/field mp (mt/id table-kw %)) field-kws)))))
+
+(defn- field-shapes
+  "`{TABLE-NAME #{[FIELD-NAME visibility-type]}}` of the query metadata of `tables`."
+  [tables]
+  (into {}
+        (map (fn [{table-name :name, fields :fields}]
+               [(u/upper-case-en table-name)
+                (into #{} (map (fn [f] [(u/upper-case-en (:name f)) (name (:visibility_type f))])) fields)]))
+        tables))
+
+(deftest batch-fetch-table-query-metadatas-sandboxed-fields-test
+  (testing "the batch query metadata lists the Tables and Fields a card sandbox, an attribute sandbox and no sandbox leave"
+    (met/with-gtaps! {:gtaps      {:venues   {:query (fields-query :venues [:id :name :category_id])}
+                                   :checkins {:remappings {:user [:variable [:field (mt/id :checkins :user_id) nil]]}}
+                                   :users    {:query (fields-query :users [:id :name])}}
+                      :attributes {:user 1}}
+      (perms/set-database-permission! &group (mt/id) :perms/create-queries :no)
+      (doseq [table-kw [:venues :checkins :categories]]
+        (perms/set-table-permission! &group (mt/id table-kw) :perms/create-queries :query-builder))
+      (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:visibility_type :hidden}
+        (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :hidden}
+          (let [table-ids (mapv mt/id [:venues :checkins :categories :users :people :orders :products :reviews])
+                batch     (fn [user include-hidden?]
+                            (mt/with-test-user user
+                              (field-shapes (table/batch-fetch-table-query-metadatas
+                                             table-ids {:include-hidden-fields? include-hidden?}))))
+                checkins  #{["DATE" "normal"] ["ID" "normal"] ["USER_ID" "normal"] ["VENUE_ID" "normal"]}
+                category  #{["ID" "normal"] ["NAME" "normal"]}]
+            (testing "a sandboxed user"
+              (is (= {"CATEGORIES" category
+                      "CHECKINS"   checkins
+                      "VENUES"     #{["CATEGORY_ID" "normal"] ["ID" "normal"]}}
+                     (batch :rasta false)))
+              (is (= {"CATEGORIES" category
+                      "CHECKINS"   checkins
+                      "VENUES"     #{["CATEGORY_ID" "normal"] ["ID" "normal"] ["NAME" "hidden"]}}
+                     (batch :rasta true))))
+            (testing "an admin"
+              (doseq [include-hidden? [false true]
+                      :let [tables (batch :crowberto include-hidden?)]]
+                (is (= #{"CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"}
+                       (set (keys tables))))
+                (is (= #{["ID" "normal"] ["LAST_LOGIN" "normal"] ["NAME" "normal"]}
+                       (tables "USERS")))
+                (is (= (cond-> #{["CATEGORY_ID" "normal"] ["ID" "normal"] ["LATITUDE" "normal"] ["LONGITUDE" "normal"]}
+                         include-hidden? (into #{["NAME" "hidden"] ["PRICE" "hidden"]}))
+                       (tables "VENUES")))))
+            (testing "a card-sandboxed Table without query permissions is in the single-table query metadata only"
+              (is (= #{"ID" "NAME"}
+                     (into #{} (map (comp u/upper-case-en :name))
+                           (:fields (table/fetch-table-query-metadata (mt/id :users) {})))))
+              (is (not (contains? (batch :rasta false) "USERS"))))))))))
+
+(deftest batch-fetch-table-query-metadatas-statement-count-test
+  (testing "the query metadata of many card-sandboxed Tables takes as many statements as that of few"
+    (let [tables [:venues :checkins :categories :users :orders :people]]
+      (met/with-gtaps! {:gtaps (into {} (map (fn [t] [t {:query (fields-query t [:id])}])) tables)}
+        (let [count! (fn [n]
+                       (let [table-ids (mapv mt/id (take n tables))]
+                         (t2/with-call-count [call-count]
+                           (is (= (set table-ids)
+                                  (into #{} (map :id) (table/batch-fetch-table-query-metadatas table-ids nil))))
+                           (call-count))))]
+          (count! 6)
+          (is (= (count! 2) (count! 6))))))))

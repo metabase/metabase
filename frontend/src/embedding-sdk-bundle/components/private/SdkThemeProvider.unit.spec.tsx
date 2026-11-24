@@ -66,7 +66,7 @@ const SdkCssVariablesTester = ({
   const theme = useMantineTheme();
 
   useEffect(() => {
-    onChange(getMetabaseSdkCssVariables({ theme, font: DEFAULT_FONT }).styles);
+    onChange(getMetabaseSdkCssVariables({ theme, font: DEFAULT_FONT }));
   }, [onChange, theme]);
 
   return null;
@@ -129,9 +129,9 @@ describe("SdkThemeProvider", () => {
     const DARK_OCEAN = { textHover: ocean[30], textBrand: ocean[40] };
 
     // We need to check what was actually injected into page, thus
-    // direct query (unlike other tests that use SdkCssVariablesTester)
+    // direct query (unlike other tests that use SdkCssVariablesTester).
     const emittedStyles = () =>
-      // eslint-disable-next-line testing-library/no-node-access -- emotion writes these <style> tags; there is no Testing Library query for them
+      // eslint-disable-next-line testing-library/no-node-access -- the style sheets live in <style> tags; there is no Testing Library query for them
       [...document.querySelectorAll("style")]
         .map((element) => element.textContent ?? "")
         .join("\n");

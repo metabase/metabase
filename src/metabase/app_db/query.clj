@@ -21,9 +21,10 @@
   (:refer-clojure :exclude [compile])
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.db :as app-db.db]
    [metabase.app-db.format :as app-db.format]
+   [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -104,18 +105,8 @@
   sql-args)
 
 (defmethod compile clojure.lang.IPersistentMap
-  [honey-sql]
-  (let [sql-args (try
-                   (sql/format honey-sql {:quoted true, :dialect :metabase.app-db.setup/application-db, :quoted-snake false})
-                   (catch Throwable e
-                     ;; this is not i18n'ed because it (hopefully) shouldn't be user-facing -- we shouldn't be running
-                     ;; in to unexpected Honey SQL compilation errors at run time -- if we are it means we're not being
-                     ;; careful enough with the Honey SQL forms we create which is a bug in the Metabase code we should
-                     ;; have caught in tests.
-                     (throw (ex-info (str "Error compiling Honey SQL: " (ex-message e))
-                                     {:honey-sql honey-sql}
-                                     e))))]
-    sql-args))
+  [honeysql]
+  (funnysql/format honeysql (mdb.connection/db-type)))
 
 (defn current-timestamp-string
   "The application DB's own current timestamp, as a string. Read from the DB rather than from this machine's clock,
@@ -196,6 +187,181 @@
        ;; a per-driver or driver agnostic way to test the exception.
        ~@body)))
 
+(def create-partition-size
+  "The number of rows one pass of a create write function takes."
+  1000)
+
+(def delete-partition-size
+  "The number of ids one DELETE statement of a write function takes, below the parameter limit of every app DB."
+  10000)
+
+(def update-partition-size
+  "The number of rows one pass of an update write function takes."
+  1000)
+
+(def select-partition-size
+  "The number of ids one SELECT statement of a read function takes, below the parameter limit of every app DB."
+  10000)
+
+(defn select-partitions
+  "The partitions of `xs` of at most [[select-partition-size]], each a vector, for a read that takes them one by one."
+  [xs]
+  (map vec (partition-all select-partition-size xs)))
+
+(defn select-batched
+  "The rows `select-fn` returns for each partition of the distinct `ids` of at most [[select-partition-size]], in one
+  vector."
+  [select-fn ids]
+  (into [] (mapcat (comp select-fn vec)) (partition-all select-partition-size (sequence (distinct) ids))))
+
+(defn select-batched-by-keys
+  "The rows `select-fn` returns for the map `m`, with the collection under each of its keys `ks` bound in partitions of
+  at most [[select-partition-size]], in one vector."
+  [select-fn m ks]
+  (if-let [[k & more] (seq ks)]
+    (if-let [values (seq (get m k))]
+      (select-batched #(select-batched-by-keys select-fn (assoc m k (set %)) more) values)
+      (recur select-fn m more))
+    (select-fn m)))
+
+(defn select-batched-map
+  "The entries of the maps `select-fn` returns for each partition of `ids`, as [[select-batched]] reads them, in one
+  map."
+  [select-fn ids]
+  (into {} (select-batched select-fn ids)))
+
+(defn select-batched-set
+  "The elements `select-fn` returns for each partition of `ids`, as [[select-batched]] reads them, in one set, nil when
+  there are none, as Toucan's set selects answer."
+  [select-fn ids]
+  (not-empty (into #{} (select-batched select-fn ids))))
+
+(defn select-batched-reducible
+  "A reducible over the rows of the reducible `select-fn` returns for each partition of the distinct `ids`."
+  [select-fn ids]
+  (eduction (mapcat (comp select-fn vec)) (partition-all select-partition-size (sequence (distinct) ids))))
+
+(defn sum-batched
+  "The sum of the row counts `write-fn` returns for each partition of the distinct `ids` of at most `partition-size`."
+  [partition-size write-fn ids]
+  (transduce (map (comp write-fn vec)) + 0 (partition-all partition-size (sequence (distinct) ids))))
+
+(defn- grouped-updates
+  "The `[changes pks]` pairs of `updates`, in the order the changes first appear.
+  The primary key of a row is `(pk-fn row)`, and its columns to change are `(changes-fn row)`.
+  The rows of one primary key merge in order, so the last value of a column wins.
+  A key left with no column to change is left out."
+  [updates pk-fn changes-fn]
+  (let [pk->changes  (reduce (fn [m row] (update m (pk-fn row) merge (changes-fn row))) {} updates)
+        pks          (into [] (comp (map pk-fn) (distinct) (filter (comp seq pk->changes))) updates)
+        changes->pks (group-by pk->changes pks)]
+    (into [] (comp (map pk->changes) (distinct) (map (juxt identity changes->pks))) pks)))
+
+(defn update-grouped!
+  "Apply each of `updates`, the primary key of a row of `model` and the columns to change.
+  The rows of one key merge first, so the last value of a column wins.
+  The updates run through the model in the order their changes first appear.
+  With a one-column primary key, keys that end with the same changes share one update per [[update-partition-size]]
+  of them; others update one by one."
+  [model updates]
+  (let [pk-columns (t2/primary-keys model)]
+    (if (= (count pk-columns) 1)
+      (let [pk (first pk-columns)]
+        (doseq [[changes pks] (grouped-updates updates pk #(dissoc % pk))
+                pks           (partition-all update-partition-size pks)]
+          (t2/update! model pk [:in [:auto/param (vec pks)]] changes)))
+      (doseq [[changes pks] (grouped-updates updates (apply juxt pk-columns) #(apply dissoc % pk-columns))
+              pk            pks]
+        (t2/update! model :toucan/pk pk changes)))))
+
+(defn insert-returning-instances!
+  "Insert the `rows` of `model` with one statement for each set of columns they have, and return the new instances in
+  the order of `rows`, read back through [[select-batched]]; Toucan's function of this name returns them in any
+  order."
+  [model rows]
+  (if (empty? rows)
+    []
+    (let [pks     (u/map-by-key-set #(t2/insert-returning-pks! model %) rows)
+          columns (t2/primary-keys model)
+          pk-of   (if (= 1 (count columns)) (first columns) (apply juxt columns))
+          by-pk   (u/index-by pk-of (select-batched #(t2/select model :toucan/pk [:in %]) pks))]
+      (mapv by-pk pks))))
+
+(defn- check-batched-opts
+  "Throw when `opts` of a batched write has a key that is none of `known`."
+  [opts known]
+  (when-let [unknown (seq (remove known (keys opts)))]
+    (throw (ex-info (format "Unknown options of a batched write: %s" (pr-str (vec unknown)))
+                    {:unknown (vec unknown), :known known}))))
+
+(defn create-batched!
+  "Insert `rows` of `model` in batches in one transaction and return the inserted rows: `before-create` gets each batch
+  before its insert, throws when it cannot be inserted and returns the rows to insert, or nil for the batch as given,
+  and `after-create` gets every inserted row once."
+  [model rows {:keys [before-create after-create] :as opts}]
+  (check-batched-opts opts #{:before-create :after-create})
+  (t2/with-transaction [_conn]
+    (let [created (into []
+                        (mapcat (fn [batch]
+                                  (let [batch (vec batch)]
+                                    (insert-returning-instances! model (or (when before-create (before-create batch))
+                                                                           batch)))))
+                        (partition-all create-partition-size rows))]
+      (when (and after-create (seq created))
+        (after-create created))
+      created)))
+
+(defn- update-batch!
+  "Update one batch of `updates` of `model` by `pk` and return the updates written with the rows by primary key as
+  stored before and, with `reread?`, after."
+  [model pk updates {:keys [before-update reread?]}]
+  (let [pks        (mapv pk updates)
+        id->stored (t2/select-pk->fn identity model pk [:in [:auto/param pks]])
+        updates    (or (when before-update (before-update updates id->stored))
+                       updates)]
+    (update-grouped! model updates)
+    {:updates     updates
+     :id->stored  id->stored
+     :id->updated (when reread?
+                    (t2/select-pk->fn identity model pk [:in [:auto/param pks]]))}))
+
+(defn update-batched!
+  "Apply `updates`, each the primary key of a row of `model` and the columns to change, in batches in one transaction:
+  `before-update` gets each batch with its rows by primary key as stored, throws when it cannot be applied and returns
+  the updates to write, or nil for the batch as given, and `after-update` gets every update written and the rows by
+  primary key as stored before and, with `reread?`, after, once, when any of the rows exists."
+  [model updates {:keys [after-update reread?] :as opts}]
+  (check-batched-opts opts #{:before-update :after-update :reread?})
+  (let [pk (first (t2/primary-keys model))]
+    (t2/with-transaction [_conn]
+      (let [batches (mapv #(update-batch! model pk (vec %) opts)
+                          (partition-all update-partition-size updates))]
+        (when (and after-update (some (comp seq :id->stored) batches))
+          (after-update (into [] (mapcat :updates) batches)
+                        (into {} (map :id->stored) batches)
+                        (when reread?
+                          (into {} (map :id->updated) batches))))))
+    nil))
+
+(defn delete-batched!
+  "Delete the rows of `model` with `pks` in batches in one transaction: `before-delete` gets every row once before the
+  first statement and throws when they cannot be deleted, and `after-delete` gets them once after the last, the rows
+  being read only when one of the two is given."
+  [model pks {:keys [before-delete after-delete] :as opts}]
+  (check-batched-opts opts #{:before-delete :after-delete})
+  (let [pk (first (t2/primary-keys model))]
+    (t2/with-transaction [_conn]
+      (let [batches (mapv vec (partition-all delete-partition-size pks))
+            rows    (when (or before-delete after-delete)
+                      (into [] (mapcat #(t2/select model pk [:in [:auto/param %]])) batches))]
+        (when (or (nil? rows) (seq rows))
+          (when before-delete
+            (before-delete rows))
+          (run! #(t2/delete! model pk [:in [:auto/param %]]) batches)
+          (when after-delete
+            (after-delete rows)))))
+    nil))
+
 (defn select-or-insert!
   "Return a database record if it exists, otherwise create it.
 
@@ -227,6 +393,52 @@
           ;; Wrap INSERT in a savepoint — see comment in [[update-or-insert!]].
           (t2/with-transaction [_conn]
             (t2/insert-returning-instance! model (insert-fn)))))))
+
+(mu/defn increment-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to `column` of the rows of `model` with `ids`, in one raw
+  statement for each [[update-partition-size]] of them that runs no hook and publishes no event, for a usage counter
+  no rule reads, returning the number updated."
+  [model      :- :keyword
+   column     :- :keyword
+   count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  (transduce
+   (map (fn [pairs]
+          (let [count->ids (update-vals (group-by first pairs) #(mapv second %))]
+            #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
+            (first (t2/query {:update (t2/table-name model)
+                              :set    {column [:+ column (into [:case]
+                                                               (mapcat (fn [[cnt ids]]
+                                                                         [[:in :id ids] cnt])
+                                                                       count->ids))]}
+                              :where  [:in :id (mapv second pairs)]})))))
+   +
+   0
+   (partition-all update-partition-size (for [[cnt ids] count->ids, id ids] [cnt id]))))
+
+(mu/defn delete-oldest-rows! :- [:maybe :int]
+  "Delete up to `batch-size` of the rows of `model` whose `time-column` is at or before `cutoff`, lowest ids first
+  where the database can say so, in one raw statement that runs no hook, for a log table a retention policy trims,
+  returning the number deleted."
+  [model       :- :keyword
+   time-column :- :keyword
+   cutoff      :- ms/TemporalInstant
+   batch-size  :- ms/PositiveInt]
+  (let [table (t2/table-name model)]
+    (case (mdb.connection/db-type)
+      (:postgres :h2)
+      (t2/query-one {:delete-from table
+                     :where [:in
+                             :id
+                             ^:allow-subquery {:select [:id]
+                                               :from table
+                                               :where [:<= time-column cutoff]
+                                               :order-by [[:id :asc]]
+                                               :limit batch-size}]})
+
+      :mysql
+      (t2/query-one {:delete-from table
+                     :where [:<= time-column cutoff]
+                     :limit batch-size}))))
 
 (defn update-or-insert!
   "Update a database record, if it exists, otherwise create it.
@@ -272,7 +484,8 @@
       (if-let [existing (apply t2/select-one model select-kvs)]
         (let [pk (pk-of existing)]
           (if-let [updated (update-fn existing)]
-            (do (t2/update! model pk updated)
+            ;; `model` is any model, so match on its own primary key, which may not be `:id` or may be composite.
+            (do (t2/update! model :toucan/pk pk updated)
                 ;; the primary key may have been changed by the update, and this is OK.
                 (pk-of (merge existing updated)))
             ;; update-fn returned nil — no update needed, return existing pk.

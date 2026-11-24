@@ -1,9 +1,9 @@
+import { BrowseGrid } from "metabase/common/components/BrowseGrid";
 import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { Card, Flex, Skeleton, Stack } from "metabase/ui";
 
 import S from "./BrowseContainer.module.css";
 import { BrowseDataHeader } from "./BrowseDataHeader";
-import { BrowseGrid } from "./BrowseGrid";
 
 type BrowseCardSize = "md" | "lg";
 

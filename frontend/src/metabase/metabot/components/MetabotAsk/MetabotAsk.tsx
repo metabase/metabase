@@ -61,13 +61,17 @@ export const MetabotAsk = () => {
   ) : undefined;
 
   return (
-    <Flex direction="column" h="100%" w="100%" bg="background_page-primary">
+    <Flex
+      direction="column"
+      h="100%"
+      w="100%"
+      bg="background_page-primary"
+      pos="relative"
+    >
       {showGreeting ? (
         <>
           {historyAction && (
-            <Flex justify="flex-end" px="lg" pt="lg">
-              {historyAction}
-            </Flex>
+            <Box className={S.historyAction}>{historyAction}</Box>
           )}
           <MetabotGreeting
             conversationId={conversationId}
@@ -80,9 +84,7 @@ export const MetabotAsk = () => {
             conversationId={conversationId}
             agentId="ask"
             size="lg"
-            onNewConversation={() =>
-              navigate(Urls.newQuestion({ mode: "ask" }))
-            }
+            onNewConversation={() => navigate(Urls.askQuestion())}
             config={{ suggestionModels: SUGGESTION_MODELS }}
             className={S.chat}
             headerActions={historyAction}

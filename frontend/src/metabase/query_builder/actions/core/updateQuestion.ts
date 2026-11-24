@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import _ from "underscore";
 
+import { getVariableTemplateTags } from "metabase/querying/native";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
@@ -10,7 +12,6 @@ import type {
 } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
 import { UPDATE_QUESTION, onCloseQuestionInfo } from "../../store/actions";
 import {
@@ -49,14 +50,10 @@ function shouldTemplateTagEditorBeVisible({
   ).isNative;
 
   const previousTags = isCurrentQuestionNative
-    ? // Unjustified type cast. FIXME
-      (
-        currentQuestion.legacyNativeQuery() as NativeQuery
-      ).variableTemplateTags()
+    ? getVariableTemplateTags(currentQuestion.query())
     : [];
   const nextTags = isNewQuestionNative
-    ? // Unjustified type cast. FIXME
-      (newQuestion.legacyNativeQuery() as NativeQuery).variableTemplateTags()
+    ? getVariableTemplateTags(newQuestion.query())
     : [];
   if (nextTags.length > previousTags.length) {
     return true;

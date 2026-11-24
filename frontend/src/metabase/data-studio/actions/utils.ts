@@ -1,3 +1,6 @@
+import { match } from "ts-pattern";
+import { c, t } from "ttag";
+
 import { getInputTypes } from "metabase/actions/constants";
 import {
   getDefaultFieldSettings,
@@ -9,25 +12,81 @@ import {
 } from "metabase/common/utils/database";
 import * as Lib from "metabase-lib";
 import { getTemplateTagParameters } from "metabase-lib/v1/parameters/utils/template-tags";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ActionFormSettings,
-  CreateActionRequest,
+  CreateQueryActionRequest,
   Database,
   FieldSettings,
   FieldType,
   FieldValueOptions,
+  ImplicitActionKind,
+  Table,
+  TableId,
   TemplateTag,
   TemplateTagType,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
 
-export type ActionDefinition = Required<
+export type QueryActionDefinition = Required<
   Pick<
-    CreateActionRequest,
-    "database_id" | "dataset_query" | "parameters" | "visualization_settings"
+    CreateQueryActionRequest,
+    "type" | "dataset_query" | "parameters" | "visualization_settings"
   >
 >;
+
+export type ImplicitActionDefinition = {
+  type: "implicit";
+  kind: ImplicitActionKind;
+  table_id: TableId;
+};
+
+export type ActionDefinition = QueryActionDefinition | ImplicitActionDefinition;
+
+export type ImplicitActionKindOption = {
+  value: ImplicitActionKind;
+  label: string;
+  description: string;
+};
+
+export function getImplicitActionKindOptions(): ImplicitActionKindOption[] {
+  return [
+    {
+      value: "row/create",
+      label: t`Insert`,
+      description: t`Adds a new row. The form asks for every column the database does not fill in.`,
+    },
+    {
+      value: "row/update",
+      label: t`Update`,
+      description: t`Changes one row, found by its primary key. Empty fields keep their value.`,
+    },
+    {
+      value: "row/delete",
+      label: t`Delete`,
+      description: t`Removes one row, found by its primary key.`,
+    },
+  ];
+}
+
+export function getImplicitActionKindOption(
+  kind: ImplicitActionKind,
+): ImplicitActionKindOption {
+  const options = getImplicitActionKindOptions();
+  return options.find((option) => option.value === kind) ?? options[0];
+}
+
+export function getImplicitActionName(
+  kind: ImplicitActionKind,
+  tableName: string,
+) {
+  return match(kind)
+    .with("row/create", () => c("{0} is a table name").t`Insert ${tableName}`)
+    .with("row/update", () => c("{0} is a table name").t`Update ${tableName}`)
+    .with("row/delete", () => c("{0} is a table name").t`Delete ${tableName}`)
+    .exhaustive();
+}
 
 const TAG_TYPE_BY_FIELD_TYPE: Record<FieldType, TemplateTagType> = {
   string: "text",
@@ -36,7 +95,7 @@ const TAG_TYPE_BY_FIELD_TYPE: Record<FieldType, TemplateTagType> = {
 };
 
 export function getQueryParameters(query: Lib.Query): WritebackParameter[] {
-  return getTemplateTagParameters(Object.values(Lib.templateTags(query)));
+  return getTemplateTagParameters(Lib.templateTags(query));
 }
 
 function getFieldTypes(
@@ -81,7 +140,7 @@ export function getFieldSettingsFromQuery(
   query: Lib.Query,
   formSettings: ActionFormSettings,
 ): ActionFormSettings {
-  const tags = Object.values(Lib.templateTags(query));
+  const tags = Lib.templateTags(query);
   const fields = Object.fromEntries(
     getQueryParameters(query).map((parameter, index) => [
       parameter.id,
@@ -118,27 +177,23 @@ export function setTemplateTagFieldType(
   parameterId: string,
   fieldType: FieldType,
 ): Lib.Query {
-  const tags = Object.fromEntries(
-    Object.entries(Lib.templateTags(query)).map(([name, tag]) => [
-      name,
-      tag.id === parameterId
-        ? { ...tag, type: TAG_TYPE_BY_FIELD_TYPE[fieldType] }
-        : tag,
-    ]),
+  const tags = Lib.templateTags(query).map((tag) =>
+    tag.id === parameterId
+      ? { ...tag, type: TAG_TYPE_BY_FIELD_TYPE[fieldType] }
+      : tag,
   );
   return Lib.withTemplateTags(query, tags);
 }
 
-export function getActionDefinition(
+export function getQueryActionDefinition(
   query: Lib.Query,
   formSettings: ActionFormSettings,
-): ActionDefinition | null {
-  const databaseId = Lib.databaseID(query);
-  if (databaseId == null) {
+): QueryActionDefinition | null {
+  if (Lib.databaseID(query) == null) {
     return null;
   }
   return {
-    database_id: databaseId,
+    type: "query",
     dataset_query: Lib.toJsQuery(query),
     parameters: getQueryParameters(query),
     visualization_settings: getFieldSettingsFromQuery(query, formSettings),
@@ -201,4 +256,8 @@ export function getFieldSettingsForFieldType(
       : undefined,
     defaultValue: cleanFieldValue(fieldSettings.defaultValue, fieldType),
   };
+}
+
+export function hasSinglePrimaryKey(table: Table): boolean {
+  return (table.fields ?? []).filter(isPK).length === 1;
 }

@@ -1,8 +1,7 @@
 import { Fragment } from "react";
 
+import type { PermissionEditorBreadcrumb } from "metabase/permissions";
 import { Box, Icon, Text } from "metabase/ui";
-
-import type { PermissionEditorBreadcrumb } from "../../types";
 
 import S from "./PermissionsEditorBreadcrumbs.module.css";
 

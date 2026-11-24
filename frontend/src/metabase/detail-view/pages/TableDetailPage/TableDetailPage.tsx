@@ -68,7 +68,9 @@ export function TableDetailPage() {
 
   useEffect(() => {
     if (table) {
-      dispatch(setDetailView({ rowName, table, collectionId: null }));
+      dispatch(
+        setDetailView({ type: "table", rowName, table, collectionId: null }),
+      );
     }
   }, [dispatch, rowName, table]);
 
@@ -92,7 +94,7 @@ export function TableDetailPage() {
       isNavBarOpen={isNavBarOpen}
       row={row}
       rowId={rowId}
-      table={table}
+      entityType={table.entity_type}
       tableForeignKeys={tableForeignKeys}
     />
   );

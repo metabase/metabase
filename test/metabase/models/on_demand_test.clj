@@ -2,7 +2,10 @@
   "Tests for On-Demand FieldValues updating behavior for Cards and Dashboards."
   (:require
    [clojure.test :refer :all]
-   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.write :as dashboards.write]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.queries.models.card :as card]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -30,23 +33,20 @@
       @updated-field-names)))
 
 (defn- basic-native-query []
-  {:database (data/id)
-   :type     "native"
-   :native   {:query "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS"}})
+  (lib/native-query (mt/metadata-provider) "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS"))
 
 (defn- native-query-with-template-tag [field-or-id]
-  {:database (field/field-id->database-id (u/the-id field-or-id))
-   :type     "native"
-   :native   {:query         "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS nWHERE {{category}}"
-              :template-tags {:category {:name         "category"
-                                         :display-name "Category"
-                                         :id           "_category_"
-                                         :type         "dimension"
-                                         :dimension    [:field (u/the-id field-or-id) nil]
-                                         :widget-type  "category"
-                                         :default      "Widget"}}}})
+  (let [mp (lib-be/application-database-metadata-provider (field/field-id->database-id (u/the-id field-or-id)))]
+    (-> (lib/native-query mp "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS nWHERE {{category}}")
+        (lib/with-template-tags {"category" {:name         "category"
+                                             :display-name "Category"
+                                             :id           "_category_"
+                                             :type         :dimension
+                                             :field-id     (u/the-id field-or-id)
+                                             :widget-type  :category
+                                             :default      "Widget"}}))))
 
-(defn- do-with-updated-fields-for-card! [options & [f]]
+(defn- do-with-tracked-field-values! [options f]
   (mt/with-temp [:model/Database db    (:db options)
                  :model/Table    table (merge {:db_id (u/the-id db)}
                                               (:table options))
@@ -54,17 +54,33 @@
                                               (:field options))]
     (do-with-mocked-field-values-updating!
      (fn [updated-field-names]
-       (mt/with-temp [:model/Card card (merge {:dataset_query (native-query-with-template-tag field)}
-                                              (:card options))]
-         (when f
-           (f {:db db :table table :field field :card card :updated-field-names updated-field-names})))))))
+       (f {:db db :table table :field field :updated-field-names updated-field-names})))))
+
+(defn- do-with-updated-fields-for-card! [options & [f]]
+  (do-with-tracked-field-values!
+   options
+   (fn [{:keys [field] :as objects}]
+     (mt/with-temp [:model/Card card (merge {:dataset_query (native-query-with-template-tag field)}
+                                            (:card options))]
+       (when f
+         (f (assoc objects :card card)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     CARDS                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- field-values-were-updated-for-new-card?! [options]
-  (boolean (seq (do-with-updated-fields-for-card! options))))
+  (boolean (seq (do-with-tracked-field-values!
+                 options
+                 (fn [{:keys [field]}]
+                   (mt/with-model-cleanup [:model/Card]
+                     (mt/with-current-user (mt/user->id :crowberto)
+                       (card/create-cards! [{:name                   "On-demand card"
+                                             :creator_id             (mt/user->id :crowberto)
+                                             :database_id            (field/field-id->database-id (u/the-id field))
+                                             :display                :table
+                                             :visualization_settings {}
+                                             :dataset_query          (native-query-with-template-tag field)}]))))))))
 
 (deftest newly-created-card-test
   (testing "Newly created Card with param referencing Field"
@@ -87,7 +103,7 @@
                 (reset! updated-field-names #{})
                 ;; now update the Card... since param didn't change at all FieldValues
                 ;; should not be updated
-                (t2/update! :model/Card (u/the-id card) card))))))))
+                (card/update-cards! [(assoc (select-keys card [:dataset_query]) :id (u/the-id card))]))))))))
 
 (deftest existing-card-test-2
   (testing "Existing Card"
@@ -103,8 +119,7 @@
                 (mt/with-temp [:model/Field new-field {:table_id         (u/the-id table)
                                                        :has_field_values "list"
                                                        :name             "New Field"}]
-                  (t2/update! :model/Card (u/the-id card)
-                              {:dataset_query (native-query-with-template-tag new-field)})))))))))
+                  (card/update-cards! [{:id (u/the-id card) :dataset_query (native-query-with-template-tag new-field)}])))))))))
 
 (deftest existing-card-test-3
   (testing "Existing Card"
@@ -118,8 +133,7 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references our Field in a
                 ;; on-demand DB. Field should have updated values
-                (t2/update! :model/Card (u/the-id card)
-                            {:dataset_query (native-query-with-template-tag field)}))))))))
+                (card/update-cards! [{:id (u/the-id card) :dataset_query (native-query-with-template-tag field)}]))))))))
 
 (deftest existing-card-test-4
   (testing "Existing Card"
@@ -130,7 +144,7 @@
               {:db {:is_on_demand false}}
               (fn [{:keys [card]}]
                 ;; update the Card. Field should get updated values
-                (t2/update! :model/Card (u/the-id card) card))))))))
+                (card/update-cards! [(assoc (select-keys card [:dataset_query]) :id (u/the-id card))]))))))))
 
 (deftest existing-card-test-5
   (testing "Existing Card"
@@ -143,8 +157,7 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references a Field. Field should
                 ;; not get values since DB is not On-Demand
-                (t2/update! :model/Card (u/the-id card)
-                            {:dataset_query (native-query-with-template-tag field)}))))))))
+                (card/update-cards! [{:id (u/the-id card) :dataset_query (native-query-with-template-tag field)}]))))))))
 
 (deftest existing-card-test-6
   (testing "Existing Card"
@@ -159,8 +172,7 @@
                 (mt/with-temp [:model/Field new-field {:table_id         (u/the-id table)
                                                        :has_field_values "list"
                                                        :name             "New Field"}]
-                  (t2/update! :model/Card (u/the-id card)
-                              {:dataset_query (native-query-with-template-tag new-field)})))))))))
+                  (card/update-cards! [{:id (u/the-id card) :dataset_query (native-query-with-template-tag new-field)}])))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   DASHBOARDS                                                   |
@@ -177,14 +189,30 @@
     :parameter_id "12121212"
     :target  [:dimension [:field (u/the-id field-or-id) nil]]}])
 
+(defn- dashcards-of [dashboard-or-id]
+  (t2/select :model/DashboardCard :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:id :asc]]}))
+
+(defn- save-dashcards! [dashboard-or-id dashcards]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (dashboards.write/update-dashboard! (u/the-id dashboard-or-id) {:dashcards dashcards})))
+
 (defn- add-dashcard-with-parameter-mapping! [dashboard-or-id card-or-id field-or-id]
-  (dashboard/add-dashcards! dashboard-or-id
-                            [{:card_id            (u/the-id card-or-id)
-                              :row                0
-                              :col                0
-                              :size_x             4
-                              :size_y             4
-                              :parameter_mappings (parameter-mappings-for-card-and-field card-or-id field-or-id)}]))
+  (save-dashcards! dashboard-or-id
+                   (conj (dashcards-of dashboard-or-id)
+                         {:id                 -1
+                          :card_id            (u/the-id card-or-id)
+                          :row                0
+                          :col                0
+                          :size_x             4
+                          :size_y             4
+                          :parameter_mappings (parameter-mappings-for-card-and-field card-or-id field-or-id)}))
+  [(last (dashcards-of dashboard-or-id))])
+
+(defn- remap-dashcard-parameter! [dash dashcard card field]
+  (save-dashcards! dash
+                   (mapv #(cond-> % (= (:id %) (:id dashcard))
+                                  (assoc :parameter_mappings (parameter-mappings-for-card-and-field card field)))
+                         (dashcards-of dash))))
 
 (defn- do-with-updated-fields-for-dashboard! [options & [f]]
   (do-with-updated-fields-for-card! (merge {:card {:dataset_query (basic-mbql-query)}}
@@ -235,8 +263,7 @@
                   ;; clear out the list of updated Field Names
                   (reset! updated-field-names #{})
                   ;; ok, now update the parameter mapping to the new field. The new Field should get new values
-                  (dashboard/update-dashcards! (t2/hydrate dash [:dashcards :series :card])
-                                               [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))
+                  (remap-dashcard-parameter! dash dashcard card new-field)))))))))
 
 (deftest existing-dashboard-test-4
   (testing "Existing Dashboard"
@@ -262,5 +289,4 @@
               {:db {:is_on_demand false}}
               (fn [{:keys [table card dash dashcard]}]
                 (mt/with-temp [:model/Field new-field {:table_id (u/the-id table), :has_field_values "list"}]
-                  (dashboard/update-dashcards! (t2/hydrate dash [:dashcards :series :card])
-                                               [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))
+                  (remap-dashcard-parameter! dash dashcard card new-field)))))))))

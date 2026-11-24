@@ -2,9 +2,10 @@ import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import { useUpdateTransformJobMutation } from "metabase/api";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 
@@ -66,9 +67,7 @@ function JobMenu({
   return (
     <Menu>
       <Menu.Target>
-        <ActionIcon variant="subtle" onClick={handleIconClick}>
-          <Icon name="ellipsis" />
-        </ActionIcon>
+        <MoreMenuButton aria-label={t`Job options`} onClick={handleIconClick} />
       </Menu.Target>
       <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
         <Menu.Item

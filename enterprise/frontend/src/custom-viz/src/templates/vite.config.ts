@@ -1,5 +1,5 @@
 /* eslint-disable no-console, import/no-default-export, @typescript-eslint/no-require-imports */
-import { cpSync, existsSync, readFileSync, watch } from "fs";
+import { cpSync, existsSync, readFileSync, rmSync, watch } from "fs";
 import { type ServerResponse, createServer } from "http";
 import { createRequire } from "module";
 import { resolve } from "path";
@@ -27,6 +27,8 @@ function metabaseCopyManifest() {
 }
 
 const DEV_PORT = 5174;
+
+const ASSETS_SYNC_DEBOUNCE_MS = 100;
 
 /**
  * Vite plugin that starts a dev server serving both static files from dist/
@@ -144,22 +146,30 @@ function metabaseDevServer() {
       });
 
       // Watch public/assets/ for changes — copy to dist/assets/ and notify
-      const assetsDir = resolve(__dirname, "public/assets");
-      if (existsSync(assetsDir)) {
-        watch(assetsDir, { recursive: true }, (_event, filename) => {
-          if (!filename) {
-            return;
-          }
-          cpSync(
-            resolve(assetsDir, filename),
-            resolve(__dirname, "dist/assets", filename),
-          );
-          for (const client of clients) {
-            client.write("data: reload\n\n");
-          }
-          console.log(
-            `[custom-viz] Asset changed: ${filename}, notified ${clients.size} client(s)`,
-          );
+      const assetsDirSrc = resolve(__dirname, "public/assets");
+      const assetsDirDest = resolve(__dirname, "dist/assets");
+      const syncAssets = () => {
+        try {
+          rmSync(assetsDirDest, { recursive: true, force: true });
+          cpSync(assetsDirSrc, assetsDirDest, { recursive: true });
+        } catch (error) {
+          console.error("[custom-viz] Failed to sync assets", error);
+          return;
+        }
+        for (const client of clients) {
+          client.write("data: reload\n\n");
+        }
+        console.log(
+          `[custom-viz] Assets synced, notified ${clients.size} client(s)`,
+        );
+      };
+      let syncTimer: ReturnType<typeof setTimeout> | undefined;
+      if (existsSync(assetsDirSrc)) {
+        watch(assetsDirSrc, { recursive: true }, () => {
+          clearTimeout(syncTimer);
+          syncTimer = setTimeout(syncAssets, ASSETS_SYNC_DEBOUNCE_MS);
+        }).on("error", (error) => {
+          console.error("[custom-viz] Assets watcher error", error);
         });
       }
     },

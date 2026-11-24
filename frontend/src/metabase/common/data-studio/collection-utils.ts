@@ -22,11 +22,7 @@ export function canPlaceEntityInCollection(
     return entityType === "metric" || entityType === "collection";
   }
 
-  if (collectionType === "library-dashboards") {
-    return entityType === "dashboard" || entityType === "collection";
-  }
-
-  return false;
+  return collectionType === "library-dashboards" && entityType !== "table";
 }
 
 export function canPlaceEntityInCollectionOrDescendants(
@@ -37,16 +33,11 @@ export function canPlaceEntityInCollectionOrDescendants(
     return true;
   }
 
-  // Questions can be saved into the dashboards inside the Dashboards section
-  if (collectionType === "library-dashboards") {
-    return entityType === "card";
-  }
-
   if (collectionType === "library") {
     return (
       canPlaceEntityInCollection(entityType, "library-data") ||
       canPlaceEntityInCollection(entityType, "library-metrics") ||
-      canPlaceEntityInCollectionOrDescendants(entityType, "library-dashboards")
+      canPlaceEntityInCollection(entityType, "library-dashboards")
     );
   }
 

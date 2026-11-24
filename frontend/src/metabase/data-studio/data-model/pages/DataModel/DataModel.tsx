@@ -23,8 +23,10 @@ import {
   type PreviewType,
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_LIBRARY,
+} from "metabase/plugins";
 import { useParams } from "metabase/router";
 import {
   ActionIcon,
@@ -79,7 +81,9 @@ function DataModelContent() {
     data: databasesData,
     error: databasesError,
     isLoading: isLoadingDatabases,
-  } = useListDatabasesQuery();
+  } = useListDatabasesQuery(
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  );
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
@@ -338,7 +342,7 @@ function DataModelContent() {
                        * Make sure internal component state is reset when changing fields.
                        * This is to avoid state mix-up with optimistic updates.
                        */
-                      key={getRawTableFieldId(field)}
+                      key={field.id}
                       field={field}
                       parent={parentField}
                       table={table}

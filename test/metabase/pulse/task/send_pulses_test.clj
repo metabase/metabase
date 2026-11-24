@@ -4,9 +4,12 @@
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.channel.core :as channel]
    [metabase.driver :as driver]
+   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.db :as pulse.db]
+   [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
@@ -129,7 +132,7 @@
           (testing "only send to enabled channels that has recipients"
             (is (= #{pc} @sent-channel-ids)))
           (testing "channels that has no recipients are deleted"
-            (is (false? (t2/exists? :model/PulseChannel pc-no-recipient)))))))))
+            (is (false? (t2/exists? :model/PulseChannel :id pc-no-recipient)))))))))
 
 (deftest send-pulse!*-skips-archived-dashboard-test
   (testing "a trigger firing for a trashed Dashboard sends nothing and records no task run"
@@ -146,18 +149,74 @@
           ;; the Notification send paths
           (let [task-runs #(t2/select-pks-set :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
             (try
-              (t2/update! :model/Dashboard dash-id {:archived true})
+              (t2/update! :model/Dashboard :id dash-id {:archived true})
               (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
               (is (= #{} @sent-channel-ids))
               (is (empty? (task-runs)))
               (testing "once the Dashboard is restored, the same fire sends and records a task run"
-                (t2/update! :model/Dashboard dash-id {:archived false})
+                (t2/update! :model/Dashboard :id dash-id {:archived false})
                 (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
                 (is (= #{pc-id} @sent-channel-ids))
                 (is (= 1 (count (task-runs)))))
               (finally
                 (t2/delete! :model/TaskHistory :run_id [:in (conj (task-runs) -1)])
                 (t2/delete! :model/TaskRun :entity_type :dashboard :entity_id dash-id)))))))))
+
+(defn- scheduled-send-run!
+  "Send the scheduled subscription of a new Dashboard to an email and a Slack channel through the job's `send-pulse!`,
+  and return the task run and its `notification-send` statuses. `render!` replaces `channel/render-notification`. The
+  job queues each channel send for a worker; here each send runs on the job's thread instead, so the run sees the
+  sends end before the `send-pulse` row does."
+  [render!]
+  (notification.tu/with-notification-testing-setup!
+    (mt/with-temp [:model/Dashboard    {dash-id :id}  {}
+                   :model/Pulse        {pulse-id :id} {:dashboard_id dash-id}
+                   :model/PulseChannel {email-id :id} (merge {:pulse_id     pulse-id
+                                                              :channel_type :email
+                                                              :details      {:emails ["foo@metabase.com"]}}
+                                                             daily-at-1am)
+                   :model/PulseChannel {slack-id :id} (merge {:pulse_id     pulse-id
+                                                              :channel_type :slack
+                                                              :details      {:channel "#general"}}
+                                                             daily-at-1am)]
+      (with-redefs [notification.send/send-notification-async! #'notification.send/send-notification-sync!
+                    channel/render-notification                 render!
+                    channel/send!                               (constantly nil)]
+        (#'task.send-pulses/send-pulse! pulse-id #{email-id slack-id}))
+      (let [run (t2/select-one :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
+        {:run    (:status run)
+         :sends  (frequencies (t2/select-fn-vec :status :model/TaskHistory :run_id (:id run) :task "notification-send"))
+         :ended? (some? (:ended_at run))}))))
+
+(deftest scheduled-send-run-status-test
+  (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+    (testing "a scheduled send to two channels records the run as success when both deliver (GDGT-3331)"
+      (is (= {:run :success :sends {:success 2} :ended? true}
+             (scheduled-send-run! (fn [& _] [{:stub-message true}])))))
+    (testing "a scheduled send to two channels records the run as failed when the second channel fails after the first delivered (GDGT-3331)"
+      ;; the channels come in the pulse's channel order, which the test does not fix, so fail the second render
+      (let [renders (atom 0)]
+        (is (= {:run :failed :sends {:success 1 :failed 1} :ended? true}
+               (scheduled-send-run! (fn [& _]
+                                      (if (= 1 (swap! renders inc))
+                                        [{:stub-message true}]
+                                        (throw (ex-info "second channel failed" {})))))))))))
+
+(deftest send-pulse-job-failure-fails-run-test
+  (testing "when the job's send fails before it queues any channel send, the job records the run as failed (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (mt/with-temp [:model/Dashboard    {dash-id :id}  {}
+                     :model/Pulse        {pulse-id :id} {:dashboard_id dash-id}
+                     :model/PulseChannel {pc-id :id}    (merge {:pulse_id     pulse-id
+                                                                :channel_type :slack
+                                                                :details      {:channel "#general"}}
+                                                               daily-at-1am)]
+        (mt/with-dynamic-fn-redefs [pulse.send/send-pulse! (fn [& _] (throw (ex-info "send failed" {})))]
+          (#'task.send-pulses/send-pulse! pulse-id #{pc-id}))
+        (let [run (t2/select-one :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
+          (is (= :failed (:status run)))
+          (is (some? (:ended_at run)))
+          (is (= [:failed] (t2/select-fn-vec :status :model/TaskHistory :run_id (:id run) :task "send-pulse"))))))))
 
 (deftest dashboard-archived?-test
   (mt/with-temp [:model/Dashboard {live-id :id}     {}
@@ -256,12 +315,13 @@
                   pulse-ids (t2/insert-returning-pks! :model/Pulse
                                                       (repeat pc-count {:creator_id (mt/user->id :rasta)
                                                                         :name       (mt/random-name)}))
-                  pc-ids    (t2/insert-returning-pks! :model/PulseChannel
-                                                      (for [pulse-id pulse-ids]
-                                                        (merge {:pulse_id       pulse-id
-                                                                :channel_type   :slack
-                                                                :details        {:channel "#random"}}
-                                                               daily-at-6pm)))]
+                  pc-ids    (mapv :id (pulse-channel/create-pulse-channels!
+                                       (mapv #(merge {:pulse_id     %
+                                                      :channel_type :slack
+                                                      :enabled      true
+                                                      :details      {:channel "#random"}}
+                                                     daily-at-6pm)
+                                             pulse-ids)))]
               (testing "sanity check that we have the correct number of triggers and no channel has been sent yet"
                 (is (= pc-count (->> pulse-ids (map pulse-channel-test/send-pulse-triggers) (apply set/union) count))))
               (testing "make sure that all channels will be sent even though number of jobs exceed the thread pool"
@@ -274,7 +334,7 @@
   (testing "alerts should not be sent even if they have triggers (#63189)"
     (mt/test-helpers-set-global-values!
       (pulse-channel-test/with-send-pulse-setup!
-        (mt/with-model-cleanup [:model/Pulse]
+        (mt/with-model-cleanup [:model/Pulse :model/PulseChannel]
           (notification.tu/with-captured-channel-send!
             (let [sent-pulse-ids (atom #{})
                   send-pulse-called (atom 0)
@@ -292,12 +352,12 @@
                                                      (swap! sent-pulse-ids conj pulse-id))]
                 (mt/with-temp [:model/Pulse {pulse-id :id} {:creator_id      (mt/user->id :rasta)
                                                             :name            (mt/random-name)
-                                                            :alert_condition "rows"}
-                               :model/PulseChannel _ (merge {:pulse_id       pulse-id
-                                                             :channel_type   :slack
-                                                             :enabled        true
-                                                             :details        {:channel "#random"}}
-                                                            daily-at-6pm)]
+                                                            :alert_condition "rows"}]
+                  (:id (first (pulse-channel/create-pulse-channels! [(merge {:pulse_id     pulse-id
+                                                                             :channel_type :slack
+                                                                             :enabled      true
+                                                                             :details      {:channel "#random"}}
+                                                                            daily-at-6pm)])))
                   (testing "trigger exists after creation"
                     (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
                   (testing "waiting for cron job to fire"
@@ -334,67 +394,72 @@
 (deftest send-pulse-trigger-respect-report-timezone-test
   (pulse-channel-test/with-send-pulse-setup!
     (mt/with-temporary-setting-values [report-timezone "Asia/Ho_Chi_Minh" #_utc+7]
-      (mt/with-temp
-        [:model/Pulse        {pulse :id} {}
-         :model/PulseChannel {_pc :id} (merge
-                                        {:pulse_id     pulse
-                                         :channel_type :slack
-                                         :details      {:channel "#random"}}
-                                        daily-at-8am)]
-        ;; if its want to be fired at 8 am utc+7, then it should be fired at 1am utc
-        (is (= (next-fire-hour 1)
-               (send-pusle-triggers-next-fire-time pulse)))))
+      (mt/with-temp [:model/Pulse {pulse :id} {}]
+        (mt/with-model-cleanup [:model/PulseChannel]
+          (:id (first (pulse-channel/create-pulse-channels! [(merge
+                                                              {:pulse_id     pulse
+                                                               :channel_type :slack
+                                                               :enabled      true
+                                                               :details      {:channel "#random"}}
+                                                              daily-at-8am)])))
+          ;; if its want to be fired at 8 am utc+7, then it should be fired at 1am utc
+          (is (= (next-fire-hour 1)
+                 (send-pusle-triggers-next-fire-time pulse))))))
     (mt/with-temporary-setting-values [report-timezone "UTC"]
-      (mt/with-temp
-        [:model/Pulse        {pulse :id} {}
-         :model/PulseChannel {_pc :id} (merge
-                                        {:pulse_id     pulse
-                                         :channel_type :slack
-                                         :details      {:channel "#random"}}
-                                        daily-at-8am)]
-        (is (= (next-fire-hour 8)
-               (send-pusle-triggers-next-fire-time pulse)))))))
+      (mt/with-temp [:model/Pulse {pulse :id} {}]
+        (mt/with-model-cleanup [:model/PulseChannel]
+          (:id (first (pulse-channel/create-pulse-channels! [(merge
+                                                              {:pulse_id     pulse
+                                                               :channel_type :slack
+                                                               :enabled      true
+                                                               :details      {:channel "#random"}}
+                                                              daily-at-8am)])))
+          (is (= (next-fire-hour 8)
+                 (send-pusle-triggers-next-fire-time pulse))))))))
 
 (deftest change-report-timezone-will-update-triggers-timezone-test
   (pulse-channel-test/with-send-pulse-setup!
     (mt/discard-setting-changes [report-timezone]
-      (mt/with-temp
-        [:model/Pulse        {pulse :id} {}
-         :model/PulseChannel {pc :id} (merge
-                                       {:pulse_id     pulse
-                                        :channel_type :slack
-                                        :details      {:channel "#random"}}
-                                       daily-at-8am)]
-        (testing "Sanity check"
-          (is (= #{(assoc (pulse-channel-test/pulse->trigger-info pulse daily-at-8am #{pc})
-                          :timezone "UTC"
-                          :next-fire-time (next-fire-hour 8))}
-                 (pulse-channel-test/send-pulse-triggers pulse :additional-keys [:next-fire-time :timezone]))))
-        (driver/report-timezone! "Asia/Ho_Chi_Minh")
-        (testing "changing report timezone will change the timezone and fire time of the trigger"
-          (is (= #{(assoc (pulse-channel-test/pulse->trigger-info pulse daily-at-8am #{pc})
-                          :timezone "Asia/Ho_Chi_Minh"
-                          :next-fire-time (next-fire-hour 1))}
-                 (pulse-channel-test/send-pulse-triggers pulse :additional-keys [:next-fire-time :timezone]))))))))
+      (mt/with-temp [:model/Pulse {pulse :id} {}]
+        (mt/with-model-cleanup [:model/PulseChannel]
+          (let [pc (:id (first (pulse-channel/create-pulse-channels! [(merge
+                                                                       {:pulse_id     pulse
+                                                                        :channel_type :slack
+                                                                        :enabled      true
+                                                                        :details      {:channel "#random"}}
+                                                                       daily-at-8am)])))]
+            (testing "Sanity check"
+              (is (= #{(assoc (pulse-channel-test/pulse->trigger-info pulse daily-at-8am #{pc})
+                              :timezone "UTC"
+                              :next-fire-time (next-fire-hour 8))}
+                     (pulse-channel-test/send-pulse-triggers pulse :additional-keys [:next-fire-time :timezone]))))
+            (driver/report-timezone! "Asia/Ho_Chi_Minh")
+            (testing "changing report timezone will change the timezone and fire time of the trigger"
+              (is (= #{(assoc (pulse-channel-test/pulse->trigger-info pulse daily-at-8am #{pc})
+                              :timezone "Asia/Ho_Chi_Minh"
+                              :next-fire-time (next-fire-hour 1))}
+                     (pulse-channel-test/send-pulse-triggers pulse :additional-keys [:next-fire-time :timezone]))))))))))
 
 (deftest init-send-pulse-triggers-idempotent-test
   (pulse-channel-test/with-send-pulse-setup!
     (mt/with-temp-scheduler!
       (task/init! ::task.send-pulses/SendPulses)
       (mt/with-temp
-        [:model/Dashboard    {dash-id :id} {}
-         :model/Pulse        {pulse-id :id} {:dashboard_id dash-id}
-         :model/PulseChannel {_pc-id :id}   (merge
-                                             {:pulse_id     pulse-id
-                                              :channel_type :slack
-                                              :details      {:channel "#random"}}
-                                             daily-at-1am)]
-        (let [pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)]
-          (testing "sanity check that it has triggers to begin with"
-            (is (not-empty pulse-triggers)))
-          (testing "init send pulse triggers are idempotent if the pulse channel doesn't change"
-            (#'task.send-pulses-trigger/init-dashboard-subscription-triggers!)
-            (is (= pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)))))))))
+        [:model/Dashboard {dash-id :id}  {}
+         :model/Pulse     {pulse-id :id} {:dashboard_id dash-id}]
+        (mt/with-model-cleanup [:model/PulseChannel]
+          (:id (first (pulse-channel/create-pulse-channels! [(merge
+                                                              {:pulse_id     pulse-id
+                                                               :channel_type :slack
+                                                               :enabled      true
+                                                               :details      {:channel "#random"}}
+                                                              daily-at-1am)])))
+          (let [pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)]
+            (testing "sanity check that it has triggers to begin with"
+              (is (not-empty pulse-triggers)))
+            (testing "init send pulse triggers are idempotent if the pulse channel doesn't change"
+              (#'task.send-pulses-trigger/init-dashboard-subscription-triggers!)
+              (is (= pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id))))))))))
 
 (deftest init-send-pulse-triggers-skip-alert-test
   (pulse-channel-test/with-send-pulse-setup!

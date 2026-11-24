@@ -634,6 +634,48 @@
                :lib/source     :source/aggregations}
               (lib/metadata query (first (lib/aggregations-metadata query -1))))))))
 
+(deftest ^:parallel preserve-currency-position-metadata-test
+  (let [metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [(assoc (meta/field-metadata :venues :price)
+                                            :settings {:currency_position "after"})]})
+        price             (lib.metadata/field metadata-provider (meta/id :venues :price))
+        query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                              (lib/aggregate (lib/sum price))
+                              (lib/aggregate (lib/distinct price)))
+        [sum-col count-col] (lib/aggregations-metadata query)]
+    (is (= {:currency_position "after"} (:settings sum-col)))
+    (is (nil? (:settings count-col)))))
+
+(deftest ^:parallel preserve-duration-settings-metadata-test
+  (let [settings          {:number_style       "duration"
+                           :duration_unit      "hour"
+                           :duration_style     "narrow"
+                           :duration_precision "minute"}
+        metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [(assoc (meta/field-metadata :venues :price) :settings settings)]})
+        price             (lib.metadata/field metadata-provider (meta/id :venues :price))
+        query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                              (lib/aggregate (lib/max price))
+                              (lib/aggregate (lib/distinct price))
+                              (lib/aggregate (lib/var price)))
+        [max-col count-col var-col] (lib/aggregations-metadata query)]
+    (is (= settings (:settings max-col)))
+    (is (nil? (:settings count-col)))
+    (testing "variance is in squared units, so it is not formatted as duration"
+      (is (nil? (:settings var-col))))))
+
+(deftest ^:parallel variance-keeps-other-number-settings-test
+  (let [settings          {:number_style "currency", :decimals 1}
+        metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [(assoc (meta/field-metadata :venues :price) :settings settings)]})
+        price             (lib.metadata/field metadata-provider (meta/id :venues :price))
+        query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                              (lib/aggregate (lib/var price)))]
+    (is (= settings (:settings (first (lib/aggregations-metadata query)))))))
+
 (deftest ^:parallel preserve-model-column-settings-metadata-test
   (testing "Aggregation metadata should return the `:settings` from model's result_metadata for the column being aggregated (#68692)"
     (let [;; Create a model with a column that has custom settings (like "multiply by a number")
@@ -1072,7 +1114,8 @@
                      (lib/aggregate (lib/count))
                      (lib/aggregate (lib/sum total))
                      (lib/breakout pid))
-          q'     (lib/query mp (lib.convert/->legacy-MBQL q))]
+          ;; existing usage -- do not use going forward
+          q'     (lib/query mp #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL q))]
       (is (= 2 (count (lib/aggregations q'))))
       (is (= 1 (count (lib/breakouts q')))))))
 

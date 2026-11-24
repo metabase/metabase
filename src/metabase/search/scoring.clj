@@ -74,7 +74,7 @@
          ;; Use seconds for granularity in the fraction.
          (if (= :mysql db-type)
            [:coalesce
-            [[:timestampdiff ^:allow-raw-sql [:raw "SECOND"] from-column to-column]]
+            [[:timestampdiff :second from-column to-column]]
             [:* ceiling (double seconds-in-a-day)]]
            [[::h2x/extract :epoch [:- to-column from-column]]])
          [:inline (double seconds-in-a-day)]]]
@@ -112,7 +112,7 @@
 (defn library-score-expr
   "Score expression: 1 when `:root_collection_type` is one of the library collection types, else 0."
   []
-  ;; `:root-collection-type` is set at ingestion via `collection/root-collection-type` (walks the
+  ;; `:root-collection-type` is set at ingestion via `collection/root-collection-types` (walks the
   ;; materialized path), so deeply nested items in a library tree still match.
   [:case
    (into [:or]

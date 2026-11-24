@@ -1,6 +1,7 @@
 (ns metabase.timeline.api.timeline-test
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -20,63 +21,79 @@
 
 (deftest collection-timelines-test
   (testing "GET /api/timeline/collection/root|id"
-    (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
-                   :model/Collection coll-b {:name "Collection B"}
-                   :model/Collection coll-c {:name "Collection C"}
-                   :model/Timeline tl-a      {:name          "Timeline A"
-                                              :collection_id (u/the-id coll-a)}
-                   :model/Timeline tl-b      {:name          "Timeline B"
-                                              :collection_id (u/the-id coll-b)}
-                   :model/Timeline _tl-b-old {:name          "Timeline B-old"
-                                              :collection_id (u/the-id coll-b)
-                                              :archived      true}
-                   :model/Timeline _tl-c     {:name          "Timeline C"
-                                              :collection_id (u/the-id coll-c)}
-                   :model/TimelineEvent _event-aa {:name        "event-aa"
-                                                   :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _event-ab {:name        "event-ab"
-                                                   :timeline_id (u/the-id tl-a)}
-                   :model/TimelineEvent _event-ba {:name        "event-ba"
-                                                   :timeline_id (u/the-id tl-b)}
-                   :model/TimelineEvent _event-bb {:name        "event-bb"
-                                                   :timeline_id (u/the-id tl-b)
-                                                   :archived    true}]
-      (testing "Timelines in the collection of the card are returned"
-        (is (= #{"Timeline A"}
-               (timeline-names (collection-timelines-request coll-a false)))))
-      (testing "Timelines in the collection have a hydrated `:collection` key"
-        (is (= #{(u/the-id coll-a)}
-               (->> (collection-timelines-request coll-a false)
-                    (map #(get-in % [:collection :id]))
-                    set))))
-      (testing "check that `:can_write` key is hydrated"
-        (is (every?
-             #(contains? % :can_write)
-             (map :collection (collection-timelines-request coll-a false)))))
-      (testing "Only un-archived timelines in the collection of the card are returned"
-        (is (= #{"Timeline B"}
-               (timeline-names (collection-timelines-request coll-b false)))))
-      (testing "Timelines have events when `include=events` is passed"
-        (is (= #{"event-aa" "event-ab"}
-               (event-names (collection-timelines-request coll-a true)))))
-      (testing "Timelines have only un-archived events when `include=events` is passed"
-        (is (= #{"event-ba"}
-               (event-names (collection-timelines-request coll-b true)))))
-      (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
-        (is (= '()
-               (->> (collection-timelines-request coll-c true) first :events)))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [coll-a (first (collection/create-collections! [{:location "/" :name "Collection A"}]))
+            coll-b (first (collection/create-collections! [{:location "/" :name "Collection B"}]))
+            coll-c (first (collection/create-collections! [{:location "/" :name "Collection C"}]))]
+        (mt/with-temp [:model/Timeline tl-a      {:name          "Timeline A"
+                                                  :collection_id (u/the-id coll-a)}
+                       :model/Timeline tl-b      {:name          "Timeline B"
+                                                  :collection_id (u/the-id coll-b)}
+                       :model/Timeline _tl-b-old {:name          "Timeline B-old"
+                                                  :collection_id (u/the-id coll-b)
+                                                  :archived      true}
+                       :model/Timeline _tl-c     {:name          "Timeline C"
+                                                  :collection_id (u/the-id coll-c)}
+                       :model/TimelineEvent _event-aa {:name        "event-aa"
+                                                       :timeline_id (u/the-id tl-a)}
+                       :model/TimelineEvent _event-ab {:name        "event-ab"
+                                                       :timeline_id (u/the-id tl-a)}
+                       :model/TimelineEvent _event-ba {:name        "event-ba"
+                                                       :timeline_id (u/the-id tl-b)}
+                       :model/TimelineEvent _event-bb {:name        "event-bb"
+                                                       :timeline_id (u/the-id tl-b)
+                                                       :archived    true}]
+          (testing "Timelines in the collection of the card are returned"
+            (is (= #{"Timeline A"}
+                   (timeline-names (collection-timelines-request coll-a false)))))
+          (testing "Timelines in the collection have a hydrated `:collection` key"
+            (is (= #{(u/the-id coll-a)}
+                   (->> (collection-timelines-request coll-a false)
+                        (map #(get-in % [:collection :id]))
+                        set))))
+          (testing "check that `:can_write` key is hydrated"
+            (is (every?
+                 #(contains? % :can_write)
+                 (map :collection (collection-timelines-request coll-a false)))))
+          (testing "Only un-archived timelines in the collection of the card are returned"
+            (is (= #{"Timeline B"}
+                   (timeline-names (collection-timelines-request coll-b false)))))
+          (testing "Timelines have events when `include=events` is passed"
+            (is (= #{"event-aa" "event-ab"}
+                   (event-names (collection-timelines-request coll-a true)))))
+          (testing "Timelines have only un-archived events when `include=events` is passed"
+            (is (= #{"event-ba"}
+                   (event-names (collection-timelines-request coll-b true)))))
+          (testing "Timelines with no events have an empty list on `:events` when `include=events` is passed"
+            (is (= '()
+                   (->> (collection-timelines-request coll-c true) first :events)))))))))
+
+(deftest timeline-events-archived-test
+  (testing "GET /api/timeline/:id?include=events"
+    (mt/with-temp [:model/Timeline      tl        {:name "Timeline"}
+                   :model/TimelineEvent _event    {:name "event" :timeline_id (u/the-id tl)}
+                   :model/TimelineEvent _event-old {:name "event-old" :timeline_id (u/the-id tl) :archived true}]
+      (testing "without `archived` returns only un-archived events"
+        (is (= #{"event"}
+               (event-names [(mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl))
+                                                   :include "events")]))))
+      (testing "with `archived=true` returns archived and un-archived events"
+        (is (= #{"event" "event-old"}
+               (event-names [(mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl))
+                                                   :include "events" :archived true)])))))))
 
 (deftest collection-archived-timelines-test
   (testing "GET /api/timeline/collection/:id?archived=true returns only archived timelines"
-    (mt/with-temp [:model/Collection coll-b {:name "Collection B"}
-                   :model/Timeline _tl-b     {:name          "Timeline B"
-                                              :collection_id (u/the-id coll-b)}
-                   :model/Timeline _tl-b-old {:name          "Timeline B-old"
-                                              :collection_id (u/the-id coll-b)
-                                              :archived      true}]
-      (is (= #{"Timeline B-old"}
-             (timeline-names (mt/user-http-request :rasta :get 200
-                                                   (str "timeline/collection/" (u/the-id coll-b)) :archived true)))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [coll-b (first (collection/create-collections! [{:location "/" :name "Collection B"}]))]
+        (mt/with-temp [:model/Timeline _tl-b     {:name          "Timeline B"
+                                                  :collection_id (u/the-id coll-b)}
+                       :model/Timeline _tl-b-old {:name          "Timeline B-old"
+                                                  :collection_id (u/the-id coll-b)
+                                                  :archived      true}]
+          (is (= #{"Timeline B-old"}
+                 (timeline-names (mt/user-http-request :rasta :get 200
+                                                       (str "timeline/collection/" (u/the-id coll-b)) :archived true)))))))))
 
 (deftest collection-timelines-permissions-test
   (testing "GET /api/timeline/collection/:id"

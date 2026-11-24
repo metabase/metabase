@@ -7,6 +7,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.driver.util :as driver.u]
    [metabase.indexes-rest.db :as indexes-rest.db]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.indexes.reconcile :as reconcile]
@@ -72,7 +73,9 @@
   [_route-params
    {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
   (let [transform   (api/read-check :model/Transform transform-id)
-        database    (api/check-404 (indexes-rest.db/database (transforms-base.i/target-db-id transform)))
+        database-id (transforms-base.i/target-db-id transform)
+        _           (api/check-404 (some-> database-id indexes-rest.db/database-exists?))
+        database    (driver.u/lib-database database-id)
         {:keys [schema] table-name :name} (:target transform)
         managed     (table-index/select-for-transform transform-id)
         [warehouse warehouse-error]
@@ -104,11 +107,11 @@
     ;; (transform_id, index_name) is unique; reject a duplicate cleanly instead of hitting the constraint.
     (api/check-400 (not (table-index/exists-for-transform? transform_id idx-name)) duplicate)
     (try
-      (indexes-rest.db/insert-table-index!
-       {:transform_id transform_id
-        :index_name   idx-name
-        :structured   structured
-        :created_by   api/*current-user-id*})
+      (first (table-index/create-table-indexes!
+              [{:transform_id transform_id
+                :index_name   idx-name
+                :structured   structured
+                :created_by   api/*current-user-id*}]))
       (catch Exception e
         ;; the pre-check races a concurrent create; if the row exists now, surface the same 400
         (api/check-400 (not (table-index/exists-for-transform? transform_id idx-name)) duplicate)
@@ -134,15 +137,14 @@
     (assert-stable-key! existing structured)
     ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
     (t2/with-transaction [_conn]
-      (indexes-rest.db/set-table-index-structured! id structured)
+      (table-index/update-table-indexes! [{:id id :structured structured}])
       (indexes-rest.db/table-index id))))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/request/:id"
+(api.macros/defendpoint :delete "/request/:id" :- ::api/generic-204-no-content
   "Mark an index request `delete-pending`. The physical index is only dropped when the target table is next rebuilt
   (pending changes force a full run), so the row stays visible in this state until that rebuild removes it."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
-    (indexes-rest.db/set-table-index-status! id :delete-pending))
+    (table-index/update-table-indexes! [{:id id :status :delete-pending}]))
   api/generic-204-no-content)

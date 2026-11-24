@@ -27,7 +27,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.core :as warehouses])
+   [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.models.database :as database])
   (:import
    (org.quartz
     JobDetail)))
@@ -85,17 +86,17 @@
                   (catch Throwable e
                     e))]
       (log/warnf "Cannot sync Database %d: %s" database-id (ex-message ex))
-      (database-routing/with-database-routing-off
+      (database-routing/with-anonymous-router-access
         (let [db-id            (:id database)
               metadata-results (tracing/with-span :sync "sync.metadata" {:db/id db-id}
-                                 (sync-metadata/sync-db-metadata! database))
+                                 (sync-metadata/sync-db-metadata! db-id))
               analyze-results  (when (:is_full_sync database)
                                  (tracing/with-span :sync "sync.analyze" {:db/id db-id}
-                                   (analyze/analyze-db! database)))
+                                   (analyze/analyze-db! db-id)))
               refingerprint-results (when (and (:refingerprint database)
                                                (should-refingerprint-fields? analyze-results))
                                       (tracing/with-span :sync "sync.refingerprint" {:db/id db-id}
-                                        (analyze/refingerprint-db! database)))]
+                                        (analyze/refingerprint-db! db-id)))]
           (cond-> {:metadata-results metadata-results}
             analyze-results (assoc :analyze-results analyze-results)
             refingerprint-results (assoc :refingerprint-results refingerprint-results)))))))
@@ -143,7 +144,7 @@
                                   (sync-databases-trigger/unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                                   (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
           (if (:is_full_sync database)
-            (sync.field-values/update-field-values! database)
+            (sync.field-values/update-field-values! database-id)
             (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))))
 
 (task/defjob UpdateFieldValues
@@ -202,13 +203,12 @@
                 counter)
                ([counter db]
                 (try
-                  (sync.db/update-database! (u/the-id db)
-                                            (sync.schedules/schedule-map->cron-strings
-                                             ;; TODO (edpaget): this can go away after this patch is deployed to cloud
-                                             (if (= sync.schedules/old-sample-metadata-sync-schedule-cron-string
-                                                    (:metadata_sync_schedule db))
-                                               (sync.schedules/default-randomized-schedule {:excluded-minute 43})
-                                               (sync.schedules/default-randomized-schedule))))
+                  (database/update-databases! [(assoc (sync.schedules/schedule-map->cron-strings
+                                                       ;; TODO (edpaget): this can go away after this patch is deployed to cloud
+                                                       (if (= sync.schedules/old-sample-metadata-sync-schedule-cron-string
+                                                              (:metadata_sync_schedule db))
+                                                         (sync.schedules/default-randomized-schedule {:excluded-minute 43})
+                                                         (sync.schedules/default-randomized-schedule))) :id (u/the-id db))])
                   (inc counter)
                   (catch Exception e
                     (log/warnf "Error updating database %d for randomized schedules: %s" (u/the-id db) (ex-message e))

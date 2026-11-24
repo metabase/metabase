@@ -143,6 +143,10 @@ export function monitorAiAuditingCliCalls() {
   return `${monitorAiAuditingCli()}/calls`;
 }
 
+export function monitorAiAuditingDataApps() {
+  return `${monitorAiAuditing()}/data-apps`;
+}
+
 export function monitorApiKeyUsage() {
   return `${ROOT_URL}/api-key-usage`;
 }

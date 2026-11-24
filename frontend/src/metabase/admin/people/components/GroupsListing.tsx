@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { jt, t } from "ttag";
@@ -25,6 +26,7 @@ import {
   Icon,
   Input,
   Menu,
+  Text,
   UnstyledButton,
 } from "metabase/ui";
 import { KEYCODE_ENTER } from "metabase/utils/keyboard";
@@ -98,16 +100,18 @@ function DeleteGroupModal({
         ? t`Are you sure you want remove this group and its API key?`
         : t`Are you sure you want remove this group and its API keys?`;
 
-  const message = hasApiKeys
-    ? jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
-        <Link
-          key="link"
-          to="/admin/settings/authentication/api-keys"
-          variant="brand"
-        >{t`move the API keys to another group`}</Link>
-      )}.`
-    : t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
-              This can't be undone.`;
+  const message = hasApiKeys ? (
+    <Text c="text-secondary">{jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
+      <Link
+        key="link"
+        to="/admin/settings/authentication/api-keys"
+        variant="brand"
+      >{t`move the API keys to another group`}</Link>
+    )}.`}</Text>
+  ) : (
+    t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
+              This can't be undone.`
+  );
 
   const confirmButtonText =
     apiKeysCount === 0
@@ -148,7 +152,7 @@ function ActionsPopover({
       <Menu shadow="sm" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton aria-label={`group-action-button`}>
-            <Icon c="text-disabled" name="ellipsis" />
+            <Icon c="text-secondary" name="ellipsis" />
           </UnstyledButton>
         </Menu.Target>
         <Menu.Dropdown>
@@ -305,7 +309,7 @@ const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
     return null;
   }
   return (
-    <Box component="span" c="text-disabled">
+    <Box component="span" c="text-secondary">
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}

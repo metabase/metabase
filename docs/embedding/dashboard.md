@@ -207,6 +207,8 @@ Entity navigation needs `drills` set to `true`, because `drills="false"` renders
 
 In the SDK, the equivalent prop is `enableEntityNavigation`, which is also off by default. Either way, people can still only open content they have [collection permissions](../permissions/collections.md) for.
 
+[Controlled filter values](./parameters.md#control-values-from-your-app) only apply to the dashboard you embed. To see and set the filter values of the dashboards and SQL questions that people open from that dashboard, check out [Control values on linked dashboards and questions](./parameters.md#control-values-on-linked-dashboards-and-questions).
+
 ### React SDK interactive dashboard
 
 Use `InteractiveDashboard` when you want people to explore their data.
@@ -278,7 +280,7 @@ For the full list of attributes, see [web component attributes](./browser-refere
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/editable-dashboard.tsx" %}
 ```
 
-When someone adds a new question to a dashboard, `EditableDashboard` opens the query builder. Pass `dataPickerProps` to shape the query builder's data picker: `entityTypes` narrows what people can query to `"table"`, `"question"`, or `"model"`, and `dataPicker` switches between the simple and staged pickers. Metabase defaults to the simple picker, switching to staged at 100 or more data sources.
+When someone adds a new question to a dashboard, `EditableDashboard` opens the query builder. Pass `dataPickerProps` to shape the query builder's data picker: `entityTypes` narrows what people can query to `"table"`, `"question"`, `"model"`, `"metric"`, or `"semantic-layer"`, and `dataPicker` switches between the simple and full pickers. Metabase defaults to the simple picker, switching to full at 100 or more tables, models, and metrics.
 
 For example, limiting people to tables keeps them building on the data you point them at, rather than on other people's saved questions:
 
@@ -511,7 +513,7 @@ Dashboard components fill the height of their container (`min-height: 100%`). Ov
 
 ### Theme an embedded dashboard
 
-Set a light or dark preset, or (on Pro/Enterprise) customize colors and fonts. Web components take the theme in [`defineMetabaseConfig`](./appearance.md#add-an-advanced-theme-to-your-embed); the SDK takes it from [`defineMetabaseTheme`](./appearance.md#reuse-a-saved-theme-in-the-sdk) on `MetabaseProvider`. The theme object itself is the same either way.
+Set a light or dark preset, or (on Pro/Enterprise) customize colors and fonts. Web components take the theme in `defineMetabaseConfig`, and the SDK takes it from `defineMetabaseTheme` on `MetabaseProvider`. The theme object itself is the same either way. See [Add a theme to your embeds](./appearance.md#add-a-theme-to-your-embeds).
 
 The `dashboard` component in the theme has its own overrides:
 

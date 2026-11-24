@@ -141,7 +141,7 @@ export const MembershipSelect = ({
         </Tooltip>
         {canEditMembershipType && (
           <PLUGIN_GROUP_MANAGERS.UserTypeToggle
-            tooltipPlacement="bottom"
+            tooltipPlacement="right"
             isManager={memberships.get(group.id)?.is_group_manager}
             onChange={(is_group_manager: boolean) =>
               handleChangeMembership(group.id, {
@@ -174,7 +174,7 @@ export const MembershipSelect = ({
             groups={groups}
             selectedGroupIds={selectedGroupIds}
           />
-          <Icon c="text-disabled" name="chevrondown" size={10} />
+          <Icon c="text-secondary" name="chevrondown" size={10} />
         </Flex>
       </Popover.Target>
       <Popover.Dropdown w="300px" mah="600px" py="sm">

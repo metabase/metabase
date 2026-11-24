@@ -5,10 +5,10 @@
    [metabase.notification.models :as models.notification]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
+   [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn- sort-handlers
@@ -24,7 +24,7 @@
 
 (defn migrate-alert!
   [scheduler pulse-id]
-  (->> (#'pulse-to-notification/alert->notification! scheduler (t2/select-one :pulse pulse-id))
+  (->> (#'pulse-to-notification/alert->notification! scheduler (t2/select-one :pulse :id pulse-id))
        (map :id)
        (map (partial t2/select-one :model/Notification))
        (map models.notification/hydrate-notification)
@@ -52,7 +52,9 @@
   (let [pulse-id (t2/insert-returning-pk! :pulse (assoc (add-timestamp pulse) :entity_id (u/generate-nano-id)))]
     (t2/insert! :pulse_card (map #(assoc % :pulse_id pulse-id :entity_id (u/generate-nano-id)) pulse-cards))
     (doseq [pcr pcs+recipients]
-      (let [pc-id (t2/insert-returning-pk! :model/PulseChannel (-> pcr (assoc :pulse_id pulse-id) (dissoc :recipients) add-timestamp))]
+      (let [pc-id (t2/insert-returning-pk! :model/PulseChannel (-> pcr (assoc :pulse_id pulse-id) (dissoc :recipients) add-timestamp))
+            _     (task.send-pulses-trigger/update-send-pulse-trigger-if-needed!
+                   pulse-id (t2/select-one :model/PulseChannel :id pc-id) :add-pc-ids #{pc-id})]
         (when (seq (:recipients pcr))
           (t2/insert! :pulse_channel_recipient (map #(assoc % :pulse_channel_id pc-id) (:recipients pcr))))))
     pulse-id))
@@ -67,7 +69,7 @@
                         alert-prop)
                  [{:card_id  card-id
                    :position 0}]
-                 (map #(merge schedule-daily-6-am {:details "{}"} %) pcs+recipients)))
+                 (map #(merge schedule-daily-6-am {:details {}} %) pcs+recipients)))
 
 (deftest migrate-alert-test
   (testing "basic alert migration"
@@ -76,7 +78,7 @@
         (testing "has one subscription, one email handler with one recipient"
           (let [alert-id (create-alert! {} card-id [{:channel_type "email"
                                                      :recipients  [{:user_id (mt/user->id :rasta)}]}])
-                alert    (t2/select-one :model/Pulse alert-id)
+                alert    (t2/select-one :model/Pulse :id alert-id)
                 alert-triggers (pulse-channel-test/send-pulse-triggers alert-id)
                 notification (first (migrate-alert! (task/scheduler) alert-id))]
             (testing "sanity check that there is a trigger for the alert to begin with"
@@ -123,11 +125,11 @@
                                                       :details {:url "https://example.com/hook", :auth-method "none"}}]
         (let [alert-id (create-alert! {} card-id [{:channel_type "email"
                                                    :enabled      true
-                                                   :details      (json/encode {:emails ["ngoc@metabase.com"]})
+                                                   :details      {:emails ["ngoc@metabase.com"]}
                                                    :recipients   [{:user_id (mt/user->id :rasta)}]}
                                                   {:channel_type "slack"
                                                    :enabled      true
-                                                   :details      (json/encode {:channel "#test-channel"})}
+                                                   :details      {:channel "#test-channel"}}
                                                   {:channel_type "http"
                                                    :enabled      true
                                                    :channel_id   channel-id}

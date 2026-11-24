@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -24,6 +25,16 @@
    [next.jdbc :as next.jdbc]
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2]))
+
+(def ^:private transforms-test
+  "A private copy of [[transforms-dataset/transforms-test]]. The tests here insert rows into its `transforms_products`
+  table and delete them afterwards. The shared dataset is static, and drivers like Snowflake, BigQuery and MotherDuck
+  share static datasets between concurrent CI jobs, so tests elsewhere that read `transforms_products` would see the
+  extra rows. With `:static false` each test run gets its own copy. It needs its own name too, because the app DB finds
+  dataset databases by name."
+  (-> transforms-dataset/transforms-test
+      (assoc :database-name "transforms-incremental-test")
+      (assoc-in [:options :static] false)))
 
 (def checkpoint-configs
   {:integer {:field-name "id"
@@ -76,6 +87,18 @@
       (transforms.execute/execute! transform run-opts))
     (transforms.execute/execute! transform run-opts)))
 
+(defn- native-query-with-table-tag
+  "Create a native query with a `source_table` table tag."
+  [sql table-id]
+  (lib/with-template-tags
+    (lib/native-query (mt/metadata-provider) sql)
+    {"source_table" {:id           "source_table"
+                     :name         "source_table"
+                     :display-name "Source Table"
+                     :type         :table
+                     :table-id     table-id
+                     :required     true}}))
+
 (defn- make-incremental-source-query-with-table-tag
   "Create a native query with a table tag for testing subquery expansion."
   [checkpoint-config]
@@ -87,25 +110,21 @@
                       (quoted "name") (quoted "category") (quoted "price") (quoted "created_at")
                       timestamp-sql (quoted "load_timestamp") (quoted "source_table")
                       (quoted field-name))]
-    {:database (mt/id)
-     :type :native
-     :native {:query query
-              :template-tags {"source_table" {:id "source_table"
-                                              :name "source_table"
-                                              :display-name "Source Table"
-                                              :type "table"
-                                              :table-id table-id
-                                              :required true}}}}))
+    (native-query-with-table-tag query table-id)))
 
 (defn- make-incremental-mbql-query
   "Create an MBQL query for incremental transforms. "
 
   [checkpoint-config]
-  (let [{:keys [field-name]} checkpoint-config]
-    (mt/mbql-query transforms_products
-      {:expressions {"load_timestamp" [:now]}
-       :fields [$name $category $price $created_at [:expression "load_timestamp"]]
-       :order-by [[:asc [:field (mt/id :transforms_products (keyword field-name))]]]})))
+  (let [{:keys [field-name]} checkpoint-config
+        mp    (mt/metadata-provider)
+        query (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
+                  (lib/expression "load_timestamp" (lib/now)))
+        col   #(lib.metadata/field mp (mt/id :transforms_products %))]
+    (-> query
+        (lib/with-fields [(col :name) (col :category) (col :price) (col :created_at)
+                          (lib/expression-ref query "load_timestamp")])
+        (lib/order-by (col (keyword field-name))))))
 
 (def incremental-python-body
   (str "import pandas as pd\n"
@@ -127,15 +146,15 @@
      :source_database_id (mt/id)
      :source (case transform-type
                ;; Native queries now use table tags with checkpoint-filter-field-id
-               :native {:type "query"
+               :native {:type :query
                         :query (make-incremental-source-query-with-table-tag checkpoint-config)
                         :source-incremental-strategy {:type "checkpoint"
                                                       :checkpoint-filter-field-id (checkpoint-filter-field)}}
-               :mbql {:type "query"
+               :mbql {:type :query
                       :query (make-incremental-mbql-query checkpoint-config)
                       :source-incremental-strategy {:type "checkpoint"
                                                     :checkpoint-filter-field-id (checkpoint-filter-field)}}
-               :python {:type "python"
+               :python {:type :python
                         :source-tables [(transforms.tu/source-table-entry "transforms_products" (mt/id :transforms_products))]
                         :body incremental-python-body
                         :source-incremental-strategy {:type "checkpoint"
@@ -156,21 +175,20 @@
 (defn- get-distinct-timestamp-count
   "Get the count of distinct load_timestamp values in a table."
   [{table-name :name, :keys [schema database]}]
-  (let [native-query {:database database
-                      :type     :native
-                      :native   {:query (format "SELECT COUNT(DISTINCT %s) FROM %s"
-                                                (sql.u/quote-name driver/*driver* :field "load_timestamp")
-                                                (sql.u/quote-name driver/*driver* :table schema table-name))}}
+  (let [native-query (lib/native-query (lib-be/application-database-metadata-provider database)
+                                       (format "SELECT COUNT(DISTINCT %s) FROM %s"
+                                               (sql.u/quote-name driver/*driver* :field "load_timestamp")
+                                               (sql.u/quote-name driver/*driver* :table schema table-name)))
         result       (qp/process-query native-query)]
     (some-> result :data :rows first first bigint)))
 
 (defn- get-checkpoint-value [transform-id]
-  (let [transform (t2/select-one :model/Transform transform-id)
+  (let [transform (t2/select-one :model/Transform :id transform-id)
         {:keys [last_checkpoint_value]} transform]
     (when last_checkpoint_value
       (let [source-incremental-strategy (get-in transform [:source :source-incremental-strategy])
             field-id (:checkpoint-filter-field-id source-incremental-strategy)
-            field (t2/select-one :model/Field field-id)]
+            field (t2/select-one :model/Field :id field-id)]
         (#'transforms-base.u/parse-checkpoint-value (:base_type field) last_checkpoint_value)))))
 
 (defn- compare-checkpoint-values
@@ -185,8 +203,8 @@
 (defn- insert-test-products!
   "Insert new products into the transforms_products table."
   [products]
-  (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
-        spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+  (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table :id (mt/id :transforms_products))
+        spec      (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
         table-sql (sql.u/quote-name driver/*driver* :table schema source-table-name)
         field-sql #(sql.u/quote-name driver/*driver* :field %)]
     (if (#{:clickhouse :snowflake} driver/*driver*)
@@ -215,8 +233,8 @@
 
 (defn- delete-test-products!
   [products]
-  (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
-        spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+  (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table :id (mt/id :transforms_products))
+        spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
         delete-sql (format "DELETE FROM %s WHERE %s IN (%s)"
                            (sql.u/quote-name driver/*driver* :table schema source-table-name)
                            (sql.u/quote-name driver/*driver* :field "name")
@@ -239,7 +257,7 @@
 (defn- target-table-gen [prefix]
   {:type     :table
    :name     prefix
-   :schema   (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+   :schema   (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
    :database (mt/id)})
 
 (deftest create-incremental-transform-test
@@ -249,7 +267,7 @@
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms-basic :hosting}
-            (mt/dataset transforms-dataset/transforms-test
+            (mt/dataset transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "incremental_test")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [field-name]} checkpoint-config
@@ -282,7 +300,7 @@
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms-basic :transforms-python}
-            (mt/dataset transforms-dataset/transforms-test
+            (mt/dataset transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "incremental_twice")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [expected-initial-checkpoint expected-second-checkpoint]} checkpoint-config
@@ -300,7 +318,7 @@
                             (is (compare-checkpoint-values checkpoint-type expected-initial-checkpoint checkpoint)
                                 (format "Checkpoint should be MAX(%s) from all 16 rows" (:field-name checkpoint-config)))))))
                     (testing "Second run with no new data adds nothing"
-                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (let [transform (t2/select-one :model/Transform :id (:id transform))]
                         (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                         (let [row-count           (get-table-row-count target-table)
                               distinct-timestamps (get-distinct-timestamp-count target-table)]
@@ -313,7 +331,7 @@
                             :category "Gadget"
                             :price 379.99
                             :created-at "2024-01-20T10:00:00"}]
-                          (let [transform (t2/select-one :model/Transform (:id transform))]
+                          (let [transform (t2/select-one :model/Transform :id (:id transform))]
                             (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                             (let [row-count           (get-table-row-count target-table)
                                   distinct-timestamps (get-distinct-timestamp-count target-table)
@@ -331,7 +349,7 @@
   (testing "POST /api/transform/:id/reset-checkpoint clears the checkpoint and forces a full reprocess"
     (mt/test-drivers (test-drivers)
       (mt/with-premium-features #{:transforms-basic :hosting}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (with-transform-cleanup! [target-table (target-table-gen "reset_checkpoint")]
             (let [checkpoint-config (get checkpoint-configs :integer)
                   transform-payload (make-incremental-transform-payload "Reset Checkpoint Transform" target-table :mbql checkpoint-config)]
@@ -347,7 +365,7 @@
                     (is (nil? (mt/user-http-request :crowberto :post 204 (format "transform/%s/reset-checkpoint" (:id transform)))))
                     (is (nil? (get-checkpoint-value (:id transform)))))
                   (testing "the next run reprocesses the full source table, not just the tail"
-                    (let [transform (t2/select-one :model/Transform (:id transform))]
+                    (let [transform (t2/select-one :model/Transform :id (:id transform))]
                       (execute-transform-with-ordering! transform :mbql (:field-name checkpoint-config) {:run-method :manual})
                       (is (= 17 (get-table-row-count target-table))
                           "full reload replaces the target with all 17 source rows"))))))))))))
@@ -360,13 +378,13 @@
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
-            (mt/dataset transforms-dataset/transforms-test
+            (mt/dataset transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_incr_to_non_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [expected-initial-checkpoint]} checkpoint-config
                       initial-payload (make-incremental-transform-payload "Switch Transform" target-table transform-type checkpoint-config)]
                   (mt/with-temp [:model/Transform transform initial-payload]
-                    (let [get-transform #(t2/select-one :model/Transform (:id transform))]
+                    (let [get-transform #(t2/select-one :model/Transform :id (:id transform))]
                       (testing "Initial incremental run processes all data"
                         (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                         (transforms.tu/wait-for-table (:name target-table) 10000)
@@ -385,14 +403,14 @@
                       (testing "Switch to non-incremental via PUT API"
                         (let [non-incremental-payload (-> initial-payload
                                                           (update :source dissoc :source-incremental-strategy)
-                                                          (update :target dissoc :source-incremental-strategy)
+                                                          (update :target dissoc :target-incremental-strategy)
                                                           (update :target assoc :type "table"))
                               updated                 (mt/user-http-request :crowberto :put 200 (format "transform/%d" (:id transform))
                                                                             non-incremental-payload)]
                           (is (= "table" (-> updated :target :type)))
                           (is (nil? (-> updated :source :source-incremental-strategy)))))
                       (testing "Non-incremental run overwrites all data"
-                        (let [transform (t2/select-one :model/Transform (:id transform))]
+                        (let [transform (t2/select-one :model/Transform :id (:id transform))]
                           (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                           (let [row-count           (get-table-row-count target-table)
                                 distinct-timestamps (get-distinct-timestamp-count target-table)]
@@ -413,14 +431,14 @@
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
-            (mt/dataset transforms-dataset/transforms-test
+            (mt/dataset transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_non_incr_to_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [expected-initial-checkpoint]} checkpoint-config
                       incremental-payload (make-incremental-transform-payload "Switch Transform" target-table transform-type checkpoint-config)
                       initial-payload (-> incremental-payload
                                           (update :source dissoc :source-incremental-strategy)
-                                          (update :target dissoc :source-incremental-strategy)
+                                          (update :target dissoc :target-incremental-strategy)
                                           (update :target assoc :type "table"))]
                   (mt/with-temp [:model/Transform transform initial-payload]
                     (testing "Initial non-incremental run creates table"
@@ -439,7 +457,7 @@
                         (is (= "table-incremental" (-> updated :target :type)))
                         (is (= "checkpoint" (-> updated :source :source-incremental-strategy :type)))))
                     (testing "First incremental run after switch recreates table with checkpoint"
-                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (let [transform (t2/select-one :model/Transform :id (:id transform))]
                         (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                         (let [row-count           (get-table-row-count target-table)
                               distinct-timestamps (get-distinct-timestamp-count target-table)
@@ -448,7 +466,7 @@
                           (is (= 1 distinct-timestamps) "Should have 1 distinct timestamp")
                           (is (compare-checkpoint-values checkpoint-type expected-initial-checkpoint checkpoint) "Checkpoint should be computed from existing data"))))
                     (testing "Second incremental run with no new data"
-                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (let [transform (t2/select-one :model/Transform :id (:id transform))]
                         (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                         (let [row-count           (get-table-row-count target-table)
                               distinct-timestamps (get-distinct-timestamp-count target-table)]
@@ -461,7 +479,7 @@
                             :category "Gadget"
                             :price 379.99
                             :created-at "2024-01-20T10:00:00"}]
-                          (let [transform (t2/select-one :model/Transform (:id transform))]
+                          (let [transform (t2/select-one :model/Transform :id (:id transform))]
                             (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                             (let [row-count (get-table-row-count target-table)
                                   checkpoint (get-checkpoint-value (:id transform))]
@@ -474,22 +492,14 @@
   (testing "Transform fails at runtime with unsupported checkpoint column type"
     (mt/test-drivers #{:postgres}
       (mt/with-premium-features #{:transforms-basic :hosting}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (with-transform-cleanup! [target-table "unsupported_type_test"]
             (let [name-field-id (mt/id :transforms_products :name)
                   table-id (mt/id :transforms_products)
-                  schema (t2/select-one-fn :schema :model/Table table-id)
+                  schema (t2/select-one-fn :schema :model/Table :id table-id)
                   transform-payload {:name "Invalid Checkpoint Type Transform"
-                                     :source {:type "query"
-                                              :query {:database (mt/id)
-                                                      :type :native
-                                                      :native {:query "SELECT * FROM {{source_table}} AS s"
-                                                               :template-tags {"source_table" {:id "source_table"
-                                                                                               :name "source_table"
-                                                                                               :display-name "Source Table"
-                                                                                               :type "table"
-                                                                                               :table-id table-id
-                                                                                               :required true}}}}
+                                     :source {:type :query
+                                              :query (native-query-with-table-tag "SELECT * FROM {{source_table}} AS s" table-id)
                                               :source-incremental-strategy {:type "checkpoint"
                                                                             :checkpoint-filter-field-id name-field-id}}
                                      :target {:type "table-incremental"
@@ -508,23 +518,15 @@
 (deftest empty-table-test
   (mt/test-drivers #{:postgres}
     (mt/with-premium-features #{:transforms-basic}
-      (mt/dataset transforms-dataset/transforms-test
+      (mt/dataset transforms-test
         (with-transform-cleanup! [target-table "empty_table_target"]
           (let [db-id   (mt/id)
-                db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
+                db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
                 table-id (mt/id :transforms_products)
                 checkpoint-field-id (t2/select-one-pk :model/Field :name "id" :table_id table-id)
                 ;; Query that returns no rows but has the checkpoint column
-                source  {:type                        "query"
-                         :query                       {:database db-id
-                                                       :type     :native
-                                                       :native   {:query "SELECT * FROM {{source_table}} AS s WHERE 1 = 2"
-                                                                  :template-tags {"source_table" {:id "source_table"
-                                                                                                  :name "source_table"
-                                                                                                  :display-name "Source Table"
-                                                                                                  :type "table"
-                                                                                                  :table-id table-id
-                                                                                                  :required true}}}}
+                source  {:type                        :query
+                         :query                       (native-query-with-table-tag "SELECT * FROM {{source_table}} AS s WHERE 1 = 2" table-id)
                          :source-incremental-strategy {:type "checkpoint"
                                                        :checkpoint-filter-field-id checkpoint-field-id}}
                 target  {:type                        "table-incremental"
@@ -539,7 +541,7 @@
               (testing "sync has picked up table"
                 (is (=? {:name target-table} (t2/select-one :model/Table :name target-table))))
               (testing "checkpoint is set from source table MAX even though query returned no rows"
-                (let [transform (t2/select-one :model/Transform (:id transform))]
+                (let [transform (t2/select-one :model/Transform :id (:id transform))]
                   (is (some? (:last_checkpoint_value transform))
                       "Checkpoint is computed from source table, not query output"))))))))))
 
@@ -547,21 +549,13 @@
   (testing "Transform with non-existent checkpoint-filter-field-id fails gracefully"
     (mt/test-drivers #{:postgres}
       (mt/with-premium-features #{:transforms-basic}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (with-transform-cleanup! [target-table "missing_field_target"]
             (let [db-id   (mt/id)
                   table-id (mt/id :transforms_products)
                   invalid-field-id 999999
-                  source  {:type                        "query"
-                           :query                       {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "SELECT id FROM {{source_table}}"
-                                                                    :template-tags {"source_table" {:id "source_table"
-                                                                                                    :name "source_table"
-                                                                                                    :display-name "Source Table"
-                                                                                                    :type "table"
-                                                                                                    :table-id table-id
-                                                                                                    :required true}}}}
+                  source  {:type                        :query
+                           :query                       (native-query-with-table-tag "SELECT id FROM {{source_table}}" table-id)
                            :source-incremental-strategy {:type "checkpoint"
                                                          :checkpoint-filter-field-id invalid-field-id}}
                   target  {:type                        "table-incremental"
@@ -580,21 +574,13 @@
   (testing "Transform with inactive checkpoint field fails gracefully"
     (mt/test-drivers #{:postgres}
       (mt/with-premium-features #{:transforms-basic}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (with-transform-cleanup! [target-table "inactive_field_target"]
             (let [db-id   (mt/id)
                   table-id (mt/id :transforms_products)
                   field-id (mt/id :transforms_products :id)
-                  source  {:type                        "query"
-                           :query                       {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "SELECT id FROM {{source_table}} as s"
-                                                                    :template-tags {"source_table" {:id "source_table"
-                                                                                                    :name "source_table"
-                                                                                                    :display-name "Source Table"
-                                                                                                    :type "table"
-                                                                                                    :table-id table-id
-                                                                                                    :required true}}}}
+                  source  {:type                        :query
+                           :query                       (native-query-with-table-tag "SELECT id FROM {{source_table}} as s" table-id)
                            :source-incremental-strategy {:type "checkpoint"
                                                          :checkpoint-filter-field-id field-id}}
                   target  {:type                        "table-incremental"
@@ -604,7 +590,7 @@
                            :target-incremental-strategy {:type "append"}}]
               (mt/with-temp [:model/Transform transform {:name "test transform" :source source, :target target}]
                 ;; Mark the field as inactive
-                (t2/update! :model/Field field-id {:active false})
+                (t2/update! :model/Field :id field-id {:active false})
                 (try
                   (testing "Transform execution fails with inactive checkpoint field"
                     (is (thrown-with-msg?
@@ -613,28 +599,20 @@
                          (transforms.execute/execute! transform {:run-method :manual}))))
                   (finally
                     ;; Restore field to active state for other tests
-                    (t2/update! :model/Field field-id {:active true})))))))))))
+                    (t2/update! :model/Field :id field-id {:active true})))))))))))
 
 (deftest changing-query-keeps-checkpoint-test
   (mt/test-drivers #{:postgres}
     (mt/with-premium-features #{:transforms-basic}
-      (mt/dataset transforms-dataset/transforms-test
+      (mt/dataset transforms-test
         (with-transform-cleanup! [target-table "change_table_target"]
           (let [db-id   (mt/id)
-                db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
+                db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
                 table-id (mt/id :transforms_products)
                 checkpoint-field-id (t2/select-one-pk :model/Field :name "id" :table_id table-id)
                 make-source (fn [query-sql]
-                              {:type "query"
-                               :query {:database db-id
-                                       :type :native
-                                       :native {:query query-sql
-                                                :template-tags {"source_table" {:id "source_table"
-                                                                                :name "source_table"
-                                                                                :display-name "Source Table"
-                                                                                :type "table"
-                                                                                :table-id table-id
-                                                                                :required true}}}}
+                              {:type :query
+                               :query (native-query-with-table-tag query-sql table-id)
                                :source-incremental-strategy {:type "checkpoint"
                                                              :checkpoint-filter-field-id checkpoint-field-id}})
                 source  (make-source "SELECT id FROM {{source_table}} AS s")
@@ -651,16 +629,16 @@
                 (transforms.execute/execute! transform {:run-method :manual})
                 (is (= 16 (count (pg-table-rows db-spec target-table)))))
               (t2/update! :model/Transform
-                          (:id transform)
+                          :id (:id transform)
                           {:source (make-source "SELECT id FROM {{source_table}} AS s ORDER BY id DESC")})
               (testing "run after query change with no new data keeps same row count"
-                (transforms.execute/execute! (t2/select-one :model/Transform (:id transform)) {:run-method :manual})
+                (transforms.execute/execute! (t2/select-one :model/Transform :id (:id transform)) {:run-method :manual})
                 (is (= 16 (count (pg-table-rows db-spec target-table)))
                     "Checkpoint preserved across query change, no new rows added"))
               (testing "after inserting new data, incremental run appends"
                 (with-insert-test-products!
                   [{:name "New Product" :category "Test" :price 99.99 :created-at "2024-01-21T10:00:00"}]
-                  (let [transform (t2/select-one :model/Transform (:id transform))]
+                  (let [transform (t2/select-one :model/Transform :id (:id transform))]
                     (transforms.execute/execute! transform {:run-method :manual})
                     (is (= 17 (count (pg-table-rows db-spec target-table)))
                         "Should append 1 new row after query change")))))))))))
@@ -671,13 +649,13 @@
       (testing (format "with %s checkpoint" (name checkpoint-type))
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms-basic}
-            (mt/dataset transforms-dataset/transforms-test
+            (mt/dataset transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "native_table_tag")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [field-name expected-initial-checkpoint]} checkpoint-config
                       checkpoint-filter-field-id (t2/select-one-pk :model/Field :name field-name :table_id (mt/id :transforms_products))
                       transform-payload {:name "Native With Table Tag"
-                                         :source {:type "query"
+                                         :source {:type :query
                                                   :query (make-incremental-source-query-with-table-tag checkpoint-config)
                                                   :source-incremental-strategy {:type "checkpoint"
                                                                                 :checkpoint-filter-field-id checkpoint-filter-field-id}}
@@ -696,7 +674,7 @@
                         (is (compare-checkpoint-values checkpoint-type expected-initial-checkpoint checkpoint)
                             (format "Checkpoint should be MAX(%s) from all 16 rows" field-name))))
                     (testing "Second run without new data adds nothing"
-                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (let [transform (t2/select-one :model/Transform :id (:id transform))]
                         (transforms.execute/execute! transform {:run-method :manual})
                         (let [row-count (get-table-row-count target-table)]
                           (is (= 16 row-count) "Should still have 16 rows, no new data"))))
@@ -707,7 +685,7 @@
                             :category "Electronics"
                             :price 299.99
                             :created-at "2024-01-21T10:00:00"}]
-                          (let [transform (t2/select-one :model/Transform (:id transform))]
+                          (let [transform (t2/select-one :model/Transform :id (:id transform))]
                             (transforms.execute/execute! transform {:run-method :manual})
                             (let [row-count  (get-table-row-count target-table)
                                   checkpoint (get-checkpoint-value (:id transform))]
@@ -725,7 +703,7 @@
     ;; live table, so `apply-target-indexes!`'s full-rebuild gate skips it (a broken gate would re-create them).
     (mt/test-drivers (incremental-index-test-drivers)
       (mt/with-premium-features #{:transforms-basic :transforms-python}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (let [{:keys [indexes expected physical-indexes]} (index-util/driver-cases driver/*driver*)
                 checkpoint-config (:integer checkpoint-configs)
                 checkpoint-field  (:field-name checkpoint-config)]
@@ -748,7 +726,7 @@
                       (testing "append run preserves the indexes"
                         (with-insert-test-products! [{:name "Incremental Index Product" :category "Gadget"
                                                       :price 379.99 :created-at "2024-01-20T10:00:00"}]
-                          (let [transform (t2/select-one :model/Transform (:id transform))]
+                          (let [transform (t2/select-one :model/Transform :id (:id transform))]
                             (execute-transform-with-ordering! transform transform-type checkpoint-field
                                                               {:run-method :manual})
                             (is (= expected (physical-indexes (mt/db) schema table-name)))))))))))))))))
@@ -759,7 +737,7 @@
     ;; broken pending-changes gate would leave this run an append and the index would never reach the warehouse.
     (mt/test-drivers (incremental-index-test-drivers)
       (mt/with-premium-features #{:transforms-basic}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (let [{:keys [expected physical-indexes indexes]} (index-util/driver-cases driver/*driver*)
                 checkpoint-config (:integer checkpoint-configs)
                 checkpoint-field  (:field-name checkpoint-config)]
@@ -780,12 +758,12 @@
                   (testing "the watermark survives the request untouched"
                     (is (some? (get-checkpoint-value (:id transform)))))
                   (testing "the next run rebuilds and the index lands in the warehouse"
-                    (let [transform (t2/select-one :model/Transform (:id transform))]
+                    (let [transform (t2/select-one :model/Transform :id (:id transform))]
                       (execute-transform-with-ordering! transform :mbql checkpoint-field {:run-method :manual})
                       (is (contains? (physical-indexes (mt/db) (:schema target) table-name) "mid_run_idx"))
                       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex
                                                           :transform_id (:id transform)
                                                           :index_name "mid_run_idx")))))
                   (testing "once settled, the run after that appends again"
-                    (let [transform (t2/select-one :model/Transform (:id transform))]
+                    (let [transform (t2/select-one :model/Transform :id (:id transform))]
                       (is (not (transforms-base.u/full-incremental-run? transform))))))))))))))

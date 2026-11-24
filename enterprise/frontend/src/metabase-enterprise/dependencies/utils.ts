@@ -2,6 +2,7 @@ import { c, msgid, ngettext, t } from "ttag";
 
 import {
   getCollectionPathAsArray,
+  isDataAppCollection,
   isRootCollection,
 } from "metabase/common/collections/utils";
 import * as Urls from "metabase/urls";
@@ -14,6 +15,7 @@ import type {
   AnalysisFindingErrorType,
   CardType,
   Collection,
+  DatasetColumn,
   DependencyEntry,
   DependencyGroupType,
   DependencyId,
@@ -124,6 +126,8 @@ export function getNodeIconWithType(
       return "ruler";
     case "action":
       return "bolt";
+    case "data-app":
+      return "app";
   }
 }
 
@@ -138,9 +142,20 @@ function getCardLinkLabel(cardType: CardType): string {
   }
 }
 
+function isInDataAppCollection(collection: Collection | null | undefined) {
+  return (
+    collection !== null &&
+    collection !== undefined &&
+    isDataAppCollection(collection)
+  );
+}
+
 export function getNodeLink(node: DependencyNode): NodeLink | null {
   switch (node.type) {
     case "card":
+      if (isInDataAppCollection(node.data.collection)) {
+        return null;
+      }
       return {
         label: getCardLinkLabel(node.data.type),
         url: Urls.card({
@@ -217,9 +232,15 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         url: Urls.dataStudioSnippet(node.id),
       };
     case "action":
-      return node.data.model_id == null
+      return node.data.model_id == null &&
+        !isInDataAppCollection(node.data.collection)
         ? { label: t`View this action`, url: Urls.dataStudioAction(node.id) }
         : null;
+    case "data-app":
+      return {
+        label: t`View this data app`,
+        url: Urls.dataApp(node.data.slug),
+      };
   }
 }
 
@@ -351,6 +372,7 @@ export function getNodeLocationInfo(
         : null;
     case "transform":
     case "sandbox":
+    case "data-app":
       return null;
   }
 }
@@ -420,6 +442,8 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "transform":
     case "action":
       return node.data.created_at;
+    case "data-app":
+      return node.data.created_at ?? null;
     default:
       return null;
   }
@@ -494,15 +518,19 @@ export function getNodeTransform(node: DependencyNode): Transform | null {
   return null;
 }
 
-export function getNodeFields(node: DependencyNode): Field[] | null {
+export type DependencyNodeField = Field | DatasetColumn;
+
+export function getNodeFields(
+  node: DependencyNode,
+): DependencyNodeField[] | null {
   switch (node.type) {
     case "card":
       return node.data.result_metadata ?? [];
     case "table":
       return node.data.fields ?? [];
-    case "transform":
     case "sandbox":
       return node.data.table?.fields ?? [];
+    case "transform":
     case "snippet":
     case "dashboard":
     case "document":
@@ -558,6 +586,9 @@ export function getNodeSourceReplacementEntry(
     case "table":
       return { id: node.id, type: node.type };
     case "card":
+      if (isInDataAppCollection(node.data.collection)) {
+        return null;
+      }
       if (node.data.type === "question" || node.data.type === "model") {
         return { id: node.id, type: node.type };
       }
@@ -615,6 +646,8 @@ export function getDependencyGroupType(
       return "snippet";
     case "action":
       return "action";
+    case "data-app":
+      return "data-app";
   }
 }
 
@@ -649,6 +682,8 @@ export function getDependencyGroupTypeInfo(
       return { label: t`Measure`, color: "core-summarize" };
     case "action":
       return { label: t`Data action`, color: "text-secondary" };
+    case "data-app":
+      return { label: t`Data app`, color: "accent4" };
   }
 }
 
@@ -701,6 +736,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     segment = 0,
     measure = 0,
     action = 0,
+    "data-app": dataApp = 0,
   } = node.dependents_count ?? {};
 
   const groups: DependentGroup[] = [
@@ -716,6 +752,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     { type: "segment", count: segment },
     { type: "measure", count: measure },
     { type: "action", count: action },
+    { type: "data-app", count: dataApp },
   ];
 
   return groups.filter(({ count }) => count !== 0);
@@ -794,6 +831,12 @@ export function getDependentGroupLabel({
       return c("{0} is the number of data actions").ngettext(
         msgid`${count} data action`,
         `${count} data actions`,
+        count,
+      );
+    case "data-app":
+      return c("{0} is the number of data apps").ngettext(
+        msgid`${count} data app`,
+        `${count} data apps`,
         count,
       );
     default:

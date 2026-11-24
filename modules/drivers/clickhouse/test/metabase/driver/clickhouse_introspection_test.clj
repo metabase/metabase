@@ -4,7 +4,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.clickhouse-introspection :as clickhouse-introspection]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -16,7 +19,7 @@
 (defn- desc-table!
   [db table-name]
   (into #{} (map #(select-keys % [:name :database-type :base-type :database-required])
-                 (:fields (driver/describe-table :clickhouse db {:name table-name})))))
+                 (:fields (driver/describe-table :clickhouse (driver.u/ensure-lib-database db) {:name table-name})))))
 
 (mt/defdataset introspection_db
   [["enums_base_types"
@@ -466,7 +469,7 @@
                                 :database-type     "SimpleAggregateFunction(sum, Int64)"
                                 :base-type         :type/BigInteger
                                 :database-position 4})]}
-              (-> (driver/describe-table :clickhouse (mt/db) {:name "aggregate_functions_filter_test"})
+              (-> (driver/describe-table :clickhouse (lib.metadata/database (mt/metadata-provider)) {:name "aggregate_functions_filter_test"})
                   (update :fields (partial sort-by :database-position))))))))
 
 (deftest clickhouse-filtered-aggregate-functions-test-result-set
@@ -501,7 +504,7 @@
   (mt/test-driver :clickhouse
     (mt/dataset metabase_db_scan_test
       (is (= {:tables test-tables}
-             (driver/describe-database :clickhouse (mt/db)))))))
+             (driver/describe-database :clickhouse (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest ^:parallel clickhouse-describe-database-all
   (mt/test-driver :clickhouse
@@ -513,7 +516,7 @@
                                               :clickhouse :db
                                               {:database-name "default"})
                                              {:db-filters-type "all"})}]
-        (let [describe-result (driver/describe-database :clickhouse db)
+        (let [describe-result (driver/describe-database :clickhouse (driver.u/ensure-lib-database db))
               tables          (into #{} (:tables describe-result))]
           ;; check the existence of at least some test tables here
           (doseq [table test-tables]
@@ -536,7 +539,7 @@
                                              {:db-filters-type "inclusion"
                                               :db-filters-patterns "metabase_db_scan_test, information_schema"})}]
         (let [{:keys [tables] :as _describe-result}
-              (driver/describe-database :clickhouse db)
+              (driver/describe-database :clickhouse (driver.u/ensure-lib-database db))
               tables-table  {:name        "tables"
                              :description nil
                              :schema      "information_schema"}
@@ -567,7 +570,7 @@
             ;; Sync the database - this should not crash despite the parameterized view
             (is (not= ::thrown
                       (try
-                        (sync/sync-database! db)
+                        (sync/sync-database! (:id db))
                         (catch Throwable _e
                           ::thrown)))
                 "Sync should not throw an exception when encountering a parameterized view")
@@ -586,3 +589,66 @@
                [(format "DROP VIEW IF EXISTS %s.parameterized_view" db-name)
                 (format "DROP TABLE IF EXISTS %s.table_after_view" db-name)]
                details))))))))
+
+(deftest ^:parallel primary-key-columns-test
+  (testing "The bare columns of a primary key, however system.tables writes it"
+    (are [primary-key expected] (= expected (#'clickhouse-introspection/primary-key-columns primary-key))
+      nil                                  []
+      ""                                   []
+      "id"                                 ["id"]
+      ;; recent versions keep the parentheses of `ORDER BY (id)`
+      "(id)"                               ["id"]
+      "id, created_at"                     ["id" "created_at"]
+      "(id, created_at)"                   ["id" "created_at"]
+      "toDate(ts), id"                     ["id"]
+      "cityHash64(a, b), id"               ["id"]
+      "(toDate(ts))"                       []
+      "concat('x, y', a), id"              ["id"]
+      "`my id`, `a,b`, Upper"              ["my id" "a,b" "Upper"]
+      "(`my id`)"                          ["my id"]
+      "`we.ird`"                           ["we.ird"]
+      "`back\\`tick`"                      ["back`tick"]
+      "toDate(`my ts`), `my id`"           ["my id"])))
+
+(deftest clickhouse-primary-key-sync-test
+  (testing "describe-table marks the columns of the primary key, however the table declares it"
+    (mt/test-driver :clickhouse
+      (let [db-name "metabase_primary_key_test"
+            details (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+            tables  {"order_by_column"   ["(id Int32, x String) ORDER BY id"
+                                          #{"id"}]
+                     "order_by_tuple"    ["(id Int32, x String) ORDER BY (id)"
+                                          #{"id"}]
+                     "order_by_columns"  ["(id Int32, y Int32, x String) ORDER BY (id, y)"
+                                          #{"id" "y"}]
+                     "primary_key"       ["(id Int32, y Int32, x String) PRIMARY KEY (id) ORDER BY (id, y)"
+                                          #{"id"}]
+                     "expression_key"    ["(id Int32, ts DateTime, x String) ORDER BY (toDate(ts), id)"
+                                          #{"id"}]
+                     "quoted_names"      ["(`my id` Int32, `a,b` Int32, x String) ORDER BY (`my id`, `a,b`)"
+                                          #{"my id" "a,b"}]
+                     "quoted_name_tuple" ["(`my id` Int32, x String) ORDER BY (`my id`)"
+                                          #{"my id"}]
+                     "no_key"            ["(id Int32, x String) ORDER BY tuple()"
+                                          #{}]}]
+        (try
+          (metabase.test.data.clickhouse/exec-statements
+           (into [(format "DROP DATABASE IF EXISTS `%s`" db-name)
+                  (format "CREATE DATABASE `%s`" db-name)]
+                 (for [[table-name [ddl _expected]] tables]
+                   (let [[_ columns order-by] (re-matches #"(\(.*?\)) (.*)" ddl)]
+                     (format "CREATE TABLE `%s`.`%s` %s ENGINE = MergeTree %s" db-name table-name columns order-by))))
+           details)
+          (doseq [[table-name [ddl expected]] tables]
+            (testing ddl
+              (is (= expected
+                     (into #{}
+                           (comp (filter :pk?)
+                                 (map :name))
+                           (:fields (driver/describe-table :clickhouse
+                                                           (driver.u/ensure-lib-database (mt/db))
+                                                           {:name table-name, :schema db-name})))))))
+          (finally
+            (metabase.test.data.clickhouse/exec-statements
+             [(format "DROP DATABASE IF EXISTS `%s`" db-name)]
+             details)))))))

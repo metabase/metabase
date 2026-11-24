@@ -22,6 +22,7 @@
    [metabase.api.common :as api]
    [metabase.explorations.db :as explorations.db]
    [metabase.lib-be.core :as lib-be]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]))
@@ -62,11 +63,13 @@
   `resolve-source-ids` is the resolving half, passed in so a batch can share one memo — resolution is
   a pure function of the query (it runs as admin with the per-user lens skipped), so repeats are free
   to collapse."
-  [resolve-source-ids {:keys [database_id dataset_query data_access_token]}]
+  [resolve-source-ids {:keys [database_id dataset_query data_access_token resolved_source_ids]}]
   (let [source-ids (try
                      (some-> dataset_query query-perms/query->source-ids)
                      (catch Throwable _ ::unprojectable))]
-    [database_id data_access_token (resolve-source-ids dataset_query)
+    [database_id data_access_token
+     (or (query-perms/verified-resolved-source-ids dataset_query resolved_source_ids)
+         (resolve-source-ids dataset_query))
      (cond
        (= ::unprojectable source-ids)                                  ::unprojectable
        (or (seq (:table-ids source-ids)) (seq (:card-ids source-ids))) source-ids
@@ -119,7 +122,8 @@
                         :exploration_thread_id thread-id
                         :database_id           (:database_id card)
                         :dataset_query         (:dataset_query card)
-                        :data_access_token     (:data_access_token thread)}
+                        :data_access_token     (:data_access_token thread)
+                        :resolved_source_ids   (:resolved_source_ids thread)}
                  ;; The Card is what the stamp was computed over, and it does not outlive a delete:
                  ;; both `exploration_query.card_id` and `exploration_page.card_id` cascade, so
                  ;; deleting it strips every other adjudicable row while the thread's name survives.
@@ -131,13 +135,13 @@
   "The gate's verdict for one artifact.
 
   An artifact marked [[::indeterminate]] has no query left to adjudicate, so the gate cannot be asked
-  (it throws without a `:dataset_query`). It denies instead, leaving only the superuser exemption the
-  gate itself would have applied — the same fail-closed choice [[source-ids-resolver]] makes for a
-  query it cannot resolve."
-  [artifact]
+  (it throws without a `:dataset_query`). It denies instead — the same fail-closed choice
+  [[source-ids-resolver]] makes for a query it cannot resolve. Callers exempt superusers before
+  reaching here; the superuser check keeps the gate's own answer if this is reached directly."
+  [data-access-token-reader artifact]
   (if (::indeterminate artifact)
     (boolean api/*is-superuser?*)
-    (queries/viewer-can-view-cached-result? artifact)))
+    (queries/viewer-can-view-cached-result? artifact {:data-access-token-reader data-access-token-reader})))
 
 (defn- blocked-thread-ids
   "Thread ids with at least one artifact the current user may not see.
@@ -145,19 +149,20 @@
   Artifacts sharing a [[visibility-key]] share a verdict by construction, so grouping by it lets
   the expensive check run once per group rather than once per artifact."
   [artifacts]
-  (->> (group-by (partial visibility-key (source-ids-resolver)) artifacts)
-       (remove (fn [[_key [representative]]]
-                 (artifact-visible? representative)))
-       (mapcat val)
-       (map :exploration_thread_id)
-       set))
+  (let [data-access-token-reader (perms/data-access-token-reader)]
+    (->> (group-by (partial visibility-key (source-ids-resolver)) artifacts)
+         (remove (fn [[_key [representative]]]
+                   (artifact-visible? data-access-token-reader representative)))
+         (mapcat val)
+         (map :exploration_thread_id)
+         set)))
 
 (defn thread-ids-with-visible-derived-data
   "The subset of `thread-ids` whose derived read-data the current user may see: every row carrying
   text derived from warehouse values must pass the gate
   ([[metabase.queries.cached-result/viewer-can-view-cached-result?]]) for the *current* user — the
   creator included. A thread carrying no such text yet stays visible, because there is nothing on it
-  that was computed under anyone's lens. Returns a set.
+  that was computed under anyone's lens. A superuser sees every thread. Returns a set.
 
   Held inside one metadata-provider cache: [[visibility-key]] preprocesses each artifact's query, and
   a thread's charts are variants over the same card, so they read the same tables and fields over and
@@ -165,38 +170,56 @@
   caller that doesn't."
   [thread-ids]
   (let [thread-ids (set thread-ids)]
-    (if (empty? thread-ids)
-      #{}
+    (cond
+      (empty? thread-ids) #{}
+      api/*is-superuser?* thread-ids
+      :else
       (lib-be/with-metadata-provider-cache
         (set/difference thread-ids
                         (blocked-thread-ids (concat (finalized-queries thread-ids)
                                                     (lens-stamped-threads thread-ids))))))))
 
-(defn- exploration-content-visible?
-  "The gate's verdict for a document owned by `exploration-id` (nil => not a Summary, unaffected)."
-  [exploration-id]
-  (if (nil? exploration-id)
-    true
-    (let [thread-ids (explorations.db/thread-ids-for-exploration exploration-id)]
-      (or (empty? thread-ids)
-          (= thread-ids (thread-ids-with-visible-derived-data thread-ids))))))
+(defn- exploration-ids-visible
+  "The subset of `exploration-ids` whose threads the current user sees the derived data of, with their threads read
+  together and one gate call over all of them."
+  [exploration-ids]
+  (let [exploration-id->thread-ids (explorations.db/thread-ids-by-exploration-id exploration-ids)
+        visible-thread-ids         (thread-ids-with-visible-derived-data (into #{} cat (vals exploration-id->thread-ids)))]
+    (into #{}
+          (filter #(set/subset? (get exploration-id->thread-ids % #{}) visible-thread-ids))
+          exploration-ids)))
 
-(defn doc-content-visible-to-current-user?
-  "Content-visibility gate installed via
-  [[metabase.documents.core/register-doc-content-visibility-fn!]] at init: a document owned by
-  an exploration (the Summary) embeds verbatim result values, so its content follows the
-  exploration's threads' derived-data visibility. Documents outside explorations are unaffected."
-  [document]
-  (cond
-    (contains? document :exploration_id)
-    (exploration-content-visible? (:exploration_id document))
+(defn doc-content-visibility-fn
+  "A predicate, installed with [[metabase.documents.core/register-doc-content-visibility-fn!]], of whether the current
+  user may see the content of one of `documents`: a Summary, which embeds result values, follows the derived-data
+  visibility of its Exploration's threads, read for all the Explorations together when it is first called, and any
+  other document is visible."
+  [documents]
+  (if api/*is-superuser?*
+    (fn [document] (boolean (or (contains? document :exploration_id) (:id document))))
+    (let [verdicts (delay
+                     (let [document-ids       (into [] (comp (remove #(contains? % :exploration_id)) (keep :id)) documents)
+                           document-id->expl  (explorations.db/exploration-ids-by-document-id document-ids)
+                           exploration-ids    (into #{}
+                                                    (comp (map #(if (contains? % :exploration_id)
+                                                                  (:exploration_id %)
+                                                                  (get document-id->expl (:id %))))
+                                                          (remove nil?))
+                                                    documents)
+                           visible            (when (seq exploration-ids) (exploration-ids-visible exploration-ids))]
+                       {:document-id->exploration document-id->expl
+                        :visible                  visible}))]
+      (fn [document]
+        (cond
+          (or (contains? document :exploration_id) (:id document))
+          (let [{:keys [document-id->exploration visible]} @verdicts
+                exploration-id (if (contains? document :exploration_id)
+                                 (:exploration_id document)
+                                 (get document-id->exploration (:id document)))]
+            (or (nil? exploration-id) (contains? visible exploration-id)))
 
-    (:id document)
-    (exploration-content-visible?
-     (explorations.db/document-exploration-id (:id document)))
-
-    :else
-    false))
+          :else
+          false)))))
 
 (defn gate-comment-contexts
   "Withhold `:context` from `comments` on `exploration-id` whose data the current user may not see.

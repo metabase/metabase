@@ -1,8 +1,8 @@
 import cx from "classnames";
-import { type ReactNode, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Select, type SelectProps, Stack } from "metabase/ui";
+import { Select, type SelectProps } from "metabase/ui";
 import { decodeWidgetValue, encodeWidgetValue } from "metabase/viz-core";
 
 import S from "./ChartSettingSelect.module.css";
@@ -15,7 +15,7 @@ type ChartSettingSelectOption = {
   value: ChartSettingSelectValue;
 };
 
-type ChartSettingSelectProps = Pick<
+export type ChartSettingSelectProps = Pick<
   SelectProps,
   | "className"
   | "defaultDropdownOpened"
@@ -28,7 +28,6 @@ type ChartSettingSelectProps = Pick<
   | "variant"
   | "w"
 > & {
-  footer?: ReactNode;
   hasLeftSection?: boolean;
   icon?: SelectProps["leftSection"];
   iconWidth?: SelectProps["leftSectionWidth"];
@@ -36,6 +35,7 @@ type ChartSettingSelectProps = Pick<
   options?: ChartSettingSelectOption[];
   placeholder?: string;
   placeholderNoOptions?: string;
+  disabled?: boolean;
   rightSectionWidth?: string;
   searchProp?: string;
   value?: ChartSettingSelectValue;
@@ -46,7 +46,6 @@ export const ChartSettingSelect = ({
   // uncontrolled component because it's wrapped with Uncontrollable.
   className,
   defaultDropdownOpened,
-  footer,
   hasLeftSection,
   icon,
   iconWidth,
@@ -58,6 +57,7 @@ export const ChartSettingSelect = ({
   placeholder,
   placeholderNoOptions,
   pr,
+  disabled: externallyDisabled,
   rightSection,
   rightSectionWidth,
   searchProp,
@@ -88,6 +88,7 @@ export const ChartSettingSelect = ({
   }, [scrollContainer, dropdownOpened]);
 
   const disabled =
+    externallyDisabled ||
     options.length === 0 ||
     (options.length === 1 && options[0].value === value);
 
@@ -107,27 +108,28 @@ export const ChartSettingSelect = ({
 
   const resolvedLeftSection = leftSection ?? icon;
 
-  const dropdownComponent =
-    footer &&
-    (({ children }: { children: ReactNode }) => (
-      <Stack p={0} w="100%" gap={0}>
-        {children}
-        {footer}
-      </Stack>
-    ));
   return (
     <Select
       px={0}
       id={id}
       data-testid="chart-setting-select"
       className={cx(className, CS.block)}
-      {...(dropdownComponent ? { dropdownComponent } : {})}
       classNames={{
         root: S.root,
         wrapper: S.wrapper,
         section: S.section,
         input: cx(S.input, { [S.inputWithLeftSection]: hasLeftSection }),
       }}
+      styles={
+        externallyDisabled
+          ? {
+              input: {
+                backgroundColor: "var(--mb-color-background_surface-disabled)",
+                color: "var(--mb-color-text-disabled)",
+              },
+            }
+          : undefined
+      }
       data={data}
       disabled={disabled}
       value={selectedValue}

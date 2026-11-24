@@ -4,7 +4,7 @@ export function useIsParameterPanelSticky({
   parameterPanelRef,
   disabled = false,
 }: {
-  parameterPanelRef: RefObject<HTMLElement>;
+  parameterPanelRef: RefObject<HTMLElement | null>;
   disabled?: boolean;
 }) {
   const [isSticky, setIsSticky] = useState(false);

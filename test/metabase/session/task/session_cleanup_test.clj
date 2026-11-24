@@ -3,14 +3,13 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.session.core :as session]
-   [metabase.session.db :as session.db]
+   [metabase.session.models.session :as models.session]
    [metabase.session.task.session-cleanup :as session-cleanup]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (metabase.session.task.session_cleanup SessionCleanup)
-   (org.quartz Job)))
+   (metabase.session.task.session_cleanup SessionCleanup)))
 
 (set! *warn-on-reflection* true)
 
@@ -65,7 +64,7 @@
           ;; also past max age, to show which reason wins
           old-session (insert-session! user-id :created_at (t/minus (t/local-date-time) (t/days 400)))]
       ;; the raw table: the model's before-update would end the sessions itself, which is not what this test is about
-      (t2/update! (t2/table-name :model/User) user-id {:is_active false})
+      (t2/update! (t2/table-name :model/User) :id user-id {:is_active false})
       (sweep!)
       (testing "a deactivated user's session is recorded as user-deactivated"
         (is (= {:reason "user-deactivated", :ended? true, :key-cleared? true} (ending session-id))))
@@ -75,7 +74,7 @@
 (deftest sweep-leaves-recorded-endings-alone-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (let [session-id (insert-session! user-id :created_at (t/minus (t/local-date-time) (t/days 400)))]
-      (session.db/end-sessions! {:id [session-id]} "logout" :self)
+      (models.session/end-sessions! [session-id] "logout" :self)
       (let [before (t2/select-one :model/Session :id session-id)]
         (sweep!)
         (testing "a session whose ending is already recorded keeps its reason and instant, however stale it is now"
@@ -118,7 +117,7 @@
       (session/record-session-activity-update! key-hash)
       ;; the cache only drops entries older than the throttle window, so make every entry look stale
       (mt/with-dynamic-fn-redefs [u/since-ms (constantly Long/MAX_VALUE)]
-        (.execute ^Job (SessionCleanup.) nil))
+        (.execute (SessionCleanup.) nil))
       (is (true? (session/record-session-activity-update! key-hash))
           "a pruned session is no longer throttled"))))
 

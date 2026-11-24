@@ -39,9 +39,6 @@ export function TransformsSectionLayout() {
     return <EnableTransformsPage />;
   }
 
-  // Transform-detail pages (`/data-studio/transforms/:transformId/...`) must remain reachable
-  // even when no writable database exists, so the analyst can read the SQL/Python body of an
-  // orphaned transform after its source DB has been deleted (GDGT-2447).
   const isTransformDetailRoute = Boolean(params.transformId);
 
   if (isLoadingDatabases) {
@@ -58,7 +55,7 @@ export function TransformsSectionLayout() {
     );
   }
 
-  if (transformsDatabases?.length === 0 && !isTransformDetailRoute) {
+  if (transformsDatabases?.length === 0) {
     return (
       <SectionLayout>
         <NoWritableDatabasesEmptyState />

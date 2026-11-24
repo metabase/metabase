@@ -148,7 +148,7 @@ export const TaskRunDetailsPage = () => {
                     <tr>
                       <td colSpan={2}>
                         <Flex
-                          c="text-disabled"
+                          c="text-secondary"
                           justify="center"
                         >{t`No tasks`}</Flex>
                       </td>

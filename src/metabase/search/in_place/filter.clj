@@ -17,6 +17,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.search-model :as search-model]
@@ -72,8 +73,8 @@
   [model archived?]
   [:= (search.config/column-with-model-alias model :archived) archived?])
 
-;; Databases, transforms, and indexed-entities can't be archived
-(doseq [model ["database" "transform" "indexed-entity"]]
+;; Databases, transforms, indexed-entities, and data apps can't be archived
+(doseq [model ["database" "transform" "indexed-entity" "data-app"]]
   (defmethod archived-clause model
     [_model archived?]
     (if archived?
@@ -148,7 +149,7 @@
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
 
-(doseq [model ["card" "dataset" "metric" "dashboard" "action"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "action" "data-app"]]
   (defmethod build-optional-filter-query [:id model]
     [_filter model query ids]
     (sql.helpers/where query [:in (search.config/column-with-model-alias model :id) ids])))
@@ -232,7 +233,7 @@
   (let [authoritative   [:= (search.config/column-with-model-alias model :data_authority) "authoritative"]
         published-final (when (premium-features/has-feature? :library)
                           [:and
-                           [:= (search.config/column-with-model-alias model :is_published) true]
+                           [:= :table_settings.is_published true]
                            [:= (search.config/column-with-model-alias model :data_layer) "final"]])]
     (sql.helpers/where query (cond-> [:or authoritative]
                                published-final (conj published-final)))))
@@ -244,9 +245,10 @@
     ;; A measure or segment is curated when its parent table is published into the Library.
     ;; This engine has no index row to read the table's root collection type from, so it only checks that the
     ;; parent table is published, and only with the :library feature, like the table filter above.
-    ;; The legacy query joins the parent table as `table`; see metabase.search.in-place.legacy/search-query-for-model.
+    ;; The legacy query joins the settings of the parent table as `table_settings`; see
+    ;; metabase.search.in-place.legacy/search-query-for-model.
     (sql.helpers/where query (if (premium-features/has-feature? :library)
-                               [:= :table.is_published true]
+                               [:= :table_settings.is_published true]
                                false-clause))))
 
 ;; Created at filters
@@ -276,7 +278,7 @@
       [:and [:>= dt-col start] [:< dt-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action" "document"
-               "transform" "measure" "exploration"]]
+               "transform" "measure" "exploration" "data-app"]]
   (defmethod build-optional-filter-query [:created-at model]
     [_filter model query created-at]
     (sql.helpers/where query (date-range-filter-clause
@@ -307,8 +309,10 @@
       ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-          (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model/search-model->revision-model model)]))
+          (sql.helpers/where [:= :revision.model (search-model/search-model->revision-model model)]
+                             (revisions.sql/newest-revision-clause :revision
+                                                                   (search-model/search-model->revision-model model)
+                                                                   (search.config/column-with-model-alias model :id))))
       (= 1 (count editor-ids))
       (sql.helpers/where [:= :revision.user_id (first editor-ids)])
 
@@ -322,8 +326,10 @@
       ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-          (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model/search-model->revision-model model)]))
+          (sql.helpers/where [:= :revision.model (search-model/search-model->revision-model model)]
+                             (revisions.sql/newest-revision-clause :revision
+                                                                   (search-model/search-model->revision-model model)
+                                                                   (search.config/column-with-model-alias model :id))))
       true
       ;; on UI we showed the the last edit info from revision.timestamp
       ;; not the model.updated_at column
@@ -362,16 +368,14 @@
                             [:like :collection.location (str "%" (collection/location-path collection-id) "%")]])))))
 
 (defmethod build-optional-filter-query [:collection "table"]
-  [_filter model query collection-id]
+  [_filter _model query collection-id]
   ;; Tables in collections are an EE feature (library)
   (if (premium-features/has-feature? :library)
-    (let [collection-col (search.config/column-with-model-alias model :collection_id)
-          published-col  (search.config/column-with-model-alias model :is_published)]
-      (sql.helpers/where query [:and
-                                [:= published-col true]
-                                [:or
-                                 [:= collection-col collection-id]
-                                 [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]]))
+    (sql.helpers/where query [:and
+                              [:= :table_settings.is_published true]
+                              [:or
+                               [:= :table_settings.collection_id collection-id]
+                               [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]])
     ;; OSS: tables don't belong to collections
     (sql.helpers/where query false-clause)))
 
@@ -428,7 +432,7 @@
         enabled-types (:enabled-transform-source-types search-context)
         feature->supported-models (feature->supported-models)
         hidden-by-visibility (into #{}
-                                   (remove #(search.filter/visible-to? search-context (search.spec/spec %)))
+                                   (remove #(search.filter/visible-to? search-context (search.spec/search-model-spec %)))
                                    models)]
     (cond-> models
       (seq hidden-by-visibility)   (set/difference hidden-by-visibility)

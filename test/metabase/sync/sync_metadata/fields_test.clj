@@ -7,20 +7,26 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
+   [metabase.events.test-util :as events.tu]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.sync.sync-metadata.fks :as sync-fks]
-   [metabase.sync.util :as sync-util]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouses.models.database :as database]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
 
@@ -64,13 +70,13 @@
   ;; first, create a new in-memory test DB and add some data to it
   (with-test-db
     ;; now sync
-    (sync/sync-database! (mt/db))
+    (sync/sync-database! (mt/id))
     ;; ok, let's see what (f) gives us
     (let [f-before (f (mt/db))]
       ;; ok cool! now delete one of those columns...
       (jdbc/execute! one-off-dbs/*conn* [alter-sql])
       ;; ...and re-sync...
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       ;; ...now let's see how (f) may have changed! Compare to original.
       {:before-sync f-before
        :after-sync  (f (mt/db))})))
@@ -130,7 +136,7 @@
                               "(2, 'Steven Seagull'), "
                               "(3, 'Colin Fowl');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (let [tables          (t2/select-pks-set :model/Table :db_id (mt/id))
             get-field-to-update (fn []
                                   (t2/select-one
@@ -139,14 +145,14 @@
                                    :table_id [:in tables]))
             field-to-drop   (t2/select-one :model/Field :name "example_name" :table_id [:in tables])
             field-to-update (get-field-to-update)]
-        (t2/update! :model/Field (u/the-id field-to-update) {:semantic_type      :type/FK
-                                                             :fk_target_field_id (u/the-id field-to-drop)})
+        (t2/update! :model/Field :id (u/the-id field-to-update) {:semantic_type      :type/FK
+                                                                 :fk_target_field_id (u/the-id field-to-drop)})
         ;; get the field before sync
         (let [field-before-sync (get-field-to-update)]
           ;; ok cool! now delete one of those columns...
           (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"])
           ;; ...and re-sync...
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           ;; ...now let's see how the field may have changed! Compare to original.
           (is (=? {:before-sync {:semantic_type      :type/FK
                                  :fk_target_field_id int?}
@@ -158,25 +164,31 @@
 (deftest base-type-change-test
   (testing "when a column changes base type, coercion_strategy is reset"
     (mt/with-temp-copy-of-db
-      (let [db (mt/db)
-            db-spec (sql-jdbc.conn/db->pooled-connection-spec db)]
-        (doseq [statement ["DROP TABLE IF EXISTS \"base_type_change_test\";"
-                           "CREATE TABLE \"base_type_change_test\" (\"string_tbc_int_col\" VARCHAR);"
-                           "INSERT INTO \"base_type_change_test\" (\"string_tbc_int_col\") VALUES ('1'), ('2'), ('3');"]]
-          (jdbc/execute! db-spec [statement]))
-        (sync/sync-database! db)
-        (let [field (t2/select-one [:model/Field :id] :name "string_tbc_int_col")]
-          (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:coercion_strategy :Coercion/String->Integer})
-          (sync/sync-database! db)
-          (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
-                  (t2/select-one :model/Field :id (:id field) {:from [(warehouse-schema-overlay/field-query)]})))
-          (jdbc/execute! db-spec ["ALTER TABLE \"base_type_change_test\" ALTER COLUMN \"string_tbc_int_col\" TYPE int USING \"string_tbc_int_col\"::integer;"])
-          (sync/sync-database! db)
-          (testing "the base type change unsets the user's coercion, on the Field and for the user"
-            (is (=? {:coercion_strategy nil}
+      (let [db      (mt/db)
+            db-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+        ;; with-temp-copy-of-db copies Metabase metadata but keeps the original connection details.
+        ;; This DDL changes the shared test database, so remove the table in finally.
+        (try
+          (doseq [stmt ["DROP TABLE IF EXISTS \"base_type_change_test\";"
+                        "CREATE TABLE \"base_type_change_test\" (\"string_tbc_int_col\" VARCHAR);"
+                        "INSERT INTO \"base_type_change_test\" (\"string_tbc_int_col\") VALUES ('1'), ('2'), ('3');"]]
+            (jdbc/execute! db-spec [stmt]))
+          (sync/sync-database! (:id db))
+          (let [field (t2/select-one [:model/Field :id] :name "string_tbc_int_col")]
+            (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field))
+                                  {:coercion_strategy :Coercion/String->Integer})
+            (sync/sync-database! (:id db))
+            (is (=? {:effective_type    :type/Integer
+                     :coercion_strategy :Coercion/String->Integer}
                     (t2/select-one :model/Field :id (:id field))))
-            (is (=? {:coercion_strategy nil :effective_type :type/Integer}
-                    (t2/select-one :model/Field :id (:id field))))))))))
+            (jdbc/execute! db-spec ["ALTER TABLE \"base_type_change_test\" ALTER COLUMN \"string_tbc_int_col\" TYPE int USING \"string_tbc_int_col\"::integer;"])
+            (sync/sync-database! (:id db))
+            (testing "the base type change unsets the user's coercion, on the Field and for the user"
+              (is (=? {:coercion_strategy nil
+                       :effective_type    :type/Integer}
+                      (t2/select-one :model/Field :id (:id field))))))
+          (finally
+            (jdbc/execute! db-spec ["DROP TABLE IF EXISTS \"base_type_change_test\";"])))))))
 
 (deftest dont-show-deleted-fields-test
   (testing "make sure deleted fields doesn't show up in `:fields` of a table"
@@ -226,7 +238,7 @@
                   :semantic_type  :type/PK}
                  (get-pk-details))))
         (testing "Clear out the semantic type"
-          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
+          (t2/update! :model/Field :id (mt/id :venues :id) {:semantic_type nil})
           (is (= {:database_is_pk true
                   :semantic_type  nil}
                  (get-pk-details))))
@@ -236,12 +248,12 @@
                   :semantic_type  :type/PK}
                  (get-pk-details))))
         (testing "sync-table! should *not* change the semantic type of fields that are marked with a different type"
-          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type :type/Latitude})
+          (t2/update! :model/Field :id (mt/id :venues :id) {:semantic_type :type/Latitude})
           (is (= {:database_is_pk true
                   :semantic_type  :type/Latitude}
                  (get-pk-details))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
-          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
+          (t2/update! :model/Field :id (mt/id :venues :id) {:semantic_type nil})
           (sync/sync-table! (t2/select-one :model/Table :id (mt/id :venues)))
           (is (= {:database_is_pk true
                   :semantic_type  :type/PK}
@@ -274,18 +286,18 @@
           [name-field-def {:field-name "continent_id", :base-type :type/Integer}]
           []]]
         (let [db (mt/db)
-              db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
-              get-fk #(t2/select-one :model/Field (mt/id :country :continent_id))]
+              db-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+              get-fk #(t2/select-one :model/Field :id (mt/id :country :continent_id))]
           ;; 1. add FK relationship in the database targeting continent_1
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
-          (sync/sync-database! db {:scan :schema})
+          (sync/sync-database! (:id db) {:scan :schema})
           (testing "initially country's continent_id is targeting continent_1"
             (is (=? {:fk_target_field_id (mt/id :continent_1 :id)
                      :semantic_type      :type/FK}
                     (get-fk))))
           ;; 2. drop the FK relationship in the database with SQL
           (jdbc/execute! db-spec "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
-          (sync/sync-database! db {:scan :schema})
+          (sync/sync-database! (:id db) {:scan :schema})
           ;; FIXME: The following test fails. The FK relationship is still there in the Metabase database (metabase#39687)
           #_(testing "after dropping the FK relationship, country's continent_id is targeting nothing"
               (is (=? {:fk_target_field_id nil
@@ -293,7 +305,7 @@
                       (get-fk))))
           ;; 3. add back the FK relationship but targeting continent_2
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_2(id);")
-          (sync/sync-database! db {:scan :schema})
+          (sync/sync-database! (:id db) {:scan :schema})
           (testing "initially country's continent_id is targeting continent_2"
             (is (=? {:fk_target_field_id (mt/id :continent_2 :id)
                      :semantic_type      :type/FK}
@@ -310,14 +322,14 @@
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
-                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id {:from [(warehouse-schema-overlay/field-query)]})}))]
+                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
         (testing "before"
           (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
-        (t2/update! :model/Field (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
+        (t2/update! :model/Field :id (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
         (testing "after"
           (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0}
@@ -326,13 +338,12 @@
                  (state))))))))
 
 (deftest sync-table-fks-test2
-  (testing "Check that sync-table! keeps writing FKs to the Field while the user keeps seeing their own values"
+  (testing "Check that sync-table! leaves user-set semantic type alone"
     (mt/with-temp-copy-of-db
       (letfn [(state []
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
-                      {:keys [semantic_type fk_target_field_id]} (t2/select-one :model/Field :id (mt/id :checkins :user_id)
-                                                                                {:from [(warehouse-schema-overlay/field-query)]})]
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one :model/Field :id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
@@ -349,10 +360,7 @@
                   :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :semantic-type     :type/Name
                   :fk-target-exists? false}
-                 (state)))
-          (testing "sync's own row still carries the FK it detected, under the user's :type/Name"
-            (is (=? {:semantic_type :type/FK :fk_target_field_id int?}
-                    (t2/select-one :model/Field :id (mt/id :checkins :user_id))))))))))
+                 (state))))))))
 
 (deftest case-sensitive-conflict-test
   (testing "Two columns with same lower-case name can be synced (#17387)"
@@ -369,7 +377,7 @@
                               "('a', 'b'),  "
                               "('c', 'd');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (let [sync-info (sync/sync-database! (mt/db))
+      (let [sync-info (sync/sync-database! (mt/id))
             field-sync-info (->> sync-info
                                  (m/find-first (comp #{"metadata"} :name))
                                  :steps
@@ -391,7 +399,7 @@
                          "INSERT INTO \"birds\" (\"event\") VALUES ('a'), ('b')"
                          "INSERT INTO \"BIRDS\" (\"event\") VALUES ('c'), ('d')"]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (let [sync-info (sync/sync-database! (mt/db))
+      (let [sync-info (sync/sync-database! (mt/id))
             field-sync-info (->> sync-info
                                  (m/find-first (comp #{"metadata"} :name))
                                  :steps
@@ -417,8 +425,8 @@
                                                                           (run! sync-fields/sync-fields-for-table! tables)
                                                                           (run! sync-fks/sync-fks-for-table! tables))
                                                   "for entire DB"       (fn []
-                                                                          (sync-fields/sync-fields! (mt/db))
-                                                                          (sync-fks/sync-fks! (mt/db)))}]
+                                                                          (sync-fields/sync-fields! (lib.metadata/database (mt/metadata-provider)))
+                                                                          (sync-fks/sync-fks! (lib.metadata/database (mt/metadata-provider))))}]
             (testing message
               ;; do this in a transaction so deleting all the Fields isn't permanent
               (t2/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
@@ -429,8 +437,8 @@
                 ;; 3. sync the metadata for each table
                 (if (= "for entire DB" message)
                   (let [tables-updated (atom nil)
-                        original-set-initial-table-sync-complete-for-db! (mt/original-fn #'sync-util/set-initial-table-sync-complete-for-db!)]
-                    (mt/with-dynamic-fn-redefs [sync-util/set-initial-table-sync-complete-for-db!
+                        original-set-initial-table-sync-complete-for-db! (mt/original-fn #'sync.updates/set-initial-table-sync-complete-for-db!)]
+                    (mt/with-dynamic-fn-redefs [sync.updates/set-initial-table-sync-complete-for-db!
                                                 (fn [& args]
                                                   (let [r (apply original-set-initial-table-sync-complete-for-db! args)]
                                                     (reset! tables-updated r)
@@ -461,52 +469,64 @@
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-columns ["l"]}}]
-      (sync-metadata/sync-db-metadata! db)
-      (is (= [["details" :details-only]]
-             (->> (db->fields db)
-                  (filter #(= :details-only (:visibility_type %)))
-                  (mapv (juxt :name :visibility_type))))))))
+      (try
+        (sync-metadata/sync-db-metadata! (:id db))
+        (is (= [["details" :details-only]]
+               (->> (db->fields db)
+                    (filter #(= :details-only (:visibility_type %)))
+                    (mapv (juxt :name :visibility_type)))))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
 (deftest auto-cruft-all-fields-and-they-stay-crufted-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-columns [".*"]}}]
-      (sync-metadata/sync-db-metadata! db)
-      (is (= {:details-only 12}
-             (->> (db->fields db)
-                  (mapv :visibility_type)
-                  frequencies)))
-      ;; remove cruft column directive:
-      (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-columns []}})
-      (sync-metadata/sync-db-metadata! db)
-      (is (= {:details-only 12}
-             (->> (db->fields db)
-                  (mapv :visibility_type)
-                  frequencies))))))
+      (try
+        (sync-metadata/sync-db-metadata! (:id db))
+        (is (= {:details-only 12}
+               (->> (db->fields db)
+                    (mapv :visibility_type)
+                    frequencies)))
+        ;; remove cruft column directive:
+        (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns []}})
+        (sync-metadata/sync-db-metadata! (:id db))
+        (is (= {:details-only 12}
+               (->> (db->fields db)
+                    (mapv :visibility_type)
+                    frequencies)))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
 (deftest auto-cruft-sets-preview-display-false-test
   (testing "When a field becomes crufty via auto-cruft settings, preview_display should be set to false (#10851)"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-      (sync-metadata/sync-db-metadata! db)
-      (let [details-field (t2/select-one :model/Field :name "details"
-                                         :table_id [:in (map :id (t2/select :model/Table :db_id (u/the-id db)))])]
-        (is (=? {:visibility_type :normal
-                 :preview_display true}
-                details-field)
-            "before auto-cruft: field has default visibility and preview_display")
-        (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
-        (sync-metadata/sync-db-metadata! (t2/select-one :model/Database (u/the-id db)))
-        (is (=? {:visibility_type :details-only
-                 :preview_display false}
-                (t2/select-one :model/Field :id (:id details-field)))
-            "after auto-cruft: field should have visibility_type=details-only AND preview_display=false")))))
+      (try
+        (sync-metadata/sync-db-metadata! (:id db))
+        (let [details-field (t2/select-one :model/Field :name "details"
+                                           :table_id [:in (map :id (t2/select :model/Table :db_id (u/the-id db)))])]
+          (is (=? {:visibility_type :normal
+                   :preview_display true}
+                  details-field)
+              "before auto-cruft: field has default visibility and preview_display")
+          (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
+          (sync-metadata/sync-db-metadata! (:id (t2/select-one :model/Database :id (u/the-id db))))
+          (is (=? {:visibility_type :details-only
+                   :preview_display false}
+                  (t2/select-one :model/Field :id (:id details-field)))
+              "after auto-cruft: field should have visibility_type=details-only AND preview_display=false"))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
 (deftest sync-fields-resilient-to-non-existence-test
   (testing "[[sync-fields/sync-fields-for-table!]] doesn't crash on a non-existent table (SEM-39)"
     (mt/test-drivers (mt/normal-drivers)
       (let [table (t2/instance :model/Table {:id 321 :name "tbl"})]
         (is (not= ::thrown
-                  (try (sync-fields/sync-fields-for-table! (mt/db) table)
+                  (try (sync-fields/sync-fields-for-table! (lib.metadata/database (mt/metadata-provider)) table)
                        (catch Throwable _ ::thrown))))))))
 
 (deftest visibility-type-stays-normal-after-manual-change-test
@@ -528,7 +548,7 @@
           (jdbc/execute! spec [statement]))
         (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database
-            (sync/sync-database! database)
+            (sync/sync-database! (:id database))
             (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
                   field-after-first-sync (t2/select-one :model/Field :table_id table-id :name "something")]
               (is (= :details-only (:visibility_type field-after-first-sync))
@@ -536,14 +556,12 @@
             (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
                   field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
               (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:visibility_type :normal})
-              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id
-                                                              {:from [(warehouse-schema-overlay/field-query)]})))
+              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id)))
                   "Manual change should set visibility_type to :normal"))
-            (sync/sync-database! database)
+            (sync/sync-database! (:id database))
             (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
                   field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
-              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id
-                                                              {:from [(warehouse-schema-overlay/field-query)]})))
+              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id)))
                   "Second sync should preserve manually set :normal visibility_type"))))))))
 
 (deftest hiding-a-case-variant-table-leaves-the-other-tables-fields-alone-test
@@ -559,12 +577,12 @@
                                            ["Foo" "foo" {"x" true, "y" true}]]]
           (testing (format "hiding %s" hidden)
             (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
-              (sync-metadata/sync-db-metadata! database)
+              (sync-metadata/sync-db-metadata! (:id database))
               (let [table-id       #(t2/select-one-pk :model/Table :db_id (u/the-id database) :name %)
                     active-by-name #(t2/select-fn->fn :name :active :model/Field :table_id (table-id %))]
                 (is (= expected (active-by-name visible)))
                 (mt/user-http-request :crowberto :put 200 (format "table/%d" (table-id hidden)) {:visibility_type "hidden"})
-                (sync-metadata/sync-db-metadata! database)
+                (sync-metadata/sync-db-metadata! (:id database))
                 (is (= expected (active-by-name visible)))))))))))
 
 (deftest user-set-fks-are-preserved-by-sync-test
@@ -576,28 +594,42 @@
                               "(2, 'Steven Seagull'), "
                               "(3, 'Colin Fowl');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (let [tables (t2/select-pks-set :model/Table :db_id (mt/id))
             birds-example-name-field (t2/select-one :model/Field :name "example_name" :table_id [:in tables])
             flocks-example-bird-name-field (t2/select-one :model/Field :name "example_bird_name" :table_id [:in tables])]
         (testing "should not have FK relationship"
           (is (nil? (:fk_target_field_id flocks-example-bird-name-field)))
           (is (not= :type/FK (:semantic_type flocks-example-bird-name-field))))
-        (field-user-settings/upsert-user-settings
+        (field-user-settings/upsert-field-user-settings!
          {:id (u/the-id flocks-example-bird-name-field)}
          {:semantic_type :type/FK
           :fk_target_field_id (u/the-id birds-example-name-field)})
         (testing "after sync, user-set FK is preserved"
-          (sync/sync-database! (mt/db))
-          (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field) {:from [(warehouse-schema-overlay/field-query)]})]
+          (sync/sync-database! (mt/id))
+          (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field))]
             (is (= :type/FK (:semantic_type field-after-sync)))
             (is (= (u/the-id birds-example-name-field) (:fk_target_field_id field-after-sync)))))))))
+
+(deftest mark-fk-keeps-user-set-columns-test
+  (testing "sync marks a foreign key to a primary key whose semantic type a user set, and keeps the FK's own user values"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {pk-table :id} {:db_id db-id :name "pk_table" :schema "s"}
+                   :model/Table    {fk-table :id} {:db_id db-id :name "fk_table" :schema "s"}
+                   :model/Field    {pk-id :id}    {:table_id pk-table :name "id"}
+                   :model/Field    {fk-id :id :as fk-field} {:table_id fk-table :name "pk_id" :has_field_values :auto-list}]
+      (field-user-settings/upsert-field-user-settings! {:id pk-id} {:semantic_type :type/PK})
+      (field-user-settings/upsert-field-user-settings! fk-field {:has_field_values :auto-list})
+      (is (= 1 (#'sync-fks/mark-fks! (driver.u/lib-database db-id) [{:fk-table-schema "s" :fk-table-name "fk_table" :fk-column-name "pk_id"
+                                                                     :pk-table-schema "s" :pk-table-name "pk_table" :pk-column-name "id"}])))
+      (is (=? {:fk_target_field_id pk-id :semantic_type :type/FK :has_field_values :auto-list}
+              (t2/select-one :model/Field :id fk-id))))))
 
 (deftest database-default-test
   (with-test-db
     (let [ddl "CREATE TABLE t (a INTEGER DEFAULT 42, b INTEGER NULL)"]
       (jdbc/execute! one-off-dbs/*conn* [ddl])
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (let [table (t2/select-one :model/Table :db_id (mt/id) :name "T")
             {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
         (is (= "42" (:database_default a)))
@@ -607,7 +639,7 @@
   (with-test-db
     (let [ddl "CREATE TABLE t (a INTEGER GENERATED ALWAYS AS 42, b INTEGER NULL)"]
       (jdbc/execute! one-off-dbs/*conn* [ddl])
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (let [table (t2/select-one :model/Table :db_id (mt/id) :name "T")
             {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
         (is (true? (:database_is_generated a)))
@@ -617,14 +649,14 @@
   (with-test-db
     (let [ddl "CREATE TABLE t (a INTEGER NULL, b INTEGER NOT NULL)"]
       (jdbc/execute! one-off-dbs/*conn* [ddl])
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (let [table (t2/select-one :model/Table :db_id (mt/id) :name "T")
             {a "A", b "B"} (u/index-by :name (t2/select :model/Field :table_id (:id table)))]
         (is (true? (:database_is_nullable a)))
         (is (false? (:database_is_nullable b)))))))
 
 (deftest data-sensitivity-survives-sync-test
-  (testing "a user-set data_sensitivity lives in FieldUserSettings, untouched by a full sync or a bare Field update"
+  (testing "user-set data_sensitivity is written to Field and survives full sync"
     (mt/with-temp-test-data [["sens_table"
                               [{:field-name "email", :base-type :type/Text}]
                               [["ngoc@metabase.com"]]]]
@@ -636,17 +668,13 @@
           (is (nil? (field)))
           (is (not (t2/exists? :model/FieldUserSettings :field_id field-id))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PII"})
-        (testing "after a full sync, the classifier skips the user-overridden Field"
-          (sync/sync-database! db)
-          (is (nil? (field)))
-          (is (= :PII (mirror))))
-        (testing "a bare update to the Field only changes the classifier's own value"
-          (t2/update! :model/Field field-id {:data_sensitivity :SEC_KEY})
-          (is (= :SEC_KEY (field)))
+        (testing "after full sync, Field and its settings keep user's label"
+          (sync/sync-database! (:id db))
+          (is (= :PII (field)))
           (is (= :PII (mirror))))))))
 
 (deftest data-sensitivity-classifier-respects-user-label-test
-  (testing "a user-set data_sensitivity in FieldUserSettings survives the classifier reclassifying the raw Field"
+  (testing "user-set data_sensitivity survives classifier"
     (mt/with-temp-test-data [["app_users"
                               [{:field-name "email", :base-type :type/Text}
                                {:field-name "ssn", :base-type :type/Text}
@@ -657,10 +685,9 @@
         (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :app_users :email)) {:data_sensitivity "PUBLIC"})
         (is (nil? (field :ssn)))
         (mt/with-temporary-setting-values [data-sensitivity-scan-enabled true]
-          (sync/sync-database! (mt/db)))
-        (testing "the classifier still infers and writes its own category on the raw Field"
-          (is (= :PII (field :email))))
-        (testing "the user's PUBLIC override on email survives in FieldUserSettings"
+          (sync/sync-database! (mt/id)))
+        (testing "user's PUBLIC label on email stays on Field and in its settings"
+          (is (= :PUBLIC (field :email)))
           (is (= :PUBLIC (mirror :email))))
         (testing "the classifier labels the unlabeled siblings without creating mirror rows"
           (is (= :PII (field :ssn)))
@@ -675,20 +702,200 @@
                               [["ngoc@metabase.com"]]]]
       (try
         (let [db       (mt/db)
-              db-spec  (sql-jdbc.conn/db->pooled-connection-spec db)
+              db-spec  (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               field-id (mt/id :readd_table :email)
               field    #(t2/select-one [:model/Field :active :data_sensitivity] :id field-id)
               mirror   #(t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)]
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PHI"})
           (jdbc/execute! db-spec ["ALTER TABLE \"READD_TABLE\" DROP COLUMN \"EMAIL\";"])
-          (sync/sync-database! db)
-          (testing "the field is inactive while the column is gone; the mirror keeps the label"
-            (is (=? {:active false, :data_sensitivity nil} (field)))
+          (sync/sync-database! (:id db))
+          (testing "field is inactive while column is gone, and keeps its label"
+            (is (=? {:active false, :data_sensitivity :PHI} (field)))
             (is (= :PHI (mirror))))
           (jdbc/execute! db-spec ["ALTER TABLE \"READD_TABLE\" ADD COLUMN \"EMAIL\" VARCHAR;"])
-          (sync/sync-database! db)
-          (testing "the same Field row is reactivated and the mirror still keeps its label"
-            (is (=? {:active true, :data_sensitivity nil} (field)))
+          (sync/sync-database! (:id db))
+          (testing "same Field row is reactivated and still keeps its label"
+            (is (=? {:active true, :data_sensitivity :PHI} (field)))
             (is (= :PHI (mirror)))))
         (finally
-          (t2/delete! :model/Database (mt/id)))))))
+          (t2/delete! :model/Database :id (mt/id)))))))
+
+(deftest per-table-field-sync-failure-levels-test
+  (testing "a failure syncing one table's fields is logged by kind (GHY-4945, GHY-4946)"
+    (let [run (fn [e]
+                (let [attempted (atom 0)]
+                  (mt/with-dynamic-fn-redefs [fetch-metadata/include-nested-fields-for-table
+                                              (fn [& _] (swap! attempted inc) (throw e))]
+                    (mt/with-log-messages-for-level [messages [metabase.sync.sync-metadata.fields :warn]]
+                      (let [threw? (try (sync-fields/sync-fields! (lib.metadata/database (mt/metadata-provider))) false
+                                        (catch Throwable _ true))]
+                        {:attempted @attempted
+                         :threw?    threw?
+                         :levels    (into #{} (map :level) (messages))})))))]
+      (testing "a missing grant is the customer's to fix: WARN, and the other tables are still synced"
+        (is (=? {:attempted #(> % 1), :threw? false, :levels #{:warn}}
+                (run (java.sql.SQLException. "SELECT command denied to user 'mb'@'localhost' for table 'orders'"
+                                             "42000" (int 1142))))))
+      (testing "an unreachable warehouse aborts the step after the first table"
+        (is (=? {:attempted 1, :threw? true}
+                (run (ex-info "Unable to connect to the database" {}
+                              (com.mchange.v2.resourcepool.CannotAcquireResourceException. "x"))))))
+      (testing "anything else might be a Metabase bug: ERROR"
+        (is (=? {:attempted #(> % 1), :threw? false, :levels #{:error}}
+                (run (ex-info "boom" {}))))))))
+
+(deftest per-table-field-sync-failure-names-table-once-test
+  (testing "the per-table field sync failure names the table once"
+    (mt/with-dynamic-fn-redefs [fetch-metadata/include-nested-fields-for-table
+                                (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-log-messages-for-level [messages [metabase.sync.sync-metadata.fields :warn]]
+        (sync-fields/sync-fields! (lib.metadata/database (mt/metadata-provider)))
+        (let [msgs (map :message (messages))]
+          (is (seq msgs))
+          (is (not-any? #(re-find #"Table Table" %) msgs)))))))
+
+(deftest sync-keeps-custom-field-order-test
+  (testing "sync keeps positions of table whose field order users set to custom (#86100)"
+    (mt/test-driver :h2
+      (mt/with-temp-copy-of-db
+        (let [table-id     (mt/id :venues)
+              custom-order (vec (reverse (t2/select-pks-vec :model/Field :table_id table-id {:order-by [:database_position]})))
+              field-order  #(t2/select-pks-vec :model/Field :table_id table-id {:order-by [:position]})]
+          (mt/user-http-request :crowberto :put 200 (format "table/%d/fields/order" table-id) custom-order)
+          (dotimes [_ 2]
+            (is (= custom-order (field-order)))
+            (sync-fields/sync-fields-for-table! (t2/select-one :model/Table :id table-id))))))))
+
+(defn- h2-warehouse-spec
+  "The JDBC spec of the in-memory H2 warehouse named `warehouse-name`."
+  [warehouse-name]
+  {:classname "org.h2.Driver" :subprotocol "h2" :subname (str "mem:" warehouse-name ";DB_CLOSE_DELAY=-1")})
+
+(defn- do-with-h2-warehouse!
+  "Call `(f database-id spec)` with a Database, inserted and cleaned up by hand since the transaction of `with-temp`
+  would change what sync caches, over a fresh in-memory H2 warehouse with the JDBC `spec` and `n` Tables `T0`, `T1` and
+  so on of the columns `ID`, `A`, `B` and `C`."
+  [warehouse-name n f]
+  (let [spec (h2-warehouse-spec warehouse-name)]
+    (jdbc/execute! spec ["DROP ALL OBJECTS"])
+    (doseq [i (range n)]
+      (jdbc/execute! spec [(format "CREATE TABLE T%d (ID INT PRIMARY KEY, A VARCHAR, B VARCHAR, C VARCHAR)" i)]))
+    (mt/with-model-cleanup [:model/Database]
+      (f (t2/insert-returning-pk! :model/Database {:name    warehouse-name
+                                                   :engine  :h2
+                                                   :details {:db (str "mem:" warehouse-name ";DB_CLOSE_DELAY=-1")}})
+         spec))))
+
+(defn- sync-step-statement-counts!
+  "The number of app DB statements each of `steps`, pairs of a key and a function of the Database, issues in order over
+  a warehouse of `n` Tables after `(prepare! database-id spec)`, with what `(check database-id)` returns afterwards
+  under `:check`."
+  [n prepare! steps check]
+  (do-with-h2-warehouse!
+   (str "sync_statement_counts_" n) n
+   (fn [db-id spec]
+     (prepare! db-id spec)
+     (let [database (driver.u/lib-database db-id)]
+       (-> (into {}
+                 (map (fn [[k step!]]
+                        [k (events.tu/real-statement-count! #(step! database))]))
+                 steps)
+           (assoc :check (check db-id)))))))
+
+(defn- statement-counts-at-two-sizes!
+  "[[sync-step-statement-counts!]] at 4 and 16 Tables, the lower of two measurements at each size so that a one-time
+  read such as a cache refill does not count, after a warm-up at 2 Tables."
+  ([prepare! steps]
+   (statement-counts-at-two-sizes! prepare! steps (constantly nil)))
+  ([prepare! steps check]
+   (sync-step-statement-counts! 2 prepare! steps check)
+   (mapv (fn [n]
+           (merge-with #(if (number? %1) (min %1 %2) %1)
+                       (sync-step-statement-counts! n prepare! steps check)
+                       (sync-step-statement-counts! n prepare! steps check)))
+         [4 16])))
+
+(defn- sync-tables!
+  "Sync the Tables of the Database with `db-id`, but not their Fields."
+  [db-id _spec]
+  (sync-tables/sync-tables-and-database! (driver.u/lib-database db-id)))
+
+(defn- sync-metadata!
+  "Sync the metadata of the Database with `db-id`."
+  [db-id _spec]
+  (sync-metadata/sync-db-metadata! db-id))
+
+(deftest sync-fields-statement-count-test
+  (mt/test-driver :h2
+    (testing "sync-fields! issues as many statements for 16 Tables as for 4"
+      (testing "when every Table is new"
+        (let [[small large] (statement-counts-at-two-sizes! sync-tables! [[:fields sync-fields/sync-fields!]])]
+          (is (= small large))))
+      (testing "when nothing changed"
+        (let [[small large] (statement-counts-at-two-sizes! sync-metadata! [[:fields sync-fields/sync-fields!]])]
+          (is (= small large))))
+      (testing "when a column is dropped from every Table"
+        (let [[small large] (statement-counts-at-two-sizes!
+                             (fn [db-id spec]
+                               (sync-metadata! db-id spec)
+                               (doseq [table-name (t2/select-fn-vec :name :model/Table :db_id db-id)]
+                                 (jdbc/execute! spec [(format "ALTER TABLE %s DROP COLUMN C" table-name)])))
+                             [[:fields sync-fields/sync-fields!]]
+                             (fn [db-id]
+                               (t2/count :model/Field
+                                         :table_id [:in (t2/select-pks-vec :model/Table :db_id db-id)]
+                                         :name "C"
+                                         :active false)))]
+          (is (= (:fields small) (:fields large)))
+          (testing "and retires that column in every Table"
+            (is (= [4 16] [(:check small) (:check large)]))))))))
+
+(deftest sync-reactivated-tables-statement-count-test
+  (mt/test-driver :h2
+    (testing "syncing Tables that come back issues as many statements for 16 Tables as for 4"
+      (let [[small large] (statement-counts-at-two-sizes!
+                           (fn [db-id spec]
+                             (sync-metadata! db-id spec)
+                             (t2/update! :model/Table :db_id db-id {:active false}))
+                           [[:tables sync-tables/sync-tables-and-database!]
+                            [:fields sync-fields/sync-fields!]]
+                           (fn [db-id] (t2/count :model/Table :db_id db-id :active true)))]
+        (is (= (:tables small) (:tables large)))
+        (is (= (:fields small) (:fields large)))
+        (testing "and reactivates every Table"
+          (is (= [4 16] [(:check small) (:check large)])))))))
+
+(deftest sync-fields-isolates-failing-table-test
+  (mt/test-driver :h2
+    (testing "a Table whose columns cannot be read fails alone and the other Tables of its chunk are synced"
+      (do-with-h2-warehouse!
+       "sync_fields_failing_table" 4
+       (fn [db-id spec]
+         (sync-tables! db-id spec)
+         (let [original (mt/original-fn #'fetch-metadata/include-nested-fields-for-table)
+               field-count #(t2/count :model/Field :table_id (t2/select-one-pk :model/Table :db_id db-id :name %))]
+           (mt/with-dynamic-fn-redefs [fetch-metadata/include-nested-fields-for-table
+                                       (fn [fields database table]
+                                         (if (= "T1" (:name table))
+                                           (throw (ex-info "boom" {}))
+                                           (original fields database table)))]
+             (mt/with-log-messages-for-level [messages [metabase.sync.sync-metadata.fields :warn]]
+               (is (= {:total-fields 16 :updated-fields 12}
+                      (sync-fields/sync-fields! (driver.u/lib-database db-id))))
+               (is (some #(re-find #"T1" (:message %)) (messages)))))
+           (is (= {"T0" 4 "T1" 0 "T2" 4 "T3" 4}
+                  (into {} (map (juxt identity field-count)) ["T0" "T1" "T2" "T3"])))))))))
+
+(deftest sync-fields-falls-back-to-table-by-table-test
+  (mt/test-driver :h2
+    (testing "when syncing the Tables of a chunk together fails, each of them is synced on its own"
+      (do-with-h2-warehouse!
+       "sync_fields_fallback" 4
+       (fn [db-id spec]
+         (sync-tables! db-id spec)
+         (mt/with-dynamic-fn-redefs [sync-instances/sync-instances-of-tables! (fn [_entries] (throw (ex-info "boom" {})))]
+           (is (= {:total-fields 16 :updated-fields 16}
+                  (sync-fields/sync-fields! (driver.u/lib-database db-id)))))
+         (is (= 16 (t2/count :model/Field
+                             :table_id [:in (t2/select-pks-vec :model/Table :db_id db-id)]
+                             :active true))))))))

@@ -10,6 +10,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.agent.streaming :as agent.streaming]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
@@ -384,7 +385,7 @@
         ;; UPDATE the placeholder with whatever parts we collected, even if the
         ;; pipeline threw. Raw native parts (not the lossy AI-SDK-message
         ;; round-trip) preserve tool-output :structured-output for analytics.
-        (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)]
+        (let [combined-parts (into [] (agent.streaming/combine-text-parts-xf) @parts-atom)]
           (metabot.persistence/finalize-assistant-turn!
            assistant-msg-id
            combined-parts
@@ -625,7 +626,7 @@
                                                                            :id     id
                                                                            :title  (tool-friendly-names tool-name "Thinking")
                                                                            :status status}])
-                                          (when (= status "complete")
+                                          (when (#{"complete" "error"} status)
                                             (swap! pending-text #(str "\n\n" %)))
                                           nil))))
 
@@ -634,8 +635,8 @@
                         (swap! tool-id->name assoc id tool-name)
                         (send-task-update! id tool-name "in_progress"))
 
-        on-tool-end (fn [{:keys [id]}]
-                      (send-task-update! id (get @tool-id->name id) "complete")
+        on-tool-end (fn [{:keys [id result]}]
+                      (send-task-update! id (get @tool-id->name id) (if (:error result) "error" "complete"))
                       (swap! tool-id->name dissoc id))
 
         prefetched-viz (atom {})

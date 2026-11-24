@@ -7,10 +7,12 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [malli.error :as me]
    [metabase.driver.util :as driver.u]
+   [metabase.events.test-util :as events.tu]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.task.index-values :as task.index-values]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
+   [metabase.search.test-util :as search.tu]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.impl :as task]
    [metabase.test :as mt]
@@ -75,7 +77,7 @@
             (testing "When the values change the indexed values change"
               ;; update the filter on the model to simulate different values indexed
               (t2/update! :model/Card
-                          (u/the-id model)
+                          :id (u/the-id model)
                           {:dataset_query (mt/mbql-query products
                                             {:filter [:and
                                                       [:> $id 10]
@@ -104,7 +106,7 @@
                   (is (= {"model-index-id" (:id model-index)}
                          (:data trigger)))))
               (testing "Deleting the model index removes the indexing task"
-                (t2/delete! :model/ModelIndex :id (u/the-id model-index))
+                (model-index/delete-model-indexes! [(u/the-id model-index)])
                 (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
 
 (def ^:private empty-changes "empty state map for find changes"
@@ -335,3 +337,38 @@
             (is (=? {:state "error"
                      :error #"(?s)Error executing query.*"}
                     bad-attempt))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/ModelIndex :model/Card]
+    (let [model-id (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :type :model))
+          rows     (fn [n]
+                     (mapv (fn [_] {:model-id   model-id
+                                    :pk-ref     (mt/$ids $products.id)
+                                    :value-ref  (mt/$ids $products.title)
+                                    :creator-id (mt/user->id :rasta)})
+                           (range n)))
+          fresh!   (fn [n] (mapv :id (model-index/create-model-indexes! (rows n))))
+          counted  (fn [f]
+                     (f 1)
+                     (is (= (f 2) (f 6))))]
+      (testing "creating model indexes"
+        (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(model-index/create-model-indexes! rows))))))
+      (testing "deleting model indexes"
+        (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(model-index/delete-model-indexes! ids)))))))))
+
+(deftest add-values-statement-count-test
+  (testing "indexing 10 values runs as many statements as indexing 40, search ingestion included"
+    (mt/with-model-cleanup [:model/ModelIndex :model/Card]
+      (search.tu/with-temp-index-table
+        (let [model-id   (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :type :model))
+              statements (fn [n]
+                           (let [[model-index] (model-index/create-model-indexes! [{:model-id   model-id
+                                                                                    :pk-ref     (mt/$ids $products.id)
+                                                                                    :value-ref  (mt/$ids $products.title)
+                                                                                    :creator-id (mt/user->id :rasta)}])]
+                             (with-redefs-fn {#'model-index/fetch-values (constantly [nil (for [i (range n)] [(inc i) (str "Value " i)])])}
+                               (fn []
+                                 (u/prog1 (events.tu/statement-count! #(model-index/add-values! model-index))
+                                   (is (= n (t2/count :model/ModelIndexValue :model_index_id (:id model-index)))))))))]
+          (statements 2)
+          (is (= (statements 10) (statements 40))))))))

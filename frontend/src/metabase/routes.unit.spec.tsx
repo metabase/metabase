@@ -7,6 +7,7 @@ import {
   setupDashboardQuestionCandidatesEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
+import { setupEntityIdEndpoint } from "__support__/server-mocks/entity-id";
 import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
 import { setup as setupAccountPassword } from "metabase/account/password/containers/UserPasswordApp/tests/setup";
 import { getUser } from "metabase/current-user";
@@ -15,6 +16,7 @@ import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { LegacyBrowseRedirect, getRoutes } from "./routes";
 
@@ -74,6 +76,10 @@ jest.mock("metabase/collections/components/CollectionLanding", () => {
   const { Outlet } = jest.requireActual("metabase/router");
   return { __esModule: true, default: () => <Outlet /> };
 });
+
+jest.mock("metabase/dashboard/containers/DashboardApp/DashboardApp", () => ({
+  DashboardApp: () => <div>dashboard app</div>,
+}));
 
 function setupAppRoutes({
   initialRoute,
@@ -314,5 +320,84 @@ describe("collection modal routes", () => {
       await screen.findByText("Move questions into their dashboards?"),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+});
+
+describe("dashboard entity-id deep links", () => {
+  const DASHBOARD_EID = createMockEntityId("xBLdW9FsgRuB2HGhWiBa_");
+  const TAB_EID = createMockEntityId("N-o1tJ9swdO4YJycqMA8P");
+  const DASHCARD_EID = createMockEntityId("19JbScZRjz5mSQ7chtjuY");
+  const UNKNOWN_DASHCARD_EID = "unknownDashcardEid___";
+  const DASHBOARD_ID = 1;
+  const TAB_ID = 2;
+  const DASHCARD_ID = 25;
+
+  type SetupOpts = {
+    initialRoute: string;
+  };
+
+  function setup({ initialRoute }: SetupOpts) {
+    setupEntityIdEndpoint({
+      dashboard: { [DASHBOARD_EID]: DASHBOARD_ID },
+      "dashboard-tab": { [TAB_EID]: TAB_ID },
+      "dashboard-card": { [DASHCARD_EID]: DASHCARD_ID },
+    });
+
+    const { router } = setupAppRoutes({ initialRoute });
+    return router;
+  }
+
+  it("resolves the dashboard entity_id in the path to its numeric id", async () => {
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}`,
+    });
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`),
+    );
+    expect(await screen.findByText("dashboard app")).toBeInTheDocument();
+  });
+
+  it("translates the tab and the scrollTo dashcard entity_ids", async () => {
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}?tab=${TAB_EID}#scrollTo=${DASHCARD_EID}`,
+    });
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`),
+    );
+    expect(router?.location.search).toBe(`?tab=${TAB_ID}`);
+    expect(router?.location.hash).toBe(`#scrollTo=${DASHCARD_ID}`);
+  });
+
+  it("drops a scrollTo entity_id that doesn't exist and keeps the rest of the hash", async () => {
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}#scrollTo=${UNKNOWN_DASHCARD_EID}&fullscreen`,
+    });
+
+    expect(await screen.findByText("dashboard app")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`);
+    expect(router?.location.hash).toBe("#fullscreen");
+  });
+
+  it("keeps a hash without entity_ids as it is", async () => {
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}#scrollTo=${DASHCARD_ID}&refresh=60`,
+    });
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`),
+    );
+    expect(router?.location.hash).toBe(`#scrollTo=${DASHCARD_ID}&refresh=60`);
+  });
+
+  it("shows a 404 for a tab entity_id that doesn't exist, even when it starts with a number", async () => {
+    setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}?tab=${"12".padEnd(21, "x")}`,
+    });
+
+    expect(
+      await screen.findByText("We're a little lost..."),
+    ).toBeInTheDocument();
   });
 });

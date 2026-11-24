@@ -1,8 +1,10 @@
 (ns metabase.segments.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.users.schema]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
@@ -32,6 +34,26 @@
   "The `:definition` column of a Segment, decoded."
   ::lib-be.schema/maybe-legacy-query)
 
+(mr/def ::segment.name
+  ms/NonBlankString)
+
+(mr/def ::segment.update
+  "What an update of a segment takes: its `:id` and the columns to change, each optional."
+  [:map {:closed true}
+   [:id ::lib.schema.id/segment]
+   [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
+   [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
+   [:name                    {:optional true} [:maybe ::segment.name]]
+   [:description             {:optional true} [:maybe :string]]
+   [:archived                {:optional true} [:maybe :boolean]]
+   [:definition              {:optional true} [:maybe ::segment.definition]]
+   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:points_of_interest      {:optional true} [:maybe :string]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:entity_id               {:optional true} [:maybe :string]]])
+
 (mr/def ::segment
   "A Segment as selected from the app DB: every column of `:segment`, plus `:creator` and `:table` some callers
   hydrate onto it."
@@ -42,18 +64,25 @@
     [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
     [:table                   {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 
-(mr/def ::segment.update
-  "What an update (or insert) of a Segment accepts: every column of `:segment` except `id`, all optional."
-  [:map {:closed true}
-   [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
-   [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
-   [:name                    {:optional true} [:maybe :string]]
-   [:description             {:optional true} [:maybe :string]]
-   [:archived                {:optional true} [:maybe :boolean]]
-   [:definition              {:optional true} [:maybe ::segment.definition]]
-   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:points_of_interest      {:optional true} [:maybe :string]]
-   [:caveats                 {:optional true} [:maybe :string]]
-   [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:entity_id               {:optional true} [:maybe :string]]])
+(mr/def ::segment.revision
+  "A Segment as a Revision stores it: its tracked columns."
+  [:select-keys ::segment.update
+   [:name :description :definition :archived :table_id :caveats :points_of_interest :show_in_getting_started]])
+
+(mr/def ::segment.create
+  "What a caller gives to create a Segment, whose table follows its definition: the columns of an update without the
+  `:id` and the columns the product sets, and its name and definition."
+  [:merge
+   (reduce mut/dissoc ::segment.update [:id :table_id :created_at :updated_at])
+   [:map {:closed true}
+    [:name       ::segment.name]
+    [:definition ::segment.definition]]])
+
+(mr/def ::external-segment
+  "A Segment as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::segment [:name :points_of_interest :archived :caveats :description :entity_id
+                             :show_in_getting_started :creator_id :definition]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

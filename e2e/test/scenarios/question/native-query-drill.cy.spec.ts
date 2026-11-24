@@ -303,7 +303,7 @@ describe("scenarios > question > native query drill", () => {
 
       H.visitQuestion("@questionId");
       H.assertQueryBuilderRowCount(10);
-      applyBrushFilter({ left: 200, right: 800 });
+      H.applyBrushToPoints(2, 5);
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(4);
     });
@@ -324,9 +324,9 @@ describe("scenarios > question > native query drill", () => {
         visitQuestion: true,
       });
       H.assertQueryBuilderRowCount(10);
-      applyBrushFilter({ left: 200, right: 800 });
+      H.applyBrushToPoints(1, 6);
       cy.wait("@dataset");
-      H.assertQueryBuilderRowCount(5);
+      H.assertQueryBuilderRowCount(6);
     });
 
     it("coordinates brush filter", () => {
@@ -377,6 +377,7 @@ describe("scenarios > question > native query drill", () => {
       H.getDashboardCard().within(() => H.cartesianChartCircle().eq(0).click());
       H.popover().within(() => {
         cy.findByText("Filter by this value").should("be.visible");
+        cy.findByText(/See this/).should("not.exist");
         cy.findByText("=").click();
         cy.wait("@dataset");
       });
@@ -404,13 +405,6 @@ describe("scenarios > question > native query drill", () => {
     });
   });
 });
-
-function applyBrushFilter({ left, right }: { left: number; right: number }) {
-  H.ensureEchartsContainerHasSvg();
-  cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-
-  H.applyBrush(left, right);
-}
 
 function applyBoxFilter({
   top,

@@ -22,6 +22,10 @@
 
 .titleLink {
   && {
+    /* The link wraps a block (Ellipsified). Inline, its outline has nothing to draw round. */
+    display: inline-block;
+    max-width: 100%;
+    vertical-align: top;
     line-height: inherit;
   }
 

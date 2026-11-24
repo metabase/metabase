@@ -5,7 +5,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
@@ -14,10 +13,33 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :router_database_id :model/Database :id database-id))
 
+(mu/defn router-database-ids :- [:map-of ::lib.schema.id/database ::lib.schema.id/database]
+  "A map from the id of each destination among the Databases with `database-ids` to the id of its router."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (mdb/select-batched-map #(t2/select-fn->fn :id :router_database_id :model/Database
+                                             :id [:in %]
+                                             :router_database_id [:not= nil])
+                          database-ids))
+
+(mu/defn lock-databases! :- :nil
+  "Lock the Database rows with `database-ids` for update until the transaction ends."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/query {:select [:id]
+             :from   [(t2/table-name :model/Database)]
+             :where  [:in :id [:auto/param database-ids]]
+             :for    [:update]})
+  nil)
+
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
+
+(mu/defn database-settings-by-name :- [:map-of :string [:maybe ::warehouses.schema/database.settings]]
+  "The `:settings` of the Databases named one of `database-names`, by name, with no other column read."
+  [database-names :- [:sequential :string]]
+  (mdb/select-batched-map #(t2/select-fn->fn :name :settings [:model/Database :name :settings] :name [:in [:auto/param %]])
+                          (distinct database-names)))
 
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
@@ -27,24 +49,34 @@
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (mdb/select-batched #(t2/select :model/Database :id [:in %]) database-ids))
+
+(mu/defn databases-by-ids :- [:map-of ::lib.schema.id/database :map]
+  "The Databases with `database-ids`, by id."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (mdb/select-batched-map #(t2/select-fn->fn :id identity :model/Database :id [:in %]) database-ids))
 
 (mu/defn database-by-name
   "The Database named `database-name`, or nil."
   [database-name :- :string]
   (t2/select-one :model/Database :name database-name))
 
-(mu/defn set-database-details!
-  "Set the connection details of the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   details     :- ::warehouses.schema/database.details]
-  (t2/update! :model/Database database-id {:details details}))
+(mu/defn databases-with-uploads-enabled
+  "The Databases that have uploads enabled."
+  []
+  (t2/select :model/Database :uploads_enabled true))
 
-(mu/defn set-database-provider-name!
-  "Set the provider name of the Database with `database-id`, returning the number updated."
-  [database-id    :- ::lib.schema.id/database
-   provider-name  :- :string]
-  (t2/update! :model/Database database-id {:provider_name provider-name}))
+(mu/defn insert-databases! :- [:sequential ::warehouses.schema/database]
+  "Insert the Database `rows` with one statement per distinct set of columns, so that a column a row leaves out keeps
+  its default, and return the inserted instances in the order of `rows`."
+  [rows :- [:sequential ::warehouses.schema/database.create]]
+  (mdb/insert-returning-instances! :model/Database rows))
+
+(mu/defn update-databases!
+  "Apply `rows`, each the id of a Database and the columns to change, with one plain update for the rows that get the
+  same changes."
+  [rows :- [:sequential :map]]
+  (mdb/update-grouped! :model/Database rows))
 
 (mu/defn health-check-candidate-ids
   "The `:id` of the lowest-id non-audit, non-sample, non-stub, non-destination Database of each engine."
@@ -58,114 +90,32 @@
                         [:= :router_database_id nil]]
              :group-by [:engine]}))
 
-(defn- table-ids-of-database-query
-  [database-id]
-  ^:allow-subquery {:from [(t2/table-name :model/Table)], :select [:id], :where [:= :db_id database-id]})
-
-(mu/defn fields-exist-for-database?
-  "Whether any Field belongs to a Table of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Field :table_id [:in (table-ids-of-database-query database-id)] {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn delete-childless-fields-for-database!
-  "Delete the childless Fields of the Tables of the Database with `database-id`, returning the number deleted."
-  [database-id :- ::lib.schema.id/database]
-  (let [table-ids-query (table-ids-of-database-query database-id)
-        extra-clause    (if (= (mdb/db-type) :mysql)
-                          ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
-                          ;; DELETE target
-                          [:not-in :id ^:allow-subquery {:select [:parent_id]
-                                                         :from   [[^:allow-subquery {:select [:parent_id]
-                                                                                     :from   [(t2/table-name :model/Field)]
-                                                                                     :where  [:and
-                                                                                              [:not= :parent_id nil]
-                                                                                              [:in :table_id table-ids-query]]}
-                                                                   :parent_fields]]}]
-                          [:not [:exists ^:allow-subquery {:select [1]
-                                                           :from   [[(t2/table-name :model/Field) :child_field]]
-                                                           :where  [:= :child_field.parent_id :metabase_field.id]}]])]
-    (t2/query-one {:delete-from (t2/table-name :model/Field)
-                   :where       [:and
-                                 [:in :table_id table-ids-query]
-                                 extra-clause]})))
-
-(mu/defn delete-cards-for-database-returning-ids-reducible
-  "A reducible that deletes the Cards of the Database with `database-id` and yields their `:id`s (Postgres only)."
-  [database-id :- ::lib.schema.id/database]
-  (t2/reducible-query {:delete-from (t2/table-name :model/Card)
-                       :where       [:= :database_id database-id]
-                       :returning   [:id]}))
-
-(mu/defn card-ids-for-database-reducible
-  "A reducible of the `:id`s of the Cards of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/reducible-query {:from   [(t2/table-name :model/Card)]
-                       :select [:id]
-                       :where  [:= :database_id database-id]}))
-
-(mu/defn delete-query-actions-for-database!
-  "Delete the query Actions whose query runs against the Database with `database-id`, returning the number deleted."
-  [database-id :- ::lib.schema.id/database]
-  (if-let [action-ids (not-empty (t2/select-fn-set :action_id :model/QueryAction :database_id database-id))]
-    (t2/delete! :model/Action :id [:in action-ids])
-    0))
-
-(mu/defn delete-cards-for-database!
-  "Delete the Cards of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/query {:delete-from (t2/table-name :model/Card)
-             :where       [:= :database_id database-id]}))
-
-(mu/defn disable-uploads-for-all-databases!
-  "Disable uploads on every Database that has them enabled, returning the number updated."
-  []
-  (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
+(mu/defn disable-uploads-for-databases!
+  "Disable uploads on the Databases with `database-ids`, returning the number updated."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/Database :id [:in %]
+                                                          {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}) database-ids))
 
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`, in case-insensitive display name order."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query)]
-                                                           :order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/Table :db_id database-id :active true {:order-by [[:%lower.display_name :asc]]}))
 
 (mu/defn active-tables-for-databases
   "The active Tables of the Databases with `database-ids`, in database then display name order."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Table
-             :db_id  [:in database-ids]
-             :active true
-             {:from [(warehouse-schema-overlay/table-query)]
-              :order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
+  (mdb/select-batched #(t2/select :model/Table
+                                  :db_id  [:in %]
+                                  :active true
+                                  {:order-by [[:db_id :asc] [:%lower.display_name :asc]]})
+                      (sort (distinct database-ids))))
 
 (mu/defn active-table-ids-for-database
   "The ids of the active Tables of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-pks-set :model/Table, :db_id database-id, :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-pks-set :model/Table, :db_id database-id, :active true))
 
 (mu/defn pk-fields-for-tables
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)
-             {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn databases-for-serdes-reducible
-  "A reducible of the Databases to export via serdes: routing destinations, stubs and the sample database are always
-  excluded, H2 databases unless `include-h2?`, and the export is restricted to the rows whose `filter-column` is one
-  of `filter-ids` when `filter-column` is given."
-  [filter-column :- [:maybe :keyword]
-   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
-   include-h2?   :- :boolean]
-  (t2/reducible-select :model/Database
-                       {:where [:and
-                                (when filter-column
-                                  [:in filter-column filter-ids])
-                                [:= :router_database_id nil]
-                                ;; never export the sample database, regardless of its driver
-                                [:not= :is_sample true]
-                                [:not= :is_stub true]
-                                (when-not include-h2?
-                                  [:not= :engine "h2"])]}))
-
-(mu/defn table-database-id
-  "The Database id of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (mdb/select-batched #(t2/select :model/Field :table_id [:in %] :semantic_type (mdb/isa :type/PK)) table-ids))

@@ -33,7 +33,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -310,6 +309,17 @@
                        :sort_column       sort_column
                        :sort_direction    sort_direction}))
 
+(api.macros/defendpoint :get "/counts" :- [:map {:closed true}
+                                           [:all ms/IntGreaterThanOrEqualToZero]
+                                           [:failing ms/IntGreaterThanOrEqualToZero]
+                                           [:ownerless ms/IntGreaterThanOrEqualToZero]]
+  "Count active alerts in the All, Failing, and Ownerless Monitor tabs."
+  [_route-params _query-params _body _request]
+  (api/check-superuser)
+  {:all       (notification.db/admin-notifications-count {:active true})
+   :failing   (notification.db/admin-notifications-count {:active true :last_check_status :failing})
+   :ownerless (notification.db/admin-notifications-count {:active true :creatorless true})})
+
 ;; ---------------------------------------------------------------------------
 ;; Detail endpoint helpers
 ;; ---------------------------------------------------------------------------
@@ -407,27 +417,23 @@
 (defn- bulk-update!
   "Apply `update-map` to all card-type notifications in `ids` in a single SQL update. Returns the
   hydrated before-state so the caller can drive post-commit side effects via
-  [[notification-api/publish-notification-update!]]."
+  [[notification-api/publish-notification-updates!]]."
   [update-map ids]
   ;; Guard empty `ids`: `[:in :id []]` is degenerate SQL, and there's nothing to select/update or
   ;; publish side effects for. (The endpoint schema also enforces `:min 1`.)
   (if (empty? ids)
     []
-    ;; The endpoint is superuser-gated (`api/check-superuser`), which is what the model's
-    ;; before-update hook checks before permitting a `creator_id` change. (Harmless for the
-    ;; archive action, whose update-map never touches creator_id.)
-    (t2/with-transaction [_conn]
-      (let [before (-> (notification.db/card-notifications ids)
-                       models.notification/hydrate-notification
-                       vec)]
-        (notification.db/update-card-notifications! ids update-map)
-        before))))
+    (let [before (-> (notification.db/card-notifications ids)
+                     models.notification/hydrate-notification
+                     vec)]
+      (models.notification/update-notifications! (mapv #(assoc update-map :id (:id %)) before))
+      before)))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
   "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes
   through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz
   triggers. Recipient emails and `:event/notification-update` audit events are
-  published via the shared [[notification-api/publish-notification-update!]] helper so this
+  published via the shared [[notification-api/publish-notification-updates!]] helper so this
   endpoint's side-effect contract can't drift from `PUT /api/notification/:id`."
   [_route _query
    {:keys [notification_ids action creator_id]} :-
@@ -441,8 +447,9 @@
         after      (->> (notification.db/notifications-by-id (mapv :id before))
                         models.notification/hydrate-notification
                         (m/index-by :id))]
-    (doseq [b    before
-            :let [a (get after (:id b))]
-            :when a]
-      (notification-api/publish-notification-update! a b))
+    (notification-api/publish-notification-updates!
+     (for [b    before
+           :let [a (get after (:id b))]
+           :when a]
+       [a b]))
     {:updated (count before)}))

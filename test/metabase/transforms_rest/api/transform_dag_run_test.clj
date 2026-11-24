@@ -3,11 +3,15 @@
   /api/transform/:id (previewing and triggering a DAG-reprocess run)."
   (:require
    [clojure.test :refer :all]
+   [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.test :as mt]
+   [metabase.transforms.jobs :as jobs]
    [metabase.transforms.test-util :refer [parse-instant
                                           utc-timestamp
                                           with-transforms-api-users!]]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -161,8 +165,8 @@
             (mt/user-http-request user :post 204 (str "transform-dag-run/" run-id "/cancel"))
             (is (= :canceled (:status (t2/select-one :model/TransformDagRun :id run-id))))))))))
 
-(deftest cancel-dag-run-requires-write-permission-test
-  (testing "POST /api/transform-dag-run/:run-id/cancel requires write permission on the seed transform"
+(deftest cancel-dag-run-requires-read-permission-test
+  (testing "POST /api/transform-dag-run/:run-id/cancel requires read permission on the seed transform"
     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
       (mt/with-premium-features #{:transforms-basic}
         (mt/with-temp [:model/Transform {seed-id :id} {:name "Seed"}
@@ -238,10 +242,84 @@
           (mt/user-http-request :crowberto :post 400 (str "transform/" tid "/run-dag")
                                 {:direction "sideways"}))))))
 
-(deftest run-dag-requires-write-permission-test
-  (testing "POST /api/transform/:id/run-dag requires write permission on the transform"
+(deftest run-dag-requires-read-permission-test
+  (testing "POST /api/transform/:id/run-dag requires read permission on the transform"
     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
       (mt/with-premium-features #{:transforms-basic}
         (mt/with-temp [:model/Transform {tid :id} {:name "Seed"}]
           (mt/user-http-request :rasta :post 403 (str "transform/" tid "/run-dag")
                                 {:direction "upstream"}))))))
+
+(deftest run-dag-coordinator-failure-logs-error-test
+  (testing "POST /api/transform/:id/run-dag logs an ERROR when the DAG run coordinator fails"
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp [:model/Transform {tid :id} {:name "Seed" :table_dependencies []}]
+          (mt/with-log-messages-for-level [messages :warn]
+            (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [& _] (throw (ex-info "coordinator crashed" {})))]
+              (let [{run-id :dag_run_id} (mt/user-http-request :crowberto :post 202 (str "transform/" tid "/run-dag")
+                                                               {:direction "upstream"})
+                    timer                (u/start-timer)]
+                ;; the run continues on a virtual thread after the 202; its last act is the fallback WARN
+                (while (and (not-any? #(re-find #"Async run failed" (:message %)) (messages))
+                            (< (u/since-ms timer) 10000))
+                  (Thread/sleep 50))
+                (is (= :failed (t2/select-one-fn :status :model/TransformDagRun :id run-id)))
+                (is (some #(and (= :error (:level %))
+                                (re-find #"coordinator crashed" (str (:message %) (some-> (:e %) ex-message))))
+                          (messages))
+                    (pr-str (map (juxt :level :namespace :message) (messages))))))))))))
+
+;;; +------------------------------------------------------------------------------------------------------------------+
+;;; |                                     Run checks: run-dag, cancel, reset                                           |
+;;; +------------------------------------------------------------------------------------------------------------------+
+
+(mt/when-ee-evailable
+ (deftest run-control-endpoints-need-read-access-test
+   (testing "a data analyst who reads a transform but cannot write it controls its runs, also on a read-only instance"
+     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+       (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+         (doseq [read-only? [false true]]
+           (testing (str "read-only: " read-only?)
+             (mt/with-temp [:model/Transform       {tid :id}    {:name "Seed" :last_checkpoint_value "7"}
+                            :model/TransformDagRun {run-id :id} {:source_transform_id tid
+                                                                 :direction           "upstream"
+                                                                 :status              "started"
+                                                                 :is_active           true
+                                                                 :start_time          (parse-instant "2025-09-01T10:00:00")}]
+               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms :no}
+                 (mt/with-data-analyst-role! (mt/user->id :lucky)
+                   (mt/with-dynamic-fn-redefs [remote-sync/read-only? (constantly read-only?)]
+                     (mt/with-current-user (mt/user->id :lucky)
+                       (testing "premise: lucky reads the transform and cannot write it"
+                         (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Transform :id tid) :can_read))))
+                         (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Transform :id tid) :can_write))))))
+                     (testing "responses say lucky may run it"
+                       (is (true? (:can_query (mt/user-http-request :lucky :get 200 (str "transform/" tid)))))
+                       (is (true? (:can_query (some #(when (= tid (:id %)) %)
+                                                    (mt/user-http-request :lucky :get 200 "transform"))))))
+                     (mt/user-http-request :lucky :post 204 (str "transform/" tid "/reset-checkpoint"))
+                     (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform :id tid)))
+                     (is (nil? (:dag_run_id (mt/user-http-request :lucky :post 202 (str "transform/" tid "/run-dag")
+                                                                  {:direction "upstream"}))))
+                     (mt/user-http-request :lucky :post 404 (str "transform/" tid "/cancel"))
+                     (mt/user-http-request :lucky :post 204 (str "transform-dag-run/" run-id "/cancel"))
+                     (is (= :canceled (t2/select-one-fn :status :model/TransformDagRun :id run-id))))))))))))))
+
+(deftest run-control-endpoints-refuse-user-who-cannot-read-test
+  (testing "a user who cannot read a transform is refused, and a missing transform is a 404"
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+        (mt/with-temp [:model/Transform       {tid :id}    {:name "Seed"}
+                       :model/TransformDagRun {run-id :id} {:source_transform_id tid
+                                                            :direction           "upstream"
+                                                            :status              "started"
+                                                            :is_active           true
+                                                            :start_time          (parse-instant "2025-09-01T10:00:00")}]
+          (doseq [path ["run" "cancel" "reset-checkpoint"]]
+            (mt/user-http-request :rasta :post 403 (str "transform/" tid "/" path))
+            (mt/user-http-request :crowberto :post 404 (str "transform/" Integer/MAX_VALUE "/" path)))
+          (mt/user-http-request :rasta :post 403 (str "transform/" tid "/run-dag") {:direction "upstream"})
+          (mt/user-http-request :crowberto :post 404 (str "transform/" Integer/MAX_VALUE "/run-dag") {:direction "upstream"})
+          (mt/user-http-request :rasta :post 403 (str "transform-dag-run/" run-id "/cancel"))
+          (is (= :started (t2/select-one-fn :status :model/TransformDagRun :id run-id))))))))

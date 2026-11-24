@@ -5,7 +5,7 @@ description: Write or modify TypeScript and JavaScript code, including tests and
 
 # TypeScript/JavaScript Development Skill
 
-Before frontend edits, including test-only changes, read `frontend/CLAUDE.md`, `docs/developers-guide/frontend.md`, and the shared references below. For new or edited tests, follow [Test authoring](#test-authoring).
+Before frontend edits, including test-only changes, read `frontend/AGENTS.md`, `docs/developers-guide/frontend.md`, and the shared references below. For new or edited tests, follow [Test authoring](#test-authoring).
 
 @./../_shared/development-workflow.md
 @./../_shared/typescript-commands.md

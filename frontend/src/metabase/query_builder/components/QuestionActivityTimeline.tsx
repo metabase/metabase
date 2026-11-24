@@ -3,17 +3,14 @@ import { useMemo } from "react";
 import { useListRevisionsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
-import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
+import { getActivityTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { getSkeletonLineWidth } from "metabase/common/components/Skeletons";
 import { getUser } from "metabase/current-user";
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Flex, Skeleton, Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { revertToRevision } from "../actions";
-
-const { getModerationTimelineEvents } = PLUGIN_MODERATION;
 
 const SKELETON_EVENT_COUNT = 5;
 
@@ -38,18 +35,11 @@ export function QuestionActivityTimeline({
 
   const moderationReviews = question.getModerationReviews();
 
-  const events = useMemo(() => {
-    const moderationEvents = getModerationTimelineEvents(
-      moderationReviews,
-      currentUser,
-    );
-    const revisionEvents = getTimelineEvents({ revisions, currentUser });
-
-    return [...revisionEvents, ...moderationEvents].sort(
-      (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    );
-  }, [moderationReviews, revisions, currentUser]);
+  const events = useMemo(
+    () =>
+      getActivityTimelineEvents({ revisions, moderationReviews, currentUser }),
+    [moderationReviews, revisions, currentUser],
+  );
 
   if (isLoading || error) {
     return (

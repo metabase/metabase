@@ -162,6 +162,7 @@ describe("ActionCreator > Sharing", () => {
       it("should not show sharing settings when user is not admin but public sharing is enabled", async () => {
         await setup({
           action: getAction(),
+          isAdmin: false,
           isPublicSharingEnabled: true,
         });
 

@@ -7,13 +7,14 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
 ;;; -------------------------------------------------- Known labels --------------------------------------------------
 
-(def ^:private parsers ["macaw" "sqlglot"])
+(def ^:private parsers (sort (map name (conj sql-parsing/backends :macaw))))
 
 (def ^:private operations
   ["returned-columns"
@@ -24,7 +25,8 @@
    "replace-names"
    "referenced-tables-raw"
    "simple-query?"
-   "add-into-clause"])
+   "add-into-clause"
+   "add-insert-clause"])
 
 (def ^:private operation-labels
   (vec (for [parser    parsers

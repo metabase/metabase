@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import * as ML from "cljs/metabase.lib.js";
-import type { DatabaseId, TemplateTag, TemplateTags } from "metabase-types/api";
+import type { DatabaseId, TemplateTag } from "metabase-types/api";
 
 import type { MetadataProvider, Query, ValidationError } from "./types";
 
@@ -28,6 +29,15 @@ export function nativeQuery(
   return ML.native_query(databaseId, metadata, innerQuery);
 }
 
+/**
+ * Whether the query is a single native stage and nothing else. Unlike
+ * `queryDisplayInfo(query).isNative`, this is false when MBQL stages follow a
+ * native first stage.
+ */
+export function isNativeOnlyQuery(query: Query): boolean {
+  return ML.native_only_query_QMARK_(query);
+}
+
 export function rawNativeQuery(query: Query): string {
   return ML.raw_native_query(query);
 }
@@ -36,11 +46,11 @@ export function withNativeQuery(query: Query, innerQuery: string): Query {
   return ML.with_native_query(query, innerQuery);
 }
 
-export function withTemplateTags(query: Query, tags: TemplateTags): Query {
+export function withTemplateTags(query: Query, tags: TemplateTag[]): Query {
   return ML.with_template_tags(query, tags);
 }
 
-export function templateTags(query: Query): TemplateTags {
+export function templateTags(query: Query): TemplateTag[] {
   return ML.template_tags(query);
 }
 

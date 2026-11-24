@@ -12,11 +12,11 @@ const { ORDERS_ID: ORDERS_TABLE_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding > modular embedding", () => {
   beforeEach(() => {
-    H.prepareSdkIframeEmbedTest({ signOut: true });
+    H.prepareSdkIframeEmbedTest();
   });
 
-  it("can find the embed.js file", () => {
-    cy.request("http://localhost:4000/app/embed.js").then((response) => {
+  it("can find the embed.js file", { tags: ["@prerelease", "@EE"] }, () => {
+    cy.request("/app/embed.js").then((response) => {
       expect(response.status).to.eq(200);
       expect(response.body).to.be.a("string").and.not.be.empty;
     });
@@ -99,24 +99,28 @@ describe("scenarios > embedding > modular embedding", () => {
     });
   });
 
-  it("displays a question using entity id", () => {
-    const frame = H.loadSdkIframeEmbedTestPage({
-      elements: [
-        {
-          component: "metabase-question",
-          attributes: {
-            questionId: ORDERS_QUESTION_ENTITY_ID,
+  it(
+    "displays a question using entity id",
+    { tags: ["@prerelease", "@EE"] },
+    () => {
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-question",
+            attributes: {
+              questionId: ORDERS_QUESTION_ENTITY_ID,
+            },
           },
-        },
-      ],
-    });
+        ],
+      });
 
-    cy.wait("@getCardQuery");
+      cy.wait("@getCardQuery");
 
-    frame.within(() => {
-      H.assertSdkInteractiveQuestionOrdersUsable();
-    });
-  });
+      frame.within(() => {
+        H.assertSdkInteractiveQuestionOrdersUsable();
+      });
+    },
+  );
 
   it("displays the exploration template", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
@@ -495,7 +499,6 @@ describe("scenarios > embedding > modular embedding", () => {
       H.resetSnowplow();
       H.prepareSdkIframeEmbedTest({
         enabledAuthMethods: ["jwt"],
-        signOut: false,
       });
       H.enableTracking();
     });
@@ -507,7 +510,7 @@ describe("scenarios > embedding > modular embedding", () => {
       }).as("analyticsProxy");
 
       cy.signOut();
-      cy.visit("http://localhost:4000");
+      cy.visit("/");
       const frame = H.loadSdkIframeEmbedTestPage({
         origin: "http://different-than-metabase-instance.com",
         elements: [
@@ -693,7 +696,7 @@ describe("scenarios > embedding > modular embedding", () => {
 
     it("should send locale_used=true when locale is configured", () => {
       cy.signOut();
-      cy.visit("http://localhost:4000");
+      cy.visit("/");
       const frame = H.loadSdkIframeEmbedTestPage({
         origin: "http://different-than-metabase-instance.com",
         elements: [

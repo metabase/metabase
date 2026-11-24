@@ -19,5 +19,5 @@
         (is (transforms.u/is-temp-transform-table? table-with-schema)))))
   (testing "Ignores non-transform tables"
     (mt/with-premium-features #{:transforms-basic}
-      (is (false? (transforms.u/is-temp-transform-table? {:name :orders})))
-      (is (false? (transforms.u/is-temp-transform-table? {:name :public/orders}))))))
+      (is (false? (transforms.u/is-temp-transform-table? {:name "orders"})))
+      (is (false? (transforms.u/is-temp-transform-table? {:name "public/orders"}))))))

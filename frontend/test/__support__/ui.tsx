@@ -1,4 +1,3 @@
-import { Global } from "@emotion/react";
 import type {
   AnyAction,
   Middleware,
@@ -17,6 +16,7 @@ import {
 import {
   Children,
   Fragment,
+  type JSX,
   isValidElement,
   useCallback,
   useMemo,
@@ -33,7 +33,6 @@ import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { baseStyle } from "metabase/css/core/base.styled";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
@@ -49,6 +48,7 @@ import {
   toRouteObjects,
 } from "metabase/router";
 import { useUpdateSettingMutation } from "metabase/settings";
+import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -268,8 +268,7 @@ export function getTestStoreAndWrapper({
 }
 
 /**
- * A minimal version of the GlobalStyles component, for use in Storybook stories.
- * Contains strictly only the base styles to act as CSS resets and css variables, without font files.
+ * A minimal version of the GlobalStyles component that only sets the css variables.
  **/
 const GlobalStylesForTest = () => {
   const theme = useMantineTheme();
@@ -278,7 +277,7 @@ const GlobalStylesForTest = () => {
     return getMetabaseCssVariables({ theme });
   }, [theme]);
 
-  return <Global styles={[baseStyle, cssVariables]} />;
+  return <GlobalStyleSheet styles={cssVariables} />;
 };
 
 /**
@@ -438,7 +437,7 @@ function createTestRouter(holder: MemoryTestRouterHolder): TestRouter {
 
 function childrenAreRouteTree(children: React.ReactNode): boolean {
   return Children.toArray(children).some((child) => {
-    if (!isValidElement(child)) {
+    if (!isValidElement<{ children?: React.ReactNode }>(child)) {
       return false;
     }
     if (child.type === Route) {
@@ -597,6 +596,16 @@ export const waitForDashboardToLoad = async () => {
     },
     { timeout: 3000 },
   );
+};
+
+/**
+ * Waits for a `Sidesheet` to open.
+ * It slides in a few frames after mounting, so its content is not there right after rendering.
+ */
+export const waitForSidesheetToOpen = async () => {
+  await waitFor(() => {
+    expect(screen.getByTestId("sidesheet")).toBeVisible();
+  });
 };
 
 /**

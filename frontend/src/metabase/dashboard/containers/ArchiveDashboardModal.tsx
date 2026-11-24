@@ -19,19 +19,20 @@ type OwnProps = {
 
 type ArchiveDashboardModalProps = OwnProps & {
   dashboard: Dashboard;
+  onArchive: () => Promise<unknown>;
 };
 
-const ArchiveDashboardModal = ({
+export const ArchiveDashboardModal = ({
   onClose,
   dashboard,
+  onArchive,
 }: ArchiveDashboardModalProps) => {
   const [loading, setLoading] = useState(false);
-  const dispatch = useDispatch();
 
   const archive = async () => {
     setLoading(true);
     try {
-      await dispatch(setArchivedDashboard(true));
+      await onArchive();
     } finally {
       setLoading(false);
     }
@@ -59,6 +60,7 @@ const ArchiveDashboardModal = ({
 };
 
 export const ArchiveDashboardModalConnectedInner = (props: OwnProps) => {
+  const dispatch = useDispatch();
   const params = useParams();
   const id = Urls.extractCollectionId(params?.slug);
   const { currentData: dashboard, error } = useGetDashboardQuery(
@@ -78,7 +80,11 @@ export const ArchiveDashboardModalConnectedInner = (props: OwnProps) => {
   }
 
   return (
-    <ArchiveDashboardModal onClose={props.onClose} dashboard={dashboard} />
+    <ArchiveDashboardModal
+      dashboard={dashboard}
+      onArchive={() => dispatch(setArchivedDashboard(true))}
+      onClose={props.onClose}
+    />
   );
 };
 

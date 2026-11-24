@@ -3,72 +3,33 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
-
-(mu/defn field-and-target-database-ids
-  "The `:source_db_id` and `:target_db_id` of the Fields with `source-field-id` and `target-field-id`."
-  [source-field-id :- ::lib.schema.id/field
-   target-field-id :- ::lib.schema.id/field]
-  (t2/query {:select [[:source_t.db_id :source_db_id]
-                      [:target_t.db_id :target_db_id]]
-             :from      [(warehouse-schema-overlay/field-query {:alias :sf})]
-             :join   [(warehouse-schema-overlay/table-query {:alias :source_t}) [:= :sf.table_id :source_t.id]
-                      (warehouse-schema-overlay/field-query {:alias :tf}) [:= :tf.id target-field-id]
-                      (warehouse-schema-overlay/table-query {:alias :target_t}) [:= :tf.table_id :target_t.id]]
-             :where  [:= :sf.id source-field-id]}))
 
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id field-id))
 
-(mu/defn set-nested-fields-active!
-  "Set the active flag of the Fields of the Table with `table-id` whose NFC path matches the SQL LIKE
-  `nfc-path-pattern`, returning the number updated."
-  [table-id          :- ::lib.schema.id/table
-   nfc-path-pattern  :- :string
-   active?           :- :boolean]
-  (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
+(mu/defn fields-by-ids
+  "The Fields with `field-ids`."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (app-db/select-batched #(t2/select :model/Field :id [:in %]) field-ids))
+
+(mu/defn nested-fields-exist? :- :boolean
+  "Whether the Table with `table-id` has Fields whose NFC path matches the SQL LIKE `nfc-path-pattern`."
+  [table-id         :- ::lib.schema.id/table
+   nfc-path-pattern :- :string]
+  (t2/exists? :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern]))
 
 (mu/defn dimension-for-field
   "The Dimension of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Dimension :field_id field-id))
-
-(mu/defn insert-dimension!
-  "Insert the Dimension `row`."
-  [row :- (mut/select-keys ::warehouse-schema.schema/dimension.update [:field_id :type :name :human_readable_field_id])]
-  (t2/insert! :model/Dimension row))
-
-(mu/defn update-dimension!
-  "Apply `changes` to the Dimension with `id`."
-  [id      :- ::lib.schema.id/dimension
-   changes :- (mut/select-keys ::warehouse-schema.schema/dimension.update [:type :name :human_readable_field_id])]
-  (t2/update! :model/Dimension id changes))
-
-(mu/defn rename-dimension-for-field!
-  "Set the name of the Dimension of the Field with `field-id`."
-  [field-id       :- ::lib.schema.id/field
-   dimension-name :- :string]
-  (t2/update! :model/Dimension :field_id field-id {:name dimension-name}))
-
-(mu/defn delete-dimension!
-  "Delete the Dimension with `id`."
-  [id :- ::lib.schema.id/dimension]
-  (t2/delete! :model/Dimension :id id))
-
-(mu/defn delete-dimensions-for-field!
-  "Delete the Dimensions of the Field with `field-id`."
-  [field-id :- ::lib.schema.id/field]
-  (t2/delete! :model/Dimension :field_id field-id))
 
 (mu/defn matching-tables
   "The Tables (active, or with `transform_target` when `include-transform-targets?`) matching `term` (a glob pattern
@@ -89,56 +50,59 @@
        [:published-only?            {:optional true} [:maybe :boolean]]
        [:check-unused?              {:optional true} [:maybe :boolean]]
        [:include-transform-targets? {:optional true} [:maybe :boolean]]]]
-  (let [db-type    (app-db/db-type)
-        glob       (fn [escaped]
-                     (-> escaped
-                         (str/replace "*" "%")
-                         (cond-> (not (str/ends-with? term "*")) (str "%"))))
-        ci-pattern (fn [pattern]
-                     (case db-type
-                       (:h2 :postgres) pattern
-                       [::h2x/collate pattern "utf8mb4_unicode_ci"]))
-        like       (fn [field wrap]
-                     [(case db-type (:h2 :postgres) :ilike :like)
-                      field
-                      (h2x/like-pattern term (comp ci-pattern wrap glob))])
-        where      (cond-> [:and (if include-transform-targets?
-                                   [:or [:= :active true] [:= :transform_target true]]
-                                   [:= :active true])]
-                     (not (str/blank? term)) (conj [:or
-                                                    (like :name identity)
-                                                    (like :display_name identity)
-                                                    ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
-                                                    (like :display_name #(str "% " %))])
-                     visibility-type         (conj [:= :visibility_type visibility-type])
-                     data-layer              (conj [:= :data_layer      (name data-layer)])
-                     data-source             (conj [:= :data_source     (name data-source)])
-                     owner-user-id           (conj [:= :owner_user_id   owner-user-id])
-                     owner-email             (conj [:= :owner_email     owner-email])
-                     orphan-only?            (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
-                     published-only?         (conj [:= :is_published true])
-                     check-unused?
-                     (conj [:not-exists ^:allow-subquery {:select [:*]
-                                                          :from   [[:dependency :d]]
-                                                          :where  [:and
-                                                                   [:= :d.to_entity_id :metabase_table.id]
-                                                                   [:= :d.to_entity_type "table"]]}]))]
-    (t2/select :model/Table {:from [(warehouse-schema-overlay/table-query)], :where where, :order-by [[:name :asc]]})))
+  (let [table-column (partial u/qualified-key (t2/table-name :model/Table))
+        db-type      (app-db/db-type)
+        glob         (fn [escaped]
+                       (-> escaped
+                           (str/replace "*" "%")
+                           (cond-> (not (str/ends-with? term "*")) (str "%"))))
+        ci-pattern   (fn [pattern]
+                       (case db-type
+                         (:h2 :postgres) pattern
+                         [::h2x/collate pattern "utf8mb4_unicode_ci"]))
+        like         (fn [field wrap]
+                       [(case db-type (:h2 :postgres) :ilike :like)
+                        field
+                        (h2x/like-pattern term (comp ci-pattern wrap glob))])
+        where        (cond-> [:and (if include-transform-targets?
+                                     [:or [:= (table-column :active) true] [:= (table-column :transform_target) true]]
+                                     [:= (table-column :active) true])]
+                       (not (str/blank? term)) (conj [:or
+                                                      (like (table-column :name) identity)
+                                                      (like (table-column :display_name) identity)
+                                                      ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
+                                                      (like (table-column :display_name) #(str "% " %))])
+                       visibility-type         (conj [:= (table-column :visibility_type) visibility-type])
+                       data-layer              (conj [:= (table-column :data_layer)      (name data-layer)])
+                       data-source             (conj [:= (table-column :data_source)     (name data-source)])
+                       owner-user-id           (conj [:= (table-column :owner_user_id)   owner-user-id])
+                       owner-email             (conj [:= (table-column :owner_email)     owner-email])
+                       orphan-only?            (conj [:and
+                                                      [:= (table-column :owner_email) nil]
+                                                      [:= (table-column :owner_user_id) nil]])
+                       published-only?         (conj [:= :s.is_published true])
+                       check-unused?
+                       (conj [:not-exists ^:allow-subquery {:select [:*]
+                                                            :from   [[:dependency :d]]
+                                                            :where  [:and
+                                                                     [:= :d.to_entity_id (table-column :id)]
+                                                                     [:= :d.to_entity_type "table"]]}]))]
+    (t2/select :model/Table
+               (cond-> {:select   [(table-column :*)]
+                        :where    where
+                        :order-by [[(table-column :name) :asc]]}
+                 published-only? (assoc :left-join [[(t2/table-name :model/TableUserSettings) :s]
+                                                    [:= :s.table_id (table-column :id)]])))))
 
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (app-db/select-batched #(t2/select :model/Table :id [:in %]) table-ids))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/select-one :model/Table :id table-id))
 
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
@@ -153,30 +117,14 @@
 (mu/defn active-unretired-field-ids-for-table
   "The ids of the active, unretired Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :visibility_type [:not= "retired"] :active true
-                     {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-pks-set :model/Field :table_id table-id :visibility_type [:not= "retired"] :active true))
 
 (mu/defn field-ids-for-table
   "The ids of the Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-pks-set :model/Field :table_id table-id))
 
 (mu/defn active-fields-targeting
-  "The active Fields whose FK target, as users see it, is one of `field-ids`."
+  "The active Fields whose FK target is one of `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :fk_target_field_id [:in field-ids] :active true {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn delete-field-values-for-fields!
-  "Delete the FieldValues of the Fields with `field-ids`."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
-
-(mu/defn update-or-insert-full-field-values!
-  "Update the full FieldValues of the Field with `field-id` to have `values` and `human-readable-values`, inserting
-  one if none exists yet. Returns the number of rows affected."
-  [field-id               :- ::lib.schema.id/field
-   values                 :- [:maybe ms/FieldValues]
-   human-readable-values  :- [:maybe ms/FieldValues]]
-  (app-db/update-or-insert! :model/FieldValues {:field_id field-id, :type :full}
-                            (constantly {:values                values
-                                         :human_readable_values human-readable-values})))
+  (app-db/select-batched #(t2/select :model/Field :fk_target_field_id [:in %] :active true) field-ids))

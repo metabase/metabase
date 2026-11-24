@@ -11,8 +11,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field :as field])
+   [metabase.util.log :as log])
   (:import
    (java.sql Connection)))
 
@@ -83,7 +82,7 @@
                 role               (get user-attributes role-attribute)
                 database           (if (map? database-or-id)
                                      database-or-id
-                                     (impersonation.db/database (u/the-id database-or-id)))
+                                     (driver.u/lib-database (u/the-id database-or-id)))
                 default-role       (driver.sql/default-database-role (driver.u/database->driver database) database)]
             (cond
               (nil? role)
@@ -107,16 +106,15 @@
               role)))))))
 
 (defenterprise hash-input-for-impersonation
-  "Returns a hash-key for FieldValues if the current user uses impersonation for the database.
-  The role is nil while the `:advanced-permissions` feature is unavailable."
+  "The hash input for the FieldValues of the Database with `db-id` when the current user is impersonated there,
+  holding the role so that each role caches its own values, with a nil role while the `:advanced-permissions` feature
+  is unavailable."
   :feature :none
-  [field]
-  ;; Include the role in the hash key, so that we can cache the results of the query for each role.
-  (let [db-id (field/field-id->database-id (u/the-id field))]
-    (when-let [role (and api/*current-user-id*
-                         (impersonation.db/impersonation-exists-for-database? db-id)
-                         (connection-impersonation-role db-id))]
-      {:impersonation-role (when (premium-features/has-feature? :advanced-permissions) role)})))
+  [db-id]
+  (when-let [role (and api/*current-user-id*
+                       (impersonation.db/impersonation-exists-for-database? db-id)
+                       (connection-impersonation-role db-id))]
+    {:impersonation-role (when (premium-features/has-feature? :advanced-permissions) role)}))
 
 (defenterprise impersonation-token-for-db
   "Connection-impersonation fingerprint for the current user on `db-id` (the resolved database
@@ -136,17 +134,24 @@
 (defenterprise set-role-if-supported!
   "Executes a `USE ROLE` or similar statement on the given connection, if connection impersonation is enabled for the
   given driver. For these drivers, the role is set to either the default role, or to a specific role configured for
-  the current user, depending on the connection impersonation settings. This is a no-op for databases that do not
-  support connection impersonation, or for non-EE instances."
-  :feature :advanced-permissions
+  the current user, depending on the connection impersonation settings; a routing destination uses its router's
+  impersonation policies, and a connection that should get a specific role is refused while the `:advanced-permissions`
+  feature is unavailable. This is a no-op for databases that do not support connection impersonation, or for non-EE
+  instances."
+  :feature :none
   [driver ^Connection conn database]
   (when (driver.u/supports? driver :connection-impersonation database)
     (try
-      (let [enabled?           (impersonation-enabled-for-db? database)
+      (let [policy-database    (if-let [router-id (:router-database-id database)]
+                                 (driver.u/lib-database router-id)
+                                 database)
+            enabled?           (impersonation-enabled-for-db? policy-database)
             default-role       (driver.sql/default-database-role driver database)
             ;; *impersonation-role* is bound by middleware in the context of a query - otherwise, we can calculate it ourselves.
             impersonation-role (or *impersonation-role*
-                                   (connection-impersonation-role database))]
+                                   (connection-impersonation-role policy-database))]
+        (when impersonation-role
+          (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions")))
         (when (and enabled? (not default-role))
           (throw (ex-info (tru "Connection impersonation is enabled for this database, but no default role is found")
                           {:user-id api/*current-user-id*

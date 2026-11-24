@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.metabot.tools.search :as search]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
@@ -143,22 +144,22 @@
             (let [semantic-support? (search.engine/supported-engine? :search.engine/semantic)]
               ;; "belligerent" and "bellicose" are semantically similar to our search terms
               ;; ("combative", "quarrelsome") but should NOT match since we're only doing keyword search
-              (mt/with-temp [:model/Dashboard {id-1 :id} {:name "belligerent"}
-                             :model/Dashboard {id-2 :id} {:name "bellicose"}
-                             ;; "baseline" will match via keyword/fulltext search
-                             :model/Dashboard {id-3 :id} {:name "baseline"}]
-                (when semantic-support?
-                  (semantic.tu/index-all!))
-                (let [test-entity? (every-pred (comp #{"dashboard"} :type) (comp #{id-1 id-2 id-3} :id))
-                      query        (fn [base-query]
-                                     (->> (search/search base-query)
-                                          (filter test-entity?)
-                                          (map :name)
-                                          set))]
-                  (testing "Semantic results are not returned for keyword terms"
-                    (is (= #{"baseline"}
-                           (query {:term-queries     ["combative" "quarrelsome" "baseline"]
-                                   :semantic-queries []})))))))))))))
+              (mt/with-model-cleanup [:model/Dashboard]
+                (let [[{id-1 :id} {id-2 :id} {id-3 :id}]
+                      (dashboard/create-dashboards! (for [dashboard-name ["belligerent" "bellicose" "baseline"]]
+                                                      {:name dashboard-name :creator_id (mt/user->id :rasta)}))]
+                  (when semantic-support?
+                    (semantic.tu/index-all!))
+                  (let [test-entity? (every-pred (comp #{"dashboard"} :type) (comp #{id-1 id-2 id-3} :id))
+                        query        (fn [base-query]
+                                       (->> (search/search base-query)
+                                            (filter test-entity?)
+                                            (map :name)
+                                            set))]
+                    (testing "Semantic results are not returned for keyword terms"
+                      (is (= #{"baseline"}
+                             (query {:term-queries     ["combative" "quarrelsome" "baseline"]
+                                     :semantic-queries []}))))))))))))))
 
 (deftest split-keyword-and-semantic-test
   (testing "search returns only exact matches for keyword terms\n"
@@ -169,20 +170,18 @@
             ;; "belligerent" and "baseline" will match via keyword search (exact match in term-queries)
             ;; "ancillary" and "adjunct" will match via semantic search (similar embeddings)
             ;; "bellicose" and "quixotic" should NOT match (not in search terms)
-            (mt/with-temp [:model/Dashboard {id-1 :id} {:name "belligerent"}
-                           :model/Dashboard {id-2 :id} {:name "bellicose"}
-                           :model/Dashboard {id-3 :id} {:name "ancillary"}
-                           :model/Dashboard {id-4 :id} {:name "adjunct"}
-                           :model/Dashboard {id-5 :id} {:name "quixotic"}
-                           :model/Dashboard {id-6 :id} {:name "baseline"}]
-              (semantic.tu/index-all!)
-              (let [test-entity? (every-pred (comp #{"dashboard"} :type) (comp #{id-1 id-2 id-3 id-4 id-5 id-6} :id))
-                    query        (fn [base-query]
-                                   (->> (search/search base-query)
-                                        (filter test-entity?)
-                                        (map :name)
-                                        set))]
-                (testing "Semantic results are only returned for semantic terms"
-                  (is (= #{"baseline" "belligerent" "ancillary" "adjunct"}
-                         (query {:term-queries     ["baseline" "belligerent"]
-                                 :semantic-queries ["ancillary"]}))))))))))))
+            (mt/with-model-cleanup [:model/Dashboard]
+              (let [[{id-1 :id} {id-2 :id} {id-3 :id} {id-4 :id} {id-5 :id} {id-6 :id}]
+                    (dashboard/create-dashboards! (for [dashboard-name ["belligerent" "bellicose" "ancillary" "adjunct" "quixotic" "baseline"]]
+                                                    {:name dashboard-name :creator_id (mt/user->id :rasta)}))]
+                (semantic.tu/index-all!)
+                (let [test-entity? (every-pred (comp #{"dashboard"} :type) (comp #{id-1 id-2 id-3 id-4 id-5 id-6} :id))
+                      query        (fn [base-query]
+                                     (->> (search/search base-query)
+                                          (filter test-entity?)
+                                          (map :name)
+                                          set))]
+                  (testing "Semantic results are only returned for semantic terms"
+                    (is (= #{"baseline" "belligerent" "ancillary" "adjunct"}
+                           (query {:term-queries     ["baseline" "belligerent"]
+                                   :semantic-queries ["ancillary"]})))))))))))))

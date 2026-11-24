@@ -1,22 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { COLLECTION_OPTIONS } from "metabase/admin/permissions/constants/collections-permissions";
-import { Messages } from "metabase/admin/permissions/constants/messages";
-import type {
-  CollectionIdProps,
-  CollectionSidebarType,
-} from "metabase/admin/permissions/selectors/collection-permissions";
-import { buildCollectionTree } from "metabase/admin/permissions/selectors/collection-permissions";
-import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
-import { selectGroupList } from "metabase/admin/permissions/selectors/data-permissions/groups";
-import {
-  DataPermission,
-  DataPermissionType,
-  type PermissionEditorType,
-} from "metabase/admin/permissions/types";
 import { collectionApi } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getCollectionIcon } from "metabase/common/collections/utils";
@@ -25,6 +10,16 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/common/utils/groups";
+import {
+  COLLECTION_OPTIONS,
+  type CollectionIdProps,
+  type CollectionSidebarType,
+  Messages,
+  type PermissionEditorType,
+  buildCollectionTree,
+  getPermissionWarningModal,
+  selectGroupList,
+} from "metabase/permissions";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection, State } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
@@ -32,8 +27,12 @@ import type {
   Collection,
   CollectionId,
   CollectionPermissions,
-  DataPermissionValue,
   Group as GroupType,
+} from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
 } from "metabase-types/api";
 
 export const tenantCollectionsQuery = {
@@ -160,7 +159,10 @@ const getTenantCollectionPermission = (
   permissions: CollectionPermissions,
   groupId: number,
   collectionId: CollectionId,
-) => getIn(permissions, [groupId, collectionId]) || "none";
+): DataPermissionValue =>
+  // Collection permission levels ("write", "read", "none") are a subset of
+  // the values the permission editor models with `DataPermissionValue`.
+  (permissions[groupId]?.[collectionId] || "none") as DataPermissionValue;
 
 export const getTenantCollectionsPermissionEditor = createSelector(
   getTenantCollectionsPermissions,
@@ -291,11 +293,15 @@ function getTenantCollectionWarning(
     ),
   );
   if (
-    collectionPerm === "none" &&
-    (descendentPerms.has("read") || descendentPerms.has("write"))
+    collectionPerm === DataPermissionValue.NONE &&
+    (descendentPerms.has(DataPermissionValue.READ) ||
+      descendentPerms.has(DataPermissionValue.WRITE))
   ) {
     return t`This group has permission to view at least one subcollection of this collection.`;
-  } else if (collectionPerm === "read" && descendentPerms.has("write")) {
+  } else if (
+    collectionPerm === DataPermissionValue.READ &&
+    descendentPerms.has(DataPermissionValue.WRITE)
+  ) {
     return t`This group has permission to edit at least one subcollection of this collection.`;
   }
 }

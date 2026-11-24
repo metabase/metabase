@@ -43,7 +43,7 @@ export function convertSelectionToRange(
 
 export const getCardAutocompleteResultMeta = (
   type: CardType,
-  collectionName: string = t`Our analytics`,
+  collectionName: string | null,
 ) => {
   const collection = collectionName ?? t`Our analytics`;
   if (type === "question") {
@@ -242,7 +242,7 @@ export function matchCardIdAtCursor(
 export const getReferencedCardIds = createSelector(
   (query: Lib.Query) => Lib.templateTags(query),
   (tags) =>
-    Object.values(tags)
+    tags
       .filter((tag) => tag.type === "card")
       .map((tag) => tag["card-id"])
       .filter(isNotNull),

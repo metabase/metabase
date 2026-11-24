@@ -133,8 +133,7 @@
     :archived_at false
     :deactivated_at false
     :updated_at  true
-    :owner_user_id false
-    :transform_id false}))
+    :owner_user_id false}))
 
 (defn- field-defaults []
   (merge
@@ -232,8 +231,7 @@
           :display_name        "Movie"
           :initial_sync_status "complete"
           :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]
-          :description         nil
-          :collection_id       false}))
+          :description         nil}))
 
 (defn- expected-studio-table []
   (merge (table-defaults)
@@ -242,8 +240,7 @@
           :display_name        "Studio"
           :initial_sync_status "complete"
           :fields              [(field:studio-name) (field:studio-studio)]
-          :description         ""
-          :collection_id       false}))
+          :description         ""}))
 
 (deftest sync-database-test
   (doseq [supports-schemas? [true false]]
@@ -251,7 +248,7 @@
       (binding [*supports-schemas?*                      supports-schemas?
                 sync-util/*log-exceptions-and-continue?* false]
         (mt/with-temp [:model/Database db {:engine ::sync-test}]
-          (let [results (sync/sync-database! db)]
+          (let [results (sync/sync-database! (:id db))]
             (testing "Returns results from sync-database step"
               (is (= ["metadata" "analyze"]
                      (map :name results)))))
@@ -273,14 +270,16 @@
       (binding [*supports-schemas?*                      supports-schemas?
                 sync-util/*log-exceptions-and-continue?* false]
         (mt/with-temp [:model/Database db     {:engine ::sync-test}
-                       :model/Table    movie  {:name        "movie"
-                                               :schema      (when *supports-schemas?* "default")
-                                               :db_id       (u/the-id db)
-                                               :description nil}
-                       :model/Table    studio {:name        "studio"
-                                               :schema      (when *supports-schemas?* "public")
-                                               :db_id       (u/the-id db)
-                                               :description ""}]
+                       :model/Table    movie  {:name         "movie"
+                                               :display_name "Movie"
+                                               :schema       (when *supports-schemas?* "default")
+                                               :db_id        (u/the-id db)
+                                               :description  nil}
+                       :model/Table    studio {:name         "studio"
+                                               :display_name "Studio"
+                                               :schema       (when *supports-schemas?* "public")
+                                               :db_id        (u/the-id db)
+                                               :description  ""}]
           (sync/sync-table! studio)
           (sync/sync-table! movie)
           (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))]
@@ -290,7 +289,7 @@
 
 (deftest scanning-test
   (mt/with-temp [:model/Database db {:engine ::sync-test}]
-    (sync/sync-database! db)
+    (sync/sync-database! (:id db))
     (let [query-field-and-values (fn []
                                    (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id db) :name "movie")
                                          title-field (t2/select-one :model/Field :table_id table-id :name "title")
@@ -312,7 +311,7 @@
                  :fv {:values ["a" "b" "c"] :has_more_values false}}
                 (query-field-and-values))))
       (testing "After clearing and querying use long field values"
-        (field-values/clear-field-values-for-field! field)
+        (field-values/delete-field-values! (field-values/ids-of-fields [(u/the-id field)]))
         (get-or-create-vals ["a" "b" "c" (apply str (map str (range 100000)))])
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["a" "b" "c"] :has_more_values true}}
@@ -325,13 +324,13 @@
       (testing "New values come in after sync"
         (binding [*execute-response* (fn [_query respond] (respond {:cols [{:name "field"}]}
                                                                    (partition-all 1 ["d" "e" "f"])))]
-          (sync/sync-database! (t2/select-one :model/Database (u/the-id db))))
+          (sync/sync-database! (:id (t2/select-one :model/Database :id (u/the-id db)))))
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["d" "e" "f"] :has_more_values false}}
                 (query-field-and-values))))
       (testing "After setting to search it should stay search and sync removes field-values"
-        (t2/update! :model/Field (:id field) {:has_field_values "search"})
-        (sync/sync-database! (t2/select-one :model/Database (u/the-id db)))
+        (t2/update! :model/Field :id (:id field) {:has_field_values "search"})
+        (sync/sync-database! (:id (t2/select-one :model/Database :id (u/the-id db))))
         (get-or-create-vals ["x" "y" "z"])
         (is (=? {:f {:name "title" :has_field_values :search}
                  :fv nil}
@@ -348,7 +347,7 @@
   (testing "Errors in sync-database! should be caught and handled correctly (#45848)"
     (mt/with-temp [:model/Database db {:engine ::sync-database-error-test}]
       (binding [sync-util/*log-exceptions-and-continue?* true]
-        (let [results (sync/sync-database! db)]
+        (let [results (sync/sync-database! (:id db))]
           (testing "Skips the metadata step"
             (is (= ["analyze"]
                    (map :name results)))))))))
@@ -360,12 +359,12 @@
       (mt/with-temp [:model/Database db {:engine ::sync-test, :initial_sync_status "incomplete"}]
         (testing "the initial sync skips the field-values phase"
           (is (= ["metadata" "analyze"]
-                 (map :name (sync/sync-database! db)))))
+                 (map :name (sync/sync-database! (:id db))))))
         (testing "a later sync of the Database, with its initial sync complete, runs it"
-          (let [synced-db (t2/select-one :model/Database (u/the-id db))]
+          (let [synced-db (t2/select-one :model/Database :id (u/the-id db))]
             (is (= "complete" (:initial_sync_status synced-db)))
             (is (= ["metadata" "analyze" "field-values"]
-                   (map :name (sync/sync-database! synced-db))))))))))
+                   (map :name (sync/sync-database! (:id synced-db)))))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

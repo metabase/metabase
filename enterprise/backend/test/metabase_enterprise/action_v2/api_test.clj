@@ -14,12 +14,14 @@
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
@@ -72,8 +74,8 @@
                    {:op "updated", :table-id table-id :row {:id 2, :name "Speacolumn", :song "Hold music"}}}
                  (set
                   (:outputs
-                   (action-v2.tu/update-rows! table-id [{:id 1 :song "Join us now and share the software"}
-                                                        {:id 2 :name "Speacolumn"}])))))
+                   (action-v2.tu/update-grouped! table-id [{:id 1 :song "Join us now and share the software"}
+                                                           {:id 2 :name "Speacolumn"}])))))
           (is (= #{[1 "Pidgey" "Join us now and share the software"]
                    [2 "Speacolumn" "Hold music"]
                    [3 "Farfetch'd" "The land of lisp"]}
@@ -83,7 +85,7 @@
                    {:op "updated", :table-id table-id, :row {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                  (set
                   (:outputs
-                   (action-v2.tu/update-rows! table-id [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
+                   (action-v2.tu/update-grouped! table-id [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
           (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
                    [2 "Speacolumn" "The Star-Spangled Banner"]
                    [3 "Farfetch'd" "The land of lisp"]}
@@ -128,8 +130,8 @@
                      {:op "updated", :table-id table-id :row {:id (str id-2), :name "Speacolumn", :song "Hold music"}}}
                    (set
                     (:outputs
-                     (action-v2.tu/update-rows! table-id [{:id id-1, :song "Join us now and share the software"}
-                                                          {:id id-2, :name "Speacolumn"}])))))
+                     (action-v2.tu/update-grouped! table-id [{:id id-1, :song "Join us now and share the software"}
+                                                             {:id id-2, :name "Speacolumn"}])))))
             (is (= #{[id-1 "Pidgey" "Join us now and share the software"]
                      [id-2 "Speacolumn" "Hold music"]
                      [id-3 "Farfetch'd" "The land of lisp"]}
@@ -139,10 +141,10 @@
                      {:op "updated", :table-id table-id, :row {:id (str id-2), :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                    (set
                     (:outputs
-                     (action-v2.tu/update-rows! table-id
-                                                [{:id id-1}
-                                                 {:id id-2}]
-                                                {:song "The Star-Spangled Banner"})))))
+                     (action-v2.tu/update-grouped! table-id
+                                                   [{:id id-1}
+                                                    {:id id-2}]
+                                                   {:song "The Star-Spangled Banner"})))))
             (is (= #{[id-1 "Pidgey" "The Star-Spangled Banner"]
                      [id-2 "Speacolumn" "The Star-Spangled Banner"]
                      [id-3 "Farfetch'd" "The land of lisp"]}
@@ -186,8 +188,8 @@
                    {:op "updated", :table-id table-id :row {:id_1 2, :id_2 0, :name "Speacolumn", :song "Hold music"}}}
                  (set
                   (:outputs
-                   (action-v2.tu/update-rows! table-id [{:id_1 1, :id_2 0, :song "Join us now and share the software"}
-                                                        {:id_1 2, :id_2 0, :name "Speacolumn"}])))))
+                   (action-v2.tu/update-grouped! table-id [{:id_1 1, :id_2 0, :song "Join us now and share the software"}
+                                                           {:id_1 2, :id_2 0, :name "Speacolumn"}])))))
           (is (= #{[1 0 "Pidgey" "Join us now and share the software"]
                    [2 0 "Speacolumn" "Hold music"]
                    [3 0 "Farfetch'd" "The land of lisp"]}
@@ -197,10 +199,10 @@
                    {:op "updated", :table-id table-id, :row {:id_1 2, :id_2 0, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                  (set
                   (:outputs
-                   (action-v2.tu/update-rows! table-id
-                                              [{:id_1 1, :id_2 0}
-                                               {:id_1 2, :id_2 0}]
-                                              {:song "The Star-Spangled Banner"})))))
+                   (action-v2.tu/update-grouped! table-id
+                                                 [{:id_1 1, :id_2 0}
+                                                  {:id_1 2, :id_2 0}]
+                                                 {:song "The Star-Spangled Banner"})))))
           (is (= #{[1 0 "Pidgey" "The Star-Spangled Banner"]
                    [2 0 "Speacolumn" "The Star-Spangled Banner"]
                    [3 0 "Farfetch'd" "The land of lisp"]}
@@ -334,7 +336,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
     (mt/with-premium-features #{actions-feature-flag}
       (action-v2.tu/with-actions-temp-db mutual-recursion-users-teams
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/add-fk-sql driver/*driver*
                                           mutual-recursion-users-teams
                                           {:table-name "user"}
@@ -387,7 +389,7 @@
                                      {:settings settings
                                       :user     user
                                       :responses {:create (action-v2.tu/create-rows! table-id user status-code [{:name "Pidgey" :song "Car alarms"}])
-                                                  :update (action-v2.tu/update-rows! table-id user status-code [{:id 1 :song "Join us now and share the software"}])
+                                                  :update (action-v2.tu/update-grouped! table-id user status-code [{:id 1 :song "Join us now and share the software"}])
                                                   :delete (action-v2.tu/delete-rows! table-id user status-code [{:id 1}])}}))))
               error-or-ok (fn [res]
                             (cond
@@ -412,6 +414,43 @@
                   [verb response] responses]
             (testing (format "%s user: %s, settings: %s" verb user settings)
               (is (= expected-msg (error-or-ok response))))))))))
+
+(deftest ^:synchronized editing-refused-in-workspace-mode-test
+  (mt/with-premium-features #{actions-feature-flag}
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+      (testing "a workspace instance refuses data-grid edits: they skip the workspace's table remapping, so they would write to production tables"
+        (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
+          (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
+            (is (= "Editing table data is not supported on a workspace instance."
+                   (action-v2.tu/create-rows! table-id :crowberto 400 [{:name "Pidgey" :song "Car alarms"}]))))
+          (is (= [] (table-rows table-id))))))))
+
+(deftest ^:synchronized undo-and-redo-refused-in-workspace-mode-test
+  (mt/with-premium-features #{actions-feature-flag}
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+      (testing "a workspace instance refuses undo and redo, and the table keeps its rows"
+        (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
+          (let [undo! (fn [status]
+                        (mt/user-http-request :crowberto :post status execute-url
+                                              {:action "data-editing/undo" :scope {:table-id table-id} :input {}}))
+                redo! (fn [status]
+                        (mt/user-http-request :crowberto :post status execute-url
+                                              {:action "data-editing/redo" :scope {:table-id table-id} :input {}}))]
+            (action-v2.tu/create-rows! table-id [{:name "Pidgey" :song "Car alarms"}])
+            (action-v2.tu/update-grouped! table-id [{:id 1 :song "Hold music"}])
+            (action-v2.tu/update-grouped! table-id [{:id 1 :song "Dial tone"}])
+            (undo! 200)
+            (is (= [[1 "Pidgey" "Hold music"]] (table-rows table-id)))
+            (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
+              (is (= "Editing table data is not supported on a workspace instance." (undo! 400)))
+              (is (= "Editing table data is not supported on a workspace instance." (redo! 400))))
+            (is (= [[1 "Pidgey" "Hold music"]] (table-rows table-id)))
+            (testing "outside workspace mode, the same redo and undo change the table"
+              (redo! 200)
+              (is (= [[1 "Pidgey" "Dial tone"]] (table-rows table-id)))
+              (undo! 200)
+              (undo! 200)
+              (is (= [[1 "Pidgey" "Car alarms"]] (table-rows table-id))))))))))
 
 (defn- check-coercion-fn-coverage
   ([test-cases]
@@ -443,12 +482,12 @@
                         (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
                                                                     :o  [t :null]}
                                                                    {:primary-key [:id]}]]
-                          (let [table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] table-id)
+                          (let [table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] :id table-id)
                                 field-id      (t2/select-one-fn :id [:model/Field :id] :table_id table-id :name "o")
                                 driver        driver/*driver*
                                 get-qp-state  (fn [] (map #(zipmap [:id :o] %) (table-rows table-id)))
-                                get-db-state  (fn [] (sql-jdbc/query driver (mt/id) {:select [:*] :from [table-name-kw]}))]
-                            (t2/update! :model/Field field-id {:coercion_strategy coercion-strategy})
+                                get-db-state  (fn [] (sql-jdbc/query driver (lib.metadata/database (mt/metadata-provider)) {:select [:*] :from [table-name-kw]}))]
+                            (t2/update! :model/Field :id field-id {:coercion_strategy coercion-strategy})
                             (testing "create"
                               (let [row                {:o input}
                                     {outputs :outputs} (action-v2.tu/create-rows! table-id [row])
@@ -461,7 +500,7 @@
                             (testing "update"
                               (let [[{id :id}]         (map :row (:outputs (action-v2.tu/create-rows! table-id [{:o nil}])))
                                     _ (is (some? id))
-                                    {outputs :outputs} (action-v2.tu/update-rows! table-id [{:id id, :o input}])
+                                    {outputs :outputs} (action-v2.tu/update-grouped! table-id [{:id id, :o input}])
                                     [qp-row] (filter (comp #{id} :id) (get-qp-state))]
                                 (is (= 1 (count outputs)))
                                 (is (some? qp-row))
@@ -512,7 +551,7 @@
             (testing "update returns the same coerced output that the QP would return"
               (let [[{id :id}]        (map :row (:outputs (action-v2.tu/create-rows! table-id [{:d nil :dt nil}])))
                     _                 (is (some? id))
-                    {:keys [outputs]} (action-v2.tu/update-rows! table-id [{:id id :d "2021-06-20" :dt "2021-06-20T08:15:00"}])
+                    {:keys [outputs]} (action-v2.tu/update-grouped! table-id [{:id id :d "2021-06-20" :dt "2021-06-20T08:15:00"}])
                     updated-qp-row    (first (filter (comp #{id} :id) (qp-state)))]
                 (is (= [updated-qp-row] (map :row outputs)))
                 (is (=? {:d  #(re-find #"2021-06-20" (str %))
@@ -528,7 +567,7 @@
               field-values     #(vec (:values (field-values/get-latest-full-field-values field-id)))
               test-queue       (ArrayBlockingQueue. 100)
               create!          #(action-v2.tu/create-rows! table-id %)
-              update!          #(action-v2.tu/update-rows! table-id %)
+              update!          #(action-v2.tu/update-grouped! table-id %)
               process-queue!   (fn []
                                  (when-let [field-ids (.poll test-queue)]
                                    (#'data-editing/batch-invalidate-field-values! [field-ids])
@@ -664,6 +703,23 @@
                                               {:scope     scope
                                                :action delete-id})))))))))))
 
+(deftest execute-form-fk-field-test
+  (testing "execute-form sends the FK semantic type, so the form does not offer new values for FK fields"
+    (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
+      (mt/with-premium-features #{actions-feature-flag}
+        (action-v2.tu/with-temp-test-db!
+          (let [params-by-id (fn [action]
+                               (->> (mt/user-http-request :crowberto :post 200 execute-form-url
+                                                          {:scope  {:table-id (mt/id :orders)}
+                                                           :action action})
+                                    :parameters
+                                    (into {} (map (juxt :id identity)))))]
+            (doseq [action ["data-grid.row/create" "data-grid.row/update"]]
+              (testing action
+                (is (=? {(mt/format-name :user_id)    {:input_type "dropdown" :semantic_type "type/FK"}
+                         (mt/format-name :product_id) {:input_type "dropdown" :semantic_type "type/FK"}}
+                        (params-by-id action)))))))))))
+
 (deftest validate-inputs-api-test
   (testing "Validation via bulk execute endpoint"
     (mt/with-premium-features #{actions-feature-flag}
@@ -734,7 +790,7 @@
                                                          :dbms_version {:flavor "MySQL"}
                                                          :settings     {:database-enable-table-editing true
                                                                         :database-enable-actions       true}}]
-                  (sync/sync-database! database)
+                  (sync/sync-database! (:id database))
                   (let [writable-id (t2/select-one-fn :id :model/Table :db_id (:id database) :name "writable_table")]
                     (testing "the writable table syncs as editable despite the REVOKE on the other table"
                       (is (true? (t2/select-one-fn :is_writable :model/Table :id writable-id))))
@@ -780,7 +836,7 @@
                                                          :dbms_version {:flavor "MySQL"}
                                                          :settings     {:database-enable-table-editing true
                                                                         :database-enable-actions       true}}]
-                  (sync/sync-database! database)
+                  (sync/sync-database! (:id database))
                   (let [table-id (t2/select-one-fn :id :model/Table :db_id (:id database) :name "optimistic_table")]
                     (testing "the table optimistically syncs as writable (the schema-level REVOKE line is ignored)"
                       (is (true? (t2/select-one-fn :is_writable :model/Table :id table-id))))

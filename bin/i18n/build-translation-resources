@@ -2,11 +2,19 @@
 
 set -euo pipefail
 
+if [ -n "${1:-}" ]; then
+  source_directory=$(cd "$1" && pwd)
+fi
+
 # switch to project root directory if we're not already there
 script_directory=`dirname "${BASH_SOURCE[0]}"`
 cd "$script_directory/../.."
 
+if [ -z "${source_directory:-}" ]; then
+  source_directory=$(./bin/i18n/fetch-translations)
+fi
+
 source "./bin/check-clojure-cli.sh"
 check_clojure_cli
 
-clojure -X:build:build/i18n
+clojure -X:build:build/i18n :source-directory "\"$source_directory\""

@@ -1,15 +1,24 @@
 (ns metabase.transforms.models.transform-tag
   (:require
+   [malli.util :as mut]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
-   [metabase.transforms.models.transform :as transform]
-   [metabase.transforms.schema]
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.transforms.serialization :as transforms.serialization]
    [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+;;; ---------------------------------------------------- Setup -----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/TransformTag [_model] :transform_tag)
 
@@ -18,37 +27,10 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defmethod mi/can-read? :model/TransformTag
-  ([_instance]
-   (api/entitled-data-analyst?))
-  ([_model _pk]
-   (api/entitled-data-analyst?)))
+;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(defmethod mi/can-write? :model/TransformTag
-  ([instance]
-   (or api/*is-superuser?*
-       (and (api/entitled-data-analyst?)
-            (let [transforms (transform/transforms-with-tags [(:id instance)])]
-              (every? mi/can-write? transforms)))))
-  ([_model pk]
-   (when-let [tag (transforms.db/tag pk)]
-     (mi/can-write? tag))))
-
-(defmethod mi/can-create? :model/TransformTag
-  [_model _instance]
-  (api/entitled-data-analyst?))
-
-(defn tag-name-exists?
-  "Check if a tag with the given name already exists"
-  [tag-name]
-  (transforms.db/tag-name-exists? tag-name))
-
-(defn tag-name-exists-excluding?
-  "Check if a tag with the given name exists, excluding the specified ID"
-  [tag-name tag-id]
-  (transforms.db/tag-name-exists-excluding? tag-name tag-id))
-
-(defn- translate-name [tag]
+(mu/defn- translate-name :- [:map {:closed true} [:name [:maybe mu/localized-string-schema]]]
+  [tag :- (mut/optional-keys ::transforms.schema/transform-tag [:id])]
   (let [values {"hourly"  (i18n/deferred-trs "hourly")
                 "daily"   (i18n/deferred-trs "daily")
                 "weekly"  (i18n/deferred-trs "weekly")
@@ -61,57 +43,187 @@
     tag
     (merge tag (translate-name tag))))
 
+(def ^:private built-in-types
+  "The `built_in_type` of the built-in TransformTags."
+  ["hourly" "daily" "weekly" "monthly"])
+
+(defn- built-in-names
+  "A map from each `built_in_type` to its translated name, as a string."
+  []
+  (into {} (map (fn [built-in-type] [built-in-type (str (:name (translate-name {:built_in_type built-in-type})))]))
+        built-in-types))
+
+(defn- assoc-built-in-name
+  "`changes`, led by an array map of the name and built-in type, so that a statement that evaluates its assignments in
+  order still reads the built-in type of the stored row."
+  [changes]
+  (merge (array-map :name (transforms.db/built-in-value-clause :name (built-in-names)) :built_in_type nil) changes))
+
 (t2/define-before-update :model/TransformTag [tag]
-  (if (or (nil? (:built_in_type tag))
-          mi/*deserializing?*)
-    tag
-    (-> (merge (translate-name tag) ;; translated default names
-               {:built_in_type nil} ;; never translate this again
-               (t2/changes tag))    ;; include user edits
-        (update :name str)))) ;; convert deferred to string
+  (let [changes (t2/changes tag)]
+    (if (or (empty? (dissoc changes :updated_at))
+            (contains? changes :built_in_type))
+      tag
+      (assoc-built-in-name changes))))
+
+;;; ------------------------------------------------- Permissions --------------------------------------------------
+
+(mu/defn tag-id->writable :- [:map-of ms/PositiveInt :boolean]
+  "The map from each of `tag-ids` to whether the current user writes every Transform it tags, a tag of no Transform
+  being writable, in a fixed number of queries."
+  [tag-ids :- [:set ms/PositiveInt]]
+  (let [links      (when (seq tag-ids)
+                     (transforms.db/transform-tag-links-for-tags tag-ids))
+        transforms (when (seq links)
+                     (transforms.db/transforms (into #{} (map :transform_id) links)))
+        writable   (into {} (map (juxt :id mi/can-write?)) (t2/hydrate transforms :can_write))]
+    (reduce (fn [acc {:keys [tag_id transform_id]}]
+              (update acc tag_id #(and (not (false? %)) (get writable transform_id false))))
+            (zipmap tag-ids (repeat true))
+            links)))
+
+(defmethod mi/can-create? :model/TransformTag
+  [_model _instance]
+  (and (not (remote-sync/read-only?))
+       (api/entitled-data-analyst?)))
+
+(defmethod mi/can-update? :model/TransformTag
+  [tag _changes]
+  (mi/can-write? tag))
+
+;;; -------------------------------------------------- Hydration ---------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformTag :can_read]
+  [_model k tags]
+  (let [answer (boolean (api/entitled-data-analyst?))]
+    (mapv #(vary-meta % assoc k answer) tags)))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformTag :can_write]
+  [_model k tags]
+  (let [open?       (and (not (remote-sync/read-only?))
+                         (or api/*is-superuser?* (api/entitled-data-analyst?)))
+        by-transform (when (and open? (not api/*is-superuser?*) (seq tags))
+                       (tag-id->writable (into #{} (map :id) tags)))]
+    (mapv #(assoc % k (boolean (and open? (or api/*is-superuser?* (get by-transform (:id %) false))))) tags)))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformTag :can_run]
   "Add :can_run to transform tags. Returns true if all transforms associated with the tag can be written by the current user."
   [_model _k tags]
   (if-not (seq tags)
     tags
-    (let [tag-ids (into #{} (map :id) tags)
-          ;; Get all transform-tag associations
-          associations (transforms.db/transform-tag-links-for-tags tag-ids)
-          ;; Get unique transform IDs
-          transform-ids (into #{} (map :transform_id) associations)
-          ;; Fetch transforms and check can-write? for each
-          transforms (when (seq transform-ids)
-                       (transforms.db/transforms transform-ids))
-          transform-id->can-write (into {} (map (juxt :id mi/can-write?)) transforms)
-          ;; Build tag-id -> can_run map
-          tag-id->transform-ids (reduce (fn [acc {:keys [tag_id transform_id]}]
-                                          (update acc tag_id (fnil conj #{}) transform_id))
-                                        {}
-                                        associations)
-          tag-id->can-run (into {}
-                                (map (fn [[tag-id tform-ids]]
-                                       [tag-id (every? #(get transform-id->can-write % false) tform-ids)]))
-                                tag-id->transform-ids)]
+    (let [tag-id->can-run (tag-id->writable (into #{} (map :id) tags))]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
 
-(defmethod serdes/make-spec "TransformTag"
-  [_model-name _opts]
-  {:copy [:entity_id :built_in_type]
-   :transform {:name {:export str :import identity}}})
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
-(defmethod serdes/storage-path "TransformTag" [tt _ctx]
-  [{:label "transforms"} {:label "transform_tags"} {:label (:name tt) :key (:entity_id tt)}])
+(defn- rename-taken-names
+  "`rows`, TransformTag rows of an import, with each name another tag holds made unique."
+  [rows]
+  (transforms.serialization/rename-taken-tag-names rows (transforms.db/tag-names-to-ids)))
 
-;; Event hooks for remote-sync tracking
-(t2/define-after-insert :model/TransformTag [tag]
-  (events/publish-event! :event/transform-tag-create {:object tag})
-  tag)
+(defn- check-names-free
+  "Throw a 400 for the first of `rows` whose name a TransformTag other than it and the ones `rows` rename holds."
+  [rows]
+  (let [renamed (into #{} (comp (filter :name) (keep :id)) rows)
+        taken   (into {} (remove (comp renamed val)) (transforms.db/tag-names-to-ids))]
+    (doseq [{tag-name :name, :keys [id]} rows
+            :let [taken-by (some->> tag-name str not-empty taken)]
+            :when (and taken-by (not= taken-by id))]
+      (throw (ex-info (i18n/tru "A tag with the name ''{0}'' already exists." tag-name) {:status-code 400})))))
 
-(t2/define-after-update :model/TransformTag [tag]
-  (events/publish-event! :event/transform-tag-update {:object tag})
-  tag)
+(mu/defn create-transform-tags! :- [:sequential ::transforms.schema/transform-tag]
+  "Insert the TransformTag `rows` in one transaction, publishing their create event, refusing a name another tag
+  holds, or with an import making each such name unique instead, and return the inserted tags."
+  ([rows :- [:sequential ::transforms.schema/transform-tag.create]]
+   (create-transform-tags! rows nil))
+  ([rows :- [:sequential ::transforms.schema/transform-tag.create]
+    opts :- :metabase.events.schema/write-opts]
+   (mdb/create-batched! :model/TransformTag rows
+                        {:before-create (fn [rows]
+                                          (if (= :import (:writer opts))
+                                            (rename-taken-names rows)
+                                            (check-names-free rows)))
+                         :after-create #(events/publish-event! :event/transform-tag-create (events/create-event % opts))})))
 
-(t2/define-before-delete :model/TransformTag [tag]
-  (events/publish-event! :event/transform-tag-delete {:object tag})
-  tag)
+(defn- without-built-in-names
+  "`changes`, the changes of an import, without the name of `stored`, a built-in tag, unless they set its type."
+  [stored changes]
+  (cond-> changes
+    (and (some? (:built_in_type stored)) (not (contains? changes :built_in_type)))
+    (dissoc :name)))
+
+(defn- import-rows
+  "`rows`, the changes of an import, with a built-in tag of `id->stored` keeping its name and each other name another tag
+  holds made unique against the tags the other rows leave: the old name of a tag of the call that is renamed is free."
+  [rows id->stored]
+  (let [rows    (mapv #(without-built-in-names (id->stored (:id %)) %) rows)
+        renamed (into #{} (comp (filter :name) (map :id)) rows)
+        taken   (into {} (remove (comp renamed val)) (transforms.db/tag-names-to-ids))]
+    (transforms.serialization/rename-taken-tag-names rows taken)))
+
+(defn- renames-held-name?
+  "Whether `row`, which renames a tag of `id->stored`, takes the name of a tag in `pending`, the rows not written yet."
+  [id->stored pending row]
+  (let [new-name (:name row)]
+    (and (some? new-name)
+         (not= new-name (:name (id->stored (:id row))))
+         (some #(and (not= (:id %) (:id row)) (= new-name (:name (id->stored (:id %))))) pending))))
+
+(defn- rename-order
+  "`rows` ordered so that each rename follows the rename of the tag that holds its new name, throwing a 400 for rows
+  that swap names, which the unique index of the name cannot write."
+  [rows id->stored]
+  (loop [pending (vec rows)
+         ordered []]
+    (if (empty? pending)
+      ordered
+      (if-let [row (first (remove #(renames-held-name? id->stored pending %) pending))]
+        (recur (filterv #(not= (:id %) (:id row)) pending) (conj ordered row))
+        (throw (ex-info "TransformTags cannot swap names in one update." {:status-code 400}))))))
+
+(mu/defn update-transform-tags! :- :nil
+  "Apply the changes in each of `rows`, the id of a TransformTag and the columns to change, in one transaction,
+  publishing their update event, where a built-in tag that changes becomes a custom one that keeps its name, and a new
+  name another tag holds is refused, or with an import made unique instead."
+  ([rows :- [:sequential ::transforms.schema/transform-tag.update]]
+   (update-transform-tags! rows nil))
+  ([rows :- [:sequential ::transforms.schema/transform-tag.update]
+    opts :- :metabase.events.schema/write-opts]
+   (mdb/update-batched! :model/TransformTag rows
+                        {:before-update (fn [rows id->stored]
+                                          (let [rows (filterv (comp id->stored :id) rows)]
+                                            (when-not (= :import (:writer opts))
+                                              (check-names-free rows))
+                                            (rename-order (cond-> rows (= :import (:writer opts)) (import-rows id->stored))
+                                                          id->stored)))
+                         :reread?    true
+                         :after-update (fn [rows id->stored id->updated]
+                                         (events/publish-event! :event/transform-tag-update
+                                                                (events/update-event id->stored rows (assoc opts :objects id->updated))))})))
+
+(mu/defn delete-transform-tags! :- :nil
+  "Delete the TransformTags with `tag-ids`, which removes them from their Transforms and TransformJobs, in one
+  transaction, publishing their delete event."
+  [tag-ids :- [:sequential ::lib.schema.id/transform-tag]]
+  (mdb/delete-batched! :model/TransformTag tag-ids
+                       {:before-delete #(events/publish-event! :event/transform-tag-delete (events/delete-event %))}))
+
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformTag [_model]
+  {:skip? false})
+
+(defmethod serialization/spec :model/TransformTag [_]
+  {:schema        ::transforms.schema/external-transform-tag
+   :copy          [:entity_id :built_in_type]
+   :transform     {:name transforms.serialization/string-transform}
+   :insert!       #(create-transform-tags! % {:writer :import})
+   :update!       #(update-transform-tags! % {:writer :import})
+   :delete!       delete-transform-tags!
+   :storage-paths transforms.serialization/transform-tag-storage-paths})
+
+(defmethod remote-sync/spec :model/TransformTag
+  [_model]
+  {:synced-items           transforms.db/synced-transform-tag-items
+   :synced-filter-clause   transforms.db/synced-transform-tags-clause
+   :built-in-filter-clause transforms.db/built-in-transform-tags-clause})

@@ -3,8 +3,8 @@ import fetchMock from "fetch-mock";
 import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
 import type {
   ChannelApiResponse,
-  DashboardId,
   DashboardSubscription,
+  UnsubscribeResponse,
 } from "metabase-types/api";
 
 export const setupNotificationChannelsEndpoints = (
@@ -13,17 +13,41 @@ export const setupNotificationChannelsEndpoints = (
   fetchMock.get("path:/api/pulse/form_input", { channels: channelData });
 };
 
-export const setupListSubscriptionsEndpoint = (
-  subscriptions: DashboardSubscription[],
-  { dashboardId }: { dashboardId?: DashboardId } = {},
+export const setupUnsubscribeFromPulseEndpoint = (
+  response: UnsubscribeResponse,
+  { status = 200 }: { status?: number } = {},
 ) => {
-  fetchMock.get({
-    url: "path:/api/pulse",
-    ...(dashboardId != null && { query: { dashboard_id: dashboardId } }),
-    response: subscriptions,
-  });
+  fetchMock.post("path:/api/pulse/unsubscribe", { status, body: response });
 };
 
-export const setupNotificationChannelsEndpointError = () => {
-  fetchMock.get("path:/api/pulse/form_input", 500);
+export const setupUndoUnsubscribeFromPulseEndpoint = (
+  response: UnsubscribeResponse,
+) => {
+  fetchMock.post("path:/api/pulse/unsubscribe/undo", response);
+};
+
+export const setupSubscriptionEndpoint = (
+  subscription: DashboardSubscription,
+) => {
+  fetchMock.get(`path:/api/pulse/${subscription.id}`, subscription);
+};
+
+export const setupUpdateSubscriptionEndpoint = (
+  subscription: DashboardSubscription,
+  response: object | number = subscription,
+) => {
+  fetchMock.put(`path:/api/pulse/${subscription.id}`, response);
+};
+
+export const setupUnsubscribeFromSubscriptionEndpoint = (
+  subscription: DashboardSubscription,
+  response: object | number = 204,
+) => {
+  fetchMock.delete(`path:/api/pulse/${subscription.id}/subscription`, response);
+};
+
+export const setupSubscriptionsEndpoint = (
+  subscriptions: DashboardSubscription[],
+) => {
+  fetchMock.get("path:/api/pulse", subscriptions);
 };

@@ -3,7 +3,10 @@
   (:require
    [metabase.api.common :as api]
    [metabase.metabot.db :as metabot.db]
-   [metabase.models.interface :as mi]))
+   [metabase.metabot.models.metabot-feedback :as metabot-feedback]
+   [metabase.metabot.models.metabot-source-feedback :as metabot-source-feedback]
+   [metabase.models.interface :as mi]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,28 +20,22 @@
         _            (api/check-404 message)
         conversation (metabot.db/conversation-id-and-user-id (:conversation_id message))
         _            (api/check-404 conversation)
-        _            (api/check-404 (mi/can-read? conversation))]
+        _            (api/check-404 (mi/can-read? (t2/hydrate conversation :can_read)))]
     (assoc message :conversation conversation)))
 
 (defn- upsert-feedback!
   "Insert or update the `metabot_feedback` row for `(message-row-id, submitter-user-id)`."
   [message-row-id submitter-user-id {:keys [positive issue_type freeform_feedback]}]
-  (let [base-fields {:positive          positive
-                     :issue_type        issue_type
-                     :freeform_feedback freeform_feedback}]
-    (metabot.db/upsert-feedback! message-row-id submitter-user-id
-                                 (fn [existing]
-                                   (cond-> base-fields
-                                     existing (assoc :updated_at (java.time.OffsetDateTime/now)))))))
+  (metabot-feedback/upsert-metabot-feedback! message-row-id submitter-user-id
+                                             {:positive          positive
+                                              :issue_type        issue_type
+                                              :freeform_feedback freeform_feedback}))
 
 (defn- upsert-source-feedback!
   "Insert or update the `metabot_source_feedback` row for one source, message, and submitter."
   [message-row-id submitter-user-id {:keys [positive source_id source_type]}]
-  (let [base-fields {:positive positive}]
-    (metabot.db/upsert-source-feedback! message-row-id submitter-user-id source_id source_type
-                                        (fn [existing]
-                                          (cond-> base-fields
-                                            existing (assoc :updated_at (java.time.OffsetDateTime/now)))))))
+  (metabot-source-feedback/upsert-metabot-source-feedback! message-row-id submitter-user-id source_id source_type
+                                                           positive))
 
 (defn persist-feedback!
   "Upsert a `metabot_feedback` row for the rated message and return the

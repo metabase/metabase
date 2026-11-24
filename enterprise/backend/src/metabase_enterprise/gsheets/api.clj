@@ -19,7 +19,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database])
   (:import (java.time Instant)))
 
 ;; # Google Sheets Integration
@@ -340,7 +341,7 @@
   stop showing the setup widget.
 
   Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
-  [] :- :gsheets/response
+  []
   (handle-get-connection))
 
 (mu/defn- hm-sync-conn! :- :hm-client/http-reply
@@ -372,11 +373,7 @@
                    :sync_started_at (seconds-from-epoch-now))
             (throw-error 502 (tru "Error requesting sync") response)))))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/connection"
+(api.macros/defendpoint :delete "/connection" :- [:map {:closed true} [:status [:= "not-connected"]]]
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
   (analytics.event/track-event! :snowplow/simple_event {:event "sheets_disconnected"})
@@ -392,15 +389,13 @@
 (comment
 
   ;; need an "attached dwh" locally?
-  (gsheets.db/update-database! 1
-                               {:is_attached_dwh true
+  (database/update-databases! [{:id 1 :is_attached_dwh true
                                 :settings
                                 (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
-                                     "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
+                                     "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")}])
 
   (do
     ;; This is what the notify endpoint calls to do a sync on the attached dwh:
-    #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
     (sync-metadata/sync-db-metadata!
-     (gsheets.db/attached-dwh-database))))
+     (:id (gsheets.db/attached-dwh-database)))))

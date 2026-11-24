@@ -2,7 +2,7 @@ import { EditorSelection, type EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -363,20 +363,54 @@ function useExpression({
     });
   });
 
+  // Once the opened expression finishes formatting, validate it so the compiled
+  // clause reaches the widget and keeps the submit button enabled. We cannot
+  // wait for CodeMirror to report the formatted value as a change: that signal
+  // is unreliable under React 19's effect timing, which is what left the editor
+  // looking populated while the widget still had no clause.
+  const hasPropagatedInitialClause = useRef(false);
+  useEffect(() => {
+    if (isFormatting || hasPropagatedInitialClause.current) {
+      return;
+    }
+    // Formatting has settled, so the initial clause (if any) is now in `source`.
+    // Mark it handled whether or not it had content, otherwise an editor that
+    // opened empty would treat the user's first keystroke as the initial clause
+    // and validate it at once, defeating the debounce on every later keystroke.
+    hasPropagatedInitialClause.current = true;
+    if (source.trim() !== "") {
+      handleUpdate(source, true);
+    }
+  }, [isFormatting, source, handleUpdate]);
+
   const handleSourceChange = useCallback(
     (source: string) => {
+      // While the initial expression is still being formatted the editor holds
+      // the transient empty document, and CodeMirror reports that as a change.
+      // Treating it as a user edit emits `onChange(null)` and clears the valid
+      // clause the widget opened with, which React 19's effect timing lets race
+      // ahead of the formatted value landing. Ignore changes until formatting
+      // settles; real edits only happen afterwards.
+      if (isFormatting) {
+        return;
+      }
       handleUpdate(source, false);
     },
-    [handleUpdate],
+    [handleUpdate, isFormatting],
   );
 
   const handleBlur = useCallback(() => {
-    // `source` is stale until formatting settles; updating now would overwrite the formatted result
-    if (isFormatting) {
+    // `source` is stale until formatting settles; updating now would overwrite
+    // the formatted result. Blur also fires when focus leaves for the
+    // aggregation name field: until the user edits the expression the opened
+    // clause still stands, so an unedited source (which under React 19 can be
+    // the empty document a failed initial format left behind) must not
+    // propagate and clear that clause.
+    if (isFormatting || source === initialSource) {
       return;
     }
     handleUpdate(source, true);
-  }, [handleUpdate, source, isFormatting]);
+  }, [handleUpdate, source, initialSource, isFormatting]);
 
   const handleFormatExpression = useCallback(() => {
     formatExpression({ initial: false });

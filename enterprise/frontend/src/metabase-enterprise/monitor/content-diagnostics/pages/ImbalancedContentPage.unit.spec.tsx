@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import type { ComponentType } from "react";
 
 import {
+  setupContentDiagnosticsCountsEndpoint,
   setupInvalidateFindingsEndpoint,
   setupListImbalancedFindingsEndpoint,
   setupUserKeyValueEndpoints,
@@ -23,6 +24,7 @@ import { parseSearchQuery } from "metabase/utils/browser";
 import type {
   ContentDiagnosticsImbalancedFinding,
   ContentDiagnosticsImbalancedFindingType,
+  ContentDiagnosticsImbalancedUnit,
   ContentDiagnosticsImbalancedUserParams,
   ListImbalancedFindingsResponse,
 } from "metabase-types/api";
@@ -30,6 +32,7 @@ import {
   createMockContentDiagnosticsCollection,
   createMockContentDiagnosticsImbalancedFinding,
   createMockContentDiagnosticsUser,
+  createMockDashboard,
   createMockListImbalancedFindingsResponse,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -74,6 +77,7 @@ type SetupOpts = {
   lastUsedParams?: ContentDiagnosticsImbalancedUserParams;
   error?: boolean;
   getResponse?: (url: string) => ListImbalancedFindingsResponse;
+  withUndos?: boolean;
 };
 
 function setup({
@@ -84,6 +88,7 @@ function setup({
   lastUsedParams = {},
   error = false,
   getResponse,
+  withUndos = false,
 }: SetupOpts = {}) {
   if (error) {
     fetchMock.get("path:/api/ee/content-diagnostics/imbalanced", {
@@ -109,6 +114,7 @@ function setup({
     value: lastUsedParams,
   });
 
+  setupContentDiagnosticsCountsEndpoint();
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const Page = PAGE_BY_MODE[mode];
@@ -123,6 +129,7 @@ function setup({
     />,
     {
       withRouter: true,
+      withUndos,
       initialRoute: `${Urls.imbalancedContent(mode)}${queryToSearch(urlParams)}`,
       storeInitialState: {
         currentUser: createMockUser(),
@@ -282,6 +289,160 @@ describe("ImbalancedContentPage", () => {
     const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
     expect(sidebarRegion).toHaveTextContent("Grace Creator");
     expect(sidebarRegion).toHaveTextContent("150 items");
+  });
+
+  describe("sidebar content count per entity type", () => {
+    type CountCase = {
+      entityType: ContentDiagnosticsImbalancedFinding["entity_type"];
+      entityId: number;
+      name: string;
+      count: number;
+      unit: ContentDiagnosticsImbalancedUnit;
+      label: string;
+    };
+
+    // The same dashboard (entity 32) is crowded on tabs and empty on dashcards at once: the
+    // checkers run independently, so one entity can be reported on more than one tab.
+    const CASES: Record<ContentDiagnosticsImbalancedFindingType, CountCase[]> =
+      {
+        empty: [
+          {
+            entityType: "collection",
+            entityId: 11,
+            name: "Bare collection",
+            count: 0,
+            unit: "items",
+            label: "0 items",
+          },
+          {
+            entityType: "dashboard",
+            entityId: 32,
+            name: "Tabbed dashboard",
+            count: 0,
+            unit: "dashcards",
+            label: "0 dashcards",
+          },
+          {
+            entityType: "document",
+            entityId: 13,
+            name: "Blank document",
+            count: 0,
+            unit: "cards",
+            label: "0 cards",
+          },
+          {
+            entityType: "card",
+            entityId: 14,
+            name: "Rowless question",
+            count: 0,
+            unit: "rows",
+            label: "0 rows",
+          },
+        ],
+        sparse: [
+          {
+            entityType: "collection",
+            entityId: 21,
+            name: "Thin collection",
+            count: 2,
+            unit: "items",
+            label: "2 items",
+          },
+          {
+            entityType: "dashboard",
+            entityId: 22,
+            name: "Thin dashboard",
+            count: 1,
+            unit: "dashcards",
+            label: "1 dashcard",
+          },
+        ],
+        crowded: [
+          {
+            entityType: "collection",
+            entityId: 31,
+            name: "Crowded collection",
+            count: 3,
+            unit: "items",
+            label: "3 items",
+          },
+          {
+            entityType: "dashboard",
+            entityId: 32,
+            name: "Tabbed dashboard",
+            count: 2,
+            unit: "tabs",
+            label: "2 tabs",
+          },
+          {
+            entityType: "dashboard",
+            entityId: 33,
+            name: "Packed dashboard",
+            count: 2,
+            unit: "dashcards",
+            label: "2 dashcards on one tab",
+          },
+          {
+            entityType: "document",
+            entityId: 34,
+            name: "Crowded document",
+            count: 2,
+            unit: "cards",
+            label: "2 cards",
+          },
+        ],
+      };
+
+    function toFinding(
+      mode: ContentDiagnosticsImbalancedFindingType,
+      { entityType, entityId, name, count, unit }: CountCase,
+      index: number,
+    ) {
+      return createMockContentDiagnosticsImbalancedFinding({
+        id: index + 1,
+        finding_type: mode,
+        entity_type: entityType,
+        entity_id: entityId,
+        entity_display_name: name,
+        content_count: count,
+        details: { threshold: 1, unit },
+      });
+    }
+
+    it.each(["empty", "sparse", "crowded"] as const)(
+      "counts each %s finding in the unit it was measured in",
+      async (mode) => {
+        const cases = CASES[mode];
+        setup({
+          mode,
+          getResponse: (url) => {
+            const params = new URL(url, "http://localhost").searchParams;
+            const isTabType =
+              params.getAll("finding-types").join() === String(mode);
+            const data = isTabType
+              ? cases.map((testCase, index) => toFinding(mode, testCase, index))
+              : [];
+            return createMockListImbalancedFindingsResponse({
+              data,
+              total: data.length,
+            });
+          },
+        });
+
+        const list = await screen.findByRole("treegrid");
+        // Open the findings last to first, so a sidebar stuck on the first row fails.
+        for (const { name, label } of [...cases].reverse()) {
+          await userEvent.click(await within(list).findByText(name));
+
+          const sidebar = await screen.findByRole("region", {
+            name: `Details for ${name}`,
+          });
+          const info = within(sidebar).getByRole("region", { name: "Info" });
+          expect(within(info).getByText("Content count")).toBeVisible();
+          expect(within(info).getByText(label)).toBeVisible();
+        }
+      },
+    );
   });
 
   it("offers collections as an entity type and sends the selection to the server", async () => {
@@ -512,4 +673,270 @@ describe("ImbalancedContentPage", () => {
       expect(header()).not.toHaveAttribute("aria-sort");
     });
   });
+
+  describe("bulk actions on the Empty tab", () => {
+    it("dismisses the selected findings and drops them from the searched list", async () => {
+      const server = setupEmptyFindingsServer([
+        createEmptyDashboardFinding(10, "Unrelated empty dashboard"),
+        createEmptyDashboardFinding(11, "E2E dismissal first dashboard"),
+        createEmptyDashboardFinding(12, "E2E dismissal second dashboard"),
+      ]);
+      setupInvalidateFindingsEndpoint(({ options }) => {
+        const ids = getRequestIds(parseRequestBody(options.body));
+        return { invalidated: server.remove(ids), skipped: [] };
+      });
+      setup({
+        mode: "empty",
+        getResponse: server.getResponse,
+        withUndos: true,
+      });
+
+      await searchEmptyFindings("dismissal");
+      await userEvent.click(getCheckbox("E2E dismissal first dashboard"));
+      await userEvent.click(getCheckbox("E2E dismissal second dashboard"));
+
+      const bulkActions = screen.getByTestId(
+        "content-diagnostics-bulk-actions",
+      );
+      expect(within(bulkActions).getByText("2 items selected")).toBeVisible();
+      await userEvent.click(
+        within(bulkActions).getByRole("button", { name: "Dismiss findings" }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).getByText("Dismiss 2 findings?")).toBeVisible();
+      const listRequestsBefore = getListRequestCount();
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Dismiss findings" }),
+      );
+
+      await waitFor(() =>
+        expect(screen.getByText("Dismissed 2 findings")).toBeVisible(),
+      );
+      expect(await screen.findByText("No empty content found")).toBeVisible();
+      expect(
+        screen.queryByTestId("content-diagnostics-bulk-actions"),
+      ).not.toBeInTheDocument();
+      const calls = fetchMock.callHistory.calls(
+        "path:/api/ee/content-diagnostics/invalidate",
+      );
+      expect(calls).toHaveLength(1);
+      expect(parseRequestBody(calls[0].options.body)).toEqual({
+        ids: [11, 12],
+      });
+      // the list refetches with the same search after the dismissal
+      expect(getListRequestCount()).toBeGreaterThan(listRequestsBefore);
+      expect(getLastRequestUrl().searchParams.get("query")).toBe("dismissal");
+      expect(getLastRequestUrl().searchParams.getAll("finding-types")).toEqual([
+        "empty",
+      ]);
+      // dismissing never writes to the content itself
+      expect(
+        fetchMock.callHistory
+          .calls()
+          .filter(
+            ({ options }) =>
+              options.method === "PUT" || options.method === "DELETE",
+          ),
+      ).toHaveLength(0);
+    });
+
+    it("moves the selected findings to the trash and drops them from the list", async () => {
+      const server = setupEmptyFindingsServer([
+        createEmptyDashboardFinding(20, "Unrelated empty dashboard"),
+        createEmptyDashboardFinding(21, "E2E trashing first dashboard"),
+        createEmptyDashboardFinding(22, "E2E trashing second dashboard"),
+      ]);
+      [20, 21, 22].forEach((id) => setupArchiveDashboardEndpoint(id, server));
+      setup({
+        mode: "empty",
+        getResponse: server.getResponse,
+        withUndos: true,
+      });
+
+      await searchEmptyFindings("trashing");
+      await userEvent.click(getCheckbox("E2E trashing first dashboard"));
+      await userEvent.click(getCheckbox("E2E trashing second dashboard"));
+
+      const toastCard = screen.getByTestId("toast-card");
+      expect(within(toastCard).getByText("2 items selected")).toBeVisible();
+      await userEvent.click(
+        within(toastCard).getByRole("button", { name: "Move to trash" }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).getByText("Move 2 items to trash?")).toBeVisible();
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Move to trash" }),
+      );
+
+      await waitFor(() =>
+        expect(screen.getByText("Moved 2 items to the trash")).toBeVisible(),
+      );
+      const list = screen.getByTestId("imbalanced-content-list");
+      await waitFor(() =>
+        expect(list).not.toHaveTextContent("E2E trashing first dashboard"),
+      );
+      expect(list).not.toHaveTextContent("E2E trashing second dashboard");
+      for (const entityId of [121, 122]) {
+        const archiveCalls = fetchMock.callHistory.calls(
+          `path:/api/dashboard/${entityId}`,
+        );
+        expect(archiveCalls).toHaveLength(1);
+        expect(parseRequestBody(archiveCalls[0].options.body)).toMatchObject({
+          archived: true,
+        });
+      }
+      expect(
+        fetchMock.callHistory.calls("path:/api/dashboard/120"),
+      ).toHaveLength(0);
+    });
+
+    it("disables trash but not dismissal once a read-only finding is selected", async () => {
+      const server = setupEmptyFindingsServer([
+        createEmptyDashboardFinding(30, "E2E trashing writable dashboard"),
+        createEmptyDashboardFinding(31, "E2E trashing readable dashboard", {
+          can_write: false,
+        }),
+      ]);
+      setup({ mode: "empty", getResponse: server.getResponse });
+
+      await screen.findByText("E2E trashing readable dashboard");
+      const writableCheckbox = getCheckbox("E2E trashing writable dashboard");
+      const readableCheckbox = getCheckbox("E2E trashing readable dashboard");
+      expect(writableCheckbox).toBeEnabled();
+      expect(readableCheckbox).toBeEnabled();
+
+      await userEvent.click(writableCheckbox);
+      const bulkActions = screen.getByTestId(
+        "content-diagnostics-bulk-actions",
+      );
+      expect(
+        within(bulkActions).getByRole("button", { name: "Move to trash" }),
+      ).toBeEnabled();
+
+      await userEvent.click(readableCheckbox);
+      expect(within(bulkActions).getByText("2 items selected")).toBeVisible();
+      expect(
+        within(bulkActions).getByRole("button", { name: "Move to trash" }),
+      ).toBeDisabled();
+      expect(
+        within(bulkActions).getByRole("button", { name: "Dismiss findings" }),
+      ).toBeEnabled();
+    });
+  });
 });
+
+function createEmptyDashboardFinding(
+  id: number,
+  name: string,
+  opts: Partial<ContentDiagnosticsImbalancedFinding> = {},
+) {
+  return createMockContentDiagnosticsImbalancedFinding({
+    id,
+    finding_type: "empty",
+    entity_type: "dashboard",
+    entity_id: id + 100,
+    entity_display_name: name,
+    content_count: 0,
+    ...opts,
+  });
+}
+
+// Stands in for the findings store: the list endpoint filters by finding type
+// and search query, and the write endpoints remove findings from it.
+function setupEmptyFindingsServer(
+  initialFindings: ContentDiagnosticsImbalancedFinding[],
+) {
+  let findings = initialFindings;
+  return {
+    getResponse: (url: string) => {
+      const searchParams = new URL(url, "http://localhost").searchParams;
+      const query = searchParams.get("query")?.toLowerCase() ?? "";
+      const findingTypes = searchParams.getAll("finding-types");
+      const data = findings.filter(
+        (finding) =>
+          findingTypes.includes(finding.finding_type) &&
+          (finding.entity_display_name ?? "").toLowerCase().includes(query),
+      );
+      return createMockListImbalancedFindingsResponse({
+        data,
+        total: data.length,
+      });
+    },
+    remove: (ids: number[]) => {
+      const removedIds = findings
+        .filter((finding) => ids.includes(finding.id))
+        .map((finding) => finding.id);
+      findings = findings.filter((finding) => !ids.includes(finding.id));
+      return removedIds;
+    },
+    removeEntity: (entityId: number) => {
+      findings = findings.filter((finding) => finding.entity_id !== entityId);
+    },
+  };
+}
+
+function setupArchiveDashboardEndpoint(
+  findingId: number,
+  server: ReturnType<typeof setupEmptyFindingsServer>,
+) {
+  const dashboardId = findingId + 100;
+  fetchMock.put(`path:/api/dashboard/${dashboardId}`, ({ options }) => {
+    const archived = isArchiveRequest(parseRequestBody(options.body));
+    if (archived) {
+      // the backend invalidates the findings of an archived entity
+      server.removeEntity(dashboardId);
+    }
+    return createMockDashboard({ id: dashboardId, archived });
+  });
+}
+
+async function searchEmptyFindings(query: string) {
+  await screen.findByText("Unrelated empty dashboard");
+  await userEvent.type(screen.getByLabelText("Search"), query);
+  await waitFor(() =>
+    expect(
+      screen.queryByText("Unrelated empty dashboard"),
+    ).not.toBeInTheDocument(),
+  );
+}
+
+function getCheckbox(name: string) {
+  const row = within(screen.getByTestId("imbalanced-content-list"))
+    .getAllByRole("row")
+    .find((row) => within(row).queryByText(name));
+  if (row === undefined) {
+    throw new Error(`Expected finding row: ${name}`);
+  }
+  return within(row).getByRole("checkbox");
+}
+
+function getListRequestCount() {
+  return fetchMock.callHistory.calls(
+    "path:/api/ee/content-diagnostics/imbalanced",
+  ).length;
+}
+
+function parseRequestBody(body: unknown): unknown {
+  return JSON.parse(String(body));
+}
+
+function getRequestIds(body: unknown): number[] {
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    !("ids" in body) ||
+    !Array.isArray(body.ids)
+  ) {
+    return [];
+  }
+  return body.ids.filter((id): id is number => typeof id === "number");
+}
+
+function isArchiveRequest(body: unknown): boolean {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "archived" in body &&
+    body.archived === true
+  );
+}

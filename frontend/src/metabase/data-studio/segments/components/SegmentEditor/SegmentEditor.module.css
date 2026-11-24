@@ -2,7 +2,7 @@
   overflow: auto;
 }
 
-/* Double class so this beats EditableText's Emotion hover/focus border */
+/* Double class so this beats EditableText's own border rules */
 .descriptionInput {
   && {
     border-color: var(--mb-color-border-neutral);

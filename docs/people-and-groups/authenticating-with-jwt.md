@@ -52,11 +52,11 @@ Go to **Admin** > **Settings** > **Authentication** > **JWT**. Fill out the form
 
 Here's a breakdown of each of the settings:
 
-- **JWT Identity Provider URI**: This is where Metabase will redirect login requests. It's where your users go to log in through your identity provider.
+- **JWT Identity Provider URI**: This is where Metabase will redirect login requests. It's where your users go to log in through your identity provider. On self-hosted Metabases, you can also set it with the [`MB_JWT_IDENTITY_PROVIDER_URI`](../configuring-metabase/environment-variables.md#mb_jwt_identity_provider_uri) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
-- **String used by the JWT signing key**: The string used to seed the private key used to validate JWT messages. Both Metabase and your authentication app must use the same key. Click **Set up key**, then generate a key or paste your own.
+- **String used by the JWT signing key**: The string used to seed the private key used to validate JWT messages. Both Metabase and your authentication app must use the same key. Click **Set up key**, then click **Create** to generate a key. Copy the key and store it somewhere safe, because Metabase won't show it to you again.
 
-The **User provisioning**, **User attribute configuration**, and **Group mapping** sections are disabled until you save your settings.
+Until you save your settings, the **User attribute configuration** and **Group mapping** sections stay locked. You can edit **User provisioning** before you save.
 
 ## User attribute configuration (optional)
 
@@ -70,6 +70,8 @@ These are additional settings you can fill in to pass user attributes to Metabas
 
 You can send additional user attributes to Metabase by adding the attributes as key/value pairs to your JWT. These attributes will be synced on every login.
 
+On self-hosted Metabases, you can also set these attribute keys with the environment variables [`MB_JWT_ATTRIBUTE_EMAIL`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_email), [`MB_JWT_ATTRIBUTE_FIRSTNAME`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_firstname), [`MB_JWT_ATTRIBUTE_LASTNAME`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_lastname), [`MB_JWT_ATTRIBUTE_GROUPS`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_groups), and [`MB_JWT_ATTRIBUTE_TENANT`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_tenant), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## Configure group mappings
 
 You can use your JWT to assign Metabase users to custom Metabase [groups](./managing.md#groups) based on their attributes, e.g. automatically assign everyone with a certain JWT attribute to the `Sales` group in Metabase. This can be helpful for [permissions management](../permissions/introduction.md#key-points-regarding-permissions) at scale.
@@ -82,11 +84,13 @@ To add groups to your JWT, use the syntax `groups: ["group_name"]`, where `group
 
 The **Group mapping** section has three options:
 
-- **Automatic**: If a person's JWT contains group names that match Metabase groups, Metabase will add the person to those Metabase groups.
+- **Automatic**: At each sign-in, Metabase adds people to the Metabase groups named in their JWT and removes them from all other groups, including Administrators.
 - **Manual**: Metabase adds people to groups using only the mappings you create.
 - **Off**: Metabase ignores your saved mappings and doesn't add people to groups.
 
 When you first set up JWT, Metabase sets the group mapping to **Automatic**.
+
+In **Automatic** mode, Metabase changes group membership only when the JWT includes the group attribute. If the attribute is missing, memberships stay as they are. Metabase never removes the last remaining admin, and never changes All Users membership.
 
 To create manual mappings:
 
@@ -101,19 +105,23 @@ Metabase saves each mapping as soon as you add, edit, or remove the mapping.
 
 ![JWT group mappings](./images/jwt-groups.png)
 
-To edit or remove a mapping, hover over the mapping and click the pencil or trash icon.
+To edit a mapping, hover over the mapping and click the pencil icon.
 
 Switching from **Manual** to **Automatic** deletes all of your mappings. Removing your last mapping switches group mapping to **Off**.
 
 #### Remove a group mapping
 
-To remove a mapping, hover over the mapping and click the trash icon. Choose what to do with the groups in the mapping:
+To remove a mapping, hover over the mapping and click the trash icon. Metabase asks what should happen to the Metabase group:
 
 - **Nothing, just remove the mapping**
-- **Also remove all members from this group** (Metabase keeps their accounts)
-- **Also delete the group** (the Administrators group isn't affected)
+- **Also remove all members from this group**. Members keep their Metabase accounts.
+- **Also delete the group**
 
-Removing members or deleting groups takes effect immediately and can't be undone!
+Then click **Remove mapping**. Removing members or deleting a group takes effect immediately and can't be undone.
+
+If the mapping points to a built-in group such as Administrators, Metabase doesn't offer these options. It removes the mapping without changing the group or its members.
+
+**Also delete the group** isn't available when another mapping uses the same Metabase group.
 
 ### Configure group mapping through environment variables
 
@@ -121,7 +129,7 @@ You can use the following environment variables to configure JWT group mappings 
 
 - [`MB_JWT_ATTRIBUTE_GROUPS`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_groups) to specify the key to retrieve the JWT user's groups;
 
-- [`MB_JWT_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_jwt_group_sync) to turn group sync on or off (sync is off by default).
+- [`MB_JWT_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_jwt_group_sync) to turn group sync on or off. The setting is off by default. If you don't set this variable, saving the JWT settings page for the first time turns group sync on in **Automatic** mode.
 
   ```
   MB_JWT_GROUP_SYNC=true
@@ -143,9 +151,11 @@ If you set either `MB_JWT_GROUP_SYNC` or `MB_JWT_GROUP_MAPPINGS`, the **Group ma
 
 > Paid plans [charge for each additional account](https://www.metabase.com/how-billing-works#what-counts-as-a-user-account).
 
-User provisioning is enabled by default. When someone logs in via JWT SSO, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated.
+User provisioning is enabled by default. When someone logs in via JWT SSO, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated. The switch saves on its own, so you don't need to click **Save and enable** after you change it.
 
 If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in via JWT SSO.
+
+On self-hosted Metabases, you can also turn user provisioning on or off with the [`MB_JWT_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_jwt_user_provisioning_enabled) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase, [even if their account previously had a password login](./managing.md#signing-in-via-sso-disables-your-password-login).
 

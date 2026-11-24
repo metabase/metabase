@@ -1,4 +1,4 @@
-import { type FC, type PropsWithChildren, useMemo } from "react";
+import { type FC, type JSX, type PropsWithChildren, useMemo } from "react";
 
 import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
@@ -261,6 +261,7 @@ const subComponents: StaticQuestionComponents = {
 
 const _StaticQuestionWrapped = withPublicComponentWrapper(StaticQuestionInner, {
   supportsGuestEmbed: true,
+  sdkComponentName: "StaticQuestion",
 });
 
 export const StaticQuestion = Object.assign(

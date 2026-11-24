@@ -1,0 +1,104 @@
+## Drop metabase_table.collection_id and is_published: metabase_table_user_settings holds where a Table is published
+
+databaseChangeLog:
+  - changeSet:
+      id: t5r8wm
+      author: ranquild
+      comment: Drop the index on metabase_table(is_published, db_id, collection_id)
+      changes:
+        - dropIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_published_db_id_collection_id
+      rollback:
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_published_db_id_collection_id
+            columns:
+              - column:
+                  name: is_published
+              - column:
+                  name: db_id
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: b3q6yj
+      author: ranquild
+      comment: Drop the foreign key on metabase_table.collection_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_table
+            constraintName: fk_metabase_table_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_metabase_table_collection_id
+
+  - changeSet:
+      id: g8n4ks
+      author: ranquild
+      comment: Drop the index on metabase_table.collection_id
+      changes:
+        - dropIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_collection_id
+      rollback:
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: z2v7hc
+      author: ranquild
+      comment: Drop metabase_table.collection_id, kept in metabase_table_user_settings
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: collection_id
+      rollback:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection a published table is in
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET collection_id = (SELECT s.collection_id FROM metabase_table_user_settings s
+                                   WHERE s.table_id = metabase_table.id AND s.is_published = TRUE)
+              WHERE EXISTS (SELECT 1 FROM metabase_table_user_settings s
+                            WHERE s.table_id = metabase_table.id AND s.is_published = TRUE)
+
+  - changeSet:
+      id: m6d9fx
+      author: ranquild
+      comment: Drop metabase_table.is_published, kept in metabase_table_user_settings
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: is_published
+      rollback:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: is_published
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether the table is published
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET is_published = TRUE
+              WHERE EXISTS (SELECT 1 FROM metabase_table_user_settings s
+                            WHERE s.table_id = metabase_table.id AND s.is_published = TRUE)

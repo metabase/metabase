@@ -48,13 +48,13 @@
   }
 }
 
-:root[data-theme='light'] {
+:root[data-theme="light"] {
   --color-background: #fafbfe;
   --color-background-secondary: #fff;
   --color-accent: #e8e8e8;
 }
 
-:root[data-theme='light'] .tsd-signature {
+:root[data-theme="light"] .tsd-signature {
   /**
     To display code in code-blocks with the same colors both on light and dark themes
   */
@@ -74,9 +74,7 @@
   --color-ts-reference: var(--dark-color-ts-reference);
   --color-ts-call-signature: var(--dark-color-ts-call-signature);
   --color-ts-index-signature: var(--dark-color-ts-index-signature);
-  --color-ts-constructor-signature: var(
-    --dark-color-ts-constructor-signature
-  );
+  --color-ts-constructor-signature: var(--dark-color-ts-constructor-signature);
   --color-ts-parameter: var(--dark-color-ts-parameter);
   --color-ts-type-parameter: var(--dark-color-ts-type-parameter);
   --color-ts-accessor: var(--dark-color-ts-accessor);
@@ -91,7 +89,7 @@
 .tsd-toolbar-contents > .title::before {
   content: "";
   display: inline-block;
-  background-image: url('/images/logo.svg');
+  background-image: url("/images/logo.svg");
   background-size: contain;
   background-repeat: no-repeat;
   height: 36px;
@@ -110,7 +108,7 @@
 
 .tsd-signature {
   background: #12436e;
-  border-radius: .75rem;
+  border-radius: 0.75rem;
   color: #fff;
   font-family: "Roboto Mono", monospace;
   padding: 1.5rem;

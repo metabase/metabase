@@ -1,32 +1,32 @@
+import { t } from "ttag";
+
 import {
   useGetCollectionQuery,
   useGetTimelineEventQuery,
   useListTimelinesQuery,
 } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { MoveEventForm } from "metabase/timelines/common/components/MoveEventForm";
 import {
-  MoveEventModal,
-  type MoveEventModalProps,
-} from "metabase/timelines/common/components/MoveEventModal";
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import { useSetTimeline } from "metabase/timelines/common/hooks";
 import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
 
-type ContainerProps = Omit<
-  MoveEventModalProps,
-  "event" | "timelines" | "collection" | "onSubmit" | "onSubmitSuccess"
-> & {
+interface MoveEventModalContainerProps {
   eventId: number;
   collectionId?: CollectionId | null;
-  onClose?: () => void;
-};
+  onClose: () => void;
+}
 
 function MoveEventModalContainer({
   eventId,
   collectionId,
-  ...props
-}: ContainerProps) {
+  onClose,
+}: MoveEventModalContainerProps) {
   const setTimeline = useSetTimeline();
-  const { data: event } = useGetTimelineEventQuery(eventId);
+  const { data: event, isLoading, error } = useGetTimelineEventQuery(eventId);
   const { data: timelines = [] } = useListTimelinesQuery({ include: "events" });
   const { data: collection } = useGetCollectionQuery({
     id: collectionId == null ? ROOT_COLLECTION.id : collectionId,
@@ -37,19 +37,25 @@ function MoveEventModalContainer({
     }
   };
 
-  if (!event) {
-    return null;
-  }
-
   return (
-    <MoveEventModal
-      {...props}
-      event={event}
-      timelines={timelines}
-      collection={collection}
-      onSubmit={handleSubmit}
-      onSubmitSuccess={props.onClose}
-    />
+    <TimelineModal
+      title={event ? t`Move ${event.name}` : undefined}
+      tall
+      onClose={onClose}
+    >
+      {isLoading || error || !event ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <MoveEventForm
+          event={event}
+          timelines={timelines}
+          collection={collection}
+          onSubmit={handleSubmit}
+          onSubmitSuccess={onClose}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

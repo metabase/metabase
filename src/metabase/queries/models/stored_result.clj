@@ -7,18 +7,42 @@
   table. Lives in the queries module because the snapshot is tied to a query/card, not to
   any one feature that produced it."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.query-permissions.core :as query-perms]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/StoredResult [_model] :stored_result)
 
 (t2/deftransforms :model/StoredResult
-  {:result_data       (mi/transform-secret-value "stored_result.result_data")
-   :dataset_query     mi/transform-json
-   :data_access_token perms/data-access-token-transform})
+  {:result_data         (mi/transform-secret-value "stored_result.result_data")
+   :dataset_query       mi/transform-json
+   :data_access_token   perms/data-access-token-transform
+   :resolved_source_ids query-perms/resolved-source-ids-transform})
 
 (doto :model/StoredResult
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-stored-results! :- [:sequential ms/PositiveInt]
+  "Insert the StoredResult `rows` and return their ids, in order."
+  [rows :- [:sequential ::queries.schema/stored-result.create]]
+  (queries.db/insert-stored-results! rows))
+
+(mu/defn delete-stored-results!
+  "Delete the StoredResults with `stored-result-ids`."
+  [stored-result-ids :- [:sequential ms/PositiveInt]]
+  (queries.db/delete-stored-results! stored-result-ids))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/StoredResult [_model]
+  {:skip? true})

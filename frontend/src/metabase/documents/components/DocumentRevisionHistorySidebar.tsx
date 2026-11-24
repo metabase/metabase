@@ -1,6 +1,4 @@
-import { useHotkeys } from "@mantine/hooks";
-import { useMemo, useState } from "react";
-import { useMount } from "react-use";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -26,14 +24,7 @@ export function DocumentRevisionHistorySidebar({
   document,
   onClose,
 }: DocumentRevisionHistorySidebarProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const currentUser = useSelector(getUser);
-
-  useHotkeys([["]", onClose]]);
-
-  useMount(() => {
-    setIsOpen(true);
-  });
 
   const {
     data: revisions,
@@ -55,7 +46,7 @@ export function DocumentRevisionHistorySidebar({
   }, [revisions, currentUser]);
 
   return (
-    <Sidesheet isOpen={isOpen} title={t`History`} onClose={onClose}>
+    <Sidesheet isOpen title={t`History`} onClose={onClose} closeHotkey="]">
       <SidesheetCard>
         {isLoading || error ? (
           <LoadingAndErrorWrapper

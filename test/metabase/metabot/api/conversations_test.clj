@@ -91,7 +91,7 @@
               found    (first (filter #(= convo-id (:conversation_id %)) (:data response)))]
           (is (some? found))
           (is (= 2 (:message_count found)))
-          (is (= (t/instant (t2/select-one-fn :created_at :model/MetabotMessage live-id))
+          (is (= (t/instant (t2/select-one-fn :created_at :model/MetabotMessage :id live-id))
                  (t/instant (t/offset-date-time (:last_message_at found))))))))))
 
 (deftest list-conversations-orders-by-latest-conversation-or-message-created-at-test
@@ -642,6 +642,11 @@
                  (mt/user-http-request :lucky :post 403
                                        (str "metabot/conversations/" convo-id "/fork")
                                        {:message_id a1}))))
+        (testing "an admin who did not originate it cannot fork"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :crowberto :post 403
+                                       (str "metabot/conversations/" convo-id "/fork")
+                                       {:message_id a1}))))
         (testing "a nonexistent conversation 404s"
           (mt/user-http-request :rasta :post 404
                                 (str "metabot/conversations/" (random-uuid) "/fork")
@@ -703,7 +708,7 @@
                       (mt/user-http-request :crowberto :get 200
                                             (str "metabot/conversations/" convo-id))))))
             (testing "archived cards drop out of saved_entities"
-              (t2/update! :model/Card (:id created) {:archived true})
+              (t2/update! :model/Card :id (:id created) {:archived true})
               (is (= []
                      (:saved_entities
                       (mt/user-http-request :crowberto :get 200

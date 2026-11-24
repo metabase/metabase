@@ -5,7 +5,10 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.models.interface :as mi]
+   [metabase.settings.core :as setting]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -13,9 +16,12 @@
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.registry-test-macro :as registry-test-macro]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; Let's make sure `transform-metric-segment-definition`/`transform-parameters-list` normalization functions respond
 ;; gracefully to invalid stuff when pulling them out of the Database. See #8914
@@ -94,11 +100,11 @@
       (let [updated-at (:updated_at table)
             new-name   (u/qualified-name ::a-new-name)]
         (is (= 1
-               (t2/update! table (u/the-id table) {:name new-name})))
+               (t2/update! table :id (u/the-id table) {:name new-name})))
         (is (=? {:id         (:id table)
                  :name       new-name
                  :updated_at (partial not= updated-at)}
-                (t2/select-one [:model/Table :id :name :updated_at] (u/the-id table))))))))
+                (t2/select-one [:model/Table :id :name :updated_at] :id (u/the-id table))))))))
 
 (deftest ^:parallel timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
@@ -128,7 +134,7 @@
     (let [now (mi/current-timestamp)]
       (mt/with-temp [:model/Field field {:created_at now}]
         (is (= (u.date/format now)
-               (u.date/format (t2/select-one-fn :created_at :model/Field (:id field)))))))))
+               (u.date/format (t2/select-one-fn :created_at :model/Field :id (:id field)))))))))
 
 (defmethod mi/non-timestamped-fields :test-model/updated-at-tester [_]
   #{:non_timestamped :other})
@@ -147,30 +153,6 @@
                        (assoc :included 2))]
       (is (= {:non_timestamped 1 :included 2 :updated_at (mi/now)}
              (#'mi/add-updated-at-timestamp instance))))))
-
-(deftest ^:parallel upgrade-to-v2-viz-settings-test
-  (let [migrate #(select-keys (#'mi/migrate-viz-settings %)
-                              [:version :pie.percent_visibility])]
-    (testing "show_legend -> inside"
-      (is (= {:version 2
-              :pie.percent_visibility "inside"}
-             (migrate {:pie.show_legend          true
-                       :pie.show_legend_perecent true
-                       :pie.show_data_labels     true}))))
-    (testing "show_legend_percent -> legend"
-      (is (= {:version 2
-              :pie.percent_visibility "legend"}
-             (migrate {:pie.show_legend          false
-                       :pie.show_legend_perecent true
-                       :pie.show_data_labels     true}))))
-    (testing "anything else -> nothing"
-      (doseq [legend  [false nil]
-              percent [false nil]
-              labels  [true false nil]]
-        (is (= {}
-               (migrate {:pie.show_legend          legend
-                         :pie.show_legend_perecent percent
-                         :pie.show_data_labels     labels})))))))
 
 (deftest encrypted-data-with-no-secret-test
   (encryption-test/with-secret-key nil
@@ -211,58 +193,6 @@
                             (map (juxt :id (comp even? :id))))
                    things)
             :id)))))
-
-(deftest ^:parallel normalize-mbql-clause-impostor-in-visualization-settings-test
-  (let [viz-settings
-        {"table.pivot_column" "TAX"
-         "graph.metrics" ["expression"]
-         "pivot_table.column_split"
-         {"rows"
-          ["CREATED_AT" "expression" "TAX"]
-          "columns" []
-          "values" ["sum"]}
-         "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}}
-         "table.cell_column" "expression"
-         "table.column_formatting"
-         [{"columns" ["expression" nil "TAX" "count"]
-           "type" "single"
-           "operator" "is-null"
-           "value" 10
-           "color" "#EF8C8C"
-           "highlight_row" false
-           "id" 0}]
-         "column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {"number_style" "currency"}}
-         "series_settings" {"expression" {"line.interpolate" "step-after", "line.style" "dotted"}}
-         "graph.dimensions" ["CREATED_AT"]}]
-    (is (= {:table.pivot_column "TAX"
-            :graph.metrics ["expression"]
-            :pivot_table.column_split
-            {:rows ["CREATED_AT" "expression" "TAX"]
-             :columns []
-             :values ["sum"]}
-            :pivot_table.column_widths {:leftHeaderWidths [141 99 80], :totalLeftHeaderWidths 320, :valueHeaderWidths {}}
-            :table.cell_column "expression"
-            :table.column_formatting
-            [{:columns ["expression" nil "TAX" "count"]
-              :type "single"
-              :operator "is-null"
-              :value 10
-              :color "#EF8C8C"
-              :highlight_row false
-              :id 0}]
-            :column_settings {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "currency"}}
-            :series_settings {:expression {:line.interpolate "step-after", :line.style "dotted"}}
-            :graph.dimensions ["CREATED_AT"]}
-           (mi/normalize-visualization-settings viz-settings)))))
-
-(deftest ^:parallel normalize-invalid-visualization-settings-test
-  (testing "Unknown keys in `:column_settings` should be removed rather than causing normalization to fail (#69626)"
-    (let [viz-settings {"column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}
-                                           "[\"REF\",[\"expression\",\"expression\"]]" {:number_style "y"}
-                                           "[\"bad-clause\",\"a\"]"                    {:number_style "z"}}}]
-      (is (= {:column_settings
-              {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}}}
-             (mi/normalize-visualization-settings viz-settings))))))
 
 (deftest ^:parallel json-in-with-eliding
   (is (= "{}" (#'mi/json-in-with-eliding {})))
@@ -309,16 +239,158 @@
 
 (deftest can-query?-default-falls-back-to-can-read?-test
   (testing "Default implementation falls back to can-read?"
-    ;; Use Card model which uses the default can-query? implementation
-    (mt/with-temp [:model/Card card {}]
-      (with-redefs [mi/can-read? (constantly true)]
-        (is (true? (mi/can-query? card))))
-      (with-redefs [mi/can-read? (constantly false)]
-        (is (false? (mi/can-query? card)))))))
+    ;; Use Dashboard model which uses the default can-query? implementation
+    (mt/with-temp [:model/Dashboard dashboard {}]
+      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
+        (is (true? (mi/can-query? (t2/hydrate dashboard :can_query)))))
+      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly false)]
+        (is (false? (mi/can-query? (t2/hydrate dashboard :can_query))))))))
 
 (deftest can-query-hydration-returns-boolean-test
   (testing ":can_query hydration returns a boolean value"
-    (mt/with-temp [:model/Card card {}]
-      (let [hydrated (t2/hydrate card :can_query)]
+    (mt/with-temp [:model/Dashboard dashboard {}]
+      (let [hydrated (t2/hydrate dashboard :can_query)]
         (is (contains? hydrated :can_query))
         (is (boolean? (:can_query hydrated)))))))
+
+(deftest ^:parallel ->integer-test
+  (testing "casts to an integer on every app DB, though MySQL and MariaDB have no INTEGER cast type"
+    (is (= 42 (:n (t2/query-one {:select [[(mi/->integer "42") :n]]}))))))
+
+;;; ---------------------------------------- hook statement guard ----------------------------------------
+
+(doseq [model [::clean-hooks ::reading-before-insert ::reading-before-update ::reading-before-delete
+               ::reading-after-insert ::setting-reading-before-insert ::key-deriving-before-update]]
+  (derive model :metabase/model)
+  (methodical/add-primary-method! #'t2/table-name model (fn [_next-method _model] :setting))
+  (methodical/add-primary-method! #'t2/primary-keys model (fn [_next-method _model] [:key])))
+
+(t2/define-before-insert ::clean-hooks
+  [row]
+  (update row :value str "!"))
+
+(t2/define-before-update ::clean-hooks
+  [row]
+  (update row :value str "?"))
+
+(t2/define-before-delete ::clean-hooks
+  [row]
+  row)
+
+(t2/define-before-insert ::reading-before-insert
+  [row]
+  (t2/count :model/User)
+  row)
+
+(t2/define-before-update ::reading-before-update
+  [row]
+  (t2/count :model/User)
+  row)
+
+(t2/define-before-update ::key-deriving-before-update
+  [row]
+  (assoc row :value (str (:key row) "-derived")))
+
+(t2/define-before-delete ::reading-before-delete
+  [row]
+  (t2/count :model/User)
+  row)
+
+(t2/define-after-insert ::reading-after-insert
+  [row]
+  (t2/count :model/User)
+  row)
+
+(defn- expire-settings-cache!
+  "Empties the settings cache and makes its next read check the app DB, as when a refresh is due."
+  []
+  (reset! (#'setting.cache/cache*) nil)
+  (.set ^java.util.concurrent.atomic.AtomicLong (:last-update-check (setting.cache/current-state)) 0))
+
+(t2/define-before-insert ::setting-reading-before-insert
+  [row]
+  (expire-settings-cache!)
+  (assoc row :value (str (setting/get :site-locale))))
+
+(def ^:private guard-test-key
+  "The setting key the hook guard tests write."
+  (str "hook-guard-test-" (u/generate-nano-id)))
+
+(deftest clean-hooks-pass-statement-guard-test
+  (try
+    (t2/insert! ::clean-hooks {:key guard-test-key, :value "v"})
+    (is (= "v!" (t2/select-one-fn :value ::clean-hooks :key guard-test-key)))
+    (t2/update! ::clean-hooks :key guard-test-key {:value "w"})
+    (is (= "w?" (t2/select-one-fn :value ::clean-hooks :key guard-test-key)))
+    (t2/delete! ::clean-hooks :key guard-test-key)
+    (is (nil? (t2/select-one ::clean-hooks :key guard-test-key)))
+    (finally
+      (t2/delete! :setting :key guard-test-key))))
+
+(deftest hook-running-statement-throws-test
+  (try
+    (testing "before-insert"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"before-insert hook of .*reading-before-insert ran 1 app-DB statement"
+                            (t2/insert! ::reading-before-insert {:key guard-test-key, :value "v"})))
+      (is (nil? (t2/select-one :setting :key guard-test-key))))
+    (testing "before-update and before-delete"
+      (t2/insert! :setting {:key guard-test-key, :value "v"})
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"before-update hook of .*reading-before-update"
+                            (t2/update! ::reading-before-update :key guard-test-key {:value "w"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"before-delete hook of .*reading-before-delete"
+                            (t2/delete! ::reading-before-delete :key guard-test-key)))
+      (is (= "v" (t2/select-one-fn :value :setting :key guard-test-key)))
+      (t2/delete! :setting :key guard-test-key))
+    (testing "after-insert"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"after-insert hook of .*reading-after-insert"
+                            (t2/insert! ::reading-after-insert {:key guard-test-key, :value "v"}))))
+    (finally
+      (t2/delete! :setting :key guard-test-key))))
+
+(deftest hook-reading-setting-while-cache-refreshes-passes-statement-guard-test
+  (try
+    (t2/insert! ::setting-reading-before-insert {:key guard-test-key, :value "v"})
+    (testing "hook read its setting from refreshed cache"
+      (is (some? (setting.cache/cache)))
+      (is (= (str (setting/get :site-locale))
+             (t2/select-one-fn :value :setting :key guard-test-key))))
+    (finally
+      (t2/delete! :setting :key guard-test-key))))
+
+(deftest before-update-with-different-changes-per-row-throws-test
+  (let [other-key (str guard-test-key "-other")]
+    (try
+      (t2/insert! :setting [{:key guard-test-key, :value "v"} {:key other-key, :value "v"}])
+      (testing "a multi-row update whose hook derives a different value for each row"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"before-update hook of .*key-deriving-before-update returned different changes for the rows of one update \(keys: :value\)"
+                              (t2/update! ::key-deriving-before-update :key [:in [guard-test-key other-key]] {:value "w"})))
+        (is (= #{"v"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
+      (testing "a single-row update of the same hook"
+        (t2/update! ::key-deriving-before-update :key guard-test-key {:value "w"})
+        (is (= (str guard-test-key "-derived") (t2/select-one-fn :value :setting :key guard-test-key))))
+      (testing "a multi-row update whose hook gives every row the same changes"
+        (t2/update! ::clean-hooks :key [:in [guard-test-key other-key]] {:value "x"})
+        (is (= #{"x?"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
+      (finally
+        (t2/delete! :setting :key [:in [guard-test-key other-key]])))))
+
+(deftest ^:synchronized automagic-hydration-partitions-test
+  (let [user-ids (mapv mt/user->id [:rasta :crowberto :lucky :trashbird :rasta])
+        cards    (fn [n] (mapv #(t2/instance :model/Card {:id %2, :creator_id %1}) (take n user-ids) (range 1 (inc n))))
+        hydrate  (fn [rows] (t2/with-call-count [call-count]
+                              [(mapv (comp :id :creator) (t2/hydrate rows :creator)) (call-count)]))]
+    (testing "rows beyond one partition hydrate as they do in one statement"
+      (let [[expected statements] (hydrate (cards 5))]
+        (is (= user-ids expected))
+        (is (= statements (second (hydrate (cards 2)))))
+        (is (= expected (first (mt/with-partition-size 2
+                                 (hydrate (cards 5))))))))
+    (testing "each partition of rows reads with its own statement"
+      (is (< (second (hydrate (cards 5)))
+             (second (mt/with-partition-size 2
+                       (hydrate (cards 5)))))))))

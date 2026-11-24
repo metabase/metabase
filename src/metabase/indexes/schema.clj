@@ -6,7 +6,9 @@
   `:direction`) to strings; [[keywordize-structured]] turns them back into keywords so a driver can dispatch on
   `:kind`."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -86,6 +88,11 @@
     (:columns structured) (update :columns (fn [cols]
                                              (mapv #(cond-> % (:direction %) (update :direction keyword)) cols)))))
 
+(def index-kinds
+  "Every `:kind` an [[::index-structured]] can have."
+  [:btree :hash :gin :gist :brin :spgist :fulltext :spatial :clustered :nonclustered :columnstore
+   :sortkey :distkey :clustering :order-by :skip-index])
+
 (mr/def ::index-structured
   "A single structured index definition, dispatched on `:kind`. The shape stored in
   `metabase_table_indexes.structured` and handed to the driver index multimethods."
@@ -106,22 +113,36 @@
   "The `:structured` column of a TableIndex, decoded."
   ::index-structured)
 
-(mr/def ::table-index
-  "A TableIndex as selected from the app DB: every column of `:metabase_table_indexes`."
-  [:merge
-   ::table-index.update
-   [:map {:closed true}
-    [:id               ms/PositiveInt]]])
-
 (mr/def ::table-index.update
-  "What an update (or insert) of a TableIndex accepts: every column of `:metabase_table_indexes` except `id`, all optional."
+  "What an update of a TableIndex takes: its `id` and the columns to change, any column of `:metabase_table_indexes`."
   [:map {:closed true}
+   [:id               ms/PositiveInt]
    [:transform_id     {:optional true} [:maybe ::lib.schema.id/transform]]
    [:index_name       {:optional true} [:maybe :string]]
    [:structured       {:optional true} [:maybe ::table-index.structured]]
-   [:status           {:optional true} [:maybe [:or :keyword :string]]]
+   [:status           {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:error_message    {:optional true} [:maybe :string]]
    [:created_by       {:optional true} [:maybe :int]]
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:last_executed_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::table-index
+  "A TableIndex as selected from the app DB: its `id` and every column of `:metabase_table_indexes`."
+  ::table-index.update)
+
+(mr/def ::table-index.create
+  "What creating a TableIndex takes: its Transform, its name, its definition and the User who asks for it."
+  [:map {:closed true}
+   [:transform_id ::lib.schema.id/transform]
+   [:index_name   :string]
+   [:structured   ::table-index.structured]
+   [:created_by   [:maybe :int]]])
+
+(mr/def ::external-table-index
+  "A TableIndex as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::table-index [:index_name :structured]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

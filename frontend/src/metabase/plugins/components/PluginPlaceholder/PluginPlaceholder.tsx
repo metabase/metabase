@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import type { PluginRoute } from "metabase/plugins/types";
 
 interface Props {

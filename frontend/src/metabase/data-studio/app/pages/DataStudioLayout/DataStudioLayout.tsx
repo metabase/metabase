@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -5,6 +6,7 @@ import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   canAccessDataModel as canAccessDataModelSelector,
+  getUserIsAdmin,
   useUserKeyValue,
 } from "metabase/current-user";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks/use-data-studio-settings";
@@ -13,11 +15,12 @@ import {
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_DATA_APPS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
+import { Badge } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { getCurrentTab } from "./utils";
@@ -36,16 +39,9 @@ export function DataStudioLayout() {
   const { pathname } = useLocation();
   const canAccessDataModel = useSelector(canAccessDataModelSelector);
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
-  const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
-  const hasTransformDirtyChanges =
-    PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
-  const hasSnippetsDirtyChanges =
-    PLUGIN_REMOTE_SYNC.useHasSnippetsDirtyChanges();
-  const hasDataActionsDirtyChanges =
-    PLUGIN_REMOTE_SYNC.useHasDataActionsDirtyChanges();
-  const hasGlossaryDirtyChanges =
-    PLUGIN_REMOTE_SYNC.useHasGlossaryDirtyChanges();
-  const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
+  const isAdmin = useSelector(getUserIsAdmin);
+  const [isRemoteSyncSettingsOpen, setIsRemoteSyncSettingsOpen] =
+    useState(false);
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
@@ -90,10 +86,9 @@ export function DataStudioLayout() {
             isSelected={currentTab === "transforms"}
             showLabel={isNavbarOpened}
             rightSection={
-              hasTransformDirtyChanges &&
-              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-              ) : null
+              <PLUGIN_REMOTE_SYNC.ChangesBadge
+                target={{ type: "area", area: "transforms" }}
+              />
             }
           />
         )}
@@ -106,19 +101,13 @@ export function DataStudioLayout() {
           to={Urls.dataStudioLibrary()}
           isSelected={currentTab === "library"}
           showLabel={isNavbarOpened}
-          isGated={!hasLibraryFeature}
           rightSection={
-            hasDirtyChanges && PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-            ) : null
+            hasLibraryFeature ? (
+              <PLUGIN_REMOTE_SYNC.ChangesBadge
+                target={{ type: "area", area: "library" }}
+              />
+            ) : undefined
           }
-        />
-        <AreaTab
-          label={t`Dashboards`}
-          icon="dashboard"
-          to={Urls.dataStudioDashboards()}
-          isSelected={currentTab === "dashboards"}
-          showLabel={isNavbarOpened}
           isGated={!hasLibraryFeature}
         />
         <AreaTab
@@ -128,10 +117,9 @@ export function DataStudioLayout() {
           isSelected={currentTab === "snippets"}
           showLabel={isNavbarOpened}
           rightSection={
-            hasSnippetsDirtyChanges &&
-            PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-            ) : null
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "area", area: "snippets" }}
+            />
           }
         />
         <AreaTab
@@ -141,12 +129,26 @@ export function DataStudioLayout() {
           isSelected={currentTab === "actions"}
           showLabel={isNavbarOpened}
           rightSection={
-            hasDataActionsDirtyChanges &&
-            PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-            ) : null
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "area", area: "data-actions" }}
+            />
           }
         />
+        {isAdmin && (
+          <AreaTab
+            label={t`Data apps`}
+            icon="app"
+            to={Urls.dataStudioDataApps()}
+            isSelected={currentTab === "data-apps"}
+            showLabel={isNavbarOpened}
+            rightSection={
+              PLUGIN_DATA_APPS.isEnabled && isNavbarOpened ? (
+                <Badge color="brand">{t`Beta`}</Badge>
+              ) : null
+            }
+            isGated={!PLUGIN_DATA_APPS.isEnabled}
+          />
+        )}
         <AreaTab
           label={t`Glossary`}
           icon="glossary"
@@ -154,10 +156,9 @@ export function DataStudioLayout() {
           isSelected={currentTab === "glossary"}
           showLabel={isNavbarOpened}
           rightSection={
-            hasGlossaryDirtyChanges &&
-            PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-            ) : null
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "area", area: "glossary" }}
+            />
           }
         />
       </AreaTabGroup>
@@ -187,13 +188,13 @@ export function DataStudioLayout() {
     <>
       {hasRemoteSyncFeature ? (
         <>
-          <PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem
+          <PLUGIN_REMOTE_SYNC.SetupMenuItem
             isNavbarOpened={isNavbarOpened}
-            onClick={() => setIsGitSettingsOpen(true)}
+            onClick={() => setIsRemoteSyncSettingsOpen(true)}
           />
-          <PLUGIN_REMOTE_SYNC.GitSettingsModal
-            isOpen={isGitSettingsOpen}
-            onClose={() => setIsGitSettingsOpen(false)}
+          <PLUGIN_REMOTE_SYNC.SettingsModal
+            opened={isRemoteSyncSettingsOpen}
+            onClose={() => setIsRemoteSyncSettingsOpen(false)}
           />
         </>
       ) : (
@@ -233,7 +234,7 @@ export function DataStudioLayout() {
       isLoading={isLoadingNavbarKey}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={setIsNavbarOpened}
-      headerControls={<PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
+      headerControls={<PLUGIN_REMOTE_SYNC.AppBarControls />}
       upperNav={upperNav}
       lowerNav={lowerNav}
     >

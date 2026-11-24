@@ -1,0 +1,52 @@
+## osi_ai_context gets an id primary key of its own. entity_type and entity_local_id, its primary key until now, stay
+## unique together, one row per entity.
+
+databaseChangeLog:
+  - changeSet:
+      id: xdt6kw
+      author: ranquild
+      comment: Drop the primary key on osi_ai_context (entity_type, entity_local_id)
+      changes:
+        - dropPrimaryKey:
+            tableName: osi_ai_context
+            constraintName: pk_osi_ai_context
+      rollback:
+        - addPrimaryKey:
+            tableName: osi_ai_context
+            columnNames: entity_type, entity_local_id
+            constraintName: pk_osi_ai_context
+
+  - changeSet:
+      id: slb2o9
+      author: ranquild
+      comment: Add an id primary key to osi_ai_context
+      changes:
+        - addColumn:
+            tableName: osi_ai_context
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: The primary key of the ai_context
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: osi_ai_context
+            columnName: id
+
+  - changeSet:
+      id: rcp0pz
+      author: ranquild
+      comment: Keep one osi_ai_context row per entity
+      changes:
+        - addUniqueConstraint:
+            tableName: osi_ai_context
+            columnNames: entity_type, entity_local_id
+            constraintName: idx_uniq_osi_ai_context_entity
+      rollback:
+        - dropUniqueConstraint:
+            tableName: osi_ai_context
+            constraintName: idx_uniq_osi_ai_context_entity

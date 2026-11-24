@@ -8,7 +8,6 @@ import { getPlan, isProPlan, useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
 
 import { CustomVisualizationsNav } from "./CustomVisualizationsNav";
-import { DataAppsNav } from "./DataAppsNav";
 import { SettingsNavItem } from "./SettingsNavItem";
 import { UpdatesNavItem } from "./UpdatesNavItem";
 
@@ -52,7 +51,7 @@ export function SettingsNav() {
       </SettingsNavItem>
       <SettingsNavItem path="domains" label={t`Domains`} icon="globe" />
       {PLUGIN_REMOTE_SYNC.isEnabled ? (
-        <PLUGIN_REMOTE_SYNC.LibraryNav />
+        <PLUGIN_REMOTE_SYNC.SettingsNavItem />
       ) : !isPro ? (
         <SettingsNavItem
           path="remote-sync"
@@ -77,7 +76,6 @@ export function SettingsNav() {
         icon="pinmap"
       />
       <CustomVisualizationsNav />
-      <DataAppsNav />
       <SettingsNavItem path="maps" label={t`Maps`} icon="map" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}

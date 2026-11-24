@@ -14,6 +14,8 @@
    [metabase.notification.send :as notification.send]
    [metabase.notification.settings :as notification.settings]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.task-history.core :as task-history]
+   [metabase.task-history.models.task-run :as task-run]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -37,18 +39,16 @@
       (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
                      :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")
                      :model/ChannelTemplate tmpl  {:channel_type notification.tu/test-channel-type}]
-        (let [n                 (models.notification/create-notification!
-                                 {:payload_type :notification/system-event}
-                                 nil
-                                 [{:channel_type notification.tu/test-channel-type
-                                   :channel_id   (:id chn-1)
-                                   :template_id  (:id tmpl)
-                                   :recipients   [{:type    :notification-recipient/user
-                                                   :user_id (mt/user->id :crowberto)}]}
-                                  {:channel_type notification.tu/test-channel-type
-                                   :channel_id   (:id chn-2)
-                                   :recipients   [{:type    :notification-recipient/user
-                                                   :user_id (mt/user->id :rasta)}]}])
+        (let [[n]                 (models.notification/create-notifications! [{:payload_type :notification/system-event
+                                                                               :handlers [{:channel_type notification.tu/test-channel-type
+                                                                                           :channel_id   (:id chn-1)
+                                                                                           :template_id  (:id tmpl)
+                                                                                           :recipients   [{:type    :notification-recipient/user
+                                                                                                           :user_id (mt/user->id :crowberto)}]}
+                                                                                          {:channel_type notification.tu/test-channel-type
+                                                                                           :channel_id   (:id chn-2)
+                                                                                           :recipients   [{:type    :notification-recipient/user
+                                                                                                           :user_id (mt/user->id :rasta)}]}]}])
               notification-info (assoc n :payload {:event_info  {}
                                                    :event_topic :event/test})
               expected-notification-payload (mt/malli=?
@@ -114,12 +114,10 @@
 (deftest send-notification-record-task-history-test
   (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
     (notification.tu/with-notification-testing-setup!
-      (let [n (models.notification/create-notification!
-               {:payload_type :notification/testing}
-               nil
-               [{:channel_type notification.tu/test-channel-type
-                 :channel_id   (:id chn)
-                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+      (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                             :handlers [{:channel_type notification.tu/test-channel-type
+                                                                         :channel_id   (:id chn)
+                                                                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
         (t2/delete! :model/TaskHistory)
         (#'notification.send/send-notification-sync! n)
         (is (=? [{:task         "notification-send"
@@ -141,12 +139,10 @@
 (deftest notification-send-retrying-test
   (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-      (let [n (models.notification/create-notification!
-               {:payload_type :notification/testing}
-               nil
-               [{:channel_type notification.tu/test-channel-type
-                 :channel_id   (:id chn)
-                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+      (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                             :handlers [{:channel_type notification.tu/test-channel-type
+                                                                         :channel_id   (:id chn)
+                                                                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
         (testing "send-notification! retries on failure"
           (testing "and record exception in task history"
             (let [retry-count (atom 0)
@@ -172,12 +168,10 @@
 (deftest notification-send-skip-retry-still-report-failed-task-history-test
   (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-      (let [n (models.notification/create-notification!
-               {:payload_type :notification/testing}
-               nil
-               [{:channel_type notification.tu/test-channel-type
-                 :channel_id   (:id chn)
-                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+      (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                             :handlers [{:channel_type notification.tu/test-channel-type
+                                                                         :channel_id   (:id chn)
+                                                                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
         (testing (str "if channel/send! throws an exception and should-skip-retry? returns true"
                       "the task history should still be recorded and status is failed")
           (testing "and record exception in task history"
@@ -200,14 +194,12 @@
 (deftest notification-send-inactive-channel-humanized-error-test
   (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-      (let [n (models.notification/create-notification!
-               {:payload_type :notification/testing}
-               nil
-               [{:channel_type notification.tu/test-channel-type
-                 :channel_id   (:id chn)
-                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+      (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                             :handlers [{:channel_type notification.tu/test-channel-type
+                                                                         :channel_id   (:id chn)
+                                                                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
         (testing "sending to a deactivated channel fails with a human-readable error, without retries (#76802)"
-          (t2/update! :model/Channel (:id chn) {:active false})
+          (t2/update! :model/Channel :id (:id chn) {:active false})
           (let [send-count (atom 0)]
             (with-redefs [channel/send! (fn [& _] (swap! send-count inc))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to deliver"
@@ -502,12 +494,10 @@
   (mt/with-prometheus-system! [_ system]
     (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/Channel ch notification.tu/default-can-connect-channel]
-        (let [n (models.notification/create-notification!
-                 {:payload_type :notification/testing}
-                 nil
-                 [{:channel_type notification.tu/test-channel-type
-                   :channel_id   (:id ch)
-                   :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])
+        (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                               :handlers [{:channel_type notification.tu/test-channel-type
+                                                                           :channel_id   (:id ch)
+                                                                           :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])
               original-render @#'channel/render-notification]
           (with-redefs [channel/render-notification (fn [& args]
                                                       (testing "during execution of render-notification, concurrent-tasks metric is updated"
@@ -530,12 +520,10 @@
   (mt/with-prometheus-system! [_ system]
     (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-        (let [n (models.notification/create-notification!
-                 {:payload_type :notification/testing}
-                 nil
-                 [{:channel_type notification.tu/test-channel-type
-                   :channel_id   (:id chn)
-                   :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+        (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                               :handlers [{:channel_type notification.tu/test-channel-type
+                                                                           :channel_id   (:id chn)
+                                                                           :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
           (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _]
                                                                                   (throw (Exception. "test-exception")))]
             (is (thrown? Exception (#'notification.send/send-notification-sync! n)))
@@ -550,12 +538,10 @@
     (mt/with-prometheus-system! [_ system]
       (notification.tu/with-notification-testing-setup!
         (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-          (let [n (models.notification/create-notification!
-                   {:payload_type :notification/testing}
-                   nil
-                   [{:channel_type notification.tu/test-channel-type
-                     :channel_id   (:id chn)
-                     :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+          (let [[n] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                                 :handlers [{:channel_type notification.tu/test-channel-type
+                                                                             :channel_id   (:id chn)
+                                                                             :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}])]
             (with-redefs [notification.send/default-retry-config (assoc @#'notification.send/default-retry-config :max-retries 1)
                           channel/send! (fn [& _]
                                           (throw (Exception. "test-channel-exception")))]
@@ -726,6 +712,64 @@
              (for [_ (range 2)]
                (take-notification! queue)))))))
 
+(defn- with-async-run!
+  "Run `thunk` in a new task run with `:auto-complete false` that has one successful task, and return the run id."
+  [thunk]
+  (task-history/with-task-run {:run_type      :subscription
+                               :entity_type   :dashboard
+                               :entity_id     1
+                               :auto-complete false}
+    (task-history/with-task-history {:task "job"}
+      :done)
+    (thunk)
+    (task-history/current-run-id)))
+
+(deftest queue-notification-releases-replaced-work-test
+  (testing "a queued notification that a newer one replaces no longer keeps its run started (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (let [queue      (#'notification.send/create-dedup-priority-queue)
+            run-id     (with-async-run! (fn []
+                                          (#'notification.send/queue-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
+                                          (#'notification.send/queue-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})))
+            run-status #(t2/select-one-fn :status :model/TaskRun :id run-id)]
+        (is (= :started (run-status)) "B is still in the queue")
+        (let [b (take-notification! queue)]
+          (is (= "B" (:test-value b)))
+          (task-history/with-restored-run-id b
+            :sent))
+        (is (= :success (run-status)) "B was the last piece of work")))))
+
+(deftest queue-notification-release-failure-test
+  (testing "when the run of a replaced notification cannot be completed, the new notification stays queued and counted (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (let [queue      (#'notification.send/create-dedup-priority-queue)
+            run-x      (with-async-run! #(#'notification.send/queue-notification!
+                                          queue {:id 1 :payload_type :notification/testing :test-value "A"}))
+            complete!  (mt/original-fn #'task-run/complete-task-run!)
+            run-y      (mt/with-dynamic-fn-redefs [task-run/complete-task-run! (fn [run-id]
+                                                                                 (if (= run-id run-x)
+                                                                                   (throw (ex-info "app DB is down" {}))
+                                                                                   (complete! run-id)))]
+                         (with-async-run! #(#'notification.send/queue-notification!
+                                            queue {:id 1 :payload_type :notification/testing :test-value "B"})))
+            run-status #(t2/select-one-fn :status :model/TaskRun :id %)]
+        (is (= :started (run-status run-y)) "B, of run Y, is still in the queue")
+        (is (= "B" (:test-value (take-notification! queue))))
+        (is (= :started (run-status run-x)) "run X could not be completed; the reaper marks it abandoned later")))))
+
+(deftest queue-notification-put-failure-test
+  (testing "a notification that cannot be queued does not keep its run started (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (let [queue  (reify notification.send/NotificationQueueProtocol
+                     (put-notification! [_ _] (throw (ex-info "queue is full" {})))
+                     (take-notification-with-timeout! [_ _] nil)
+                     (queue-size [_] 0))
+            run-id (with-async-run! #(is (thrown-with-msg? clojure.lang.ExceptionInfo #"queue is full"
+                                                           (#'notification.send/queue-notification!
+                                                            queue {:id 1 :payload_type :notification/testing}))))]
+        (is (= :success (t2/select-one-fn :status :model/TaskRun :id run-id))
+            "the body was the only piece of work left")))))
+
 (deftest notification-dedup-priority-test
   (let [queue (#'notification.send/create-dedup-priority-queue)]
     (testing "put and take operations work correctly"
@@ -734,10 +778,20 @@
              (take-notification! queue))))
     (testing "notifications with same ID are replaced in queue"
       (let [queue (#'notification.send/create-dedup-priority-queue)]
-        (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
-        (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})
+        (is (nil? (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})))
+        (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
+               (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"}))
+            "put returns the notification that it replaced")
         (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
                (take-notification! queue)))))
+    (testing "notifications with the same ID and different queue keys both stay in the queue (GDGT-3400)"
+      (let [queue (#'notification.send/create-dedup-priority-queue)]
+        (#'notification.send/put-notification! queue (with-meta {:id 1 :payload_type :notification/testing :test-value "A"}
+                                                                {:notification/queue-key [1 11]}))
+        (#'notification.send/put-notification! queue (with-meta {:id 1 :payload_type :notification/testing :test-value "B"}
+                                                                {:notification/queue-key [1 12]}))
+        (is (= #{"A" "B"}
+               (set (map :test-value [(take-notification! queue) (take-notification! queue)]))))))
     (testing "multiple notifications are processed in order"
       (let [queue (#'notification.send/create-dedup-priority-queue)]
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})

@@ -87,8 +87,7 @@ const setup = ({ table, remoteSyncType }: SetupOpts = {}) => {
       id: 1,
       db_id: 1,
       schema: "PUBLIC",
-      // Unjustified type cast. FIXME
-      collection_id: dataCollection.id as number,
+      collection: dataCollection,
     });
 
   const tokenFeatures: Partial<TokenFeatures> = {
@@ -107,7 +106,7 @@ const setup = ({ table, remoteSyncType }: SetupOpts = {}) => {
   const enterprisePlugins: ENTERPRISE_PLUGIN_NAME[] = ["remote_sync"];
   enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   setupEnterpriseOnlyPlugin("library");
-  setupLibraryEndpoints(true);
+  setupLibraryEndpoints({ hasLibrary: true });
   setupCollectionsEndpoints({
     collections: [],
     rootCollection: createMockCollection({

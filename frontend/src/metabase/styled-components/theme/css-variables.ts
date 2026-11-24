@@ -1,10 +1,6 @@
 // WARNING: This file is referenced by CssVarsDeclarationPlugin.
 // If you move or rename it, update the path in css-vars-declaration-plugin.js.
 
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import { css } from "@emotion/react";
-import { getIn } from "icepick";
-
 import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
 import {
   getDynamicCssVariables,
@@ -20,6 +16,7 @@ import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { getFontFamilyValue } from "metabase/utils/fonts";
+import { getAtPath } from "metabase/utils/get-at-path";
 import type { ColorSettings } from "metabase-types/api";
 
 const createColorVars = ({
@@ -51,10 +48,10 @@ export function getMetabaseCssVariables({
 }: {
   theme: MantineTheme;
   whitelabelColors?: ColorSettings | null;
-}) {
+}): string {
   const colorScheme = theme.other?.colorScheme || "light";
 
-  return css`
+  return `
     :root {
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
@@ -76,10 +73,10 @@ export function getMetabaseSdkCssVariables({
   font: string;
   whitelabelColors?: ColorSettings | null;
   forceDynamicBrandRamp?: boolean;
-}) {
+}): string {
   const colorScheme = getIsDarkThemeFromPalette(theme) ? "dark" : "light";
 
-  return css`
+  return `
     :root {
       --mb-default-font-family: ${getFontFamilyValue(font)};
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
@@ -104,8 +101,8 @@ export function getMetabaseSdkCssVariables({
  * You don't need to add new colors from `frontend/src/metabase/ui/colors/colors.ts` here since
  * they're already included in `getMetabaseSdkCssVariables`
  **/
-function getSdkDesignSystemCssVariables(theme: MantineTheme) {
-  const createSdkColorVars = (colorName: ColorName) => {
+function getSdkDesignSystemCssVariables(theme: MantineTheme): string {
+  const createSdkColorVars = (colorName: ColorName): string[] => {
     /**
      * Prevent returning the primary color when color is not found,
      * so we could add a logic to fallback to the default color ourselves.
@@ -115,23 +112,21 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
      */
     const color = theme.fn.themeColor(colorName);
     const colorExist = color !== colorName;
-    if (colorExist) {
-      return `--mb-color-${colorName}: ${color};`;
-    }
+    return colorExist ? [`--mb-color-${colorName}: ${color};`] : [];
   };
-  return css`
+  return `
     /* SDK colors defined via theme.colors */
-    ${Object.entries(SDK_TO_MAIN_APP_COLORS_MAPPING).flatMap(([, colorNames]) =>
-      colorNames.map(createSdkColorVars),
-    )}
+    ${Object.entries(SDK_TO_MAIN_APP_COLORS_MAPPING)
+      .flatMap(([, colorNames]) => colorNames.flatMap(createSdkColorVars))
+      .join("\n")}
 
     /* SDK tooltip colors defined via theme.components.tooltip */
-    ${Object.entries(SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING).flatMap(
-      ([, colorName]) => createSdkColorVars(colorName),
-    )}
+    ${Object.entries(SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING)
+      .flatMap(([, colorName]) => createSdkColorVars(colorName))
+      .join("\n")}
 
     /* Colors that cannot be changed. */
-    ${SDK_UNCHANGEABLE_COLORS.map((colorName) => createSdkColorVars(colorName))}
+    ${SDK_UNCHANGEABLE_COLORS.flatMap(createSdkColorVars).join("\n")}
   `;
 }
 
@@ -144,12 +139,12 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
  * Keep in sync with [GlobalStyles.tsx].
  * Refer to DEFAULT_METABASE_COMPONENT_THEME for their defaults.
  **/
-export const getThemeSpecificCssVariables = (theme: MantineTheme) => css`
+export const getThemeSpecificCssVariables = (theme: MantineTheme): string => `
   ${Object.entries(CSS_VARIABLES_TO_SDK_THEME_MAP)
     .map(([cssVar, themeKey]) => {
-      const value = getIn(theme.other, themeKey.split("."));
+      const value = getAtPath(theme.other, themeKey.split("."));
 
-      return value ? `${cssVar}: ${value};` : "";
+      return value ? `${cssVar}: ${String(value)};` : "";
     })
     .join("\n")}
 `;

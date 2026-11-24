@@ -2,7 +2,7 @@
   "Application database queries for the SSO module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
-   [metabase.auth-identity.schema :as auth-identity.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -23,11 +23,12 @@
   [user-id            :- ::lib.schema.id/user
    group-ids          :- [:set ms/PositiveInt]
    excluded-group-ids :- [:set ms/PositiveInt]]
-  (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                    {:where [:and
-                             [:= :user_id user-id]
-                             [:in :group_id group-ids]
-                             [:not-in :group_id excluded-group-ids]]}))
+  (mdb/select-batched-set #(t2/select-fn-set :group_id :model/PermissionsGroupMembership
+                                             {:where [:and
+                                                      [:= :user_id user-id]
+                                                      [:in :group_id %]
+                                                      [:not-in :group_id excluded-group-ids]]})
+                          group-ids))
 
 (mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity for `provider`."
@@ -35,27 +36,28 @@
    provider :- :string]
   (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
 
+(mu/defn used-password-exists?
+  "Whether the User with `user-id` has a `password` AuthIdentity that has been used to log in."
+  [user-id :- ::lib.schema.id/user]
+  (t2/exists? :model/AuthIdentity
+              :user_id      user-id
+              :provider     "password"
+              :last_used_at [:not= nil]))
+
 (mu/defn slack-connect-identity
   "The user's Slack identity with `:provider_id` and `:metadata` selected, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/AuthIdentity :provider_id :metadata]
                  :user_id [:auto/param (long user-id)] :provider "slack-connect"))
 
-(mu/defn delete-slack-connect-identity!
-  "Delete the user's Slack identity, returning the number deleted."
-  [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/AuthIdentity :user_id [:auto/param (long user-id)] :provider "slack-connect"))
-
-(mu/defn insert-auth-identity!
-  "Insert an AuthIdentity linking the User with `user-id` to `provider-id` at `provider`."
-  [user-id     :- ::lib.schema.id/user
-   provider    :- :string
-   provider-id :- :string]
-  (t2/insert! :model/AuthIdentity {:user_id user-id, :provider provider, :provider_id provider-id}))
-
-(mu/defn set-auth-identity-metadata!
-  "Set the `metadata` of the AuthIdentity of the User with `user-id` at `provider`."
+(mu/defn auth-identity-ids :- [:sequential ms/PositiveInt]
+  "The ids of every AuthIdentity of the User with `user-id` at `provider`."
   [user-id  :- ::lib.schema.id/user
-   provider :- :string
-   metadata :- [:maybe ::auth-identity.schema/auth-identity.metadata]]
-  (t2/update! :model/AuthIdentity {:user_id user-id, :provider provider} {:metadata metadata}))
+   provider :- :string]
+  (vec (t2/select-pks-vec :model/AuthIdentity :user_id user-id :provider [:auto/param provider])))
+
+(mu/defn auth-identity-id
+  "The id of the AuthIdentity of the User with `user-id` at `provider`, or nil."
+  [user-id  :- ::lib.schema.id/user
+   provider :- :string]
+  (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider [:auto/param provider]))

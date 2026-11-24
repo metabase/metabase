@@ -41,6 +41,7 @@ import {
   ItemNameCell,
   TableColumn,
 } from "./TableElements";
+import { COLUMN_RESPONSIVE_PROPS } from "./column-layout";
 
 type HeaderProps = Omit<
   SortableColumnHeaderProps<ListCollectionItemsSortColumn>,
@@ -229,12 +230,12 @@ export const Columns = {
     },
   },
   Description: {
-    Col: () => <TableColumn hideAtContainerBreakpoint="sm" />,
+    Col: () => <TableColumn {...COLUMN_RESPONSIVE_PROPS.description} />,
     Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
       <SortableColumnHeader
         name="description"
         sortingOptions={sortingOptions}
-        hideAtContainerBreakpoint="sm"
+        {...COLUMN_RESPONSIVE_PROPS.description}
         onSortingOptionsChange={onSortingOptionsChange}
       >
         {t`Description`}
@@ -251,7 +252,10 @@ export const Columns = {
       const tc = useTranslateContent();
 
       return (
-        <ItemCell data-testid={`${testIdPrefix}-description`}>
+        <ItemCell
+          data-testid={`${testIdPrefix}-description`}
+          {...COLUMN_RESPONSIVE_PROPS.description}
+        >
           <Ellipsified>{tc(item.description) ?? ""}</Ellipsified>
         </ItemCell>
       );
@@ -259,7 +263,10 @@ export const Columns = {
   },
   LastEditedBy: {
     Col: () => (
-      <TableColumn style={{ width: "140px" }} hideAtContainerBreakpoint="sm" />
+      <TableColumn
+        style={{ width: "140px" }}
+        {...COLUMN_RESPONSIVE_PROPS.lastEditedBy}
+      />
     ),
     Header: ({
       sortingOptions,
@@ -272,7 +279,7 @@ export const Columns = {
         name="last_edited_by"
         sortingOptions={sortingOptions}
         onSortingOptionsChange={onSortingOptionsChange}
-        hideAtContainerBreakpoint="sm"
+        {...COLUMN_RESPONSIVE_PROPS.lastEditedBy}
       >
         {isTrashed
           ? c("Precedes the name of a user").t`Deleted by`
@@ -292,7 +299,7 @@ export const Columns = {
       return (
         <ItemCell
           data-testid={`${testIdPrefix}-last-edited-by`}
-          hideAtContainerBreakpoint="sm"
+          {...COLUMN_RESPONSIVE_PROPS.lastEditedBy}
         >
           <Ellipsified>{lastEditedBy}</Ellipsified>
         </ItemCell>
@@ -301,7 +308,10 @@ export const Columns = {
   },
   LastEditedAt: {
     Col: () => (
-      <TableColumn style={{ width: "140px" }} hideAtContainerBreakpoint="md" />
+      <TableColumn
+        style={{ width: "140px" }}
+        {...COLUMN_RESPONSIVE_PROPS.lastEditedAt}
+      />
     ),
     Header: ({
       sortingOptions,
@@ -314,7 +324,7 @@ export const Columns = {
         name="last_edited_at"
         sortingOptions={sortingOptions}
         onSortingOptionsChange={onSortingOptionsChange}
-        hideAtContainerBreakpoint="md"
+        {...COLUMN_RESPONSIVE_PROPS.lastEditedAt}
       >
         {isTrashed
           ? c("Time which the item was deleted").t`Deleted at`
@@ -333,7 +343,7 @@ export const Columns = {
         <ItemCell
           data-testid={`${testIdPrefix}-last-edited-at`}
           data-server-date
-          hideAtContainerBreakpoint="md"
+          {...COLUMN_RESPONSIVE_PROPS.lastEditedAt}
         >
           {lastEditInfo && (
             <Tooltip label={<DateTime value={lastEditInfo.timestamp} />}>

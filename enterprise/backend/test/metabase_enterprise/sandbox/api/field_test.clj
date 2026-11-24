@@ -66,7 +66,7 @@
                           :has_more_values false}
                          (fetch-values :rasta :price))))
                 (testing "Reset field values; if another User fetches them first, do I still see sandboxed values? (metabase/metaboat#128)"
-                  (field-values/clear-field-values-for-field! (mt/id :venues :name))
+                  (field-values/delete-field-values! (field-values/ids-of-fields [(mt/id :venues :name)]))
                   ;; fetch Field values with an admin
                   (testing "Admin should see all Field values"
                     (is (= {:field_id        (mt/id :venues :name)
@@ -108,7 +108,7 @@
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
       (let [field-id   (mt/id :venues :price)
             full-fv-id (t2/select-one-pk :model/FieldValues :field_id field-id :type :full)]
-        (t2/update! :model/FieldValues full-fv-id
+        (t2/update! :model/FieldValues :id full-fv-id
                     {:human_readable_values ["$" "$$" "$$$" "$$$$"]})
         ;; sanity test without gtap
         (is (= [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]
@@ -191,8 +191,7 @@
                 new-values ["foo" "bar"]]
             (testing "Sanity check: make sure FieldValues exist"
               (is (some? fv-id)))
-            (t2/update! :model/FieldValues fv-id
-                        {:values new-values})
+            (field-values/update-field-values! [{:id fv-id :values new-values}])
             (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly {:values          (map vector new-values)
                                                                                   :has_more_values false})]
               (is (= (map vector new-values)
@@ -201,7 +200,7 @@
             ;; Put everything back as it was
             (field-values/get-or-create-full-field-values! field))))
       (testing "When a sandbox fieldvalues expired, do we delete it then create a new one?"
-        (#'field-values/clear-advanced-field-values-for-field! field)
+        (field-values/delete-field-values! (field-values/advanced-ids-of-fields [(:id field)]))
         ;; make sure we have a cache
         (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
         (let [old-sandbox-fv-id (t2/select-one-pk :model/FieldValues :field_id (:id field) :type :advanced)]

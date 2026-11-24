@@ -47,6 +47,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.add-alias-info.helpers]
+   [metabase.query-processor.util.nest-query]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.query-processor.writeback :as qp.writeback]
@@ -110,7 +111,6 @@
  match/match-many
  match/replace
  lib/truncate-alias
- lib/->legacy-MBQL
  lib/->metadata-provider
  lib/duplicate-column-error
  lib/json-field?
@@ -127,14 +127,7 @@
  limit/absolute-max-results
  limit/determine-query-max-rows
  logger/level-enabled?
- mbql.u/aggregation-at-index
- mbql.u/assoc-field-options
- mbql.u/expression-with-name
- mbql.u/field-options
- mbql.u/normalize-token
  mbql.u/query->max-rows-limit
- mbql.u/query->source-table-id
- mbql.u/update-field-options
  mdb/clob->str
  mdb/data-source
  mdb/make-subname
@@ -144,7 +137,6 @@
  metabase.driver-api.impl/dispatch-by-clause-name-or-class
  metabase.driver-api.impl/is-clause?
  metabase.driver-api.impl/mbql-clause?
- metabase.driver-api.impl/nest-expressions
  mi/instance-of?
  premium-features/is-hosted?
  qp.compile/compile
@@ -169,6 +161,8 @@
  qp.util.transformations.nest-breakouts/nest-pivot-joins
  qp.util/default-query->remark
  qp.util/query->remark
+ qp.util/query->remark-data
+ metabase.query-processor.util.nest-query/nest-expressions
  qp.wrap-value-literals/wrap-value-literals-in-mbql5
  qp.writeback/execute-write-sql!
  qp/process-query

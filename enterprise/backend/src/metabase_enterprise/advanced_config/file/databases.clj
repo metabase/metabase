@@ -7,11 +7,14 @@
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.sample-data.core :as sample-data]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.quick-task :as quick-task]))
+   [metabase.util.quick-task :as quick-task]
+   [metabase.warehouses.models.database :as database]
+   [metabase.warehouses.schema :as warehouses.schema]))
 
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
   string?)
@@ -47,7 +50,10 @@
            (:auto-cruft-columns settings
                                 (:auto_cruft_columns settings))]
           (remove nil?)
-          (every? valid-regex-patterns?)))))
+          (every? valid-regex-patterns?)))
+   ;; A schema name is a string; a number or boolean from YAML is not one.
+   (fn workspace-schema-is-a-string? [settings]
+     ((some-fn nil? string?) (:database-workspace-schema settings)))))
 
 (s/def ::config-file-spec
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/engine
@@ -97,7 +103,7 @@
   "Kick off a sync of `database` when syncing databases from the config file is enabled."
   [database]
   (if (advanced-config.settings/config-from-file-sync-databases)
-    (quick-task/submit-task! (fn [] (sync/sync-database! database)))
+    (quick-task/submit-task! (fn [] (sync/sync-database! (u/the-id database))))
     (log/info "Sync on database creation when initializing from file is disabled. Skipping sync.")))
 
 (defn- init-from-config-file!
@@ -114,13 +120,13 @@
                         {:database-name (:name database)})))
       (when-let [{existing-database-id :id} (advanced-config.db/database-by-name (:name database))]
         (log/info (u/format-color :blue "Deleting Database with ID %s" existing-database-id))
-        (advanced-config.db/delete-database! existing-database-id)))
+        (database/delete-databases! [existing-database-id])))
 
     (:is_sample database)
     (init-sample-database! database)
 
     :else
-    (do
+    (let [database (lib/normalize ::warehouses.schema/database.create database)]
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
       ;; Stubs are placeholders with no usable details, so we skip the connection test.
       (when-not (:is_stub database)
@@ -133,19 +139,26 @@
           (log/info (u/format-color :yellow "Database with ID %s already exists; ignoring stub entry" (:id existing)))
 
           existing
-          (do
+          (let [previous      (advanced-config.db/database (:id existing))
+                stored-schema (get-in previous [:settings :database-workspace-schema])]
             (log/info (u/format-color :blue "Updating Database %s with ID %s" (:engine database) (:id existing)))
-            (advanced-config.db/update-database! (:id existing)
-                                                 (cond-> (normalize-settings database)
-                                                   (:is_attached_dwh database) strip-attached-dwh-update-ks
-                                                   (:is_stub existing)         (assoc :is_stub             false
-                                                                                      :initial_sync_status "incomplete")))
+            (database/update-databases! [(assoc (cond-> (normalize-settings database)
+                                                  ;; The entry's `settings` replace the stored map. Keep the stored
+                                                  ;; `database-workspace-schema` when the entry does not name the key:
+                                                  ;; dropping it deletes the database's remap rows below.
+                                                  (and (some? stored-schema)
+                                                       (:settings database)
+                                                       (not (contains? (:settings database) :database-workspace-schema)))
+                                                  (assoc-in [:settings :database-workspace-schema] stored-schema)
+                                                  (:is_attached_dwh database) strip-attached-dwh-update-ks
+                                                  (:is_stub existing)         (assoc :is_stub             false
+                                                                                     :initial_sync_status "incomplete")) :id (:id existing))])
             (when (:is_stub existing)
               (sync-if-configured! (advanced-config.db/database (:id existing)))))
 
           :else
-          (let [db (advanced-config.db/insert-database! (cond-> (normalize-settings database)
-                                                          (:is_stub database) (assoc :initial_sync_status "complete")))]
+          (let [db (first (database/create-databases! [(cond-> (normalize-settings database)
+                                                         (:is_stub database) (assoc :initial_sync_status "complete"))]))]
             (log/info (u/format-color :green "Created new %s Database" (:engine database)))
             (if (:is_stub database)
               (log/info "Created stub database; skipping sync.")

@@ -12,11 +12,13 @@
   query-handle lifecycle management."
   (:require
    [clojure.string :as str]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.mcp.db :as mcp.db]
-   [metabase.mcp.models.mcp-query-handle]
+   [metabase.mcp.models.mcp-query-handle :as mcp-query-handle]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
+   [metabase.session.models.session :as models.session]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr])
@@ -65,7 +67,7 @@
      plenty for the ~2^61 birthday bound the rest of the session model already
      relies on.
    - Some older UUID inspection tools predate RFC 9562 and may render v8 as
-     \"unknown version\". `java.util.UUID/fromString` and our `valid-uuid?` are
+     \"unknown version\". `java.util.UUID/fromString` and our `u/uuid-string?` are
      format-only, so nothing in Metabase breaks.
    - The output is deterministic in `mcp-session-id` and the signing secret. That's
      intentional (so any webserver can recompute it) — don't treat two of these as
@@ -315,7 +317,7 @@
 
 (defn valid-id?
   "Return true if `session-id` has a UUID correlator (the format `create!` produces).
-  Format check only — authentication is handled separately by cookie or bearer token, not by the session ID itself."
+  Format check only — authentication is handled separately by bearer token, not by the session ID itself."
   [session-id]
   (some? (session-parts session-id)))
 
@@ -373,7 +375,9 @@
     ;; colliding rows arbitrarily. Cross-user UUID collisions are an unaddressed risk
     ;; across the whole session model (cookie sessions included) — it belongs in the
     ;; auth layer, not here, and no constraint shape at this call site can fix it.
-    (mcp.db/get-or-create-core-session! key-hashed user-id)))
+    (models.session/get-or-create-mcp-session!
+     key-hashed user-id
+     (:id (models.auth-identity/get-or-create-auth-identity! user-id session/mcp-provider)))))
 
 (defn owned-by-user?
   "Return true if no `core_session` has been materialized for this session yet (i.e. no ownership to violate), or if
@@ -412,7 +416,7 @@
    ;; filters on for cross-session ownership.
    (let [core-session-id (:id (get-or-create-embedding-session! mcp-session-id user-id))
          handle-id       (str (UUID/randomUUID))]
-     (mcp.db/insert-query-handle!
+     (mcp-query-handle/create-mcp-query-handle!
       handle-id
       (cond-> {:mcp_session_id  mcp-session-id
                :core_session_id core-session-id
@@ -479,5 +483,5 @@
   [session-id user-id]
   (assert-session-id! session-id)
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
-    (mcp.db/delete-query-handles-for-user-session! session-id key-hashed user-id)
-    (mcp.db/delete-session-for-user! key-hashed user-id)))
+    (mcp-query-handle/delete-mcp-query-handles-for-session! session-id key-hashed user-id)
+    (models.session/delete-mcp-session! key-hashed user-id)))

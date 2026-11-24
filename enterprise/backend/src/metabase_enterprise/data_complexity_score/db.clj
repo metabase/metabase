@@ -2,7 +2,6 @@
   "Application database queries for the data-complexity-score module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
-   [java-time.api :as t]
    [malli.util :as mut]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.app-db.core :as mdb]
@@ -10,23 +9,23 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn active-field-counts-by-table
   "Rows of `:table_id` and `:field_count` of active Fields for `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/query {:select   [:table_id [:%count.* :field_count]]
-             :from     [:metabase_field]
-             :where    [:and
-                        [:= :active true]
-                        [:in :table_id table-ids]]
-             :group-by [:table_id]}))
+  (mdb/select-batched #(t2/query {:select   [:table_id [:%count.* :field_count]]
+                                  :from     [:metabase_field]
+                                  :where    [:and
+                                             [:= :active true]
+                                             [:in :table_id %]]
+                                  :group-by [:table_id]})
+                      table-ids))
 
 (mu/defn unarchived-measure-names
   "The Table ID and name of the unarchived Measures on the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Measure :table_id :name] :archived false :table_id [:in table-ids]))
+  (mdb/select-batched #(t2/select [:model/Measure :table_id :name] :archived false :table_id [:in %]) table-ids))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
@@ -63,9 +62,14 @@
 (mu/defn universe-tables
   "The scoring columns of the active Tables outside the Database with `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
-             :active true
-             :db_id  [:not= audit-database-id] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :t.id :t.name :t.visibility_type :t.db_id :t.data_layer :t.data_authority
+              [:s.collection_id :collection_id]
+              [:s.is_published :is_published]]
+             {:from      [[(t2/table-name :model/Table) :t]]
+              :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
+              :where     [:and
+                          [:= :t.active true]
+                          [:not= :t.db_id audit-database-id]]}))
 
 (mu/defn metabot-by-entity-id
   "The Metabot with `entity-id`, or nil."
@@ -100,7 +104,7 @@
   [score-entry :- (mut/select-keys ::data-complexity-score.schema/data-complexity-score.update [:fingerprint :source :score_data])]
   (t2/insert-returning-pk! :model/DataComplexityScore score-entry))
 
-(mu/defn delete-scores-older-than!
-  "Delete the DataComplexityScores created more than `months` months ago, returning the number deleted."
-  [months :- ms/PositiveInt]
-  (t2/delete! :model/DataComplexityScore {:where [:< :created_at (t/minus (t/offset-date-time) (t/months months))]}))
+(mu/defn score-ids-created-before :- [:sequential ms/PositiveInt]
+  "The ids of the DataComplexityScores created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (vec (t2/select-pks-vec :model/DataComplexityScore {:where [:< :created_at [:auto/param cutoff]]})))

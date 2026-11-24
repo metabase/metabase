@@ -100,6 +100,21 @@
       (is (=? [[:> {} [:field {} (meta/id :venues :price)] 3]]
               (lib/filters query))))))
 
+(deftest ^:parallel test-query-with-multiple-values-filter-test
+  (testing "a literal argument with several values passes each one as an argument"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {:stages [{:source  {:type :table
+                                      :id   (meta/id :venues)}
+                            :filters [{:type     :operator
+                                       :operator :=
+                                       :args     [{:type :column
+                                                   :name "PRICE"}
+                                                  {:type  :literal
+                                                   :value [3 4]}]}]}]})]
+      (is (=? [[:= {} [:field {} (meta/id :venues :price)] 3 4]]
+              (lib/filters query))))))
+
 (deftest ^:parallel test-query-with-aggregations-test
   (testing "test-query adds aggregations to the query"
     (let [query (lib.query.test-spec/test-query
@@ -160,6 +175,29 @@
                 {:binning {:strategy :num-bins :num-bins 10}}
                 (meta/id :venues :price)]]
               (lib/breakouts query))))))
+
+(deftest ^:parallel test-query-with-preset-bin-counts-test
+  (doseq [num-bins [10 50 100]]
+    (let [column {:type :column :name "PRICE" :binning {:strategy :num-bins :num-bins num-bins}}
+          query  (lib.query.test-spec/test-query
+                  meta/metadata-provider
+                  {:stages [{:source    {:type :table :id (meta/id :venues)}
+                             :breakouts [column]
+                             :order-bys [(assoc column :direction :asc)]}]})
+          binned [:field {:binning {:strategy :num-bins :num-bins num-bins}} (meta/id :venues :price)]]
+      (is (=? [binned] (lib/breakouts query)))
+      (is (=? [[:asc {} binned]] (lib/order-bys query))))))
+
+(deftest ^:parallel test-query-unsupported-bin-count-message-test
+  (doseq [clause [:breakouts :order-bys]]
+    (testing (name clause)
+      (is (thrown-with-msg?
+           #?(:clj Exception :cljs js/Error)
+           #"^Unsupported bin count 20\. Supported counts for this field are 10, 50, and 100\.$"
+           (lib.query.test-spec/test-query
+            meta/metadata-provider
+            {:stages [{:source {:type :table :id (meta/id :venues)}
+                       clause  [{:type :column :name "PRICE" :binning {:strategy :num-bins :num-bins 20}}]}]}))))))
 
 (deftest ^:parallel test-query-with-bin-width-breakout-test
   (testing "test-query adds breakouts with bin width binning"
@@ -1070,14 +1108,14 @@
                   :template-tags  {"category_filter" {:type         :dimension
                                                       :name         "category_filter"
                                                       :display-name "Category Filter"
-                                                      :dimension    (meta/id :venues :category-id)
+                                                      :field-id     (meta/id :venues :category-id)
                                                       :widget-type  :text}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE {{category_filter}}"))
       (is (=? [{:type         :dimension
                 :name         "category_filter"
                 :display-name "Category Filter"
-                :dimension    [:field {} (meta/id :venues :category-id)]
+                :field-id     (meta/id :venues :category-id)
                 :widget-type  :text}]
               (lib/template-tags query))))))
 
@@ -1090,13 +1128,13 @@
                   :template-tags  {"date_unit" {:type         :temporal-unit
                                                 :name         "date_unit"
                                                 :display-name "Date Unit"
-                                                :dimension    (meta/id :orders :created-at)}}})]
+                                                :field-id     (meta/id :orders :created-at)}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM orders WHERE {{date_unit}}"))
       (is (=? [{:type         :temporal-unit
                 :name         "date_unit"
                 :display-name "Date Unit"
-                :dimension    [:field {} (meta/id :orders :created-at)]}]
+                :field-id     (meta/id :orders :created-at)}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-snippet-tag-test
@@ -1135,6 +1173,22 @@
                 :card-id      1}]
               (lib/template-tags query))))))
 
+(deftest ^:parallel test-native-query-with-table-tag-test
+  (testing "test-native-query creates a native query with table template tag"
+    (let [query (lib.query.test-spec/test-native-query
+                 meta/metadata-provider
+                 {:database-id    (meta/id)
+                  :query          "SELECT * FROM {{my_table}}"
+                  :template-tags  {"my_table" {:type         :table
+                                               :name         "my_table"
+                                               :display-name "My Table"
+                                               :table-id     (meta/id :orders)}}})]
+      (is (=? [{:type         :table
+                :name         "my_table"
+                :display-name "My Table"
+                :table-id     (meta/id :orders)}]
+              (lib/template-tags query))))))
+
 (deftest ^:parallel test-native-query-with-multiple-tags-test
   (testing "test-native-query creates a native query with multiple template tags"
     (let [query (lib.query.test-spec/test-native-query
@@ -1150,7 +1204,7 @@
                                    "category_filter" {:type         :dimension
                                                       :name         "category_filter"
                                                       :display-name "Category Filter"
-                                                      :dimension    (meta/id :venues :category-id)
+                                                      :field-id     (meta/id :venues :category-id)
                                                       :widget-type  :text}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE name = {{name}} AND price > {{min_price}} AND {{category_filter}}"))
@@ -1163,7 +1217,7 @@
                {:type         :dimension
                 :name         "category_filter"
                 :display-name "Category Filter"
-                :dimension    [:field {} (meta/id :venues :category-id)]
+                :field-id     (meta/id :venues :category-id)
                 :widget-type  :text}]
               (lib/template-tags query))))))
 

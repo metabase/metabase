@@ -1,5 +1,6 @@
 (ns metabase.system.settings
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.appearance.core :as appearance]
@@ -10,6 +11,8 @@
    [metabase.util.fonts :as u.fonts]
    [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru tru]]
    [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
@@ -72,6 +75,15 @@
         admin, so an operator who completes setup in a browser doesn't have to configure it. Deployments
         that provision headlessly, run multi-tenant, or otherwise never sign in as an admin should set
         `MB_SITE_URL` explicitly.")
+
+(defn site-path
+  "The path of [[site-url]] without a trailing slash, such as `/metabase` when Metabase is served under a path, or an
+  empty string."
+  []
+  ;; `java.net.URL` keeps the path encoded, as request URIs are.
+  (or (when-let [^java.net.URL url (some-> (site-url) io/as-url)]
+        (not-empty (str/replace (.getPath url) #"/$" "")))
+      ""))
 
 ;;; TODO -- we might want to move this into a separate `metabase.i18n` module
 (defsetting site-locale
@@ -158,9 +170,9 @@
     (if (premium-features/is-hosted?) ["/tmp"] ["/"])))
 
 (defsetting readable-paths
-  (deferred-tru (str "Comma-separated allowlist of directories Metabase may read files from, e.g. for database "
-                     "secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase "
-                     "Cloud and / (every path) when self-hosted."))
+  (str "Comma-separated allowlist of directories Metabase may read files from, e.g. for database "
+       "secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase "
+       "Cloud and / (every path) when self-hosted.")
   :type       :csv
   :encryption :no
   :visibility :internal
@@ -170,8 +182,8 @@
   :doc        false)
 
 (defsetting writable-paths
-  (deferred-tru (str "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no "
-                     "paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."))
+  (str "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no "
+       "paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted.")
   :type       :csv
   :encryption :no
   :visibility :internal

@@ -34,7 +34,6 @@ import {
   buildIncrementalTarget,
   getInitialValues,
 } from "../../components/IncrementalTransform/form";
-import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformEditor } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import {
@@ -228,7 +227,6 @@ function TransformQueryPageBody({
           isEditMode={isEditMode}
           readOnly={readOnly}
         />
-        <TransformDisconnectedDatabaseBanner transform={transform} />
         <Box
           w="100%"
           bg="background_page-primary"

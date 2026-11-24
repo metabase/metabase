@@ -7,13 +7,16 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.serialization :as serdes]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.impl :as data.impl]
-   [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [metabase.util.json :as json]
    [next.jdbc]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
@@ -55,7 +58,15 @@
      (mt/with-temp ~model-bindings ~@body)))
 
 (defn create! [model & {:as properties}]
-  (first (t2/insert-returning-instances! model (merge (mt/with-temp-defaults model) properties))))
+  (let [row (merge (mt/with-temp-defaults model) properties)
+        row (cond-> row
+              (and (= :model/NativeQuerySnippet model) (not (contains? properties :template_tags)))
+              (assoc :template_tags (#'native-query-snippet/snippet-template-tags
+                                     row (#'native-query-snippet/name->id [row])))
+
+              (and (= :model/Action model) (:model_id row) (not (contains? properties :collection_id)))
+              (assoc :collection_id (t2/select-one-fn :collection_id :model/Card :id (:model_id row))))]
+    (first (t2/insert-returning-instances! model row))))
 
 (defn -data-source-url [^metabase.app_db.data_source.DataSource data-source]
   (.url data-source))
@@ -64,8 +75,8 @@
 (defmacro with-db
   "Execute `body` with the current app DB bound to an H2 `data-source`."
   [data-source & body]
-  `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
-     (with-open [conn# (.getConnection mdb.connection/*application-db*)]
+  `(mdb/with-application-db (mdb.connection/application-db :h2 ~data-source)
+     (with-open [conn# (.getConnection (mdb.connection/current-application-db))]
        (binding [t2.conn/*current-connectable* conn#]
          ;; TODO mt/with-empty-h2-app-db! also rebinds some perms-group/* - do we want to do that too?
          ;;   redefs not great for parallelism
@@ -170,9 +181,9 @@
                                                                :location
                                                                (format "/%d/%d/" (crowberto-pc-id) pc-nested-id)}
                   :model/Segment    {segment-id :id} {:name "My Segment"
-                                                      :table_id table-id
-                                                      :definition {:source-table table-id
-                                                                   :filter [:!= [:field category-field-id nil] nil]}}
+                                                      :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                    (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                        (lib/filter (lib/not-null (lib.metadata/field mp category-field-id)))))}
                   :model/Dashboard  {dashboard-id :id} {:name "My Dashboard"
                                                         :collection_id collection-id}
                   :model/Dashboard  {root-dashboard-id :id} {:name "Root Dashboard"}
@@ -254,8 +265,8 @@
                                                                                 :card_id card-id-nested
                                                                                 ;; this is how click actions on a non-table card work (ex: a chart)
                                                                                 :visualization_settings {:click_behavior {:targetId card-id-nested-query
-                                                                                                                          :linkType :question
-                                                                                                                          :type     :link}}}
+                                                                                                                          :linkType "question"
+                                                                                                                          :type     "link"}}}
                   :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
                                                 :card_id card-id
                                                 :position 0}
@@ -264,27 +275,23 @@
                                                 :position 1}
                   :model/DashboardCard       {dashcard-with-click-actions :id} {:dashboard_id           dashboard-id
                                                                                 :card_id                card-id-root
-                                                                                :visualization_settings (-> (mb.viz/visualization-settings)
-                                                                                                            (mb.viz/with-entity-click-action
-                                                                                                              numeric-field-id
-                                                                                                              ::mb.viz/card
-                                                                                                              card-id
-                                                                                                              (mb.viz/fk-parameter-mapping
-                                                                                                               "Category"
-                                                                                                               category-field-id
-                                                                                                               numeric-field-id))
-                                                                                                            (mb.viz/with-entity-click-action
-                                                                                                              name-field-id
-                                                                                                              ::mb.viz/dashboard
-                                                                                                              root-dashboard-id
-                                                                                                              nil)
-                                                                                                            (mb.viz/with-click-action
-                                                                                                              (mb.viz/column-name->column-ref "Price Known")
-                                                                                                              (mb.viz/url-click-action "/price-info"))
-                                                                                                            (mb.viz/with-click-action
-                                                                                                              (mb.viz/field-id->column-ref latitude-field-id)
-                                                                                                              (mb.viz/crossfilter-click-action {}))
-                                                                                                            mb.viz/norm->db)}
+                                                                                :visualization_settings {:column_settings
+                                                                                                         {(lib/field-id->column-settings-key numeric-field-id)
+                                                                                                          {:click_behavior {:type             "link"
+                                                                                                                            :linkType         "question"
+                                                                                                                            :targetId         card-id
+                                                                                                                            :parameterMapping (let [id (json/encode ["dimension" ["fk->" ["field" category-field-id nil] ["field" numeric-field-id nil]]])]
+                                                                                                                                                {id {:id     id
+                                                                                                                                                     :source {:type "column" :id "Category" :name "Category"}
+                                                                                                                                                     :target {:type      "dimension"
+                                                                                                                                                              :id        id
+                                                                                                                                                              :dimension ["dimension" [:field numeric-field-id {:source-field category-field-id}]]}}})}}
+                                                                                                          (lib/field-id->column-settings-key name-field-id)
+                                                                                                          {:click_behavior {:type "link" :linkType "dashboard" :targetId root-dashboard-id}}
+                                                                                                          (lib/column-name->column-settings-key "Price Known")
+                                                                                                          {:click_behavior {:type "link" :linkType "url" :linkTemplate "/price-info"}}
+                                                                                                          (lib/field-id->column-settings-key latitude-field-id)
+                                                                                                          {:click_behavior {:type "crossfilter" :parameterMapping {}}}}}}
                   :model/DashboardCardSeries _ {:dashboardcard_id   dashcard-with-click-actions
                                                 :card_id            card-id-root
                                                 :position           2}
@@ -321,7 +328,7 @@
                                                                                                     :name         "category-id"
                                                                                                     :display-name "Category ID"
                                                                                                     :type         "dimension"
-                                                                                                    :dimension    [:field category-field-id nil]
+                                                                                                    :field-id     category-field-id
                                                                                                     :widget-type  "id"
                                                                                                     :required     true
                                                                                                     :default      40}}}}}
@@ -533,25 +540,24 @@
       ~@body)))
 
 (defn extract-one
-  "Extract the first serialized `model-name` entity matching `where`: its primary key, its entity id, a Honey SQL
-  clause, or nil for the first entity of the model. `extract-all` filters by primary key, so a clause is resolved to
-  primary keys here first."
+  "The first exported `model-name` entity matching `where`: its primary key, its entity id, a Honey SQL clause, or nil."
   [model-name where]
   (let [model (keyword "model" model-name)
         pk    (first (t2/primary-keys model))
-        ids   (cond
-                (nil? where)    nil
-                (number? where) [where]
-                (string? where) (t2/select-fn-vec pk [model pk] :entity_id where)
-                :else           (t2/select-fn-vec pk [model pk] {:where where}))]
-    (u/rfirst (serdes/extract-all model-name (cond-> {}
-                                               ids (assoc :filter-column pk :filter-ids ids))))))
+        rows  (t2/select model {:where    (cond
+                                            (nil? where)    nil
+                                            (number? where) [:= pk where]
+                                            (string? where) [:= :entity_id where]
+                                            :else           where)
+                                :order-by [[pk :asc]]
+                                :limit    1})]
+    (first (into [] (serialization/export model rows)))))
 
 (defn ingestion-in-memory
-  "An Ingestable serving the extracted `entities`, in order, under their label-free paths as the YAML ingestion does."
+  "An Ingestable serving the exported `entities` under their keys."
   [entities]
-  (let [by-path (u/index-by (comp serdes.ingest/strip-labels serdes/path) entities)]
+  (let [by-key (into {} (map (juxt serialization/key-of identity)) entities)]
     (reify serdes.ingest/Ingestable
-      (ingest-list [_] (map (comp serdes.ingest/strip-labels serdes/path) entities))
-      (ingest-one [_ path] (by-path (serdes.ingest/strip-labels path)))
+      (ingest-list [_] (map serialization/key-of entities))
+      (ingest-many [_ ks] (mapv by-key ks))
       (ingest-errors [_] []))))

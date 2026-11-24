@@ -467,7 +467,7 @@
     (mt/test-driver :h2
       (mt/with-empty-db
         (mt/with-discard-model-updates! [:model/Database]
-          (t2/update! :model/Database (mt/id) {:uploads_enabled true})
+          (t2/update! :model/Database :id (mt/id) {:uploads_enabled true})
           (mt/with-current-user (mt/user->id :crowberto)
             (mt/with-dynamic-fn-redefs
               [slackbot.client/download-file-stream (fn [_client _url]
@@ -476,7 +476,7 @@
                        :error    #"I couldn't upload malformed\.csv: Column count in data .*"}
                       (#'slackbot.uploads/upload-file!
                        test-client
-                       {:db           (t2/select-one :model/Database (mt/id))
+                       {:db           (t2/select-one :model/Database :id (mt/id))
                         :schema-name  (sql.tx/session-schema :h2)
                         :table-prefix "slackbot_"}
                        {:name "malformed.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100}))))))))))

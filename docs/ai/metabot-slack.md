@@ -7,7 +7,9 @@ summary: Chat with Metabot directly in Slack to ask questions about your data, g
 
 ![Metabot in Slack](./images/metabot-slack.png)
 
-Chat with [Metabot](./metabot.md) in Slack. Direct message Metabot for private analysis, or mention @Metabot in a channel to collaborate with your team.
+Direct message [Metabot](./metabot.md) for private analysis, or mention @Metabot in a channel to collaborate with your team.
+
+Metabot in Slack is available on every Metabase plan.
 
 ## What Metabot can do
 
@@ -71,9 +73,9 @@ Some caveats:
 
 If you ask Metabot a question in a public channel, _everyone_ in that channel can see the response. So even though Metabot respects your Metabase [permissions](../permissions/introduction.md) (Metabot can only see what you see), be thoughtful about questions that could surface sensitive data to others that may lack your permissions.
 
-### Feedback forms contain your conversation history
+### Who can see your feedback
 
-When you submit feedback, the form you send may contain sensitive data from your conversation.
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see your feedback along with the conversation it's about. On Metabase Cloud, Metabase (the company) can see your feedback too. See [AI privacy](./privacy.md#who-can-see-your-feedback).
 
 ## Further reading
 

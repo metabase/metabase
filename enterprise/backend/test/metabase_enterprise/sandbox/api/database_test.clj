@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -29,11 +30,12 @@
                                       [:report_card :c] [:= :c.id :s.card_id]]
                              :where  [:= :pg.id (u/the-id group)]})
         {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
-                                            (:dataset_query card))]
+                                            (:dataset_query card)
+                                            (:result_metadata card))]
     (mt/with-test-user :crowberto
       (if metadata
         (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
-        (card.metadata/save-metadata-async! metadata-future card)))))
+        (queries.card/save-metadata-async! [{:future metadata-future :card card}])))))
 
 (deftest database-metadata-respects-column-sandbox-test
   (testing "GET /api/database/:id/metadata excludes columns hidden by a column-restricting sandbox."

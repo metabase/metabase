@@ -290,7 +290,7 @@ export function TablePickerTreeTable({
           if (row.original.type !== "table" || !row.original.table) {
             return null;
           }
-          return row.original.table.is_published ? (
+          return row.original.table.collection != null ? (
             <Center w="100%" data-testid="table-published">
               <Icon
                 name="verified_round"
@@ -360,7 +360,8 @@ export function TablePickerTreeTable({
     columns,
     getSubRows: (node) => node.children,
     getNodeId: (node) => node.id,
-    getRowCanExpand: (row) => row.original.type !== "table",
+    getRowCanExpand: (row) =>
+      row.original.type !== "table" && row.original.children !== undefined,
     expanded: expandedState,
     onExpandedChange: handleExpandedStateChange,
     enableRowSelection: false,

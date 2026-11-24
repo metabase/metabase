@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import cx from "classnames";
 import {
   type CSSProperties,
@@ -66,7 +67,9 @@ export const LoadingAndErrorWrapper = forwardRef<
 
     return (
       <div className={contentClassName}>
-        <h2 className={cx(CS.textNormal, CS.textLight, CS.ieWrapContentFix)}>
+        <h2
+          className={cx(CS.textNormal, CS.textSecondary, CS.ieWrapContentFix)}
+        >
           {getErrorMessage()}
         </h2>
       </div>

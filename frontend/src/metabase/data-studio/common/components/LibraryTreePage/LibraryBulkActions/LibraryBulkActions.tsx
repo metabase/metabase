@@ -65,6 +65,7 @@ export function LibraryBulkActions({
   );
 
   const hasTables = selectedItems.some((item) => item.model === "table");
+  const canWriteAll = selectedItems.every((item) => item.canWrite);
 
   // A collection can't be moved into itself or one of its descendants.
   const movingCollectionIds = useMemo(
@@ -139,10 +140,12 @@ export function LibraryBulkActions({
   return (
     <>
       <BulkActionBar opened={count > 0} message={message}>
-        <BulkActionButton onClick={() => setAction("move")}>
-          {t`Move`}
-        </BulkActionButton>
-        {!hasTables && (
+        {canWriteAll && (
+          <BulkActionButton onClick={() => setAction("move")}>
+            {t`Move`}
+          </BulkActionButton>
+        )}
+        {canWriteAll && !hasTables && (
           <BulkActionButton onClick={confirmTrash}>
             {t`Move to trash`}
           </BulkActionButton>
@@ -260,7 +263,6 @@ function LibraryMoveModal({
       entityType={match(section)
         .with("data", () => "table" as const)
         .with("metrics", () => "metric" as const)
-        .with("dashboards", () => "dashboard" as const)
         .exhaustive()}
     />
   );

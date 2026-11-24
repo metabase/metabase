@@ -9,7 +9,6 @@ import { useNavigate, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { getChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton";
 import type { DatabaseId, Table } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 const findTable = (
   tables: Table[],
@@ -55,10 +54,9 @@ export const TablePermalinkRedirect = () => {
   const table = database
     ? findTable(tables ?? [], database.id, schemaName, tableName)
     : undefined;
-  const targetUrl =
-    table && isConcreteTableId(table.id)
-      ? Urls.table({ id: table.id, name: table.display_name })
-      : null;
+  const targetUrl = table
+    ? Urls.table({ id: table.id, name: table.display_name })
+    : null;
 
   useEffect(() => {
     if (targetUrl) {

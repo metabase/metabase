@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCardEndpoints,
+  setupContentDiagnosticsCountsEndpoint,
   setupInvalidateFindingsEndpoint,
   setupListStaleFindingsEndpoint,
   setupUpdateCardEndpointWithError,
@@ -10,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import {
   type TestRouter,
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -97,6 +99,7 @@ function setup({
     value: lastUsedParams,
   });
 
+  setupContentDiagnosticsCountsEndpoint();
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const { router, store } = renderWithProviders(
@@ -158,6 +161,46 @@ describe("StaleContentPage", () => {
     const list = await screen.findByRole("treegrid");
     expect(await within(list).findByText("Sales overview")).toBeInTheDocument();
     expect(within(list).getByText("Marketing funnel")).toBeInTheDocument();
+  });
+
+  it("shows a skeleton only initially and keeps rows under the loader while paging", async () => {
+    const pending = defer<ListStaleFindingsResponse>();
+    const firstPage = createMockListStaleFindingsResponse({
+      data: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 1,
+          entity_display_name: "First page finding",
+        }),
+      ],
+      total: 26,
+    });
+    const nextPage = createMockListStaleFindingsResponse({
+      data: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 26,
+          entity_display_name: "Next page finding",
+        }),
+      ],
+      total: 26,
+    });
+    setup({
+      getResponse: (url) =>
+        new URL(url).searchParams.get("offset") === "25"
+          ? pending.promise
+          : firstPage,
+    });
+    expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+    await screen.findByText("First page finding");
+    await userEvent.click(screen.getByLabelText("Next page"));
+    await waitFor(() =>
+      expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+    );
+    expect(screen.getByText("First page finding")).toBeVisible();
+    expect(screen.queryByTestId("tree-table-skeleton")).not.toBeInTheDocument();
+    expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+    await act(async () => pending.resolve(nextPage));
+    expect(await screen.findByText("Next page finding")).toBeVisible();
+    expect(screen.queryByText("First page finding")).not.toBeInTheDocument();
   });
 
   it("shows an empty state when there are no findings", async () => {
@@ -481,6 +524,77 @@ describe("StaleContentPage", () => {
     });
   });
 
+  it("permanently deletes a selected transform, then refetches the list without it", async () => {
+    const card = createMockContentDiagnosticsStaleFinding({
+      id: 1,
+      entity_type: "card",
+      entity_id: 1,
+      entity_display_name: "Stale card",
+      can_write: true,
+    });
+    const transform = createMockContentDiagnosticsStaleFinding({
+      id: 2,
+      entity_type: "transform",
+      entity_id: 7,
+      entity_display_name: "Stale transform",
+      can_write: true,
+    });
+    let findings = [card, transform];
+    fetchMock.delete("path:/api/transform/7", () => {
+      findings = findings.filter((finding) => finding !== transform);
+      return 204;
+    });
+    setup({
+      withUndos: true,
+      getResponse: () =>
+        createMockListStaleFindingsResponse({
+          data: findings,
+          total: findings.length,
+        }),
+    });
+
+    const list = await screen.findByRole("treegrid");
+    await within(list).findByText("Stale transform");
+    const transformRow = within(list).getByRole("row", {
+      name: /Stale transform/,
+    });
+    await userEvent.click(within(transformRow).getByRole("checkbox"));
+
+    const bulkActions = screen.getByTestId("content-diagnostics-bulk-actions");
+    expect(
+      within(bulkActions).getByText("1 item selected"),
+    ).toBeInTheDocument();
+    expect(
+      within(bulkActions).queryByRole("button", { name: "Move to trash" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      within(bulkActions).getByRole("button", { name: "Delete" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Delete 1 transform?")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "1 transform will be permanently deleted and cannot be restored.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
+
+    expect(await screen.findByText("Deleted 1 item")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        within(list).queryByText("Stale transform"),
+      ).not.toBeInTheDocument();
+    });
+    expect(within(list).getByText("Stale card")).toBeInTheDocument();
+
+    const deleteCalls = fetchMock.callHistory.calls("path:/api/transform/7");
+    expect(deleteCalls).toHaveLength(1);
+    expect(deleteCalls[0].options?.method?.toUpperCase()).toBe("DELETE");
+  });
+
   it("keeps items that failed to trash selected", async () => {
     setupCardEndpoints(createMockCard({ id: 1 }));
     setupUpdateCardEndpointWithError(2);
@@ -577,6 +691,52 @@ describe("StaleContentPage", () => {
     expect(screen.getByTestId("monitor-main")).not.toContainElement(
       sidebarRegion,
     );
+  });
+
+  it("shows each type's last activity date, under its own kind of activity in the sidebar", async () => {
+    const LAST_ACTIVE_AT = "2020-06-15T12:00:00Z";
+    const LAST_ACTIVE_DISPLAY = "June 15, 2020";
+    const cases = [
+      { entityType: "card", name: "Backdated question", label: "Last used" },
+      {
+        entityType: "dashboard",
+        name: "Backdated dashboard",
+        label: "Last viewed",
+      },
+      {
+        entityType: "document",
+        name: "Backdated document",
+        label: "Last viewed",
+      },
+    ] as const;
+    setup({
+      findings: cases.map(({ entityType, name }, index) =>
+        createMockContentDiagnosticsStaleFinding({
+          id: index + 1,
+          entity_type: entityType,
+          entity_id: 100 + index,
+          entity_display_name: name,
+          last_active_at: LAST_ACTIVE_AT,
+        }),
+      ),
+    });
+
+    const list = await screen.findByRole("treegrid");
+    expect(await within(list).findAllByText(LAST_ACTIVE_DISPLAY)).toHaveLength(
+      cases.length,
+    );
+
+    // Open the findings last to first, so a sidebar stuck on the first row fails.
+    for (const { name, label } of [...cases].reverse()) {
+      await userEvent.click(within(list).getByText(name));
+
+      const sidebar = await screen.findByRole("region", {
+        name: `Details for ${name}`,
+      });
+      const info = within(sidebar).getByRole("region", { name: "Info" });
+      expect(within(info).getByText(label)).toBeVisible();
+      expect(within(info).getByText(LAST_ACTIVE_DISPLAY)).toBeVisible();
+    }
   });
 
   it("sets the page parameter when navigating to the next page", async () => {
@@ -867,7 +1027,10 @@ describe("StaleContentPage", () => {
     const { router } = setup({
       findings: FINDINGS,
       urlParams: { "entity-types": ["dashboard"] },
-      lastUsedParams: { entity_types: ["model"] },
+      // The opposite of the URL: every type except dashboards.
+      lastUsedParams: {
+        entity_types: ["question", "model", "metric", "document", "transform"],
+      },
     });
 
     await waitForListToLoad();
@@ -878,6 +1041,21 @@ describe("StaleContentPage", () => {
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
       "dashboard",
     ]);
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+    const popover = await screen.findByRole("dialog");
+    expect(
+      within(popover).getByRole("checkbox", { name: "Dashboards" }),
+    ).toBeChecked();
+    ["Questions", "Models", "Metrics", "Documents", "Transforms"].forEach(
+      (label) => {
+        expect(
+          within(popover).getByRole("checkbox", { name: label }),
+        ).not.toBeChecked();
+      },
+    );
   });
 
   it("lets an explicit default-valued URL win over the last-used filter", async () => {

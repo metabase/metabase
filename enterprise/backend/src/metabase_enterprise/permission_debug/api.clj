@@ -4,7 +4,8 @@
    [metabase-enterprise.permission-debug.impl :as permission-debug.impl]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]))
+   [metabase.api.routes.common :refer [+auth]]
+   [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -68,7 +69,7 @@
    {:keys [user_id model_id action_type]
     :or {}} :- [:map {:closed true}
                 [:user_id pos-int?]
-                [:model_id :string]
+                [:model_id ms/PositiveInt]
                 [:action_type permission-debug.impl/ActionType]]
    _body]
   (permission-debug.impl/debug-permissions

@@ -97,7 +97,7 @@ jobs:
         id: detect
         run: |
           SPEC='${{ inputs.spec }}'
-          if [[ "$SPEC" == e2e/test-component/scenarios/embedding-sdk/* ]]; then
+          if [[ "$SPEC" == e2e/test-component/scenarios/* ]]; then
             echo "type=component" >> "$GITHUB_OUTPUT"
           else
             echo "type=e2e" >> "$GITHUB_OUTPUT"
@@ -167,6 +167,7 @@ jobs:
           maildev: true
           openldap: true
           snowplow: true
+          metaplow: true
           postgres: ${{ inputs.qa_db }}
           mysql: ${{ inputs.qa_db }}
           mongo: ${{ inputs.qa_db }}

@@ -31,6 +31,11 @@ const resolveConfig = require("./frontend/build/embedding-sdk/rspack/resolve-con
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const {
+  FONT_FACES_RULE,
+  FONT_FACES_VIRTUAL_MODULE,
+  fontAssetName,
+} = require("./frontend/build/shared/rspack/fonts");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 const {
   COMPRESSION_CONFIG,
@@ -133,6 +138,9 @@ const config = {
       },
       {
         test: /\.(svg|png)$/,
+        // SVG font faces live under frontend/fonts and must stay files: inlining them
+        // adds close to a megabyte of base64 to this bundle.
+        exclude: /[\\/](?:frontend[\\/]fonts|font-subsets)[\\/]/,
         type: "asset/inline",
         resourceQuery: { not: [/component|source|url/] },
       },
@@ -148,6 +156,21 @@ const config = {
           filename: "../dist/[hash][ext]",
         },
       },
+      {
+        // Fonts are emitted as files, never inlined: base64 would add megabytes.
+        test: /\.(woff2?|ttf|otf|eot|svg)$/,
+        include: /[\\/](?:frontend[\\/]fonts|font-subsets)[\\/]/,
+        type: "asset/resource",
+        generator: {
+          // The app build owns these files. Emitting them here as well would race
+          // with its `clean`, and would leave removed fonts behind if that clean
+          // had to skip the directory. This build only needs the URL.
+          emit: false,
+          /** @param {{ filename: string }} pathData */
+          filename: (pathData) => fontAssetName(pathData, "../dist/fonts"),
+        },
+      },
+      FONT_FACES_RULE,
       {
         test: /\.css$/,
         oneOf: [
@@ -286,6 +309,7 @@ const config = {
   },
 
   plugins: [
+    new rspack.experiments.VirtualModulesPlugin(FONT_FACES_VIRTUAL_MODULE),
     ...bundleStatsPlugins("stats-embedding-sdk.json"),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others

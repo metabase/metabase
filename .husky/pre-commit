@@ -1,4 +1,12 @@
-bun run precommit
+# A lint-staged crash mid-merge would strand the resolved conflicts in its backup stash, so skip the stash.
+# Without the stash lint-staged cannot restore hidden unstaged lines, so keep it when a file is partially staged.
+git_dir=$(git rev-parse --git-dir)
+if { [ -f "$git_dir/MERGE_HEAD" ] || [ -f "$git_dir/REBASE_HEAD" ] || [ -f "$git_dir/CHERRY_PICK_HEAD" ]; } &&
+   [ -z "$({ git diff --name-only; git diff --cached --name-only; } | sort | uniq -d)" ]; then
+  bun run precommit --no-stash
+else
+  bun run precommit
+fi
 
 # Run the formatter
 # Note that this is stubbed in for now until we can gobally resolve some formatting issues such as what is described

@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useGetTimelineQuery,
@@ -6,14 +8,15 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
-import EditTimelineModal from "metabase/timelines/common/components/EditTimelineModal";
-import { EditTimelineModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
+import EditTimelineForm from "metabase/timelines/common/components/EditTimelineForm";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-
-function EditTimelineModalContainer({ params, ...props }: ModalComponentProps) {
+function EditTimelineModalContainer({ params, onClose }: ModalComponentProps) {
   const navigate = useNavigate();
   const archive = useSetArchive();
   const [updateTimeline] = useUpdateTimelineMutation();
@@ -23,17 +26,6 @@ function EditTimelineModalContainer({ params, ...props }: ModalComponentProps) {
     isLoading,
     error,
   } = useGetTimelineQuery(id != null ? { id, include: "events" } : skipToken);
-
-  if (isLoading || error || !timeline) {
-    return (
-      <LoadingAndErrorWrapper
-        loading={isLoading}
-        error={error}
-        loader={<EditTimelineModalSkeleton onClose={props.onClose} />}
-        noWrapper
-      />
-    );
-  }
 
   const handleSubmit = async (timeline: Timeline) => {
     await updateTimeline(timeline).unwrap();
@@ -46,12 +38,28 @@ function EditTimelineModalContainer({ params, ...props }: ModalComponentProps) {
   };
 
   return (
-    <EditTimelineModal
-      {...props}
-      timeline={timeline}
-      onSubmit={handleSubmit}
-      onArchive={handleArchive}
-    />
+    <TimelineModal
+      title={t`Edit event timeline`}
+      onClose={onClose}
+      animated={false}
+      density="relaxed"
+      tall={isLoading || !!error || !timeline}
+    >
+      {isLoading || error || !timeline ? (
+        <TimelineModalLoadingState
+          loading={isLoading}
+          error={error}
+          variant="form"
+        />
+      ) : (
+        <EditTimelineForm
+          timeline={timeline}
+          onSubmit={handleSubmit}
+          onArchive={handleArchive}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

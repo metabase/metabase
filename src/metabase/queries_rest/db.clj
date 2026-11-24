@@ -3,12 +3,10 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private order-by-name {:order-by [[:%lower.name :asc]]})
@@ -76,14 +74,14 @@
   "The Database id of the Table of the Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one-fn :db_id :model/Table {:select [:t.db_id]
-                                         :from [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
+                                         :from [[(t2/table-name :model/Table) :t]]
                                          :join [[:segment :m] [:= :t.id :m.table_id]]
                                          :where [:= :m.id segment-id]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table, :id table-id))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -93,7 +91,7 @@
 (mu/defn cards-by-id
   "A map of Card id to Card for the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-fn->fn :id identity :model/Card :id [:in card-ids]))
+  (mdb/select-batched-map #(t2/select-fn->fn :id identity :model/Card :id [:in %]) card-ids))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
@@ -135,23 +133,7 @@
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] dashboard-id))
-
-(mu/defn update-card!
-  "Apply `changes` to the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card
-   changes :- (mut/select-keys ::queries.schema/card.update [:collection_position :collection_id :public_uuid :made_public_by_id])]
-  (t2/update! :model/Card card-id changes))
-
-(mu/defn actions-for-model
-  "The Actions of the model Card with `model-id`."
-  [model-id :- ::lib.schema.id/card]
-  (t2/select :model/Action :model_id model-id))
-
-(mu/defn delete-card!
-  "Delete the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/Card :id card-id))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
 
 (mu/defn max-collection-position
   "The `:max_position` of the Cards in the Collection with `collection-id` (nil for the root)."
@@ -163,12 +145,13 @@
   `new-collection-id-or-nil`."
   [card-ids :- [:set ::lib.schema.id/card]
    new-collection-id-or-nil :- [:maybe ms/PositiveInt]]
-  (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema :type
-              :entity_id :result_metadata :dimensions :dimension_mappings]
-             {:where [:and [:in :id card-ids]
-                      [:or [:not= :collection_id new-collection-id-or-nil]
-                       (when new-collection-id-or-nil
-                         [:= :collection_id nil])]]}))
+  (mdb/select-batched #(t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema :type
+                                   :entity_id :result_metadata :dimensions :dimension_mappings]
+                                  {:where [:and [:in :id %]
+                                           [:or [:not= :collection_id new-collection-id-or-nil]
+                                            (when new-collection-id-or-nil
+                                              [:= :collection_id nil])]]})
+                      card-ids))
 
 (mu/defn stored-result
   "The StoredResult with `id`, or nil."

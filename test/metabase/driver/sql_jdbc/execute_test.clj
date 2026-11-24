@@ -1,21 +1,26 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.execute-test
   (:require
+   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [malli.error :as me]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2 :as h2]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
   (:import
-   (java.sql Connection DatabaseMetaData)
-   (javax.sql DataSource)))
+   (java.sql Connection DatabaseMetaData ResultSet SQLException SQLNonTransientConnectionException SQLRecoverableException
+             SQLTimeoutException SQLTransientConnectionException)
+   (javax.sql DataSource)
+   (org.sqlite SQLiteErrorCode SQLiteException)))
 
 (deftest ^:parallel ConnectionOptions-test
   (are [options error] (= error
@@ -275,6 +280,102 @@
         (is (true? (full? (reify com.mchange.v2.c3p0.PooledDataSource
                             (getNumThreadsAwaitingCheckoutDefaultUser [_] 3)))))))))
 
+(deftest failed-checkout-destroys-empty-pool-test
+  (testing "When a checkout fails, do-with-resolved-connection destroys the pool only if the pool has no Connections"
+    (doseq [[num-connections destroyed?] [[0 true] [1 false]]]
+      (let [db-id       Integer/MAX_VALUE
+            cache-key   [db-id :default]
+            data-source (reify com.mchange.v2.c3p0.PooledDataSource
+                          (getConnection [_]
+                            (throw (java.sql.SQLException. "password authentication failed")))
+                          (getNumConnectionsDefaultUser [_] num-connections)
+                          (getIdentityToken [_] "fake-pool"))
+            pool-spec   {:datasource data-source}
+            destroyed   (atom [])]
+        (#'sql-jdbc.conn/swap-pools-state! assoc-in [:pools cache-key] pool-spec)
+        (try
+          (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                      (fn [_driver _db-or-id-or-spec _options] data-source)
+                                      sql-jdbc.conn/destroy-pool!
+                                      (fn [id spec] (swap! destroyed conj [id spec]))]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Unable to connect to the database"
+                 (sql-jdbc.execute/do-with-resolved-connection :h2 db-id {} (fn [_conn] nil))))
+            (is (= (if destroyed? [[db-id pool-spec]] [])
+                   @destroyed))
+            (is (= (not destroyed?)
+                   (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) cache-key))))
+          (finally
+            (#'sql-jdbc.conn/swap-pools-state! update :pools dissoc cache-key)))))))
+
+(deftest failed-checkout-destroys-empty-swapped-pool-test
+  (testing "When a checkout fails, do-with-resolved-connection also destroys an empty swapped pool (#84206)"
+    (doseq [[num-connections destroyed?] [[0 true] [1 false]]]
+      (let [db-id       Integer/MAX_VALUE
+            cache-key   [db-id 12345]
+            data-source (reify com.mchange.v2.c3p0.PooledDataSource
+                          (getConnection [_]
+                            (throw (java.sql.SQLException. "password authentication failed")))
+                          (getNumConnectionsDefaultUser [_] num-connections))
+            pool-spec   {:datasource data-source}
+            destroyed   (atom [])
+            cache       ^com.google.common.cache.Cache (#'sql-jdbc.conn/swapped-connection-pools)]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [_driver _db-or-id-or-spec _options] data-source)
+                                    sql-jdbc.conn/destroy-pool!
+                                    (fn [id spec] (swap! destroyed conj [id spec]))]
+          (.put cache cache-key pool-spec)
+          (try
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Unable to connect to the database"
+                 (sql-jdbc.execute/do-with-resolved-connection :h2 db-id {} (fn [_conn] nil))))
+            (is (= (if destroyed? [[db-id pool-spec]] [])
+                   @destroyed))
+            (is (= (not destroyed?)
+                   (some? (.getIfPresent cache cache-key))))
+            (finally
+              (.invalidate cache cache-key))))))))
+
+(deftest failed-checkout-keeps-newer-swapped-pool-test
+  (testing "A failed checkout does not remove a newer swapped pool that another thread put under the same key"
+    (let [db-id       Integer/MAX_VALUE
+          cache-key   [db-id 12345]
+          data-source (reify com.mchange.v2.c3p0.PooledDataSource
+                        (getConnection [_]
+                          (throw (java.sql.SQLException. "password authentication failed")))
+                        (getNumConnectionsDefaultUser [_] 0))
+          newer-spec  {:datasource (reify com.mchange.v2.c3p0.PooledDataSource)}
+          cache       ^com.google.common.cache.Cache (#'sql-jdbc.conn/swapped-connection-pools)
+          ;; simulate the race: another thread replaces the cache entry after `invalidate-empty-pool!` read it
+          ;; but before it removes it. The first `:datasource` lookup runs in that window. Only the first lookup
+          ;; replaces the entry: a second `put` of the newer pool would evict that pool itself.
+          replaced?   (atom false)
+          old-spec    (reify clojure.lang.ILookup
+                        (valAt [this k] (.valAt this k nil))
+                        (valAt [_ k not-found]
+                          (if (= k :datasource)
+                            (do (when (compare-and-set! replaced? false true)
+                                  (.put cache cache-key newer-spec))
+                                data-source)
+                            not-found)))
+          destroyed   (atom [])]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                  (fn [_driver _db-or-id-or-spec _options] data-source)
+                                  sql-jdbc.conn/destroy-pool!
+                                  (fn [id spec] (swap! destroyed conj [id spec]))]
+        (.put cache cache-key old-spec)
+        (try
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Unable to connect to the database"
+               (sql-jdbc.execute/do-with-resolved-connection :h2 db-id {} (fn [_conn] nil))))
+          (is (identical? newer-spec (.getIfPresent cache cache-key)))
+          (is (not-any? (fn [[_ spec]] (identical? spec newer-spec)) @destroyed))
+          (finally
+            (.invalidate cache cache-key)))))))
+
 (deftest connection-pool-full-checkout-queue-returns-503-test
   (testing "When the checkout queue is full, additional queries fail fast with a retriable HTTP 503"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
@@ -324,3 +425,68 @@
             (reset! cancels 0)
             (is (= 4 (count (venues-rows 4))))
             (is (pos? @cancels))))))))
+
+(deftest error-while-reading-rows-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    (let [mp         (mt/metadata-provider)
+          query      (qp/userland-query (lib/query mp (lib.metadata/table mp (mt/id :venues))))
+          error-type (fn [e]
+                       (mt/with-dynamic-fn-redefs [sql-jdbc.execute/row-thunk (fn [& _] #(throw e))]
+                         (:error_type (qp/process-query query))))]
+      (testing "A database error raised while rows are read is an invalid query, whatever its exception class"
+        (doseq [e [(SQLException. "More than one row" "21000")
+                   (SQLException. "Unique constraint violation" "23505")
+                   (SQLNonTransientConnectionException. "Unknown column 'a' in 'field list'" "42S22")]]
+          (testing (ex-message e)
+            (is (= :invalid-query (error-type e))))))
+      (testing "A connection failure while closing the result set is a QP error"
+        (let [execute-statement (mt/original-fn #'sql-jdbc.execute/execute-statement-or-prepared-statement!)
+              failure           (SQLNonTransientConnectionException. "Connection is broken" "08000")]
+          (mt/with-dynamic-fn-redefs [sql-jdbc.execute/row-thunk (fn [& _] #(throw failure))
+                                      sql-jdbc.execute/execute-statement-or-prepared-statement!
+                                      (fn [& args]
+                                        (let [^ResultSet rs (apply execute-statement args)]
+                                          (reify ResultSet
+                                            (getMetaData [_] (.getMetaData rs))
+                                            (close [_]
+                                              (.close rs)
+                                              (throw failure)))))]
+            (is (= :qp (:error_type (qp/process-query query)))))))
+      (testing "A failed connection, a canceled or timed-out statement or a transient failure is a QP error"
+        (doseq [e [(SQLException. "Unknown row-read failure")
+                   (SQLTransientConnectionException. "Unknown connection failure")
+                   (SQLTransientConnectionException. "Lock wait timeout exceeded" "HY000" 1205)
+                   (SQLException. "Out of memory" "HY001" 1037)
+                   (SQLException. "Query was canceled" nil 3)
+                   (SQLException. "Out of memory" "53200")
+                   (SQLException. "Lock not available" "55P03")
+                   (SQLException. "I/O error" "58030")
+                   (SQLException. "Idle transaction timeout" "25P03")
+                   (SQLException. "Internal error" "XX000")
+                   (SQLException. "Cached plan must not change result type" "0A000")
+                   (SQLException. "Object closed" "90007")
+                   (SQLiteException. "Database busy" SQLiteErrorCode/SQLITE_BUSY)
+                   (SQLiteException. "I/O error" SQLiteErrorCode/SQLITE_IOERR)
+                   (SQLiteException. "Disk full" SQLiteErrorCode/SQLITE_FULL)
+                   (SQLException. "An I/O error occurred while sending to the backend" "08006")
+                   (SQLNonTransientConnectionException. "Connection is broken" "90067")
+                   (SQLRecoverableException. "Communications link failure")
+                   (SQLTimeoutException. "Statement was canceled")
+                   (SQLException. "Deadlock detected" "40P01")
+                   (SQLException. "Terminating connection due to administrator command" "57P01")]]
+          (testing (ex-message e)
+            (is (= :qp (error-type e)))))
+        (testing "when the query processor canceled the statement, whatever the driver reports"
+          (mt/with-dynamic-fn-redefs [sql-jdbc.execute/wire-up-canceled-chan-to-cancel-Statement! (constantly nil)
+                                      sql-jdbc.execute/row-thunk
+                                      (fn [& _]
+                                        #(do (a/offer! qp.pipeline/*canceled-chan* ::canceled)
+                                             (throw (SQLException. "Query was canceled" "22012"))))]
+            (is (= :qp (:error_type (qp/process-query query))))))
+        (with-redefs [driver/query-canceled? (constantly true)]
+          (is (= :qp (error-type (SQLException. "Query execution was interrupted" "22012")))))))))
+
+(deftest ^:parallel default-query-error-evidence-test
+  (let [classify (get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc)]
+    (doseq [^String state ["21000" "22012" "23505" "42S22"]]
+      (is (true? (classify nil (SQLException. "Query error" state)))))))

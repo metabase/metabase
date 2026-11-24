@@ -1,30 +1,41 @@
 (ns metabase.embedding.schema
   "Malli schemas for the embedding module."
   (:require
+   [malli.util :as mut]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::embedding-theme.settings
   "The `:settings` column of a EmbeddingTheme, decoded."
-  ms/OpaqueJSONObject)
-
-(mr/def ::embedding-theme
-  "A EmbeddingTheme as selected from the app DB: every column of `:embedding_theme`."
-  [:merge
-   ::embedding-theme.update
-   [:map {:closed true}
-    [:id         ms/PositiveInt]]])
+  [:map {:closed false, :description "embedding theme settings"}])
 
 (mr/def ::embedding-theme.update
-  "What an update (or insert) of a EmbeddingTheme accepts: every column of `:embedding_theme` except `id`, all optional."
+  "What an update of an embedding theme takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:entity_id  {:optional true} [:maybe :string]]
    [:name       {:optional true} [:maybe :string]]
    [:settings   {:optional true} [:maybe ::embedding-theme.settings]]
    [:is_default {:optional true} [:maybe :boolean]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::embedding-theme.create
+  "What a caller gives to create an EmbeddingTheme: the columns of an update without the `:id` and the columns the product
+  sets, and its name and settings."
+  [:merge
+   (reduce mut/dissoc ::embedding-theme.update [:id :entity_id :created_at :updated_at])
+   [:map {:closed true}
+    [:name       :string]
+    [:settings   ::embedding-theme.settings]
+    [:is_default {:optional true} :boolean]]])
+
+(mr/def ::embedding-theme
+  "An EmbeddingTheme as selected from the app DB: every column of `:embedding_theme`."
+  ::embedding-theme.update)
 
 (mr/def ::sdk-react-18-host.host
   "The `host` of a EmbeddingSdkReact18Host: a lowercase hostname, or an empty string when the host app page URL has no
@@ -46,3 +57,11 @@
    ::sdk-react-18-host
    [:map {:closed true}
     [:host [:maybe :string]]]])
+
+(mr/def ::external-embedding-theme
+  "An EmbeddingTheme as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::embedding-theme [:entity_id :name :settings]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

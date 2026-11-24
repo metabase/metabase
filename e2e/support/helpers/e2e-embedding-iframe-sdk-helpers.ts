@@ -1,7 +1,10 @@
 import { match } from "ts-pattern";
 
 import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
-import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
+import {
+  JWT_SHARED_SECRET,
+  METABASE_INSTANCE_URL,
+} from "e2e/support/helpers/embedding-sdk-helpers/constants";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 import type {
   CreateApiKeyResponse,
@@ -20,7 +23,7 @@ import {
 
 const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 
-const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
+const EMBED_JS_PATH = `${METABASE_INSTANCE_URL}/app/embed.js`;
 
 /**
  * Base interface for SDK iframe embedding test page options
@@ -51,11 +54,18 @@ export interface BaseEmbedTestPageOptions {
   };
 
   onVisitPage?(win: Cypress.AUTWindow): void;
+
+  // The embed must not see the Cypress session cookie unless the test needs it
+  signOut?: boolean;
 }
 
 export interface MetabaseElement {
   // The component to embed
-  component: "metabase-dashboard" | "metabase-question" | "metabase-browser";
+  component:
+    | "metabase-dashboard"
+    | "metabase-question"
+    | "metabase-browser"
+    | "metabase-data-app";
 
   // Attributes passed serialized to the element
   attributes: {
@@ -114,6 +124,7 @@ export function loadSdkIframeEmbedTestPage({
   origin = "",
   selector,
   onVisitPage,
+  signOut = true,
   ...options
 }: BaseEmbedTestPageOptions & { selector?: string }) {
   const testPageSource = getSdkIframeEmbedHtml(options);
@@ -124,6 +135,10 @@ export function loadSdkIframeEmbedTestPage({
     body: testPageSource,
     headers: { "content-type": "text/html" },
   }).as("dynamicPage");
+
+  if (signOut) {
+    cy.signOut();
+  }
 
   cy.visit(testPageUrl, { onLoad: onVisitPage });
   cy.title().should("include", "Metabase Embed Test");
@@ -164,7 +179,7 @@ function getSdkIframeEmbedHtml({
       ${elements
         .map(
           ({ component, attributes }) => `
-        <${component} ${convertPropertiesToEmbedTagAttributes(attributes)} />
+        <${component} ${convertPropertiesToEmbedTagAttributes(attributes)}></${component}>
       `,
         )
         .join("\n")}
@@ -203,11 +218,9 @@ const convertPropertiesToEmbedTagAttributes = (
 export function prepareSdkIframeEmbedTest({
   withToken = "bleeding-edge",
   enabledAuthMethods = ["jwt"],
-  signOut = false,
 }: {
   withToken?: false | "starter" | "bleeding-edge";
   enabledAuthMethods?: EnabledAuthMethods[];
-  signOut?: boolean;
 } = {}) {
   restore();
   cy.signInAsAdmin();
@@ -225,12 +238,6 @@ export function prepareSdkIframeEmbedTest({
   cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
 
   setupMockAuthProviders(enabledAuthMethods);
-
-  mockEmbedJsToDevServer();
-
-  if (signOut) {
-    cy.signOut();
-  }
 }
 
 /**
@@ -265,8 +272,6 @@ export function prepareGuestEmbedSdkIframeEmbedTest({
   cy.intercept("GET", "/api/embed/pivot/card/*/query*").as("getCardPivotQuery");
 
   updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
-
-  mockEmbedJsToDevServer();
 
   cy.signOut();
 }
@@ -318,7 +323,7 @@ export const getNewEmbedScriptTag = ({
 };
 
 export const getNewEmbedConfigurationScript = ({
-  instanceUrl = "http://localhost:4000",
+  instanceUrl = METABASE_INSTANCE_URL,
   isGuest,
   guestEmbedProviderUri,
   theme,
@@ -352,9 +357,11 @@ export const visitCustomHtmlPage = (
   {
     origin = "",
     onVisitPage,
+    signOut = true,
   }: {
     origin?: string;
     onVisitPage?: () => void;
+    signOut?: boolean;
   } = {},
 ) => {
   const testPageUrl = `${origin}/custom-html-page`;
@@ -363,42 +370,13 @@ export const visitCustomHtmlPage = (
     headers: { "content-type": "text/html" },
   }).as("dynamicPage");
 
+  if (signOut) {
+    cy.signOut();
+  }
+
   cy.visit(testPageUrl, { onLoad: onVisitPage });
 
   return cy;
-};
-
-/**
- * Mock the embed.js file to point it to the rspack dev server when not in CI.
- *
- * When running E2E tests locally we can usually benefit from hot reload.
- * When we're testing something that uses the embed.js file though that file is always referenced
- * from the uberjar so if we change it, we'd need to build the uberjar again.
- *
- * This function checks if the rspack dev server is available and if so, it mocks the embed.js file
- * to point it to the rspack dev server.
- */
-export const mockEmbedJsToDevServer = () => {
-  if (Cypress.expose("CI")) {
-    // we don't need this logic in CI, let's skip the check to avoid slowing down the tests
-    return;
-  }
-
-  // We use `cy.exec` with curl because both `fetch` and `cy.request` have downsides:
-  // - if we use `fetch`, it will show up as failed request in the browser polluting the logs
-  // - if we use `cy.request`, it will fail the test even if `failOnStatusCode` is false
-  cy.exec("curl --silent --head --fail http://localhost:8080/app/embed.js", {
-    failOnNonZeroExit: false,
-    log: false,
-  }).then((result) => {
-    const isHotReloadAvailable = result.code === 0;
-
-    if (isHotReloadAvailable) {
-      cy.intercept("GET", EMBED_JS_PATH, (req) => {
-        req.redirect("http://localhost:8080/app/embed.js");
-      });
-    }
-  });
 };
 
 export function openEmbedJsModal() {

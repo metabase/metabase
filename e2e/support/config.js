@@ -31,7 +31,7 @@ import {
   stopCustomVizDevServer,
 } from "./helpers/e2e-custom-viz-dev-server-tasks";
 import {
-  buildDataApp,
+  copyDataAppsFixture,
   removeDataAppPaths,
   writeDataAppFiles,
 } from "./helpers/e2e-data-app-tasks";
@@ -194,6 +194,8 @@ const assetsResolverPlugin = {
   },
 };
 
+const BACKEND_URL = `http://${BACKEND_HOST}:${BACKEND_PORT}`;
+
 const defaultConfig = {
   // Expose non-sensitive environment variables synchronously via Cypress.expose()
   // These are safe to expose in the browser and are used for configuration
@@ -204,6 +206,7 @@ const defaultConfig = {
     ENABLE_NETWORK_THROTTLING: !!process.env["ENABLE_NETWORK_THROTTLING"],
     SNOWPLOW_MICRO_URL: snowplowMicroUrl,
     CLIENT_PORT: process.env["CLIENT_PORT"],
+    BACKEND_URL, // component tests cannot read `baseUrl` so we expose the url here
     feHealthcheck: process.env["FE_HEALTHCHECK_URL"]
       ? { enabled: true, url: process.env["FE_HEALTHCHECK_URL"] }
       : undefined,
@@ -311,7 +314,7 @@ const defaultConfig = {
       stopMockOidcServer,
       startCustomVizDevServer,
       stopCustomVizDevServer,
-      buildDataApp,
+      copyDataAppsFixture,
       writeDataAppFiles,
       removeDataAppPaths,
       ...perTestCaptureTasks,
@@ -394,7 +397,7 @@ const defaultConfig = {
 
     return config;
   },
-  baseUrl: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
+  baseUrl: BACKEND_URL,
   defaultBrowser: process.env.CYPRESS_BROWSER ?? "chrome",
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,

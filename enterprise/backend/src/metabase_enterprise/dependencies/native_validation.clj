@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
@@ -23,7 +24,7 @@
   parameter substitution must happen INSIDE the *compile-with-inline-parameters* binding
   to produce inline literals instead of ? placeholders."
   [query :- ::lib.schema/query]
-  (database-routing/with-database-routing-off
+  (database-routing/with-anonymous-router-access
     (let [with-params (lib/add-parameters-for-template-tags query)
           compiled    (qp.compile/compile-with-inline-parameters with-params)]
       (lib/native-query with-params (:query compiled)))))
@@ -270,10 +271,12 @@
 
    Returns a set of errors, each enriched with source entity information when possible.
    Returns empty set for queries with table-type template tags since the actual
-   table (and therefore columns) is unknown at check time."
+   table (and therefore columns) is unknown at check time, and for non-SQL drivers (e.g. Mongo), whose native queries
+   the SQL parser can't read."
   [driver :- :keyword
    query  :- ::lib.schema/query]
-  (if (has-table-template-tags? query)
+  (if (or (not (isa? driver/hierarchy driver :sql))
+          (has-table-template-tags? query))
     #{}
     (into #{}
           (comp
@@ -336,3 +339,23 @@
                    :table   {:table (:table-id %)}
                    nil))
           (lib/all-template-tags query))))
+
+(defenterprise native-query-errors
+  "The errors of the fields and tables that the native `query` refers to, run by the driver of its database."
+  :feature :none
+  [query]
+  (validate-native-query (:engine (lib.metadata/database query)) query))
+
+(defenterprise native-query-returned-columns
+  "The columns that the native `query` returns, as the driver of its database computes them."
+  :feature :none
+  [query]
+  (native-result-metadata (:engine (lib.metadata/database query)) query))
+
+(defenterprise native-query-dependencies
+  "The dependencies of the native-only `query` as `{entity-type #{entity-id}}`, leaving out the tables it names that
+  resolve to none."
+  :feature :none
+  [query]
+  (let [driver (:engine (lib.metadata/database query))]
+    (u/group-by ffirst (comp second first) conj #{} (remove :unresolved-table (native-query-deps driver query)))))

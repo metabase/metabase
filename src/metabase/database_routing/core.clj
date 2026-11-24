@@ -1,49 +1,61 @@
 (ns metabase.database-routing.core
   "The OSS namespace for database routing."
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
 
-(defenterprise with-database-routing-on-fn
-  "OSS Version, does nothing"
+(defenterprise-schema routed-database :- [:maybe ::lib.schema.metadata/database]
+  "The Lib metadata of the destination Database that the current user's connections to the Lib metadata `database` go
+  to, or nil when they go to `database` itself; OSS has no database routing, so it is always nil."
   metabase-enterprise.database-routing.common
-  [f]
-  (f))
-
-(defmacro with-database-routing-on
-  "Turns database routing on. Access to a Router Database in this block will be an error (unless things are configured
-  that way, of course.)"
-  [& body]
-  `(with-database-routing-on-fn
-     (fn []
-       ~@body)))
-
-(defenterprise with-database-routing-off-fn
-  "OSS version, does nothing"
-  metabase-enterprise.database-routing.common
-  [f]
-  (f))
-
-(defmacro with-database-routing-off
-  "Turns database routing off. Access to a destination database within this block will result in an error."
-  [& body]
-  `(with-database-routing-off-fn
-     (fn []
-       ~@body)))
-
-(defenterprise check-allowed-access!
-  "OSS version, does nothing"
-  metabase-enterprise.database-routing.common
-  [_db-or-id-or-spec]
+  [_database :- ::lib.schema.metadata/database]
   nil)
 
-(defenterprise delete-associated-database-router!
+(defenterprise do-with-anonymous-router-access
+  "Calls `thunk` with no current user, always hitting the router database; outside it, work with no user is refused on a
+  router. OSS has no routers, so there is nothing to allow."
+  metabase-enterprise.database-routing.common
+  [thunk]
+  (thunk))
+
+(defmacro with-anonymous-router-access
+  "Runs body with no current user, so that work whose results every user shares, such as sync or a guest embed, always
+  hits the router database."
+  [& body]
+  `(do-with-anonymous-router-access (fn [] ~@body)))
+
+(defenterprise do-with-database-routing-off-if-granted
   "OSS version, does nothing"
-  metabase-enterprise.database-routing.models
-  [_db-id]
+  metabase-enterprise.database-routing.common
+  [thunk]
+  (thunk))
+
+(defmacro with-database-routing-off-if-granted
+  "Runs body so that anonymous access to the router database is accepted only if an admin has granted anonymous access to it."
+  [& body]
+  `(do-with-database-routing-off-if-granted (fn [] ~@body)))
+
+(defenterprise-schema check-allowed-access! :- :nil
+  "Throws if the Lib metadata `db` of a Database may not be connected to directly; OSS has no destinations, so it does
+  nothing."
+  metabase-enterprise.database-routing.common
+  [_db :- ::lib.schema.metadata/database]
   nil)
 
-(defenterprise db-routing-enabled?
-  "Returns whether or not the given database is either a router or destination database."
+(defenterprise delete-database-routers-for-databases!
+  "OSS version, does nothing"
   metabase-enterprise.database-routing.models
-  [_db-or-id]
+  [_database-ids]
+  nil)
+
+(defenterprise-schema db-routing-enabled? :- :boolean
+  "Returns whether or not the Lib metadata `db` of a Database is either a router or destination database."
+  metabase-enterprise.database-routing.models
+  [_db :- ::lib.schema.metadata/database]
+  false)
+
+(defenterprise refuses-anonymous-access?
+  "OSS version, always false."
+  metabase-enterprise.database-routing.models
+  [_database-id]
   false)

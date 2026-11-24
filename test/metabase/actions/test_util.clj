@@ -12,7 +12,10 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
@@ -23,8 +26,7 @@
    [metabase.test.util :as tu]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.random :as u.random]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,7 +88,7 @@
   testing FK constraints."
   (ActionsTestDatasetDefinition.))
 
-(defn do-with-dataset-definition
+(defn do-with-dataset-definition!
   "Impl for [[with-temp-test-data]] and [[with-actions-test-data]] macros."
   [dataset-definition thunk]
   ;; use a unique DB name each time so this is thread-safe
@@ -102,20 +104,22 @@
         (finally
           (when-let [{driver :engine, db-id :id} @db]
             (tx/destroy-db! driver dataset-definition)
-            (t2/delete! :model/Database :id db-id)))))))
+            (when-let [database (t2/select-one :model/Database :id db-id)]
+              (events/publish-event! :event/database-delete (events/delete-event [database]))
+              (t2/delete! :model/Database :id db-id))))))))
 
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table
   that gets destroyed at the conclusion of `body`. Use this to test destructive actions that may modify the data."
   {:style/indent :defn}
   [& body]
-  `(do-with-dataset-definition actions-test-data (fn [] ~@body)))
+  `(do-with-dataset-definition! actions-test-data (fn [] ~@body)))
 
 (defmacro with-actions-temp-db
   "Sets the current dataset to a freshly-loaded [[dataset-definition]] that gets destroyed at the conclusion of `body`."
   {:style/indent 1}
   [dataset-definition & body]
-  `(do-with-dataset-definition ~dataset-definition (fn [] ~@body)))
+  `(do-with-dataset-definition! ~dataset-definition (fn [] ~@body)))
 
 (defmacro with-temp-test-data
   "Sets the current dataset to a freshly created table-definitions that gets destroyed at the conclusion of `body`.
@@ -129,9 +133,9 @@
       ...)"
   {:style/indent :defn}
   [table-definitions & body]
-  `(do-with-dataset-definition (tx/dataset-definition (str "temp-test-data" (u.random/random-name))
-                                                      ~table-definitions)
-                               (fn [] ~@body)))
+  `(do-with-dataset-definition! (tx/dataset-definition (str "temp-test-data" (u.random/random-name))
+                                                       ~table-definitions)
+                                (fn [] ~@body)))
 
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
@@ -140,7 +144,7 @@
    reuse a single database for all tests."
   {:style/indent :defn}
   [& body]
-  `(do-with-dataset-definition (tx/dataset-definition "empty-test-db" []) (fn [] ~@body)))
+  `(do-with-dataset-definition! (tx/dataset-definition "empty-test-db" []) (fn [] ~@body)))
 
 (defn- delete-categories-1-query []
   (sql.qp/format-honeysql
@@ -170,7 +174,7 @@
                      (row-count))))
             (testing "delete row"
               (is (= [1]
-                     (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (data/id))
+                     (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (data/id)))
                                     (delete-categories-1-query)))))
             (testing "after"
               (is (= [[74]]
@@ -179,7 +183,7 @@
 (defn- insert-action!
   "Normalizes `action` the way the REST API decodes one and inserts it, returning its id."
   [action]
-  (action/insert! (lib/normalize ::actions.schema/action.for-insert action)))
+  (:id (first (action/create-actions! [(lib/normalize ::actions.schema/action.for-insert action)]))))
 
 (defmulti ^:private create-action*!
   {:arglists '([options-map model-id])}
@@ -243,9 +247,16 @@
 
 (defn do-with-actions! [model-def f]
   (initialize/initialize-if-needed! :web-server)
-  (t2.with-temp/with-temp [:model/Card model model-def]
-    (tu/with-model-cleanup [:model/Action]
-      (f model))))
+  (tu/with-model-cleanup [:model/Card]
+    (let [[model] (card/create-cards! [(merge {:creator_id             (test.users/user->id :rasta)
+                                               :database_id            (data/id)
+                                               :display                :table
+                                               :name                   (u.random/random-name)
+                                               :visualization_settings {}}
+                                              (cond-> model-def
+                                                (:dataset_query model-def) (update :dataset_query #(lib/query (lib-be/application-database-metadata-provider (:database %)) %))))])]
+      (tu/with-model-cleanup [:model/Action]
+        (f model)))))
 
 ;;; TODO FIXME -- rename this to [[with-actions!]]
 (defmacro with-actions

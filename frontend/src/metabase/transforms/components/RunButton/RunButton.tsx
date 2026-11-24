@@ -30,7 +30,7 @@ const RECENT_TIMEOUT = 5000;
 
 type RunButtonProps = {
   id: TransformId | TransformJobId | undefined;
-  run: TransformRun | null | undefined;
+  run: Pick<TransformRun, "status"> | null | undefined;
   isDisabled?: boolean;
   isLoading?: boolean;
   allowCancellation?: boolean;
@@ -126,7 +126,7 @@ export const RunButton = forwardRef(function RunButton(
 });
 
 type RunButtonOpts = {
-  run: TransformRun | null | undefined;
+  run: Pick<TransformRun, "status"> | null | undefined;
   isRecent: boolean;
   isLoading: boolean;
   isDisabled: boolean;

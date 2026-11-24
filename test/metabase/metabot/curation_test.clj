@@ -1,51 +1,222 @@
 (ns metabase.metabot.curation-test
   (:require
    [clojure.test :refer :all]
-   [metabase.content-verification.core :as moderation]
+   [metabase.collections.models.collection :as collection]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.curation :as metabot.curation]
+   [metabase.queries.models.card :as card]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(def ^:private curation-features
+  "The features the verified, official, and Library curation signals are gated on; the index precomputes `curated`
+  without a gate, so the two agree only while the features are active."
+  #{:content-verification :official-collections :library})
+
+(use-fixtures :each (fn [thunk] (mt/with-additional-premium-features curation-features (thunk))))
 
 (deftest curated-ids-consistent-with-index-test
   (testing "curated-ids reads the same verdict from source-of-truth tables that the search index
             precomputes from the specs, so the two definitions stay consistent (BOT-1570)"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Database   {db :id}  {}
-                     :model/Collection {off :id} {:authority_level "official"}
-                     ;; name avoids the "curationfixture" search token so the collection itself isn't a
-                     ;; result (curated-ids only handles recent-view models, not collections)
-                     :model/Collection {lib :id} {:type "library-data" :name "fixturelibcoll"}
-                     :model/Card  {vq :id} {:name "curationfixture verified"}
-                     :model/Card  {oq :id} {:name "curationfixture official" :collection_id off}
-                     :model/Card  {pq :id} {:name "curationfixture plain"}
-                     :model/Table {pt :id} {:db_id db :name "curationfixture published" :active true
-                                            :is_published true :data_layer :final}
-                     :model/Table {at :id} {:db_id db :name "curationfixture authoritative" :active true
-                                            :data_authority :authoritative}
-                     :model/Table {xt :id} {:db_id db :name "curationfixture plaintable" :active true}
-                     ;; final-layer table under a library collection but NOT published: the spec joins the
-                     ;; collection only for published tables, so neither source nor index marks it curated
-                     :model/Table {ult :id} {:db_id db :name "curationfixture unpublishedlib" :active true
-                                             :is_published false :data_layer :final :collection_id lib}]
-        (moderation/create-review! {:moderated_item_id   vq
-                                    :moderated_item_type "card"
-                                    :moderator_id        (mt/user->id :crowberto)
-                                    :status              "verified"})
-        ;; re-ingest the now-verified card so the index reflects it
-        (search/update! (t2/select-one :model/Card :id vq) true)
-        (let [items    [["card" vq] ["card" oq] ["card" pq]
-                        ["table" pt] ["table" at] ["table" xt] ["table" ult]]
-              source   (metabot.curation/curated-ids items)
-              ;; the index-derived verdict, read back off search results (which now carry :curated)
-              indexed  (into #{} (comp (filter :curated) (map (juxt :model :id)))
-                             (search.tu/search-results "curationfixture"))
-              ->strs   #(into #{} (map (fn [[m id]] [m (str id)])) %)]
-          (is (= #{["card" vq] ["card" oq] ["table" pt] ["table" at]} source)
-              "source-of-truth marks verified/official cards and published-final/authoritative tables curated")
-          (is (= (->strs source) (->strs indexed))
-              "source-of-truth agrees with the index's precomputed curated column"))))))
+      (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Table :model/Database :model/Collection]
+        (let [[{db :id}] (database/create-databases! [(mt/with-temp-defaults :model/Database)])
+              [{off :id}] (collection/create-collections! [{:name (mt/random-name) :authority_level "official"}])
+              [{pt :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture published" :active true
+                                                                                                                              :data_layer :final})])
+              _ (table-user-settings/create-table-user-settings! [{:table_id pt :is_published true}])
+              [{at :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture authoritative" :active true
+                                                                                                                              :data_authority :authoritative})])
+              [{xt :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture plaintable" :active true})])
+              [{ult :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture unpublishedlib" :active true
+                                                                                                                               :data_layer :final})])
+              mp                           (mt/metadata-provider)
+              query                        (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+              [{vq :id} {oq :id} {pq :id}] (card/create-cards!
+                                            [{:name                   "curationfixture verified"
+                                              :creator_id             (mt/user->id :rasta)
+                                              :database_id            (mt/id)
+                                              :display                :table
+                                              :visualization_settings {}
+                                              :dataset_query          query}
+                                             {:name                   "curationfixture official"
+                                              :collection_id          off
+                                              :creator_id             (mt/user->id :rasta)
+                                              :database_id            (mt/id)
+                                              :display                :table
+                                              :visualization_settings {}
+                                              :dataset_query          query}
+                                             {:name                   "curationfixture plain"
+                                              :creator_id             (mt/user->id :rasta)
+                                              :database_id            (mt/id)
+                                              :display                :table
+                                              :visualization_settings {}
+                                              :dataset_query          query}])]
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id   vq
+                                                          :moderated_item_type "card"
+                                                          :moderator_id        (mt/user->id :crowberto)
+                                                          :status              "verified"}])
+          ;; re-ingest the now-verified card so the index reflects it
+          (search/update! (t2/select-one :model/Card :id vq) true)
+          (let [items    [["card" vq] ["card" oq] ["card" pq]
+                          ["table" pt] ["table" at] ["table" xt] ["table" ult]]
+                source   (metabot.curation/curated-ids items)
+                ;; the index-derived verdict, read back off search results (which now carry :curated)
+                indexed  (into #{} (comp (filter :curated) (map (juxt :model :id)))
+                               (search.tu/search-results "curationfixture"))
+                ->strs   #(into #{} (map (fn [[m id]] [m (str id)])) %)]
+            (is (= #{["card" vq] ["card" oq] ["table" pt] ["table" at]} source)
+                "source-of-truth marks verified/official cards and published-final/authoritative tables curated")
+            (is (= (->strs source) (->strs indexed))
+                "source-of-truth agrees with the index's precomputed curated column")))))))
+
+(deftest curated-ids-parity-with-search-filter-test
+  (testing "curated-ids agrees with `search :curated true` over every model it recognizes, in more than one batch,
+            and on the rows search excludes (archived, hidden, document-owned)"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Table :model/Database :model/Collection]
+        (let [[{db :id}] (database/create-databases! [(mt/with-temp-defaults :model/Database)])
+              [{off :id}] (collection/create-collections! [{:name (mt/random-name) :authority_level "official"}])
+              [{lib :id}] (collection/create-collections! [{:type "library-metrics" :name "fixturelibcoll two"}])
+              [{od :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "parityfixture official dashboard" :collection_id off})])
+              [{pd :id}] (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at) {:name "parityfixture plain dashboard"})])
+              [{pt :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture published" :active true
+                                                                                                                              :data_layer :final})])
+              [{st :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture staged" :active true
+                                                                                                                              :data_layer :internal})])
+              _ (table-user-settings/create-table-user-settings! [{:table_id pt :is_published true} {:table_id st :is_published true}])
+              [{at :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture authoritative" :active true
+                                                                                                                              :data_authority :authoritative})])
+              [{ht :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture hidden" :active true
+                                                                                                                              :visibility_type :hidden :data_authority :authoritative})])
+              [{xt :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture plaintable" :active true})])
+              mp     (mt/metadata-provider)
+              query  (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+              metric (lib/aggregate query (lib/count))
+              [{vq :id} {oq :id} {aq :id} {lm :id} {om :id} {pm :id}]
+              (card/create-cards!
+               [{:name                   "parityfixture verified question"
+                 :creator_id             (mt/user->id :rasta)
+                 :database_id            (mt/id)
+                 :display                :table
+                 :visualization_settings {}
+                 :dataset_query          query}
+                {:name                   "parityfixture official question"
+                 :collection_id          off
+                 :creator_id             (mt/user->id :rasta)
+                 :database_id            (mt/id)
+                 :display                :table
+                 :visualization_settings {}
+                 :dataset_query          query}
+                {:name                   "parityfixture archived official"
+                 :collection_id          off
+                 :archived               true
+                 :creator_id             (mt/user->id :rasta)
+                 :database_id            (mt/id)
+                 :display                :table
+                 :visualization_settings {}
+                 :dataset_query          query}
+                {:name                   "parityfixture library metric"
+                 :type                   :metric
+                 :collection_id          lib
+                 :creator_id             (mt/user->id :rasta)
+                 :database_id            (mt/id)
+                 :display                :table
+                 :visualization_settings {}
+                 :dataset_query          metric}
+                {:name                   "parityfixture official metric"
+                 :type                   :metric
+                 :collection_id          off
+                 :creator_id             (mt/user->id :rasta)
+                 :database_id            (mt/id)
+                 :display                :table
+                 :visualization_settings {}
+                 :dataset_query          metric}
+                {:name                   "parityfixture plain metric"
+                 :type                   :metric
+                 :creator_id             (mt/user->id :rasta)
+                 :database_id            (mt/id)
+                 :display                :table
+                 :visualization_settings {}
+                 :dataset_query          metric}])]
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id   vq
+                                                          :moderated_item_type "card"
+                                                          :moderator_id        (mt/user->id :crowberto)
+                                                          :status              "verified"}])
+          (search/update! (t2/select-one :model/Card :id vq) true)
+          (let [items   [["card" vq] ["card" oq] ["card" aq] ["metric" lm] ["metric" om] ["metric" pm]
+                         ["dashboard" od] ["dashboard" pd]
+                         ["table" pt] ["table" st] ["table" at] ["table" ht] ["table" xt]
+                         ;; a duplicate id is judged once and returned once
+                         ["card" vq]]
+                source  (with-redefs [metabot.curation/curation-batch-size 2]
+                          (metabot.curation/curated-ids items))
+                indexed (into #{} (comp (filter :curated) (map (juxt :model :id)))
+                              (search.tu/search-results "parityfixture"))
+                ->strs  #(into #{} (map (fn [[m id]] [m (str id)])) %)]
+            (is (= #{["card" vq] ["card" oq] ["metric" lm] ["metric" om] ["dashboard" od] ["table" pt] ["table" at]}
+                   source))
+            (is (= (->strs source) (->strs indexed))
+                "source-of-truth agrees with the index's precomputed curated column")))))))
+
+(deftest curated-ids-table-publication-test
+  (mt/with-temp [:model/Database {db :id} {}
+                 :model/Table {published :id} {:db_id db :active true :data_layer :final}
+                 :model/TableUserSettings _ {:table_id published :is_published true}
+                 :model/Table {unpublished :id} {:db_id db :active true :data_layer :final}
+                 :model/TableUserSettings _ {:table_id unpublished :is_published false}
+                 :model/Table {no-settings :id} {:db_id db :active true :data_layer :final}]
+    (testing "only Table with published settings is curated"
+      (is (= #{["table" published]}
+             (metabot.curation/curated-ids [["table" published] ["table" unpublished] ["table" no-settings]]))))
+    (testing "signals carry boolean is_published"
+      (is (= {published true, unpublished false, no-settings false}
+             (into {}
+                   (map (fn [[id signals]] [id (:is_published signals)]))
+                   (#'metabot.curation/table-curation-signals [published unpublished no-settings])))))))
+
+(defn- card-in-child-of-root!
+  "Create a root Collection, a Collection in it and a Card in that one, returning `[root-id card-id]`."
+  [root-attrs]
+  (let [mp            (mt/metadata-provider)
+        [{root :id}]  (collection/create-collections! [(merge {:name (mt/random-name)} root-attrs)])
+        [{child :id}] (collection/create-collections! [{:name (mt/random-name) :location (format "/%d/" root)}])
+        [{card :id}]  (card/create-cards! [{:name                   "curationfixture nested"
+                                            :collection_id          child
+                                            :creator_id             (mt/user->id :rasta)
+                                            :database_id            (mt/id)
+                                            :display                :table
+                                            :visualization_settings {}
+                                            :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id :venues)))}])]
+    [root card]))
+
+(deftest curated-ids-nested-cards-statement-count-test
+  (testing "Cards in Collections under fresh roots read the types of the roots in as many statements for 2 roots as for 6"
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (let [counted (fn [n]
+                      (let [items (vec (for [_ (range n)]
+                                         ["card" (second (card-in-child-of-root! {}))]))]
+                        (t2/with-call-count [call-count]
+                          (is (= #{} (metabot.curation/curated-ids items)))
+                          (call-count))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))))))
+
+(deftest curated-ids-follow-root-type-change-test
+  (testing "a Card under a root Collection is curated right after the root becomes a Library"
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (let [[root card] (card-in-child-of-root! {})]
+        (is (= #{} (metabot.curation/curated-ids [["card" card]])))
+        (t2/update! :model/Collection :id root {:type "library-metrics"})
+        (is (= #{["card" card]} (metabot.curation/curated-ids [["card" card]])))))))

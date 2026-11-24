@@ -1,12 +1,12 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import {
   DetailsRow,
   DetailsTable,
   SidebarSection,
-} from "metabase/monitor/components/DetailSidebar";
+} from "metabase/common/components/DetailSidebar";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { Divider, Flex, Skeleton, Stack } from "metabase/ui";
 
 const RUN_ROWS_COUNT = 3;

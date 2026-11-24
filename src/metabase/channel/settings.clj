@@ -80,6 +80,8 @@
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :deprecated "0.54.0"
+  :doc        (str "Since 0.54.0, Metabase doesn't use a files channel for Slack, so you can remove this variable, "
+                   "and no other variable replaces it.")
   :default "metabase_files"
   :encryption :when-encryption-key-set
   :visibility :settings-manager
@@ -98,7 +100,7 @@
             (setting/set-value-of-type! :string :slack-bug-report-channel (process-files-channel-name channel-name))))
 
 (defsetting attachment-table-row-limit
-  (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
+  "Maximum number of rows to render in an alert or subscription image."
   :visibility :internal
   :type       :positive-integer
   :default    20
@@ -119,7 +121,7 @@
   :base       setting/uuid-nonce-base)
 
 (defsetting notification-link-base-url
-  (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
+  "By default \"Site Url\" is used in notification links, but can be overridden."
   :encryption :when-encryption-key-set
   :visibility :internal
   :type       :string
@@ -316,7 +318,7 @@
   :doc        false)
 
 (defsetting surveys-enabled
-  (deferred-tru "Enable or disable surveys")
+  "Enable or disable surveys"
   :type       :boolean
   :default    true
   :export?    false
@@ -324,11 +326,11 @@
   :audit      :getter)
 
 (defsetting http-channel-allowed-networks
-  (deferred-tru (str "Controls which types of hosts are allowed as HTTP channel destinations.\n"
-                     "Options:\n"
-                     "- external-only (default - only external hosts)\n"
-                     "- allow-private (external + private networks but NOT localhost)\n"
-                     "- allow-all (no restrictions including localhost).\n"))
+  (str "Controls which types of hosts are allowed as HTTP channel destinations.\n"
+       "Options:\n"
+       "- external-only (default - only external hosts)\n"
+       "- allow-private (external + private networks but NOT localhost)\n"
+       "- allow-all (no restrictions including localhost).\n")
   :type       :keyword
   :visibility :internal
   :default    :external-only
@@ -336,7 +338,9 @@
   :deprecated-name :http-channel-host-strategy
   :setter     :none
   :doc        (str "Set this when a notification webhook must reach a host on your private network "
-                   "(`allow-private`) or on this machine (`allow-all`). Default is `external-only`")
+                   "(`allow-private`) or on this machine (`allow-all`). Default is `external-only`. Before Metabase "
+                   "64, this variable was called `MB_HTTP_CHANNEL_HOST_STRATEGY`. Metabase still reads the old name "
+                   "and logs a warning at startup, so rename it to `MB_HTTP_CHANNEL_ALLOWED_NETWORKS`.")
   :getter     (fn []
                 (let [[env-var-name raw-value] (setting/env-var-source :http-channel-allowed-networks)]
                   (or (u.http/env-network-policy env-var-name raw-value)

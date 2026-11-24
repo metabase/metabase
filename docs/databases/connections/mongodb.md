@@ -1,5 +1,6 @@
 ---
 title: MongoDB
+summary: Connect Metabase to MongoDB using either individual fields or a connection string, including Atlas clusters.
 redirect_from:
   - /docs/latest/administration-guide/databases/mongodb
 ---
@@ -115,6 +116,8 @@ Learn more about [configuring SSL with MongoDB](https://mongodb.github.io/mongo-
 ## How Metabase syncs data in MongoDB
 
 Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will query the first and last 500 documents (most of the calculation is done in MongoDB). This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. Metabase also syncs 1,000 leaf fields (fields at the deepest nesting level) per MongoDB collection. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/db-connection.md).
+
+On self-hosted Metabases, you can change the number of leaf fields Metabase syncs per collection with the [`MB_SYNC_LEAF_FIELDS_LIMIT`](../../configuring-metabase/environment-variables.md#mb_sync_leaf_fields_limit) environment variable.
 
 ## General connectivity concerns
 

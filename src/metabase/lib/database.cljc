@@ -19,3 +19,15 @@
     (if (not= id lib.schema.id/saved-questions-virtual-database-id)
       id
       (some-> query lib.metadata.calculation/primary-source-card :database-id))))
+
+(defmethod lib.metadata.calculation/display-info-method :metadata/database
+  [_query _stage-number {database-name :name
+                         :keys         [engine features native-permissions is-sample settings auto-run-queries]}]
+  {:name               database-name
+   :display-name       database-name
+   :engine             engine
+   :features           (or features #{})
+   :native-permissions native-permissions
+   :is-sample          (boolean is-sample)
+   :actions-enabled?   (boolean (:database-enable-actions settings))
+   :auto-run-queries   (boolean auto-run-queries)})

@@ -218,13 +218,11 @@
                   (is (= [trio-b] (get-in f [:details :duplicate_entity_ids]))))))))))))
 
 (deftest duplicated-checker-skips-blank-names-test
-  (testing "whitespace-only names - including Unicode whitespace and zero-width invisibles - never cluster; unknown is not duplicate"
+  (testing "names of Unicode whitespace and zero-width invisibles never cluster; unknown is not duplicate"
     (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
           [:model/Collection {coll-id :id} {}
-           :model/Dashboard {blank-a :id} {:collection_id coll-id :name "   "}
-           :model/Dashboard {blank-b :id} {:collection_id coll-id :name "   "}
            ;; NBSP-only and zero-width-only names normalize to blank too, so they never cluster
            :model/Dashboard {nbsp-a :id} {:collection_id coll-id :name "\u00A0\u00A0"}
            :model/Dashboard {nbsp-b :id} {:collection_id coll-id :name "\u00A0\u00A0"}
@@ -232,7 +230,7 @@
            :model/Dashboard {zwsp-b :id} {:collection_id coll-id :name "\u200B"}]
           (let [by-entity (duplicated-findings-by-entity!)]
             (are [d] (nil? (by-entity [:dashboard d]))
-              blank-a blank-b nbsp-a nbsp-b zwsp-a zwsp-b)))))))
+              nbsp-a nbsp-b zwsp-a zwsp-b)))))))
 
 (deftest duplicated-checker-cluster-of-three-test
   (testing "every member of a cluster of 3 gets duplicate_count 2 and the other two as peers"
@@ -283,7 +281,7 @@
                   fb        (by-entity [:card card-b])]
               (is (some? fa))
               (is (some? fb))
-              (t2/update! :model/Card card-b {:name (str prefix " Renamed Unique")})
+              (t2/update! :model/Card :id card-b {:name (str prefix " Renamed Unique")})
               (scan/scan!)
               (testing "both prior findings are soft-invalidated and neither entity has an active one"
                 (is (some? (:invalidated_at (t2/select-one :model/ContentDiagnosticsFinding :id (:id fa)))))
@@ -327,8 +325,8 @@
              :model/Card {card-b :id} {:collection_id coll-id :name nm :type :model :view_count 7 :display :table}]
             (scan/scan!)
             ;; Visualization display is live context, not frozen with the scan verdict.
-            (t2/update! :model/Card card-a {:display :bar})
-            (t2/update! :model/Card card-b {:display :line})
+            (t2/update! :model/Card :id card-a {:display :bar})
+            (t2/update! :model/Card :id card-b {:display :line})
             (let [resp  (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/duplicated"
                                               :query prefix)
                   by-id (into {} (map (juxt (juxt :entity_type :entity_id) identity)) (:data resp))]
@@ -390,7 +388,7 @@
                 (is (contains? by-type "transform"))
                 (is (not (contains? (get-in by-type ["transform" :details]) :view_count))))
               (testing "view_count is hydrated live at read time, not frozen at scan time"
-                (t2/update! :model/Card card-id {:view_count 99})
+                (t2/update! :model/Card :id card-id {:view_count 99})
                 (let [card-f (some #(when (= "card" (:entity_type %)) %)
                                    (:data (mt/user-http-request :crowberto :get 200
                                                                 "ee/content-diagnostics/duplicated" :query prefix)))]
