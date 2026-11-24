@@ -298,20 +298,36 @@
       (current-user-info-for-oauth-token oauth-bearer request)
       (current-user-info-for-mcp-ui-credential mcp-ui-credentials request)))
 
+(def ^:private preview-token-header "x-metabase-preview-token")
+
+(defn- preview-credentials
+  "The user info of a request that carries a preview token, and nothing else of the request's own credentials: a token
+  that doesn't resolve to a live preview refuses the request (see [[metabase.server.middleware.preview]]) rather than
+  falling back to a session, which would answer as the admin. Nil when the request carries no preview token."
+  [{{preview-token preview-token-header} :headers}]
+  (when (seq preview-token)
+    (or (when (init-status/complete?)
+          (session/preview-user-info preview-token))
+        {:preview-token-refused? true})))
+
 (defn- merge-current-user-info
   [{:keys [oauth-bearer] :as options} {:keys [uri], {:strs [x-metabase-locale]} :headers, :as request}]
   (merge
    request
-   (if (bearer-only-path? (:bearer-only-paths oauth-bearer) uri)
-     (current-user-info-for-oauth-token oauth-bearer request)
-     (credentials options request))
+   (if-let [preview-info (preview-credentials request)]
+     (assoc preview-info :metabase-session-key nil :metabase-session-type nil)
+     (if (bearer-only-path? (:bearer-only-paths oauth-bearer) uri)
+       (current-user-info-for-oauth-token oauth-bearer request)
+       (credentials options request)))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
-  token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
+  token, API key, OAuth bearer access token, OR MCP UI credential was passed. A preview token (the
+  `X-Metabase-Preview-Token` header) is checked before all of them and replaces them: a valid one adds the preview's
+  person and `:previewing-admin-id`, an invalid one adds `:preview-token-refused?`. A bearer token additionally sets
   `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential.
   Bearer tokens and MCP UI credentials authenticate only when `options` supplies their `:oauth-bearer` and
   `:mcp-ui-credentials` fns. On a path in `:bearer-only-paths`, or below one, only a bearer token authenticates.

@@ -1,0 +1,99 @@
+## Adds permission_preview_session, the state of a read-only preview an admin runs as another user. A row holds the
+## hash of the preview's token, the person it runs as, the admin and the admin's session it belongs to, and its expiry.
+## It is no core_session row, so no sign-in accepts the token. Deleting the user or the admin's session deletes the row.
+
+databaseChangeLog:
+  - changeSet:
+      id: 8ocqva
+      author: WiNloSt
+      comment: Add permission_preview_session
+      changes:
+        - createTable:
+            tableName: permission_preview_session
+            remarks: A read-only preview an admin runs as another user
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: The person the preview runs as
+                  constraints:
+                    nullable: false
+              - column:
+                  name: token_hash
+                  type: varchar(254)
+                  remarks: The hash of the preview's token; the token itself is never stored
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: admin_user_id
+                  type: int
+                  remarks: The admin who started the preview
+                  constraints:
+                    nullable: false
+              - column:
+                  name: admin_session_id
+                  type: varchar(254)
+                  remarks: The admin's session the preview belongs to; the preview is void once that session ends
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: ${timestamp_type}
+                  remarks: When the preview stops authenticating, unless a request renews it first
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the preview started
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: ejacx3
+      author: WiNloSt
+      comment: Add FK constraint on permission_preview_session.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: permission_preview_session
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_permission_preview_session_user_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: en2h1i
+      author: WiNloSt
+      comment: Add FK constraint on permission_preview_session.admin_user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: permission_preview_session
+            baseColumnNames: admin_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_permission_preview_session_admin_user_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: gqw8yw
+      author: WiNloSt
+      comment: Add FK constraint on permission_preview_session.admin_session_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: permission_preview_session
+            baseColumnNames: admin_session_id
+            referencedTableName: core_session
+            referencedColumnNames: id
+            constraintName: fk_permission_preview_session_admin_session_id
+            onDelete: CASCADE

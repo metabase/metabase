@@ -2,6 +2,7 @@
   "Application database queries for the session module, so that no other namespace in the module runs a query itself
   (model definitions still use `toucan2.core`)."
   (:require
+   [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -194,3 +195,88 @@
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
+
+;;; ------------------------------------------------- Permission previews --------------------------------------------
+
+(mu/defn live-session-id
+  "The id of the live Session with `key-hashed`, or nil."
+  [key-hashed :- :string
+   liveness   :- ::session.schema/liveness-params]
+  (:id (t2/query-one (merge session.query/session-from-and-joins
+                            {:select [:session.id]
+                             :where  (into [:and [:= :session.key_hashed key-hashed]]
+                                           (session.query/live-session-conditions liveness))
+                             :limit  [:inline 1]}))))
+
+(mu/defn previewable-user
+  "The facts about the User with `user-id` that decide whether an admin may preview as them, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one [:model/User :id :is_active :is_superuser :type :tenant_id] :id user-id))
+
+(mu/defn tenant-active?
+  "Whether the Tenant with `tenant-id` is active."
+  [tenant-id :- ms/PositiveInt]
+  (boolean (t2/select-one-fn :is_active :tenant :id tenant-id)))
+
+(mu/defn insert-permission-preview-session! :- ms/PositiveInt
+  "Insert the row of a preview and return its id."
+  [row :- [:map {:closed true}
+           [:user_id          ::lib.schema.id/user]
+           [:token_hash       :string]
+           [:admin_user_id    ::lib.schema.id/user]
+           [:admin_session_id :string]
+           [:expires_at       ms/TemporalInstant]]]
+  (t2/insert-returning-pk! :model/PermissionPreviewSession row))
+
+(mu/defn delete-permission-preview-session! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the preview with `id` if the admin with `admin-user-id` started it, and return the number deleted."
+  [id            :- ms/PositiveInt
+   admin-user-id :- ::lib.schema.id/user]
+  (t2/delete! :model/PermissionPreviewSession :id id :admin_user_id admin-user-id))
+
+(mu/defn renew-permission-preview-session!
+  "Set the expiry of the preview with `id` to `expires-at`."
+  [id         :- ms/PositiveInt
+   expires-at :- ms/TemporalInstant]
+  (t2/update! :model/PermissionPreviewSession :id id {:expires_at expires-at}))
+
+(mu/defn permission-preview-user-info
+  "The person, the admin and the `:renew?` flag of the preview with `token-hash`, or nil when there is none, it has
+  expired, its person is no longer an active non-admin user, or its admin's Session is no longer live. `:renew?` is
+  true when fewer than `renew-below-minutes` are left. The person's fields are the ones a Session's lookup returns."
+  [token-hash                   :- :string
+   renew-below-minutes          :- ms/PositiveInt
+   liveness                     :- ::session.schema/liveness-params
+   enable-advanced-permissions? :- :boolean]
+  (let [now (h2x/current-datetime-honeysql-form (:db-type liveness))]
+    (some-> (t2/query-one
+             (cond-> {:select    [[:person.id :metabase-user-id]
+                                  [:person.is_superuser :is-superuser?]
+                                  [:person.is_data_analyst :is-data-analyst?]
+                                  [:person.locale :user-locale]
+                                  [:preview.id :preview-id]
+                                  [:preview.admin_user_id :previewing-admin-id]
+                                  [[:case
+                                    [:< :preview.expires_at (h2x/add-interval-honeysql-form
+                                                             (:db-type liveness) now renew-below-minutes :minute)]
+                                    [:inline 1]
+                                    :else [:inline 0]]
+                                   :renew?]]
+                      :from      [[:core_session :session]]
+                      :join      [[:permission_preview_session :preview] [:= :preview.admin_session_id :session.id]]
+                      :left-join (into session.query/session-left-joins
+                                       [[:core_user :person] [:= :person.id :preview.user_id]])
+                      :where     (into [:and
+                                        [:= :preview.token_hash token-hash]
+                                        [:> :preview.expires_at now]
+                                        [:= :person.is_active true]
+                                        [:= :person.is_superuser false]]
+                                       (session.query/live-session-conditions liveness))
+                      :limit     [:inline 1]}
+               enable-advanced-permissions?
+               (-> (sql.helpers/select [:pgm.is_group_manager :is-group-manager?])
+                   (sql.helpers/left-join [:permissions_group_membership :pgm]
+                                          [:and
+                                           [:= :pgm.user_id :person.id]
+                                           [:is :pgm.is_group_manager true]]))))
+            (update :renew? #(= 1 (long %))))))
