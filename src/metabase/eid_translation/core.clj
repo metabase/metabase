@@ -20,7 +20,8 @@
   do-with-entity-ids
   ref-schema
   refs->ids
-  structure-schema]
+  structure-schema
+  structures-schema]
  [metabase.eid-translation.responses
   ->entity-ids]
  [metabase.eid-translation.util

@@ -466,3 +466,30 @@
                   (get-with-entity-ids :crowberto (str "native-query-snippet/" (:id snippet)))))
           (finally
             (t2/delete! :model/NativeQuerySnippet :id (:id snippet))))))))
+
+(deftest snippet-write-back-test
+  (testing "with the header, a snippet's content and template tags read from an instance write the same snippet of its
+            restore, its card tags naming the restored Card"
+    (mt/with-model-cleanup [:model/Card :model/NativeQuerySnippet]
+      (let [card    (mt/user-http-request :crowberto :post 200 "card" {:name                   "eid snippet card"
+                                                                       :display                :table
+                                                                       :dataset_query          (venues-query)
+                                                                       :visualization_settings {}})
+            snippet (mt/user-http-request :crowberto :post 200 "native-query-snippet"
+                                          {:name    "eid write back snippet"
+                                           :content (str "SELECT * FROM {{#" (:id card) "-venues}}")})
+            url     (str "native-query-snippet/" (:entity_id snippet))
+            fetch   #(without-timestamps (get-with-entity-ids :crowberto url))
+            before  (fetch)]
+        (restore! [[:model/Card [(t2/select-one :model/Card :id (:id card))]]
+                   [:model/NativeQuerySnippet [(t2/select-one :model/NativeQuerySnippet :id (:id snippet))]]])
+        (let [card-id (id-of :model/Card (:entity_id card))]
+          (is (not= (:id card) card-id))
+          (put-with-entity-ids :crowberto url (-> (select-keys before [:content :template_tags])
+                                                  (assoc :description "written back")))
+          (testing "the snippet names the restored Card"
+            (is (=? {:content       (str "SELECT * FROM {{#" card-id "-venues}}")
+                     :template_tags {(str "#" card-id "-venues") {:card-id card-id}}}
+                    (t2/select-one :model/NativeQuerySnippet :entity_id (:entity_id snippet)))))
+          (is (= (assoc before :description "written back")
+                 (fetch))))))))

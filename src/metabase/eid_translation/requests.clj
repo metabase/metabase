@@ -59,13 +59,13 @@
     (ref->id model v)
     v))
 
-(defn- decode-structure
+(defn- import-structure
   "`v`, the value of `column` of a `model` row, imported from the form serialization exports it in, as a response in
-  entity id form gives it, when the request is in entity id form. The import sees the row as `row`, the columns it
-  reads that the body does not give, with `v` in `column`. Numeric ids inside it stay as they are. A ref that names
-  no row is a 404; a value that fails to import otherwise is left for the body's schema to refuse."
+  entity id form gives it. The import sees the row as `row` with `v` in `column`. Numeric ids inside it stay as they
+  are. A ref that names no row is a 404; a value that fails to import otherwise is left for the body's schema to
+  refuse."
   [model column row v]
-  (if-let [import (and *entity-ids?* (some? v) (get-in (serialization/spec model) [:transform column :import]))]
+  (if-let [import (and (some? v) (get-in (serialization/spec model) [:transform column :import]))]
     (try
       (first (import serialization/app-db-store [(assoc row column v)] [v] {:numeric-ids-allowed? true}))
       (catch clojure.lang.ExceptionInfo e
@@ -73,6 +73,26 @@
           (throw (ex-info (tru "Not found.") {:status-code 404} e))
           v)))
     v))
+
+(defn- decode-structure
+  "`v`, the value of `column` of a `model` row, imported (see [[import-structure]]) when the request is in entity id
+  form. The import sees the row as `row`, the columns it reads that the body does not give."
+  [model column row v]
+  (cond->> v
+    *entity-ids?* (import-structure model column row)))
+
+(defn- decode-structures
+  "`body`, a request body for a `model` row, with each of its `columns` imported (see [[import-structure]]) when the
+  request is in entity id form. Each import sees the row as the body as it was given, so that a column whose import
+  reads others, such as a snippet's `:content`, which reads its `:template_tags`, sees them as exported."
+  [model columns body]
+  (if (and *entity-ids?* (map? body))
+    (reduce (fn [body' column]
+              (cond-> body'
+                (contains? body column) (assoc column (import-structure model column body (get body column)))))
+            body
+            columns)
+    body))
 
 (defn ref-schema
   "`schema`, the schema of a request body column naming a `model` row by id, that in a request in entity id form also
@@ -89,3 +109,10 @@
    (structure-schema model column {} schema))
   ([model column row schema]
    [:schema {:decode/api #(decode-structure model column row %)} schema]))
+
+(defn structures-schema
+  "`schema`, the schema of a request body for a `model` row, that in a request in entity id form also takes each of its
+  `columns` as serialization exports it, which it decodes by importing it. Use it in place of [[structure-schema]] for
+  columns whose import reads other columns of the body."
+  [model columns schema]
+  [:schema {:decode/api #(decode-structures model columns %)} schema])
