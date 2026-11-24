@@ -328,7 +328,7 @@
    :PUBLIC])      ; Non-Sensitive / Public Information
 
 (mr/def ::column.attribute-scd-type
-  "A Field's `attribute_scd_type`, how a slowly changing dimension tracks changes to it: type 0 to 3."
+  "A Field's `attribute_scd_type`, how a slowly changing dimension tracks changes to it."
   [:int {:min 0 :max 3}])
 
 (mr/def ::column.data-sensitivity

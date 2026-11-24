@@ -13,7 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- throw-invalid-value
-  "Throws a 400 for `value` of `column`, with `message` under `:errors` and any `extra-data` merged in."
+  "Throws a 400 for `value` of `column` with `message`."
   ([column value message]
    (throw-invalid-value column value message nil))
   ([column value message extra-data]
