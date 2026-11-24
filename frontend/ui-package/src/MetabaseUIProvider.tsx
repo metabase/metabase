@@ -14,13 +14,22 @@ import { ThemeProvider } from "../../src/metabase/ui/components/theme/ThemeProvi
 
 const DEFAULT_FONT_FAMILY = '"Lato", Arial, sans-serif';
 
+type ThemeOverride = Omit<
+  MantineThemeOverride,
+  "fontFamily" | "colors" | "fn" | "other"
+> & {
+  fontFamily?: never;
+  colors?: never;
+  fn?: never;
+  other?: MantineThemeOverride["other"] & { colorScheme?: never };
+};
+
 export interface MetabaseUIProviderProps {
   children: ReactNode;
   colorScheme?: "light" | "dark";
   /** CSS `font-family` value. */
   fontFamily?: string;
-  /** `fontFamily`, `colors` and `other.colorScheme` are ignored. */
-  theme?: MantineThemeOverride;
+  theme?: ThemeOverride;
 }
 
 const noop = () => undefined;
@@ -29,7 +38,13 @@ const noop = () => undefined;
 const withoutOwnedKeys = (
   theme: MantineThemeOverride | undefined,
 ): MantineThemeOverride => {
-  const { fontFamily: _font, colors: _colors, other, ...rest } = theme ?? {};
+  const {
+    fontFamily: _font,
+    colors: _colors,
+    fn: _fn,
+    other,
+    ...rest
+  } = theme ?? {};
   const { colorScheme: _scheme, ...otherRest } = other ?? {};
   return { ...rest, other: otherRest };
 };
@@ -39,8 +54,15 @@ const CssVariables = ({
   fontFamily,
 }: Required<Pick<MetabaseUIProviderProps, "colorScheme" | "fontFamily">>) => {
   const theme = useMantineTheme();
-  const popoverZIndex: number | undefined = theme.other.popover?.zIndex;
-  const zIndex = popoverZIndex ?? OVERLAY_Z_INDEX;
+  const popover: unknown = theme.other.popover;
+  const zIndex =
+    popover &&
+    typeof popover === "object" &&
+    "zIndex" in popover &&
+    typeof popover.zIndex === "number" &&
+    Number.isInteger(popover.zIndex)
+      ? popover.zIndex
+      : OVERLAY_Z_INDEX;
 
   const css = useMemo(() => {
     const { colors } = deriveFullMetabaseTheme({ colorScheme });

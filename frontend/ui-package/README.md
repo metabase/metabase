@@ -29,13 +29,13 @@ Do not also import `@mantine/core/styles.css` or `@mantine/dates/styles.css`.
 
 The provider sets up the theme, the color variables, the font variable and what overlays (modals, tooltips, popovers) need. Wrap your app in it once.
 
-| Prop          | Type                   | Default                     |
-| ------------- | ---------------------- | --------------------------- |
-| `colorScheme` | `"light"` \| `"dark"`  | `"light"`                   |
-| `fontFamily`  | `string` (CSS value)   | `"Lato", Arial, sans-serif` |
-| `theme`       | `MantineThemeOverride` | none                        |
+| Prop          | Type                               | Default                     |
+| ------------- | ---------------------------------- | --------------------------- |
+| `colorScheme` | `"light"` \| `"dark"`              | `"light"`                   |
+| `fontFamily`  | `string` (CSS value)               | `"Lato", Arial, sans-serif` |
+| `theme`       | `MetabaseUIProviderProps["theme"]` | none                        |
 
-`theme` extends Metabase's Mantine theme. `fontFamily`, `colors` and `other.colorScheme` in `theme` are ignored; use the props above. Other keys, such as `components`, `headings`, `fontFamilyMonospace` and `primaryColor`, can still be overridden. `fonts.css` doesn't include the default monospace font.
+`theme` extends Metabase's Mantine theme. The provider owns `fontFamily`, `colors`, `fn` and `other.colorScheme`; use the top-level props for font family and color scheme. If you override `other.popover.zIndex`, keep it below the default tooltip z-index (301), or set `components.Tooltip.defaultProps.zIndex` above your overlay value. Other keys, such as `components`, `headings`, `fontFamilyMonospace` and `primaryColor`, can still be overridden. `fonts.css` doesn't include the default monospace font.
 
 ### Colors
 

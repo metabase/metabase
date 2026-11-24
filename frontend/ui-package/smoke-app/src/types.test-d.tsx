@@ -16,7 +16,6 @@ export const colorName: ColorName = "core-brand";
 export const iconName: IconName = "table";
 export const cssVariable: string = color("core-brand");
 
-// `Box` comes from Mantine: the augmentation must apply from importing `@metabase/ui` alone.
 export const providerProps: MetabaseUIProviderProps = {
   children: null,
   colorScheme: "dark",
@@ -24,6 +23,7 @@ export const providerProps: MetabaseUIProviderProps = {
   theme: { defaultRadius: "md" },
 };
 
+// `Box` comes from Mantine: the augmentation must apply from importing `@metabase/ui` alone.
 export const ok = (
   <>
     <MetabaseUIProvider colorScheme="light">content</MetabaseUIProvider>
@@ -36,6 +36,18 @@ export const ok = (
 
 export const bad = (
   <>
+    {/* @ts-expect-error use the top-level fontFamily prop */}
+    <MetabaseUIProvider theme={{ fontFamily: "Inter" }}>
+      content
+    </MetabaseUIProvider>
+    {/* @ts-expect-error the provider owns the palette */}
+    <MetabaseUIProvider theme={{ colors: {} }}>content</MetabaseUIProvider>
+    {/* @ts-expect-error use the top-level colorScheme prop */}
+    <MetabaseUIProvider theme={{ other: { colorScheme: "dark" } }}>
+      content
+    </MetabaseUIProvider>
+    {/* @ts-expect-error the provider owns theme.fn */}
+    <MetabaseUIProvider theme={{ fn: {} }}>content</MetabaseUIProvider>
     {/* @ts-expect-error not a color scheme */}
     <MetabaseUIProvider colorScheme="auto">content</MetabaseUIProvider>
     {/* @ts-expect-error not an icon name */}

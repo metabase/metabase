@@ -40,6 +40,11 @@ async function openPage(page: Page, scheme: Scheme) {
 // Resolves a CSS variable to a computed value by letting the browser paint a probe.
 const resolveColorVar = (page: Page, variable: string) =>
   page.evaluate((name) => {
+    if (
+      !getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    ) {
+      throw new Error(`Missing CSS variable ${name}`);
+    }
     const probe = document.createElement("div");
     probe.style.color = `var(${name})`;
     document.body.appendChild(probe);

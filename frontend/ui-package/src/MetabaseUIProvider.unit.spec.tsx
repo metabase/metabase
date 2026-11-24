@@ -65,7 +65,9 @@ describe("MetabaseUIProvider", () => {
       <MetabaseUIProvider
         colorScheme="dark"
         theme={{
+          // @ts-expect-error -- JavaScript consumers can still pass this
           fontFamily: "Comic Sans MS",
+          // @ts-expect-error -- JavaScript consumers can still pass this
           colors: {
             "core-brand": [
               "#000",
@@ -81,6 +83,7 @@ describe("MetabaseUIProvider", () => {
             ],
           },
           defaultRadius: "xl",
+          // @ts-expect-error -- JavaScript consumers can still pass this
           other: { colorScheme: "light" },
         }}
       >
@@ -156,7 +159,7 @@ describe("MetabaseUIProvider", () => {
   });
 
   it.each(["light", "dark"] as const)(
-    "uses the %s primary shade for theme color lookup",
+    "returns the theme color in %s with an object-form primaryShade",
     (colorScheme) => {
       const primaryShade = { light: 4, dark: 6 } as const;
       const Shade = () => {
