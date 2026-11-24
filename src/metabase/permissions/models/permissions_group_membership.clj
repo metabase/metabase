@@ -184,7 +184,7 @@
   once and the message of the first that breaks one:
 
   - a tenant user is not a group manager
-  - an admin is not a group manager, nor is a user that `memberships` adds to Administrators of any other group
+  - an admin is not a group manager, and a user that `memberships` adds to Administrators is not one of any other group
   - a tenant user is in a tenant group, and a user outside every tenant in a group that is not one"
   [memberships]
   (when (seq memberships)
