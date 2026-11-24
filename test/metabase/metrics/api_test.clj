@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metrics.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.data-permissions :as data-perms]
@@ -113,16 +114,17 @@
 
 (deftest list-metric-hydrates-collection-test
   (testing "GET /api/metric hydrates collection information"
-    (mt/with-temp [:model/Collection collection {:name "Test Collection"}
-                   :model/Card       _metric    {:name          "Metric in Collection"
-                                                 :type          :metric
-                                                 :collection_id (:id collection)
-                                                 :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-      (let [response        (mt/user-http-request :rasta :get 200 "metric")
-            returned-metric (first (:data response))]
-        (is (= (:id collection) (:collection_id returned-metric)))
-        (is (= (:id collection) (get-in returned-metric [:collection :id])))
-        (is (= "Test Collection" (get-in returned-metric [:collection :name])))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [collection (first (collection/create-collections! [{:location "/" :name "Test Collection"}]))]
+        (mt/with-temp [:model/Card _metric {:name          "Metric in Collection"
+                                            :type          :metric
+                                            :collection_id (:id collection)
+                                            :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (let [response        (mt/user-http-request :rasta :get 200 "metric")
+                returned-metric (first (:data response))]
+            (is (= (:id collection) (:collection_id returned-metric)))
+            (is (= (:id collection) (get-in returned-metric [:collection :id])))
+            (is (= "Test Collection" (get-in returned-metric [:collection :name])))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /api/metric/:id                                                 |
@@ -323,7 +325,6 @@
           mbql5-definition (-> (lib/query mp table-metadata)
                                (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Test Measure"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-definition}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"

@@ -1,8 +1,14 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.content-verification.db :as content-verification.db]
    [metabase.content-verification.impl :as moderation]
+   [metabase.content-verification.schema :as content-verification.schema]
+   [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
@@ -10,13 +16,9 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def statuses
-  "Schema enum of the acceptable values for the `status` column"
-  #{"verified" nil})
-
 (def Statuses
   "Schema of valid statuses"
-  [:maybe (into [:enum] statuses)])
+  ::content-verification.schema/moderation-review.status)
 
 ;;; currently unused, but I'm leaving this in commented out because it serves as documentation
 (comment
@@ -29,12 +31,28 @@
      [:status              {:optional true} Statuses]
      [:text                {:optional true} [:maybe :string]]]))
 
+(def max-moderation-reviews
+  "The amount of moderation reviews we will keep on hand."
+  10)
+
 (methodical/defmethod t2/table-name :model/ModerationReview [_model] :moderation_review)
 
 (doto :model/ModerationReview
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/search-index))
+  (derive :search/indexed))
+
+(t2/deftransforms :model/ModerationReview
+  {:moderated_item_type mi/transform-keyword})
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(t2/define-before-insert :model/ModerationReview
+  [review]
+  (cond-> review
+    (nil? (:most_recent review)) (assoc :most_recent true)))
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn- root-collection-permission-at-least?
   "Whether the current user has `permission` or more on the default root Collection, which a ModerationReview, having
@@ -62,38 +80,49 @@
   [_model _review]
   (root-collection-permission-at-least? :read-and-write))
 
-(t2/deftransforms :model/ModerationReview
-  {:moderated_item_type mi/transform-keyword})
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(def max-moderation-reviews
-  "The amount of moderation reviews we will keep on hand."
-  10)
+(mu/defn create-moderation-reviews! :- [:sequential ::content-verification.schema/moderation-review]
+  "Create a new ModerationReview from each of `rows`, in order, as the most recent of its item: the item's other reviews
+  lose the mark, and those beyond the newest [[max-moderation-reviews]] are deleted, in one transaction, with one
+  statement for each of the writes and one event for each of them."
+  [rows :- [:sequential ::content-verification.schema/moderation-review.create]]
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (let [reviews    (vec (content-verification.db/insert-moderation-reviews! rows))
+            item-of    (juxt :moderated_item_type :moderated_item_id)
+            items      (vec (distinct (map item-of reviews)))
+            newest     (into #{} (map (comp :id last)) (vals (group-by item-of reviews)))
+            superseded (into []
+                             (remove #(contains? newest (:id %)))
+                             (concat (content-verification.db/most-recent-moderation-reviews-except items (mapv :id reviews))
+                                     reviews))
+            beyond     (vec (content-verification.db/moderation-reviews-beyond-newest items max-moderation-reviews))]
+        (when (seq superseded)
+          (content-verification.db/unmark-moderation-reviews! (mapv :id superseded)))
+        (events/publish-event! :event/moderation-review-create (events/create-event reviews))
+        (events/publish-event! :event/moderation-review-update
+                               (events/update-event (m/index-by :id superseded)
+                                                    (mapv (fn [review] {:id (:id review) :most_recent false}) superseded)))
+        (events/publish-event! :event/moderation-review-delete (events/delete-event beyond))
+        (when (seq beyond)
+          (content-verification.db/delete-moderation-reviews! (mapv :id beyond)))
+        reviews))))
 
-(mu/defn delete-extra-reviews!
-  "Delete extra reviews to maintain an invariant of only `max-moderation-reviews`. Called before inserting so actually
-  ensures there are one fewer than that so you can add afterwards."
-  [item-id   :- :int
-   item-type :- :string]
-  (let [;; cannot put the offset in this query as mysql doesn't play nice. It requires a limit as well which we do
-        ;; not want to give. The offset is only 10 though so its not a huge savings and we run this on every entry so
-        ;; the max number is 10, delete the extra, and insert a new one to arrive at 10 again, our invariant.
-        ids (into #{} (comp (map :id)
-                            (drop (dec max-moderation-reviews)))
-                  (content-verification.db/moderation-review-ids-for-item item-id item-type))]
-    (when (seq ids)
-      (content-verification.db/delete-moderation-reviews! ids))))
+(mu/defn moderation-review-ids-of-cards :- [:vector ms/PositiveInt]
+  "The ids of the ModerationReviews of the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (content-verification.db/moderation-review-ids-of-cards card-ids))
 
-(mu/defn create-review!
-  "Create a new ModerationReview"
-  [params :-
-   [:map {:closed true}
-    [:moderated_item_id       ms/PositiveInt]
-    [:moderated_item_type     moderation/moderated-item-types]
-    [:moderator_id            ms/PositiveInt]
-    [:status              {:optional true} Statuses]
-    [:text                {:optional true} [:maybe :string]]]]
-  (t2/with-transaction [_conn]
-    (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
-    (content-verification.db/unmark-most-recent-moderation-reviews! (:moderated_item_id params)
-                                                                    (:moderated_item_type params))
-    (content-verification.db/insert-moderation-review! (assoc params :most_recent true))))
+(mu/defn delete-moderation-reviews! :- :nil
+  "Delete the ModerationReviews with `ids` in one transaction, publishing their delete event right before the first
+  statement."
+  [ids :- [:sequential ms/PositiveInt]]
+  (app-db/delete-batched! :model/ModerationReview ids
+                          {:before-delete #(events/publish-event! :event/moderation-review-delete (events/delete-event %))}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ModerationReview [_model]
+  {:skip? false})

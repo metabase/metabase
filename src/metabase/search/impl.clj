@@ -72,13 +72,14 @@
   [search-ctx instance]
   (can-query? search-ctx (assoc instance :db_id (:database_id instance))))
 
+;; Reads the `::queryable-database?` metadata that `hydrate-checks` sets, so the answer comes once per batch.
+;; An instance without it is denied and logged, since some path skipped `hydrate-checks`.
 (defmethod check-permissions-for-model :indexed-entity
-  [search-ctx instance]
-  (let [user-id (:current-user-id search-ctx)
-        db-id   (:database_id instance)]
-    (and
-     (= :query-builder-and-native (get (perms/every-table-in-database-permissions-for-user (perms/user-info user-id) :perms/create-queries [db-id]) db-id))
-     (= :unrestricted (get (perms/every-table-in-database-permissions-for-user (perms/user-info user-id) :perms/view-data [db-id]) db-id)))))
+  [_search-ctx instance]
+  (let [answer (::queryable-database? (meta instance))]
+    (when (nil? answer)
+      (log/warn "Denying an indexed entity search result that was not tagged by hydrate-checks"))
+    (boolean answer)))
 
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]
@@ -102,7 +103,7 @@
   [search-ctx instance]
   (if (:archived? search-ctx)
     (can-write? search-ctx instance)
-    (can-read? search-ctx instance)))
+    (mi/can-read? instance)))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
@@ -120,20 +121,27 @@
 (defn add-dataset-collection-hierarchy
   "Adds `collection_effective_ancestors` to *datasets* in the search results."
   [search-results]
-  (let [annotate     (fn [result]
-                       (cond-> result
-                         (= (:model result) "dataset")
-                         (assoc :collection_effective_ancestors
-                                (->> (t2/hydrate (if (nil? (:collection_id result))
-                                                   collection/root-collection
-                                                   {:location (:collection_location result)}) :effective_ancestors)
-                                     :effective_ancestors
-                                     ;; two pieces for backwards compatibility:
-                                     ;; - remove the root collection
-                                     ;; - remove the `personal_owner_id` and the `can_write` hydrated with the ancestors
-                                     (remove collection.root/is-root-collection?)
-                                     (map #(dissoc % :personal_owner_id :can_write))))))]
-    (map annotate search-results)))
+  (let [dataset?     #(= (:model %) "dataset")
+        datasets     (filter dataset? search-results)
+        ancestors    (->> (t2/hydrate (mapv #(if (nil? (:collection_id %))
+                                               collection/root-collection
+                                               {:location (:collection_location %)})
+                                            datasets)
+                                      :effective_ancestors)
+                          (map (fn [collection]
+                                 (->> (:effective_ancestors collection)
+                                      ;; two pieces for backwards compatibility:
+                                      ;; - remove the root collection
+                                      ;; - remove the `personal_owner_id` and the `can_write` hydrated with the ancestors
+                                      (remove collection.root/is-root-collection?)
+                                      (map #(dissoc % :personal_owner_id :can_write)))))
+                          vec)]
+    (first (reduce (fn [[results i] result]
+                     (if (dataset? result)
+                       [(conj results (assoc result :collection_effective_ancestors (nth ancestors i))) (inc i)]
+                       [(conj results result) i]))
+                   [[] 0]
+                   search-results))))
 
 (defn- add-collection-effective-location
   "Batch-hydrates `:effective_location` and `:effective_parent` on collection search results.
@@ -419,6 +427,12 @@
    :model/Measure     [:can_read :can_write]
    :model/Database    [:can_read]})
 
+(def ^:private page-checks
+  "The checks to hydrate on the page of search results: the `:can_write` that [[add-can-write]] keeps in the response."
+  {:model/Card      [:can_write]
+   :model/Dashboard [:can_write]
+   :model/Table     [:can_write]})
+
 (def ^:private archived-checks
   "The checks to hydrate on archived search results of the models [[hydrated-checks]] leaves out, which only the
   archived permission check reads."
@@ -437,43 +451,86 @@
         (when (seq collection-ids)
           (t2/hydrate (search.db/collection-permission-rows collection-ids) :can_write))))
 
+(defn- with-exploration-ids
+  "Each of `documents` with its `:exploration_id`, looked up for all of them in one query when it is missing."
+  [documents]
+  ;; A Document's content gate reads `:exploration_id`, and looks it up per Document when it is missing. A search
+  ;; result does not carry it, and the semantic engine does not filter out the Documents of Explorations, so it
+  ;; cannot be assumed nil.
+  (let [lacking (into [] (comp (remove #(contains? % :exploration_id)) (map :id) (distinct)) documents)
+        lookup  (when (seq lacking) (search.db/document-exploration-ids lacking))]
+    (map #(cond-> % (contains? lookup (:id %)) (assoc :exploration_id (get lookup (:id %))))
+         documents)))
+
 (defn- model-check-answers
-  "The check answers of `results`, keyed by model and id, for `phase`: `:read` leaves `:can_write` out, `:page` takes
-  the [[hydrated-checks]], and `:archived` the [[archived-checks]] too."
+  "The check answers of `results`, keyed by model and id, for `phase`: `:read` takes the [[hydrated-checks]] without
+  `:can_write`, `:page` takes the [[page-checks]], and `:archived` takes the [[hydrated-checks]] and the
+  [[archived-checks]]."
   [phase results]
   (into {}
         (mapcat (fn [[model rows]]
                   (when-let [checks (not-empty (case phase
                                                  :read     (remove #{:can_write} (get hydrated-checks model))
-                                                 :page     (get hydrated-checks model)
+                                                 :page     (get page-checks model)
                                                  :archived (or (get hydrated-checks model)
                                                                (get archived-checks model))))]
                     (for [row (apply t2/hydrate
                                      (cond->> rows
-                                       (= model :model/Table) (map #(assoc % :db_id (:database_id %))))
+                                       (= model :model/Table)    (map #(assoc % :db_id (:database_id %)))
+                                       (= model :model/Document) with-exploration-ids)
                                      checks)]
                       [[model (:id row)] (merge (select-keys (meta row) checks) (select-keys row checks))]))))
         (group-by t2/model results)))
 
+(defn- indexed-entity-queryable-db-ids
+  "The ids of the Databases of the indexed-entity `results` that the user of `search-ctx` can query natively, with
+  unrestricted data access to every Table. Empty, not nil, when no result has a Database."
+  [search-ctx results]
+  (let [db-ids (into [] (comp (filter #(= "indexed-entity" (:model %))) (keep :database_id) (distinct)) results)]
+    (if (seq db-ids)
+      (let [user   (perms/user-info (:current-user-id search-ctx))
+            create (perms/every-table-in-database-permissions-for-user user :perms/create-queries db-ids)
+            view   (perms/every-table-in-database-permissions-for-user user :perms/view-data db-ids)]
+        (into #{} (filter #(and (= :query-builder-and-native (create %)) (= :unrestricted (view %)))) db-ids))
+      #{})))
+
 (defn- hydrate-checks
   "Hydrates the checks of `results` that their permission checks read, answered together for the user of `search-ctx`:
-  per model the checks of `phase` (see [[model-check-answers]]), and `:can_write` on Collections unless it is `:read`."
+  per model the checks of `phase` (see [[model-check-answers]]), and `:can_write` on Collections unless it is `:read`.
+  Outside `:page`, tags the metadata of each indexed entity with `::queryable-database?`, whether its Database is
+  queryable, for its permission check."
   [search-ctx phase results]
-  (let [results        (vec results)
-        collection-ids (when (not= phase :read)
-                         (into [] (comp (filter #(t2/instance-of? :model/Collection %)) (map :id) (distinct)) results))
-        answers        (with-search-user search-ctx
-                         (merge (collection-check-answers collection-ids) (model-check-answers phase results)))]
+  (let [results          (vec results)
+        collection-ids   (when (not= phase :read)
+                           (into []
+                                 (comp (filter #(t2/instance-of? :model/Collection %)) (map :id) (distinct))
+                                 results))
+        answers          (with-search-user search-ctx
+                           (merge (collection-check-answers collection-ids) (model-check-answers phase results)))
+        queryable-db-ids (when (not= phase :page) (indexed-entity-queryable-db-ids search-ctx results))]
     (for [result results
           :let   [answer (get answers [(t2/model result) (:id result)])]]
       (-> (merge result (dissoc answer :can_read))
-          (vary-meta merge (select-keys answer [:can_read]))))))
+          (vary-meta merge (select-keys answer [:can_read]))
+          (cond-> (and queryable-db-ids (= "indexed-entity" (:model result)))
+            (vary-meta assoc ::queryable-database? (contains? queryable-db-ids (:database_id result))))))))
 
 (defn check-result-permissions
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's
   `results` produces). Returns a boolean. Public for the search debug API."
   [search-ctx result]
-  (check-permissions-for-model search-ctx (first (hydrate-checks search-ctx (if (:archived? search-ctx) :archived :read) [(normalize-result result)]))))
+  (let [phase (if (:archived? search-ctx) :archived :read)]
+    (check-permissions-for-model search-ctx (first (hydrate-checks search-ctx phase [(normalize-result result)])))))
+
+(defn- hydrate-json-access
+  "Hydrates what the JSON encoding of the Database results of `results` reads, once for all of them."
+  [results]
+  (let [results  (vec results)
+        indexes  (into [] (keep-indexed (fn [i result] (when (t2/instance-of? :model/Database result) i))) results)
+        hydrated (when (seq indexes) (t2/hydrate (mapv results indexes) :json_access))]
+    (reduce (fn [acc [i row]] (assoc acc i row))
+            results
+            (map vector indexes hydrated))))
 
 (defn- add-can-write
   "Leaves `:can_write` on the results that carry it in the response, and takes the hydrated checks off the others."
@@ -537,6 +594,7 @@
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
                             true (hydrate-checks search-ctx :page)
+                            true (hydrate-json-access)
                             true (map (partial add-can-write search-ctx))
                             true (map serialize)
                             ;; Realize within the enclosing tracing span so hydration and

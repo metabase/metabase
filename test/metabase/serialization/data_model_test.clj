@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- query-count [thunk]
@@ -59,3 +60,28 @@
                  :human_readable_field_id (mt/id :categories :name)
                  :type                    :external}
                 (t2/select-one :model/Dimension :entity_id eid)))))))
+
+(deftest import-databases-query-count-test
+  (testing "importing a change to many Databases takes as many queries as to few, and keeps their workspace schema"
+    (mt/with-model-cleanup [:model/Database]
+      (let [import-changed! (fn [n]
+                              (let [dbs      (t2/insert-returning-instances!
+                                              :model/Database
+                                              (for [i (range n)]
+                                                {:name        (str "serdes database " n " " i)
+                                                 :engine      :postgres
+                                                 :details     {:host "localhost" :dbname (str "db" i)}
+                                                 :description "original"
+                                                 :settings    {:database-enable-actions   true
+                                                               :database-workspace-schema (str "ws" i)}}))
+                                    exported (mapv #(assoc (first (into [] (serialization/export :model/Database [%])))
+                                                           :description "changed")
+                                                   dbs)]
+                                (is (not-any? #(contains? (:settings %) :database-workspace-schema) exported))
+                                (u/prog1 (query-count #(serialization/load :model/Database exported))
+                                  (is (= (into #{} (map (fn [i] ["changed" (str "ws" i)])) (range n))
+                                         (into #{}
+                                               (map (juxt :description (comp :database-workspace-schema :settings)))
+                                               (t2/select :model/Database :id [:in (map :id dbs)])))))))]
+        (import-changed! 1)
+        (is (= (import-changed! 4) (import-changed! 12)))))))

@@ -1,5 +1,6 @@
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
+import { recordSdkPageMark } from "embedding-sdk-bundle/analytics/sdk-first-component-performance/event";
 import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
 import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
@@ -203,6 +204,8 @@ export const ComponentProvider = memo(function ComponentProvider({
   children,
   ...props
 }: ComponentProviderProps) {
+  recordSdkPageMark("first_component_provider_render");
+
   const reduxStoreRef = useRef<SdkStore | null>(null);
 
   if (!reduxStoreRef.current) {

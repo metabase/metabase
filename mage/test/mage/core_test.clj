@@ -15,6 +15,7 @@
    [mage.bot.pr-env-test]
    [mage.bot.prompt-test]
    [mage.bot.repl-eval-test]
+   [mage.docs-docker-tags-test]
    [mage.docs-generate-test]
    [mage.docs-preview-test]
    [mage.doctor-test]

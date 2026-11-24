@@ -45,6 +45,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memoize])
   (:import
+   (com.google.api.client.http HttpResponseException)
    (com.google.auth.oauth2 GoogleCredentials ServiceAccountCredentials)
    (java.io ByteArrayInputStream IOException)
    (java.nio.charset StandardCharsets)
@@ -113,6 +114,17 @@
   [token]
   {"Authorization" (str "Bearer " token)})
 
+(defn- token-request-unanswered?
+  "True when the token request behind `e` got no response from Google: Google is unreachable, or the connection
+  timed out or broke."
+  ;; The auth library wraps two failures of the token request in one exception class, with the failure as the cause:
+  ;; an `HttpResponseException` when Google answered with an HTTP error, such as a disabled service account, and
+  ;; another `IOException` when the request got no response. An error from before the request has no such cause.
+  [^IOException e]
+  (let [cause (ex-cause e)]
+    (and (instance? IOException cause)
+         (not (instance? HttpResponseException cause)))))
+
 (defn- fresh-bearer-headers
   "Returns an Authorization header with a current OAuth2 access token for `creds`.
   `refreshIfExpired` is thread-safe: it gives the cached token until it is near its expiry, then gets a new one."
@@ -126,7 +138,9 @@
       (throw (ex-info (tru "Could not obtain a Google access token: {0}" (ex-message e))
                       {:api-error   true
                        :status-code 400
-                       :error-code  :google-token-refresh-failed}
+                       :error-code  (if (token-request-unanswered? e)
+                                      :google-token-request-failed
+                                      :google-token-refresh-failed)}
                       e)))))
 
 (defn- service-account-project-id

@@ -17,3 +17,10 @@
    [:locale {:optional true} [:maybe :string]]
    [:msgid  {:optional true} [:maybe :string]]
    [:msgstr {:optional true} [:maybe :string]]])
+
+(mr/def ::content-translation.create
+  "What a caller gives to create a ContentTranslation."
+  [:map {:closed true}
+   [:locale :string]
+   [:msgid  :string]
+   [:msgstr :string]])

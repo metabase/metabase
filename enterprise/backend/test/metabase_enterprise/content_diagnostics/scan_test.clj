@@ -1043,11 +1043,11 @@
                                    unprivileged [group]]
             (perms/grant-application-permissions! group :monitoring)
             (mt/with-temp [:model/Collection {xf-folder :id} {:name      "Shelved pipelines"
-                                                              :namespace "transforms"
-                                                              :archived  true}
+                                                              :namespace "transforms"}
                            :model/Transform {xf-id :id} {:collection_id xf-folder}
-                           :model/Collection {card-folder :id} {:archived true}
+                           :model/Collection {card-folder :id} {}
                            :model/Card {card-id :id} {:collection_id card-folder}]
+              (t2/update! :collection :id [:in [xf-folder card-folder]] {:archived true})
               (let [prefix   (scope-prefix)
                     insert!  (fn [etype eid]
                                (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding

@@ -14,7 +14,9 @@
 (defn- lint-query-call [form ns-sym & [filename modules]]
   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/t2-query-namespace {:level :warning}
                                                                :metabase/unsafe-app-db-query  {:level :warning}
-                                                               :metabase/t2-implicit-pk       {:level :warning}}}
+                                                               :metabase/t2-implicit-pk       {:level :warning}
+                                                               :metabase/change-log-raw-write {:level :warning}
+                                                               :metabase/foreign-model-write  {:level :warning}}}
                                         :ignores    (atom nil)
                                         :findings   (atom [])
                                         :namespaces (atom {})}]
@@ -410,3 +412,74 @@
       '(t2/update! :model/Card {:collection_id coll-id} {:name "x"})
       '(t2/insert! :model/Card card)
       '(t2/select-one-fn :name :model/Card :id id))))
+
+(defn- raw-write-findings [form & [ns-sym filename]]
+  (filter #(= :metabase/change-log-raw-write (:type %))
+          (lint-query-call form (or ns-sym 'metabase.foo.db) filename)))
+
+(deftest ^:parallel change-log-raw-write-test
+  (testing "a write to the table of a tracked model is reported"
+    (are [form] (=? [{:message #"This write skips the model.*"}] (raw-write-findings form))
+      '(t2/update! (t2/table-name :model/Card) :id id {:name "x"})
+      '(t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id id)
+      '(t2/insert! :report_card {:name "x"})
+      '(t2/insert-returning-pk! (t2/table-name :model/User) user)
+      '(t2/query {:update :tenant, :set {:is_active false}})
+      '(t2/query-one {:update (t2/table-name :model/Field), :set {:active false}, :where where})
+      '(t2/query {:update [(t2/table-name :model/Card)], :set {:name "x"}})
+      '(t2/reducible-query {:delete-from (t2/table-name :model/Card), :where where, :returning [:id]})
+      '(t2/query-one {:insert-into [[:permissions_group_membership [:group_id :user_id]] subquery]})
+      '(mdb/query {:delete-from [:core_user :u], :where where})))
+  (testing "a write to the table of a model in a variable is reported"
+    (are [form] (=? [{:type :metabase/change-log-raw-write}] (raw-write-findings form))
+      '(t2/query {:update (t2/table-name model), :set {:view_count 1}})
+      '(t2/delete! (t2/table-name (:model entity)) :id id)))
+  (testing "a write through the model, or to a table that is not tracked, is fine"
+    (are [form] (empty? (raw-write-findings form))
+      '(t2/update! :model/Card :id id {:name "x"})
+      '(t2/delete! model :id id)
+      '(t2/insert! table rows)
+      '(t2/delete! (t2/table-name :model/Setting) :key k)
+      '(t2/insert! (t2/table-name (t2/resolve-model :model/Setting)) row)
+      '(t2/insert! :search_index rows)
+      '(t2/query {:update :setting, :set {:value v}})
+      '(t2/query {:update (t2/table-name :model/Session), :set {:ended_at now}})))
+  (testing "a read of a tracked table is fine"
+    (are [form] (empty? (raw-write-findings form))
+      '(t2/query {:select [:id], :from [(t2/table-name :model/Card)]})
+      '(t2/select (t2/table-name :model/Card) :id id)
+      '(t2/query {:select [:id], :from [:report_card]})))
+  (testing "tests and migrations are not checked"
+    (is (empty? (raw-write-findings '(t2/insert! :report_card card) 'metabase.foo-test "test/metabase/foo_test.clj")))
+    (is (empty? (raw-write-findings '(t2/insert! :report_card card) 'metabase.app-db.custom-migrations)))
+    (is (empty? (raw-write-findings '(t2/insert! :report_card card) 'metabase.app-db.custom-migrations.metrics-v2)))))
+
+(defn- foreign-write-findings
+  "Only the `foreign-model-write` findings of linting `form` in `ns-sym` against a small module tree."
+  [form ns-sym & [filename]]
+  (filter #(= :metabase/foreign-model-write (:type %))
+          (lint-query-call form ns-sym filename '{queries                {:model-exports #{:model/Card}}
+                                                  queries.rest           {:ns-prefix "metabase.queries-rest"}
+                                                  dashboards             {:model-exports #{:model/Dashboard}}
+                                                  enterprise/dashboards  {}
+                                                  app-db                 {}})))
+
+(deftest ^:parallel foreign-model-write-test
+  (testing "a write of a model another module owns is flagged"
+    (are [form] (=? [{:type :metabase/foreign-model-write, :message #".*:model/Card belongs to module queries.*"}]
+                    (foreign-write-findings form 'metabase.dashboards.db))
+      '(t2/insert! :model/Card {:name "x"})
+      '(t2/insert-returning-instances! :model/Card rows)
+      '(t2/update! :model/Card :id id {:name "x"})
+      '(t2/delete! :model/Card :id id)))
+  (testing "a write of the module's own model, or from a descendant of its owner, is fine"
+    (is (empty? (foreign-write-findings '(t2/update! :model/Dashboard :id id {:name "x"}) 'metabase.dashboards.db)))
+    (is (empty? (foreign-write-findings '(t2/update! :model/Card :id id {:name "x"}) 'metabase.queries-rest.db)))
+    (is (empty? (foreign-write-findings '(t2/update! :model/Dashboard :id id {:name "x"}) 'metabase-enterprise.dashboards.db))))
+  (testing "a read, a model that is not a literal, and a model no module exports are not checked"
+    (is (empty? (foreign-write-findings '(t2/select :model/Card :id id) 'metabase.dashboards.db)))
+    (is (empty? (foreign-write-findings '(t2/delete! model :id id) 'metabase.dashboards.db)))
+    (is (empty? (foreign-write-findings '(t2/delete! :model/Unexported :id id) 'metabase.dashboards.db))))
+  (testing "tests and the app-db module are not checked"
+    (is (empty? (foreign-write-findings '(t2/insert! :model/Card card) 'metabase.dashboards.foo-test "test/metabase/dashboards/foo_test.clj")))
+    (is (empty? (foreign-write-findings '(t2/insert! :model/Card card) 'metabase.app-db.custom-migrations)))))

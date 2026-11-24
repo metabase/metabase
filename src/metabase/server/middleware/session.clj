@@ -22,6 +22,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api-keys.core :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.api-scope.workspace-manager :as api-scope.workspace-manager]
    [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
@@ -30,6 +31,7 @@
    [metabase.request.schema :as request.schema]
    [metabase.server.db :as server.db]
    [metabase.session.core :as session]
+   [metabase.session.models.session :as models.session]
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -133,14 +135,24 @@
   a value that is not valid ciphertext — e.g. a plaintext hash injected via direct SQL — decrypts to nil and is
   rejected rather than trusted. With no usable hash we still compute a useless hash so the two cases can't be told apart
   by timing."
-  [{:keys [api-key] :as _user-data} passed-api-key]
+  [{:keys [api-key] :as _user-data} passed-api-key salt]
   (if-let [stored-hash (when api-key
                          (u/ignore-exceptions (encryption/maybe-decrypt api-key)))]
-    (u.password/verify-password passed-api-key "" stored-hash)
+    (u.password/verify-password passed-api-key salt stored-hash)
     (u.password/do-useless-hash)))
 
+(def ^:private api-key-scopes
+  "The API keys this middleware authenticates, by the key's `scope` column: the scope the key's hash is salted for
+  (`api-key/key-hash-salt`), and the `:token-scopes` of the request. A key whose scope is not here does not
+  authenticate: SCIM keys belong to the SCIM endpoints alone."
+  {nil                 {:scope nil, :token-scopes nil}
+   "workspace-manager" {:scope        :workspace-manager
+                        :token-scopes #{api-scope.workspace-manager/workspace-manager}}})
+
 (mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
-  "Return User ID and superuser status for an API Key with `api-key-id"
+  "Return User ID and superuser status for the raw key `api-key`. A `workspace-manager` key is checked against its
+  salted hash and also sets `:token-scopes`, so it reaches only the endpoints tagged with that scope. Return nil for a key whose scope is
+  neither nil nor `workspace-manager`."
   [api-key :- [:maybe :string]]
   (when (and api-key
              (init-status/complete?))
@@ -158,10 +170,14 @@
       (let [user-info (-> (server.db/api-key-user-info (api-key/prefix api-key)
                                                        (premium-features/enable-advanced-permissions?))
                           (m/update-existing :is-group-manager? boolean))]
-        (when (matching-api-key? user-info api-key)
-          (-> user-info
-              (dissoc :api-key)
-              (assoc :embedding/auth-method "api-key")))))))
+        (when (and (matching-api-key? user-info api-key
+                                      (api-key/key-hash-salt (:scope (api-key-scopes (:api-key-scope user-info)))))
+                   (contains? api-key-scopes (:api-key-scope user-info)))
+          (let [token-scopes (:token-scopes (api-key-scopes (:api-key-scope user-info)))]
+            (-> user-info
+                (dissoc :api-key :api-key-scope)
+                (cond-> token-scopes (assoc :token-scopes token-scopes))
+                (assoc :embedding/auth-method "api-key"))))))))
 
 (mr/def ::oauth-bearer
   "Fns that authenticate a request by its OAuth bearer token, the scope that grants full access, the scopes that make
@@ -345,7 +361,7 @@
   [session-key-hash]
   (when (session/record-session-activity-update! session-key-hash)
     (try
-      (server.db/touch-session! session-key-hash)
+      (models.session/touch-session! session-key-hash)
       (catch Exception e
         (log/warnf "Failed to update session last_active_at: %s" (ex-message e))))))
 

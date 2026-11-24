@@ -36,16 +36,6 @@ describe("fromJsQuery", () => {
   });
 });
 
-describe("toLegacyQuery", () => {
-  it("should serialize a query", () => {
-    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
-    const legacyQuery = Lib.toLegacyQuery(query);
-    const restoredQuery = Lib.fromJsQuery(SAMPLE_PROVIDER, legacyQuery);
-    expect(legacyQuery.database).toBe(SAMPLE_DATABASE.id);
-    expect(Lib.primarySourceTableId(restoredQuery)).toBe(ORDERS_ID);
-  });
-});
-
 describe("suggestedName", () => {
   it("should suggest a query name", () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);

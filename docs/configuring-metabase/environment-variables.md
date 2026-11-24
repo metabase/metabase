@@ -75,8 +75,8 @@ Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `ai-features-enabled`.
-- [Configuration file name](./config-file.md): `ai-features-enabled`
+- [Exported as](../installation-and-operation/serialization.md): `ai-features-enabled?`.
+- [Configuration file name](./config-file.md): `ai-features-enabled?`
 
 Whether AI features are enabled.
 
@@ -313,7 +313,7 @@ If set to 0, Metabase will keep all rows.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `bcc-enabled`
+- [Configuration file name](./config-file.md): `bcc-enabled?`
 
 Whether or not bcc emails are enabled, default behavior is that it is.
 
@@ -495,8 +495,8 @@ Whether or not the default GeoJSON maps are enabled.
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `deprecated-agent-api-enabled`.
-- [Configuration file name](./config-file.md): `deprecated-agent-api-enabled`
+- [Exported as](../installation-and-operation/serialization.md): `deprecated-agent-api-enabled?`.
+- [Configuration file name](./config-file.md): `deprecated-agent-api-enabled?`
 
 Whether the deprecated Agent API stays available. The Agent API is deprecated and will be removed in Metabase 67; use the MCP server for agents instead. Off by default; an admin turns it on to keep using the Agent API until it is removed.
 
@@ -673,8 +673,8 @@ Custom SMTP server username.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `embedded-metabot-enabled`.
-- [Configuration file name](./config-file.md): `embedded-metabot-enabled`
+- [Exported as](../installation-and-operation/serialization.md): `embedded-metabot-enabled?`.
+- [Configuration file name](./config-file.md): `embedded-metabot-enabled?`
 
 Whether Metabot is enabled for embedding.
 
@@ -689,6 +689,8 @@ Whether Metabot is enabled for embedding.
 - [Configuration file name](./config-file.md): `embedding-app-origin`
 
 Allow this origin to embed the full Metabase application.
+
+Use `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE` for the origins that can embed the full Metabase app, and `MB_EMBEDDING_APP_ORIGINS_SDK` for the origins that can use modular embedding and the modular embedding React SDK. If only `MB_EMBEDDING_APP_ORIGIN` is set, Metabase copies its value at every startup to the `embedding-app-origins-interactive` and `embedding-app-origins-sdk` settings, if your plan includes that kind of embedding. If you set `MB_EMBEDDING_APP_ORIGIN` together with either of these variables, Metabase stops at startup with an error.
 
 ### `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE`
 
@@ -736,6 +738,8 @@ Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.
 
 Allow admins to securely embed questions and dashboards within other applications?
 
+Use these variables instead: `MB_ENABLE_EMBEDDING_MODULAR` for modular embedding, guest embeds, and static embeds, `MB_ENABLE_EMBEDDING_SDK` for the modular embedding React SDK, and `MB_ENABLE_EMBEDDING_INTERACTIVE` for full-app embedding. If only `MB_ENABLE_EMBEDDING` is set, Metabase copies its value at every startup to the `enable-embedding-sdk`, `enable-embedding-interactive`, and `enable-embedding-static` settings. If the value is `true`, this also turns on modular embedding, guest embeds, and static embeds, unless you turn modular embedding off in the admin settings. If you set `MB_ENABLE_EMBEDDING` together with any of these variables, Metabase stops at startup with an error.
+
 ### `MB_ENABLE_EMBEDDING_INTERACTIVE`
 
 - Type: boolean
@@ -778,6 +782,8 @@ Do admins link to Metabase from their own app? Only reported for analytics.
 
 Allow admins to embed Metabase via modular embedding?
 
+Use `MB_ENABLE_EMBEDDING_MODULAR` instead, which controls modular embedding, guest embeds, and static embeds. Unless you turn modular embedding on or off in the admin settings, Metabase still reads this variable, and `true` turns on all three. If you set this variable together with `MB_ENABLE_EMBEDDING_MODULAR`, Metabase stops at startup with an error.
+
 ### `MB_ENABLE_EMBEDDING_STATIC [DEPRECATED]`
 
 > DEPRECATED: 0.65.0
@@ -787,6 +793,8 @@ Allow admins to embed Metabase via modular embedding?
 - [Configuration file name](./config-file.md): `enable-embedding-static`
 
 Allow admins to embed Metabase via static embedding?
+
+Use `MB_ENABLE_EMBEDDING_MODULAR` instead, which controls modular embedding, guest embeds, and static embeds. Unless you turn modular embedding on or off in the admin settings, Metabase still reads this variable, and `true` turns on all three. If you set this variable together with `MB_ENABLE_EMBEDDING_MODULAR`, Metabase stops at startup with an error.
 
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
@@ -847,6 +855,21 @@ Maximum number of fields per table to fingerprint. If a table has more eligible 
 - Default: `false`
 
 Have we sent a follow up email to the instance admin?
+
+### `MB_GEOJSON_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Controls which networks Metabase may connect to for custom map GeoJSON files.
+Options:
+- external-only (only globally reachable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+Defaults to external-only on Metabase Cloud and allow-private when self-hosted.
+
+Set this when custom maps must load GeoJSON from a server on this machine (allow-all), or to restrict them to public hosts (external-only). Defaults to external-only on Metabase Cloud and allow-private when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies.
 
 ### `MB_GOOGLE_AUTH_AUTO_CREATE_ACCOUNTS_DOMAIN`
 
@@ -929,7 +952,7 @@ Options:
 - allow-all (no restrictions including localhost).
 .
 
-Set this when a notification webhook must reach a host on your private network (`allow-private`) or on this machine (`allow-all`). Default is `external-only`
+Set this when a notification webhook must reach a host on your private network (`allow-private`) or on this machine (`allow-all`). Default is `external-only`. Before Metabase 64, this variable was called `MB_HTTP_CHANNEL_HOST_STRATEGY`. Metabase still reads the old name and logs a warning at startup, so rename it to `MB_HTTP_CHANNEL_ALLOWED_NETWORKS`.
 
 ### `MB_HUMANIZATION_STRATEGY`
 
@@ -1174,7 +1197,7 @@ String used to seed the private key used to validate JWT messages. A hexadecimal
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `jwt-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `jwt-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via JWT and doesn't have a Metabase account.
 
@@ -1375,7 +1398,7 @@ User lookup filter. The placeholder '{login}' will be replaced by the user suppl
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `ldap-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `ldap-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via LDAP and doesn't have a Metabase account.
 
@@ -1920,7 +1943,7 @@ Custom CORS origins for self-hosted MCP clients, space-separated.
 - Default: `[]`
 - [Configuration file name](./config-file.md): `mcp-apps-cors-enabled-clients`
 
-Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
+MCP clients whose MCP Apps may call Metabase across origins, as comma-separated keys: claude, chatgpt, and cursor-vscode (for both Cursor and VS Code).
 
 ### `MB_METABOT_ADVANCED_PERMISSIONS`
 
@@ -1944,8 +1967,8 @@ Maximum duration of a Metabot chat turn in milliseconds.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `metabot-enabled`.
-- [Configuration file name](./config-file.md): `metabot-enabled`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-enabled?`.
+- [Configuration file name](./config-file.md): `metabot-enabled?`
 
 Whether Metabot is enabled for regular usage.
 
@@ -1975,7 +1998,7 @@ The display name for Metabot, shown throughout the Metabase UI.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `metabot-query-execution-enabled`
+- [Configuration file name](./config-file.md): `metabot-query-execution-enabled?`
 
 Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.
 
@@ -2178,7 +2201,7 @@ JSON containing OIDC provider configurations.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `oidc-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `oidc-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via OIDC and doesn't have a Metabase account.
 
@@ -2588,7 +2611,7 @@ If enabled, Metabase will redirect users to your configured SAML Single Logout e
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `saml-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `saml-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via SAML and doesn't have a Metabase account.
 
@@ -2653,7 +2676,7 @@ This variable also controls the geocoding service that Metabase uses to know the
 
 - Type: boolean
 - Default: `null`
-- [Configuration file name](./config-file.md): `send-new-sso-user-admin-email`
+- [Configuration file name](./config-file.md): `send-new-sso-user-admin-email?`
 
 Should new email notifications be sent to admins, for all new SSO users?
 
@@ -2889,6 +2912,8 @@ When a user logs in via Slack Connect, create a Metabase account for them automa
 
 The name of the channel to which Metabase files should be initially uploaded.
 
+Since 0.54.0, Metabase doesn't use a files channel for Slack, so you can remove this variable, and no other variable replaces it.
+
 ### `MB_SMTP_OVERRIDE_ENABLED`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -3054,6 +3079,8 @@ Must be less than 1048575, and less than the number configured in MB_AGGREGATED_
 
 Database ID for uploads.
 
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
+
 ### `MB_UPLOADS_ENABLED [DEPRECATED]`
 
 > DEPRECATED: 0.50.0
@@ -3062,6 +3089,8 @@ Database ID for uploads.
 - Default: `false`
 
 Whether or not uploads are enabled.
+
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
 
 ### `MB_UPLOADS_SCHEMA_NAME [DEPRECATED]`
 
@@ -3072,13 +3101,7 @@ Whether or not uploads are enabled.
 
 Schema name for uploads.
 
-### `MB_UPLOADS_SETTINGS`
-
-- Type: json
-- Default: `null`
-- [Configuration file name](./config-file.md): `uploads-settings`
-
-Upload settings.
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
 
 ### `MB_UPLOADS_TABLE_PREFIX [DEPRECATED]`
 
@@ -3088,6 +3111,8 @@ Upload settings.
 - Default: `null`
 
 Prefix for upload table names.
+
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
 
 ### `MB_USAGE_METADATA_ENABLED`
 
@@ -3149,6 +3174,14 @@ Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
 Also covers the SSH tunnel host and the database auth-provider URLs.
 
 Set this when Metabase must reach a warehouse on a private network (allow-private) or on this machine (allow-all). There is no admin UI for it, and a value stored in the application database is ignored. Defaults to external-only on Metabase Cloud and allow-all when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies, rather than run on a policy nobody chose.
+
+### `MB_WORKSPACES_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `workspaces-enabled`
+
+Whether this instance is a workspace. A transform on a database that has a `database-workspace-schema` writes to that schema instead of to its production table, and later reads of the production table read the workspace copy. A transform on a database that has no `database-workspace-schema` is refused. Not the per-database switch that a parent uses to offer workspaces (`database-enable-workspaces`). Turning this setting off through the settings API, `config.yml`, or `DELETE /api/ee/workspace-instance/current` deletes every table remapping (the record that sends reads to the workspace copy). Unsetting `MB_WORKSPACES_ENABLED` does not. While `MB_WORKSPACES_ENABLED` is set, a write of the other value is refused, a `config.yml` that sets the other value stops Metabase from starting, and `PUT /api/database/:id` and `POST /api/ee/workspace-instance/current` refuse to change a database's `database-workspace-schema`.
 
 ## Other environment variables
 

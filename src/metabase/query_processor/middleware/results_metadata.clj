@@ -12,13 +12,16 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.card-writes :as qp.card-writes]
    [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.row-restricted-metadata :as row-restricted-metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    ;; still passes state via the store's miscellaneous-value slot; general-cached-value migration pending
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -63,6 +66,12 @@
                :else m))]
      (mapv standardize-metadata metadata))))
 
+(defenterprise sandboxes-allow-result-metadata-write?
+  "Whether sandboxing lets the current user store result metadata for the Card with `card-id`, which OSS always does."
+  metabase-enterprise.sandbox.models.sandbox
+  [_card-id]
+  true)
+
 (mu/defn- record-metadata!
   [{{:keys [card-id]} :info, :as query} :- ::lib.schema/query
    metadata                             :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
@@ -96,10 +105,13 @@
                           ;; existing usage -- don't use going forward
                           #_{:clj-kondo/ignore [:deprecated-var]}
                           (qp.store/miscellaneous-value [::card-stored-metadata])
-                          parameter-independent?))))
+                          parameter-independent?)))
+                 (sandboxes-allow-result-metadata-write? card-id))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
-        (query-processor.db/set-card-result-metadata! card-id actual-metadata)))
+        (request/with-current-user nil
+          (query-processor.db/resolve-model! :model/Card)
+          (qp.card-writes/save-result-metadata! :model/Card card-id actual-metadata))))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e

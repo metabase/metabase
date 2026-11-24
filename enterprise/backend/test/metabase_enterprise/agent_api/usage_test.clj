@@ -6,6 +6,7 @@
   real `routes` wrapper is covered in `metabase-enterprise.agent-api.api-test`."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.agent-api.models.agent-api-call-log :as agent-api-call-log]
    [metabase.metabot.agent-api.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -126,6 +127,6 @@
 (deftest logging-is-best-effort-test
   (testing "a failed write is swallowed and never propagates"
     (mt/with-premium-features #{:audit-app}
-      (mt/with-dynamic-fn-redefs [t2/insert! (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [agent-api-call-log/create-agent-api-call-logs! (fn [& _] (throw (ex-info "boom" {})))]
         (is (nil? (usage/record-agent-api-call!
                    {:user-id 1 :operation "GET /api/agent/v1/ping" :status "success" :duration-ms 1})))))))

@@ -2,6 +2,7 @@
   "Application database queries for the entity-retrieval module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -12,46 +13,52 @@
   `collection-ids`, optionally narrowed to just `id`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    id             :- [:maybe ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name :description :type]
-             {:where [:and
-                      [:in :collection_id collection-ids]
-                      [:= :archived false]
-                      [:in :type ["metric" "model"]]
-                      (when id [:= :id id])]}))
+  (mdb/select-batched #(t2/select [:model/Card :id :name :description :type]
+                                  {:where [:and
+                                           [:in :collection_id %]
+                                           [:= :archived false]
+                                           [:in :type ["metric" "model"]]
+                                           (when id [:= :id id])]})
+                      collection-ids))
 
 (mu/defn library-tables-in-collections
   "The ID, names, and description of the active published Tables in the Collections with `collection-ids`, optionally
   narrowed to just `id`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    id             :- [:maybe ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :description]
-             {:where [:and
-                      [:in :collection_id collection-ids]
-                      [:= :is_published true]
-                      [:= :active true]
-                      (when id [:= :id id])]}))
+  (mdb/select-batched #(t2/select [:model/Table :t.id :t.name :t.display_name :t.description]
+                                  {:from      [[(t2/table-name :model/Table) :t]]
+                                   :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
+                                   :where     [:and
+                                               [:= :s.is_published true]
+                                               [:in :s.collection_id %]
+                                               [:= :t.active true]
+                                               (when id [:= :t.id id])]})
+                      collection-ids))
 
 (mu/defn library-measures-of-tables
   "The ID, name, and description of the unarchived Measures on the Tables with `table-ids`, optionally narrowed to
   just `id`."
   [table-ids :- [:sequential ::lib.schema.id/table]
    id        :- [:maybe ::lib.schema.id/measure]]
-  (t2/select [:model/Measure :id :name :description]
-             {:where [:and
-                      [:in :table_id table-ids]
-                      [:= :archived false]
-                      (when id [:= :id id])]}))
+  (mdb/select-batched #(t2/select [:model/Measure :id :name :description]
+                                  {:where [:and
+                                           [:in :table_id %]
+                                           [:= :archived false]
+                                           (when id [:= :id id])]})
+                      table-ids))
 
 (mu/defn library-segments-of-tables
   "The ID, name, and description of the unarchived Segments on the Tables with `table-ids`, optionally narrowed to
   just `id`."
   [table-ids :- [:sequential ::lib.schema.id/table]
    id        :- [:maybe ::lib.schema.id/segment]]
-  (t2/select [:model/Segment :id :name :description]
-             {:where [:and
-                      [:in :table_id table-ids]
-                      [:= :archived false]
-                      (when id [:= :id id])]}))
+  (mdb/select-batched #(t2/select [:model/Segment :id :name :description]
+                                  {:where [:and
+                                           [:in :table_id %]
+                                           [:= :archived false]
+                                           (when id [:= :id id])]})
+                      table-ids))
 
 (mu/defn measure-table-id
   "The Table ID of the Measure with `id`."

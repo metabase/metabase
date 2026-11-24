@@ -34,8 +34,7 @@
 (mr/def ::custom-field
   [:map
    [:type [:= :custom-field]]
-   [:alias [:maybe :string]]
-   [:used-fields [:set [:ref ::col-spec]]]])
+   [:alias [:maybe :string]]])
 
 (mr/def ::composite-field
   [:map
@@ -121,9 +120,8 @@
                                alias (assoc :alias alias))}]
         ;; we have a match to a table
         source-matches (when return-table-matches?
-                         [{:col {:type :custom-field
-                                 :alias (or alias column)
-                                 :used-fields (set source-matches)}}])
+                         [{:col {:type  :custom-field
+                                 :alias (or alias column)}}])
         ;; we don't have a direct match, so list the possible sources
         :else [{:col {:column column
                       :alias alias
@@ -208,11 +206,10 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod find-returned-fields :default
-  [driver sources withs {:keys [alias] :as expr}]
+  [driver _sources _withs {:keys [alias]}]
   [{:col {:alias (when alias
                    (driver.sql/normalize-name driver alias))
-          :type :custom-field
-          :used-fields (into #{} (keep :col) (find-used-fields driver sources withs expr))}}])
+          :type  :custom-field}}])
 
 (defmethod find-returned-fields [:sql :macaw.ast/column]
   [driver sources _withs expr]

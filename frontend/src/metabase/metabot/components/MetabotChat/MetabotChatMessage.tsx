@@ -217,6 +217,7 @@ type AgentPartProps = {
   onInternalLinkClick?: (link: string) => void;
   onToolCallSelect?: (part: MetabotDebugToolCallMessage) => void;
   size: "md" | "lg";
+  chartsAsLinks?: boolean;
 };
 
 const AgentPart = ({
@@ -230,6 +231,7 @@ const AgentPart = ({
   onInternalLinkClick,
   onToolCallSelect,
   size,
+  chartsAsLinks,
 }: AgentPartProps) =>
   match(part)
     .with({ type: "text" }, (p) => (
@@ -250,6 +252,7 @@ const AgentPart = ({
         readonly={readonly}
         conversationId={conversationId}
         size={size}
+        chartsAsLinks={chartsAsLinks}
       />
     ))
     .with({ type: "tool_call" }, (p) => (
@@ -283,6 +286,7 @@ interface AgentMessageProps extends Omit<FlexProps, "onCopy"> {
   isForking?: boolean;
   onToolCallSelect?: (part: MetabotDebugToolCallMessage) => void;
   size: "md" | "lg";
+  chartsAsLinks?: boolean;
 }
 
 type MessageActionsProps = {
@@ -407,6 +411,7 @@ export const AgentMessage = ({
   isForking,
   onToolCallSelect,
   size,
+  chartsAsLinks,
   ...props
 }: AgentMessageProps) => {
   const messageId = message.externalId ?? "";
@@ -474,6 +479,7 @@ export const AgentMessage = ({
             onInternalLinkClick={onInternalLinkClick}
             onToolCallSelect={onToolCallSelect}
             size={size}
+            chartsAsLinks={chartsAsLinks}
           />
           {index === actionsIndex && actions}
         </PartContainer>
@@ -687,6 +693,7 @@ export const Messages = ({
   renderAfterMessage,
   onToolCallSelect,
   size,
+  chartsAsLinks = false,
 }: {
   messages: MetabotMessage[];
   onRetryMessage?: (messageId: string) => void;
@@ -703,6 +710,8 @@ export const Messages = ({
   renderAfterMessage?: (message: MetabotMessage) => ReactNode;
   onToolCallSelect?: (message: MetabotDebugToolCallMessage) => void;
   size: "md" | "lg";
+  /** Show generated charts as links that open them, not as inline charts. */
+  chartsAsLinks?: boolean;
 }) => {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
@@ -801,6 +810,7 @@ export const Messages = ({
                 supportsReasoning={supportsReasoning}
                 onToolCallSelect={onToolCallSelect}
                 size={size}
+                chartsAsLinks={chartsAsLinks}
               />
             ) : (
               <UserMessage

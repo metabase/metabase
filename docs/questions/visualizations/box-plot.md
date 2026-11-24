@@ -7,7 +7,7 @@ summary: Box plots, also known as box and whisker plots, show the distribution o
 
 ![Box plot](../images/box-plot.png)
 
-Box plots, also known as box and whisker plots, show the distribution of numeric data across groups. Box plots are great for comparing how values are spread out across categories or time periods.
+Box plots are great for comparing how values are spread out across categories or time periods.
 
 Each plot displays:
 

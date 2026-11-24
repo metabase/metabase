@@ -1,10 +1,12 @@
 (ns metabase.view-log.core
   (:require
+   [metabase.view-log.db]
    [metabase.view-log.events.view-log]
    [metabase.view-log.models.view-log-impl]
    [potemkin :as p]))
 
 (comment
+  metabase.view-log.db/keep-me
   metabase.view-log.events.view-log/keep-me
   metabase.view-log.models.view-log-impl/keep-me)
 
@@ -13,5 +15,7 @@
   generate-view
   increment-view-counts!
   record-views!]
+ [metabase.view-log.db
+  view-log-ids-before]
  [metabase.view-log.models.view-log-impl
   context])

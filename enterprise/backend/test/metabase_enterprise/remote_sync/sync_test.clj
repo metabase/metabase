@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.content :as content]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -70,6 +71,25 @@
             (is (=? {:status :success} (remote-sync.tu/push! url nil)))
             (is (nil? (remote-sync.tu/entity-path! url "main" daily)))))))))
 
+(deftest push-after-transforms-folder-delete-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-temp [:model/Collection folder    {:name "Folder" :namespace "transforms" :location "/"}
+                       :model/Collection subfolder {:name      "Subfolder"
+                                                    :namespace "transforms"
+                                                    :location  (str "/" (:id folder) "/")}
+                       :model/Transform  outer     {:name "Outer transform" :collection_id (:id folder)}
+                       :model/Transform  inner     {:name "Inner transform" :collection_id (:id subfolder)}]
+          (let [deleted       [folder subfolder outer inner]
+                {v1 :version} (remote-sync.tu/push! url nil)]
+            (testing "a push commits the transforms folder, its subfolder and the transforms in them"
+              (is (every? #(some? (remote-sync.tu/entity-path! url "main" %)) deleted)))
+            (mt/user-http-request :crowberto :delete 204 (str "transform/collection/" (:id folder)))
+            (testing "the push after the folder delete removes them from the remote"
+              (is (=? {:status :success :outcome {:kind "pushed"}} (remote-sync.tu/push! url v1)))
+              (is (every? #(nil? (remote-sync.tu/entity-path! url "main" %)) deleted)))))))))
+
 (deftest pull-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
@@ -104,6 +124,23 @@
             (is (= "Renamed remotely" (t2/select-one-fn :name :model/Card :id (:id other)))))
           (testing "a forced pull discards them"
             (is (=? {:status :success} (remote-sync.tu/pull! url v1 {:force? true})))
+            (is (= "Synced card" (t2/select-one-fn :name :model/Card :id (:id card))))))))))
+
+(deftest pull-skips-unmoved-tip-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Card       card   {:name "Synced card" :collection_id (:id synced)}]
+        (let [{v1 :version} (remote-sync.tu/push! url nil)]
+          (t2/update! :model/Card :id (:id card) {:name "Renamed locally"})
+          (testing "pull of unmoved tip reads no local documents and keeps local changes"
+            (mt/with-dynamic-fn-redefs [content/local-documents (fn [] (throw (ex-info "read local documents" {})))]
+              (is (=? {:status :success :version v1 :outcome {:kind "pull-skipped"}}
+                      (remote-sync.tu/pull! url v1))))
+            (is (= "Renamed locally" (t2/select-one-fn :name :model/Card :id (:id card)))))
+          (testing "forced pull of unmoved tip still discards local changes"
+            (is (=? {:status :success :version v1 :outcome {:kind "pulled" :count 1}}
+                    (remote-sync.tu/pull! url v1 {:force? true})))
             (is (= "Synced card" (t2/select-one-fn :name :model/Card :id (:id card))))))))))
 
 (deftest pull-refuses-to-remove-what-local-changes-depend-on-test

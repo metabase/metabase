@@ -1,10 +1,14 @@
 (ns metabase.sync.analyze.classify-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
+   [metabase.analyze.core :as analyze]
    [metabase.driver.util :as driver.u]
    [metabase.sync.analyze.classify :as classify]
+   [metabase.sync.analyze.test-util :as analyze.tu]
    [metabase.sync.interface :as i]
+   [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -33,7 +37,7 @@
                                    :fingerprint_version (dec i/*latest-fingerprint-version*)
                                    :last_analyzed       #t "2017-08-09"}]
       (is (= ["expected"]
-             (for [field (#'classify/fields-to-classify table)]
+             (for [field (analyze/incomplete-analysis-fields [(u/the-id table)] i/*latest-fingerprint-version* 0 10)]
                (:name field)))))))
 
 (deftest ^:parallel fields-to-classify-test-2
@@ -60,7 +64,7 @@
                                    :fingerprint_version (dec i/*latest-fingerprint-version*)
                                    :last_analyzed       #t "2017-08-09"}]
       (is (= ["expected"]
-             (for [field (#'classify/fields-to-classify table)]
+             (for [field (analyze/incomplete-analysis-fields [(u/the-id table)] i/*latest-fingerprint-version* 0 10)]
                (:name field)))))))
 
 (deftest classify-fields-for-db!-test
@@ -291,3 +295,72 @@
       (classify/classify-fields! table)
       (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name))]
         (is (= :type/Name (:semantic_type updated-field)))))))
+
+(defn- fingerprinted-field
+  "A text Field with a fingerprint of the latest version that classifies it as a category, not yet analyzed."
+  [_j]
+  {:fingerprint_version i/*latest-fingerprint-version*
+   :fingerprint         {:global {:distinct-count 2, :nil% 0.0}
+                         :type   {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0
+                                              :percent-state 0.0, :average-length 2.0}}}
+   :last_analyzed       nil})
+
+(defn- analyzed-field
+  "[[fingerprinted-field]], analyzed already."
+  [j]
+  (assoc (fingerprinted-field j) :last_analyzed (t/offset-date-time)))
+
+(defn- classify-fields-for-db!
+  [database]
+  (classify/classify-fields-for-db! database (constantly nil)))
+
+(defn- classify-tables-for-db!
+  [database]
+  (classify/classify-tables-for-db! database (constantly nil)))
+
+(deftest classify-fields-statement-count-test
+  (testing "classifying Fields issues as many statements for 16 Tables as for 4"
+    (testing "on first analysis"
+      (let [[small large] (analyze.tu/statement-counts-by-tables fingerprinted-field (constantly nil) classify-fields-for-db!)]
+        (is (= small large))))
+    (testing "when nothing needs classifying"
+      (let [[small large] (analyze.tu/statement-counts-by-tables analyzed-field (constantly nil) classify-fields-for-db!)]
+        (is (= small large))))))
+
+(deftest classify-fields-for-db!-classifies-every-table-test
+  (testing "classifying Fields of a Database saves classification of every Table"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    table-1 {:db_id (u/the-id db)}
+                   :model/Table    table-2 {:db_id (u/the-id db)}
+                   :model/Field    f1 (merge (fingerprinted-field 0) {:table_id (u/the-id table-1) :name "a" :base_type :type/Text})
+                   :model/Field    f2 (merge (fingerprinted-field 0) {:table_id (u/the-id table-2) :name "b" :base_type :type/Text})]
+      (is (= {:fields-classified 2, :fields-failed 0}
+             (classify-fields-for-db! (driver.u/lib-database (u/the-id db)))))
+      (is (= [:type/Category :type/Category]
+             (t2/select-fn-vec :semantic_type :model/Field :id [:in [(u/the-id f1) (u/the-id f2)]]))))))
+
+(deftest classify-tables-statement-count-test
+  (testing "classifying Tables issues as many statements for 16 Tables as for 4"
+    (testing "on first analysis"
+      (let [[small large] (analyze.tu/statement-counts-by-tables analyzed-field (constantly nil) classify-tables-for-db!)]
+        (is (= small large))))
+    (testing "when nothing needs classifying"
+      (let [[small large] (analyze.tu/statement-counts-by-tables analyzed-field classify-tables-for-db! classify-tables-for-db!)]
+        (is (= small large))))))
+
+(deftest classify-tables-saves-other-tables-when-one-write-fails-test
+  (testing "classifying Tables saves the classification of other Tables when saving that of one Table throws"
+    (mt/with-temp [:model/Database db     {}
+                   :model/Table    table  {:db_id (u/the-id db) :name "orders" :entity_type nil}
+                   :model/Table    broken {:db_id (u/the-id db) :name "people" :entity_type nil}
+                   :model/Table    other  {:db_id (u/the-id db) :name "products" :entity_type nil}]
+      (let [update! (mt/original-fn #'sync.updates/update-tables-unless-user-set!)]
+        (mt/with-dynamic-fn-redefs [sync.updates/update-tables-unless-user-set!
+                                    (fn [pairs]
+                                      (when (some #(= (u/the-id broken) (:id (first %))) pairs)
+                                        (throw (ex-info "write failed" {})))
+                                      (update! pairs))]
+          (classify-tables-for-db! (driver.u/lib-database (u/the-id db)))))
+      (is (= {(u/the-id table) true (u/the-id broken) false (u/the-id other) true}
+             (update-vals (t2/select-pk->fn :entity_type :model/Table :id [:in (map u/the-id [table broken other])])
+                          some?))))))

@@ -338,7 +338,7 @@
     (merge {:lib/type        :metadata/card
             :id              id
             :database-id     (:id (lib.metadata/database metadata-provider))
-            :dataset-query   (lib.convert/->legacy-MBQL query)
+            :dataset-query   query
             :name            (str (gensym))
             :result-metadata (->> (lib/returned-columns query)
                                   (sort-by :id))}

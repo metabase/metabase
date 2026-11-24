@@ -1,12 +1,14 @@
 (ns metabase.serialization.util
-  "Helpers that serialization namespaces share.")
+  "Helpers that serialization namespaces share."
+  (:require
+   [metabase.app-db.core :as app-db]))
 
 (set! *warn-on-reflection* true)
 
 (def batch-size
-  "The number of rows, ids or entities that serialization queries or processes together, under database parameter
-  limits."
-  1000)
+  "The number of rows, ids or entities that serialization queries or processes together, which is the number of rows
+  one pass of an update write function takes."
+  app-db/update-partition-size)
 
 (defn index-first
   "The map from `(key-fn row)` to `(val-fn row)` for `rows`, keeping the first row of each key."

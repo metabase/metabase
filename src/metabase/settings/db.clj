@@ -3,7 +3,6 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -13,6 +12,11 @@
   ;; The key is bound by its name: a keyword left bare compiles to a column, and bound as-is the driver cannot
   ;; convert it.
   (t2/select-one-fn :value :model/Setting :key [:auto/param (name setting-key)]))
+
+(mu/defn setting-exists? :- :boolean
+  "Whether a Setting row with `setting-key` is stored."
+  [setting-key :- [:or :keyword :string]]
+  (t2/exists? :model/Setting :key [:auto/param (name setting-key)]))
 
 (mu/defn setting-values-by-key
   "A map of key to stored value for every Setting."
@@ -33,10 +37,9 @@
   (t2/update! :model/Setting :key [:auto/param (name setting-key)] {:value value}))
 
 (mu/defn delete-setting!
-  "Delete the Setting with `setting-key`, via a raw table delete that bypasses model hooks, returning the number
-  deleted."
+  "Delete the Setting with `setting-key`, returning the number deleted."
   [setting-key :- [:or :keyword :string]]
-  (t2/delete! (t2/table-name :model/Setting) :key [:auto/param (name setting-key)]))
+  (t2/delete! :model/Setting :key [:auto/param (name setting-key)]))
 
 (mu/defn update-raw-setting-row!
   "Set the raw `value` and `value-with-aad` of the Setting row with `setting-key`, returning the number of rows
@@ -58,9 +61,3 @@
   "The application DB's own current timestamp, as a string."
   []
   (mdb/current-timestamp-string (mdb/db-type)))
-
-(mu/defn update-user-settings!
-  "Store `settings-json` as the user-local settings of the User with `user-id`, returning the number updated."
-  [user-id       :- ::lib.schema.id/user
-   settings-json :- :string]
-  (t2/update! :model/User :id [:auto/param user-id] {:settings settings-json}))

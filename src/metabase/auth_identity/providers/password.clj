@@ -4,6 +4,7 @@
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.provider :as provider]
+   [metabase.auth-identity.validation :as validation]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -20,7 +21,7 @@
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 
-(methodical/defmethod provider/validate :provider/password
+(methodical/defmethod validation/validate :provider/password
   "Validate password credentials before insert/update into AuthIdentity.
    Ensures password_hash and password_salt are present."
   [_provider {:keys [credentials] :as _auth-identity-data}]

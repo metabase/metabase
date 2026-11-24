@@ -2,6 +2,7 @@
   "/api/notification endpoints"
   (:require
    [clojure.data :refer [diff]]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -15,6 +16,7 @@
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -44,7 +46,7 @@
    {:with-id? false}))
 
 (mr/def ::NotificationApiUpdateInput
-  "Notification schema for an update request, restricted to what `notification-update-spec` writes. On PUT
+  "Notification schema for an update request, restricted to what an update writes. On PUT
   the URL, not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped."
   (models.notification/hydrated-notification-schema
    (handler-api-input ::models.notification/NotificationHandler
@@ -92,6 +94,15 @@
              (some handler-touches-template? existing-handlers))
      (api/check-403 (mi/can-write? (t2/hydrate (t2/instance :model/ChannelTemplate {}) :can_write))))))
 
+(defn- check-request-shape
+  "Throws a 400 unless `value` is valid for `schema`, the request schema of the endpoint that shares the entry function
+  with the tools that call it directly."
+  [schema value]
+  (when-let [error (mr/explain schema value)]
+    (throw (ex-info (tru "Invalid notification request.")
+                    {:status-code 400
+                     :errors      (me/humanize error)}))))
+
 (defn get-notification
   "Get a notification by id."
   [id]
@@ -117,8 +128,7 @@
          :legacy-active            legacy-active
          :legacy-user-id           legacy-user-id})
        (into [] (map t2.realize/realize))
-       (#(t2/hydrate % :can_read))
-       (filterv mi/can-read?)
+       mi/readable
        models.notification/hydrate-notification))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -185,21 +195,18 @@
 (mu/defn create-notification! :- ::models.notification/FullyHydratedNotification
   "Create a notification with permission checks, hydration, email notifications, and event publishing."
   [notification-info :- ::CreateNotificationParams]
+  (check-request-shape ::CreateNotificationParams notification-info)
+  (check-handler-templates! (:handlers notification-info))
   (api/create-check :model/Notification notification-info)
   (let [notification (models.notification/hydrate-notification
-                      (models.notification/create-notification!
-                       (dissoc notification-info :handlers :subscriptions)
-                       (:subscriptions notification-info)
-                       (:handlers notification-info)))]
+                      (first (models.notification/create-notifications! [notification-info])))]
     (when (card-notification? notification)
       (send-you-were-added-card-notification-email! notification))
-    (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
 
 (api.macros/defendpoint :post "/" :- ::models.notification/FullyHydratedNotification
   "Create a new notification, return the created notification."
   [_route _query body :- ::CreateNotificationParams request]
-  (check-handler-templates! (:handlers body))
   (create-notification!
    (-> body
        (update :payload_type keyword)
@@ -233,42 +240,43 @@
           (when (seq added-recipients)
             (messages/send-you-were-added-card-notification-email! notification added-recipients @api/*current-user*)))))))
 
-(defn publish-notification-update!
-  "Post-update side effects for a notification: recipient emails on `:active` transitions (or
-  recipient diffs) + an `:event/notification-update` audit event. Shared between the self-service
-  PUT endpoint and the admin bulk endpoint so the contract can't drift. Both args should be
-  hydrated notifications (see [[models.notification/hydrate-notification]])."
-  [updated-notification existing-notification]
-  (when (card-notification? existing-notification)
-    (notify-notification-updates! updated-notification existing-notification))
-  (events/publish-event! :event/notification-update
-                         {:object          updated-notification
-                          :previous-object existing-notification
-                          :user-id         api/*current-user-id*}))
+(defn publish-notification-updates!
+  "Send the recipient emails for the `:active` transition or the recipient changes of each `[updated existing]` pair
+  of hydrated notifications in `pairs`, then publish one `:event/notification-update` for all of them, for the PUT
+  endpoint and the admin bulk endpoint alike."
+  [pairs]
+  (doseq [[updated existing] pairs
+          :when (card-notification? existing)]
+    (notify-notification-updates! updated existing))
+  (when (seq pairs)
+    (events/publish-event! :event/notification-update
+                           {:objects (mapv (fn [[updated existing]]
+                                             {:object updated :previous-object existing})
+                                           pairs)
+                            :user-id api/*current-user-id*})))
 
 (defn- body-with-authoritative-ids
-  "Set the URL notification's `:id` on `body`, and its payload's `:id` when the body carries a
-  payload."
+  "Set the URL notification's `:id` on `body`, and its payload's `:id` when the body carries a payload, so that an update
+  keeps the primary keys of the rows it matches."
   [body {:keys [id payload_id]}]
-  ;; without the ids the spec-update below would treat the body as a different row and delete +
-  ;; recreate it, changing primary keys out from under the caller
   (cond-> (assoc body :id id)
     (and (:payload body) payload_id) (assoc-in [:payload :id] payload_id)))
 
 (mu/defn update-notification!
   "Update notification `id` from `body` with the permission and handler-template checks and
   post-update side effects, and return the updated hydrated notification. `body` is a whole
-  notification, not a patch: the update spec deletes the subscription and handler rows it doesn't
+  notification, not a patch: the update deletes the subscription and handler rows it doesn't
   find there."
   [id   :- ms/PositiveInt
    body :- ::NotificationApiUpdateInput]
+  (check-request-shape ::NotificationApiUpdateInput body)
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (check-handler-templates! (:handlers body) (:handlers existing-notification))
     (let [body (body-with-authoritative-ids body existing-notification)]
-      (models.notification/update-notification! existing-notification body)
+      (models.notification/update-notification! id body {:notifications [existing-notification]})
       (u/prog1 (get-notification id)
-        (publish-notification-update! <> existing-notification)))))
+        (publish-notification-updates! [[<> existing-notification]])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -279,8 +287,8 @@
   Return the updated notification.
 
   `creator_id` (owner) can be reassigned here only by superusers (e.g. the admin 'Edit alert'
-  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403;
-  the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
+  modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403.
+  Echoing back the unchanged value is fine."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiUpdateInput]

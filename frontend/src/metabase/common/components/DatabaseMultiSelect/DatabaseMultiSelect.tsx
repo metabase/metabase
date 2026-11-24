@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
-import { type ComboboxItem, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import { type ComboboxItem, Flex, Icon, Tooltip } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 
 import S from "./DatabaseMultiSelect.module.css";
@@ -65,10 +65,7 @@ export const DatabaseMultiSelect = ({
     return (
       <Flex align="center" gap="sm" className={S.pillContent}>
         <Icon name="database" size={16} />
-
-        <Text fw="bold" size="md">
-          {database.name}
-        </Text>
+        {database.name}
       </Flex>
     );
   };
@@ -78,15 +75,8 @@ export const DatabaseMultiSelect = ({
 
     return (
       <Flex align="center" gap="sm" className={S.optionContent}>
-        <Icon
-          name="database"
-          size={16}
-          className={isDisabled ? S.optionIconDisabled : S.optionIcon}
-        />
-
-        <Text size="md" c={isDisabled ? "text-disabled" : undefined}>
-          {option.label}
-        </Text>
+        <Icon name="database" size={16} className={S.optionIcon} />
+        {option.label}
 
         {isDisabled && disabledOptionTooltip && (
           <Tooltip label={disabledOptionTooltip} position="top">
@@ -105,8 +95,8 @@ export const DatabaseMultiSelect = ({
       label={label}
       description={description}
       nothingFoundMessage={t`No databases found`}
-      classNames={{ pill: S.pill, input: S.input }}
-      comboboxProps={{ disabled, classNames: { option: S.option } }}
+      classNames={{ input: S.input }}
+      comboboxProps={{ disabled }}
       data-testid={dataTestId}
       rightSection={null}
       renderValue={renderValue}

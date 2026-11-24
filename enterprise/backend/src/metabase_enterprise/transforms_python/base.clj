@@ -232,9 +232,11 @@
       (driver.u/supports? driver :atomic-renames db)
       (transfer-with-rename-tables-strategy! driver db-id table-name metadata indexes data-source)
 
+      ;; Not atomic. Drivers that end up here support `:test/python-transforms-without-atomic-renames` in tests.
       (driver.u/supports? driver :rename db)
       (transfer-with-create-drop-rename-strategy! driver db-id table-name metadata indexes data-source)
 
+      ;; Not atomic. Drivers that end up here support `:test/python-transforms-without-renames` in tests.
       :else
       (transfer-with-drop-create-fallback-strategy! driver db-id table-name metadata indexes data-source))))
 

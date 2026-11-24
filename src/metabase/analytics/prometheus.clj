@@ -316,8 +316,6 @@
                        {:description "Number of queries cached in lib.computed/weak-map."})
    (prometheus/gauge   :metabase-card/unique-cards-failed-conversion
                        {:description "Number of distinct cards which have :dataset_query {}, meaning MBQL 4 to 5 conversion failed."})
-   (prometheus/counter :metabase-card/conversions-requiring-cleaning
-                       {:description "Number of times this instance converted a card's MBQL 4 to 5 and `clean` made a real change"})
    (prometheus/gauge :metabase-database/status
                      {:description "Does a given database using driver pass a health check."
                       :labels [:driver :healthy :reason :connection-type]})
@@ -735,12 +733,24 @@
    ;; SQL parsing metrics
    (prometheus/counter :metabase-sql-parsing/context-timeouts
                        {:description "Number of Python/GraalVM SQL parsing execution timeouts."})
+   (prometheus/counter :metabase-sql-parsing/sqlglot-java-timeouts
+                       {:description "Number of SQL parsing calls to the Java port of sqlglot that timed out."})
    (prometheus/counter :metabase-sql-parsing/context-acquisitions
                        {:description "Number of Python contexts acquired from the pool."})
    (prometheus/counter :metabase-sql-parsing/context-creations
                        {:description "Number of new Python contexts created."})
    (prometheus/counter :metabase-sql-parsing/context-disposals-expired
                        {:description "Number of Python contexts disposed due to TTL expiry."})
+   (prometheus/counter :metabase-sql-parsing/shadow-comparisons
+                       {:description "Comparisons of the primary and shadow SQL parsers, by outcome."
+                        :labels [:method :dialect :outcome]})
+   (prometheus/histogram :metabase-sql-parsing/shadow-duration-ms
+                         {:description "Duration in milliseconds of each parser's call in a shadow comparison."
+                          :labels [:parser :method]
+                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+   (prometheus/gauge :metabase-sql-parsing/shadow-in-flight
+                     {:description "Shadow SQL parser comparisons running or waiting to run, by shadow parser."
+                      :labels [:parser]})
    ;; SQL tools operation metrics
    (prometheus/counter :metabase-sql-tools/operations-total
                        {:description "Total number of sql-tools operations started."
@@ -865,6 +875,12 @@
                                             "calls.")
                           ;; 10ms -> 1 minute. Every edge is one time series per instance, so the list is short.
                           :buckets [10 100 1000 10000 60000]})
+   (prometheus/counter :metabase-metabot/sql-reference-checks
+                       {:description (str "Reference checks of Metabot SQL, by outcome: `ran`, `skipped` (no table check "
+                                          "ran: the caller turned it off, the dialect has none, a table tag, or SQL "
+                                          "that does not compile; the card and snippet check can still have run), "
+                                          "or `failed` (the check threw).")
+                        :labels [:status]})
    ;; messaging metrics
    (prometheus/gauge :metabase-mq/queue-depth
                      {:description "Batch count per queue by status, across all queue backends."
@@ -942,6 +958,11 @@
    (prometheus/gauge :metabase-security-center/vulnerable-advisories
                      {:description "Number of advisories where this Metabase instance is potentially affected."
                       :labels [:severity :acknowledged]})
+   (prometheus/gauge :metabase-security-center/health-checks
+                     {:description "1 when the Security Center health check last had this status, else 0."
+                      :labels [:check_id :severity :status]})
+   (prometheus/gauge :metabase-security-center/health-checks-last-run-timestamp-seconds
+                     {:description "Unix timestamp (seconds since epoch) of the last background run of the Security Center health checks."})
    ;; metaplow analytics metrics
    (prometheus/counter :metabase-metaplow/errors
                        {:description "Metaplow event pipeline errors by stage."

@@ -44,7 +44,7 @@
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
-  (let [search-terms (:search-terms (search.spec/spec (:model m)))
+  (let [search-terms (:search-terms (search.spec/search-model-spec (:model m)))
         getter       (if (map? search-terms)
                        (fn [[k tx]]
                          (let [tx (if (true? tx) identity tx)]
@@ -70,7 +70,7 @@
   Fields listed in the spec's `:embedding-exclude` set are kept out of the
   embedding text entirely (but remain in `searchable-text`)."
   [m]
-  (let [spec         (search.spec/spec (:model m))
+  (let [spec         (search.spec/search-model-spec (:model m))
         search-terms (:search-terms spec)
         excluded     (:embedding-exclude spec #{})
         field-keys   (->> (cond-> search-terms (map? search-terms) keys)
@@ -102,12 +102,12 @@
       nil)))
 
 (defn- execute-all-function-attrs
-  "Execute all function attributes for a given spec and return computed values.
+  "Execute all single-record function attributes for a given spec and return computed values.
   Each function's result is written under the attr key (snake_case) — the attr's index column."
   [spec record]
   (reduce-kv
    (fn [acc attr-key attr-def]
-     (if (search.spec/function-attr? attr-def)
+     (if (and (search.spec/function-attr? attr-def) (not (search.spec/batch-function-attr? attr-def)))
        (assoc acc
               (keyword (u/->snake_case_en (name attr-key)))
               (execute-function-attr attr-key attr-def record))
@@ -115,29 +115,64 @@
    {}
    (:attrs spec)))
 
-(defn- ->document [m]
-  (let [spec (search.spec/spec (:model m))
-        fn-results (execute-all-function-attrs spec m)
-        sql-results (-> m
-                        (perf/select-keys
-                         (into [:model] search.spec/attr-columns))
-                        (update :archived boolean)
-                        (assoc
-                         :display_data (display-data m)
-                         :searchable_text (searchable-text m)
-                         :embeddable_text (embeddable-text m)))
-        document (merge fn-results sql-results)
-        curated  (collections.curation/curated? document)]
-    ;; Both production engines reconstruct results from legacy_input (appdb rehydrate, semantic
-    ;; legacy-input-with-score), so curated must live there to reach the search response, not just in the
-    ;; search_index column used for filtering. data_layer rides along once it leaves the excluded set.
-    (assoc document
-           :curated curated
-           :legacy_input (json/encode (assoc (apply dissoc m search.spec/legacy-input-excluded-keys)
-                                             :curated curated)))))
+(defn- execute-batch-function-attr
+  "The values of the batch function attribute `attr-def` for `records`, in order, or nils when the function throws."
+  [attr-key {f :batch-fn fields :fields} records]
+  (try
+    (vec (f (if fields
+              (mapv #(select-keys % fields) records)
+              (vec records))))
+    (catch Exception e
+      (log/warn "Batch function execution failed for attribute" attr-key ":" (ex-message e))
+      (vec (repeat (count records) nil)))))
+
+(defn- execute-batch-function-attrs
+  "One map per record of `records`, in order, of the values of the batch function attributes of its model's spec, each
+  function called once for the records of its model."
+  [records]
+  (let [records (vec records)]
+    (reduce-kv
+     (fn [acc model indexes]
+       (reduce-kv
+        (fn [acc attr-key attr-def]
+          (if (search.spec/batch-function-attr? attr-def)
+            (let [column (keyword (u/->snake_case_en (name attr-key)))
+                  values (execute-batch-function-attr attr-key attr-def (mapv records indexes))]
+              (reduce (fn [acc [index value]] (assoc-in acc [index column] value))
+                      acc
+                      (map vector indexes values)))
+            acc))
+        acc
+        (:attrs (search.spec/search-model-spec model))))
+     (vec (repeat (count records) {}))
+     (group-by #(:model (records %)) (range (count records))))))
+
+(defn- ->document
+  ([m]
+   (->document m (first (execute-batch-function-attrs [m]))))
+  ([m batch-results]
+   (let [spec (search.spec/search-model-spec (:model m))
+         fn-results (merge (execute-all-function-attrs spec m) batch-results)
+         sql-results (-> m
+                         (perf/select-keys
+                          (into [:model] search.spec/attr-columns))
+                         (update :archived boolean)
+                         (assoc
+                          :display_data (display-data m)
+                          :searchable_text (searchable-text m)
+                          :embeddable_text (embeddable-text m)))
+         document (merge fn-results sql-results)
+         curated  (collections.curation/curated? document)]
+     ;; Both production engines reconstruct results from legacy_input (appdb rehydrate, semantic
+     ;; legacy-input-with-score), so curated must live there to reach the search response, not just in the
+     ;; search_index column used for filtering. data_layer rides along once it leaves the excluded set.
+     (assoc document
+            :curated curated
+            :legacy_input (json/encode (assoc (apply dissoc m search.spec/legacy-input-excluded-keys)
+                                              :curated curated))))))
 
 (defn- spec-index-reducible [search-model & [where-clause]]
-  ;; Joins in the spec (e.g. card → revision on most_recent = true) can produce duplicate rows when the
+  ;; Joins in the spec (e.g. card → moderation_review on most_recent = true) can produce duplicate rows when the
   ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
   ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
   (->> (search.db/spec-index-reducible-rows search-model where-clause)
@@ -158,7 +193,7 @@
   [search-model id]
   (if-not (contains? (set search.spec/search-models) search-model)
     :no-spec
-    (let [spec      (search.spec/spec search-model)
+    (let [spec      (search.spec/search-model-spec search-model)
           indexed?  (some? (search.db/spec-index-row search-model id))]
       (cond
         indexed?                              :indexable
@@ -167,12 +202,18 @@
 
 (def ^:private max-document-error-logs 10)
 
+(def ^:private document-batch-size
+  "Records whose batch function attributes are computed together, see [[execute-batch-function-attrs]]."
+  150)
+
 (defn- query->documents [query-reducible]
   (let [failures (volatile! 0)]
     (->> query-reducible
          (eduction
           (comp
            (map t2.realize/realize)
+           (partition-all document-batch-size)
+           (mapcat (fn [records] (map vector records (execute-batch-function-attrs records))))
            (fn [rf]
              (fn
                ([] (rf))
@@ -180,9 +221,9 @@
                 (when (pos? @failures)
                   (log/warnf "Failed to build %d search documents; they were skipped" @failures))
                 (rf result))
-               ([result m]
+               ([result [m batch-results]]
                 (if-let [doc (try
-                               (->document m)
+                               (->document m batch-results)
                                (catch InterruptedException ie
                                  (.interrupt (Thread/currentThread))
                                  (throw ie))

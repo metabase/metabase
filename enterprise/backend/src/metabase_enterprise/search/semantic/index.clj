@@ -19,6 +19,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -632,6 +633,19 @@
      [:is :personal_owner_id nil]
      [:= :personal_owner_id current-user-id]]))
 
+(defn- analytics-cards-filter
+  "WHERE condition dropping the audit app's questions, models and metrics, or nil when the context of `search-context`
+  returns them (see [[search.config/analytics-card-contexts]]) and the audit app is enabled. The appdb and in-place
+  engines check the `analytics` namespace of the card's collection; this index has no namespace column, so it checks the
+  type of the root collection, which the audit app gives every collection in that namespace."
+  [{:keys [context]}]
+  (when-not (and (premium-features/enable-audit-app?)
+                 (search.config/analytics-cards-allowed? context))
+    [:or
+     [:not-in :model search.config/card-models]
+     [:= :root_collection_type nil]
+     [:not= :root_collection_type collection/instance-analytics-collection-type]]))
+
 (defn- filter-conditions
   "Ordered `[filter-key where-condition]` pairs for the structural filters implied by `search-context`. The
   search query ANDs these together (see [[search-filters]]); the search debug API uses the keys to attribute
@@ -641,6 +655,7 @@
   (keep
    (fn [[k clause]] (when clause [k clause]))
    [[:personal-collection (personal-collection-filter search-context)]
+    [:analytics-cards     (analytics-cards-filter search-context)]
     [:archived?           (when (some? archived?) [:= :archived archived?])]
     [:verified            (when (some? verified) [:= :verified verified])]
     ;; "Verified or curated content" — precomputed flag (collections.curation/curated?)
@@ -978,7 +993,7 @@
   per model."
   [docs]
   (let [timer (u/start-timer)
-        doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
+        doc->t2-model (fn [doc] (:model (search/search-model-spec (:model doc))))
         {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
         readable (when (seq fast-docs)
                    (collection/content-readable-collection-ids (map :collection_id fast-docs) {:root-namespace nil, :audit-rules? true}))

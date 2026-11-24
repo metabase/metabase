@@ -74,6 +74,44 @@
           (encryption-test/with-secret-key "key2"
             (is (thrown-with-msg? Exception #"encrypted with a different key" (enable-encryption!)))))))))
 
+(deftest enable-encryption!-clears-leftover-ciphertext-in-user-settings-test
+  (testing (str "an unencrypted database whose `core_user.settings` still holds ciphertext under some other key "
+                "(left by an older `dump-to-h2`) can be encrypted")
+    (encryption-test/with-secret-key nil
+      (mt/with-temp-empty-app-db [_conn :h2]
+        (mdb/setup-db! :create-sample-content? false)
+        (t2/query {:insert-into :core_user
+                   :values      [{:entity_id     "legacy-user-entity-id"
+                                  :email         "legacy@example.com"
+                                  :first_name    "Legacy"
+                                  :last_name     "User"
+                                  :password      "unused"
+                                  :password_salt "unused"
+                                  :date_joined   :%now
+                                  :settings      (encryption/encrypt
+                                                  "{\"some-user-setting\":true}"
+                                                  {:secret-key (encryption/secret-key->hash "source-instance-key")})}
+                                 {:entity_id     "plain-user-entity-idx"
+                                  :email         "plain@example.com"
+                                  :first_name    "Plain"
+                                  :last_name     "User"
+                                  :password      "unused"
+                                  :password_salt "unused"
+                                  :date_joined   :%now
+                                  :settings      "{\"other-user-setting\":true}"}]})
+        (is (nil? (raw-value "encryption-check")))
+        (encryption-test/with-secret-key "target-instance-key"
+          (enable-encryption!)
+          (is (encryption/decryptable-string? (raw-value "encryption-check")))
+          (let [raw-settings (fn [email]
+                               (t2/select-one-fn :settings :core_user :email email))]
+            (testing "the value no key can read is reset to an empty object"
+              (is (= "{}" (encryption/maybe-decrypt (raw-settings "legacy@example.com")))))
+            (testing "plaintext values are encrypted, not cleared"
+              (is (encryption/decryptable-string? (raw-settings "plain@example.com")))
+              (is (= "{\"other-user-setting\":true}"
+                     (encryption/maybe-decrypt (raw-settings "plain@example.com")))))))))))
+
 (deftest enable-encryption!-does-not-trip-the-read-only-mode-guard-test
   (testing "enabling encryption on an instance set up without a key survives the cloud-migration guard reading `read-only-mode` through an empty settings cache"
     (encryption-test/with-secret-key nil

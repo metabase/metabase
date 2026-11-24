@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
    [metabase.indexes.models.table-index :as table-index]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -41,14 +42,24 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::source-models
-  "The source Databases and Tables of some transforms by ID, as [[prefetch-source-models]] loads them."
+  "The source Databases and Tables of some transforms by id, as [[prefetch-source-models]] loads them, and a delay of
+  [[source-query-permissions-ok?]] for each distinct source query by [[source-query-key]]."
   [:map {:closed true}
    [:model/Database [:maybe [:map-of ::lib.schema.id/database :metabase.warehouses.schema/database]]]
-   [:model/Table    [:maybe [:map-of ::lib.schema.id/table :metabase.warehouse-schema.schema/table]]]])
+   [:model/Table    [:maybe [:map-of ::lib.schema.id/table :metabase.warehouse-schema.schema/table]]]
+   [:source-query-permissions {:optional true} [:map-of :string [:fn delay?]]]])
+
+(mr/def ::create-body
+  "What creates a Transform: the columns of a new one and the `:tag_ids` to link."
+  [:merge
+   ::transforms.schema/transform.create
+   [:map {:closed true}
+    [:tag_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
 
 (mu/defn ->definition :- ::transforms.schema/transform.definition
-  "What the saved `transform`, or the one a create request carries, computes and where it writes."
-  [transform :- [:or ::transforms.schema/transform ::transforms.schema/transform.create]]
+  "What the saved `transform`, the one a create request carries, or the snapshot of a Revision computes and where it
+  writes."
+  [transform :- [:or ::transforms.schema/transform ::create-body ::transforms.schema/transform.revision]]
   (select-keys transform [:name :description :source :target]))
 
 ;;; ------------------------------------------------- Feature Gating -------------------------------------------------
@@ -81,6 +92,41 @@
         (not (or (:permissions-error? data)
                  (= 403 (:status-code data))))))))
 
+(def ^:private raw-value-template-tag-types
+  "The template tag types that stand for a value and refer to no Card, snippet or Field."
+  #{:number :text :date :boolean})
+
+(defn- shares-database-permission-answer?
+  "Whether the source `query` is a native query whose template tags all stand for plain values, so that
+  [[native-source-query-permissions-ok?]] gives the same answer for it as for any other such query on its database."
+  [query]
+  (try
+    (and (lib/native-only-query? query)
+         (every? #(contains? raw-value-template-tag-types (keyword (:type %)))
+                 (vals (lib/template-tags query))))
+    (catch Exception _
+      false)))
+
+(mu/defn- native-source-query-permissions-ok? :- :boolean
+  "Whether the current user passes the query processor's permission check for the native source `query` as it is,
+  unpreprocessed, which is enough for a query that [[shares-database-permission-answer?]]."
+  [query :- :metabase.lib.schema/query]
+  (when-not api/*current-user-id*
+    (throw (ex-info "A transform needs to be run with a bound user"
+                    {})))
+  (try
+    (qp.setup/with-qp-setup [query query]
+      (qp.perms/check-query-permissions* query)
+      true)
+    (catch Exception _
+      false)))
+
+(defn- source-query-key
+  "What identifies the source `query` of a transform for its permission answer: the query without its metadata,
+  printed."
+  [query]
+  (pr-str (dissoc query :lib/metadata)))
+
 (mu/defn source-tables-readable? :- :boolean
   "Check if the source tables/database in a transform are readable by the current user.
   Returns true if the user can query all source tables (for python transforms) or the
@@ -102,7 +148,9 @@
        (if-let [db-id (get-in source [:query :database])]
          (if-let [db (resolve* :model/Database db-id)]
            (and (boolean (mi/can-query? (t2/hydrate db :can_query)))
-                (source-query-permissions-ok? (:query source)))
+                (if-let [answer (get-in models-cache [:source-query-permissions (source-query-key (:query source))])]
+                  @answer
+                  (source-query-permissions-ok? (:query source))))
            false)
          false)
 
@@ -134,24 +182,41 @@
 (mu/defn prefetch-source-models :- ::source-models
   "Bulk-load the source databases and tables referenced by `transforms` into a
   `{:model/Database {id db} :model/Table {id table}}` map"
-  [transforms :- [:sequential [:or ::transforms.schema/transform ::transforms.schema/transform.create]]]
+  [transforms :- [:sequential [:or ::transforms.schema/transform ::create-body ::transforms.schema/transform.revision]]]
   (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
         table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
-    {:model/Database (when (seq db-ids)
+    {:source-query-permissions (let [queries (into [] (keep #(get-in % [:source :query])) transforms)
+                                     shared  (into {}
+                                                   (map (fn [[database-id [query]]]
+                                                          [database-id (delay (native-source-query-permissions-ok? query))]))
+                                                   (group-by :database (filter shares-database-permission-answer? queries)))]
+                                 (into {}
+                                       (map (fn [query]
+                                              (let [answer (when (shares-database-permission-answer? query)
+                                                             (get shared (:database query)))]
+                                                [(source-query-key query)
+                                                 (if answer
+                                                   (delay (or @answer (source-query-permissions-ok? query)))
+                                                   (delay (source-query-permissions-ok? query)))])))
+                                       queries))
+     :model/Database (when (seq db-ids)
                        (u/index-by :id (t2/hydrate (transforms.db/databases db-ids) :can_query)))
      :model/Table    (when (seq table-ids)
                        (u/index-by :id (t2/hydrate (transforms.db/tables table-ids) :can_query)))}))
 
 (mu/defn add-source-readable :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]
-  "Add :source_readable field to a transform or collection of transforms.
-  The field indicates whether the current user can read the source tables/database
-  referenced by the transform."
-  [transform-or-transforms :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]]
-  (if (sequential? transform-or-transforms)
-    (let [models-cache (prefetch-source-models transform-or-transforms)]
-      (mapv #(assoc % :source_readable (source-tables-readable? (->definition %) models-cache))
-            transform-or-transforms))
-    (assoc transform-or-transforms :source_readable (source-tables-readable? (->definition transform-or-transforms)))))
+  "Add `:source_readable`, whether the current user can read the source tables and database of the transform, to a
+  transform or a collection of them, whose sources come from `models-cache` when given and are otherwise loaded once."
+  ([transform-or-transforms :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]]
+   (add-source-readable transform-or-transforms
+                        (when (sequential? transform-or-transforms)
+                          (prefetch-source-models transform-or-transforms))))
+  ([transform-or-transforms :- [:or ::transforms.schema/transform [:sequential ::transforms.schema/transform]]
+    models-cache            :- [:maybe ::source-models]]
+   (if (sequential? transform-or-transforms)
+     (mapv #(assoc % :source_readable (source-tables-readable? (->definition %) models-cache))
+           transform-or-transforms)
+     (assoc transform-or-transforms :source_readable (source-tables-readable? (->definition transform-or-transforms))))))
 
 ;;; ------------------------------------------------- Scheduled Execution -------------------------------------------------
 

@@ -24,3 +24,20 @@
    [:duration_ms   {:optional true} [:maybe :int]]
    [:ip_address    {:optional true} [:maybe :string]]
    [:error_message {:optional true} [:maybe :string]]])
+
+(mr/def ::agent-api-call-log.create
+  "What recording an AgentApiCallLog takes: the call's user, tenant, client, operation, outcome and duration, and the
+  optional IP address and error message."
+  [:map {:closed true}
+   [:user_id       [:maybe ::lib.schema.id/user]]
+   [:tenant_id     [:maybe ms/PositiveInt]]
+   [:client_name   [:maybe :string]]
+   [:operation     [:maybe :string]]
+   [:status        [:or :keyword :string]]
+   [:duration_ms   [:maybe :int]]
+   [:ip_address    {:optional true} [:maybe :string]]
+   [:error_message [:maybe :string]]])
+
+(mr/def ::query-object
+  "A query a client sends as a JSON object, validated by the representations pipeline that reads it."
+  [:map {:closed false, :description "a query as a JSON object"}])

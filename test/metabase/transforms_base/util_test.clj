@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.events.core :as events]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
@@ -11,6 +12,10 @@
    [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
+
+(deftest transform-run-complete-is-a-registered-event-test
+  (testing "loading the namespace registers :event/transform-run-complete, which publish-event! needs to accept it"
+    (is (events/isa? :event/transform-run-complete :metabase/event))))
 
 (deftest create-target-schema!-serializes-concurrent-creation-test
   (testing "concurrent transforms targeting a missing schema create it once, one at a time"
