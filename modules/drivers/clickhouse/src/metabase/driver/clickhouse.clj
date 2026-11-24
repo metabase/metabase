@@ -218,6 +218,10 @@
    ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
    {"testConnectionOnCheckout" false}))
 
+(defmethod driver/database-supports? [:clickhouse :nested-field-columns]
+  [_driver _feature db]
+  (driver.common/json-unfolding-default db))
+
 (defmethod sql-jdbc.sync/sample-json-row-honey-sql :clickhouse
   [_driver table-identifier json-field-identifiers pk-identifiers]
   ;; `db.table.column` fails when the database and the table have the same name, so use only the column names
