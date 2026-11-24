@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type CallLog } from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
+import _ from "underscore";
 
 import {
   setupCardQueryMetadataEndpoint,
@@ -1115,6 +1116,181 @@ describe("QueryBuilder", () => {
       await waitFor(() =>
         expect(router.location.pathname).toMatch(/^\/question\/41612/),
       );
+    });
+  });
+  describe("removing the first aggregation of a query with a later stage", () => {
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    const sumOf = (name: string) => ({
+      type: "operator" as const,
+      operator: "sum",
+      args: [{ type: "column" as const, name }],
+    });
+
+    const createAggregatedQuery = () => {
+      const query = Lib.appendStage(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [sumOf("SUBTOTAL"), sumOf("TAX"), sumOf("TOTAL")],
+              breakouts: [{ type: "column", name: "CREATED_AT", unit: "week" }],
+            },
+          ],
+        }),
+      );
+      const sumOfTax = checkNotNull(
+        Lib.filterableColumns(query, 1).find(
+          (column) =>
+            Lib.displayInfo(query, 1, column).displayName === "Sum of Tax",
+        ),
+      );
+      return Lib.filter(
+        query,
+        1,
+        Lib.numberFilterClause({
+          operator: ">",
+          column: sumOfTax,
+          values: [100],
+        }),
+      );
+    };
+
+    const AGGREGATED_CARD = createMockUnsavedCard({
+      display: "table",
+      dataset_query: Lib.toJsQuery(createAggregatedQuery()),
+    });
+
+    // Columns of a previous stage come back with the "fields" source
+    const createSumColumn = (name: string, displayName: string) =>
+      createMockColumn({
+        name,
+        display_name: displayName,
+        source: "fields",
+        base_type: "type/Float",
+        effective_type: "type/Float",
+        field_ref: ["field", name, { "base-type": "type/Float" }],
+      });
+
+    const createWeekColumn = () =>
+      createOrdersCreatedAtDatasetColumn({
+        source: "fields",
+        unit: "week",
+        display_name: "Created At: Week",
+        field_ref: [
+          "field",
+          "CREATED_AT",
+          { "base-type": "type/DateTime", "temporal-unit": "week" },
+        ],
+      });
+
+    const FILTERED_ROW_COUNT = 175;
+
+    const FILTERED_BY_TAX_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createWeekColumn(),
+          createSumColumn("sum", "Sum of Tax"),
+          createSumColumn("sum_2", "Sum of Total"),
+        ],
+        rows: Array.from({ length: FILTERED_ROW_COUNT }, (_, index) => [
+          `2025-01-${String((index % 28) + 1).padStart(2, "0")}T00:00:00Z`,
+          101 + index,
+          1000 + index,
+        ]),
+      }),
+      row_count: FILTERED_ROW_COUNT,
+    });
+
+    const EMPTY_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createWeekColumn()],
+        rows: [],
+      }),
+    });
+
+    const isFilteredByTax = (call: CallLog) => {
+      const body: unknown = JSON.parse(String(call.options.body));
+      const aggregations: unknown[] = _.get(body, ["stages", 0, "aggregation"]);
+      const aggregatedFieldIds = aggregations.map((_aggregation, index) =>
+        _.get(body, ["stages", 0, "aggregation", index, 2, 2]),
+      );
+      const filter = ["stages", 1, "filters", 0];
+      return (
+        _.isEqual(aggregatedFieldIds, [ORDERS.TAX, ORDERS.TOTAL]) &&
+        _.get(body, [...filter, 0]) === ">" &&
+        _.get(body, [...filter, 2, 2]) === "sum" &&
+        _.get(body, [...filter, 3]) === 100
+      );
+    };
+
+    it("should not re-target the filter of the next stage (metabase#12679)", async () => {
+      await setup({
+        card: AGGREGATED_CARD,
+        dataset: EMPTY_DATASET,
+        initialRoute: `/question/notebook#${serializeCardForUrl(AGGREGATED_CARD)}`,
+      });
+      fetchMock.modifyRoute("dataset-post", {
+        response: (call: CallLog) =>
+          isFilteredByTax(call) ? FILTERED_BY_TAX_DATASET : EMPTY_DATASET,
+      });
+
+      const filterStep = await screen.findByTestId("step-filter-1-0");
+      expect(
+        within(filterStep).getByText("Sum of Tax is greater than 100"),
+      ).toBeInTheDocument();
+
+      const summarizeStep = screen.getByTestId("step-summarize-0-0");
+      const subtotalItem = checkNotNull(
+        within(summarizeStep)
+          .getAllByTestId("notebook-cell-item")
+          .find((item) => item.textContent === "Sum of Subtotal"),
+      );
+      await userEvent.click(within(subtotalItem).getByLabelText("close icon"));
+
+      await waitFor(() =>
+        expect(
+          within(summarizeStep).queryByText("Sum of Subtotal"),
+        ).not.toBeInTheDocument(),
+      );
+      expect(within(summarizeStep).getByText("Sum of Tax")).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("step-filter-1-0")).getByText(
+          "Sum of Tax is greater than 100",
+        ),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Visualize" }));
+
+      expect(
+        await screen.findByText(`Showing ${FILTERED_ROW_COUNT} rows`),
+      ).toBeInTheDocument();
+      const runCall = checkNotNull(
+        fetchMock.callHistory.lastCall("path:/api/dataset", { method: "POST" }),
+      );
+      expect(isFilteredByTax(runCall)).toBe(true);
+
+      const filtersControl = await screen.findByTestId(
+        "filters-visibility-control",
+      );
+      if (screen.queryByTestId("qb-filters-panel") == null) {
+        await userEvent.click(filtersControl);
+      }
+      expect(
+        await within(await screen.findByTestId("qb-filters-panel")).findByText(
+          "Sum of Tax is greater than 100",
+        ),
+      ).toBeInTheDocument();
+
+      expect(
+        await screen.findByRole("columnheader", { name: "Sum of Tax" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("columnheader", { name: "Sum of Total" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("columnheader", { name: "Sum of Subtotal" }),
+      ).not.toBeInTheDocument();
     });
   });
 });
