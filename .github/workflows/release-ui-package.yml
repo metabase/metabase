@@ -30,27 +30,14 @@ defaults:
 
 jobs:
   determine-release:
-    runs-on: ubuntu-22.04
+    if: ${{ github.repository == 'metabase/metabase' && github.ref == 'refs/heads/master' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       version: ${{ steps.resolve.outputs.version }}
       npm_tag: ${{ steps.resolve.outputs.npm_tag }}
       git_tag: ${{ steps.resolve.outputs.git_tag }}
     steps:
-      - name: Fail unless running on master
-        env:
-          REF: ${{ github.ref }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          if [ "$REPOSITORY" != "metabase/metabase" ]; then
-            echo "::error::@metabase/ui releases only from metabase/metabase (got '$REPOSITORY')."
-            exit 1
-          fi
-          if [ "$REF" != "refs/heads/master" ]; then
-            echo "::error::@metabase/ui releases only from master (got '$REF'). Run this workflow from master."
-            exit 1
-          fi
-
       - name: Check out the code
         uses: actions/checkout@v7
         with:
@@ -99,7 +86,7 @@ jobs:
 
   smoke:
     needs: determine-release
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     outputs:
       artifact-id: ${{ steps.upload.outputs.artifact-id }}
@@ -167,7 +154,7 @@ jobs:
     needs: [determine-release, smoke]
     if: ${{ !inputs.dry_run && github.ref == 'refs/heads/master' }}
     environment: ui-package-release
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     permissions:
       id-token: write # OIDC handshake for npm trusted publishing
@@ -213,7 +200,7 @@ jobs:
 
   tag-git:
     needs: [determine-release, publish]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     # The tag is pushed with the automation user's token, as the other release workflows do.
     permissions:

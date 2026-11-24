@@ -68,7 +68,7 @@ From the repository root: `bun run build-ui-package` builds `dist/`, and `bun ru
 1. In a normal PR, bump `version` in `package.json` and add a `CHANGELOG.md` entry.
 2. In `0.x`, a minor release may break compatibility; a patch must not. Any Mantine upgrade in Metabase is a minor release.
 3. `X.Y.Z` publishes to the `latest` dist-tag and `X.Y.Z-canary.N` to `canary`. No other version shape is accepted.
-4. Run the "Release UI Package" workflow from `master`; it refuses other refs. Run it first with `dry_run` on (the default), then again with it off.
+4. Run the "Release UI Package" workflow from `master`; other refs skip all jobs. Run it first with `dry_run` on (the default), then again with it off.
 
 Before enabling live publishing, create the GitHub environment `ui-package-release` and restrict deployments to the `master` branch only. In npm, register `metabase/metabase`, workflow `release-ui-package.yml`, and environment `ui-package-release` as the trusted publisher. Enable `npm publish` under **Allowed actions**; staged publish alone is not enough.
 
