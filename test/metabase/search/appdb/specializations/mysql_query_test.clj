@@ -77,6 +77,11 @@
     (is (= [[{:tokens ["revenue"], :phrase? false, :negated? false, :prefix? true}]]
            (#'mysql/query-terms "revenue -")))
     (is (= [] (#'mysql/query-terms "-_")))
+    ;; The emoji's variation selector (U+FE0F) is a combining mark, which does not start a word.
+    (is (= [[{:tokens ["revenue"], :phrase? false, :negated? false, :prefix? true}]]
+           (#'mysql/query-terms "revenue 📈️")))
+    (is (= "nrevenue srevenue qrevenue"
+           (:prefix_terms (#'mysql/entry-fields {:name "revenue 📈️"} 84))))
     (is (= [] (#'mysql/query-terms "& or \"&\"")))))
 
 (deftest ^:parallel combining-marks-test

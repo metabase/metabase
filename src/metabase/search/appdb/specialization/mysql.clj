@@ -66,8 +66,13 @@
   "Letters, combining marks, and digits. Marks keep words in scripts such as Devanagari whole."
   "\\p{L}\\p{M}\\p{N}")
 
+(def ^:private word-regex
+  "A letter or digit, then any letters, combining marks, and digits.
+  A combining mark alone, such as the variation selector after an emoji, is not a word."
+  (str "[\\p{L}\\p{N}][" word-chars "]*"))
+
 (def ^:private index-word-pattern
-  (re-pattern (str "[" word-chars "]+")))
+  (re-pattern word-regex))
 
 (defn- entry-fields [entity max-size]
   (let [name-terms   (normalize-text (or (:name entity) ""))
@@ -91,7 +96,7 @@
   (assoc (token-limits) :in-transaction? (mdb/in-transaction?)))
 
 (def ^:private word-pattern
-  (re-pattern (format "[%1$s]+(?:-[%1$s]+)*" word-chars)))
+  (re-pattern (format "%1$s(?:-%1$s)*" word-regex)))
 
 (defn- words [text]
   (re-seq word-pattern text))
