@@ -11,7 +11,6 @@
   assoc-can-query
   check-parameter-field-permissions
   query-run-answers
-  can-run-query-with-resolved-source-ids?
   check-cards-read-perms
   check-card-result-metadata-data-perms
   check-cards-result-metadata-data-perms
@@ -26,6 +25,8 @@
   query->resolved-source-ids
   query->source-ids
   required-perms-for-query
+  resolved-query-run-answers
+  resolved-source-ids-answers
   resolved-source-ids-transform
   ResolvedSourceIds
   stamped-resolved-source-ids

@@ -568,6 +568,24 @@
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
 
+(mu/defn stored-result-gate-inputs-for-cards :- [:map-of ::lib.schema.id/card [:sequential :map]]
+  "The StoredResults used by each of the Cards with `card-ids`, narrowed to the columns the cached-result gate reads,
+  by Card id."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (into {}
+        (map (fn [[card-id rows]] [card-id (mapv #(dissoc % :card_id) rows)]))
+        (group-by :card_id
+                  (mdb/select-batched #(t2/select [:model/StoredResult
+                                                   :stored_result.id
+                                                   :stored_result.database_id
+                                                   :stored_result.dataset_query
+                                                   :stored_result.data_access_token
+                                                   :stored_result.resolved_source_ids
+                                                   [:stored_result_use.card_id :card_id]]
+                                                  {:join  [:stored_result_use [:= :stored_result_use.stored_result_id :stored_result.id]]
+                                                   :where [:in :stored_result_use.card_id [:auto/param %]]})
+                                      card-ids))))
+
 (mu/defn synced-card-items :- [:sequential ::queries.schema/card]
   "The Cards with `ids`, with their Collection and its ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]

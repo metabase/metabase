@@ -11,6 +11,7 @@
    [metabase.events.test-util :as events.tu]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.derived-perms :as derived-perms]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -19,6 +20,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -282,7 +284,9 @@
                      (let [thread (thread-with-snapshots! (specs n))
                            calls  (atom 0)]
                        (dynamic-redefs/with-dynamic-fn-redefs
-                         [queries/viewer-can-view-cached-result? (fn [& _] (swap! calls inc) true)]
+                         [queries/cached-result-view-answers (fn [artifacts & _]
+                                                               (swap! calls + (count artifacts))
+                                                               (mapv (constantly true) artifacts))]
                          (request/with-current-user (mt/user->id :rasta)
                            (derived-perms/thread-ids-with-visible-derived-data [thread])))
                        @calls))]
@@ -299,9 +303,12 @@
                                            {:creator-id (mt/user->id :lucky) :table :venues :token token}))
           reads  (atom 0)]
       (dynamic-redefs/with-dynamic-fn-redefs
-        [data-access-token/sandbox-token-for-table (fn [table-id]
-                                                     (when (= venues table-id) (swap! reads inc))
-                                                     nil)]
+        [data-access-token/sandbox-token-for-table  (fn [table-id]
+                                                      (when (= venues table-id) (swap! reads inc))
+                                                      nil)
+         data-access-token/sandbox-tokens-for-tables (fn [table-ids]
+                                                       (swap! reads + (count (filter #{venues} table-ids)))
+                                                       (zipmap table-ids (repeat nil)))]
         (is (false? (visible? thread :rasta)) "the sandboxed creators' charts block an unsandboxed viewer"))
       (is (= 1 @reads)))))
 
@@ -324,6 +331,38 @@
       (is (= small large)
           (format "resolution must not grow with charts (2 charts: %d queries, 25 charts: %d)" small large)))))
 
+(deftest verdict-cost-does-not-grow-with-groups-test
+  (testing "charts on distinct Tables, each its own group, are adjudicated together"
+    (let [tables  [:venues :checkins :users :categories :orders :people :products :reviews]
+          verdict (fn [thread]
+                    (request/with-current-user (mt/user->id :rasta)
+                      (t2/with-call-count [call-count]
+                        (derived-perms/thread-ids-with-visible-derived-data [thread])
+                        (call-count))))
+          measure (fn [table-keys]
+                    (verdict (thread-with-snapshots! (map #(hash-map :creator-id (mt/user->id :lucky) :table % :token {})
+                                                          table-keys))))]
+      (measure (take 2 (drop 6 tables)))
+      (let [preprocess! (fn [table-keys]
+                          (lib-be/with-metadata-provider-cache
+                            (let [queries (mapv count-query table-keys)]
+                              (request/as-admin (doseq [query queries] (qp.preprocess/preprocess query)))
+                              (t2/with-call-count [call-count]
+                                (request/as-admin (doseq [query queries] (qp.preprocess/preprocess query)))
+                                (call-count)))))]
+        (testing "only preprocessing statements that read no metadata grow with the groups"
+          (is (= (- (measure (take 6 (drop 2 tables))) (measure (take 2 tables)))
+                 (- (preprocess! (take 6 (drop 2 tables))) (preprocess! (take 2 tables))))))))))
+
+(deftest artifacts-resolved-one-by-one-when-resolving-together-throws-test
+  (testing "when resolving the artifacts' queries together throws, each is resolved on its own, to the same verdict"
+    (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}
+                                          {:creator-id (mt/user->id :lucky) :table :checkins :token {}}
+                                          {:creator-id (mt/user->id :lucky) :table :users :token nil}])
+          base   (visible? thread :rasta)]
+      (dynamic-redefs/with-dynamic-fn-redefs [query-perms/resolved-source-ids-answers (fn [_] (throw (ex-info "boom" {})))]
+        (is (= base (visible? thread :rasta)))))))
+
 (deftest stored-resolved-source-ids-key-the-verdict-only-for-their-own-query-test
   (let [thread   (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])
         q-id     (t2/select-one-pk :model/ExplorationQuery :exploration_thread_id thread)
@@ -334,10 +373,12 @@
                                                       {:table-ids #{(mt/id stamped-from)}})}))
         resolves (fn []
                    (let [calls (atom 0)
-                         orig  (dynamic-redefs/original-fn #'query-perms/query->resolved-source-ids)]
+                         orig  (dynamic-redefs/original-fn #'query-perms/query->resolved-source-ids)
+                         bulk  (dynamic-redefs/original-fn #'query-perms/resolved-source-ids-answers)]
                      (dynamic-redefs/with-dynamic-fn-redefs
-                       [queries/viewer-can-view-cached-result? (constantly true)
-                        query-perms/query->resolved-source-ids (fn [& args] (swap! calls inc) (apply orig args))]
+                       [queries/cached-result-view-answers  (fn [artifacts & _] (mapv (constantly true) artifacts))
+                        query-perms/query->resolved-source-ids  (fn [& args] (swap! calls inc) (apply orig args))
+                        query-perms/resolved-source-ids-answers (fn [queries] (swap! calls + (count queries)) (bulk queries))]
                        (request/with-current-user (mt/user->id :rasta)
                          (derived-perms/thread-ids-with-visible-derived-data [thread])))
                      @calls))]

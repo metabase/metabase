@@ -173,12 +173,27 @@
   (derive :hook/entity-id))
 
 (defn- summary-card-snapshots
-  "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
-  is not one or has none. Such a card renders only those snapshots — a composite links its own plus one per source —
-  so it is gated on their artifact verdicts rather than on the Summary's content gate over every thread."
-  [card document]
-  (when (and (:exploration_id document) (:id card))
-    (not-empty (queries.db/stored-result-gate-inputs-for-card (:id card)))))
+  "The snapshots of those of `cards` that are ephemeral Cards of an exploration Summary, which render only their own
+  snapshots, by Card id, read together; `document-id` finds the parent Document of a Card in `documents`."
+  [cards document-id documents]
+  (let [card-ids (into []
+                       (comp (filter #(and (:id %) (:exploration_id (get documents (document-id %)))))
+                             (map :id)
+                             (distinct))
+                       cards)]
+    (if (seq card-ids)
+      (into {}
+            (filter (comp seq val))
+            (queries.db/stored-result-gate-inputs-for-cards card-ids))
+      {})))
+
+(defn- snapshot-verdicts
+  "Whether the current user may be served each of the snapshots in `id->snapshots`, by snapshot, answered together."
+  [id->snapshots]
+  (let [snapshots (into [] (comp (mapcat val) (distinct)) id->snapshots)]
+    (zipmap snapshots (cached-result/cached-result-view-answers
+                       snapshots
+                       {:share-token-reads? true}))))
 
 (defn- parent-documents
   "The parent Documents of `cards`, hydrated with the permission `k`, as `{:document-id f, :documents {id document}}`,
@@ -220,7 +235,11 @@
         {:keys [document-id documents]} (parent-documents rows :can_read)
         summary-readable                (delay (collection/content-readable-collection-ids
                                                 (map :collection_id (vals documents))
-                                                {:root-namespace nil, :audit-rules? false}))]
+                                                {:root-namespace nil, :audit-rules? false}))
+        id->snapshots                   (summary-card-snapshots (filter #(contains? readable (:collection_id %)) rows)
+                                                                document-id
+                                                                documents)
+        verdicts                        (delay (snapshot-verdicts id->snapshots))]
     (for [card cards]
       (when card
         (vary-meta card assoc :can_read
@@ -229,9 +248,9 @@
                          (let [id (document-id card)]
                            (or (nil? id)
                                (when-let [document (get documents id)]
-                                 (if-let [snapshots (summary-card-snapshots card document)]
+                                 (if-let [snapshots (get id->snapshots (:id card))]
                                    (and (contains? @summary-readable (:collection_id document))
-                                        (every? cached-result/viewer-can-view-cached-result? snapshots))
+                                        (every? @verdicts snapshots))
                                    (mi/can-read? document))))))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :can_query]

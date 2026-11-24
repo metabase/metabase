@@ -204,7 +204,7 @@
                                 (query-perms/query->source-ids query)))
           (mt/with-test-user :crowberto
             (is (false? (first (query-perms/query-run-answers [query]))))
-            (is (false? (query-perms/can-run-query-with-resolved-source-ids? query {:table-ids #{(mt/id :venues)}})))
+            (is (= [false] (query-perms/resolved-query-run-answers [query] [{:table-ids #{(mt/id :venues)}}])))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot be normalized"
                                   (first (query-perms/query-run-answers [query] false true))))))))))
 
@@ -567,10 +567,10 @@
   (testing "empty resolved source ids deny before the data-perms check"
     (mt/with-current-user (mt/user->id :rasta)
       (let [query (mt/mbql-query venues)]
-        (is (true? (query-perms/can-run-query-with-resolved-source-ids?
-                    query (query-perms/query->resolved-source-ids query))))
+        (is (= [true] (query-perms/resolved-query-run-answers
+                       [query] [(query-perms/query->resolved-source-ids query)])))
         (log.capture/with-log-messages-for-level [messages [metabase.query-permissions.impl :debug]]
-          (is (false? (query-perms/can-run-query-with-resolved-source-ids? query {})))
+          (is (= [false] (query-perms/resolved-query-run-answers [query] [{}])))
           (is (some #(= "Empty resolved source ids; denying" (:message %)) (messages))
               "denied as empty, not by a later check tripping over the absent ids"))))))
 

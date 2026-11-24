@@ -32,6 +32,21 @@
 (def ^:private a-different-sandbox-token
   {:sandbox {1 "d-price-2"}})
 
+(defn- answers-of
+  "A stand-in for [[query-perms/resolved-source-ids-answers]] answering each query with `f`, or what it throws."
+  [f]
+  (fn [queries]
+    (mapv #(try
+             (f %)
+             (catch Throwable e
+               e))
+          queries)))
+
+(defn- can-view?
+  "Whether the current user may be served the blob of `stored-result`, asked as a list of one."
+  [stored-result]
+  (first (cached-result/cached-result-view-answers [stored-result])))
+
 (defn- denial!
   "`ex-data` of the 403 [[cached-result/assert-can-view-cached-result!]] throws for `stored-result`,
   or nil when the viewer is allowed to stream it."
@@ -50,7 +65,7 @@
       (binding [api/*is-superuser?* superuser?]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"stored-result is missing its dataset_query"
-                              (cached-result/viewer-can-view-cached-result?
+                              (can-view?
                                {:id 1 :database_id 1 :data_access_token {}}))
             (str "superuser? " superuser?))))))
 
@@ -58,27 +73,29 @@
   (testing "superusers may see every exploration — a deliberate product exemption, applied before
             any lens comparison, so even a superuser whose own computed lens mismatches the
             snapshot's (e.g. one who routed themselves to a destination db) still streams it"
-    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-resolved-source-ids? (constantly true)
+    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/resolved-query-run-answers (fn [queries _] (mapv (constantly true) queries))
                                             query-perms/query->resolved-source-ids (constantly {:table-ids #{1}})
+                                            query-perms/resolved-source-ids-answers (answers-of (constantly {:table-ids #{1}}))
                                             perms/data-access-token (constantly a-different-sandbox-token)]
       (let [sr {:id 1 :database_id 1 :data_access_token a-sandbox-token :dataset_query a-query}]
         (binding [api/*is-superuser?* true]
-          (is (true? (cached-result/viewer-can-view-cached-result? sr))))
+          (is (true? (can-view? sr))))
         (testing "while a non-admin with the same mismatched lens is blocked"
           (binding [api/*is-superuser?* false]
-            (is (false? (cached-result/viewer-can-view-cached-result? sr)))))))))
+            (is (false? (can-view? sr)))))))))
 
 (deftest nil-token-denies-non-admins-test
   (testing "a snapshot with no token can't be compared against any viewer lens — and the write path
             never persists one, so it is a bug, logged at ERROR. Non-admins are denied; a superuser
             still streams it via the bypass"
-    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-resolved-source-ids? (constantly true)
-                                            query-perms/query->resolved-source-ids (constantly {:table-ids #{1}})]
+    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/resolved-query-run-answers (fn [queries _] (mapv (constantly true) queries))
+                                            query-perms/query->resolved-source-ids (constantly {:table-ids #{1}})
+                                            query-perms/resolved-source-ids-answers (answers-of (constantly {:table-ids #{1}}))]
       (let [sr {:id 1 :database_id 1 :data_access_token nil :dataset_query a-query}]
         (binding [api/*is-superuser?* true]
-          (is (true? (cached-result/viewer-can-view-cached-result? sr))))
+          (is (true? (can-view? sr))))
         (binding [api/*is-superuser?* false]
-          (is (false? (cached-result/viewer-can-view-cached-result? sr)))
+          (is (false? (can-view? sr)))
           (is (= :incompatible-context (:reason (denial! sr)))))))))
 
 (deftest lens-computation-throwing-denies-non-admins-test
@@ -90,18 +107,21 @@
           (fn [reason]
             (let [sr {:id 1 :database_id 1 :data_access_token a-sandbox-token :dataset_query a-query}]
               (binding [api/*is-superuser?* true]
-                (is (true? (cached-result/viewer-can-view-cached-result? sr))))
+                (is (true? (can-view? sr))))
               (binding [api/*is-superuser?* false]
-                (is (false? (cached-result/viewer-can-view-cached-result? sr)))
+                (is (false? (can-view? sr)))
                 (is (= {:status-code 403 :reason reason :stored-result-id 1}
                        (denial! sr))))))]
       ;; both throw sites are exercised: each redef below shadows the working one installed outside.
-      (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-resolved-source-ids? (constantly true)
+      (dynamic-redefs/with-dynamic-fn-redefs [query-perms/resolved-query-run-answers (fn [queries _] (mapv (constantly true) queries))
                                               query-perms/query->resolved-source-ids (constantly {:table-ids #{1}})
+                                              query-perms/resolved-source-ids-answers (answers-of (constantly {:table-ids #{1}}))
                                               perms/data-access-token (constantly a-sandbox-token)]
         (testing "resolving the query's source ids throws (deleted source card)"
           (dynamic-redefs/with-dynamic-fn-redefs [query-perms/query->resolved-source-ids
-                                                  (fn [& _] (throw (ex-info "Card 7 does not exist." {})))]
+                                                  (fn [& _] (throw (ex-info "Card 7 does not exist." {})))
+                                                  query-perms/resolved-source-ids-answers
+                                                  (answers-of (fn [& _] (throw (ex-info "Card 7 does not exist." {}))))]
             (assert-superuser-only! :no-data-perms)))
         (testing "computing the viewer's token throws (missing routing/impersonation attribute)"
           (dynamic-redefs/with-dynamic-fn-redefs [perms/data-access-token
@@ -117,15 +137,16 @@
     (doseq [thrown [(NullPointerException. "boom")
                     (ex-info "malformed query" {})]]
       (testing (str "threw " (class thrown))
-        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-resolved-source-ids?
+        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/resolved-query-run-answers
                                                 (fn [& _] (throw thrown))
                                                 query-perms/query->resolved-source-ids (constantly {:table-ids #{1}})
+                                                query-perms/resolved-source-ids-answers (answers-of (constantly {:table-ids #{1}}))
                                                 perms/data-access-token (constantly a-sandbox-token)]
           (let [sr {:id 1 :database_id 1 :data_access_token a-sandbox-token :dataset_query a-query}]
             (binding [api/*is-superuser?* true]
-              (is (true? (cached-result/viewer-can-view-cached-result? sr))))
+              (is (true? (can-view? sr))))
             (binding [api/*is-superuser?* false]
-              (is (false? (cached-result/viewer-can-view-cached-result? sr)))
+              (is (false? (can-view? sr)))
               (is (= :no-data-perms (:reason (denial! sr)))))))))))
 
 (deftest empty-resolved-source-ids-deny-non-admins-test
@@ -134,29 +155,34 @@
     (doseq [[label stored live] [["stored" {} {:table-ids #{1}}]
                                  ["resolved live" nil {}]]]
       (testing label
-        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-resolved-source-ids? (constantly true)
+        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/resolved-query-run-answers (fn [queries _] (mapv (constantly true) queries))
                                                 query-perms/query->resolved-source-ids
                                                 (fn [_ stored'] (or stored' live))
+                                                query-perms/verified-resolved-source-ids
+                                                (fn [_ stored'] stored')
+                                                query-perms/resolved-source-ids-answers
+                                                (answers-of (constantly live))
                                                 perms/data-access-token (constantly a-sandbox-token)]
           (let [sr {:id 1 :database_id 1 :data_access_token a-sandbox-token :dataset_query a-query
                     :resolved_source_ids stored}]
             (binding [api/*is-superuser?* false]
               (is (= :no-data-perms (:reason (denial! sr)))))
             (binding [api/*is-superuser?* true]
-              (is (true? (cached-result/viewer-can-view-cached-result? sr))))))))))
+              (is (true? (can-view? sr))))))))))
 
 (deftest denial-reasons-are-distinct-test
   (testing "the two denial reasons are reported distinctly, so they can't be collapsed into one
             message by a refactor: the caller and the i18n string both key off `:reason`"
     (binding [api/*is-superuser?* false]
       (testing "lacking data perms on the underlying query"
-        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-resolved-source-ids? (constantly false)]
+        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/resolved-query-run-answers (fn [queries _] (mapv (constantly false) queries))]
           (is (= {:status-code 403 :reason :no-data-perms :stored-result-id 7}
                  (denial! {:id 7 :database_id 1 :data_access_token a-sandbox-token
                            :dataset_query a-query})))))
       (testing "holding the perms but under an incompatible lens"
-        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-resolved-source-ids? (constantly true)
+        (dynamic-redefs/with-dynamic-fn-redefs [query-perms/resolved-query-run-answers (fn [queries _] (mapv (constantly true) queries))
                                                 query-perms/query->resolved-source-ids (constantly {:table-ids #{1}})
+                                                query-perms/resolved-source-ids-answers (answers-of (constantly {:table-ids #{1}}))
                                                 perms/data-access-token (constantly a-different-sandbox-token)]
           (is (= {:status-code 403 :reason :incompatible-context :stored-result-id 7}
                  (denial! {:id 7 :database_id 1 :data_access_token a-sandbox-token
@@ -166,8 +192,9 @@
   (testing "reason priority is part of the contract: a viewer who fails both checks is told they lack
             data perms rather than being handed the lens-mismatch message, which would imply the data
             is theirs to see under a different lens"
-    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-resolved-source-ids? (constantly false)
+    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/resolved-query-run-answers (fn [queries _] (mapv (constantly false) queries))
                                             query-perms/query->resolved-source-ids (constantly {:table-ids #{1}})
+                                            query-perms/resolved-source-ids-answers (answers-of (constantly {:table-ids #{1}}))
                                             perms/data-access-token (constantly a-different-sandbox-token)]
       (binding [api/*is-superuser?* false]
         (is (= :no-data-perms
@@ -177,18 +204,19 @@
 (deftest compatible-viewer-is-allowed-test
   (testing "control: perms held and lenses matching means the blob streams — the gate must not be
             trivially satisfiable by denying everything"
-    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/can-run-query-with-resolved-source-ids? (constantly true)
+    (dynamic-redefs/with-dynamic-fn-redefs [query-perms/resolved-query-run-answers (fn [queries _] (mapv (constantly true) queries))
                                             query-perms/query->resolved-source-ids (constantly {:table-ids #{1}})
+                                            query-perms/resolved-source-ids-answers (answers-of (constantly {:table-ids #{1}}))
                                             perms/data-access-token (constantly a-sandbox-token)]
       (binding [api/*is-superuser?* false]
         (let [sr {:id 1 :database_id 1 :data_access_token a-sandbox-token :dataset_query a-query}]
-          (is (true? (cached-result/viewer-can-view-cached-result? sr)))
+          (is (true? (can-view? sr)))
           (is (nil? (denial! sr))))))))
 
 (deftest unknown-reason-still-throws-403-test
-  (testing "adding a reason to `cached-result-blocked-reason` without extending the message `case`
+  (testing "adding a reason to `cached-results-blocked-reasons` without extending the message `case`
             must not turn a 403 into a 500 out of an authorization gate — the fallthrough is a
             generic denial"
-    (dynamic-redefs/with-dynamic-fn-redefs [cached-result/cached-result-blocked-reason (constantly :some-future-reason)]
+    (dynamic-redefs/with-dynamic-fn-redefs [cached-result/cached-results-blocked-reasons (fn [stored-results _] (mapv (constantly :some-future-reason) stored-results))]
       (is (= {:status-code 403 :reason :some-future-reason :stored-result-id 1}
              (denial! {:id 1 :database_id 1 :data_access_token {} :dataset_query a-query}))))))
