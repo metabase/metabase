@@ -92,14 +92,20 @@
                      :model/Database {db-6 :id} {:engine :h2 :details (:details (mt/db))}]
         (let [db-ids [db-1 db-2 db-3 db-4 db-5 db-6]]
           (run! #(grant-native! &group %) db-ids)
-          (let [queries     (mapv #(lib/native-query (lib-be/application-database-metadata-provider %) "SELECT 1") db-ids)
-                count!      (fn [f n]
-                              (lib-be/with-metadata-provider-cache
-                                (f queries)
-                                (t2/with-call-count [call-count]
-                                  (f (take n queries))
-                                  (call-count))))
-                check!      (partial count! query-perms/check-run-permissions-for-queries)
-                preprocess! (partial count! #(request/as-admin (run! qp.preprocess/preprocess %)))]
-            (is (= (- (check! 6) (check! 2))
-                   (- (preprocess! 6) (preprocess! 2))))))))))
+          (let [queries    (mapv #(lib/native-query (lib-be/application-database-metadata-provider %) "SELECT 1") db-ids)
+                count!     (fn [cache? f n]
+                             (let [run (fn []
+                                         (f queries)
+                                         (t2/with-call-count [call-count]
+                                           (f (take n queries))
+                                           (call-count)))]
+                               (if cache?
+                                 (lib-be/with-metadata-provider-cache (run))
+                                 (run))))
+                growth     (fn [cache? f] (- (count! cache? f 6) (count! cache? f 2)))
+                check      query-perms/check-run-permissions-for-queries
+                preprocess #(request/as-admin (run! qp.preprocess/preprocess %))]
+            (testing "inside a metadata provider cache"
+              (is (= (growth true check) (growth true preprocess))))
+            (testing "with the queries' own warm providers and no cache"
+              (is (= (growth false check) (growth false preprocess))))))))))

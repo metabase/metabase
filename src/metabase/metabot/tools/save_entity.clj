@@ -224,14 +224,18 @@
     chart))
 
 (defn savable-charts
-  "[[savable-chart]] of each of `chart-ids` in order, with the run permissions of all their queries read together, and
-  one by one, so that a refusal names the same chart, when they do not allow them all."
+  "[[savable-chart]] of each of `chart-ids` in order: one run permission check of all their queries, then the curation
+  of each chart, falling back to one chart at a time, so that a refusal names the same chart, when a query is not a map
+  or the combined resolve or check throws an `Exception`."
   [chart-ids]
   (if-let [charts (try
                     (let [charts (mapv resolve-chart chart-ids)]
-                      (query-perms/check-run-permissions-for-queries (mapv :dataset_query charts))
-                      charts)
-                    (catch Throwable _
+                      (when (every? (comp map? :dataset_query) charts)
+                        (query-perms/check-run-permissions-for-queries (mapv :dataset_query charts))
+                        charts))
+                    (catch InterruptedException e
+                      (throw e))
+                    (catch Exception _
                       nil))]
     (mapv (fn [chart-id {:keys [dataset_query] :as chart}]
             (check-chart-curated chart-id dataset_query)

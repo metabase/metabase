@@ -337,13 +337,15 @@
     {:perms/create-queries {0 :query-builder}}))
 
 (defn- mbql-required-perms
-  [query {:keys [throw-exceptions? already-preprocessed? resolved-source-ids]}]
+  [query {:keys [throw-exceptions? already-preprocessed? resolved-source-ids id->card]}]
   (let [query (->mbql5 query)]
     (try
       ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
       (if-let [source-card-id (lib/primary-source-card-id query)]
         (do
-          (card-instance source-card-id)
+          (if id->card
+            (found-card id->card source-card-id)
+            (card-instance source-card-id))
           {:source-card-ids #{source-card-id}})
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
         (resolved-source-ids->required-perms
@@ -688,17 +690,25 @@
   (check-cards-readable answers database-id (:card-ids required-perms))
   true)
 
+(defn- batch-provider
+  "The metadata provider the queries of the Database with `db-id` among `queries` read in a run check: the one they all
+  carry already when it is the same, so that it is not loaded again, else the one shared provider of that Database."
+  [db-id queries]
+  (let [providers (keep #(when (and (map? %) (= db-id (:database %))) (:lib/metadata %)) queries)
+        db-count  (count (filter #(and (map? %) (= db-id (:database %))) queries))]
+    (if (and (seq providers)
+             (= (count providers) db-count)
+             (every? #(identical? (first providers) %) providers))
+      (first providers)
+      (lib-be/application-database-metadata-provider db-id))))
+
 (defn- shared-provider-query
-  "`query`, with its metadata provider replaced by the one shared provider of its Database when it reads the same app
-  DB, so that every query of a run check reads one cache per Database."
-  [query]
-  (let [mp    (when (map? query) (:lib/metadata query))
-        db-id (when (map? query) (:database query))]
-    (if (and mp (pos-int? db-id))
-      (let [shared (lib-be/application-database-metadata-provider db-id)]
-        (cond-> query
-          (= mp shared) (assoc :lib/metadata shared)))
-      query)))
+  "`query`, with its metadata provider replaced by `shared`, the provider of its Database in the batch, when it reads
+  the same app DB, so that every query of a run check reads one cache per Database."
+  [shared query]
+  (let [mp (when (map? query) (:lib/metadata query))]
+    (cond-> query
+      (and mp shared (= mp shared)) (assoc :lib/metadata shared))))
 
 (defn- referenced-entity-ids
   "What `queries`, MBQL 5 queries over `mp`, reference at any depth of Cards, with one bulk read of the Cards per level
@@ -720,13 +730,21 @@
                (into seen card-ids))))))
 
 (defn- prefetch-run-check-metadata
-  "Loads in bulk into the shared metadata provider of each Database what those of `queries` that are MBQL 5 queries
-  over it reference, so that working out what they need reads no metadata one query at a time."
-  [queries]
-  (doseq [[db-id db-queries] (group-by :database (filter #(and (map? %) (:lib/metadata %)) queries))
-          :when (pos-int? db-id)
-          :let  [mp (lib-be/application-database-metadata-provider db-id)
-                 db-queries (filterv #(identical? mp (:lib/metadata %)) db-queries)]
+  "Loads in bulk into `db-id->provider`, the provider of each Database, what `queries` over it reference, those that
+  are MBQL 5 queries over that provider and those without a provider, so that working out what they need reads no
+  metadata one query at a time."
+  [db-id->provider queries]
+  (doseq [[db-id db-queries] (group-by :database (filter map? queries))
+          :let  [mp         (db-id->provider db-id)
+                 db-queries (when mp
+                              (into []
+                                    (keep #(cond
+                                             (identical? mp (:lib/metadata %)) %
+                                             (nil? (:lib/metadata %))          (try
+                                                                                 (lib/query mp %)
+                                                                                 (catch Throwable _
+                                                                                   nil))))
+                                    db-queries))]
           :when (seq db-queries)]
     (try
       (lib-be/bulk-load-query-metadata! mp (referenced-entity-ids mp db-queries))
@@ -734,11 +752,13 @@
         (log/debugf "Could not prefetch the metadata of run checks: %s" (ex-message e))))))
 
 (defn- shared-provider-queries
-  "`queries` moved onto the shared metadata provider of each Database by [[shared-provider-query]], with that provider
+  "`queries` moved onto the provider of each Database in the batch by [[shared-provider-query]], with that provider
   loaded in bulk by [[prefetch-run-check-metadata]]."
   [queries]
-  (let [queries (mapv shared-provider-query queries)]
-    (prefetch-run-check-metadata queries)
+  (let [db-ids          (into #{} (comp (filter map?) (map :database) (filter pos-int?)) queries)
+        db-id->provider (into {} (map (fn [db-id] [db-id (batch-provider db-id queries)])) db-ids)
+        queries         (mapv #(shared-provider-query (when (map? %) (db-id->provider (:database %))) %) queries)]
+    (prefetch-run-check-metadata db-id->provider queries)
     queries))
 
 (defn- run-check-answers
@@ -749,20 +769,66 @@
                                   (map #(select-keys % [:query :required-perms])))
                             checks)))
 
+(defn- primary-source-card-id
+  "The id of the source Card of `query`, or nil when it has none or reading it throws."
+  [query]
+  (when (map? query)
+    (try
+      (lib/primary-source-card-id (->mbql5 query))
+      (catch Throwable _
+        nil))))
+
+(defn- source-card-instances
+  "The Card with its `:collection_id` of each of `card-ids` that exists, by id, read for all of them at once, or nil
+  when there is none or reading them fails, so that each query reads its own."
+  [card-ids]
+  (try
+    (when-let [card-ids (seq (into [] (comp (remove nil?) (distinct)) card-ids))]
+      (card-instances (vec card-ids)))
+    (catch Throwable _
+      nil)))
+
+(defn- run-check-queries
+  "`queries`, moved onto one shared metadata provider per Database by [[shared-provider-queries]] when there are
+  several, so that a single query keeps the provider it came with."
+  [queries]
+  (if (next queries)
+    (shared-provider-queries queries)
+    (vec queries)))
+
 (defn- query-run-answers*
   "Whether the current user may run each of `queries`, whose permissions are worked out with the same element of
-  `perms-opts`, with the answers read for all of them together."
+  `perms-opts`, with the answers read for all of them together and only those to preprocess preprocessed as admin."
   [queries perms-opts]
-  (let [queries (shared-provider-queries queries)
-        checks  (request/as-admin
-                  (mapv (fn [query opts]
-                          {:query          query
-                           :required-perms (try
-                                             (required-perms-for-query query opts)
-                                             (catch Throwable e
-                                               e))})
-                        queries perms-opts))
-        answers (run-check-answers checks)]
+  (let [queries     (vec queries)
+        perms-opts  (vec (take (count queries) perms-opts))
+        card-ids    (mapv primary-source-card-id queries)
+        preprocess  (into []
+                          (keep-indexed (fn [i query]
+                                          (let [opts (nth perms-opts i)]
+                                            (when (and (seq query)
+                                                       (nil? (nth card-ids i))
+                                                       (not (:resolved-source-ids opts))
+                                                       (not (:already-preprocessed? opts)))
+                                              i))))
+                          queries)
+        queries     (reduce (fn [queries [i query]] (assoc queries i query))
+                            queries
+                            (map vector preprocess (run-check-queries (mapv #(nth queries %) preprocess))))
+        id->card    (source-card-instances card-ids)
+        required    (fn []
+                      (mapv (fn [query opts]
+                              {:query          query
+                               :required-perms (try
+                                                 (required-perms-for-query query (cond-> opts
+                                                                                   id->card (assoc :id->card id->card)))
+                                                 (catch Throwable e
+                                                   e))})
+                            queries perms-opts))
+        checks      (if (and (seq preprocess) (not api/*is-superuser?*))
+                      (request/as-admin (required))
+                      (required))
+        answers     (run-check-answers checks)]
     (mapv (fn [{:keys [query required-perms]} {:keys [throw-exceptions?]}]
             (try
               (when (instance? Throwable required-perms)
@@ -979,6 +1045,6 @@
    (doseq [query queries]
      (assert (map? query)))
    (lib-be/with-metadata-provider-cache
-     (let [prepared (prepared-run-checks (shared-provider-queries queries) options)
+     (let [prepared (prepared-run-checks (run-check-queries queries) options)
            answers  (run-check-answers prepared)]
        (run! #(check-prepared-run-check answers %) prepared)))))
