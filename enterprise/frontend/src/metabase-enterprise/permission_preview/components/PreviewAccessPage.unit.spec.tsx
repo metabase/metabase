@@ -83,13 +83,17 @@ interface SetupOpts {
   hasTenants?: boolean;
   attributes?: string[];
   refusal?: { status: number; body: object };
+  firstPreviewLastsMs?: number;
 }
+
+const TEN_MINUTES_MS = 10 * 60 * 1000;
 
 function setup({
   users = USERS,
   hasTenants = true,
   attributes = [],
   refusal,
+  firstPreviewLastsMs = TEN_MINUTES_MS,
 }: SetupOpts = {}) {
   setupUsersEndpoints(users);
   setupGroupsEndpoint(GROUPS);
@@ -102,10 +106,11 @@ function setup({
     }
     previewCount += 1;
     const body = JSON.parse(String(call.options.body));
+    const lastsMs = previewCount === 1 ? firstPreviewLastsMs : TEN_MINUTES_MS;
     return {
       id: previewCount,
       token: `mbpv_token-${previewCount}`,
-      expires_at: "2026-11-24T12:00:00Z",
+      expires_at: new Date(Date.now() + lastsMs).toISOString(),
       // a group preview runs as its stand-in, which has a user of its own
       user_id: body.user_id ?? 100 + body.group_id,
     };
@@ -218,6 +223,60 @@ describe("PreviewAccessPage", () => {
       "/embed/permission-preview-content/collection/all",
     );
     expect(startedBodies()).toEqual([JSON.stringify({ user_id: 2 })]);
+  });
+
+  it("shows the frame, not the ended state, while the preview has time left", async () => {
+    setup();
+
+    await userEvent.click(await screen.findByText("Sandy Sales"));
+
+    expect(await getFrame()).toBeInTheDocument();
+    expect(
+      screen.queryByText("This preview ended after 10 minutes."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("replaces the frame with the ended state when the preview's time runs out", async () => {
+    setup({ firstPreviewLastsMs: 200 });
+
+    await userEvent.click(await screen.findByText("Sandy Sales"));
+    await getFrame();
+
+    expect(
+      await screen.findByText("This preview ended after 10 minutes."),
+    ).toBeInTheDocument();
+    expect(screen.queryByTitle(/^What .* sees$/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Loading Sandy Sales's view…"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview again" })).toBeVisible();
+  });
+
+  it("starts a new preview of the same person at the same item from Preview again", async () => {
+    setup({ firstPreviewLastsMs: 400 });
+    await userEvent.click(await screen.findByText("Sandy Sales"));
+    await getFrame();
+    const address = screen.getByLabelText("Address");
+    await userEvent.clear(address);
+    await userEvent.type(address, "/dashboard/12{Enter}");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Preview again" }),
+    );
+
+    await waitFor(async () =>
+      expect(await getFrame()).toHaveAttribute(
+        "src",
+        "/embed/permission-preview-content/dashboard/12",
+      ),
+    );
+    expect(startedBodies()).toEqual([
+      JSON.stringify({ user_id: 2 }),
+      JSON.stringify({ user_id: 2 }),
+    ]);
+    expect(
+      screen.queryByText("This preview ended after 10 minutes."),
+    ).not.toBeInTheDocument();
   });
 
   it("lists groups without Administrators and All tenant users, and previews a picked one", async () => {

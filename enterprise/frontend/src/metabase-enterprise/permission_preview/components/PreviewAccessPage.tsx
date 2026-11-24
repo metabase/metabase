@@ -20,6 +20,7 @@ import { getRefusalMessage } from "../utils/refusal";
 import { AttributeBar } from "./AttributeBar";
 import { ExplainAccess } from "./ExplainAccess/ExplainAccess";
 import { PreviewBand } from "./PreviewBand";
+import { PreviewEnded } from "./PreviewEnded";
 import { PreviewFrame } from "./PreviewFrame";
 import { PreviewSidebar } from "./PreviewSidebar";
 import type { PreviewTarget } from "./types";
@@ -57,6 +58,8 @@ function Preview({ target }: PreviewProps) {
   const [startPreview] = useStartPermissionPreviewMutation();
   const [endPreview] = useEndPermissionPreviewMutation();
   const [session, setSession] = useState<PermissionPreviewSession | null>(null);
+  const [isEnded, setIsEnded] = useState(false);
+  const [restartCount, setRestartCount] = useState(0);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [frameItem, setFrameItem] = useState(ALL_COLLECTIONS_ITEM);
   const [openCount, setOpenCount] = useState(0);
@@ -83,6 +86,7 @@ function Preview({ target }: PreviewProps) {
     let startedSession: PermissionPreviewSession | null = null;
 
     setRefusal(null);
+    setIsEnded(false);
 
     startPreview(getStartBody(target.kind, targetId, attributes))
       .unwrap()
@@ -110,7 +114,24 @@ function Preview({ target }: PreviewProps) {
     };
     // `attributes` is read through its key, so a new object alone doesn't restart
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target.kind, targetId, attributesKey, startPreview, endPreview]);
+  }, [
+    target.kind,
+    targetId,
+    attributesKey,
+    restartCount,
+    startPreview,
+    endPreview,
+  ]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+    const msLeft = Date.parse(session.expires_at) - Date.now();
+    const timeout = setTimeout(() => setIsEnded(true), Math.max(0, msLeft));
+
+    return () => clearTimeout(timeout);
+  }, [session]);
 
   useEffect(() => {
     if (!session) {
@@ -154,7 +175,8 @@ function Preview({ target }: PreviewProps) {
 
   const name = getTargetName(target);
   const frameKey = session ? `${session.id}:${openCount}` : null;
-  const isLoading = !refusal && (!session || loadedFrame !== frameKey);
+  const isLoading =
+    !refusal && !isEnded && (!session || loadedFrame !== frameKey);
 
   return (
     <>
@@ -189,7 +211,7 @@ function Preview({ target }: PreviewProps) {
             overflow: "hidden",
           }}
         >
-          {session && (
+          {session && !isEnded && (
             <PreviewFrame
               key={frameKey}
               token={session.token}
@@ -197,6 +219,11 @@ function Preview({ target }: PreviewProps) {
               initialItem={frameItem}
               onLoad={() => setLoadedFrame(frameKey)}
               onLocationChange={handleLocationChange}
+            />
+          )}
+          {isEnded && (
+            <PreviewEnded
+              onPreviewAgain={() => setRestartCount((count) => count + 1)}
             />
           )}
           {isLoading && (
