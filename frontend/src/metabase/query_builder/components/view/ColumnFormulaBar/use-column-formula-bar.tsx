@@ -122,7 +122,6 @@ export function useColumnFormulaBar({
             ? { ...current, source, sourceStatus }
             : current,
         );
-      // the bar holds one line, so the printer must not wrap
       format(expression, { query, stageIndex, printWidth: Infinity }).then(
         (source) => showSource(source, "ready"),
         () => showSource("", "failed"),
@@ -146,8 +145,6 @@ export function useColumnFormulaBar({
     }
   }, [isEnabled, isOwner, releaseOwnership]);
 
-  // The edited custom column can leave the stage under the bar, for example when the
-  // summary sidebar adds the first aggregation.
   const isEditedExpressionGone =
     isOwner && draft?.kind === "edit" && !editedExpression;
   useEffect(() => {
@@ -180,8 +177,6 @@ export function useColumnFormulaBar({
       if (expression) {
         return withEditFormulaAction(actions, () => edit(expression));
       }
-      // On a summarized question, `query` ends with an empty stage after the summary,
-      // so a Group by formula is in the last stage of the question's own query.
       const groupingExpression = findColumnLastStageExpression(
         question.query(),
         column,

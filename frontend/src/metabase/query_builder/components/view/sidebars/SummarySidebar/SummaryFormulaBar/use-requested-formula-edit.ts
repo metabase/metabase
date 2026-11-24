@@ -9,7 +9,6 @@ import { getSummaryFormulaToEdit } from "../../../../../store/selectors";
 import type { SummaryFormulaInput } from "./types";
 import { findSummaryFormula } from "./utils";
 
-/** Opens the Group by formula that a column header asked for, once the formula bar can edit it. */
 export function useRequestedFormulaEdit(
   query: Lib.Query,
   stageIndex: number,

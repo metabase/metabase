@@ -525,7 +525,7 @@ async function replaceFormula(view: EditorView | null, source: string) {
 }
 
 describe("editing a custom column from its header", () => {
-  it("offers Edit formula instead of Combine columns only on a custom column", async () => {
+  it("offers Edit formula on a custom column", async () => {
     setupCustomColumn();
     const columnActions = await openHeaderActions("Category");
     expect(within(columnActions).getByText("Combine columns")).toBeVisible();
