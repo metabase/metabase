@@ -453,3 +453,16 @@
                    (assoc-in [:measure :name] "eid written back measure")
                    (assoc-in [:document :name] "eid written back document"))
                (fetch)))))))
+
+(deftest snippet-content-test
+  (testing "a snippet's content names the Card of a card tag by entity id, as its template tags do"
+    (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {:dataset_query (venues-query)}]
+      (let [snippet (mt/user-http-request :crowberto :post 200 "native-query-snippet"
+                                          {:name    (mt/random-name)
+                                           :content (str "SELECT * FROM {{#" card-id "-venues}}")})]
+        (try
+          (is (=? {:content       (str "SELECT * FROM {{#" card-eid "-venues}}")
+                   :template_tags {(keyword (str "#" card-eid "-venues")) {:card-id card-eid}}}
+                  (get-with-entity-ids :crowberto (str "native-query-snippet/" (:id snippet)))))
+          (finally
+            (t2/delete! :model/NativeQuerySnippet :id (:id snippet))))))))
