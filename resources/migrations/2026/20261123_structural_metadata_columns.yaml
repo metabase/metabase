@@ -355,7 +355,7 @@ databaseChangeLog:
               - column:
                   name: facets
                   type: ${text.type}
-                  remarks: "JSON object of facet key to type/* keyword: the roles the field plays besides its semantic type"
+                  remarks: "JSON array of type/* keywords: the roles the field plays besides its semantic type"
 
   - changeSet:
       id: hebsk5
