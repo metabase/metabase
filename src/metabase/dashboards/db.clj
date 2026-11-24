@@ -170,7 +170,7 @@
                                             [:not= :card.dashboard_id nil]
                                             [:= :card.archived_directly false]]
                                            [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
-                              :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc]]})
+                              :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc] [:dashcard.id :asc]]})
                  dashboard-ids))))
 
 (mu/defn internal-dashboard-question-ids
