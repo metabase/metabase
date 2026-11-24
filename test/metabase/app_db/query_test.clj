@@ -272,3 +272,17 @@
     (testing "row counts of partitions are added"
       (is (= 5 (mdb.query/sum-batched 2 count [1 2 3 4 5])))
       (is (= 0 (mdb.query/sum-batched 2 count []))))))
+
+(deftest grouped-updates-merges-the-rows-of-one-key-test
+  (let [grouped #(#'mdb.query/grouped-updates % :id (fn [row] (dissoc row :id)))]
+    (testing "the last value of a column wins"
+      (is (= [[{:a 1} [1]]]
+             (grouped [{:id 1, :a 1} {:id 1, :a 2} {:id 1, :a 1}]))))
+    (testing "rows of one key that set different columns are all kept"
+      (is (= [[{:a 1, :b 2} [1]]]
+             (grouped [{:id 1, :a 1} {:id 1, :b 2}]))))
+    (testing "keys group by the changes they end with"
+      (is (= [[{:a 2} [1 3]] [{:a 1} [2]]]
+             (grouped [{:id 1, :a 1} {:id 2, :a 1} {:id 1, :a 2} {:id 3, :a 2}]))))
+    (testing "a key with no column to change is left out"
+      (is (= [] (grouped [{:id 1}]))))))
