@@ -340,13 +340,27 @@
    :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
 
   ;; SQLGlot moves a `--` comment that opens a CTE's body into a `/* */` comment, which a second parse drops, so the
-  ;; rebuild does not rebuild to itself.
-  {:name              "an executed read whose CTE body opens with a -- comment is refused: its rebuild does not rebuild to itself"
+  ;; rebuild does not rebuild to itself. Only "read-only" requires that it does.
+  {:name              "an executed read whose CTE body opens with a -- comment is allowed: its rebuild need not rebuild to itself"
    :dialect           "postgres"
    :sql               "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"
    :stmt-type         "read"
    :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :allowed :single-stmt? true :sql "WITH c AS (/* note */ SELECT id FROM t) SELECT * FROM c"}}
+
+  {:name              "an executed read-only statement whose CTE body opens with a -- comment is refused: its rebuild does not rebuild to itself"
+   :dialect           "postgres"
+   :sql               "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
    :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
+
+  {:name              "an executed read whose rebuilt E'' string moves a quote, so `set_config` runs, is refused"
+   :dialect           "postgres"
+   :sql               "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "session-function"}}
 
   {:name              "an executed write whose dollar-quoted alias SQLGlot writes back bare, hiding a second statement, is refused"
    :dialect           "postgres"

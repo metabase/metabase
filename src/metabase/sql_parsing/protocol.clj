@@ -34,10 +34,10 @@
   (single-stmt-of-type [parser dialect sql stmt-type check-rebuild]
     "Whether the SQL is a single statement of `stmt-type`, as a keywordized map that includes the SQL
     reconstructed from the parsed AST. `check-rebuild` is nil, `\"rebuild\"` or `\"rebuild-strict\"`. With
-    either string, the reconstruction of a statement of the allowed type must also pass the same checks, reconstruct
-    to itself, and for Postgres read as one statement with `standard_conforming_strings` on; with
-    `\"rebuild-strict\"`, also with it off, and the SQL must hold no form that the reconstruction gives another
-    value.")
+    either string, the reconstruction of a statement of the allowed type must also pass the same checks, and for
+    Postgres read as one statement with `standard_conforming_strings` on; with `\"rebuild-strict\"`, it must also
+    reconstruct to itself and read as one statement with the setting off, and the SQL must hold no form that the
+    reconstruction gives another value.")
   (name-placeholders [parser dialect sql prefix]
     "The SQL with each positional placeholder `?` replaced by the bare name `<prefix><i>`, `i` counting from 0 in the
     order the placeholders appear, as a keywordized map of `:sql` and `:count`, the placeholders replaced.")

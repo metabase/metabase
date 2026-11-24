@@ -1429,6 +1429,18 @@
           (testing "a dollar-quoted alias, which SQLGlot writes back bare"
             (is (= :rejected (outcome "INSERT INTO venues (name) SELECT 'x' AS $q$a; RESET ROLE; SELECT 1$q$")))))))))
 
+(deftest ^:parallel impersonated-native-query-rebuild-need-not-rebuild-to-itself-test
+  (testing "an impersonated native query runs when its rebuild passes the checks, even if the rebuild does not rebuild to itself"
+    (let [outcome (fn [sql]
+                    (try
+                      (driver.sql/validate-impersonated-query* :postgres (lib/native-query meta/metadata-provider sql))
+                      :ok
+                      (catch clojure.lang.ExceptionInfo _ :rejected)))]
+      (testing "a -- comment opening a CTE's body, which the rebuild writes as a /* */ comment that a second parse drops"
+        (is (= :ok (outcome "WITH c AS (\n  -- note\n  SELECT id FROM venues) SELECT * FROM c"))))
+      (testing "an E'' string whose rebuild moves a quote, so `set_config` runs, is still refused"
+        (is (= :rejected (outcome "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a")))))))
+
 (deftest validate-impersonated-query-is-enforced-for-all-impersonation-drivers-test
   (testing "every driver that supports connection-impersonation enforces the single-statement guard (SEC-1189)"
     (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)

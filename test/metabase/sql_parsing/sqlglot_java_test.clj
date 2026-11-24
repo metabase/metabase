@@ -135,7 +135,12 @@
                ["postgres" "read"      "rebuild"               "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       nil]
                ["postgres" "read"      "rebuild"               "SELECT 1 AS $q$a;SELECT 2$q$"                                          "rebuild-differs"]
                ["postgres" "write"     "rebuild"               "INSERT INTO t SELECT 1 AS $q$a;SELECT 2$q$"                            "rebuild-differs"]
-               ["postgres" "write"     "rebuild"               "UPDATE t SET a = E'a\\\\'"                                            "rebuild-differs"]]]
+               ["postgres" "write"     "rebuild"               "UPDATE t SET a = E'a\\\\'"                                            "rebuild-differs"]
+               ["postgres" "read"      "rebuild"        "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a" "rebuild-differs"]
+               ;; Only "rebuild-strict" requires the rebuild to rebuild to itself: a `--` comment opening a CTE's body
+               ;; comes back as `/* */`, which a second parse drops.
+               ["postgres" "read"      "rebuild"        "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"        nil]
+               ["postgres" "read-only" "rebuild-strict" "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"        "rebuild-differs"]]]
         (testing (pr-str dialect stmt-type check-rebuild sql)
           (let [result (protocol/single-stmt-of-type java dialect sql stmt-type check-rebuild)]
             (is (= reason (:reason result)))

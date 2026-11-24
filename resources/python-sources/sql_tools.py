@@ -2165,11 +2165,11 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
 
     `check_rebuild` is None, "rebuild" or "rebuild-strict". With either value, the reconstruction of a statement
-    of the allowed type must also pass the same checks and reconstruct to itself (reason "rebuild-differs", with the
-    reconstruction's own reason as `reason_detail`), and for "postgres", Postgres must read it as one statement with
-    `standard_conforming_strings` on (reason "rebuild-differs", detail "multiple-statements"). With
-    "rebuild-strict", it must also read as one statement with the setting off (reason "backslash-quote"), and `sql`
-    must hold no form that the reconstruction gives another value (see `_value_changing_form`).
+    of the allowed type must also pass the same checks (reason "rebuild-differs", with the reconstruction's own reason
+    as `reason_detail`), and for "postgres", Postgres must read it as one statement with `standard_conforming_strings`
+    on (reason "rebuild-differs", detail "multiple-statements"). With "rebuild-strict", it must also reconstruct to
+    itself (reason "rebuild-differs"), read as one statement with the setting off (reason "backslash-quote"), and
+    `sql` must hold no form that the reconstruction gives another value (see `_value_changing_form`).
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2201,7 +2201,10 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
                 )
                 if changed is not None:
                     problem = changed
-                elif again is not None and (not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt):
+                elif again is not None and (
+                    not again.get("allowed_stmt_type?")
+                    or (check_rebuild == "rebuild-strict" and again.get("sql") != rebuilt)
+                ):
                     problem = ("rebuild-differs", again.get("reason"))
                 elif dialect == "postgres" and _postgres_statement_count(rebuilt, True) > 1:
                     problem = ("rebuild-differs", "multiple-statements")

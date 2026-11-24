@@ -275,10 +275,11 @@
   The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
   parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk the parser
   running out of memory) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
-  original one. Only `:verdict :allowed` is permission to proceed. The `:sql` must also pass the same checks and
-  reconstruct to itself (`:reason \"rebuild-differs\"`), and on Postgres read as one statement with
-  `standard_conforming_strings` on; for `\"read-only\"`, also with it off (`:reason \"backslash-quote\"` when only
-  off splits it), and with no form that the reconstruction gives another value.
+  original one. Only `:verdict :allowed` is permission to proceed. The `:sql` must also pass the same checks
+  (`:reason \"rebuild-differs\"`), and on Postgres read as one statement with `standard_conforming_strings` on. For
+  `\"read-only\"`, it must also reconstruct to itself (`:reason \"rebuild-differs\"`), read as one statement with
+  the setting off (`:reason \"backslash-quote\"` when only off splits it), and hold no form that the reconstruction
+  gives another value.
 
   See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape, and [[classify-stmt]]
   for the same question asked by a caller that only needs a verdict."

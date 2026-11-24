@@ -468,12 +468,12 @@
   share. `:reason` (and `:reason_detail`) say why a query is refused for what it holds.
 
   `check-rebuild` is nil, `\"rebuild\"` or `\"rebuild-strict\"`. With either string, the regenerated SQL of a
-  statement of the allowed type must also pass the same checks and regenerate to itself (`:reason`
-  `\"rebuild-differs\"`, with the regenerated SQL's own reason as `:reason_detail`), and for `\"postgres\"`, Postgres
-  must read it as one statement with `standard_conforming_strings` on (`:reason` `\"rebuild-differs\"`,
-  `:reason_detail` `\"multiple-statements\"`). With `\"rebuild-strict\"`, it must also read as one statement
-  with the setting off (`:reason` `\"backslash-quote\"`), and `sql` must hold no form that the regenerated SQL gives
-  another value (see [[value-changing-form]]). Port of `is_single_stmt_of_type`."
+  statement of the allowed type must also pass the same checks (`:reason` `\"rebuild-differs\"`, with the regenerated
+  SQL's own reason as `:reason_detail`), and for `\"postgres\"`, Postgres must read it as one statement with
+  `standard_conforming_strings` on (`:reason` `\"rebuild-differs\"`, `:reason_detail` `\"multiple-statements\"`).
+  With `\"rebuild-strict\"`, it must also regenerate to itself (`:reason` `\"rebuild-differs\"`), read as one
+  statement with the setting off (`:reason` `\"backslash-quote\"`), and `sql` must hold no form that the regenerated
+  SQL gives another value (see [[value-changing-form]]). Port of `is_single_stmt_of_type`."
   [dialect sql stmt-type check-rebuild]
   (let [read-only-type? (= stmt-type "read-only")
         ;; Filled in as it goes, so a failure part way keeps what was found before it.
@@ -504,7 +504,8 @@
                           changed
                           changed
 
-                          (and again (or (not (:allowed_stmt_type? again)) (not= rebuilt (:sql again))))
+                          (and again (or (not (:allowed_stmt_type? again))
+                                         (and (= check-rebuild "rebuild-strict") (not= rebuilt (:sql again)))))
                           ["rebuild-differs" (:reason again)]
 
                           (and (= dialect "postgres") (> (postgres-statement-count rebuilt true) 1))
