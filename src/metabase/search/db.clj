@@ -74,11 +74,9 @@
   Turning it into plain data means redesigning that queue, not restructuring a caller."
   [search-model :- :string
    where-clause :- [:maybe vector?]]
-  (let [query (ingestion.query/spec-index-query-where search-model where-clause)
-        rows  (mdb/streaming-reducible-query query)]
-    (if (= :mysql (mdb/db-type))
-      (eduction (map coerce-booleans) rows)
-      rows)))
+  (let [query (ingestion.query/spec-index-query-where search-model where-clause)]
+    (cond->> (mdb/streaming-reducible-query query)
+      (= :mysql (mdb/db-type)) (eduction (map coerce-booleans)))))
 
 (mu/defn spec-index-doc-ids-reducible
   "A reducible of at most `limit` distinct document ids `search-model` produces under `where-clause`, each row as
