@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { createMockLocation } from "__support__/state";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import type { Location } from "metabase/router";
 import { Route } from "metabase/router";
 import { openSaveDialog } from "metabase/utils/dom";
@@ -241,6 +242,52 @@ describe("Logs", () => {
       expect(text).toContain("[uuid-1]");
       expect(text).toContain("alpha-message");
       expect(text).not.toContain("beta-message");
+    });
+
+    it("downloads all logs, then only the logs matching the typed filter", async () => {
+      const debugLog = {
+        timestamp: "2024-01-10T21:21:58.597Z",
+        level: "DEBUG",
+        fqns: "metabase.server.middleware.log",
+        msg: "message",
+        exception: null,
+        process_uuid: "e7774ef2-42ab-43de-89f7-d6de9fdc624f",
+      };
+      const errorLog = {
+        ...debugLog,
+        process_uuid: "9da436dc-d79c-42f9-89e3-322c22cd0cd3",
+        timestamp: "2024-01-10T21:21:58.598Z",
+        level: "ERROR",
+      };
+      // the formatted timestamp depends on the timezone the test runs in
+      const formatTimestamp = (timestamp: string) => dayjs(timestamp).format();
+      const debugLine = `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(debugLog.timestamp)} DEBUG metabase.server.middleware.log message`;
+      const errorLine = `[9da436dc-d79c-42f9-89e3-322c22cd0cd3] ${formatTimestamp(errorLog.timestamp)} ERROR metabase.server.middleware.log message`;
+      fetchMock.get("path:/api/logger/logs", [debugLog, errorLog]);
+      setup();
+
+      const downloadButton = await screen.findByRole("button", {
+        name: /Download/,
+      });
+      await waitFor(() => expect(downloadButton).toBeEnabled());
+      await userEvent.click(downloadButton);
+
+      expect(mockOpenSaveDialog).toHaveBeenCalledTimes(1);
+      const [allFilename, allBlob] = mockOpenSaveDialog.mock.calls[0];
+      expect(allFilename).toBe("logs.txt");
+      // mock.calls args are untyped; the dialog is always called with a Blob
+      expect(await readBlobText(allBlob as Blob)).toBe(
+        [debugLine, errorLine].join("\n"),
+      );
+
+      await userEvent.type(screen.getByPlaceholderText("Filter logs"), "error");
+      await userEvent.click(screen.getByRole("button", { name: /Download/ }));
+
+      expect(mockOpenSaveDialog).toHaveBeenCalledTimes(2);
+      const [filteredFilename, filteredBlob] = mockOpenSaveDialog.mock.calls[1];
+      expect(filteredFilename).toBe("logs.txt");
+      // mock.calls args are untyped; the dialog is always called with a Blob
+      expect(await readBlobText(filteredBlob as Blob)).toBe(errorLine);
     });
   });
 });
