@@ -31,19 +31,14 @@
                           (filter #(contains? #{:email :slack} (:channel_type %)))
                           (mapcat (fn [{pulse-channel-id  :id
                                         channel-type      :channel_type
-                                        {:keys [channel emails]} :details}]
+                                        {:keys [channel]} :details}]
                                     (case channel-type
-                                      :email (concat
-                                              (for [user-id (sort (channel-id->user-ids pulse-channel-id))
-                                                    :let    [{:keys [common_name] :as recipient} (user-id->user user-id)]
-                                                    :when   recipient]
-                                                (assoc recipient
-                                                       :notification-type channel-type
-                                                       :recipient common_name))
-                                              (map (fn [email] {:notification-type channel-type
-                                                                :email email
-                                                                :recipient email})
-                                                   emails))
+                                      :email (for [user-id (sort (channel-id->user-ids pulse-channel-id))
+                                                   :let    [{:keys [common_name] :as recipient} (user-id->user user-id)]
+                                                   :when   recipient]
+                                               (assoc recipient
+                                                      :notification-type channel-type
+                                                      :recipient common_name))
                                       :slack [{:notification-type channel-type
                                                :recipient         channel}]))))
                          channels)})

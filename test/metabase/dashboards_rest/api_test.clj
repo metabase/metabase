@@ -5174,7 +5174,7 @@
     (let [params {:disable-links? false
                   :dash-creator-id (mt/user->id :rasta)
                   :pulse-creator-id (mt/user->id :lucky)
-                  :expected-email-pulse-recipients #{"rasta@metabase.com" "lucky@metabase.com" "crowberto@metabase.com" "yo@broken.sub"}
+                  :expected-email-pulse-recipients #{"rasta@metabase.com" "lucky@metabase.com" "crowberto@metabase.com"}
                   :expected-slack-pulse-recipients #{"rasta@metabase.com" "lucky@metabase.com"}}]
       (testing "Send emails links when disable_links: false"
         (test-handle-broken-subscription-notification! params))
@@ -5184,14 +5184,14 @@
         (test-handle-broken-subscription-notification!
          (assoc params
                 :dash-creator-id (mt/user->id :trashbird)
-                :expected-email-pulse-recipients #{"lucky@metabase.com" "crowberto@metabase.com" "yo@broken.sub"}
+                :expected-email-pulse-recipients #{"lucky@metabase.com" "crowberto@metabase.com"}
                 :expected-slack-pulse-recipients #{"lucky@metabase.com"})))
       (testing "Do not email inactive pulse creator"
         (test-handle-broken-subscription-notification!
          (assoc params
                 :dash-creator-id (mt/user->id :trashbird)
                 :pulse-creator-id (mt/user->id :trashbird)
-                :expected-email-pulse-recipients #{"crowberto@metabase.com" "yo@broken.sub"}
+                :expected-email-pulse-recipients #{"crowberto@metabase.com"}
                 :expected-slack-pulse-recipients #{}))))))
 
 (deftest update-response-leaves-out-archived-subscriptions-test
