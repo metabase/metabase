@@ -180,12 +180,12 @@ export function ConversationDetailPage() {
                 value={formatNumber(input_tokens)}
               />
               <StatCard
-                label={t`Cache read tokens`}
-                value={formatNumber(cache_read_tokens)}
-              />
-              <StatCard
                 label={t`Output tokens`}
                 value={formatNumber(output_tokens)}
+              />
+              <StatCard
+                label={t`Cached input tokens`}
+                value={formatNumber(cache_read_tokens)}
               />
             </SimpleGrid>
 

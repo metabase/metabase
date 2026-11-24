@@ -146,8 +146,8 @@ describe("scenarios > monitor > ai auditing", () => {
         "be.visible",
       );
       cy.findByText("NLQ").should("be.visible");
-      ["Input tokens", "Cache read tokens", "Output tokens"].forEach((label) =>
-        cy.findByText(label).should("be.visible"),
+      ["Input tokens", "Output tokens", "Cached input tokens"].forEach(
+        (label) => cy.findByText(label).should("be.visible"),
       );
     });
   });

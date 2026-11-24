@@ -177,8 +177,8 @@ describe("ConversationsPage", () => {
         "Date",
         "Messages",
         "Input tokens",
-        "Cache read tokens",
         "Output tokens",
+        "Cached input tokens",
         "Queries",
         "Searches",
         "IP",
@@ -206,8 +206,8 @@ describe("ConversationsPage", () => {
 
       expect(within(table).getByText("4")).toBeInTheDocument();
       expect(within(table).getByText("4,321")).toBeInTheDocument();
-      expect(within(table).getByText("6,789")).toBeInTheDocument();
       expect(within(table).getByText("1,235")).toBeInTheDocument();
+      expect(within(table).getByText("6,789")).toBeInTheDocument();
       expect(within(table).queryByText("12,345")).not.toBeInTheDocument();
     });
 
@@ -257,8 +257,8 @@ describe("ConversationsPage", () => {
       { headerLabel: /^Date\b/, sortBy: "created_at" },
       { headerLabel: /^Messages\b/, sortBy: "message_count" },
       { headerLabel: /^Input tokens\b/, sortBy: "input_tokens" },
-      { headerLabel: /^Cache read tokens\b/, sortBy: "cache_read_tokens" },
       { headerLabel: /^Output tokens\b/, sortBy: "output_tokens" },
+      { headerLabel: /^Cached input tokens\b/, sortBy: "cache_read_tokens" },
       { headerLabel: /^IP\b/, sortBy: "ip_address" },
     ])("sorts by $sortBy", async ({ headerLabel, sortBy }) => {
       setup();
