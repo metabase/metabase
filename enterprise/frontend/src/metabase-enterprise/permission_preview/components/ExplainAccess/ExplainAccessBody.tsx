@@ -304,7 +304,7 @@ export function TableRules({ table, reasons, target }: TableRulesProps) {
   ];
 
   return (
-    <Stack gap="sm" p="sm">
+    <Stack gap="sm">
       {notes.map((note) => (
         <BodyText key={note}>{note}</BodyText>
       ))}

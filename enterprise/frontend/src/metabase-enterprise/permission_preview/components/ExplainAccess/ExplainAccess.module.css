@@ -22,6 +22,7 @@
   align-items: center;
   gap: var(--mantine-spacing-sm);
   padding: var(--mantine-spacing-sm);
+  margin: 0 calc(-1 * var(--mantine-spacing-sm));
   border-radius: var(--mantine-radius-sm);
 }
 
