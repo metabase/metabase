@@ -441,8 +441,8 @@
             "  - A subscription created by \"Rasta Toucan\" by email and Slack to 3 recipients, which used \"Region\""
             "These subscriptions already used filters the dashboard no longer had, and were archived too:"
             "  - A subscription created by \"Lucky\" with no recipients, which used \"Old\", \"o2\", \"o3\""
-            (str "The change also archived 2 subscriptions the user can't see, which used filters the dashboard no "
-                 "longer has. This change or an earlier one removed those filters.")
+            (str "The change also archived 2 subscriptions the user can't see, which used filters the dashboard "
+                 "doesn't have. This change may have removed them, or they were missing before.")
             (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
                  "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]
            (remove nil? (flatten (#'write-dashboard/archived-subscriptions-text
@@ -465,8 +465,8 @@
 
 (deftest ^:parallel archived-subscriptions-text-only-unreadable-test
   (testing "only unreadable subscriptions are counted without a header or \"also\""
-    (is (= [(str "The change archived 2 subscriptions the user can't see, which used filters the dashboard no longer "
-                 "has. This change or an earlier one removed those filters.")
+    (is (= [(str "The change archived 2 subscriptions the user can't see, which used filters the dashboard doesn't "
+                 "have. This change may have removed them, or they were missing before.")
             (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
                  "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]
            (remove nil? (flatten (#'write-dashboard/archived-subscriptions-text (repeat 2 {:readable? false}))))))))
