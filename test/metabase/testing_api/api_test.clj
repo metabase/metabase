@@ -239,6 +239,8 @@
   (testing "arguments that pass the tool's schema but name nothing to search are the caller's mistake too"
     (doseq [[retriever arguments code] [["general" {:keyword_queries [" "]}
                                          "metabase.metabot.tools.search/missing-query"]
+                                        ["library" {:user_search_prompt " "}
+                                         "metabase.metabot.tools.entity-retrieval/blank-search-prompt"]
                                         ["sql"     {:keyword_queries ["orders"], :database_id Integer/MAX_VALUE}
                                          "metabase.metabot.tools.search/unavailable-database"]]]
       (is (=? {:error-code code, :error-class "recoverable"}
