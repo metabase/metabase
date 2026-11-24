@@ -621,22 +621,23 @@
             (mt/user-http-request :rasta :post 403 (str "transform-job/" job-id "/runs/" run-id "/cancel")))
           (testing "a missing job"
             (mt/user-http-request :crowberto :post 404 (str "transform-job/" Integer/MAX_VALUE "/run")))
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms :no}
-              (testing "premise: the analyst cannot write the job"
-                (mt/user-http-request :lucky :put 403 (str "transform-job/" job-id) {:name "Renamed"}))
-              (testing "responses say the analyst may run the job"
-                (is (true? (:can_query (mt/user-http-request :lucky :get 200 (str "transform-job/" job-id)))))
-                (is (true? (:can_query (some #(when (= job-id (:id %)) %)
-                                             (mt/user-http-request :lucky :get 200 "transform-job"))))))
-              (testing "an analyst who reads the job, on an instance where remote sync keeps synced content read-only"
-                (mt/with-dynamic-fn-redefs [remote-sync/read-only? (constantly true)]
-                  (mt/user-http-request :lucky :post 204 (str "transform-job/" job-id "/runs/" run-id "/cancel"))
-                  (is (= :canceled (t2/select-one-fn :status :model/TransformJobRun :id run-id)))
-                  (mt/with-model-cleanup [:model/TransformJobRun]
-                    (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [& _] {::jobs/status :succeeded})]
-                      (is (pos-int? (:job_run_id (mt/user-http-request :lucky :post 202
-                                                                       (str "transform-job/" job-id "/run"))))))))))))))))
+          (mt/when-ee-evailable
+           (mt/with-data-analyst-role! (mt/user->id :lucky)
+             (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms :no}
+               (testing "premise: the analyst cannot write the job"
+                 (mt/user-http-request :lucky :put 403 (str "transform-job/" job-id) {:name "Renamed"}))
+               (testing "responses say the analyst may run the job"
+                 (is (true? (:can_query (mt/user-http-request :lucky :get 200 (str "transform-job/" job-id)))))
+                 (is (true? (:can_query (some #(when (= job-id (:id %)) %)
+                                              (mt/user-http-request :lucky :get 200 "transform-job"))))))
+               (testing "an analyst who reads the job, on an instance where remote sync keeps synced content read-only"
+                 (mt/with-dynamic-fn-redefs [remote-sync/read-only? (constantly true)]
+                   (mt/user-http-request :lucky :post 204 (str "transform-job/" job-id "/runs/" run-id "/cancel"))
+                   (is (= :canceled (t2/select-one-fn :status :model/TransformJobRun :id run-id)))
+                   (mt/with-model-cleanup [:model/TransformJobRun]
+                     (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [& _] {::jobs/status :succeeded})]
+                       (is (pos-int? (:job_run_id (mt/user-http-request :lucky :post 202
+                                                                        (str "transform-job/" job-id "/run")))))))))))))))))
 
 (deftest list-jobs-statement-count-test
   (testing "GET /api/transform-job hydrates its permission keys with no statement per job"

@@ -267,15 +267,17 @@
   (log/info "Getting all transform jobs")
   (api/check-data-studio-access)
   (let [jobs (transforms-rest.db/jobs)]
-    (into []
-          (comp (map add-next-run)
-                (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
-                (transforms-base.u/->date-field-filter-xf [:next_run :start_time] next-run-start-time)
-                (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
-                (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
-                (map #(update % :last_run transforms-base.u/present-run))
-                (map #(update % :next_run transforms-base.u/present-run)))
-          (t2/hydrate jobs :tag_ids :last_run :can_query))))
+    (t2/hydrate
+     (into []
+           (comp (map add-next-run)
+                 (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
+                 (transforms-base.u/->date-field-filter-xf [:next_run :start_time] next-run-start-time)
+                 (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
+                 (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
+                 (map #(update % :last_run transforms-base.u/present-run))
+                 (map #(update % :next_run transforms-base.u/present-run)))
+           (t2/hydrate jobs :tag_ids :last_run))
+     :can_query)))
 
 (def ^:private JobRunResponse
   [:map {:closed true}

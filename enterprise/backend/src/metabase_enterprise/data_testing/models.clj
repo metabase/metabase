@@ -117,17 +117,26 @@
   [subject]
   (boolean (some-> subject (t2/hydrate :can_query) mi/can-query?)))
 
+(defn- subject-writable-where-read-only?
+  "Whether `subject` may take tests on an instance where remote sync keeps synced content read-only, which then needs
+  that the current user may edit it, as its `:can_write` says, since that refuses a synced subject there."
+  [subject]
+  (boolean (or (not (remote-sync/read-only?))
+               (some-> subject (t2/hydrate :can_write) mi/can-write?))))
+
 (defn can-create-test?
   "Whether the current user may create a test of `subject`: they may run native SQL against its Database, which
-  `db-id` gives, and run the subject."
+  `db-id` gives, run the subject, and edit it on a read-only instance."
   [subject db-id]
   (and (subject-native? db-id subject)
-       (subject-can-query? subject)))
+       (subject-can-query? subject)
+       (subject-writable-where-read-only? subject)))
 
 (defn can-update-test?
   "Whether the current user may apply `changes` to the saved `test`, whose subject `subject-key` names and
   `load-subject` loads by id: `writable?` holds, a change to its inputs or expectations needs native SQL on the
-  Database of its new subject, which `db-id` gives, and a change of subject needs that they may run the new one."
+  Database of its new subject, which `db-id` gives, and a change of subject needs that they may run the new one and,
+  on a read-only instance, edit it."
   [test changes {:keys [subject-key load-subject db-id writable?]}]
   (let [changes?    #(and (contains? changes %) (not= (get changes %) (get test %)))
         new-subject (delay (some-> (get changes subject-key (get test subject-key)) load-subject))]
@@ -136,7 +145,8 @@
           (or (not-any? changes? native-columns)
               (subject-native? db-id @new-subject))
           (or (not (changes? subject-key))
-              (subject-can-query? @new-subject))))))
+              (and (subject-can-query? @new-subject)
+                   (subject-writable-where-read-only? @new-subject)))))))
 
 (defn assoc-subject-answers
   "Each of the saved `tests`, nil ones left nil, with under `k` whether the subject its `subject-key` names among

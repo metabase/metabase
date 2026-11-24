@@ -274,36 +274,37 @@
 ;;; |                                     Run checks: run-dag, cancel, reset                                           |
 ;;; +------------------------------------------------------------------------------------------------------------------+
 
-(deftest run-control-endpoints-need-read-access-test
-  (testing "a data analyst who reads a transform but cannot write it controls its runs, also on a read-only instance"
-    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
-      (mt/with-premium-features #{:advanced-permissions :transforms-basic}
-        (doseq [read-only? [false true]]
-          (testing (str "read-only: " read-only?)
-            (mt/with-temp [:model/Transform       {tid :id}    {:name "Seed" :last_checkpoint_value "7"}
-                           :model/TransformDagRun {run-id :id} {:source_transform_id tid
-                                                                :direction           "upstream"
-                                                                :status              "started"
-                                                                :is_active           true
-                                                                :start_time          (parse-instant "2025-09-01T10:00:00")}]
-              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms :no}
-                (mt/with-data-analyst-role! (mt/user->id :lucky)
-                  (mt/with-dynamic-fn-redefs [remote-sync/read-only? (constantly read-only?)]
-                    (mt/with-current-user (mt/user->id :lucky)
-                      (testing "premise: lucky reads the transform and cannot write it"
-                        (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Transform :id tid) :can_read))))
-                        (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Transform :id tid) :can_write))))))
-                    (testing "responses say lucky may run it"
-                      (is (true? (:can_query (mt/user-http-request :lucky :get 200 (str "transform/" tid)))))
-                      (is (true? (:can_query (some #(when (= tid (:id %)) %)
-                                                   (mt/user-http-request :lucky :get 200 "transform"))))))
-                    (mt/user-http-request :lucky :post 204 (str "transform/" tid "/reset-checkpoint"))
-                    (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform :id tid)))
-                    (is (nil? (:dag_run_id (mt/user-http-request :lucky :post 202 (str "transform/" tid "/run-dag")
-                                                                 {:direction "upstream"}))))
-                    (mt/user-http-request :lucky :post 404 (str "transform/" tid "/cancel"))
-                    (mt/user-http-request :lucky :post 204 (str "transform-dag-run/" run-id "/cancel"))
-                    (is (= :canceled (t2/select-one-fn :status :model/TransformDagRun :id run-id)))))))))))))
+(mt/when-ee-evailable
+ (deftest run-control-endpoints-need-read-access-test
+   (testing "a data analyst who reads a transform but cannot write it controls its runs, also on a read-only instance"
+     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+       (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+         (doseq [read-only? [false true]]
+           (testing (str "read-only: " read-only?)
+             (mt/with-temp [:model/Transform       {tid :id}    {:name "Seed" :last_checkpoint_value "7"}
+                            :model/TransformDagRun {run-id :id} {:source_transform_id tid
+                                                                 :direction           "upstream"
+                                                                 :status              "started"
+                                                                 :is_active           true
+                                                                 :start_time          (parse-instant "2025-09-01T10:00:00")}]
+               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms :no}
+                 (mt/with-data-analyst-role! (mt/user->id :lucky)
+                   (mt/with-dynamic-fn-redefs [remote-sync/read-only? (constantly read-only?)]
+                     (mt/with-current-user (mt/user->id :lucky)
+                       (testing "premise: lucky reads the transform and cannot write it"
+                         (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Transform :id tid) :can_read))))
+                         (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Transform :id tid) :can_write))))))
+                     (testing "responses say lucky may run it"
+                       (is (true? (:can_query (mt/user-http-request :lucky :get 200 (str "transform/" tid)))))
+                       (is (true? (:can_query (some #(when (= tid (:id %)) %)
+                                                    (mt/user-http-request :lucky :get 200 "transform"))))))
+                     (mt/user-http-request :lucky :post 204 (str "transform/" tid "/reset-checkpoint"))
+                     (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform :id tid)))
+                     (is (nil? (:dag_run_id (mt/user-http-request :lucky :post 202 (str "transform/" tid "/run-dag")
+                                                                  {:direction "upstream"}))))
+                     (mt/user-http-request :lucky :post 404 (str "transform/" tid "/cancel"))
+                     (mt/user-http-request :lucky :post 204 (str "transform-dag-run/" run-id "/cancel"))
+                     (is (= :canceled (t2/select-one-fn :status :model/TransformDagRun :id run-id))))))))))))))
 
 (deftest run-control-endpoints-refuse-user-who-cannot-read-test
   (testing "a user who cannot read a transform is refused, and a missing transform is a 404"
