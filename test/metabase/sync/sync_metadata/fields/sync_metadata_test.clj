@@ -380,22 +380,22 @@
 (deftest untyped-field-getting-its-base-type-keeps-user-settings-test
   (testing "A Field that never had a real base type, like one serdes synthesized for a stub database, keeps its user settings"
     (mt/with-temp [:model/Field {field-id :id} {:base_type :type/* :active false}]
-      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
-      (is (= [["Field"
-               field-id
-               {:base_type           :type/Text
-                :effective_type      :type/Text
-                :coercion_strategy   nil
-                :fingerprint_version 0
-                :fingerprint         nil}]]
-             (updates-that-will-be-performed!
-              (merge default-metadata
-                     {:base-type      :type/Text
-                      :effective-type :type/Text})
-              (merge default-metadata
-                     {:id             field-id
-                      :base-type      :type/*
-                      :effective-type :type/*})))))))
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Category})
+      (perform-updates!
+       (merge default-metadata
+              {:base-type      :type/Text
+               :effective-type :type/Text})
+       (merge default-metadata
+              {:id             field-id
+               :base-type      :type/*
+               :effective-type :type/*}))
+      (is (=? {:base_type           :type/Text
+               :effective_type      :type/Text
+               :fingerprint_version 0
+               :semantic_type       :type/Category}
+              (t2/select-one :model/Field :id field-id)))
+      (is (=? {:semantic_type :type/Category :semantic_type_set true}
+              (t2/select-one :model/FieldUserSettings :field_id field-id))))))
 
 (deftest untyped-field-getting-its-base-type-keeps-semantic-type-test
   (testing "A Field going from :type/* to a real base type keeps the semantic type sync gave it, e.g. a binary FK"

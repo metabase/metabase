@@ -28,7 +28,7 @@
                                 :metabase/change-log-raw-write                             8
                                 :metabase/discourage-dynamic-vars                          283
                                 :metabase/discourage-millis-duration                       1
-                                :metabase/modules                                          24
+                                :metabase/modules                                          15
                                 :metabase/namespace-name                                   3
                                 :metabase/validate-defendpoint-has-response-schema         327
                                 :metabase/validate-defendpoint-query-params-use-kebab-case 48

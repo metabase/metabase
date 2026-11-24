@@ -91,7 +91,8 @@
                               ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
                               ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995
                               :regex/lookaheads-and-lookbehinds false
-                              :table-privileges                true
+                              :stage-ctes                       true
+                              :table-privileges                 true
                               ;; "Nonquoted identifiers are not case sensitive. Oracle interprets them as uppercase."
                               ;; (Database Object Names and Qualifiers, the SQL Language Reference; the URL is in
                               ;; the comment above this form)

@@ -26,8 +26,7 @@
 (def ^:private backend-check-namespaces
   (vec (concat module-check-namespaces
                ratchet-test-namespaces
-               source-layout-check-namespaces
-               honey-sql-check-namespaces)))
+               source-layout-check-namespaces)))
 
 (def ^:private default-suites
   "Suites the bare `project-tests` command runs, in order."

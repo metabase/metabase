@@ -110,7 +110,7 @@
   "The store serdes exports the rows built here from: the database, tables, fields and metric cards of
   `metadata-provider` (see [[serdes.mp/export-store]]), when there is one, the collection, with [[collection-pk]],
   whose `entity_id` is `collection-entity-id`, and the creator, with [[creator-pk]], whose email is `creator-email`.
-  Nothing else has rows: a read of no ids answers nothing, as the app DB would, and only reads are served."
+  Nothing else has rows: a read of no ids answers nothing, as the app DB would."
   [metadata-provider    :- [:maybe ::lib.schema.metadata/metadata-provider]
    collection-entity-id :- [:maybe :string]
    creator-email        :- [:maybe :string]]
@@ -128,12 +128,6 @@
         (serdes.protocol/select-by-refs provider-store model refs columns))
       (select-by-parent-pks [_ _model _parent-pks _columns]
         [])
-      (insert-rows! [_ model _rows]
-        (throw (ex-info "the converter's store is read-only" {:model model})))
-      (update-row! [_ model _pk _changes]
-        (throw (ex-info "the converter's store is read-only" {:model model})))
-      (delete-rows! [_ model _pks]
-        (throw (ex-info "the converter's store is read-only" {:model model})))
       (transact [_ _opts f]
         (f)))))
 

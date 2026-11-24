@@ -71,7 +71,8 @@
   replace-names-impl
   referenced-tables-raw-impl
   simple-query?-impl
-  add-into-clause-impl]
+  add-into-clause-impl
+  add-insert-clause-impl]
  [sqlglot
   driver->dialect])
 

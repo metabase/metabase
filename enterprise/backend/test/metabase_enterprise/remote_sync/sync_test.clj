@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.content :as content]
    [metabase-enterprise.remote-sync.protocol.folder :as folder]
    [metabase-enterprise.remote-sync.sync :as sync]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]

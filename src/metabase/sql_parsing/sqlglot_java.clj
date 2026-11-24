@@ -143,4 +143,6 @@
     (single-stmt-of-type [_ dialect sql stmt-type]
       (call #(statements/single-stmt-of-type dialect sql stmt-type)))
     (transpile-sql [_ sql from-dialect to-dialect]
-      (call #(transpile/transpile-sql sql from-dialect to-dialect)))))
+      (call #(transpile/transpile-sql sql from-dialect to-dialect)))
+    (parse-expression [_ _dialect _sql]
+      (throw (protocol/call-failed-ex "NotImplementedError: parse_expression has no :sqlglot-java port")))))

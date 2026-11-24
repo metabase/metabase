@@ -631,7 +631,8 @@
   (see [[metabase.sql-parsing.graal]]) is reported by the transport."
   [dialect :- [:maybe :string]
    sql     :- :string]
-  (protocol/parse-expression (parser) dialect sql))
+  ;; only the GraalPy backend implements it
+  (protocol/parse-expression (parser :sqlglot) dialect sql))
 
 (defn- normalize-transpilation-result
   [result]

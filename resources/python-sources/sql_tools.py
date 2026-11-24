@@ -13,7 +13,7 @@ import sqlglot.optimizer as optimizer
 from sqlglot import exp
 from sqlglot.dialects.clickhouse import ClickHouse
 from sqlglot.dialects.dialect import Dialect
-from sqlglot.errors import OptimizeError, ParseError
+from sqlglot.errors import ParseError
 from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
 
 # sqlglot (as of 28.6.0) renders every placeholder in ClickHouse's named-parameter
