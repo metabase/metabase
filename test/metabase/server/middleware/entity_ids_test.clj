@@ -519,3 +519,36 @@
         (is (=? {:table_id (table-ref (mt/id :venues))}
                 (m/find-first #(= (:id price) (:dimension_id %)) (:dimension_mappings response))))
         (is (= [] (int-paths (select-keys response [:dimensions :dimension_mappings]))))))))
+
+(deftest action-write-back-test
+  (testing "with the header, an Action read from an instance writes the same Action of its restore, and creates one there"
+    (mt/with-actions-enabled
+      (mt/with-model-cleanup [:model/Card :model/Action]
+        (let [model  (mt/user-http-request :crowberto :post 200 "card" {:name                   "eid action model"
+                                                                        :type                   :model
+                                                                        :display                :table
+                                                                        :dataset_query          (venues-query)
+                                                                        :visualization_settings {}})
+              action (mt/user-http-request :crowberto :post 200 "action"
+                                           {:name                   "eid action"
+                                            :type                   "implicit"
+                                            :kind                   "row/create"
+                                            :model_id               (:id model)
+                                            :visualization_settings {:fields {"name" {:id "name" :hidden true}}}})
+              url    (str "action/" (:entity_id action))
+              fetch  #(without-timestamps (dissoc (get-with-entity-ids :crowberto url) :model))
+              before (fetch)
+              body   (select-keys before [:name :type :kind :model_id :parameters :parameter_mappings
+                                          :visualization_settings])]
+          (restore! [[:model/Card [(t2/select-one :model/Card :id (:id model))]]
+                     [:model/Action [(t2/select-one :model/Action :id (:id action))]]])
+          (let [model-id (id-of :model/Card (:entity_id model))]
+            (is (not= (:id model) model-id))
+            (put-with-entity-ids :crowberto url (assoc body :name "eid written back action"))
+            (is (= model-id (t2/select-one-fn :model_id :model/Action :entity_id (:entity_id action))))
+            (is (= (assoc before :name "eid written back action")
+                   (fetch)))
+            (testing "a create body by the model's entity id"
+              (let [created (mt/user-http-request :crowberto :post 200 "action" entity-ids
+                                                  (assoc body :name "eid created action"))]
+                (is (= model-id (t2/select-one-fn :model_id :model/Action :entity_id (:entity_id created))))))))))))

@@ -1373,3 +1373,31 @@
         (testing "DELETE /api/action/:action-id accepts an entity id"
           (mt/user-http-request :crowberto :delete 204 (str "action/" entity-id))
           (is (not (t2/exists? :model/Action :id action-id))))))))
+
+(deftest action-body-entity-ids-test
+  (testing "an Action create or update body names its model and Collection by entity id, and its Table by ref"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}   {:namespace "data-actions"}
+                       :model/Collection {other-id :id}                      {:namespace "data-actions"}
+                       :model/Card       {model-id :id model-eid :entity_id} (model-card-def :crowberto)]
+          (is (=? {:model_id model-id}
+                  (mt/user-http-request :crowberto :post 200 "action"
+                                        (assoc (model-less-query-action nil) :model_id model-eid))))
+          (let [created (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-eid))
+                path    (str "action/" (:id created))]
+            (is (=? {:collection_id coll-id} created))
+            (is (=? {:collection_id other-id}
+                    (mt/user-http-request :crowberto :put 200 path
+                                          {:collection_id (t2/select-one-fn :entity_id :model/Collection :id other-id)})))
+            (testing "a ref that names no row is a 404"
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :put 404 path {:collection_id "aaaaaaaaaaaaaaaaaaaaa"}))))))
+        (testing "an implicit action on a Table names it by `[db-name schema table-name]`"
+          (let [{:keys [schema name]} (t2/select-one :model/Table :id (mt/id :categories))]
+            (is (=? {:table_id (mt/id :categories)}
+                    (mt/user-http-request :crowberto :post 200 "action"
+                                          {:name     "Table action"
+                                           :type     "implicit"
+                                           :kind     "row/create"
+                                           :table_id [(:name (mt/db)) schema name]})))))))))

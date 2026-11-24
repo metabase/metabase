@@ -169,7 +169,11 @@
            permissions
            public-sharing
            util}
-   :model-imports #{:model/Action :model/Card :model/Database}}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Table}}
 
   activity-feed
   {:team "UX West"

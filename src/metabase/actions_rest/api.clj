@@ -69,13 +69,35 @@
     (actions.models/delete-actions! [action-id]))
   api/generic-204-no-content)
 
+(def ^:private action-body-references
+  "The model of the rows each column of an Action create or update body names, by id, by entity id, or, for a Table,
+  by its `[db-name schema table-name]`."
+  {:model_id      :model/Card
+   :collection_id :model/Collection
+   :table_id      :model/Table})
+
+(defn- action-body-schema
+  "`schema`, the schema of an Action create or update body, whose columns of [[action-body-references]] also take refs,
+  which it decodes to ids before it validates, and that in a request in entity id form also takes the `parameters`,
+  `parameter_mappings` and `visualization_settings` as serialization exports them. The decoding is here and not in
+  the schemas of [[metabase.actions.schema]], which ad-hoc execution shares."
+  [schema]
+  [:schema {:decode/api #(cond-> % (map? %) (eid-translation/refs->ids action-body-references))}
+   (eid-translation/structures-schema :model/Action [:parameters :parameter_mappings :visualization_settings] schema)])
+
+(def ^:private ActionCreateBody
+  (action-body-schema ::actions.schema/action.create-request))
+
+(def ^:private ActionUpdateBody
+  (action-body-schema ::actions.schema/action.update-request))
+
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
   "Create a new action."
   [_route-params
    _query-params
    {:keys [parameters]
     action-type :type
-    :as action} :- ::actions.schema/action.create-request]
+    :as action} :- ActionCreateBody]
   (api/create-check :model/Action action)
   (actions/check-implicit-actions-supported action)
   (actions/check-implicit-action-table-pk action)
@@ -97,7 +119,7 @@
   [{id-or-entity-id :id} :- [:map {:closed true}
                              [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
-   action :- ::actions.schema/action.update-request]
+   action :- ActionUpdateBody]
   (let [id              (eid-translation/->id-or-404 :model/Action id-or-entity-id)
         existing-action (api/write-check :model/Action id)
         action          (api/updates-without-collection-when-archiving existing-action action)]
