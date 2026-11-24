@@ -19,8 +19,6 @@ import { formatValue } from "metabase/value-formatting";
 import type { GoalValueResult } from "metabase/viz-core";
 import type { ColumnSettings } from "metabase-types/api";
 
-import { RIGHT_SECTION_WIDTH } from "../../constants";
-
 import S from "./GoalValuePill.module.css";
 
 type Props = HTMLAttributes<HTMLDivElement> & {
@@ -90,7 +88,6 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
           </Tooltip>
         }
         rightSectionPointerEvents="all"
-        rightSectionWidth={RIGHT_SECTION_WIDTH}
         role="group"
         tabIndex={0}
         {...props}
