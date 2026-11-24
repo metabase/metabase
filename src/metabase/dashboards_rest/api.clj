@@ -141,7 +141,8 @@
    dashboard
    :- [:map {:closed true}
        [:name                :metabase.dashboards.schema/dashboard.name]
-       [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
+       [:parameters          {:optional true} (eid-translation/structure-schema
+                                               :model/Dashboard :parameters [:maybe ::parameters.schema/parameters])]
        [:description         {:optional true} [:maybe :string]]
        [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
        [:collection_id       {:optional true} [:maybe ms/IdOrEntityId]]
@@ -508,18 +509,49 @@
     (dashboard/delete-dashboards! [id])
     api/generic-204-no-content))
 
+(defn- with-refs
+  "`schema`, a map schema, with each of `columns`, a map from a column to the model of the rows it names, also taking
+  refs in a request in entity id form (see [[eid-translation/ref-schema]])."
+  [schema columns]
+  (reduce-kv (fn [schema column model]
+               (mut/update schema column #(eid-translation/ref-schema model %)))
+             schema
+             columns))
+
+(defn- with-structures
+  "`schema`, the map schema of a `model` row, with each of its structure `columns` also taking the form serialization
+  exports it in, in a request in entity id form (see [[eid-translation/structure-schema]])."
+  [schema model columns]
+  (reduce (fn [schema column]
+            (mut/update schema column #(eid-translation/structure-schema model column %)))
+          schema
+          columns))
+
 (def ^:private UpdatedDashboardCard
-  "Schema for one dashcard in a dashboard update request: [[dashboards.write/UpdatedDashboardCard]], closed."
-  (mut/closed-schema dashboards.write/UpdatedDashboardCard))
+  "Schema for one dashcard in a dashboard update request: [[dashboards.write/UpdatedDashboardCard]], closed. In entity
+  id form, the dashcard and the rows it names may be refs, and its structures may be as serialization exports them."
+  (-> (mut/closed-schema dashboards.write/UpdatedDashboardCard)
+      (with-refs {:id               :model/DashboardCard
+                  :card_id          :model/Card
+                  :action_id        :model/Action
+                  :dashboard_tab_id :model/DashboardTab})
+      (with-structures :model/DashboardCard [:parameter_mappings :visualization_settings])
+      (mut/update :series (constantly [:maybe [:sequential [:map {:closed true}
+                                                            [:id (eid-translation/ref-schema :model/Card ms/PositiveInt)]]]]))))
 
 (def ^:private UpdatedDashboardTab
-  "Schema for one tab in a dashboard update request: [[dashboards.write/UpdatedDashboardTab]], closed."
-  (mut/closed-schema dashboards.write/UpdatedDashboardTab))
+  "Schema for one tab in a dashboard update request: [[dashboards.write/UpdatedDashboardTab]], closed. In entity id
+  form, the tab may be a ref."
+  (-> (mut/closed-schema dashboards.write/UpdatedDashboardTab)
+      (with-refs {:id :model/DashboardTab})))
 
 (def ^:private DashUpdates
-  "Schema for Dashboard Updates: [[dashboards.write/DashUpdates]], closed."
+  "Schema for Dashboard Updates: [[dashboards.write/DashUpdates]], closed, with the dashcards and tabs above."
   (-> (mut/closed-schema dashboards.write/DashUpdates)
-      (mut/update :collection_id (constantly [:maybe ms/IdOrEntityId]))))
+      (mut/update :collection_id (constantly [:maybe ms/IdOrEntityId]))
+      (with-structures :model/Dashboard [:parameters])
+      (mut/update :dashcards (constantly [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]))
+      (mut/update :tabs (constantly [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]))))
 
 (defn- update-dashboard!
   "Updates a Dashboard and returns it hydrated. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"

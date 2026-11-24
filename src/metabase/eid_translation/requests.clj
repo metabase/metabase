@@ -34,3 +34,53 @@
                    (assoc body column (ref->id model v)))))
              body
              columns))
+
+;;; ------------------------------------------ Bodies in entity id form ------------------------------------------
+
+;; A dynamic var because the body schema's decoders, which read it, see only the value they decode, not the request.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *entity-ids?*
+  "Whether the request being served is in entity id form: it comes with the `X-Metabase-Ids: entity` header, from a
+  caller allowed to use it (see [[metabase.server.middleware.entity-ids]]). Its body may then name the rows of the
+  columns that [[ref-schema]] and [[structure-schema]] mark by refs, as a response with the header does."
+  false)
+
+(defn do-with-entity-ids
+  "Calls `thunk` with the request being served in entity id form (see [[*entity-ids?*]])."
+  [thunk]
+  (binding [*entity-ids?* true]
+    (thunk)))
+
+(defn- decode-ref
+  "`v`, the value of a column naming a `model` row, with a ref translated to the row's id in a request in entity id
+  form. Ints, such as the negative ids of rows to create, stay as they are."
+  [model v]
+  (if (and *entity-ids?* (some? v) (not (int? v)))
+    (ref->id model v)
+    v))
+
+(defn- decode-structure
+  "`v`, the value of `column` of a `model` row, imported from the form serialization exports it in, as a response in
+  entity id form gives it, when the request is in entity id form. Numeric ids inside it stay as they are. A ref that
+  names no row is a 404; a value that fails to import otherwise is left for the body's schema to refuse."
+  [model column v]
+  (if-let [import (and *entity-ids?* (some? v) (get-in (serialization/spec model) [:transform column :import]))]
+    (try
+      (first (import serialization/app-db-store [{column v}] [v] {:numeric-ids-allowed? true}))
+      (catch clojure.lang.ExceptionInfo e
+        (if (serialization.resolve/target-not-found? e)
+          (throw (ex-info (tru "Not found.") {:status-code 404} e))
+          v)))
+    v))
+
+(defn ref-schema
+  "`schema`, the schema of a request body column naming a `model` row by id, that in a request in entity id form also
+  takes a ref, which it decodes to the row's id."
+  [model schema]
+  [:schema {:decode/api #(decode-ref model %)} schema])
+
+(defn structure-schema
+  "`schema`, the schema of the request body `column` of a `model` row holding a structure, such as a query, that in a
+  request in entity id form also takes the structure as serialization exports it, which it decodes by importing it."
+  [model column schema]
+  [:schema {:decode/api #(decode-structure model column %)} schema])

@@ -304,3 +304,95 @@
         ;; serialization does not restore Revisions, from which the last edit comes
         (is (= (update before :card dissoc :last-edit-info)
                (fetch)))))))
+
+(defn- put-with-entity-ids
+  [user url body]
+  (mt/user-http-request user :put 200 url entity-ids body))
+
+(deftest write-back-to-restored-instance-test
+  (testing "a body read with entity ids from an instance writes the same rows of its restore, by entity id"
+    (mt/with-model-cleanup [:model/Collection :model/Card :model/Dashboard]
+      (let [price  (mt/id :venues :price)
+            coll   (t2/insert-returning-instance! :model/Collection {:name "eid write back"})
+            card   (mt/user-http-request :crowberto :post 200 "card"
+                                         {:name                   "eid write back card"
+                                          :collection_id          (:id coll)
+                                          :display                :table
+                                          :dataset_query          (venues-query)
+                                          :parameters             [{:id "p1" :slug "price" :name "Price" :type "category"
+                                                                    :target [:dimension [:field price nil]]}]
+                                          :visualization_settings {:column_settings {(str "[\"ref\",[\"field\"," price ",null]]")
+                                                                                     {:column_title "Cost"}}}})
+            series (mt/user-http-request :crowberto :post 200 "card"
+                                         {:name                   "eid write back series"
+                                          :collection_id          (:id coll)
+                                          :display                :line
+                                          :dataset_query          (venues-query)
+                                          :visualization_settings {}})
+            dash   (t2/insert-returning-instance! :model/Dashboard {:name          "eid write back dash"
+                                                                    :collection_id (:id coll)
+                                                                    :creator_id    (mt/user->id :crowberto)
+                                                                    :parameters    [{:id "p1" :slug "price" :name "Price"
+                                                                                     :type "category"}]})
+            tab    (t2/insert-returning-instance! :model/DashboardTab {:dashboard_id (:id dash) :name "Tab" :position 0})
+            dc     (t2/insert-returning-instance! :model/DashboardCard
+                                                  {:dashboard_id       (:id dash)
+                                                   :dashboard_tab_id   (:id tab)
+                                                   :card_id            (:id card)
+                                                   :row 0 :col 0 :size_x 4 :size_y 4
+                                                   :parameter_mappings [{:parameter_id "p1"
+                                                                         :card_id      (:id card)
+                                                                         :target       [:dimension [:field price nil]]}]})
+            _      (t2/insert! :model/DashboardCardSeries {:dashboardcard_id (:id dc) :card_id (:id series) :position 0})
+            fetch  (fn []
+                     (without-timestamps
+                      {:card      (dissoc (get-with-entity-ids :crowberto (str "card/" (:entity_id card))) :last-edit-info)
+                       :dashboard (dissoc (get-with-entity-ids :crowberto (str "dashboard/" (:entity_id dash))) :last-edit-info)}))
+            before (fetch)]
+        (restore! [[:model/Collection [coll]]
+                   [:model/Card (t2/select :model/Card :id [:in [(:id card) (:id series)]])]
+                   [:model/Dashboard [dash]]])
+        (is (not= (:id dc) (id-of :model/DashboardCard (:entity_id dc))))
+        (testing "a Card"
+          (put-with-entity-ids :crowberto (str "card/" (:entity_id card))
+                               (-> (:card before)
+                                   (select-keys [:name :collection_id :display :dataset_query :parameters
+                                                 :parameter_mappings :visualization_settings])
+                                   (assoc :name "eid written back card"))))
+        (testing "a Dashboard with its tabs, dashcards and their series"
+          (put-with-entity-ids :crowberto (str "dashboard/" (:entity_id dash))
+                               (-> (:dashboard before)
+                                   (select-keys [:name :collection_id :parameters :tabs :dashcards])
+                                   (assoc :name "eid written back dash"))))
+        (testing "the rows hold what the bodies said, with the restored rows' numeric ids"
+          (is (=? {:dashboard_tab_id   (id-of :model/DashboardTab (:entity_id tab))
+                   :card_id            (id-of :model/Card (:entity_id card))
+                   :parameter_mappings [{:card_id (id-of :model/Card (:entity_id card))
+                                         :target  [:dimension [:field price nil]]}]}
+                  (t2/select-one :model/DashboardCard :entity_id (:entity_id dc))))
+          (is (= [(id-of :model/Card (:entity_id series))]
+                 (t2/select-fn-vec :card_id :model/DashboardCardSeries
+                                   :dashboardcard_id (id-of :model/DashboardCard (:entity_id dc)))))
+          (is (= (-> before
+                     (assoc-in [:card :name] "eid written back card")
+                     (update-in [:dashboard :dashcards] (partial mapv #(assoc-in % [:card :name] "eid written back card")))
+                     (assoc-in [:dashboard :name] "eid written back dash"))
+                 (fetch))))))))
+
+(deftest structure-naming-a-missing-row-test
+  (testing "with the header, a structure that names a row the instance lacks is a 404"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)}]
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :put 404 (str "card/" card-id) entity-ids
+                                   {:dataset_query {:lib/type "mbql/query"
+                                                    :database "no such database"
+                                                    :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                :source-table ["no such database" "PUBLIC" "VENUES"]}]}}))))))
+
+(deftest structures-without-the-header-test
+  (testing "without the header, a body with refs in place of a dashcard's ids is refused, as before"
+    (mt/with-temp [:model/Card          {card-eid :entity_id} {:dataset_query (venues-query)}
+                   :model/Dashboard     {dash-id :id}         {}]
+      (is (=? {:errors {:dashcards some?}}
+              (mt/user-http-request :crowberto :put 400 (str "dashboard/" dash-id)
+                                    {:dashcards [{:id -1 :card_id card-eid :row 0 :col 0 :size_x 4 :size_y 4}]}))))))

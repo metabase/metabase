@@ -17,7 +17,10 @@
   default-counter
   statuses]
  [metabase.eid-translation.requests
-  refs->ids]
+  do-with-entity-ids
+  ref-schema
+  refs->ids
+  structure-schema]
  [metabase.eid-translation.responses
   ->entity-ids]
  [metabase.eid-translation.util
