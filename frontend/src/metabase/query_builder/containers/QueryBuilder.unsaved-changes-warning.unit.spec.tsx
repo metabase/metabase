@@ -1,9 +1,12 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
+  setupFieldValuesEndpoint,
 } from "__support__/server-mocks";
 import {
   act,
@@ -13,13 +16,30 @@ import {
   within,
 } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
+import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";
 import { setPendingMetabotCard } from "metabase/redux/query-builder";
 import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import {
+  createMockCard,
   createMockCardQueryMetadata,
   createMockDataset,
+  createMockDatasetData,
 } from "metabase-types/api/mocks";
+import {
+  PRODUCTS,
+  PRODUCTS_ID,
+  PRODUCT_CATEGORY_VALUES,
+  createProductsCategoryDatasetColumn,
+  createProductsIdDatasetColumn,
+  createProductsTitleDatasetColumn,
+  createProductsVendorDatasetColumn,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import {
   TEST_DB,
@@ -905,6 +925,173 @@ describe("QueryBuilder - unsaved changes warning", () => {
       expect(
         screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("removing a filter in the notebook of a filtered saved question (metabase#48829)", () => {
+    const PRODUCTS_CARD = createMockCard({
+      id: 48829,
+      name: "Issue 48829",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+        }),
+      ),
+    });
+
+    const PRODUCTS_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createProductsIdDatasetColumn(),
+          createProductsTitleDatasetColumn(),
+          createProductsCategoryDatasetColumn(),
+          createProductsVendorDatasetColumn(),
+        ],
+        rows: [
+          [1, "Rustic Paper Wallet", "Gizmo", "Swaniawski, Casper and Hilll"],
+          [2, "Small Marble Shoes", "Doohickey", "Balistreri-Ankunding"],
+          [
+            3,
+            "Synergistic Granite Chair",
+            "Gadget",
+            "Murray, Watsica and Wunsch",
+          ],
+        ],
+      }),
+      row_count: 3,
+    });
+
+    const setupProductsQuestion = (
+      opts: Partial<Parameters<typeof setup>[0]> = {},
+    ) => {
+      setupFieldValuesEndpoint(PRODUCT_CATEGORY_VALUES);
+      return setup({
+        card: PRODUCTS_CARD,
+        dataset: PRODUCTS_DATASET,
+        database: createSampleDatabase({ auto_run_queries: true }),
+        syncWindowLocation: true,
+        ...opts,
+      });
+    };
+
+    const getDatasetRunCount = () =>
+      fetchMock.callHistory.calls("path:/api/dataset", { method: "POST" })
+        .length;
+
+    const removeFilterInNotebookAndVisualize = async (
+      router: { location: { pathname: string } },
+      filterName: string,
+    ) => {
+      await userEvent.click(screen.getByTestId("notebook-button"));
+      const filterStep = await screen.findByTestId("step-filter-0-0");
+      const filterItem = within(filterStep).getByText(filterName);
+      await userEvent.click(
+        within(
+          checkNotNull(filterItem.closest("[data-testid=notebook-cell-item]")),
+        ).getByLabelText("close icon"),
+      );
+      await waitFor(() =>
+        expect(
+          within(filterStep).queryByText(filterName),
+        ).not.toBeInTheDocument(),
+      );
+
+      const runCount = getDatasetRunCount();
+      await userEvent.click(screen.getByRole("button", { name: "Visualize" }));
+      await waitFor(() =>
+        expect(getDatasetRunCount()).toBeGreaterThan(runCount),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+      expect(router.location.pathname).toBe("/question");
+      expect(screen.queryByTestId("qb-filters-panel")).not.toBeInTheDocument();
+      expect(screen.getByText("Showing 3 rows")).toBeInTheDocument();
+    };
+
+    it("does not show the warning after adding a filter from a column header", async () => {
+      const { router } = await setupProductsQuestion();
+
+      await userEvent.click(
+        within(
+          await screen.findByRole("columnheader", { name: "Category" }),
+        ).getByText("Category"),
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Filter by this column/ }),
+      );
+      const popover = await screen.findByRole("dialog");
+      await userEvent.click(await within(popover).findByText("Gadget"));
+      await userEvent.click(
+        within(popover).getByRole("button", { name: "Add filter" }),
+      );
+      expect(
+        await within(await screen.findByTestId("qb-filters-panel")).findByText(
+          "Category is Gadget",
+        ),
+      ).toBeInTheDocument();
+
+      await removeFilterInNotebookAndVisualize(router, "Category is Gadget");
+    });
+
+    it("does not show the warning after adding a filter with the filter picker", async () => {
+      const { router } = await setupProductsQuestion();
+
+      await userEvent.click(
+        within(screen.getByTestId("qb-header")).getByRole("button", {
+          name: /Filter/,
+        }),
+      );
+      const popover = await screen.findByRole("dialog");
+      await userEvent.click(await within(popover).findByText("Category"));
+      await userEvent.click(await within(popover).findByText("Gadget"));
+      await userEvent.click(
+        within(popover).getByRole("button", { name: "Apply filter" }),
+      );
+      expect(
+        await within(await screen.findByTestId("qb-filters-panel")).findByText(
+          "Category is Gadget",
+        ),
+      ).toBeInTheDocument();
+
+      await removeFilterInNotebookAndVisualize(router, "Category is Gadget");
+    });
+
+    it("does not show the warning after opening the question filtered by a dashboard click", async () => {
+      // The URL a dashboard click behavior opens: the saved question with
+      // the clicked value as a filter, built by the click behavior code.
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+      });
+      const question = new Question(PRODUCTS_CARD, metadata);
+      const url = getStructuredQuestionUrlWithParameters(
+        question.setQuery(Lib.ensureFilterStage(question.query())),
+        question,
+        [
+          {
+            id: "title",
+            slug: "title",
+            name: "Title",
+            type: "string/=",
+            target: ["dimension", ["field", PRODUCTS.TITLE, null]],
+          },
+        ],
+        { title: "Rustic Paper Wallet" },
+      );
+      const { router } = await setupProductsQuestion({ initialRoute: url });
+
+      expect(
+        await within(await screen.findByTestId("qb-filters-panel")).findByText(
+          "Title is Rustic Paper Wallet",
+        ),
+      ).toBeInTheDocument();
+
+      await removeFilterInNotebookAndVisualize(
+        router,
+        "Title is Rustic Paper Wallet",
+      );
     });
   });
 });
