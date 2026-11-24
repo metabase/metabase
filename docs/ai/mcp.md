@@ -75,7 +75,7 @@ See [Claude Code MCP docs](https://code.claude.com/docs/en/mcp).
 
 If you use Claude on the web or Claude Desktop, go to [Claude's connector directory](https://claude.ai/directory/connectors/metabase) and enter your [Metabase's MCP URL](#connect-a-client-to-your-metabase-mcp-servers-url).
 
-If you can't connect, check with your Metabase admins that they haven't [turned off the MCP server](#turn-the-mcp-server-on-or-off). You'll authenticate against your own Metabase during setup. If Claude asks you to choose authentication options, see [Choose authentication options in Claude](#choose-authentication-options-in-claude).
+If you can't connect, check with your Metabase admins that they haven't [turned off the MCP server](#turn-the-mcp-server-on-or-off). You'll authenticate against your Metabase during setup. If Claude asks you to choose authentication options, see [Choose authentication options in Claude](#choose-authentication-options-in-claude).
 
 ## MCP tools
 
