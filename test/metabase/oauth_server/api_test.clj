@@ -3224,58 +3224,82 @@
 
 ;; RFC 6749 section 6 lets a refresh leave out `scope`, and oidc-provider then keeps the token's scopes. The token must
 ;; still be bound to the MCP resource, or a client that never sends `scope` keeps an unbound token for good.
+
+(def ^:private mcp-alias-uri
+  "A legacy alias of the MCP endpoint, which a token issued before the canonical path existed may be bound to."
+  "http://localhost:3000/api/mcp")
+
+(defn- stored-token!
+  "Insert a refresh token for `client` holding `scopes`, with `overrides` such as `:resource`.
+  Returns a token response naming it."
+  [client scopes & {:as overrides}]
+  (let [refresh-token (str (random-uuid))]
+    (insert-token! :model/OAuthRefreshToken :crowberto (:client_id client) scopes
+                   (assoc overrides :token (oidc-util/hash-token refresh-token)))
+    {:refresh_token refresh-token}))
+
+(defn- refresh-json!
+  "Refresh as `client` with the JSON `body`, which can carry an empty `resource` that a form cannot.
+  Returns the response body."
+  [client body]
+  (client/client :post 200 "oauth/token"
+                 {:request-options {:headers {"authorization" (basic-auth-header (:client_id client)
+                                                                                 (:client_secret client))}}}
+                 (assoc body :grant_type "refresh_token")))
+
+(defn- resources
+  "The `resource` of `token-response` and the one stored on its rotated refresh token."
+  [token-response]
+  {:response (:resource token-response)
+   :stored   (t2/select-one-fn :resource :model/OAuthRefreshToken
+                               :token (oidc-util/hash-token (:refresh_token token-response)))})
+
 (deftest scope-less-refresh-of-a-token-without-resource-defaults-to-mcp-test
   (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                      oauth-server-dynamic-registration-enabled true]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [client          (register-app-client! "Copilot Studio" "https://example.com/callback")
-            legacy!         (fn [scopes & {:as overrides}]
-                              (let [refresh-token (str (random-uuid))]
-                                (insert-token! :model/OAuthRefreshToken :crowberto (:client_id client) scopes
-                                               (assoc overrides :token (oidc-util/hash-token refresh-token)))
-                                {:refresh_token refresh-token}))
-            mcp-alias       "http://localhost:3000/api/mcp"
-            refresh-json!   (fn [body]
-                              (client/client :post 200 "oauth/token"
-                                             {:request-options
-                                              {:headers {"authorization" (basic-auth-header (:client_id client)
-                                                                                            (:client_secret client))}}}
-                                             (assoc body :grant_type "refresh_token")))
-            stored-resource (fn [token-response]
-                              (t2/select-one-fn :resource :model/OAuthRefreshToken
-                                                :token (oidc-util/hash-token (:refresh_token token-response))))]
+      (let [client (register-app-client! "Copilot Studio" "https://example.com/callback")
+            mcp    [(mcp-resource-uri)]]
         (testing "a token holding only MCP scopes keeps them and is bound to the MCP resource"
-          (let [refreshed (refresh! client (legacy! v2-scope-set))]
-            (is (=? {:resource [(mcp-resource-uri)]} refreshed))
-            (is (= [(mcp-resource-uri)] (stored-resource refreshed)))
+          (let [refreshed (refresh! client (stored-token! client v2-scope-set))]
+            (is (= {:response mcp, :stored mcp} (resources refreshed)))
             (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed)))
             (testing "and the next refresh without scope keeps the binding"
               (let [again (refresh! client refreshed)]
-                (is (= [(mcp-resource-uri)] (stored-resource again)))
+                (is (= mcp (:stored (resources again))))
                 (is (= v2-scope-set (token-scope-set again)))))))
         (testing "a token already bound to a resource keeps it"
-          (let [refreshed (refresh! client (legacy! v2-scope-set :resource [mcp-alias]))]
-            (is (=? {:resource [mcp-alias]} refreshed))
-            (is (= [mcp-alias] (stored-resource refreshed)))))
+          (is (= {:response [mcp-alias-uri], :stored [mcp-alias-uri]}
+                 (resources (refresh! client (stored-token! client v2-scope-set :resource [mcp-alias-uri]))))))
         (testing "a refresh that names a resource gets that one"
-          (let [refreshed (refresh-json! (assoc (legacy! v2-scope-set) :resource mcp-alias))]
-            (is (=? {:resource [mcp-alias]} refreshed))
-            (is (= [mcp-alias] (stored-resource refreshed)))))
-        (testing "a token stored with an empty resource counts as unbound"
-          (let [refreshed (refresh! client (legacy! v2-scope-set :resource []))]
-            (is (=? {:resource [(mcp-resource-uri)]} refreshed))
-            (is (= [(mcp-resource-uri)] (stored-resource refreshed)))))
-        (testing "a refresh that names an empty resource keeps the token's own"
-          (let [refreshed (refresh-json! (assoc (legacy! v2-scope-set :resource [mcp-alias]) :resource []))]
-            (is (=? {:resource [mcp-alias]} refreshed))
-            (is (= [mcp-alias] (stored-resource refreshed)))))
+          (is (= {:response [mcp-alias-uri], :stored [mcp-alias-uri]}
+                 (resources (refresh-json! client (assoc (stored-token! client v2-scope-set)
+                                                         :resource mcp-alias-uri))))))
         (testing "a token holding a non-MCP scope stays unbound, so MCP and REST tokens stay separate"
           (let [not-mcp   (first-non-mcp-default-scope)
-                refreshed (refresh! client (legacy! #{not-mcp}))]
-            (is (nil? (:resource refreshed)))
-            (is (nil? (stored-resource refreshed)))
+                refreshed (refresh! client (stored-token! client #{not-mcp}))]
+            (is (= {:response nil, :stored nil} (resources refreshed)))
             (is (= #{not-mcp} (token-scope-set refreshed)))))
         (testing "a token holding an MCP scope and an unregistered one stays unbound, since the refresh keeps both"
-          (let [refreshed (refresh! client (legacy! #{"agent:content:read" "*"}))]
-            (is (nil? (:resource refreshed)))
-            (is (nil? (stored-resource refreshed)))))))))
+          (is (= {:response nil, :stored nil}
+                 (resources (refresh! client (stored-token! client #{"agent:content:read" "*"}))))))))))
+
+;; oidc-provider treats a stored `[]` as a binding that contains nothing, and a requested `[]` as the new tokens'
+;; resource, so either would break or drop the binding.
+(deftest empty-resource-counts-as-none-test
+  (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                     oauth-server-dynamic-registration-enabled true]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [client (register-app-client! "Copilot Studio" "https://example.com/callback")
+            mcp    [(mcp-resource-uri)]]
+        (testing "a token stored with an empty resource is bound to the MCP resource on a refresh without scope"
+          (is (= {:response mcp, :stored mcp}
+                 (resources (refresh! client (stored-token! client v2-scope-set :resource []))))))
+        (testing "a token stored with an empty resource is bound to the MCP resource on a refresh with scope"
+          (is (= {:response mcp, :stored mcp}
+                 (resources (refresh-with-scope! client (stored-token! client v2-scope-set :resource [])
+                                                 all-v2-scopes)))))
+        (testing "a refresh that names an empty resource keeps the token's own"
+          (is (= {:response [mcp-alias-uri], :stored [mcp-alias-uri]}
+                 (resources (refresh-json! client (assoc (stored-token! client v2-scope-set :resource [mcp-alias-uri])
+                                                         :resource []))))))))))
