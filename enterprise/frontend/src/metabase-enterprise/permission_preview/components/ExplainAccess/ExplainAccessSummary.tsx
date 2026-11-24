@@ -106,7 +106,7 @@ function SummaryCard({ access, target, onOpenDetail }: SummaryCardProps) {
 
   return (
     <SheetCard>
-      <Stack gap="sm" my="-sm">
+      <Stack gap="sm">
         <BodyText fw="bold">
           {t`${who} can open ${openText} and view ${viewText}.`}
         </BodyText>
