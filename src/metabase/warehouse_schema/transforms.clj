@@ -2,8 +2,6 @@
   "Column transforms the Table, Field and user settings models share."
   (:require
    [clojure.string :as str]
-   [malli.error :as me]
-   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -40,16 +38,13 @@
 
 (defn- keyword-transform
   "A transform for `column` holding a keyword that `valid?` accepts. Writing a keyword or string it rejects throws a
-  400; reading one logs and returns `fallback`. A HoneySQL expression, a vector, is written untouched, since a
-  before-update hook writes derived types as one."
+  400; reading one logs and returns `fallback`."
   [column valid? invalid-message extra-data fallback]
   {:in  (fn [v]
-          (if (vector? v)
-            v
-            (when-let [k (some-> v keyword)]
-              (when-not (valid? k)
-                (throw-invalid-value column k (invalid-message k) extra-data))
-              (u/qualified-name k))))
+          (when-let [k (some-> v keyword)]
+            (when-not (valid? k)
+              (throw-invalid-value column k (invalid-message k) extra-data))
+            (u/qualified-name k)))
    :out (fn [s]
           (when (seq s)
             (let [k (keyword s)]
@@ -62,13 +57,15 @@
   "A transform for the `column` of `model` holding a keyword that descends from one of `ancestor-types`.
 
   `hierarchy` defaults to the global hierarchy. Writing any other keyword or string throws a 400; reading one logs and
-  returns `fallback-type`."
+  returns `fallback-type`. A Field column writes a HoneySQL expression, a vector, untouched, since the Field
+  before-update hook writes derived types as one."
   [model column & {:keys [hierarchy ancestor-types fallback-type]}]
-  (keyword-transform column
-                     #(descends-from-any? hierarchy % ancestor-types)
-                     #(not-a-descendant-message model column % ancestor-types)
-                     {:allowed-ancestors ancestor-types}
-                     fallback-type))
+  (cond-> (keyword-transform column
+                             #(descends-from-any? hierarchy % ancestor-types)
+                             #(not-a-descendant-message model column % ancestor-types)
+                             {:allowed-ancestors ancestor-types}
+                             fallback-type)
+    (= model :model/Field) (update :in (fn [in] #(if (vector? %) % (in %))))))
 
 (defn- enum-keyword
   "A transform for `column` holding one of the keywords `values`; a bad stored value reads as nil."
@@ -80,22 +77,12 @@
                      nil
                      nil))
 
-(defn- schema-message
-  "The message for `value` of `column` failing `schema`."
-  [column schema value]
-  (tru "Invalid value for {0}: {1}" (pr-str column) (pr-str (me/humanize (mr/explain schema value)))))
-
 (defn- json-with-schema
-  "A transform for `column` holding JSON of `schema`, through [[mi/transform-json-with-schema]]. Writing a value that
-  fails `schema` throws a 400; reading one, or JSON that does not parse, logs and returns nil."
+  "A transform for `column` holding JSON of `schema`, through [[mi/transform-json-with-schema]]. A stored value that
+  fails `schema`, or JSON that does not parse, logs and reads as nil."
   [column schema]
   (let [{json-in :in, json-out :out} (mi/transform-json-with-schema (name column) schema)]
-    {:in  (fn [v]
-            (when (some? v)
-              (let [v (lib/normalize schema v)]
-                (when-not (mr/validate schema v)
-                  (throw-invalid-value column v (schema-message column schema v)))
-                (json-in v))))
+    {:in  json-in
      :out (fn [s]
             (let [v (json-out s)]
               (cond

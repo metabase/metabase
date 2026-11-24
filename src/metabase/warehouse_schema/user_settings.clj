@@ -13,8 +13,8 @@
 
 (def field-set-flags
   "The user-settable Field columns sync also writes, and `attribute_scd_type`, mapped to the flag that says the user set
-  the column, NULL included. A user's `is_grain` or `facets` is never NULL, `false` and `[]` recording none, so they
-  have no flag."
+  the column, NULL included. `is_grain` and `facets` have no flag: `false` and `[]` record a user's none, and a NULL
+  leaves the column to sync."
   {:description        :description_set
    :semantic_type      :semantic_type_set
    :fk_target_field_id :fk_target_field_id_set

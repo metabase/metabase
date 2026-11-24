@@ -5,6 +5,7 @@
    [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.user-settings :as user-settings]
    [toucan2.core :as t2]))
 
 (def ^:private structural-metadata
@@ -19,18 +20,6 @@
                                                                 :display_name "User Name")]
     (is (= structural-metadata
            (select-keys (t2/select-one :model/FieldUserSettings :field_id field-id) (keys structural-metadata))))))
-
-(deftest invalid-structural-metadata-test
-  (mt/with-temp [:model/Field {field-id :id} {}]
-    (doseq [[column value] [[:facets [:type/NotAType]]
-                            [:facets {:time :type/EventTimestamp}]]]
-      (testing (pr-str column value)
-        (is (=? {:status-code 400, :errors {column some?}}
-                (try
-                  (t2/insert! :model/FieldUserSettings {:field_id field-id, :display_name "User Name", column value})
-                  nil
-                  (catch clojure.lang.ExceptionInfo e
-                    (ex-data e)))))))))
 
 (deftest bad-stored-facet-is-dropped-test
   (mt/with-temp [:model/Field             {field-id :id} {}
@@ -53,7 +42,7 @@
    :facets             [:type/DurableKey]})
 
 (def ^:private structural-metadata-flags
-  {:attribute_scd_type_set true})
+  (into {} (keep #(some-> (user-settings/field-set-flags %) (vector true))) (keys structural-metadata)))
 
 (defn- field-row
   "The Field with `field-id`, read through the model so its columns come back decoded."

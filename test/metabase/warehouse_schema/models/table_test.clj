@@ -755,10 +755,7 @@
    [:table_role         :entity/UserTable]
    [:period_granularity :fortnight]
    [:mutability         :append-only]
-   [:load_strategy      :upsert]
-   [:history_definition {:durable_key 12, :surrogate_key 13}]
-   [:history_definition {:durable_key "12"}]
-   [:eav_definition     {:definition_table 0}]])
+   [:load_strategy      :upsert]])
 
 (deftest structural-metadata-round-trip-test
   (mt/with-temp [:model/Table {table-id :id} structural-metadata]

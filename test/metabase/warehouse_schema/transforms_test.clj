@@ -71,9 +71,8 @@
       (let [stored (write transforms :history_definition {:durable_key 12, :valid_to nil})]
         (is (= {:durable_key 12, :valid_to nil} (json/decode+kw stored)))
         (is (= {:durable_key 12, :valid_to nil} (read-back transforms :history_definition stored)))))
-    (testing "a write that fails the schema throws a 400"
-      (is (=? {:status-code 400, :errors {:eav_definition some?}}
-              (write-error transforms :eav_definition {:entity_key 31, :value 32}))))
+    (testing "a write is not checked against the schema, and the read drops what fails it"
+      (is (nil? (read-back transforms :eav_definition (write transforms :eav_definition {:entity_key 31, :value 32})))))
     (testing "a stored value that does not parse or fails the schema reads as nil"
       (is (nil? (read-back transforms :eav_definition "not json")))
       (is (nil? (read-back transforms :eav_definition "{\"value\":32}"))))))
@@ -90,10 +89,6 @@
     (testing "stored facets that are not a JSON array read as nil"
       (is (nil? (read-back transforms :facets "{\"time\":\"type/EventTimestamp\"}")))
       (is (nil? (read-back transforms :facets "not json"))))
-    (testing "a write with an unknown facet throws a 400"
-      (is (=? {:status-code 400, :errors {:facets some?}}
-              (write-error transforms :facets [:type/Category])))
-      (is (=? {:status-code 400, :errors {:facets some?}}
-              (write-error transforms :facets [:type/PK])))
-      (is (=? {:status-code 400, :errors {:facets some?}}
-              (write-error transforms :facets {:time :type/EventTimestamp}))))))
+    (testing "a write is not checked against the schema, and the read drops what fails it"
+      (is (= [:type/EventTimestamp]
+             (read-back transforms :facets (write transforms :facets [:type/Category :type/EventTimestamp])))))))

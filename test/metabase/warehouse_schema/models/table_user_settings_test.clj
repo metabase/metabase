@@ -157,9 +157,7 @@
     (doseq [[column value] [[:table_role :role/NotARole]
                             [:period_granularity :fortnight]
                             [:mutability :append-only]
-                            [:load_strategy :upsert]
-                            [:history_definition {:surrogate_key 12}]
-                            [:eav_definition {:entity_key "31"}]]]
+                            [:load_strategy :upsert]]]
       (testing (pr-str column value)
         (is (=? {:status-code 400, :errors {column some?}}
                 (try

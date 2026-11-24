@@ -471,11 +471,6 @@
    :attribute_scd_type 2
    :facets             [:type/EventTimestamp :type/DurableKey :type/CustomProperty :type/SoftDeleteFlag]})
 
-(def ^:private invalid-structural-metadata
-  [[:facets             [:type/NotAType]]
-   [:facets             ["type/Category"]]
-   [:facets             {:time :type/EventTimestamp}]])
-
 (deftest structural-metadata-round-trip-test
   (mt/with-temp [:model/Field {field-id :id} structural-metadata]
     (is (= structural-metadata
@@ -495,29 +490,6 @@
   (mt/with-temp [:model/Field {field-id :id} structural-metadata]
     (is (nil? (mr/explain ::lib.schema.metadata/column
                           (lib-be/instance->metadata (t2/select-one :model/Field :id field-id) :metadata/column))))))
-
-(deftest invalid-structural-metadata-insert-test
-  (mt/with-temp [:model/Table {table-id :id} {}]
-    (doseq [[column value] invalid-structural-metadata]
-      (testing (pr-str column value)
-        (is (=? {:status-code 400, :errors {column some?}}
-                (try
-                  (t2/insert! :model/Field {:table_id table-id, :name "bad", :base_type :type/Text, column value})
-                  nil
-                  (catch clojure.lang.ExceptionInfo e
-                    (ex-data e)))))))))
-
-(deftest invalid-structural-metadata-update-test
-  (mt/with-temp [:model/Field {field-id :id} structural-metadata]
-    (doseq [[column value] invalid-structural-metadata]
-      (testing (pr-str column value)
-        (is (=? {:status-code 400, :errors {column some?}}
-                (try
-                  (t2/update! :model/Field :id field-id {column value})
-                  nil
-                  (catch clojure.lang.ExceptionInfo e
-                    (ex-data e)))))
-        (is (= (get structural-metadata column) (t2/select-one-fn column :model/Field :id field-id)))))))
 
 (deftest bad-stored-facet-is-dropped-test
   (mt/with-temp [:model/Field {field-id :id} {}]
