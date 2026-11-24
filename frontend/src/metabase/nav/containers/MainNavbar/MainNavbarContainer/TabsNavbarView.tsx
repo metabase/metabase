@@ -339,13 +339,29 @@ export function TabsNavbarView({
   // PROTOTYPE: "Modern nav - B" splits the tabs into Official (Collections
   // and the Library's Metrics and Datasets) and Other (the rest, with Data
   // reduced to Databases and Models). Tabs that only show in some setups
-  // (External collections, Data apps, Getting Started) join Other.
-  const tabGroups: NavTabGroup[] = isGrouped
+  // (External collections, Data apps, Getting Started) join Other. Without git
+  // there's nothing official: one ungrouped list, Getting Started first, Data
+  // apps under Collections, Data holding the Library, AI conversations last.
+  const isGroupedWithGit = isGrouped && isGitIntegrationEnabled;
+  const variantBWithoutGitTabs: NavTab[] = [
+    ...sectionTabs.filter((tab) => tab.id === "getting-started"),
+    sectionTabs[0],
+    ...sectionTabs.filter((tab) => tab.id === "data-apps"),
+    ...externalCollectionsTabs,
+    dataTab,
+    bookmarksTab,
+    aiConversationsTab,
+  ];
+  const tabGroups: NavTabGroup[] = isGroupedWithGit
     ? [
         {
           heading: t`Official`,
           tabs: [
-            sectionTabs[0],
+            {
+              ...sectionTabs[0],
+              label: t`Official collections`,
+              icon: "folder_bookmark",
+            },
             { id: "metrics", label: t`Metrics`, icon: "metric" },
             ...(datasetsSection
               ? [{ id: "datasets", label: t`Datasets`, icon: "table" } as const]
@@ -355,7 +371,8 @@ export function TabsNavbarView({
         {
           heading: t`Other`,
           tabs: [
-            ...sectionTabs.filter((tab) => tab.id === "explorations"),
+            // Was "Saved".
+            { id: "explorations", label: t`Collections`, icon: "folder" },
             ...externalCollectionsTabs,
             { ...dataTab, icon: "database" },
             aiConversationsTab,
@@ -366,9 +383,11 @@ export function TabsNavbarView({
           ],
         },
       ]
-    : variant === "modern-nav-d"
-      ? getVariantDTabGroups()
-      : [{ tabs }];
+    : isGrouped
+      ? [{ tabs: variantBWithoutGitTabs }]
+      : variant === "modern-nav-d"
+        ? getVariantDTabGroups()
+        : [{ tabs }];
   const allTabs = tabGroups.flatMap((group) => group.tabs);
 
   const [storedTabId, setStoredTabId] = useLocalStorage<string>({
@@ -522,10 +541,11 @@ export function TabsNavbarView({
     .with("datasets", () => renderLibrarySubfolders(datasetsSection))
     // Link-only tabs: their page is the content.
     .with("data-sources", "models", () => null)
-    // B's Data holds what's left once Metrics and Datasets have their tabs.
+    // B's Data (with git) holds what's left once Metrics and Datasets have
+    // their tabs.
     .with("data", () => (
       <NavTabSection>
-        {isGrouped ? (
+        {isGroupedWithGit ? (
           <>
             {hasDataAccess && (
               <DatabasesNavLink

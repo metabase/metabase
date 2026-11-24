@@ -7,8 +7,8 @@ import { useNavVariant } from "./use-nav-variant";
 /**
  * PROTOTYPE: the name shown for the root collection ("Our analytics"), which
  * the nav never shows itself. It matches the nav tab its folders sit under:
- * with git integration on, "Saved" ("Collections" in "Modern nav - C",
- * "Other collections" in "- D"); with it off, "Collections".
+ * with git integration on, "Saved" ("Collections" in "Modern nav - B" and
+ * "- C", "Other collections" in "- D"); with it off, "Collections".
  */
 export function useRootCollectionName(): string {
   const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
@@ -17,7 +17,7 @@ export function useRootCollectionName(): string {
     return t`Collections`;
   }
   return match(variant)
-    .with("modern-nav-c", () => t`Collections`)
+    .with("modern-nav-b", "modern-nav-c", () => t`Collections`)
     .with("modern-nav-d", () => t`Other collections`)
     .otherwise(() => t`Saved`);
 }
