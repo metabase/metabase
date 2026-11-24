@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 
 import {
   setupCollectionByIdEndpoint,
@@ -19,6 +20,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { TableVisibilityToggle } from "metabase/metadata/pages/DataModelV1/components/TablePicker/components/TableVisibilityToggle";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Collection,
@@ -667,6 +669,110 @@ describe("DataPickerModal", () => {
       await expectSearchResults(["Orders"]);
       expect(getSearchResults()[0]).toHaveAttribute("data-model-type", "table");
       expect(screen.queryByText("Orders Model")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("hidden tables", () => {
+    const TABLES = ["Orders", "People", "Products", "Reviews"].map(
+      (name, index) =>
+        createMockTable({
+          id: 10 + index,
+          db_id: 1,
+          schema: "PUBLIC",
+          name: name.toUpperCase(),
+          display_name: name,
+        }),
+    );
+    const [ORDERS_TABLE] = TABLES;
+    const SAMPLE_DATABASE = createMockDatabase({
+      id: 1,
+      name: "Sample Database",
+      tables: TABLES,
+    });
+
+    /**
+     * Keeps the visibility of the tables the way the backend does: the PUT that
+     * hides a table changes it, and the schema endpoint leaves hidden tables out
+     * unless it is asked for them.
+     */
+    function setupStatefulTables() {
+      const hiddenTableIds = new Set<number>();
+      fetchMock.get("path:/api/database/1/schema/PUBLIC", (call) => {
+        const includeHidden =
+          new URL(call.url).searchParams.get("include_hidden") === "true";
+        return TABLES.filter(
+          (table) => includeHidden || !hiddenTableIds.has(Number(table.id)),
+        );
+      });
+      fetchMock.put(`path:/api/table/${ORDERS_TABLE.id}`, (call) => {
+        const body = JSON.parse(String(call.options.body));
+        if (body.visibility_type === "hidden") {
+          hiddenTableIds.add(Number(ORDERS_TABLE.id));
+        }
+        return { ...ORDERS_TABLE, ...body };
+      });
+    }
+
+    function TestApp() {
+      const [isPickerOpen, setIsPickerOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setIsPickerOpen(true)}>Open picker</button>
+          <TableVisibilityToggle table={ORDERS_TABLE} onUpdate={jest.fn()} />
+          {isPickerOpen && (
+            <DataPickerModal
+              title="Pick your starting data"
+              onChange={jest.fn()}
+              onClose={() => setIsPickerOpen(false)}
+            />
+          )}
+        </>
+      );
+    }
+
+    async function openSampleDatabase() {
+      await userEvent.click(
+        screen.getByRole("button", { name: "Open picker" }),
+      );
+      await userEvent.click(await screen.findByText("Databases"));
+      await userEvent.click(await screen.findByText("Sample Database"));
+    }
+
+    it("does not list a table after it was hidden, without a reload (metabase#19742)", async () => {
+      mockGetBoundingClientRect();
+      process.env.OVERSCAN = "20";
+      setupStatefulTables();
+      setupDatabasesEndpoints([SAMPLE_DATABASE]);
+      setupCollectionByIdEndpoint({ collections: [ROOT] });
+      setupCollectionsEndpoints({ collections: [ROOT], rootCollection: ROOT });
+      setupCollectionItemsEndpoint({ collection: ROOT, collectionItems: [] });
+      setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+      setupSearchEndpoints([]);
+      renderWithProviders(<TestApp />);
+
+      await openSampleDatabase();
+      for (const table of ["Orders", "People", "Products", "Reviews"]) {
+        expect(await screen.findByText(table)).toBeInTheDocument();
+      }
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
+      await waitFor(() =>
+        expect(screen.queryByText("Databases")).not.toBeInTheDocument(),
+      );
+
+      await userEvent.click(screen.getByLabelText("eye icon"));
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(`path:/api/table/${ORDERS_TABLE.id}`, {
+            method: "PUT",
+          }),
+        ).toHaveLength(1),
+      );
+
+      await openSampleDatabase();
+      for (const table of ["People", "Products", "Reviews"]) {
+        expect(await screen.findByText(table)).toBeInTheDocument();
+      }
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
     });
   });
 });
