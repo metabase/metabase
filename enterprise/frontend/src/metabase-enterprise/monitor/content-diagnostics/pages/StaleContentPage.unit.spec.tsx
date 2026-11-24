@@ -524,6 +524,78 @@ describe("StaleContentPage", () => {
     });
   });
 
+  it("permanently deletes a selected transform, then refetches the list without it", async () => {
+    const card = createMockContentDiagnosticsStaleFinding({
+      id: 1,
+      entity_type: "card",
+      entity_id: 1,
+      entity_display_name: "Stale card",
+      can_write: true,
+    });
+    const transform = createMockContentDiagnosticsStaleFinding({
+      id: 2,
+      entity_type: "transform",
+      entity_id: 7,
+      entity_display_name: "Stale transform",
+      can_write: true,
+    });
+    let findings = [card, transform];
+    fetchMock.delete("path:/api/transform/7", () => {
+      findings = findings.filter((finding) => finding !== transform);
+      return 204;
+    });
+    setup({
+      withUndos: true,
+      getResponse: () =>
+        createMockListStaleFindingsResponse({
+          data: findings,
+          total: findings.length,
+        }),
+    });
+
+    const list = await screen.findByRole("treegrid");
+    await within(list).findByText("Stale transform");
+    const transformRow = within(list).getByRole("row", {
+      name: /Stale transform/,
+    });
+    await userEvent.click(within(transformRow).getByRole("checkbox"));
+
+    const bulkActions = screen.getByTestId("content-diagnostics-bulk-actions");
+    expect(
+      within(bulkActions).getByText("1 item selected"),
+    ).toBeInTheDocument();
+    expect(
+      within(bulkActions).queryByRole("button", { name: "Move to trash" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      within(bulkActions).getByRole("button", { name: "Delete" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Delete 1 transform?")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "1 transform will be permanently deleted and cannot be restored.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
+
+    expect(await screen.findByText("Deleted 1 item")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        within(list).queryByText("Stale transform"),
+      ).not.toBeInTheDocument();
+    });
+    expect(within(list).getByText("Stale card")).toBeInTheDocument();
+
+    const deleteCalls = fetchMock.callHistory.calls("path:/api/transform/7");
+    expect(deleteCalls).toHaveLength(1);
+    expect(deleteCalls[0].options?.method?.toUpperCase()).toBe("DELETE");
+    expect(fetchMock.callHistory.calls("path:/api/card/1")).toHaveLength(0);
+  });
+
   it("keeps items that failed to trash selected", async () => {
     setupCardEndpoints(createMockCard({ id: 1 }));
     setupUpdateCardEndpointWithError(2);
