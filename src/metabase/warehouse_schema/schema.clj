@@ -38,7 +38,7 @@
 
 (mr/def ::attribute-scd-type
   "A Field's `attribute_scd_type`, how a slowly changing dimension tracks changes to it."
-  [:int {:min 0 :max 3}])
+  [:ref ::lib.schema.metadata/column.attribute-scd-type])
 
 (mr/def ::history-definition
   "A Table's `history_definition`: the Fields that version its rows."

@@ -5563,7 +5563,7 @@
 
 (deftest structural-metadata-columns-test
   (testing "existing Tables, Fields and their user settings get NULL structural metadata and unset flags"
-    (impl/test-migrations ["as9qdr" "f67hjp"] [migrate!]
+    (impl/test-migrations ["as9qdr" "qpwu5p"] [migrate!]
       (let [db-id    (t2/insert-returning-pk! :metabase_database {:name       "Structural Metadata Test DB"
                                                                   :engine     "h2"
                                                                   :created_at :%now

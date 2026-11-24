@@ -4,8 +4,9 @@
 ## nullable with no default and no backfill, so an existing instance sees NULL everywhere.
 ##
 ## metabase_table_user_settings and metabase_field_user_settings carry the same columns to record what a user set.
-## A user's NULL is indistinguishable from "not set", so each value column carries a `_set` flag recording that the
-## user made the call, as in migration 064.
+## A user's NULL is indistinguishable from "not set", so each value column a user may set to NULL carries a `_set` flag
+## recording that the user made the call, as in migration 064. is_grain and facets have none: false or an empty list
+## records a user's "none", and a NULL leaves the column to sync.
 
 databaseChangeLog:
   - changeSet:
@@ -313,22 +314,6 @@ databaseChangeLog:
                   remarks: "User-set attribute_scd_type for the Field"
 
   - changeSet:
-      id: utk1ot
-      author: metatyb
-      comment: Add is_grain_set to metabase_field_user_settings
-      changes:
-        - addColumn:
-            tableName: metabase_field_user_settings
-            columns:
-              - column:
-                  name: is_grain_set
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: "Whether the user set is_grain, so a NULL is_grain overrides the sync value"
-                  constraints:
-                    nullable: false
-
-  - changeSet:
       id: mwb0bq
       author: metatyb
       comment: Add attribute_scd_type_set to metabase_field_user_settings
@@ -369,22 +354,6 @@ databaseChangeLog:
                   name: facets
                   type: ${text.type}
                   remarks: "User-set facets for the Field"
-
-  - changeSet:
-      id: t5jy54
-      author: metatyb
-      comment: Add facets_set to metabase_field_user_settings
-      changes:
-        - addColumn:
-            tableName: metabase_field_user_settings
-            columns:
-              - column:
-                  name: facets_set
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: "Whether the user set facets, so a NULL facets overrides the sync value"
-                  constraints:
-                    nullable: false
 
   - changeSet:
       id: wq326t
@@ -509,45 +478,5 @@ databaseChangeLog:
                   type: ${boolean.type}
                   defaultValueBoolean: false
                   remarks: "Whether the user set load_strategy, so a NULL load_strategy overrides the sync value"
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: 8a3n65
-      author: metatyb
-      comment: Drop is_grain_set from metabase_field_user_settings; a non-NULL is_grain, false included, records the user's call
-      changes:
-        - dropColumn:
-            tableName: metabase_field_user_settings
-            columnName: is_grain_set
-      rollback:
-        - addColumn:
-            tableName: metabase_field_user_settings
-            columns:
-              - column:
-                  name: is_grain_set
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: "Whether the user set is_grain, so a NULL is_grain overrides the sync value"
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: f67hjp
-      author: metatyb
-      comment: Drop facets_set from metabase_field_user_settings; non-NULL facets, an empty list included, record the user's call
-      changes:
-        - dropColumn:
-            tableName: metabase_field_user_settings
-            columnName: facets_set
-      rollback:
-        - addColumn:
-            tableName: metabase_field_user_settings
-            columns:
-              - column:
-                  name: facets_set
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: "Whether the user set facets, so a NULL facets overrides the sync value"
                   constraints:
                     nullable: false

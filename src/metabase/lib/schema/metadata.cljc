@@ -327,6 +327,10 @@
    :BIZ_CONF      ; Confidential Business Data
    :PUBLIC])      ; Non-Sensitive / Public Information
 
+(mr/def ::column.attribute-scd-type
+  "A Field's `attribute_scd_type`, how a slowly changing dimension tracks changes to it: type 0 to 3."
+  [:int {:min 0 :max 3}])
+
 (mr/def ::column.data-sensitivity
   (into [:enum {:decode/normalize keyword}] column-data-sensitivity-types))
 
@@ -583,7 +587,7 @@
    [:updated-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
    [:last-analyzed              {:optional true} [:maybe [:ref ::column.timestamp]]]
    [:is-grain                   {:optional true} [:maybe :boolean]]
-   [:attribute-scd-type         {:optional true} [:maybe :int]]
+   [:attribute-scd-type         {:optional true} [:maybe [:ref ::column.attribute-scd-type]]]
    [:facets                     {:optional true} [:maybe [:ref ::column.facets]]]
    ;; the Field a foreign key points at, and the Field that names this table's rows: hydrated onto a Field by the
    ;; application database metadata provider, but only an id reference in the metadata the frontend hands over
