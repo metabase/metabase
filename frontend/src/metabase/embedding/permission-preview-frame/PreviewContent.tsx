@@ -11,7 +11,7 @@ import {
   NOT_FOUND_ITEM,
   parseItem,
 } from "metabase/embedding/permission-preview/item";
-import { Box, Button, Stack } from "metabase/ui";
+import { Box, Button, Icon, Stack } from "metabase/ui";
 
 interface PreviewContentProps {
   initialItem: string;
@@ -39,13 +39,13 @@ export function PreviewContent({
   return (
     <Stack h="100vh" gap={0}>
       {history.length > 1 && (
-        <Box px="md" py="sm">
+        <Box px="lg" pt="md">
           <Button
             variant="subtle"
-            leftSection="chevronleft"
+            leftSection={<Icon name="chevronleft" />}
             onClick={handleBack}
           >
-            {t`Back`}
+            {t`Back to collections`}
           </Button>
         </Box>
       )}

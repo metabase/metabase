@@ -63,7 +63,7 @@ export function PermissionPreviewFrame() {
 
   if (isOpenedDirectly) {
     return (
-      <p>{t`Start a preview from Admin > Permissions > Preview access.`}</p>
+      <p>{t`Open this preview from the Preview access tab in the permissions settings.`}</p>
     );
   }
 

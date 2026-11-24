@@ -59,7 +59,7 @@ describe("GroupPreviewInfo", () => {
       await screen.findByText("A stand-in, not a real user"),
     ).toBeVisible();
     expect(
-      screen.getByText(
+      await screen.findByText(
         /In Sales and All Users only\. Where a rule reads an attribute, it uses the value you pick\./,
       ),
     ).toBeVisible();

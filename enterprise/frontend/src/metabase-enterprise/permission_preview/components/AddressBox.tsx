@@ -19,6 +19,8 @@ interface AddressBoxProps {
   onOpen: (item: string, linkText: string) => void;
 }
 
+const NEGATIVE = "var(--mb-color-feedback-negative)";
+
 const ITEM_TYPES = [
   { type: "question", label: () => t`Question` },
   { type: "dashboard", label: () => t`Dashboard` },
@@ -109,7 +111,11 @@ export function AddressBox({ linkText, onOpen }: AddressBoxProps) {
         <TextInput
           flex="1 1000000 24rem"
           miw="12rem"
-          styles={{ input: { fontSize: "var(--mantine-font-size-xs)" } }}
+          styles={{
+            input: { fontSize: "var(--mantine-font-size-xs)" },
+            wrapper: error ? { "--input-border-color": NEGATIVE } : undefined,
+            error: { color: NEGATIVE },
+          }}
           aria-label={t`Address`}
           placeholder={t`Paste a link, entity ID, or ID`}
           leftSection={<Icon name="link" />}

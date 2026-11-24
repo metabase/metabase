@@ -20,11 +20,16 @@ const GROUPS: Omit<Group, "members">[] = [
   { id: 10, name: "Support", magic_group_type: null },
 ];
 
-function setup(attributes: Record<string, string> | null) {
+function setup(attributes: Record<string, string>) {
   setupGroupsEndpoint(GROUPS);
   fetchMock.get("path:/api/user/2", {
     ...USER,
-    attributes,
+    structured_attributes: Object.fromEntries(
+      Object.entries(attributes).map(([name, value]) => [
+        name,
+        { source: "user", frozen: false, value },
+      ]),
+    ),
     user_group_memberships: [
       { id: 1, is_group_manager: false },
       { id: 9, is_group_manager: false },
@@ -57,7 +62,7 @@ describe("PreviewedUserName", () => {
   });
 
   it("says when the person has no attributes", async () => {
-    setup(null);
+    setup({});
 
     await userEvent.hover(screen.getByRole("button", { name: "Sandy Sales" }));
 
