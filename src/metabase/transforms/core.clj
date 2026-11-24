@@ -50,7 +50,8 @@
   delete-transform!
   delete-transforms-folder!]
  [metabase.transforms.canceling
-  cancel-run!]
+  cancel-run!
+  force-cancel-run!]
  [metabase.transforms.execute
   execute!]
  [metabase.transforms-base.ordering

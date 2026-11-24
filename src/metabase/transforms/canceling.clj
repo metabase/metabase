@@ -156,6 +156,27 @@
         (record-completion! run-id run request-time "error")
         (throw t)))))
 
+(mu/defn force-cancel-run! :- :nil
+  "Finish `run` (an active `:model/TransformRun` row) as canceled now, whichever process executes it, or none.
+
+  [[cancel-run!]] finishes a run only when this process executes it, and the two things that finish any other run,
+  the sweep of runs that have been canceling for two minutes and the reaper of runs with a stale heartbeat, are
+  scheduled tasks. So on an instance whose scheduler is disabled, nothing finishes a run whose process died, and
+  that transform can not run again while the run is active. This is for the caller that knows that process is gone:
+  forcing a run another process still executes marks it canceled while its work goes on."
+  [{run-id :id :as run} :- ::transforms.schema/transform-run]
+  (let [request-time (OffsetDateTime/now)]
+    (try
+      ;; This process executes it after all: tell its work to stop.
+      (chan-signal-cancel! run-id)
+      (when (pos? (transform-run/cancel-run! run-id {:message "Canceled by force"}))
+        (log/infof "Force-canceled transform run %s" run-id)
+        (record-completion! run-id run request-time "success"))
+      (catch Throwable t
+        (record-completion! run-id run request-time "error")
+        (throw t))))
+  nil)
+
 (mu/defn- cancel-old-transform-runs! :- :nil
   [_ctx :- (ms/InstanceOfClass JobExecutionContext)]
   ;; `cancel-old-canceling-runs!` does a transactional select-then-update-by-id under row locks, so it returns
