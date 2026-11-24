@@ -680,6 +680,252 @@ describe("TaskListPage", () => {
   });
 });
 
+describe("TaskListPage pagination and filtering (metabase#14636)", () => {
+  const TOTAL = 57;
+  const LIMIT = 50;
+  const TASK = "field values scanning";
+  const filteredTask = createMockTask({ id: 99, task: TASK });
+
+  const createPageRows = (page: number) => {
+    // one kind of row per page, so the rows on screen tell the pages apart
+    const tasks = [TASK, "analyze"];
+    const durations = [513, 200];
+    const length = page === 0 ? LIMIT : TOTAL - LIMIT;
+    return Array.from({ length }, (_, index) =>
+      createMockTask({
+        id: index + 1,
+        task: tasks[page],
+        duration: durations[page],
+      }),
+    );
+  };
+
+  const respond = (url: string): ListTasksResponse => {
+    const params = new URL(url).searchParams;
+    const offset = Number(params.get("offset"));
+    const status = params.get("status");
+    const task = params.get("task");
+    const isDefaultQuery =
+      params.get("limit") === String(LIMIT) &&
+      params.get("sort_column") === "started_at" &&
+      params.get("sort_direction") === "desc";
+
+    if (!isDefaultQuery) {
+      return createMockTasksResponse();
+    }
+    if (status === null && task === null) {
+      const page = offset / LIMIT;
+      return createMockTasksResponse({
+        data: page === 0 || page === 1 ? createPageRows(page) : [],
+        limit: LIMIT,
+        offset,
+        total: TOTAL,
+      });
+    }
+    const data =
+      offset === 0 &&
+      (status === null || status === "success") &&
+      (task === null || task === TASK)
+        ? [filteredTask]
+        : [];
+    return createMockTasksResponse({
+      data,
+      limit: LIMIT,
+      offset,
+      total: data.length,
+    });
+  };
+
+  const setupPaged = (initialRoute = PATHNAME) => {
+    setupDatabasesEndpoints([createSampleDatabase()]);
+    setupUniqueTasksEndpoint([TASK]);
+    mockGetBoundingClientRect({ width: 100, height: 100 });
+    fetchMock.get("path:/api/task", ({ url }) => respond(url), { delay: 10 });
+
+    return renderWithProviders(
+      <Route path={PATHNAME} element={<TaskListPage />}>
+        <Route path=":taskId" />
+      </Route>,
+      { initialRoute, withRouter: true },
+    );
+  };
+
+  const getLastTaskParams = () => {
+    const url = getLastTaskCallUrl();
+    return url ? Object.fromEntries(new URL(url).searchParams) : {};
+  };
+
+  const getPagination = () =>
+    screen.getByRole("navigation", { name: "pagination" });
+  const expectPageRange = async (range: string) => {
+    await waitFor(() => expect(getPagination()).toHaveTextContent(range));
+    expect(within(getPagination()).getByText(range)).toBeVisible();
+  };
+  const getTable = () => screen.getByTestId("tasks-table");
+  const getClearButton = (input: HTMLElement) => {
+    // eslint-disable-next-line testing-library/no-node-access -- both pickers have a "Clear" button; scope to this picker's wrapper
+    const wrapper = input.parentElement;
+    if (!wrapper) {
+      throw new Error("The picker input has no wrapper");
+    }
+    return within(wrapper).getByLabelText("Clear");
+  };
+
+  it("paginates with the page in the URL and browser history", async () => {
+    const { router } = setupPaged();
+
+    expect(
+      await screen.findByRole("heading", { name: "Background tasks" }),
+    ).toBeInTheDocument();
+    await expectPageRange("1 - 50");
+    expect(getLastTaskParams()).toEqual({
+      limit: "50",
+      offset: "0",
+      sort_column: "started_at",
+      sort_direction: "desc",
+    });
+    expect(router?.location.search).toBe("");
+    expect(getTable()).toHaveTextContent(TASK);
+    expect(getTable()).toHaveTextContent("513");
+
+    expect(
+      screen.getByRole("button", { name: "Previous page" }),
+    ).toBeDisabled();
+    const nextPage = screen.getByRole("button", { name: "Next page" });
+    expect(nextPage).toBeEnabled();
+    await userEvent.click(nextPage);
+
+    await waitFor(() => expect(getTable()).toHaveTextContent("analyze"));
+    await expectPageRange("51 - 57");
+    expect(getLastTaskParams()).toMatchObject({ offset: "50" });
+    expect(router?.location.search).toBe("?page=1");
+    expect(
+      within(getPagination()).queryByText("1 - 50"),
+    ).not.toBeInTheDocument();
+    expect(getTable()).toHaveTextContent("analyze");
+    expect(getTable()).toHaveTextContent("200");
+    expect(getTable()).not.toHaveTextContent(TASK);
+
+    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    expect(previousPage).toBeEnabled();
+    await userEvent.click(previousPage);
+
+    await waitFor(() => expect(getTable()).toHaveTextContent(TASK));
+    await expectPageRange("1 - 50");
+    expect(router?.location.search).toBe("");
+    expect(getTable()).toHaveTextContent(TASK);
+
+    // pagination pushes history entries
+    act(() => router?.back());
+    expect(router?.location.pathname).toBe(PATHNAME);
+    expect(router?.location.search).toBe("?page=1");
+    await waitFor(() => expect(getTable()).toHaveTextContent("analyze"));
+    await expectPageRange("51 - 57");
+
+    act(() => router?.back());
+    expect(router?.location.pathname).toBe(PATHNAME);
+    expect(router?.location.search).toBe("");
+    await waitFor(() => expect(getTable()).toHaveTextContent(TASK));
+    await expectPageRange("1 - 50");
+  });
+
+  it("filters by status and task from the URL, and clears each filter", async () => {
+    const { router } = setupPaged(
+      `${PATHNAME}?status=success&task=field+values+scanning`,
+    );
+
+    const taskPicker = screen.getByPlaceholderText("Filter by task");
+    const statusPicker = screen.getByPlaceholderText("Filter by status");
+
+    const row = await screen.findByTestId("task");
+    expect(getLastTaskParams()).toEqual({
+      limit: "50",
+      offset: "0",
+      sort_column: "started_at",
+      sort_direction: "desc",
+      status: "success",
+      task: TASK,
+    });
+    await waitFor(() => expect(taskPicker).toHaveValue(TASK));
+    expect(statusPicker).toHaveValue("Success");
+    expect(screen.getAllByTestId("task")).toHaveLength(1);
+    expect(row).toHaveTextContent(TASK);
+    expect(row).toHaveTextContent("Sample Database");
+    expect(row).toHaveTextContent("Success");
+
+    await userEvent.click(statusPicker);
+    await userEvent.click(
+      within(screen.getByRole("listbox")).getByText("Failed"),
+    );
+
+    expect(await screen.findByText("No results")).toBeInTheDocument();
+    expect(getLastTaskParams()).toMatchObject({ status: "failed", task: TASK });
+    expect(screen.queryAllByTestId("task")).toHaveLength(0);
+    await waitFor(() =>
+      expect(router?.location.search).toBe(
+        "?status=failed&task=field+values+scanning",
+      ),
+    );
+
+    await userEvent.click(getClearButton(statusPicker));
+
+    expect(await screen.findByTestId("task")).toHaveTextContent(TASK);
+    expect(getLastTaskParams()).not.toHaveProperty("status");
+    expect(getLastTaskParams()).toMatchObject({ task: TASK });
+    await waitFor(() =>
+      expect(router?.location.search).toBe("?task=field+values+scanning"),
+    );
+    expect(statusPicker).toHaveValue("");
+    expect(screen.getAllByTestId("task")).toHaveLength(1);
+    expect(screen.getByTestId("task")).toHaveTextContent("Sample Database");
+    expect(screen.getByTestId("task")).toHaveTextContent("Success");
+
+    await userEvent.click(getClearButton(taskPicker));
+
+    await expectPageRange("1 - 50");
+    expect(getLastTaskParams()).toEqual({
+      limit: "50",
+      offset: "0",
+      sort_column: "started_at",
+      sort_direction: "desc",
+    });
+    await waitFor(() => expect(router?.location.search).toBe(""));
+  });
+
+  it("respects the page param on load and resets it when a filter changes", async () => {
+    const { router } = setupPaged(`${PATHNAME}?page=1`);
+
+    await expectPageRange("51 - 57");
+    expect(getLastTaskParams()).toMatchObject({ offset: "50" });
+    expect(getTable()).toHaveTextContent("analyze");
+
+    await userEvent.click(screen.getByPlaceholderText("Filter by status"));
+    await userEvent.click(
+      within(screen.getByRole("listbox")).getByText("Success"),
+    );
+
+    expect(await screen.findByTestId("task")).toHaveTextContent(TASK);
+    expect(getLastTaskParams()).toMatchObject({
+      offset: "0",
+      status: "success",
+    });
+    expect(getLastTaskParams()).not.toHaveProperty("task");
+    await waitFor(() =>
+      expect(router?.location.search).toBe("?status=success"),
+    );
+  });
+
+  it("removes invalid query params", async () => {
+    const { router } = setupPaged(`${PATHNAME}?status=foobar`);
+
+    await expectPageRange("1 - 50");
+    expect(getLastTaskParams()).not.toHaveProperty("status");
+    await waitFor(() => expect(router?.location.search).toBe(""));
+    expect(screen.getByPlaceholderText("Filter by status")).toHaveValue("");
+  });
+});
+
 function createMockTasksResponse(
   response?: Partial<ListTasksResponse>,
 ): ListTasksResponse {
