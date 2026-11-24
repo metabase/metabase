@@ -122,8 +122,8 @@
   that its rules read, through the group's stand-in user: the last preview of a group to start sets the values of
   every open preview of it. Returns the preview's `id`, `token` and `user_id` (the person, or the group's stand-in),
   the token being shown only here: send it as the
-  `X-Metabase-Preview-Token` header, and every request that carries it runs as that person. A preview lasts 30 minutes,
-  renewed by a request when fewer than 20 are left, and ends with the admin's session."
+  `X-Metabase-Preview-Token` header, and every request that carries it runs as that person. A preview lasts 10
+  minutes, is never renewed, and ends with the admin's session."
   [_route-params
    _query-params
    {:keys [user_id group_id attributes] :as body} :- [:map {:closed true}

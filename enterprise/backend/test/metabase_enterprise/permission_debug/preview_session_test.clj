@@ -200,17 +200,15 @@
 
 (deftest expiry-test
   (let [{:keys [id token]} (start-preview! (insert-admin-session!) (mt/user->id :rasta))]
-    (testing "a preview lasts 30 minutes"
-      (is (<= 29 (expiry-minutes-from-now id) 30)))
-    (testing "a request with 25 minutes left doesn't renew it"
-      (set-expiry-in-minutes! id 25)
-      (as-preview token :get 200 "user/current")
-      (is (<= 24 (expiry-minutes-from-now id) 25)))
-    (testing "a request with 15 minutes left renews it to 30"
-      (set-expiry-in-minutes! id 15)
-      (as-preview token :get 200 "user/current")
-      (is (<= 29 (expiry-minutes-from-now id) 30)))
-    (testing "an expired preview is refused"
+    (testing "a preview lasts 10 minutes"
+      (is (<= 9 (expiry-minutes-from-now id) 10)))
+    (testing "a request near the end doesn't extend it"
+      (set-expiry-in-minutes! id 1)
+      (let [expires-before (t2/select-one-fn :expires_at :model/PermissionPreviewSession :id id)]
+        (as-preview token :get 200 "user/current")
+        (is (= expires-before
+               (t2/select-one-fn :expires_at :model/PermissionPreviewSession :id id)))))
+    (testing "a request after the end is refused"
       (set-expiry-in-minutes! id -1)
       (is (= "preview-token-invalid"
              (:error-code (as-preview token :get 401 "user/current")))))))

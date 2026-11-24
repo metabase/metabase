@@ -29,9 +29,9 @@
   "What every preview token starts with. A Session key is a UUID, so a preview token is never one."
   "mbpv_")
 
-(def ^:private lifetime-minutes 30)
-
-(def ^:private renew-below-minutes 20)
+(def ^:private lifetime-minutes
+  "How long a preview lasts, never renewed. An arbitrary value that can change."
+  10)
 
 (defn- expiry-from-now []
   (t/plus (t/offset-date-time) (t/minutes lifetime-minutes)))
@@ -105,21 +105,14 @@
 
 (mu/defn preview-user-info
   "The user info of a request that carries the preview token `token`, with `:previewing-admin-id` the admin, or nil
-  when there is no such live preview: unknown, expired, its person gone or deactivated, or its admin's Session ended.
-  Renews the preview when fewer than 20 of its 30 minutes are left."
+  when there is no such live preview: unknown, expired, its person gone or deactivated, or its admin's Session ended."
   [token :- :string]
   (when (str/starts-with? token token-prefix)
-    (when-let [{:keys [preview-id renew?] :as user-info}
-               (session.db/permission-preview-user-info (hash-token token)
-                                                        renew-below-minutes
-                                                        (session.query/liveness-params)
-                                                        (premium-features/enable-advanced-permissions?))]
-      (when renew?
-        (session.db/renew-permission-preview-session! preview-id (expiry-from-now)))
-      (-> user-info
-          (dissoc :preview-id :renew?)
-          (update :is-group-manager? boolean)
-          (assoc :embedding/auth-method "preview")))))
+    (some-> (session.db/permission-preview-user-info (hash-token token)
+                                                     (session.query/liveness-params)
+                                                     (premium-features/enable-advanced-permissions?))
+            (update :is-group-manager? boolean)
+            (assoc :embedding/auth-method "preview"))))
 
 (defmethod app-db-copy/spec :model/PermissionPreviewSession [_model]
   {:skip? true})

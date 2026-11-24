@@ -255,53 +255,37 @@
    admin-user-id :- ::lib.schema.id/user]
   (t2/delete! :model/PermissionPreviewSession :id id :admin_user_id admin-user-id))
 
-(mu/defn renew-permission-preview-session!
-  "Set the expiry of the preview with `id` to `expires-at`."
-  [id         :- ms/PositiveInt
-   expires-at :- ms/TemporalInstant]
-  (t2/update! :model/PermissionPreviewSession :id id {:expires_at expires-at}))
-
 (mu/defn permission-preview-user-info
-  "The person, the admin and the `:renew?` flag of the preview with `token-hash`, or nil when there is none, it has
-  expired, its person is no longer an active non-admin user (a stand-in user is never active), or its admin's Session is
-  no longer live. `:renew?` is true when fewer than `renew-below-minutes` are left. The person's fields are the ones a
-  Session's lookup returns."
+  "The person and the admin of the preview with `token-hash`, or nil when there is none, it has expired, its person is
+  no longer an active non-admin user (a stand-in user is never active), or its admin's Session is no longer live. The
+  person's fields are the ones a Session's lookup returns."
   [token-hash                   :- :string
-   renew-below-minutes          :- ms/PositiveInt
    liveness                     :- ::session.schema/liveness-params
    enable-advanced-permissions? :- :boolean]
   (let [now (h2x/current-datetime-honeysql-form (:db-type liveness))]
-    (some-> (t2/query-one
-             (cond-> {:select    [[:person.id :metabase-user-id]
-                                  [:person.is_superuser :is-superuser?]
-                                  [:person.is_data_analyst :is-data-analyst?]
-                                  [:person.locale :user-locale]
-                                  [:preview.id :preview-id]
-                                  [:preview.admin_user_id :previewing-admin-id]
-                                  [[:case
-                                    [:< :preview.expires_at (h2x/add-interval-honeysql-form
-                                                             (:db-type liveness) now renew-below-minutes :minute)]
-                                    [:inline 1]
-                                    :else [:inline 0]]
-                                   :renew?]]
-                      :from      [[:core_session :session]]
-                      :join      [[:permission_preview_session :preview] [:= :preview.admin_session_id :session.id]]
-                      :left-join (into session.query/session-left-joins
-                                       [[:core_user :person] [:= :person.id :preview.user_id]])
-                      :where     (into [:and
-                                        [:= :preview.token_hash token-hash]
-                                        [:> :preview.expires_at now]
-                                        ;; a stand-in user is inactive by design
-                                        [:or
-                                         [:= :person.is_active true]
-                                         [:= :person.type "permission-preview"]]
-                                        [:= :person.is_superuser false]]
-                                       (session.query/live-session-conditions liveness))
-                      :limit     [:inline 1]}
-               enable-advanced-permissions?
-               (-> (sql.helpers/select [:pgm.is_group_manager :is-group-manager?])
-                   (sql.helpers/left-join [:permissions_group_membership :pgm]
-                                          [:and
-                                           [:= :pgm.user_id :person.id]
-                                           [:is :pgm.is_group_manager true]]))))
-            (update :renew? #(= 1 (long %))))))
+    (t2/query-one
+     (cond-> {:select    [[:person.id :metabase-user-id]
+                          [:person.is_superuser :is-superuser?]
+                          [:person.is_data_analyst :is-data-analyst?]
+                          [:person.locale :user-locale]
+                          [:preview.admin_user_id :previewing-admin-id]]
+              :from      [[:core_session :session]]
+              :join      [[:permission_preview_session :preview] [:= :preview.admin_session_id :session.id]]
+              :left-join (into session.query/session-left-joins
+                               [[:core_user :person] [:= :person.id :preview.user_id]])
+              :where     (into [:and
+                                [:= :preview.token_hash token-hash]
+                                [:> :preview.expires_at now]
+                                ;; a stand-in user is inactive by design
+                                [:or
+                                 [:= :person.is_active true]
+                                 [:= :person.type "permission-preview"]]
+                                [:= :person.is_superuser false]]
+                               (session.query/live-session-conditions liveness))
+              :limit     [:inline 1]}
+       enable-advanced-permissions?
+       (-> (sql.helpers/select [:pgm.is_group_manager :is-group-manager?])
+           (sql.helpers/left-join [:permissions_group_membership :pgm]
+                                  [:and
+                                   [:= :pgm.user_id :person.id]
+                                   [:is :pgm.is_group_manager true]]))))))
