@@ -822,7 +822,7 @@
     :tool-input       -> tool-input-available
     :tool-output      -> tool-output-available | tool-output-error
     :data             -> data-<data-type>
-    :error            -> [start + start-step]? error (its `:provider-failure` emitted as finish.messageMetadata.providerFailure)
+    :error            -> [start + start-step]? error (`:provider-failure` sets finish.messageMetadata.providerFailure)
     :usage            -> (accumulated; emitted as finish.message_metadata)
     :finish           -> (recorded — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"

@@ -2075,29 +2075,30 @@
                                         :details [{:reason   "IAM_PERMISSION_DENIED"
                                                    :metadata {:resource "projects/my-project"}}]}}])))))))
 
+(defn- streamed-failure-kinds!
+  "The `:provider-failure` of each error part of [[agent-loop-streamed-error-parts!]], run as an admin."
+  [& args]
+  (map :provider-failure (mt/as-admin (apply agent-loop-streamed-error-parts! args))))
+
 (deftest agent-loop-failed-finish-reason-error-part-test
   (testing "a finish reason that reports a failure upstream of the provider tags the error part with its kind"
     (is (= [:unavailable]
-           (map :provider-failure
-                (mt/as-admin (agent-loop-streamed-error-parts!
-                              "openrouter/anthropic/claude-haiku-4.5" (zai/zai->aisdk-chunks-xf)
-                              [{:id "msg-1" :choices [{:index 0 :delta {:content "Hi"}}]}
-                               {:id "msg-1" :choices [{:index 0 :delta {} :finish_reason "network_error"}]}]))))))
+           (streamed-failure-kinds!
+            "openrouter/anthropic/claude-haiku-4.5" (zai/zai->aisdk-chunks-xf)
+            [{:id "msg-1" :choices [{:index 0 :delta {:content "Hi"}}]}
+             {:id "msg-1" :choices [{:index 0 :delta {} :finish_reason "network_error"}]}]))))
   (testing "a plain `error` finish reason has no kind"
     (is (= [nil]
-           (map :provider-failure
-                (mt/as-admin (agent-loop-streamed-error-parts!
-                              "openrouter/anthropic/claude-haiku-4.5"
-                              (chat-completions/chat-completions->aisdk-chunks-xf
-                               (assoc chat-completions/stop-reasons "error" "error"))
-                              [{:id "msg-1" :choices [{:index 0 :delta {:content "Hi"}}]}
-                               {:id "msg-1" :choices [{:index 0 :delta {} :finish_reason "error"}]}])))))))
+           (streamed-failure-kinds!
+            "openrouter/anthropic/claude-haiku-4.5"
+            (chat-completions/chat-completions->aisdk-chunks-xf (assoc chat-completions/stop-reasons "error" "error"))
+            [{:id "msg-1" :choices [{:index 0 :delta {:content "Hi"}}]}
+             {:id "msg-1" :choices [{:index 0 :delta {} :finish_reason "error"}]}])))))
 
 (deftest agent-loop-streamed-provider-failure-error-part-test
   (testing "a provider failure that OpenRouter streams after its 200 tags the error part with its kind"
     (are [kind error]
-         (= [kind] (map :provider-failure (mt/as-admin (agent-loop-streamed-error-parts!
-                                                        (openrouter-midstream-error-chunks error)))))
+         (= [kind] (streamed-failure-kinds! (openrouter-midstream-error-chunks error)))
       :rate-limit {:code 429 :message "Rate limit exceeded"}
       ;; Input that OpenRouter's moderation flags is not a credentials failure.
       ;; https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors
@@ -2115,31 +2116,28 @@
                           (openrouter-midstream-error-chunks {:code 429 :message "Rate limit exceeded"}))))))
   (testing "a provider failure that OpenAI's Responses API streams after its 200 tags the error part with its kind"
     (are [kind event]
-         (= [kind] (map :provider-failure
-                        (mt/as-admin (agent-loop-streamed-error-parts!
-                                      "openai/gpt-5.5" (openai/openai->aisdk-chunks-xf)
-                                      [{:type "response.created" :response {:id "resp_1" :model "gpt-5.5"}}
-                                       event]))))
+         (= [kind] (streamed-failure-kinds!
+                    "openai/gpt-5.5" (openai/openai->aisdk-chunks-xf)
+                    [{:type "response.created" :response {:id "resp_1" :model "gpt-5.5"}}
+                     event]))
       :unavailable {:type     "response.failed"
                     :response {:id "resp_1" :error {:code "server_error" :message "The server had an error."}}}
       :rate-limit  {:type "error" :code "rate_limit_exceeded" :message "Rate limit reached." :param nil}
       nil          {:type "error" :code "invalid_prompt" :message "Invalid prompt." :param nil}))
   (testing "a provider failure that Gemini streams after its 200 tags the error part with its kind"
     (are [kind error]
-         (= [kind] (map :provider-failure
-                        (mt/as-admin (agent-loop-streamed-error-parts!
-                                      "google/google/gemini-3.5-flash" (gemini/->aisdk-chunks-xf)
-                                      [{:responseId "r1" :candidates [{:content {:role "model" :parts [{:text "Hi"}]}}]}
-                                       {:error error}]))))
+         (= [kind] (streamed-failure-kinds!
+                    "google/google/gemini-3.5-flash" (gemini/->aisdk-chunks-xf)
+                    [{:responseId "r1" :candidates [{:content {:role "model" :parts [{:text "Hi"}]}}]}
+                     {:error error}]))
       :rate-limit  {:code 429 :message "Resource exhausted." :status "RESOURCE_EXHAUSTED"}
       :unavailable {:code 503 :message "The model is overloaded." :status "UNAVAILABLE"}))
   (testing "an exception that Bedrock streams after its 200, as `bedrock/runtime-event` gives it, has its kind"
     (are [kind exception-type]
-         (= [kind] (map :provider-failure
-                        (mt/as-admin (agent-loop-streamed-error-parts!
-                                      "anthropic/claude-sonnet-4-6" (claude/claude->aisdk-chunks-xf)
-                                      [{:type "message_start" :message {:id "msg_1"}}
-                                       {:type "error" :error {:type exception-type :message "Too many requests"}}]))))
+         (= [kind] (streamed-failure-kinds!
+                    "anthropic/claude-sonnet-4-6" (claude/claude->aisdk-chunks-xf)
+                    [{:type "message_start" :message {:id "msg_1"}}
+                     {:type "error" :error {:type exception-type :message "Too many requests"}}]))
       :rate-limit  "throttlingException"
       :unavailable "serviceUnavailableException"
       :unavailable "internalServerException"

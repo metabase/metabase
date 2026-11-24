@@ -48,7 +48,7 @@
    :cacheCreationTokens (get-in u [:input_tokens_details :cache_write_tokens] 0)
    :cacheReadTokens     (get-in u [:input_tokens_details :cached_tokens] 0)})
 
-(defn- error-chunk
+(defn- response-error-chunk
   "The [[core/error-chunk]] for an `error` object that the Responses API streamed after its 200.
   Its text is the object's message, else its code, else a generic text."
   [error]
@@ -201,8 +201,8 @@
                                 :raw-finish-reason raw))))
              ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
              ;; `response.error`, not in a top-level `error` event, so surface it explicitly.
-             (= t "response.failed")            (rf (error-chunk (:error response)))
-             (= t "error")                      (rf (error-chunk (error-event-object chunk))))))))))
+             (= t "response.failed")            (rf (response-error-chunk (:error response)))
+             (= t "error")                      (rf (response-error-chunk (error-event-object chunk))))))))))
 
 ;;; AISDK parts → OpenAI Responses API input items
 

@@ -418,25 +418,22 @@
   ;; Mistral puts its error at the top level, not under `error`.
   (or (:error body) body))
 
-(def ^:private more-provider-failures
-  "The kind of provider failure for each HTTP status, and each error type or code that Anthropic, OpenAI and Bedrock
-  send, that [[provider-failure]] does not classify.
-
-  [[provider-failure]] has only the rules whose failure gets a user-facing message from [[provider-error]]. A rule
-  here gives a kind and no message: a 403 is `:auth`, but its cause can be a blocked region, which the `:auth` message
-  does not describe."
-  {403                    :auth
-   404                    :not-found
-   408                    :unavailable
-   "rate_limit_error"     :rate-limit
-   "rate_limit_exceeded"  :rate-limit
-   "authentication_error" :auth
-   "invalid_api_key"      :auth
-   "not_found_error"      :not-found
-   "model_not_found"      :not-found
-   "server_error"         :unavailable
+(def ^:private kind-only-failures
+  "The kind of provider failure for each HTTP status, and each error type or code that Anthropic, OpenAI, Z.AI and
+  Bedrock send, that has no user-facing message in [[provider-error]]."
+  ;; A 403 gets a kind and no message: its cause can be a blocked region, which the `:auth` message does not describe.
+  {403                           :auth
+   404                           :not-found
+   408                           :unavailable
+   "rate_limit_error"            :rate-limit
+   "rate_limit_exceeded"         :rate-limit
+   "authentication_error"        :auth
+   "invalid_api_key"             :auth
+   "not_found_error"             :not-found
+   "model_not_found"             :not-found
+   "server_error"                :unavailable
    ;; Z.AI's finish reason for a failure upstream of it. https://docs.z.ai/api-reference/llm/chat-completion
-   "network_error"        :unavailable
+   "network_error"               :unavailable
    ;; The exception types that Bedrock's `InvokeModelWithResponseStream` streams after its 200.
    ;; https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ResponseStream.html
    "throttlingException"         :rate-limit
@@ -455,8 +452,9 @@
     error-code))
 
 (defn- moderation-flag?
-  "True when the `error` is OpenRouter's 403 for input that its moderation flagged. The prompt is at fault, not the
-  credentials. https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors"
+  "True when the `error` is OpenRouter's 403 for input that its moderation flagged."
+  ;; The prompt is at fault, not the credentials.
+  ;; https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors
   [{{:keys [reasons flagged_input]} :metadata}]
   (boolean (or (seq reasons) flagged_input)))
 
@@ -469,7 +467,7 @@
   (let [status (or status (streamed-status error))]
     (when-not (and (= 403 status) (moderation-flag? error))
       (or (provider-failure status error)
-          (some more-provider-failures [status error-type error-code])))))
+          (some kind-only-failures [status error-type error-code])))))
 
 (def ^:private transport-error-codes
   "The `:error-code` of each exception for a request that Metabot sent and that got no response from the provider:
