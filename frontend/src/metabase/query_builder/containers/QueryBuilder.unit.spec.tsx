@@ -16,11 +16,12 @@ import {
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { DatasetQuery } from "metabase-types/api";
+import type { Dataset, DatasetQuery } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -940,6 +941,75 @@ describe("QueryBuilder", () => {
           expect.anything(),
         ],
       });
+    });
+  });
+  describe("running a query after an empty result", () => {
+    const FILTERED_CARD = createMockUnsavedCard({
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              filters: [
+                {
+                  type: "operator",
+                  operator: ">",
+                  args: [
+                    { type: "column", name: "TOTAL" },
+                    { type: "literal", value: 1000 },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
+
+    const EMPTY_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createOrdersIdDatasetColumn()],
+        rows: [],
+      }),
+    });
+
+    const NON_EMPTY_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createOrdersIdDatasetColumn()],
+        rows: [[1], [2]],
+      }),
+      row_count: 2,
+    });
+
+    it("should not show 'No results' while the next query runs (metabase#41464)", async () => {
+      await setup({
+        card: FILTERED_CARD,
+        dataset: EMPTY_DATASET,
+        database: createSampleDatabase({ auto_run_queries: true }),
+      });
+
+      expect(await screen.findByText("No results")).toBeInTheDocument();
+
+      const response = defer<Dataset>();
+      fetchMock.modifyRoute("dataset-post", {
+        response: () => response.promise,
+      });
+
+      const pill = screen.getByTestId("filter-pill");
+      expect(pill).toHaveTextContent("Total is greater than 1000");
+      await userEvent.click(within(pill).getByLabelText("Remove"));
+
+      const main = screen.getByTestId("query-builder-main");
+      expect(
+        await within(main).findByTestId("loading-indicator"),
+      ).toBeInTheDocument();
+      expect(within(main).queryByText("No results")).not.toBeInTheDocument();
+
+      response.resolve(NON_EMPTY_DATASET);
+      expect(await screen.findByText("Showing 2 rows")).toBeInTheDocument();
+      expect(
+        within(main).queryByTestId("loading-indicator"),
+      ).not.toBeInTheDocument();
     });
   });
 });
