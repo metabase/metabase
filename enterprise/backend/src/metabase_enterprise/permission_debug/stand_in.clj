@@ -85,7 +85,8 @@
 (mu/defn start-group-preview! :- [:map {:closed true}
                                   [:id         ms/PositiveInt]
                                   [:token      :string]
-                                  [:expires_at ms/TemporalInstant]]
+                                  [:expires_at ms/TemporalInstant]
+                                  [:user_id    ms/PositiveInt]]
   "Start a preview as the group `group-id` for the admin `admin-user-id`, whose live Session has the hashed key
   `admin-session-key-hash`: find or create the group's stand-in user, write the picked `attributes` to it, replacing
   the ones the last preview of the group wrote, and run `session/start-preview!` as it. Throws a 404 for a group that
@@ -99,7 +100,8 @@
   (let [group       (check-previewable-group! group-id)
         tenant-id   (group-tenant-id group)
         stand-in-id (prepare-stand-in! group tenant-id attributes)]
-    (session/start-preview! {:user-id                stand-in-id
-                             :admin-user-id          admin-user-id
-                             :admin-session-key-hash admin-session-key-hash
-                             :stand-in?              true})))
+    (assoc (session/start-preview! {:user-id                stand-in-id
+                                    :admin-user-id          admin-user-id
+                                    :admin-session-key-hash admin-session-key-hash
+                                    :stand-in?              true})
+           :user_id stand-in-id)))

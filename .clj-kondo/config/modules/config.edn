@@ -4526,7 +4526,21 @@
            users
            users.schema
            util}
-   :model-imports #{:model/Card :model/PermissionsGroup :model/PermissionsGroupMembership :model/Table :model/Tenant :model/User}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/ConnectionImpersonation
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database
+                    :model/DatabaseRouter
+                    :model/Field
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/Sandbox
+                    :model/Table
+                    :model/Tenant
+                    :model/User}}
 
   enterprise/permissions.impersonation
   {:team "Security"
