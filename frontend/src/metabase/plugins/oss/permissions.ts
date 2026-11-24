@@ -274,7 +274,7 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABS = definePluginSlot(
 const getDefaultApplicationPermissions = () => ({
   getRoutes: (): ReactNode => null,
   // Unjustified type cast. FIXME
-  tabs: [] as any,
+  tabs: [] as { name: string; value: string }[],
 });
 
 export const PLUGIN_APPLICATION_PERMISSIONS = definePluginSlot(
