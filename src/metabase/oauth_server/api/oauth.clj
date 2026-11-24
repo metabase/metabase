@@ -660,18 +660,19 @@
     ;; Only a token with no resource needs anything here, so [[refreshable-token]], which authenticates the client a
     ;; second time, runs for that token alone and not on every refresh. See the `:else` arm for why naming the
     ;; resource binds the new tokens.
-    (let [body   (dissoc body :scope)
-          stored (when (empty? resource)
-                   (some->> (not-empty refresh_token) (oidc.store/get-refresh-token (:token-store provider))))
+    (let [body         (dissoc body :scope)
+          stored       (when (empty? resource)
+                         (some->> (not-empty refresh_token) (oidc.store/get-refresh-token (:token-store provider))))
           ;; Every held scope, registered or not, must be an MCP scope: oidc-provider keeps them all when the refresh
           ;; names none, while [[with-default-mcp-resource]] looks only at the registered ones.
-          target (when (and stored
-                            (empty? (:resource stored))
-                            (every? (set (mcp/v2-scopes)) (:scope stored)))
-                   (with-default-mcp-resource {:scope (str/join " " (:scope stored))}))]
+          mcp-resource (when (and stored
+                                  (empty? (:resource stored))
+                                  (seq (:scope stored))
+                                  (every? (set (mcp/v2-scopes)) (:scope stored)))
+                         (oauth-server/mcp-resource-url))]
       (cond-> body
-        (and (seq (:resource target)) (refreshable-token provider authorization-header body))
-        (assoc :resource (:resource target))))
+        (and mcp-resource (refreshable-token provider authorization-header body))
+        (assoc :resource [mcp-resource])))
 
     :else
     (if-let [token-data (refreshable-token provider authorization-header body)]
@@ -871,7 +872,10 @@
   (let [ip-address           (request/ip-address request)
         authorization-header (get-in request [:headers "authorization"])
         client-id            (or (:client-id (oidc.token-endpoint/parse-basic-auth authorization-header))
-                                 (:client_id body))]
+                                 (:client_id body))
+        ;; oidc-provider would give the new tokens an empty `resource` in place of the old token's, so it counts as none
+        body                 (cond-> body
+                               (empty? (:resource body)) (dissoc :resource))]
     (try
       (do-with-token-throttling ip-address client-id
                                 (fn []
@@ -885,13 +889,8 @@
                                                              :scopes    (when (some? (:scope body))
                                                                           (or (scope-tokens (:scope body)) []))
                                                              :resource  (:resource body)})
-                                                           ;; oidc-provider would give the new tokens an empty
-                                                           ;; `resource` in place of the old token's, so it counts as none
                                                            (oidc/token-request provider
-                                                                               (with-refresh-scope-to-grant
-                                                                                 provider authorization-header
-                                                                                 (cond-> body
-                                                                                   (empty? (:resource body)) (dissoc :resource)))
+                                                                               (with-refresh-scope-to-grant provider authorization-header body)
                                                                                authorization-header))]
                                             {:status  200
                                              :headers {"Content-Type"  "application/json"
