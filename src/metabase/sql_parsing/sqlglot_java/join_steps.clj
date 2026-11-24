@@ -74,44 +74,29 @@
       :else
       {:source "derived", :table nil, :alias (alias-or-name node)})))
 
-(def ^:private comma-as-cross-dialects
-  "The dialects that parse `FROM a, b` as a CROSS join, so a comma cannot be told from one."
-  #{"bigquery"
-    "clickhouse"
-    "databricks"
-    "hive"
-    "spark"
-    "spark2"
-    "sqlite"})
-
 (defn- upper-arg [join k]
   (u/upper-case-en (ast/text join k)))
-
-(defn- comma-join?
-  "Whether `join` is, or in this dialect may be, a comma join.
-  Port of `_comma_join`."
-  [join dialect]
-  (let [args   (set-args join)
-        side   (upper-arg join "side")
-        kind   (upper-arg join "kind")
-        method (upper-arg join "method")]
-    (or (and (= "" side kind method)
-             (not-any? args ["on" "using"]))
-        (and (= "CROSS" kind)
-             (contains? comma-as-cross-dialects dialect)))))
 
 (defn- step-strategy
   "The join's strategy: `inner`, `left`, `right`, `full` or `cross`.
   Port of `_join_step_strategy`."
-  [join dialect]
-  (let [side (upper-arg join "side")
-        kind (upper-arg join "kind")]
+  [join]
+  (let [side   (upper-arg join "side")
+        kind   (upper-arg join "kind")
+        method (upper-arg join "method")]
     (cond
+      ;; A comma join has no side, kind, method or condition.
       (or (= kind "CROSS")
-          (comma-join? join dialect)) "cross"
+          (and (= "" side kind method)
+               (not-any? (set-args join) ["on" "using"])))
+      "cross"
+
       ;; A SEMI or ANTI join filters its left side, so it has no unmatched rows to count, whatever its side.
-      (#{"SEMI" "ANTI"} kind)         "inner"
-      :else                           (get {"LEFT" "left", "RIGHT" "right", "FULL" "full"} side "inner"))))
+      (#{"SEMI" "ANTI"} kind)
+      "inner"
+
+      :else
+      (get {"LEFT" "left", "RIGHT" "right", "FULL" "full"} side "inner"))))
 
 (defn- with-clause
   "The query `select`, given a copy of `with-node` as its WITH clause when there is one.
@@ -198,48 +183,6 @@
   Port of `_sources`."
   [from-node joins]
   (cons (ast/this from-node) (map ast/this joins)))
-
-(defn- source-names
-  "The effective names of the sources `nodes` that have one.
-  Port of `_source_names`."
-  [nodes dialect]
-  (into #{} (keep #(source-name % dialect)) nodes))
-
-(defn- where-column-source
-  "The source in `names` that `column` of a WHERE conjunct names, or nil if it names none of them.
-  A path may be `source.column`, `schema.source.column` or `source.struct.field`, so any part can name the source.
-  A column qualified with a source of a subquery of `conjunct` belongs to that subquery.
-  Port of `_where_column_source`."
-  [column conjunct names dialect]
-  (let [parts (into []
-                    (keep (fn [part]
-                            (let [identifier (ast/arg column part)]
-                              (when (instance? Expressions$Identifier identifier)
-                                (effective-name identifier dialect)))))
-                    ["catalog" "db" "table"])]
-    (loop [node column]
-      (if (identical? node conjunct)
-        (some names parts)
-        (let [parent    (ast/parent node)
-              from-node (when (instance? Expressions$Select parent)
-                          (ast/arg parent "from_"))]
-          (when-not (and from-node
-                         (some (source-names (source-nodes from-node (ast/arg parent "joins")) dialect) parts))
-            (recur parent)))))))
-
-(defn- where-may-join?
-  "Whether a conjunct of `where` names a source in `comma-names` and another source.
-  A column that names no source may belong to any of them, so it does not count as a second source.
-  Port of `_where_may_join`."
-  [where names comma-names dialect]
-  (boolean
-   (some (fn [conjunct]
-           (let [sources (into #{}
-                               (keep #(where-column-source % conjunct names dialect))
-                               (ast/find-all conjunct Expressions$Column))]
-             (and (> (count sources) 1)
-                  (some comma-names sources))))
-         (conjuncts (ast/this where)))))
 
 (defn- operand-column
   "The source an operand of a join comparison names, `::literal` for a literal, or nil for anything else."
@@ -346,12 +289,10 @@
 
 (defn- join-refusal
   "Why the SELECT `stmt`, run under `with-node`, cannot have its joins rebuilt from its FROM and JOIN clauses, or nil."
-  [stmt with-node dialect]
+  [stmt with-node]
   (let [from-node (ast/arg stmt "from_")
         joins     (ast/arg stmt "joins")
-        kept      (cond-> (cons from-node joins) with-node (conj with-node))
-        where     (ast/arg stmt "where")
-        commas    (filter #(comma-join? % dialect) joins)]
+        kept      (cond-> (cons from-node joins) with-node (conj with-node))]
     (cond
       (not (and from-node (ast/this from-node)))
       "no-from"
@@ -370,23 +311,13 @@
 
       ;; DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
       (some #(= "POSITIONAL" (upper-arg % "method")) joins)
-      "unsupported-join"
-
-      ;; The step queries leave WHERE out, so they would count the whole cross product of a comma join whose condition
-      ;; is there.
-      (and (seq commas)
-           where
-           (where-may-join? where
-                            (source-names (source-nodes from-node joins) dialect)
-                            (source-names (map ast/this commas) dialect)
-                            dialect))
-      "comma-join")))
+      "unsupported-join")))
 
 (defn- statement-refusal
   "Why the parsed statement `stmt`, run under `with-node`, cannot have its join steps rebuilt, or nil.
   A source can still be refused when it is described.
   Port of `_statement_refusal`."
-  [stmt with-node dialect]
+  [stmt with-node]
   (cond
     (instance? Expressions$SetOperation stmt)     "set-operation"
     (not (instance? Expressions$Select stmt))     "not-a-select"
@@ -395,7 +326,7 @@
     ;; ClickHouse's SETTINGS and T-SQL's OPTION can change what a join returns or whether it runs at all, and the step
     ;; queries would leave them out.
     (some (set-args stmt) ["settings" "options"]) "unsupported-join"
-    :else                                         (join-refusal stmt with-node dialect)))
+    :else                                         (join-refusal stmt with-node)))
 
 (defn- step-query
   "The count query of the join at index `i` of `joins`, whose strategy is `strategy`."
@@ -419,7 +350,7 @@
   Throws a refusal, an `ex-info` with its reason under `::reason`, for a query whose joins cannot be rebuilt."
   [dialect sql]
   (let [[stmt with-node] (parse-statement dialect sql)]
-    (when-let [reason (statement-refusal stmt with-node dialect)]
+    (when-let [reason (statement-refusal stmt with-node)]
       (throw (unsupported reason)))
     (let [from-node (ast/arg stmt "from_")
           joins     (vec (ast/arg stmt "joins"))
@@ -430,7 +361,7 @@
        :steps    (into []
                        (map-indexed
                         (fn [i join]
-                          (let [strategy (step-strategy join dialect)]
+                          (let [strategy (step-strategy join)]
                             (assoc (step-source (ast/this join) ctes dialect)
                                    :strategy strategy
                                    :sql      (ast/sql (step-query from-node joins i strategy with-node dialect)

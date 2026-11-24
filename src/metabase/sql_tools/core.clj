@@ -320,11 +320,10 @@
   Its `:alias` is the alias, or the table's name, normalized for `driver`.
 
   A query whose joins cannot be rebuilt this way returns `{:unsupported reason}`.
-  A comma join is refused as `:comma-join` when its WHERE clause may hold its join condition, and is otherwise a
-  `:cross-join`.
+  A comma join is a `:cross-join` step, which counts the cross product even when the WHERE clause joins it.
   A query whose generated SQL would write or lock is refused as `:not-read-only`.
-  The other reasons are `:set-operation`, `:not-a-select`, `:no-from`, `:nested-join`, `:unsupported-join`,
-  `:unsupported-source`, `:parameters`, `:large-literal-list` and `:unparseable`.
+  The other reasons are `:set-operation`, `:not-a-select`, `:no-from`, `:comma-join`, `:nested-join`,
+  `:unsupported-join`, `:unsupported-source`, `:parameters`, `:large-literal-list` and `:unparseable`.
 
   Always parses with sqlglot, so with Macaw selected it uses the default sqlglot backend."
   [driver       :- :keyword

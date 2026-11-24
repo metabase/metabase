@@ -167,27 +167,17 @@
             orders (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))]
         (is (= [[orders 0]] (step-counts result)))))))
 
-(deftest analyze-native-query-comma-join-without-a-condition-test
+(deftest analyze-native-query-comma-join-counts-the-cross-product-test
   (mt/test-drivers (join-steps-drivers)
-    (testing "a comma join whose WHERE only filters counts the cross product"
+    (testing "a comma join counts the cross product, since the steps leave out the WHERE clause that may join it"
       (let [query    (lib/native-query
                       (mt/metadata-provider)
                       (str "SELECT o." (qf :orders :id) " "
                            "FROM " (qt :orders) " o, " (qt :products) " pr "
-                           "WHERE o." (qf :orders :id) " > 0"))
+                           "WHERE pr." (qf :products :id) " = o." (qf :orders :product_id)))
             result   (query-analysis/analyze-native-query (make-native-transform query) (test-sources))
             orders   (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))
             products (count-of (str "SELECT COUNT(*) FROM " (qt :products)))]
+        (is (=? {:join-structure [{:strategy :cross-join, :source-table (mt/id :products)}]}
+                result))
         (is (= [[(* orders products)]] (step-counts result)))))))
-
-(deftest analyze-native-query-comma-join-has-no-join-structure-test
-  (mt/test-drivers (join-steps-drivers)
-    (testing "a comma join is refused, since its condition is in the WHERE clause, and visited fields still resolve"
-      (let [query  (lib/native-query
-                    (mt/metadata-provider)
-                    (str "SELECT o." (qf :orders :id) " "
-                         "FROM " (qt :orders) " o, " (qt :products) " pr "
-                         "WHERE pr." (qf :products :id) " = o." (qf :orders :product_id)))
-            result (query-analysis/analyze-native-query (make-native-transform query) (test-sources))]
-        (is (nil? (:join-structure result)))
-        (is (contains? (get-in result [:visited-fields :all]) (mt/id :orders :product_id)))))))

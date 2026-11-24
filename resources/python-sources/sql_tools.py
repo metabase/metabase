@@ -490,25 +490,13 @@ def _join_step_source(node, cte_names, dialect):
     return {"source": "derived", "table": None, "alias": node.alias_or_name}
 
 
-# The dialects that parse `FROM a, b` as a CROSS join, so a comma cannot be told from one.
-_COMMA_AS_CROSS_DIALECTS = {"bigquery", "clickhouse", "databricks", "hive", "spark", "spark2", "sqlite"}
-
-
-def _comma_join(join, dialect):
-    """Whether `join` is, or in this dialect may be, a comma join."""
-    side = (join.side or "").upper()
-    kind = (join.kind or "").upper()
-    method = (join.method or "").upper()
-    return (not side and not kind and not method and not _set_args(join) & {"on", "using"}) or (
-        kind == "CROSS" and dialect in _COMMA_AS_CROSS_DIALECTS
-    )
-
-
-def _join_step_strategy(join, dialect):
+def _join_step_strategy(join):
     """The join's strategy: `inner`, `left`, `right`, `full` or `cross`."""
     side = (join.side or "").upper()
     kind = (join.kind or "").upper()
-    if kind == "CROSS" or _comma_join(join, dialect):
+    method = (join.method or "").upper()
+    # A comma join has no side, kind, method or condition.
+    if kind == "CROSS" or not (side or kind or method or _set_args(join) & {"on", "using"}):
         return "cross"
     # A SEMI or ANTI join filters its left side, so it has no unmatched rows to count, whatever its side.
     if kind in ("SEMI", "ANTI"):
@@ -619,43 +607,6 @@ def _source_name(node, dialect):
     return _effective_name(identifier, dialect) if isinstance(identifier, exp.Identifier) else None
 
 
-def _source_names(nodes, dialect):
-    """The effective names of the sources `nodes` that have one."""
-    return {_source_name(node, dialect) for node in nodes} - {None}
-
-
-def _where_column_source(column, conjunct, names, dialect):
-    """The source in `names` that `column` of a WHERE conjunct names, or None if it names none of them.
-
-    A path may be `source.column`, `schema.source.column` or `source.struct.field`, so any part can name the source.
-    A column qualified with a source of a subquery of `conjunct` belongs to that subquery.
-    """
-    parts = [
-        _effective_name(column.args[part], dialect)
-        for part in ("catalog", "db", "table")
-        if isinstance(column.args.get(part), exp.Identifier)
-    ]
-    node = column
-    while node is not conjunct:
-        node = node.parent
-        from_ = node.args.get("from_") if isinstance(node, exp.Select) else None
-        if from_ is not None and set(parts) & _source_names(_sources(from_, node.args.get("joins") or []), dialect):
-            return None
-    return next((part for part in parts if part in names), None)
-
-
-def _where_may_join(where, names, comma_names, dialect):
-    """Whether a conjunct of `where` names a source in `comma_names` and another source.
-
-    A column that names no source may belong to any of them, so it does not count as a second source.
-    """
-    for conjunct in _conjuncts(where.this):
-        sources = {_where_column_source(c, conjunct, names, dialect) for c in conjunct.find_all(exp.Column)} - {None}
-        if len(sources) > 1 and sources & comma_names:
-            return True
-    return False
-
-
 def _on_counts_matches(from_, joins, strategy, dialect):
     """Whether counting the rows where the last join's ON clause holds counts exactly the rows that found a match.
 
@@ -693,7 +644,7 @@ def _on_counts_matches(from_, joins, strategy, dialect):
     return {"left": from_joined, "right": from_earlier, "full": from_joined and from_earlier}[strategy]
 
 
-def _statement_refusal(stmt, with_, dialect):
+def _statement_refusal(stmt, with_):
     """Why the parsed statement `stmt`, run under `with_`, cannot have its join steps rebuilt, or None.
 
     A source can still be refused when it is described.
@@ -723,24 +674,9 @@ def _statement_refusal(stmt, with_, dialect):
     # A sample in anything the steps keep would pick different rows in each step query.
     if any(node.find(exp.TableSample) for node in kept):
         return "unsupported-source"
-    # The step queries leave WHERE out, so they would count the whole cross product of a comma join whose condition is
-    # there.
     # DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
     if any((join.method or "").upper() == "POSITIONAL" for join in joins):
         return "unsupported-join"
-    where = stmt.args.get("where")
-    comma_joins = [join for join in joins if _comma_join(join, dialect)]
-    if (
-        comma_joins
-        and where is not None
-        and _where_may_join(
-            where,
-            _source_names(_sources(from_, joins), dialect),
-            _source_names((join.this for join in comma_joins), dialect),
-            dialect,
-        )
-    ):
-        return "comma-join"
     return None
 
 
@@ -776,8 +712,8 @@ def join_steps(sql: str, dialect: str = None) -> str:
                         "sql": "SELECT COUNT(*) AS n, COUNT(CASE WHEN a.id = b.a_id THEN 1 END) AS m FROM a
                                 LEFT JOIN b ON a.id = b.a_id"}]}'
 
-        join_steps("SELECT * FROM a, b WHERE a.id = b.id")
-        => '{"status": "unsupported", "reason": "comma-join"}'
+        join_steps("SELECT 1 UNION SELECT 2")
+        => '{"status": "unsupported", "reason": "set-operation"}'
     """
     try:
         try:
@@ -787,7 +723,7 @@ def join_steps(sql: str, dialect: str = None) -> str:
         if not stmts:
             raise _JoinStepsUnsupported("unparseable")
         stmt, with_ = _whole_query(stmts[0], dialect)
-        reason = _statement_refusal(stmt, with_, dialect)
+        reason = _statement_refusal(stmt, with_)
         if reason:
             raise _JoinStepsUnsupported(reason)
         from_ = stmt.args["from_"]
@@ -797,7 +733,7 @@ def join_steps(sql: str, dialect: str = None) -> str:
         steps = []
         for n, join in enumerate(joins, start=1):
             source = _join_step_source(join.this, cte_names, dialect)
-            strategy = _join_step_strategy(join, dialect)
+            strategy = _join_step_strategy(join)
             chain = joins[:n]
             if strategy not in ("left", "right", "full"):
                 query = _count_select(from_, chain, with_)
