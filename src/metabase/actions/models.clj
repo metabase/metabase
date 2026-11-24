@@ -1106,8 +1106,13 @@
              :hydrate actions.collection-items/hydrate}})
 
 (defmethod eid-translation/spec :model/Action [_model]
+  ;; An Action as the API gives it has the columns of its QueryAction or ImplicitAction too, which its serialization
+  ;; spec leaves to theirs.
   {:names      [:action]
-   :structures [:parameters :parameter_mappings :visualization_settings]})
+   :references {:database_id :model/Database
+                :table_id    :model/Table}
+   :structures [:parameters :parameter_mappings :visualization_settings]
+   :transforms {:dataset_query serialization/mbql-transform}})
 
 (defmethod app-db-copy/spec :model/QueryAction [_model]
   {:skip?    false
