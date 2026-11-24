@@ -299,4 +299,6 @@
 (defmethod eid-translation/spec :model/Measure [_model]
   {:names      [:measure]
    :references {:table_id :model/Table}
-   :structures [:definition]})
+   :structures [:definition]
+   :transforms {:dimensions         measures.serialization/api-dimensions-transform
+                :dimension_mappings measures.serialization/api-dimension-mappings-transform}})

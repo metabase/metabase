@@ -317,3 +317,29 @@
                   (get-with-entity-ids :crowberto (str "native-query-snippet/" (:id snippet)))))
           (finally
             (t2/delete! :model/NativeQuerySnippet :id (:id snippet))))))))
+
+(defn- int-paths
+  "The path to each int in `x`, with the int."
+  ([x] (int-paths [] x))
+  ([path x]
+   (cond
+     (map? x)        (mapcat (fn [[k v]] (int-paths (conj path k) v)) x)
+     (sequential? x) (mapcat (fn [i v] (int-paths (conj path i) v)) (range) x)
+     (int? x)        [[path x]]
+     :else           nil)))
+
+(deftest measure-dimensions-test
+  (testing "a Measure's dimensions and their mappings name their Fields and Tables by natural keys"
+    (mt/with-model-cleanup [:model/Measure]
+      (let [mp       (mt/metadata-provider)
+            measure  (mt/user-http-request :crowberto :post 200 "measure"
+                                           {:name       "eid dimensions measure"
+                                            :definition (lib/aggregate (venues-query)
+                                                                       (lib/sum (lib.metadata/field mp (mt/id :venues :price))))})
+            response (get-with-entity-ids :crowberto (str "measure/" (:id measure)))
+            price    (m/find-first #(= "PRICE" (:name %)) (:dimensions response))]
+        (is (= [{:field-id (field-ref (mt/id :venues :price)) :type "field"}]
+               (:sources price)))
+        (is (=? {:table_id (table-ref (mt/id :venues))}
+                (m/find-first #(= (:id price) (:dimension_id %)) (:dimension_mappings response))))
+        (is (= [] (int-paths (select-keys response [:dimensions :dimension_mappings]))))))))
