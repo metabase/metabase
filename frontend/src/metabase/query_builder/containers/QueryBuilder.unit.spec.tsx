@@ -6,6 +6,8 @@ import _ from "underscore";
 
 import {
   setupCardQueryMetadataEndpoint,
+  setupCardsEndpoints,
+  setupCollectionItemsEndpoint,
   setupLastDownloadFormatEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -33,6 +35,8 @@ import type {
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollection,
+  createMockCollectionItem,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
@@ -60,8 +64,11 @@ import {
   TEST_STRUCTURED_CARD,
   TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
   TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
+  TEST_COLLECTION,
+  TEST_UNSAVED_STRUCTURED_CARD,
   setup,
   waitForFaviconReady,
+  waitForSaveToBeEnabled,
 } from "./test-utils";
 
 registerVisualizations();
@@ -268,6 +275,27 @@ describe("QueryBuilder", () => {
       );
     });
 
+    it("stops showing the loading document title when the query fails (metabase#49270)", async () => {
+      renderHook(() => usePageTitle("Metabase", { titleIndex: 0 }));
+      await setup({ card: TEST_UNSAVED_STRUCTURED_CARD });
+      await waitFor(() => expect(document.title).toBe("Question · Metabase"));
+
+      const response = defer<Response>();
+      fetchMock.removeRoute("dataset-post");
+      fetchMock.post("path:/api/dataset", () => response.promise, {
+        name: "dataset-post",
+      });
+
+      const [runButton] = screen.getAllByTestId("run-button");
+      await userEvent.click(runButton);
+      await waitFor(() =>
+        expect(document.title).toBe("Doing science... · Metabase"),
+      );
+
+      response.resolve(new Response(JSON.stringify({}), { status: 500 }));
+      await waitFor(() => expect(document.title).toBe("Question · Metabase"));
+    });
+
     describe("query execution time", () => {
       it("renders query execution time for mbql questions", async () => {
         await setup({
@@ -316,6 +344,103 @@ describe("QueryBuilder", () => {
         ),
       ).toBeInTheDocument();
       expect(within(visualization).getByText(message)).toBeInTheDocument();
+    });
+  });
+
+  describe("saving a new question", () => {
+    mockGetBoundingClientRect();
+
+    it("saves a new question under the name and collection picked in the modal (metabase#55631)", async () => {
+      const firstCollection = createMockCollection({
+        id: 2,
+        name: "First collection",
+      });
+      await setup({
+        card: TEST_UNSAVED_STRUCTURED_CARD,
+        collections: [
+          createMockCollection({
+            id: "root",
+            name: "Our analytics",
+            can_write: true,
+          }),
+          TEST_COLLECTION,
+          firstCollection,
+        ],
+      });
+      setupCollectionItemsEndpoint({
+        collection: { id: "root" },
+        collectionItems: [TEST_COLLECTION, firstCollection].map((collection) =>
+          createMockCollectionItem({
+            id: collection.id,
+            name: collection.name,
+            model: "collection",
+            location: "/",
+            can_write: true,
+            here: ["collection"],
+          }),
+        ),
+      });
+      setupCollectionItemsEndpoint({
+        collection: TEST_COLLECTION,
+        collectionItems: [],
+      });
+      setupCollectionItemsEndpoint({
+        collection: firstCollection,
+        collectionItems: [],
+      });
+      const savedCard = createMockCard({
+        id: 1,
+        name: "Custom",
+        collection_id: firstCollection.id,
+        dataset_query: TEST_UNSAVED_STRUCTURED_CARD.dataset_query,
+      });
+      setupCardsEndpoints([savedCard]);
+      setupCardQueryMetadataEndpoint(
+        savedCard,
+        createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
+      );
+
+      await waitForSaveToBeEnabled();
+      await userEvent.click(screen.getByText("Save"));
+      const modal = await screen.findByTestId("save-question-modal");
+      const nameInput = within(modal).getByLabelText("Name");
+      expect(nameInput).toHaveValue("Orders");
+      await userEvent.clear(nameInput);
+      await userEvent.type(nameInput, "Custom");
+      await userEvent.click(
+        within(modal).getByLabelText(/Where do you want to save this/),
+      );
+      const picker = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(
+        await within(picker).findByText("First collection"),
+      );
+      await userEvent.click(
+        within(picker).getByRole("button", { name: "Select this collection" }),
+      );
+      await waitFor(() =>
+        expect(
+          within(modal).getByLabelText(/Where do you want to save this/),
+        ).toHaveTextContent("First collection"),
+      );
+
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Save" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("save-question-modal"),
+        ).not.toBeInTheDocument(),
+      );
+
+      const createCall = checkNotNull(
+        fetchMock.callHistory.lastCall("card-create"),
+      );
+      const createBody: unknown = JSON.parse(String(createCall.options.body));
+      expect(createBody).toMatchObject({
+        name: "Custom",
+        collection_id: firstCollection.id,
+      });
+      expect(await screen.findByDisplayValue("Custom")).toBeInTheDocument();
     });
   });
 
