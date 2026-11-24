@@ -2644,7 +2644,7 @@
 (deftest alert-stopped-email-goes-out-once-the-change-commits-test
   (testing "Archiving a Card outside any test transaction emails its alert's recipients after the commit"
     ;; Not `mt/with-temp`, which wraps its body in a transaction that never commits, so the email would never go out.
-    (mt/with-model-cleanup [:model/Card]
+    (mt/with-model-cleanup [:model/Card :model/Revision]
       (notification.tu/with-channel-fixtures [:channel/email]
         (api.notification-test/with-send-messages-sync!
           (let [query   (mbql-count-query (mt/id) (mt/id :checkins))
@@ -2664,9 +2664,10 @@
               (let [[email] (mt/with-test-user :crowberto
                               (notification.tu/with-mock-inbox-email!
                                 (card/update-cards! [{:id card-id, :archived true}])))]
-                (is (=? {:bcc     ["rasta@metabase.com"]
-                         :subject "One of your alerts has stopped working"}
-                        email))
+                (is (=? {:bcc     #{"rasta@metabase.com"}
+                         :subject "One of your alerts has stopped working"
+                         :body    [{"archived by Crowberto Corv" true}]}
+                        (mt/summarize-multipart-single-email email #"archived by Crowberto Corv")))
                 (is (not (t2/exists? :model/Notification :id (:id notification))))))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
