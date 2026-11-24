@@ -35,7 +35,10 @@ import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
 import { useDiffControls } from "../../CodeMirrorEditor/use-diff-controls";
-import { ExpressionSidePanel } from "../ExpressionSidePanel";
+import {
+  type ExpressionSidePanelFunctionRequest as DocsRequest,
+  ExpressionSidePanel,
+} from "../ExpressionSidePanel";
 import { LayoutMain, LayoutSidebar } from "../Layout";
 
 import { DocsButton } from "./DocsButton";
@@ -283,15 +286,24 @@ export function EditorF(props: EditorFProps) {
 
   // The extensions must not change, or the editor reconfigures and drops the
   // placeholders of a function, so they call the latest callbacks via refs.
-  const openDocsRef = useRef(() => {});
-  openDocsRef.current = () => setOpenSidebar("functions");
+  // What the docs side panel opens at: a function's page, or the list. Each
+  // request has a new id, so the same function can be asked for again.
+  const [docsRequest, setDocsRequest] = useState<DocsRequest>();
+  const openDocsRef = useRef<(functionName?: string) => void>(() => {});
+  openDocsRef.current = (functionName) => {
+    setDocsRequest((request) => ({
+      functionName,
+      id: (request?.id ?? 0) + 1,
+    }));
+    setOpenSidebar("functions");
+  };
   const isDocsOpenRef = useRef(false);
   isDocsOpenRef.current = openSidebar === "functions";
   const exitCodeRef = useRef(onExitCode);
   exitCodeRef.current = onExitCode;
   const stableExtensions = useMemo(
     () => ({
-      openDocs: () => openDocsRef.current(),
+      openDocs: (functionName?: string) => openDocsRef.current(functionName),
       isDocsOpen: () => isDocsOpenRef.current,
       prefix: codePrefix(() => exitCodeRef.current?.()),
     }),
@@ -660,6 +672,7 @@ export function EditorF(props: EditorFProps) {
       expressionMode={expressionMode}
       query={query}
       reportTimezone={reportTimezone}
+      functionRequest={docsRequest}
       onClose={closeSidebar}
       onTemplateClick={handleTemplateClick}
     />
@@ -722,9 +735,9 @@ export function EditorF(props: EditorFProps) {
               <DocsButton
                 isOpen={openSidebar === "functions"}
                 onToggle={() =>
-                  setOpenSidebar(
-                    openSidebar === "functions" ? null : "functions",
-                  )
+                  openSidebar === "functions"
+                    ? setOpenSidebar(null)
+                    : openDocsRef.current()
                 }
               />
             )}

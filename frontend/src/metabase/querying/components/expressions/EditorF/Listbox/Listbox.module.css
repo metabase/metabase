@@ -1,15 +1,41 @@
+/* Everything below the heading: the options, which scroll, and the docs row,
+   which stays at the bottom. Each level is a column that may shrink, so that
+   the options scroll once the popover reaches its 500px. */
+.options {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Mantine's scroll area, with its thin scrollbar, instead of the browser's.
+   Its viewport is 100% tall by default, which needs a fixed height; here it
+   takes the height of the options, up to what's left of the 500px. */
+.scrollArea {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+
+  .viewport {
+    flex: 0 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+}
+
 .listbox {
-  overflow-y: auto;
-  flex-shrink: 1;
-  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 1px;
   padding: var(--mantine-spacing-sm);
+}
 
-  &:not(:first-child) {
-    border-top: 1px solid var(--mb-color-border-neutral);
-  }
+/* "Open docs", fixed below the options, with the group line above it */
+.footer {
+  flex-shrink: 0;
+  padding: var(--mantine-spacing-sm);
+  border-top: 0.5px solid var(--mb-color-border-neutral-strong);
 }
 
 .heading {
@@ -19,10 +45,6 @@
   color: var(--mb-color-text-secondary);
   font-size: 12px;
   line-height: 1.15;
-
-  & + .listbox {
-    border-top: none;
-  }
 }
 
 .section {

@@ -29,8 +29,11 @@ type Options = {
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
   database: Pick<Database, "features"> | undefined;
-  /** Opens the docs side panel. Must not change, or the editor reconfigures. */
-  openDocs: () => void;
+  /**
+   * Opens the docs side panel, at a function's page when given its name. Must
+   * not change, or the editor reconfigures.
+   */
+  openDocs: (functionName?: string) => void;
   /** True while the docs side panel is open. Must not change either. */
   isDocsOpen: () => boolean;
   /** See `SuggestOptions`. */

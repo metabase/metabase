@@ -18,7 +18,7 @@ import {
   type ExpressionSuggestion,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import { DelayGroup, Icon } from "metabase/ui";
+import { DelayGroup, Icon, ScrollArea } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
@@ -71,47 +71,87 @@ export function Listbox({
     return null;
   }
 
+  // The docs row stays at the bottom, below the options that scroll.
+  const items = options.map((completion, index) => ({ completion, index }));
+  const listItems = items.filter(
+    ({ completion }) => completion.type !== DOCS_SUGGESTION_TYPE,
+  );
+  const docsItems = items.filter(
+    ({ completion }) => completion.type === DOCS_SUGGESTION_TYPE,
+  );
+
+  const renderItem = ({
+    completion,
+    index,
+  }: {
+    completion: ExpressionSuggestion;
+    index: number;
+  }) => (
+    <CompletionItem
+      completion={completion}
+      index={index}
+      selected={selectedOption === index}
+      className={cx({
+        [S.docs]: completion.type === DOCS_SUGGESTION_TYPE,
+      })}
+      onCompletionClick={onCompletionClick}
+      query={query}
+      stageIndex={stageIndex}
+      database={database}
+      reportTimezone={reportTimezone}
+    />
+  );
+
   return (
     <>
       {heading && <div className={S.heading}>{heading}</div>}
-      <ul role="listbox" className={cx(S.listbox, className)}>
+      <div role="listbox" className={cx(S.options, className)}>
         <DelayGroup>
-          {options.map((completion, index) => (
-            <Fragment key={completion.displayLabel ?? completion.label}>
-              {completion.heading != null && (
-                <li role="presentation" className={S.section}>
-                  {completion.heading}
-                </li>
-              )}
-              {index > 0 &&
-                getSectionName(completion) !==
-                  getSectionName(options[index - 1]) && (
-                  <li role="presentation" className={S.divider} />
-                )}
-              {completion.type === "empty" ? (
-                // No column of the type the function takes: nothing to pick.
-                <li role="presentation" className={S.empty}>
-                  {completion.displayLabel}
-                </li>
-              ) : (
-                <CompletionItem
-                  completion={completion}
-                  index={index}
-                  selected={selectedOption === index}
-                  className={cx({
-                    [S.docs]: completion.type === DOCS_SUGGESTION_TYPE,
-                  })}
-                  onCompletionClick={onCompletionClick}
-                  query={query}
-                  stageIndex={stageIndex}
-                  database={database}
-                  reportTimezone={reportTimezone}
-                />
-              )}
-            </Fragment>
-          ))}
+          {listItems.length > 0 && (
+            <ScrollArea
+              className={S.scrollArea}
+              classNames={{ viewport: S.viewport }}
+              type="auto"
+              scrollbars="y"
+            >
+              <ul role="presentation" className={S.listbox}>
+                {listItems.map(({ completion, index }, position) => (
+                  <Fragment key={completion.displayLabel ?? completion.label}>
+                    {completion.heading != null && (
+                      <li role="presentation" className={S.section}>
+                        {completion.heading}
+                      </li>
+                    )}
+                    {position > 0 &&
+                      getSectionName(completion) !==
+                        getSectionName(listItems[position - 1].completion) && (
+                        <li role="presentation" className={S.divider} />
+                      )}
+                    {completion.type === "empty" ? (
+                      // No column of the type the function takes: nothing to
+                      // pick.
+                      <li role="presentation" className={S.empty}>
+                        {completion.displayLabel}
+                      </li>
+                    ) : (
+                      renderItem({ completion, index })
+                    )}
+                  </Fragment>
+                ))}
+              </ul>
+            </ScrollArea>
+          )}
+          {docsItems.length > 0 && (
+            <ul role="presentation" className={S.footer}>
+              {docsItems.map((item) => (
+                <Fragment key={item.completion.label}>
+                  {renderItem(item)}
+                </Fragment>
+              ))}
+            </ul>
+          )}
         </DelayGroup>
-      </ul>
+      </div>
     </>
   );
 }

@@ -122,6 +122,8 @@ Pills B and C (Figma nodes 361:2521, 361:2582) are used only in the custom colum
 - 2026-11-24 — F: the AI prompt is kept after it runs, instead of being cleared. Why: reviewers wanted to see and reword the prompt that made the expression (Jacob), and the design shows it (Figma frame 395:4658).
 - 2026-11-24 — F: an info button in code mode toggles the docs side panel (Figma frame 395:4735). Why: reviewers found no way to get help, especially while editing an existing expression.
 - 2026-11-24 — The docs side panel is redesigned (Figma 395:5532, 395:6116, 395:6211): Functions first, each with its description, and a page per function with the old help popover's content. Why: reviewers found no function help, examples or optional arguments, and "Open docs" didn't open docs. It applies to the popover editors too, which share the panel.
+- 2026-11-24 — F: the suggestion list scrolls in a Mantine ScrollArea (thin scrollbar), between the argument's description at the top and the "Open docs" row at the bottom, which both stay in place.
+- 2026-11-24 — F: "Open docs" in the suggestions opens the docs panel at the page of the function the cursor is in, like `case(`; outside a function, at the list. The info button always opens the list. If the panel is already open, it switches to that page.
 
 ## Settings
 - `expression-hide-ai` — behave as without an AI provider.

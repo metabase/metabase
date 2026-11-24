@@ -16,6 +16,7 @@ import {
 import { EditorView } from "@codemirror/view";
 import { t } from "ttag";
 
+import { enclosingFunction } from "metabase/querying/expressions/position";
 import { suggestAggregations } from "metabase/querying/expressions/suggestions/aggregations";
 import { suggestFields } from "metabase/querying/expressions/suggestions/fields";
 import { suggestFunctions } from "metabase/querying/expressions/suggestions/functions";
@@ -68,8 +69,11 @@ export type SuggestOptionsB = {
   popularFunctions?: string[];
   /** Gives the values of a column, for a value that is compared to it. */
   getColumnValues?: GetColumnValues;
-  /** Opens the docs side panel, from the last row of the list. */
-  openDocs: () => void;
+  /**
+   * Opens the docs side panel, from the last row of the list: at the page of
+   * a function when given its clause name, otherwise at the list.
+   */
+  openDocs: (functionName?: string) => void;
   /** True while the docs side panel is open: it already lists the functions. */
   isDocsOpen?: () => boolean;
 };
@@ -121,17 +125,25 @@ export function suggestionsB(options: SuggestOptionsB) {
 /**
  * The "Open the docs" row, after every other option. Its range is empty, so
  * it's sorted like an option that matches nothing typed, and the low boost
- * puts it after the others.
+ * puts it after the others. Inside a function, like `case(`, it opens the
+ * page of that function.
  */
-function suggestDocs(openDocs: () => void): CompletionSource {
+function suggestDocs(
+  openDocs: (functionName?: string) => void,
+): CompletionSource {
   const option: ExpressionSuggestion = {
     type: DOCS_SUGGESTION_TYPE,
     label: t`Open docs`,
     icon: "reference",
     boost: -99,
     apply: (view) => {
+      const { state } = view;
+      const fn = enclosingFunction(
+        state.doc.toString(),
+        state.selection.main.head,
+      );
       closeCompletion(view);
-      openDocs();
+      openDocs(fn?.name);
     },
   };
   return (context: CompletionContext): CompletionResult => ({

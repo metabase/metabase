@@ -11,7 +11,11 @@ import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { findRelatedFunctions } from "metabase/querying/expressions";
+import { hasRequiredFeature } from "metabase/databases";
+import {
+  findRelatedFunctions,
+  getClauseDefinition,
+} from "metabase/querying/expressions";
 import {
   ActionIcon,
   Icon,
@@ -41,10 +45,20 @@ import {
 
 const ICON_SIZE = 16;
 
+/**
+ * Opens the panel at a function's page, by its clause name, or at the list.
+ * A new `id` asks again, also for the same function.
+ */
+export type ExpressionSidePanelFunctionRequest = {
+  functionName?: string;
+  id: number;
+};
+
 export type ExpressionSidePanelProps = {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   reportTimezone?: string;
+  functionRequest?: ExpressionSidePanelFunctionRequest;
   onClose: () => void;
   onTemplateClick: (code: string) => void;
 };
@@ -59,6 +73,7 @@ export function ExpressionSidePanel({
   expressionMode,
   query,
   reportTimezone,
+  functionRequest,
   onClose,
   onTemplateClick,
 }: ExpressionSidePanelProps) {
@@ -69,7 +84,16 @@ export function ExpressionSidePanel({
 
   const [tab, setTab] = useState<SidePanelTab>("functions");
   const [search, setSearch] = useState("");
-  const [openFunction, setOpenFunction] = useState<SidePanelFunctionRow>();
+  // The function whose page shows, by its clause name.
+  const [openFunctionName, setOpenFunctionName] = useState(
+    functionRequest?.functionName,
+  );
+  const [requestId, setRequestId] = useState(functionRequest?.id);
+  if (functionRequest != null && functionRequest.id !== requestId) {
+    setRequestId(functionRequest.id);
+    setOpenFunctionName(functionRequest.functionName);
+  }
+  const openFunction = getOpenFunction(openFunctionName, database);
 
   const relatedNames = useRelatedFunctions({
     expressionMode,
@@ -162,7 +186,7 @@ export function ExpressionSidePanel({
                         key={row.key}
                         row={row}
                         database={database}
-                        onFunctionOpen={setOpenFunction}
+                        onFunctionOpen={(row) => setOpenFunctionName(row.name)}
                         onTemplateClick={onTemplateClick}
                       />
                     ))}
@@ -182,7 +206,7 @@ export function ExpressionSidePanel({
                 variant="default"
                 size="sm"
                 aria-label={t`Back to the list`}
-                onClick={() => setOpenFunction(undefined)}
+                onClick={() => setOpenFunctionName(undefined)}
               >
                 <Icon name="arrow_left" size={12} />
               </ActionIcon>
@@ -207,6 +231,18 @@ export function ExpressionSidePanel({
       )}
     </div>
   );
+}
+
+/** A function to show the page of, when the panel knows it. */
+function getOpenFunction(name: string | undefined, database?: Database) {
+  const clause = name != null ? getClauseDefinition(name) : undefined;
+  if (clause == null || database == null) {
+    return null;
+  }
+  return {
+    name: clause.name,
+    isDisabled: !hasRequiredFeature(database, clause.requiresFeature),
+  };
 }
 
 // A pause in typing before the search by meaning, which asks a model.
