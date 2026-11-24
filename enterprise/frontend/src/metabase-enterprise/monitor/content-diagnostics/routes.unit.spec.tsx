@@ -304,7 +304,9 @@ describe("content diagnostics tab state", () => {
       const data = EMPTY_FINDINGS.filter(
         (finding) =>
           (query == null ||
-            finding.entity_display_name.toLowerCase().includes(query)) &&
+            (finding.entity_display_name ?? "")
+              .toLowerCase()
+              .includes(query)) &&
           (entityTypes.length === 0 ||
             entityTypes.includes(finding.entity_type)),
       );
