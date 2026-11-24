@@ -12,7 +12,9 @@ const UNKNOWN_ENTITY_ID = createMockEntityId("zzzzzzzzzzzzzzzzzzzzz");
 function setup(linkText = "/") {
   setupEntityIdEndpoint({ dashboard: { [DASHBOARD_ENTITY_ID]: 15 } });
   const onOpen = jest.fn();
-  renderWithProviders(<AddressBox linkText={linkText} onOpen={onOpen} />);
+  renderWithProviders(
+    <AddressBox linkText={linkText} frameKey="1:0" onOpen={onOpen} />,
+  );
   return { onOpen, box: screen.getByLabelText("Address") };
 }
 

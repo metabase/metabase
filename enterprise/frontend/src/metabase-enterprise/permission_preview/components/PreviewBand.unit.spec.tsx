@@ -39,6 +39,7 @@ function setup({
       target={target}
       isStarted={isStarted}
       linkText="/dashboard/15"
+      frameKey="1:0"
       onOpenLink={onOpenLink}
       onGoHome={onGoHome}
       isExplainOpen={isExplainOpen}

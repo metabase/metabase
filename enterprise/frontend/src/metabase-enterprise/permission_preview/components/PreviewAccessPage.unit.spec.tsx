@@ -317,6 +317,43 @@ describe("PreviewAccessPage", () => {
     expect(screen.getByLabelText("Address")).toHaveValue("/dashboard/12");
   });
 
+  describe("the text typed in the link box, with the frame at All collections", () => {
+    async function typeText() {
+      await userEvent.click(await screen.findByText("Sandy Sales"));
+      await getFrame();
+      const address = screen.getByLabelText("Address");
+      await userEvent.type(address, "hello there{Enter}");
+      await screen.findByText(/Paste a Metabase link/);
+      return address;
+    }
+
+    it("goes when Home is clicked", async () => {
+      setup();
+      const address = await typeText();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Back to all collections" }),
+      );
+
+      expect(address).toHaveValue("/");
+      expect(
+        screen.queryByText(/Paste a Metabase link/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("goes when another person is picked", async () => {
+      setup();
+      const address = await typeText();
+
+      await userEvent.click(screen.getByText("Tina Tenant"));
+
+      await waitFor(() => expect(address).toHaveValue("/"));
+      expect(
+        screen.queryByText(/Paste a Metabase link/),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("ends the preview of the person it replaces", async () => {
     setup();
 

@@ -164,6 +164,7 @@ function Preview({ target }: PreviewProps) {
           target={target}
           isStarted={session != null}
           linkText={linkText}
+          frameKey={frameKey}
           onOpenLink={handleOpen}
           onGoHome={() =>
             handleOpen(ALL_COLLECTIONS_ITEM, getLinkText(ALL_COLLECTIONS_ITEM))

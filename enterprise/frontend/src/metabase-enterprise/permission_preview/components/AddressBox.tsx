@@ -16,6 +16,8 @@ import {
 
 interface AddressBoxProps {
   linkText: string;
+  // changes each time the frame loads again, even at the same path
+  frameKey: string | null;
   onOpen: (item: string, linkText: string) => void;
 }
 
@@ -31,7 +33,7 @@ const ITEM_TYPES = [
  * Shows the path of what the frame shows, and opens what is typed in it: a
  * Metabase link or path, an entity ID, or a numeric ID (asks which item has it).
  */
-export function AddressBox({ linkText, onOpen }: AddressBoxProps) {
+export function AddressBox({ linkText, frameKey, onOpen }: AddressBoxProps) {
   const dispatch = useDispatch();
   const applicationName = useSelector(getApplicationName);
   const [draft, setDraft] = useState(linkText);
@@ -42,7 +44,7 @@ export function AddressBox({ linkText, onOpen }: AddressBoxProps) {
   useEffect(() => {
     setDraft(linkText);
     setError(null);
-  }, [linkText]);
+  }, [linkText, frameKey]);
 
   async function open() {
     const text = draft.trim();
