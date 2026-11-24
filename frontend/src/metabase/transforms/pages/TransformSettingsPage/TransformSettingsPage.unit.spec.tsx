@@ -16,6 +16,7 @@ import { Route } from "metabase/router";
 import type {
   Collection,
   Database,
+  LegacyDatasetQuery,
   Transform,
   UpdateTransformRequest,
 } from "metabase-types/api";
@@ -94,11 +95,12 @@ function createTransform(opts: Partial<Transform> = {}) {
     collection_id: null,
     source: {
       type: "query",
+      // LegacyDatasetQuery is opaque; build the legacy MBQL query by hand
       query: {
         database: DB_ID,
         type: "query",
         query: { "source-table": 1 },
-      },
+      } as unknown as LegacyDatasetQuery,
     },
     target: {
       type: "table",

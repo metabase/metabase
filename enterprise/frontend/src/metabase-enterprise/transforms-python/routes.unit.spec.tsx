@@ -46,7 +46,7 @@ describe("python transform routes", () => {
         settings: mockSettings({
           "transforms-enabled": true,
           "token-features": createMockTokenFeatures({
-            transforms: true,
+            "transforms-basic": true,
             "transforms-python": true,
           }),
         }),

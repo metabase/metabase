@@ -16,6 +16,7 @@ import type {
   CreateCollectionRequest,
   CreateTransformRequest,
   Database,
+  LegacyDatasetQuery,
   Transform,
   TransformSource,
 } from "metabase-types/api";
@@ -67,11 +68,12 @@ const ROOT_COLLECTION = createMockCollection({
 
 const SOURCE: TransformSource = {
   type: "query",
+  // LegacyDatasetQuery is opaque; build the legacy MBQL query by hand
   query: {
     database: DB_ID,
     type: "query",
     query: { "source-table": 1 },
-  },
+  } as unknown as LegacyDatasetQuery,
 };
 
 type SetupOpts = {
@@ -149,7 +151,9 @@ function setup({
   fetchMock.post("path:/api/transform", async ({ options }) => {
     const body: CreateTransformRequest = JSON.parse(String(options.body));
     return createMockTransform({
-      ...body,
+      name: body.name,
+      source: SOURCE,
+      target: body.target,
       id: NEW_TRANSFORM_ID,
       collection_id: body.collection_id ?? null,
     });

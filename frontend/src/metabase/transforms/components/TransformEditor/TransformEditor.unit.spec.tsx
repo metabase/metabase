@@ -196,7 +196,7 @@ function setup({ query }: { query: DatasetQuery }) {
   const state = createMockState({
     settings: mockSettings({
       "transforms-enabled": true,
-      "token-features": createMockTokenFeatures({ transforms: true }),
+      "token-features": createMockTokenFeatures({ "transforms-basic": true }),
     }),
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],

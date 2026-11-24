@@ -115,10 +115,9 @@ function setup({
   setupCollectionTreeEndpoint([]);
   setupTableQueryMetadataEndpoint(createOrdersTable());
   setupNativeQuerySnippetEndpoints();
-  fetchMock.get(
-    { url: "path:/api/collection", query: { namespace: "snippets" } },
-    [],
-  );
+  fetchMock.get("path:/api/collection", [], {
+    query: { namespace: "snippets" },
+  });
   setupLibraryEndpoints();
   setupCustomVizPluginListEndpoint([]);
   setupListTransformsEndpoint([TRANSFORM]);
@@ -139,7 +138,7 @@ function setup({
   });
   setupEnterprisePlugins();
 
-  return renderRoutes(
+  const result = renderRoutes(
     toRouteObjects(
       <Route path="data-studio/transforms">
         {getDataStudioTransformRoutes()}
@@ -157,6 +156,11 @@ function setup({
       }),
     },
   );
+  const { router } = result;
+  if (!router) {
+    throw new Error("renderRoutes did not create a router");
+  }
+  return { ...result, router };
 }
 
 describe("transform pages with read-only remote sync", () => {
