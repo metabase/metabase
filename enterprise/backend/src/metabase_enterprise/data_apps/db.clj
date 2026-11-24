@@ -172,11 +172,6 @@
                 :order-by [[:name :asc] [:id :asc]]})
     []))
 
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table {:where [:= :id table-id]}))
-
 (mu/defn resource-cards
   "The unarchived Cards in the collection with `collection-id`, in name then id order."
   [collection-id :- ::lib.schema.id/collection]
