@@ -4411,3 +4411,14 @@
         (mt/user-http-request :crowberto :put 200 (str "collection/" entity-id) {:archived true})
         (mt/user-http-request :crowberto :delete 200 (str "collection/" entity-id))
         (is (not (t2/exists? :model/Collection :id collection-id)))))))
+
+(deftest collection-body-entity-ids-test
+  (testing "POST and PUT /api/collection take an entity id for the parent"
+    (mt/with-model-cleanup [:model/Collection]
+      (mt/with-temp [:model/Collection {parent-id :id parent-eid :entity_id} {}
+                     :model/Collection {other-id :id other-eid :entity_id}   {}]
+        (let [{coll-id :id} (mt/user-http-request :crowberto :post 200 "collection"
+                                                  {:name "Collection by entity id" :parent_id parent-eid})]
+          (is (= (str "/" parent-id "/") (t2/select-one-fn :location :model/Collection :id coll-id)))
+          (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:parent_id other-eid})
+          (is (= (str "/" other-id "/") (t2/select-one-fn :location :model/Collection :id coll-id))))))))

@@ -140,3 +140,14 @@
       (testing "DELETE"
         (mt/user-http-request :crowberto :delete 204 (str "timeline/" entity-id))
         (is (not (t2/exists? :model/Timeline :id timeline-id)))))))
+
+(deftest timeline-body-entity-ids-test
+  (testing "POST and PUT /api/timeline take an entity id for the Collection"
+    (mt/with-model-cleanup [:model/Timeline]
+      (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}   {}
+                     :model/Collection {other-id :id other-eid :entity_id} {}]
+        (let [{timeline-id :id} (mt/user-http-request :crowberto :post 200 "timeline"
+                                                      {:name "Timeline by entity id" :collection_id coll-eid})]
+          (is (= coll-id (t2/select-one-fn :collection_id :model/Timeline :id timeline-id)))
+          (mt/user-http-request :crowberto :put 200 (str "timeline/" timeline-id) {:collection_id other-eid})
+          (is (= other-id (t2/select-one-fn :collection_id :model/Timeline :id timeline-id))))))))

@@ -2451,3 +2451,17 @@
           (is (=? {:id transform-id :name "Renamed by entity id"}
                   (mt/user-http-request :crowberto :put 200 (str "transform/" entity-id)
                                         {:name "Renamed by entity id"}))))))))
+
+(deftest transform-body-entity-ids-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (testing "PUT /api/transform/:id takes an entity id for the Collection"
+      ;; An update checks that the database supports the transform, so it needs a driver that does.
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {:namespace "transforms"}
+                       :model/Transform  {transform-id :id}                {:name   "Entity id transform"
+                                                                            :source {:type  :query
+                                                                                     :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                                                            :target {:type "table"
+                                                                                     :name (mt/random-name)}}]
+          (mt/user-http-request :crowberto :put 200 (str "transform/" transform-id) {:collection_id coll-eid})
+          (is (= coll-id (t2/select-one-fn :collection_id :model/Transform :id transform-id))))))))

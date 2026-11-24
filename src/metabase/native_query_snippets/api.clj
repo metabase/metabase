@@ -59,6 +59,10 @@
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 
+(def ^:private snippet-body-references
+  "The model of the rows each column of a NativeQuerySnippet create or update body names, by id or entity id."
+  {:collection_id :model/Collection})
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -67,13 +71,14 @@
   "Create a new `NativeQuerySnippet`."
   [_route-params
    _query-params
-   {:keys [content description name collection_id]} :- [:map {:closed true}
-                                                        [:content       :string]
-                                                        [:description   {:optional true} [:maybe :string]]
-                                                        [:name          native-query-snippet/NativeQuerySnippetName]
-                                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (check-snippet-name-is-unique name)
-  (let [snippet {:content       content
+   body :- [:map {:closed true}
+            [:content       :string]
+            [:description   {:optional true} [:maybe :string]]
+            [:name          native-query-snippet/NativeQuerySnippetName]
+            [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]]]
+  (check-snippet-name-is-unique (:name body))
+  (let [{:keys [content description name collection_id]} (eid-translation/refs->ids body snippet-body-references)
+        snippet {:content       content
                  :creator_id    api/*current-user-id*
                  :description   description
                  :name          name
@@ -111,5 +116,6 @@
             [:content       {:optional true} [:maybe :string]]
             [:description   {:optional true} [:maybe :string]]
             [:name          {:optional true} [:maybe native-query-snippet/NativeQuerySnippetName]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (check-perms-and-update-snippet! (eid-translation/->id-or-404 :model/NativeQuerySnippet id) body))
+            [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]]]
+  (check-perms-and-update-snippet! (eid-translation/->id-or-404 :model/NativeQuerySnippet id)
+                                   (eid-translation/refs->ids body snippet-body-references)))

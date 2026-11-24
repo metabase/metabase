@@ -126,6 +126,10 @@
         true (apply t2/hydrate dashboard)
         true remove-unreadable-actions))))
 
+(def ^:private dashboard-body-references
+  "The model of the rows each column of a Dashboard create or update body names, by id or entity id."
+  {:collection_id :model/Collection})
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -140,9 +144,9 @@
        [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
        [:description         {:optional true} [:maybe :string]]
        [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
-       [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+       [:collection_id       {:optional true} [:maybe ms/IdOrEntityId]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
-  (-> (dashboards.write/create-dashboard! dashboard)
+  (-> (dashboards.write/create-dashboard! (eid-translation/refs->ids dashboard dashboard-body-references))
       hydrate-dashboard-details
       collection.root/hydrate-root-collection
       (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))
@@ -514,7 +518,8 @@
 
 (def ^:private DashUpdates
   "Schema for Dashboard Updates: [[dashboards.write/DashUpdates]], closed."
-  (mut/closed-schema dashboards.write/DashUpdates))
+  (-> (mut/closed-schema dashboards.write/DashUpdates)
+      (mut/update :collection_id (constantly [:maybe ms/IdOrEntityId]))))
 
 (defn- update-dashboard!
   "Updates a Dashboard and returns it hydrated. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
@@ -536,7 +541,8 @@
                     [:id ms/IdOrEntityId]]
    _query-params
    dash-updates :- DashUpdates]
-  (update-dashboard! (eid-translation/->id-or-404 :model/Dashboard id) dash-updates))
+  (update-dashboard! (eid-translation/->id-or-404 :model/Dashboard id)
+                     (eid-translation/refs->ids dash-updates dashboard-body-references)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

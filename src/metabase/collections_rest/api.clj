@@ -477,6 +477,10 @@
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
+(def ^:private collection-body-references
+  "The model of the rows each column of a Collection create or update body names, by id or entity id."
+  {:parent_id :model/Collection})
+
 (api.macros/defendpoint :post "/" :- ::Collection
   "Create a new Collection."
   [_route-params
@@ -484,10 +488,10 @@
    body :- [:map {:closed true}
             [:name            ::collections.schema/collection.name]
             [:description     {:optional true} [:maybe ms/NonBlankString]]
-            [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
+            [:parent_id       {:optional true} [:maybe ms/IdOrEntityId]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
-  (collections/create-collection! body))
+  (collections/create-collection! (eid-translation/refs->ids body collection-body-references)))
 
 ;; Update-collection business logic lives in `metabase.collections.update` so that non-REST
 ;; callers (the MCP `collection_write` tool) run the identical permission checks and move/archive
@@ -610,9 +614,11 @@
                           [:name             {:optional true} [:maybe ::collections.schema/collection.name]]
                           [:description      {:optional true} [:maybe ms/NonBlankString]]
                           [:archived         {:optional true} [:maybe ms/BooleanValue]]
-                          [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
+                          [:parent_id        {:optional true} [:maybe ms/IdOrEntityId]]
                           [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
-  (collection-detail (collections/update-collection! (eid-translation/->id-or-404 :model/Collection id) collection-updates)))
+  (collection-detail (collections/update-collection! (eid-translation/->id-or-404 :model/Collection id)
+                                                     (eid-translation/refs->ids collection-updates
+                                                                                collection-body-references))))
 
 ;; Returns the number of Collection rows deleted, which `t2/delete!` hands back -- 1 whenever the checks above pass.
 (api.macros/defendpoint :delete "/:id" :- ms/IntGreaterThanOrEqualToZero

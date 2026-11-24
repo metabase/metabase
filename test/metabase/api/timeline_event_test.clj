@@ -221,3 +221,21 @@
       (testing "DELETE"
         (mt/user-http-request :crowberto :delete 204 (str "timeline-event/" entity-id))
         (is (not (t2/exists? :model/TimelineEvent :id event-id)))))))
+
+(deftest timeline-event-body-entity-ids-test
+  (testing "POST and PUT /api/timeline-event take entity ids for the Timeline and the question"
+    (mt/with-model-cleanup [:model/TimelineEvent]
+      (mt/with-temp [:model/Timeline {timeline-id :id timeline-eid :entity_id} {}
+                     :model/Timeline {other-id :id other-eid :entity_id}       {}
+                     :model/Card     {card-eid :entity_id}                     {}]
+        (let [{event-id :id} (mt/user-http-request :crowberto :post 200 "timeline-event"
+                                                   {:name        "Event by entity ids"
+                                                    :timestamp   "2026-11-24T00:00:00Z"
+                                                    :timezone    "UTC"
+                                                    :time_matters true
+                                                    :timeline_id timeline-eid
+                                                    :source      "question"
+                                                    :question_id card-eid})]
+          (is (= timeline-id (t2/select-one-fn :timeline_id :model/TimelineEvent :id event-id)))
+          (mt/user-http-request :crowberto :put 200 (str "timeline-event/" event-id) {:timeline_id other-eid})
+          (is (= other-id (t2/select-one-fn :timeline_id :model/TimelineEvent :id event-id))))))))

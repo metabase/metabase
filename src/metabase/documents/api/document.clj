@@ -44,7 +44,7 @@
   [:map {:closed true}
    [:name documents.schema/DocumentName]
    [:document ::prose-mirror/ast]
-   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:cards {:optional true} [:maybe (cards-to-create-schema [:int {:max -1}])]]])
 
@@ -52,10 +52,14 @@
   [:map {:closed true}
    [:name {:optional true} documents.schema/DocumentName]
    [:document {:optional true} [:maybe ::prose-mirror/ast]]
-   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:cards {:optional true} [:maybe (cards-to-create-schema :int)]]
    [:archived {:optional true} [:maybe :boolean]]])
+
+(def ^:private document-body-references
+  "The model of the rows each column of a Document create or update body names, by id or entity id."
+  {:collection_id :model/Collection})
 
 (defn- insert-card-embed!
   "Persist an embed for `card-id` into document `document-id`, re-reading the document inside the
@@ -114,11 +118,12 @@
   "Create a new `Document`."
   [_route-params
    _query-params
-   {:keys [collection_id] :as body} :- DocumentCreateOptions]
-  (api/create-check :model/Document {:collection_id collection_id})
-  (m.document/check-creating-document-cards body)
-  (t2/with-transaction [_conn]
-    (m.document/get-document (m.document/create-document-with-cards! body))))
+   request-body :- DocumentCreateOptions]
+  (let [{:keys [collection_id] :as body} (eid-translation/refs->ids request-body document-body-references)]
+    (api/create-check :model/Document {:collection_id collection_id})
+    (m.document/check-creating-document-cards body)
+    (t2/with-transaction [_conn]
+      (m.document/get-document (m.document/create-document-with-cards! body)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -139,10 +144,11 @@
   [{:keys [document-id]} :- [:map {:closed true}
                              [:document-id ms/IdOrEntityId]]
    _query-params
-   body :- DocumentUpdateOptions]
+   request-body :- DocumentUpdateOptions]
   ;; Use a lightweight fetch for the guard: we only need the raw row for the archived, permission, and collection-move
   ;; checks below. Calling `m.document/get-document` here would hydrate unused display fields and record a view.
-  (let [existing-document (api/check-404 (documents.db/document
+  (let [body              (eid-translation/refs->ids request-body document-body-references)
+        existing-document (api/check-404 (documents.db/document
                                           (eid-translation/->id-or-404 :model/Document document-id)))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))

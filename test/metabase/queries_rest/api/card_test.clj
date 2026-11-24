@@ -6231,3 +6231,32 @@
       (testing "DELETE"
         (mt/user-http-request :crowberto :delete 204 (str "card/" entity-id))
         (is (not (t2/exists? :model/Card :id card-id)))))))
+
+(deftest card-body-entity-ids-test
+  (testing "POST and PUT /api/card take entity ids for the rows the body names"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection   {coll-id :id coll-eid :entity_id}   {}
+                     :model/Collection   {other-id :id other-eid :entity_id} {}
+                     :model/Dashboard    {dash-id :id dash-eid :entity_id}   {:collection_id coll-id}
+                     :model/DashboardTab {tab-id :id tab-eid :entity_id}     {:dashboard_id dash-id :name "Tab" :position 0}
+                     :model/Card         {source-eid :entity_id}             {}]
+        (let [{card-id :id} (mt/user-http-request :crowberto :post 200 "card"
+                                                  {:name                   "Card by entity ids"
+                                                   :display                :table
+                                                   :dataset_query          (mt/native-query {:query "SELECT 1"})
+                                                   :visualization_settings {}
+                                                   :collection_id          coll-eid
+                                                   :dashboard_id           dash-eid
+                                                   :dashboard_tab_id       tab-eid
+                                                   :source_card_id         source-eid})]
+          (is (=? {:collection_id coll-id :dashboard_id dash-id}
+                  (t2/select-one :model/Card :id card-id)))
+          (is (t2/exists? :model/DashboardCard :card_id card-id :dashboard_tab_id tab-id))
+          (testing "PUT"
+            (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id nil :collection_id other-eid})
+            (is (=? {:collection_id other-id :dashboard_id nil}
+                    (t2/select-one :model/Card :id card-id))))
+          (testing "an entity id that names no row is a 404"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :put 404 (str "card/" card-id)
+                                         {:collection_id "aaaaaaaaaaaaaaaaaaaaa"})))))))))

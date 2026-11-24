@@ -31,21 +31,26 @@
   [:map
    [:id pos-int?]])
 
+(def ^:private timeline-body-references
+  "The model of the rows each column of a Timeline create or update body names, by id or entity id."
+  {:collection_id :model/Collection})
+
 (api.macros/defendpoint :post "/" :- ::Timeline
   "Create a new [[Timeline]]."
   [_route-params
    _query-params
-   {collection-id :collection_id, :as body} :- [:map {:closed true}
-                                                [:name          ::timeline.schema/name]
-                                                [:default       {:optional true} [:maybe :boolean]]
-                                                [:description   {:optional true} [:maybe :string]]
-                                                [:icon          {:optional true} [:maybe ::timeline.schema/icon]]
-                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                                [:archived      {:optional true} [:maybe :boolean]]]]
-  (api/create-check :model/Timeline {:collection_id collection-id})
-  (let [tl (cond-> (assoc body :creator_id api/*current-user-id*)
-             (nil? (:icon body)) (dissoc :icon))]
-    (first (timeline/create-timelines! [tl]))))
+   body :- [:map {:closed true}
+            [:name          ::timeline.schema/name]
+            [:default       {:optional true} [:maybe :boolean]]
+            [:description   {:optional true} [:maybe :string]]
+            [:icon          {:optional true} [:maybe ::timeline.schema/icon]]
+            [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
+            [:archived      {:optional true} [:maybe :boolean]]]]
+  (let [body (eid-translation/refs->ids body timeline-body-references)]
+    (api/create-check :model/Timeline {:collection_id (:collection_id body)})
+    (let [tl (cond-> (assoc body :creator_id api/*current-user-id*)
+               (nil? (:icon body)) (dissoc :icon))]
+      (first (timeline/create-timelines! [tl])))))
 
 (mu/defn list-timelines :- [:sequential (ms/InstanceOf :model/Timeline)]
   "List timelines visible to the current user with no hydration."
@@ -109,11 +114,11 @@
                         [:default       {:optional true} [:maybe :boolean]]
                         [:description   {:optional true} [:maybe :string]]
                         [:icon          {:optional true} ::timeline.schema/icon]
-                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                        [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
                         [:archived      {:optional true} [:maybe :boolean]]]]
   (let [id       (eid-translation/->id-or-404 :model/Timeline id-or-entity-id)
         existing (api/check-404 (timeline.db/timeline id))
-        changes  (u/select-keys-when timeline-updates
+        changes  (u/select-keys-when (eid-translation/refs->ids timeline-updates timeline-body-references)
                                      :present #{:description :icon :collection_id :default :archived}
                                      :non-nil #{:name})]
     (api/update-check existing changes)

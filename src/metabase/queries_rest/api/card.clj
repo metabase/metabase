@@ -488,12 +488,19 @@
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_id           {:optional true} [:maybe ms/IdOrEntityId]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/IdOrEntityId]]
    [:size                   {:optional true} [:maybe [:map {:closed true}
                                                       [:size_x ms/PositiveInt]
                                                       [:size_y ms/PositiveInt]]]]
-   [:source_card_id         {:optional true} [:maybe ms/PositiveInt]]])
+   [:source_card_id         {:optional true} [:maybe ms/IdOrEntityId]]])
+
+(def ^:private card-body-references
+  "The model of the rows each column of a Card create or update body names, by id or entity id."
+  {:collection_id    :model/Collection
+   :dashboard_id     :model/Dashboard
+   :dashboard_tab_id :model/DashboardTab
+   :source_card_id   :model/Card})
 
 (defn- check-parameter-permissions
   [parameters query]
@@ -524,11 +531,10 @@
   Card the current user can read; the new Card is then treated as a copy of it for timeline-permission purposes."
   [_route-params
    _query-params
-   {card-type :type, collection-id :collection_id, source-card-id :source_card_id, :as card} :- CardCreateSchema]
-  (let [source-card (some->> source-card-id (api/read-check :model/Card))
-        card        (cond-> (dissoc card :source_card_id)
-                      (some? collection-id)
-                      (update :collection_id #(eid-translation/->id-or-404 :model/Collection %)))
+   body :- CardCreateSchema]
+  (let [{card-type :type, source-card-id :source_card_id, :as card} (eid-translation/refs->ids body card-body-references)
+        source-card (some->> source-card-id (api/read-check :model/Card))
+        card        (dissoc card :source_card_id)
         query       (:dataset_query card)]
     ;; Parameter permissions run BEFORE the create stack: the parameter-specific 403 names neither
     ;; the table nor its ids, while the generic run-permissions error carries the query (and its
@@ -582,12 +588,12 @@
    [:enable_embedding       {:optional true} [:maybe :boolean]]
    [:embedding_type         {:optional true} [:maybe :string]]
    [:embedding_params       {:optional true} [:maybe ms/EmbeddingParams]]
-   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_id          {:optional true} [:maybe ms/IdOrEntityId]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_id           {:optional true} [:maybe ms/IdOrEntityId]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/IdOrEntityId]]])
 
 (defn- maybe-populate-collection-id
   "`card-updates` may contain either or both of a `collection_id` and a `dashboard_id`.
@@ -665,7 +671,9 @@
    {delete-old-dashcards? :delete_old_dashcards} :- [:map {:closed true}
                                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
    body :- CardUpdateSchema]
-  (update-card! (eid-translation/->id-or-404 :model/Card id) body (boolean delete-old-dashcards?)))
+  (update-card! (eid-translation/->id-or-404 :model/Card id)
+                (eid-translation/refs->ids body card-body-references)
+                (boolean delete-old-dashcards?)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

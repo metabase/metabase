@@ -231,3 +231,16 @@
       (testing "an unknown entity id is a 404"
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404 "native-query-snippet/aaaaaaaaaaaaaaaaaaaaa")))))))
+
+(deftest snippet-body-entity-ids-test
+  (testing "POST and PUT /api/native-query-snippet take an entity id for the Collection"
+    (mt/with-model-cleanup [:model/NativeQuerySnippet]
+      (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}   {:namespace "snippets"}
+                     :model/Collection {other-id :id other-eid :entity_id} {:namespace "snippets"}]
+        (let [{snippet-id :id} (mt/user-http-request :crowberto :post 200 "native-query-snippet"
+                                                     {:name          (mt/random-name)
+                                                      :content       "SELECT 1"
+                                                      :collection_id coll-eid})]
+          (is (= coll-id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id)))
+          (mt/user-http-request :crowberto :put 200 (str "native-query-snippet/" snippet-id) {:collection_id other-eid})
+          (is (= other-id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id))))))))

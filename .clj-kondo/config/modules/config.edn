@@ -2409,6 +2409,7 @@
                     :model/CardBookmark
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardTab
                     :model/Database
                     :model/StoredResult
                     :model/StoredResultUse
@@ -3213,7 +3214,7 @@
            serialization
            util}
    :model-exports #{:model/Timeline :model/TimelineEvent}
-   :model-imports #{:model/Collection}}
+   :model-imports #{:model/Card :model/Collection}}
 
   tracing
   {:team "Gadget"
