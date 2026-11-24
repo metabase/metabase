@@ -388,7 +388,6 @@ describe("content diagnostics tab state", () => {
     await userEvent.click(getTab("Sparse"));
 
     // Before the neighbouring tab's findings arrive.
-    expect(getTab("Sparse")).toHaveAttribute("aria-selected", "true");
     expect(
       screen.queryByTestId("content-diagnostics-sidebar"),
     ).not.toBeInTheDocument();
@@ -416,5 +415,6 @@ describe("content diagnostics tab state", () => {
     expect(sparseParams.getAll("finding-types")).toEqual(["sparse"]);
     expect(sparseParams.get("query")).toBeNull();
     expect(sparseParams.getAll("entity-types")).toEqual([]);
+    expect(getTab("Sparse")).toHaveAttribute("aria-selected", "true");
   });
 });
