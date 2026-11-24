@@ -5,6 +5,7 @@
   module-linter's non-rest -> rest barrier, mirroring `metabase.collections.create`."
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
@@ -54,9 +55,11 @@
     (models.notification/delete-notifications! (vec notification-ids))))
 
 (defn- notify-stopped-alerts!
-  "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, as archiving their Card does."
+  "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, once the archive commits, as
+  archiving their Card does."
   [stopped actor]
-  (notification.card/notify-card-notifications-deleted! :card-archived actor stopped))
+  (mdb/do-after-commit
+   #(notification.card/notify-card-notifications-deleted! :card-archived actor stopped)))
 
 (defn- check-can-restore
   "Throws unless the current user may restore `collection` and what its archive took down, into the Collection that

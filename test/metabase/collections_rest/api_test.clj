@@ -11,6 +11,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
+   [metabase.collections.update :as collections.update]
    [metabase.config.core :as config]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
@@ -3481,13 +3482,34 @@
                                                        {:type    :notification-recipient/raw-value
                                                         :details {:value "ngoc@metabase.com"}}]}]}]
               (let [[email] (notification.tu/with-mock-inbox-email!
-                              (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id)
-                                                    {:name "My Beautiful Collection", :archived true}))]
+                              (notification.tu/do-with-after-commit-now
+                               #(mt/user-http-request :crowberto :put 200 (str "collection/" coll-id)
+                                                      {:name "My Beautiful Collection", :archived true})))]
                 (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
                          :subject "One of your alerts has stopped working"
                          :body    [{"the question was archived by Crowberto Corv" true}]}
                         (mt/summarize-multipart-single-email email #"the question was archived by Crowberto Corv"))))
               (is (nil? (t2/select-one :model/Notification :id (:id notification)))))))))))
+
+(deftest archive-collection-alert-email-waits-for-the-commit-test
+  (testing "The email for an alert that archiving a Collection deletes waits for the commit; a rollback keeps the alert"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (api.notification-test/with-send-messages-sync!
+          (notification.tu/with-card-notification
+            [notification {:card     {:name "YOLO", :collection_id coll-id}
+                           :handlers [{:channel_type :channel/email
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :rasta)}]}]}]
+            (mt/with-test-user :crowberto
+              (is (empty? (notification.tu/with-mock-inbox-email!
+                            (try
+                              (t2/with-transaction [_conn]
+                                (collections.update/update-collection! coll-id {:archived true})
+                                (throw (ex-info "Roll back" {})))
+                              (catch clojure.lang.ExceptionInfo _
+                                nil))))))
+            (is (t2/exists? :model/Notification :id (:id notification)))))))))
 
 (deftest archive-collection-alerts-of-cards-in-sub-collections-test
   (testing "PUT /api/collection/:id"
