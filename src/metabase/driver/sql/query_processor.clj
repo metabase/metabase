@@ -2394,7 +2394,7 @@
                 (assoc stage ::cte-name cte-name)))
             (name-stages [stages]
               (let [first-idx (first-compiled-stage-index stages)
-                    last-idx  (max first-idx (dec (count stages)))]
+                    last-idx  (dec (count stages))]
                 (-> (subvec stages 0 first-idx)
                     (into (map name-stage) (subvec stages first-idx last-idx))
                     (into (subvec stages last-idx)))))]
