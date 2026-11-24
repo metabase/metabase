@@ -4,7 +4,9 @@ import type {
   CollectionPermissionsGraph,
   Database,
   Group,
+  GroupTableAccessPolicy,
   ListUserMembershipsResponse,
+  PermissionsGraph,
 } from "metabase-types/api";
 import { createMockPermissionsGraph } from "metabase-types/api/mocks";
 
@@ -30,6 +32,19 @@ export const setupPermissionsGraphEndpoints = (
       createMockPermissionsGraph({ groups, databases: [database] }),
     );
   });
+};
+
+export const setupUpdatePermissionsGraphEndpoint = (
+  graph: PermissionsGraph,
+) => {
+  fetchMock.put("path:/api/permissions/graph", graph);
+};
+
+// The real endpoint ignores a lone group_id or table_id and lists every policy
+export const setupGroupTableAccessPoliciesEndpoint = (
+  policies: GroupTableAccessPolicy[],
+) => {
+  fetchMock.get("path:/api/mt/gtap", policies);
 };
 
 export const setupCollectionPermissionsGraphEndpoint = (
