@@ -2105,6 +2105,8 @@
       nil         {:code     403
                    :message  "anthropic/claude-haiku-4.5 requires moderation"
                    :metadata {:reasons ["harassment"] :flagged_input "..."}}
+      ;; a model refusal that the provider streams as an error
+      nil         {:code 403 :message "The model refused the request" :metadata {:error_type "refusal"}}
       ;; a streamed error that is not a provider failure
       nil         {:code 400 :message "Bad request"}
       ;; An integer code outside the HTTP status range is the vendor's own code, not a status.

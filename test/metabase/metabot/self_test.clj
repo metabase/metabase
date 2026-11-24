@@ -3300,6 +3300,29 @@
         (is (=? {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems.*"}
                 (mt/as-admin (self/provider-error (provider-api-error! "anthropic" 529 {})))))))))
 
+(deftest call-failure-openrouter-403-test
+  (testing "an OpenRouter 403 for the content of the exchange has no kind, and one for a permission is `:auth`"
+    (are [kind provider status body]
+         (= kind (self/call-failure (provider-api-error! provider status body)))
+      ;; https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors
+      nil          "openrouter" 403 {:error {:code     403
+                                             :message  "anthropic/claude-haiku-4.5 requires moderation"
+                                             :metadata {:reasons       ["harassment"]
+                                                        :flagged_input "..."
+                                                        :provider_name "Anthropic"
+                                                        :model_slug    "anthropic/claude-haiku-4.5"}}}
+      ;; https://openrouter.ai/docs/api_reference/errors-and-debugging ("Typed error codes")
+      nil          "openrouter" 403 {:error {:code     403
+                                             :message  "The model refused the request"
+                                             :metadata {:error_type "refusal"}}}
+      nil          "openrouter" 403 {:error {:code     403
+                                             :message  "The content was flagged"
+                                             :metadata {:error_type "content_policy_violation"}}}
+      ;; the key lacks a permission, or a guardrail blocked the request
+      :auth        "openrouter" 403 {:error {:code     403
+                                             :message  "Permission denied"
+                                             :metadata {:error_type "permission_denied"}}})))
+
 (deftest call-failure-test
   (testing "classifies a provider's HTTP error by the kind of provider failure"
     (are [kind provider status body]
@@ -3315,14 +3338,7 @@
       :unavailable "openai"     503 {:error {:message "The server is overloaded or not ready yet."}}
       nil          "anthropic"  400 {:error {:type    "invalid_request_error"
                                              :message "max_tokens: Input should be greater than 0"}}
-      nil          "mistral"    400 {:object "error" :message "Prompt 1000015 > 262144 maximum context length"}
-      ;; https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors
-      nil          "openrouter" 403 {:error {:code     403
-                                             :message  "anthropic/claude-haiku-4.5 requires moderation"
-                                             :metadata {:reasons       ["harassment"]
-                                                        :flagged_input "..."
-                                                        :provider_name "Anthropic"
-                                                        :model_slug    "anthropic/claude-haiku-4.5"}}}))
+      nil          "mistral"    400 {:object "error" :message "Prompt 1000015 > 262144 maximum context length"}))
   (testing "is the same on the managed provider, where the user is told no provider error"
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]

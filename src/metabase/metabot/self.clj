@@ -451,21 +451,25 @@
   (when (and (int? error-code) (<= 100 error-code 599))
     error-code))
 
-(defn- moderation-flag?
-  "True when the `error` is OpenRouter's 403 for input that its moderation flagged."
-  ;; The prompt is at fault, not the credentials.
-  ;; https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors
-  [{{:keys [reasons flagged_input]} :metadata}]
-  (boolean (or (seq reasons) flagged_input)))
+(defn- content-rejection?
+  "True when the `error` is one of OpenRouter's 403s for the content of the exchange: input that its moderation
+  flagged, a content filter that flagged the input or the output, or a model refusal that the provider sent as an
+  error."
+  ;; The content is at fault, not the credentials. The same refusal is model output on other providers.
+  ;; https://openrouter.ai/docs/api_reference/errors-and-debugging ("Moderation errors", "Typed error codes")
+  [{{:keys [reasons flagged_input error_type]} :metadata}]
+  (boolean (or (seq reasons)
+               flagged_input
+               (#{"content_policy_violation" "refusal"} error_type))))
 
 (defn- provider-failure-kind
   "Classify a provider failure as `:billing`, `:rate-limit`, `:auth`, `:not-found` or `:unavailable`, or nil when
-  the provider rejected a request that Metabot made, such as a malformed, too long or flagged one.
+  the provider rejected a request that Metabot made, such as a malformed, too long, flagged or refused one.
 
   Reads the same `status` and `error` as [[provider-failure]], and the [[streamed-status]] when `status` is nil."
   [status {error-type :type error-code :code :as error}]
   (let [status (or status (streamed-status error))]
-    (when-not (and (= 403 status) (moderation-flag? error))
+    (when-not (and (= 403 status) (content-rejection? error))
       (or (provider-failure status error)
           (some kind-only-failures [status error-type error-code])))))
 
