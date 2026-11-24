@@ -1168,6 +1168,13 @@ function getColumnListItem(dataSourceItem: HTMLElement, columnName: string) {
   );
 }
 
+function getColumnSelection(dataSourceName: string, columnName: string) {
+  return getColumnListItem(
+    getDataSourceItem(dataSourceName),
+    columnName,
+  ).getAttribute("aria-selected");
+}
+
 function getDataSourceItem(name: string) {
   return checkNotNull(
     within(screen.getByTestId("visualizer-data-importer"))
@@ -2039,6 +2046,85 @@ describe("DashboardApp > visualizer", () => {
         ),
       );
     });
+
+    it("should open the question of a single-question visualizer funnel from the dashcard title (metabase#67980)", async () => {
+      const funnelQuestion = createMockCard({
+        id: 60,
+        name: "UXW-2692 Funnel Base",
+        display: "funnel",
+        dataset_query: STEP_COLUMN.dataset_query,
+        visualization_settings: {
+          "funnel.metric": "Val",
+          "funnel.dimension": "Step",
+        },
+      });
+      const singleQuestionFunnel = createMockVisualizerDashboardCard({
+        id: 61,
+        dashboard_id: DASHBOARD_ID,
+        card_id: funnelQuestion.id,
+        card: funnelQuestion,
+        series: [],
+        row: 24,
+        col: 0,
+        size_x: 12,
+        size_y: 8,
+        visualization_settings: {
+          visualization: {
+            display: "funnel",
+            columnValuesMapping: {
+              COLUMN_1: [columnRef("COLUMN_1", "Step", funnelQuestion)],
+              COLUMN_2: [columnRef("COLUMN_2", "Val", funnelQuestion)],
+            },
+            settings: {
+              "card.title": "UXW-2692 Visualizer Funnel",
+              "funnel.metric": "COLUMN_2",
+              "funnel.dimension": "COLUMN_1",
+              "funnel.rows": [
+                { key: "Followers", name: "Followers", enabled: true },
+                { key: "Downloads", name: "Downloads", enabled: true },
+              ],
+            },
+          },
+        },
+      });
+      const { router } = await setup({
+        dashcards: [...VISUALIZER_DASHBOARD_DASHCARDS, singleQuestionFunnel],
+        cards: [...ALL_CARDS, funnelQuestion],
+        datasets: {
+          ...DATASETS,
+          [funnelQuestion.id]: createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockNumericColumn({ name: "Val", display_name: "Val" }),
+                createMockCategoryColumn({
+                  name: "Step",
+                  display_name: "Step",
+                }),
+              ],
+              rows: [
+                [73, "Downloads"],
+                [52, "Followers"],
+              ],
+            }),
+          }),
+        },
+      });
+
+      const dashcard = await findDashcard(singleQuestionFunnel.id);
+      expect(
+        await within(dashcard).findByTestId("funnel-chart"),
+      ).toBeInTheDocument();
+      expect(
+        within(dashcard).getByTestId("legend-caption-title"),
+      ).toHaveTextContent("UXW-2692 Visualizer Funnel");
+      await clickDashcardTitle(singleQuestionFunnel.id);
+
+      await waitFor(() =>
+        expect(router.location.pathname).toBe(
+          `/question/${funnelQuestion.id}-uxw-2692-funnel-base`,
+        ),
+      );
+    });
   });
 
   describe("creating a dashcard", () => {
@@ -2252,6 +2338,212 @@ describe("DashboardApp > visualizer", () => {
           `/api/dashboard/${DASHBOARD_ID}/dashcard/${FIRST_NEW_DASHCARD_ID}/card/${card.id}/query`,
         );
       }
+    });
+
+    it("should build a funnel from step and views columns", async () => {
+      await setup({ dashcards: [] });
+      await editDashboard();
+
+      const modal = await openVisualizerFromQuestionsSidebar(STEP_COLUMN.name);
+      await userEvent.click(
+        within(within(modal).getByTestId("viz-picker-main")).getByTestId(
+          "funnel",
+        ),
+      );
+      await addDataset(VIEWS_COLUMN.name);
+      expect(
+        fetchMock.callHistory
+          .calls("card-query")
+          .map(({ url }) => new URL(url).pathname),
+      ).toContain(`/api/card/${VIEWS_COLUMN.id}/query`);
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Done" }),
+      );
+
+      const STEP_ITEMS = [
+        "Step",
+        "Landing page",
+        "Checkout page",
+        "Payment done page",
+      ];
+      expect(getColumnSelection(STEP_COLUMN.name, "Step")).toBe("true");
+      expect(getColumnSelection(VIEWS_COLUMN.name, "Views")).toBe("true");
+      expect(getWellItems("vertical-well")).toEqual(["Views"]);
+      expect(getWellItems("horizontal-well")).toEqual(STEP_ITEMS);
+
+      // remove a column in the data manager
+      await userEvent.click(
+        within(
+          getColumnListItem(getDataSourceItem(STEP_COLUMN.name), "Step"),
+        ).getByLabelText("Remove"),
+      );
+      expect(getColumnSelection(STEP_COLUMN.name, "Step")).toBe("false");
+      expect(getWellItems("vertical-well")).toEqual(["Views"]);
+      expect(getWellItems("horizontal-well")).toEqual(["(empty)"]);
+
+      // add it back
+      await userEvent.click(
+        getColumnListItem(getDataSourceItem(STEP_COLUMN.name), "Step"),
+      );
+      expect(getColumnSelection(STEP_COLUMN.name, "Step")).toBe("true");
+      expect(getWellItems("vertical-well")).toEqual(["Views"]);
+      expect(getWellItems("horizontal-well")).toEqual(STEP_ITEMS);
+
+      // remove the metric in its well
+      await userEvent.click(
+        within(
+          within(screen.getByTestId("vertical-well")).getByTestId("well-item"),
+        ).getByLabelText("Remove"),
+      );
+      expect(getColumnSelection(VIEWS_COLUMN.name, "Views")).toBe("false");
+      expect(getColumnSelection(STEP_COLUMN.name, "Step")).toBe("true");
+      expect(getWellItems("vertical-well")).toEqual([]);
+      expect(getWellItems("horizontal-well")).toEqual(STEP_ITEMS);
+
+      // remove the dimension in its well
+      const dimensionItem = getItemWithText(
+        within(screen.getByTestId("horizontal-well")).getAllByTestId(
+          "well-item",
+        ),
+        "Step",
+      );
+      await userEvent.click(within(dimensionItem).getByLabelText("Remove"));
+      expect(getColumnSelection(STEP_COLUMN.name, "Step")).toBe("false");
+      expect(getWellItems("vertical-well")).toEqual([]);
+      expect(getWellItems("horizontal-well")).toEqual([]);
+
+      // rebuild the funnel
+      await userEvent.click(
+        getColumnListItem(getDataSourceItem(STEP_COLUMN.name), "Step"),
+      );
+      await userEvent.click(
+        getColumnListItem(getDataSourceItem(VIEWS_COLUMN.name), "Views"),
+      );
+      expect(getColumnSelection(STEP_COLUMN.name, "Step")).toBe("true");
+      expect(getColumnSelection(VIEWS_COLUMN.name, "Views")).toBe("true");
+      expect(getWellItems("vertical-well")).toEqual(["Views"]);
+      expect(getWellItems("horizontal-well")).toEqual(STEP_ITEMS);
+
+      // remove a data source
+      await userEvent.click(
+        within(getDataSourceItem(VIEWS_COLUMN.name)).getAllByLabelText(
+          "Remove",
+        )[0],
+      );
+      const importer = screen.getByTestId("visualizer-data-importer");
+      expect(
+        within(importer).queryByText(VIEWS_COLUMN.name),
+      ).not.toBeInTheDocument();
+      expect(within(importer).queryByText("Views")).not.toBeInTheDocument();
+      expect(within(importer).getByText(STEP_COLUMN.name)).toBeInTheDocument();
+      expect(getWellItems("vertical-well")).toEqual([]);
+      expect(getWellItems("horizontal-well")).toEqual(STEP_ITEMS);
+    });
+
+    it("should build a funnel of several scalar cards (VIZ-678)", async () => {
+      const scalarCard = (id: number, name: string) =>
+        createMockCard({
+          id,
+          name,
+          display: "scalar",
+          dataset_query: VIEWS_COLUMN.dataset_query,
+        });
+      const LANDING_PAGE = scalarCard(50, "Landing Page");
+      const CHECKOUT_PAGE = scalarCard(51, "Checkout Page");
+      const PAYMENT_DONE_PAGE = scalarCard(52, "Payment Done Page");
+      const SCALAR_CARDS = [LANDING_PAGE, CHECKOUT_PAGE, PAYMENT_DONE_PAGE];
+      const viewsDataset = (views: number) =>
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockNumericColumn({ name: "views", display_name: "views" }),
+            ],
+            rows: [[views]],
+          }),
+        });
+      await setup({
+        dashcards: [],
+        cards: [...ALL_CARDS, ...SCALAR_CARDS],
+        datasets: {
+          ...DATASETS,
+          [LANDING_PAGE.id]: viewsDataset(1000),
+          [CHECKOUT_PAGE.id]: viewsDataset(600),
+          [PAYMENT_DONE_PAGE.id]: viewsDataset(100),
+        },
+      });
+      await editDashboard();
+
+      const modal = await openVisualizerFromQuestionsSidebar(LANDING_PAGE.name);
+      await addDataset(CHECKOUT_PAGE.name);
+      await addDataset(PAYMENT_DONE_PAGE.name);
+
+      const ALL_PAGES = SCALAR_CARDS.map(({ name }) => name);
+      const verticalWell = screen.getByTestId("vertical-well");
+      const horizontalWell = screen.getByTestId("horizontal-well");
+      const expectNoArtificialColumns = () => {
+        expect(
+          within(verticalWell).queryByText("METRIC"),
+        ).not.toBeInTheDocument();
+        expect(
+          within(horizontalWell).queryByText("DIMENSION"),
+        ).not.toBeInTheDocument();
+      };
+      expectNoArtificialColumns();
+      expect(getWellItems("vertical-well")).toEqual([]);
+      expect(getWellItems("horizontal-well")).toEqual(ALL_PAGES);
+
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Done" }),
+      );
+      for (const name of ALL_PAGES) {
+        expect(getColumnSelection(name, "views")).toBe("true");
+      }
+
+      const toggleViews = async (dataSourceName: string, selected: boolean) => {
+        const item = getColumnListItem(
+          getDataSourceItem(dataSourceName),
+          "views",
+        );
+        await userEvent.click(
+          selected ? item : within(item).getByLabelText("Remove"),
+        );
+      };
+
+      // remove a column in the data manager
+      await toggleViews(CHECKOUT_PAGE.name, false);
+      expect(getColumnSelection(CHECKOUT_PAGE.name, "views")).toBe("false");
+      expect(getColumnSelection(LANDING_PAGE.name, "views")).toBe("true");
+      expectNoArtificialColumns();
+      expect(getWellItems("horizontal-well")).toEqual([
+        LANDING_PAGE.name,
+        PAYMENT_DONE_PAGE.name,
+      ]);
+
+      // add it back
+      await toggleViews(CHECKOUT_PAGE.name, true);
+      expect(getColumnSelection(CHECKOUT_PAGE.name, "views")).toBe("true");
+      expectNoArtificialColumns();
+      expect(getWellItems("horizontal-well")).toHaveLength(3);
+      expect(getWellItems("horizontal-well")).toEqual(
+        expect.arrayContaining(ALL_PAGES),
+      );
+
+      for (const name of ALL_PAGES) {
+        await toggleViews(name, false);
+      }
+      expect(getWellItems("vertical-well")).toEqual([]);
+      expect(getWellItems("horizontal-well")).toEqual([]);
+
+      // rebuild the funnel
+      for (const name of ALL_PAGES) {
+        await toggleViews(name, true);
+      }
+      for (const name of ALL_PAGES) {
+        expect(getColumnSelection(name, "views")).toBe("true");
+      }
+      expectNoArtificialColumns();
+      expect(getWellItems("vertical-well")).toEqual([]);
+      expect(getWellItems("horizontal-well")).toEqual(ALL_PAGES);
     });
   });
 
