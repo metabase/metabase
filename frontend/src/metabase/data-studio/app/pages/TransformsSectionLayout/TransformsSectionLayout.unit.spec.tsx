@@ -251,7 +251,7 @@ describe("TransformSectionLayout", () => {
         ).not.toBeInTheDocument();
 
         await userEvent.click(
-          screen.getByRole("button", { name: "Create a transform" }),
+          await screen.findByRole("button", { name: "Create a transform" }),
         );
         expect(
           await screen.findByRole("menuitem", { name: /Query builder/ }),
