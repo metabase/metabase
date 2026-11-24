@@ -30,12 +30,14 @@ import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
-  createMockSearchResult,
   createMockTable,
   createMockTokenFeatures,
   createMockTransform,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { CreateTransformMenu } from "../TransformListPage/CreateTransformMenu";
 
@@ -152,10 +154,11 @@ function setup({
   );
   setupAdhocQueryMetadataEndpoint(createMockCardQueryMetadata({ databases }));
   setupNativeQuerySnippetEndpoints();
-  fetchMock.get(
-    { url: "path:/api/collection", query: { namespace: "snippets" } },
-    [],
-  );
+  fetchMock.get({
+    url: "path:/api/collection",
+    query: { namespace: "snippets" },
+    response: [],
+  });
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupSearchEndpoints([]);
   setupCollectionByIdEndpoint({ collections: [ROOT] });
@@ -282,10 +285,14 @@ describe("NewTransformPage", () => {
         { length: ITEMS_COUNT },
         (_value, index) =>
           createMockCollectionItem({
-            ...createMockSearchResult({ id: index + 1, model: "table" }),
+            id: index + 1,
+            name: `Table ${index + 1}`,
+            model: "table",
             collection_id: null,
+            database_id: SAMPLE_DB_ID,
           }),
       );
+
       setup({ rootCollectionItems: hiddenTables });
       await startTransform("Query builder");
 
@@ -307,6 +314,7 @@ describe("NewTransformPage", () => {
       expect(screen.getByTestId("mini-picker-header")).toHaveTextContent(
         "Our analytics",
       );
+      expect(within(miniPicker).queryByText("Table 1")).not.toBeInTheDocument();
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
       expect(
         screen.queryByText("Something’s gone wrong"),
