@@ -61,18 +61,6 @@ export function removeDataSource(
   }
 }
 
-export function resetDataSourceButton(dataSourceName: string) {
-  dataSource(dataSourceName)
-    .realHover()
-    .findByLabelText("Datasource actions")
-    .click({ force: true });
-  return cy
-    .document()
-    .its("body")
-    .findByTestId("datasource-actions-dropdown")
-    .findByLabelText("Reset data source");
-}
-
 export function dataSourceColumn(dataSourceName: string, columnName: string) {
   return dataSource(dataSourceName)
     .findByText(columnName)
@@ -125,16 +113,6 @@ export function selectDataset(
     .first()
     .closest("[data-testid='swap-dataset-button']")
     .should("not.have.attr", "aria-pressed", "true")
-    .click({ force: true });
-  cy.wait("@cardQuery");
-}
-
-export function deselectDataset(datasetName: string) {
-  cy.findByPlaceholderText("Search for something").clear().type(datasetName);
-  cy.findAllByText(datasetName)
-    .first()
-    .closest("[data-testid='swap-dataset-button']")
-    .should("have.attr", "aria-pressed", "true")
     .click({ force: true });
   cy.wait("@cardQuery");
 }
@@ -301,12 +279,6 @@ export function saveDashcardVisualizerModal(
 
   modal({ timeout: 6000 }).should("not.exist");
   cy.wait(waitMs); // Wait for the modal to close and the dashboard to update
-}
-
-export function closeDashcardVisualizerModal() {
-  return modal().within(() => {
-    cy.findByTestId("visualizer-close-button").click();
-  });
 }
 
 export function saveDashcardVisualizerModalSettings() {
