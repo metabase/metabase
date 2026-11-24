@@ -1354,6 +1354,7 @@
   lib
   {:team "Querying"
    :module-exports #{lib.agent-lib
+                     lib.analysis
                      lib.be
                      lib.legacy-mbql
                      lib.metadata

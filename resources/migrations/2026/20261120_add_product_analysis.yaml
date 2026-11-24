@@ -14,4 +14,3 @@ databaseChangeLog:
                   name: product_analysis
                   type: ${text.type}
                   remarks: The analysis state for product analytics
-

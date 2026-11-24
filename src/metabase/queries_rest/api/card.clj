@@ -11,8 +11,11 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.funnysql.util :as funnysql.util]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.analysis :as lib.analysis]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -215,6 +218,7 @@
     (-> raw-card
         api/read-check
         hydrate-card-details
+        (cond-> (= :product-analysis (:type raw-card)) (dissoc :dataset_query))
         ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
         with-last-edit-info
         collection.root/hydrate-root-collection
@@ -461,12 +465,21 @@
     {:error/fn (constantly (deferred-tru "You cannot save a native query that targets the audit database."))}
     (complement queries/native-audit-db-query?)]])
 
+(def ^:private ProductAnalysis
+  [:map {:closed true}
+   [:kind [:enum "habit"]]
+   [:base_query ::lib.schema/query]
+   [:columns.person string?]
+   [:columns.timestamp string?]
+   [:habit.values {:optional? true} [:enum "count" "percent"]]
+   [:granularity [:enum "day" "week" "month" "quarter" "year"]]])
+
 (def ^:private CardCreateSchema
   "Schema for creating a new card"
   [:map {:closed true}
    [:name                   ::queries.schema/card.name]
    [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
-   [:dataset_query          CardDatasetQuery]
+   [:dataset_query          {:optional true} CardDatasetQuery]
    ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
@@ -483,6 +496,7 @@
    [:size                   {:optional true} [:maybe [:map {:closed true}
                                                       [:size_x ms/PositiveInt]
                                                       [:size_y ms/PositiveInt]]]]
+   [:product_analysis       {:optional true} [:maybe ProductAnalysis]]
    [:source_card_id         {:optional true} [:maybe ms/PositiveInt]]])
 
 (defn- check-parameter-permissions
@@ -505,17 +519,27 @@
       (queries.card/place-new-dashboard-questions! [created] [card])
       created)))
 
+(defn- maybe-update-analysis-query [{card-type :type :as card}]
+  (if (= :product-analysis card-type)
+    (let [mp (lib-be/application-database-metadata-provider (-> card :product_analysis
+                                                                :base_query :database))]
+      (assoc card :dataset_query (lib.analysis/raw->mbql mp (:product_analysis card))))
+    card))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`. `source_card_id`, if given, must be a
-  Card the current user can read; the new Card is then treated as a copy of it for timeline-permission purposes."
+  "Create a new `Card`.
+  Card `type` can be `question`, `metric`, `product-analysis`, or `model`.
+  `source_card_id`, if given, must be a Card the current user can read;
+  the new Card is then treated as a copy of it for timeline-permission purposes."
   [_route-params
    _query-params
    {card-type :type, collection-id :collection_id, source-card-id :source_card_id, :as card} :- CardCreateSchema]
   (let [source-card (some->> source-card-id (api/read-check :model/Card))
+        card        (maybe-update-analysis-query card)
         card        (cond-> (dissoc card :source_card_id)
                       (some? collection-id)
                       (update :collection_id #(eid-translation/->id-or-404 :collection %)))
@@ -577,7 +601,8 @@
    [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]
+   [:product_analysis {:optional true} [:maybe ProductAnalysis]]])
 
 (defn- populate-collection-id
   "`card-updates` with the `collection-id` that [[queries/actual-collection-id]] gives them when they change the
@@ -603,7 +628,8 @@
   [id :- ::lib.schema.id/card
    {metadata :result_metadata, card-type :type, :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
-  (let [query (:dataset_query card-updates)]
+  (let [card-updates (maybe-update-analysis-query card-updates)
+        query (:dataset_query card-updates)]
     (queries/check-card-can-be-saved! query card-type)
     (check-parameter-permissions (:parameters card-updates)
                                  (or query (queries-rest.db/card-query id)))
@@ -838,7 +864,9 @@
    request]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
         _                (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-card-id))
-        card             (api/check-404 (queries-rest.db/card resolved-card-id))]
+        card             (-> (queries-rest.db/card resolved-card-id)
+                             (api/check-404)
+                             (maybe-update-analysis-query))]
     (if stored_result_id
       (do
         (api/read-check card)
@@ -881,18 +909,21 @@
        [:csv_include_bom {:default false} ms/BooleanValue]]
    request]
   (some-> (data-apps/request-data-app request) (data-apps/check-card card-id))
-  (qp.card/process-query-for-card
-   (api/check-404 (queries-rest.db/card card-id)) export-format
-   :parameters  parameters
-   :constraints nil
-   :context     (api.dataset/export-format->context export-format)
-   :middleware  {:process-viz-settings?  true
-                 :skip-results-metadata? true
-                 :ignore-cached-results? true
-                 :format-rows?           format-rows?
-                 :pivot?                 pivot-results?
-                 :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? false)
-                 :js-int-to-string?      false}))
+  (let [card (-> (queries-rest.db/card card-id)
+                 (api/check-404)
+                 (maybe-update-analysis-query))]
+    (qp.card/process-query-for-card
+     card export-format
+     :parameters  parameters
+     :constraints nil
+     :context     (api.dataset/export-format->context export-format)
+     :middleware  {:process-viz-settings?  true
+                   :skip-results-metadata? true
+                   :ignore-cached-results? true
+                   :format-rows?           format-rows?
+                   :pivot?                 pivot-results?
+                   :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? false)
+                   :js-int-to-string?      false})))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
