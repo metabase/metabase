@@ -2731,7 +2731,8 @@
            (with-redefs [events/publish-event! (fn [topic event]
                                                  (when (= :event/card-update.notification-deleted.card-archived topic)
                                                    (swap! events conj event)))]
-             (card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids))))
+             (notification.tu/do-with-after-commit-now
+              #(card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids)))))
          (is (= 1 (count @events)))
          (is (= (set card-ids) (set (map (comp :id :card) (:objects (first @events)))))))))))
 
@@ -2742,7 +2743,8 @@
        (let [emails (notification.tu/with-mock-inbox-email!
                       (api.notification-test/with-send-messages-sync!
                         (mt/with-test-user :crowberto
-                          (card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids)))))]
+                          (notification.tu/do-with-after-commit-now
+                           #(card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids))))))]
          (is (= 3 (count emails)))
          (is (every? #(= "One of your alerts has stopped working" (:subject %)) emails)))))))
 
