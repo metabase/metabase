@@ -62,6 +62,13 @@
 (defn- truncate-word [^String word limit]
   (.substring word 0 (.offsetByCodePoints word 0 (min limit (character-count word)))))
 
+(def ^:private word-chars
+  "Letters, combining marks, and digits. Marks keep words in scripts such as Devanagari whole."
+  "\\p{L}\\p{M}\\p{N}")
+
+(def ^:private index-word-pattern
+  (re-pattern (str "[" word-chars "]+")))
+
 (defn- entry-fields [entity max-size]
   (let [name-terms   (normalize-text (or (:name entity) ""))
         search-terms (normalize-text (str/join " " (keep entity [:name :searchable_text])))
@@ -74,7 +81,7 @@
     ;; Truncate before indexing so prefixes can find words beyond InnoDB's maximum token size.
     (assoc fields :prefix_terms
            (str/join " " (distinct (for [[field text] fields
-                                         word (re-seq #"[\p{L}\p{N}]+" text)]
+                                         word (re-seq index-word-pattern text)]
                                      (str (field-markers field) (truncate-word word (dec max-size)))))))))
 
 (defmethod specialization/extra-entry-fields :mysql [entity]
@@ -83,25 +90,30 @@
 (defn- query-options []
   (assoc (token-limits) :in-transaction? (mdb/in-transaction?)))
 
+(def ^:private word-pattern
+  (re-pattern (format "[%1$s]+(?:-[%1$s]+)*" word-chars)))
+
 (defn- words [text]
-  (re-seq #"[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*" text))
+  (re-seq word-pattern text))
+
+(defn- parse-term [term]
+  (let [negated? (search.util/negated-term? term)]
+    {:tokens   (vec (words (if negated? (subs term 1) term)))
+     :phrase?  (str/starts-with? term "\"")
+     :negated? negated?}))
 
 (defn- query-terms [search-string]
-  (let [clauses (search.util/search-clauses search-string)
+  ;; A term with no words, such as "&", cannot match anything, so it is dropped rather than emptying its clause.
+  (let [clauses (into []
+                      (keep #(not-empty (into [] (comp (map parse-term) (filter (comp seq :tokens))) %)))
+                      (search.util/search-clauses search-string))
         prefix? (not (str/ends-with? (str/trim (or search-string "")) "\""))]
-    (mapv (fn [clause-index clause]
-            (mapv (fn [term-index term]
-                    (let [negated? (search.util/negated-term? term)]
-                      {:tokens   (vec (words (if negated? (subs term 1) term)))
-                       :phrase?  (str/starts-with? term "\"")
-                       :negated? negated?
-                       :prefix?  (and prefix? (= clause-index (dec (count clauses)))
-                                      (= term-index (dec (count clause))))}))
-                  (range) clause))
-          (range) clauses)))
+    (cond-> (mapv (fn [clause] (mapv #(assoc % :prefix? false) clause)) clauses)
+      (and prefix? (seq clauses))
+      (assoc-in [(dec (count clauses)) (dec (count (peek clauses))) :prefix?] true))))
 
 (defn- regexp-match [column term-words phrase? prefix?]
-  (let [boundary "[^[:alnum:]_]"
+  (let [boundary (str "[^" word-chars "_]")
         patterns (if phrase? [term-words] (map vector term-words))]
     (into [:and]
           (map-indexed
@@ -139,10 +151,9 @@
     [:> [:match-against column (term-query term)] 0]))
 
 (defn- term-match [column {:keys [tokens phrase? prefix? negated?], :as term} options]
-  (let [predicate (cond
-                    (empty? tokens)               [:= 1 0]
-                    (scan-required? term options) (regexp-match column tokens phrase? prefix?)
-                    :else                        (indexed-match column term))]
+  (let [predicate (if (scan-required? term options)
+                    (regexp-match column tokens phrase? prefix?)
+                    (indexed-match column term))]
     (if negated? [:not predicate] predicate)))
 
 (defn- matching-clause [column clause options]
@@ -167,10 +178,13 @@
     (if (seq positive-terms)
       ;; As with PostgreSQL's A/B weights, title hits carry more weight than other searchable fields.
       ;; Native query text affects matching, but does not contribute to the text score.
-      (into [:+] (mapcat (fn [term]
-                           [(term-score :search_index.name_terms term)
-                            [:* 0.4 (term-score :search_index.search_terms term)]])
-                         positive-terms))
+      ;; Dividing by the maximum keeps the score between 0 and 1 for any number of terms.
+      [:/
+       (into [:+] (mapcat (fn [term]
+                            [(term-score :search_index.name_terms term)
+                             [:* 0.4 (term-score :search_index.search_terms term)]])
+                          positive-terms))
+       [:inline (* 1.4 (count positive-terms))]]
       [:inline 0])))
 
 (defmethod specialization/view-count-percentile-query :mysql [index-table p-value]

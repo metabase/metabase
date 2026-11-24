@@ -136,6 +136,19 @@
       (is (= ["1" "2"] (mapv :model_id rows)))
       (is (pos? (:score (first rows)))))))
 
+(deftest text-score-range-test
+  (search.index/with-temp-index-table
+    (index-documents! [{:model "card", :id 1, :name "Monthly revenue by region summary"}
+                       {:model "card", :id 2, :name "Report", :description "monthly revenue by region"}])
+    (doseq [search-string ["revenue" "monthly revenue region" "monthly revenue reg"]]
+      (testing search-string
+        (let [query  {:search-string search-string}
+              scores (into {} (map (juxt :model_id (comp double :score)))
+                           (t2/query (specialization/base-query (search.index/active-table) search-string query
+                                                                [:model_id [(specialization/text-score query) :score]])))]
+          (is (== 1 (scores "1")))
+          (is (< 0 (scores "2") 1)))))))
+
 (deftest literal-stopwords-test
   (search.index/with-temp-index-table
     (index-documents! [{:model "card", :id 1, :name "The Office"}
@@ -154,6 +167,36 @@
     (index-documents! [{:model "card", :id 1, :name "User ID"}])
     (is (= #{1} (matching-ids "user_id")))
     (is (= #{1} (matching-ids "\"user id\"")))))
+
+(deftest punctuation-term-test
+  (search.index/with-temp-index-table
+    (index-documents! [{:model "card", :id 1, :name "Profit and Loss 2024"}
+                       {:model "card", :id 2, :name "Revenue"}])
+    (doseq [[query expected] [["profit & loss" #{1}]
+                              ["\"profit & loss\"" #{}]
+                              ["-_" #{}]
+                              ["&" #{}]
+                              ["reven -" #{2}]
+                              ["& or revenue" #{2}]]]
+      (testing (pr-str query)
+        (is (= expected (matching-ids query)))))))
+
+(deftest devanagari-matching-test
+  ;; Combining marks, such as vowel signs and the virama, belong to the word on both the indexed and regex paths.
+  (search.index/with-temp-index-table
+    (index-documents! [{:model "card", :id 1, :name "मासिक हिन्दी रिपोर्ट"}
+                       {:model "card", :id 2, :name "Revenue"}])
+    (doseq [in-transaction? [false true]
+            [query expected] [["हिन्दी" #{1}]
+                              ["हिन" #{1}]
+                              ["\"हिन्दी रिपोर्ट\"" #{1}]
+                              ["हि रिपोर्ट" #{}]
+                              ["रिपोर्ट हि" #{1}]
+                              ["-हिन्दी" #{2}]]]
+      (testing (str (pr-str query) (when in-transaction? " in a transaction"))
+        (is (= expected (if in-transaction?
+                          (t2/with-transaction [_conn] (matching-ids query))
+                          (matching-ids query))))))))
 
 (deftest reads-own-index-writes-test
   (search.index/with-temp-index-table

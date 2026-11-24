@@ -68,3 +68,19 @@
                           [["abc" "id"] false]
                           [["abc" "a"] true]]]
     (is (= scan? (boolean (#'mysql/scan-required? (assoc (term "" true) :tokens tokens) options))))))
+
+(deftest ^:parallel wordless-terms-test
+  (testing "terms without words are dropped, and the last remaining term is the prefix"
+    (is (= [[{:tokens ["profit"], :phrase? false, :negated? false, :prefix? false}
+             {:tokens ["loss"], :phrase? false, :negated? false, :prefix? true}]]
+           (#'mysql/query-terms "profit & loss")))
+    (is (= [[{:tokens ["revenue"], :phrase? false, :negated? false, :prefix? true}]]
+           (#'mysql/query-terms "revenue -")))
+    (is (= [] (#'mysql/query-terms "-_")))
+    (is (= [] (#'mysql/query-terms "& or \"&\"")))))
+
+(deftest ^:parallel combining-marks-test
+  (testing "vowel signs and the virama stay inside a Devanagari word"
+    (is (= ["मासिक" "हिन्दी"] (#'mysql/words "मासिक हिन्दी")))
+    (is (= #{"nमासिक" "nहिन्दी" "sमासिक" "sहिन्दी" "qमासिक" "qहिन्दी"}
+           (set (str/split (:prefix_terms (#'mysql/entry-fields {:name "मासिक हिन्दी"} 84)) #" "))))))
