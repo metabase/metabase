@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { setPlatformAPI } from "echarts/core";
 import fetchMock, { type CallLog } from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 import _ from "underscore";
@@ -71,7 +72,7 @@ describe("QueryBuilder", () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    jest.resetAllMocks();
     setupJestCanvasMock();
   });
 
@@ -1020,6 +1021,7 @@ describe("QueryBuilder", () => {
     });
   });
   describe("saving a chart from the raw table view", () => {
+    setupCanvasTextMeasurement();
     mockGetBoundingClientRect({ width: 1000, height: 800 });
 
     const LINE_CARD = createMockUnsavedCard({
@@ -1298,6 +1300,7 @@ describe("QueryBuilder", () => {
     });
   });
   describe("chart settings after adding a query stage", () => {
+    setupCanvasTextMeasurement();
     mockGetBoundingClientRect({ width: 1000, height: 800 });
 
     const STATE_COUNTS: [string, number][] = [
@@ -1523,6 +1526,7 @@ describe("QueryBuilder", () => {
     });
   });
   describe("chart settings after removing query clauses", () => {
+    setupCanvasTextMeasurement();
     mockGetBoundingClientRect({ width: 1000, height: 800 });
 
     const countByMonthStage: TestStageWithSourceSpec = {
@@ -1706,4 +1710,25 @@ function getIn(value: unknown, path: (string | number)[]): unknown {
         : undefined,
     value,
   );
+}
+
+/**
+ * echarts keeps the first 2D canvas context it measures text with, and the
+ * file's `afterEach` resets every mock, including the `jest.fn` methods
+ * jest-canvas-mock puts on that context. A chart rendered after another chart
+ * then measures text as `undefined` and never settles. This gives echarts a
+ * context of the current test.
+ */
+function setupCanvasTextMeasurement() {
+  beforeEach(() => {
+    const context = checkNotNull(
+      document.createElement("canvas").getContext("2d"),
+    );
+    setPlatformAPI({
+      measureText: (text: string, font?: string) => {
+        context.font = font ?? "12px sans-serif";
+        return context.measureText(text);
+      },
+    });
+  });
 }
