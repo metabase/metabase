@@ -374,3 +374,28 @@
               "REVIEWS"    #{:low-confidence-role}
               "USERS"      #{:low-confidence-role}}
              mismatches)))))
+
+(deftest sample-database-test
+  (let [{:keys [saved mismatches]} (run-design-check! (fixtures/load-fixture "sample_database"))]
+    (testing "saved values"
+      (is (= {"ACCOUNTS"        {:table_role :role/EntityDimension}
+              "ANALYTIC_EVENTS" {:table_role :role/EventFact}
+              "FEEDBACK"        {:table_role :role/EventFact}
+              ;; one timestamp and a link to an account win over the `invoices` name
+              "INVOICES"        {:table_role :role/EventFact}
+              ;; one timestamp and a link to a person win over the `orders` name
+              "ORDERS"          {:table_role :role/EventFact}
+              "PEOPLE"          {:table_role :role/EntityDimension}
+              "PRODUCTS"        {:table_role :role/EntityDimension}
+              "REVIEWS"         {:table_role :role/EventFact}}
+             saved)))
+    (testing "translation mismatches"
+      (is (= {"ACCOUNTS"        #{:low-confidence-role}
+              "ANALYTIC_EVENTS" #{:low-confidence-role}
+              "FEEDBACK"        #{:low-confidence-role}
+              "INVOICES"        #{:low-confidence-role}
+              "ORDERS"          #{:low-confidence-role}
+              "PEOPLE"          #{:low-confidence-role}
+              "PRODUCTS"        #{:low-confidence-role}
+              "REVIEWS"         #{:low-confidence-role}}
+             mismatches)))))
