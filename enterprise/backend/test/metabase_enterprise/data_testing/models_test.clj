@@ -599,21 +599,22 @@
                                     {:statements (call-count)
                                      :values     (mapv k hydrated)})))]
                   (testing "the statements of the hydration on transforms of distinct Databases, beyond loading the transforms and their own check"
-                    (let [own        (fn [subject-k n]
+                    (let [own        (fn [subject-ks n]
                                        (t2/with-call-count [call-count]
-                                         (doall (t2/hydrate (data-testing.db/transforms (vec (take n [tr1 tr2 tr3 tr4 tr5 tr6])))
-                                                            subject-k))
+                                         (doseq [subject-k subject-ks]
+                                           (doall (t2/hydrate (data-testing.db/transforms (vec (take n [tr1 tr2 tr3 tr4 tr5 tr6])))
+                                                              subject-k)))
                                          (call-count)))
-                          beyond-own (fn [k subject-k n]
-                                       (own subject-k n)
-                                       (- (:statements (hydrate k n)) (own subject-k n)))]
-                      (doseq [[k subject-k] [[:can_write :can_write] [:can_query :can_query]]]
+                          beyond-own (fn [k subject-ks n]
+                                       (own subject-ks n)
+                                       (- (:statements (hydrate k n)) (own subject-ks n)))]
+                      (doseq [[k subject-k] [[:can_write [:can_write]] [:can_query [:can_read :can_query]]]]
                         (beyond-own k subject-k 1)
                         (is (= (beyond-own k subject-k 2) (beyond-own k subject-k 6))))))
                   (testing "each test gets the answer the per-test check gave"
                     (is (= [true true true true true false] (:values (hydrate :can_write 6))))
                     (is (= [true true true true true false] (:values (hydrate :can_query 6))))
-                    (is (= (mapv #(#'data-testing.models/can-save? (:transform_id %)) tests)
+                    (is (= (mapv #(boolean (some-> (data-testing.db/transform (:transform_id %)) (t2/hydrate :can_write) mi/can-write?)) tests)
                            (:values (hydrate :can_write 6))))))))))))))
 
 (defn- per-query-native?

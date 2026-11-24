@@ -9,6 +9,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -139,19 +140,22 @@
 (deftest card-test-permissions-test
   (testing "no collection access to the card: nothing"
     (is (= (allowed) (permissions-of-rasta! :none true))))
-  (testing "collection read and native queries: read and run"
-    (is (= (allowed :read :read-pk :run) (permissions-of-rasta! :read true))))
+  (testing "collection read and native queries: read, run and create"
+    (is (= (allowed :read :read-pk :run :create) (permissions-of-rasta! :read true))))
   (testing "collection read without native queries: read only"
     (is (= (allowed :read :read-pk) (permissions-of-rasta! :read false))))
   (testing "collection write and native queries: everything"
     (is (= (allowed :read :read-pk :run :create :update :write :write-pk) (permissions-of-rasta! :write true))))
-  (testing "collection write without native queries: read only"
-    (is (= (allowed :read :read-pk) (permissions-of-rasta! :write false)))))
+  (testing "collection write without native queries: read, and edit what needs no native queries"
+    (is (= (allowed :read :read-pk :update :write :write-pk) (permissions-of-rasta! :write false)))))
 
-(deftest moving-a-card-test-needs-write-on-both-cards-test
+(deftest moving-a-card-test-needs-new-card-runnable-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp [:model/Collection {writable :id} {}
                    :model/Collection {readable :id} {}
+                   :model/Collection {hidden :id}   {}
+                   :model/Card       {hidden-id :id} {:collection_id hidden
+                                                      :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                    :model/Card       {card-id :id}  {:collection_id writable
                                                      :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                    :model/Card       {other-id :id} {:collection_id readable
@@ -161,7 +165,8 @@
       (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
       (mt/with-current-user (mt/user->id :rasta)
         (is (true? (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:name "renamed"}))))
-        (is (false? (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:card_id other-id}))))))))
+        (is (true? (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:card_id other-id}))))
+        (is (false? (boolean (mi/can-update? (t2/hydrate card-test :can_write) {:card_id hidden-id}))))))))
 
 (deftest permissions-take-the-database-of-the-card-query-test
   ;; Card hooks set `database_id` from the query on every insert and update, so only a direct row update makes the
@@ -197,9 +202,9 @@
         (is (= {:run true :write true}
                {:run   (boolean (mi/can-query? (t2/hydrate card-test :can_query)))
                 :write (boolean (mi/can-write? (t2/hydrate card-test :can_write)))}))))
-    (testing "another user may not: the card has no Database to write native SQL against"
+    (testing "another user who reads and edits the card may too: running and editing need no native queries"
       (mt/with-current-user (mt/user->id :rasta)
-        (is (= {:run false :write false}
+        (is (= {:run true :write true}
                {:run   (boolean (mi/can-query? (t2/hydrate card-test :can_query)))
                 :write (boolean (mi/can-write? (t2/hydrate card-test :can_write)))}))))))
 
@@ -245,7 +250,7 @@
                                     :values     (mapv :can_write hydrated)})))
                   own        (fn [n]
                                (t2/with-call-count [call-count]
-                                 (doall (t2/hydrate (data-testing.db/cards-by-ids (vec (take n card-ids))) :can_write :can_query))
+                                 (doall (t2/hydrate (data-testing.db/cards-by-ids (vec (take n card-ids))) :can_write))
                                  (call-count)))
                   beyond-own (fn [n]
                                (own n)
@@ -255,7 +260,7 @@
                 (is (= (beyond-own 2) (beyond-own 6))))
               (is (= [true false true false true false] (:values (hydrate 6))))
               (testing "each test gets the answer the per-test check gave"
-                (is (= (mapv #(#'data-testing.models.card-test/can-save-test? (:card_id %)) tests)
+                (is (= (mapv #(boolean (some-> (data-testing.db/card (:card_id %)) (t2/hydrate :can_write) mi/can-write?)) tests)
                        (:values (hydrate 6))))))))))))
 
 (deftest can-write-statements-do-not-grow-with-databases-test
@@ -294,11 +299,61 @@
                       beyond-own (fn [k subject-ks n]
                                    (own subject-ks n)
                                    (- (:statements (hydrate k n)) (own subject-ks n)))]
-                  (doseq [[k subject-ks] [[:can_write [:can_write :can_query]] [:can_query [:can_query]]]]
+                  (doseq [[k subject-ks] [[:can_write [:can_write]] [:can_query [:can_query]]]]
                     (beyond-own k subject-ks 1)
                     (is (= (beyond-own k subject-ks 2) (beyond-own k subject-ks 6))))))
-              (is (= [true true true true true false] (:values (hydrate :can_write 6))))
+              (is (= [true true true true true true] (:values (hydrate :can_write 6))))
               (is (= [true true true true true false] (:values (hydrate :can_query 6))))
               (testing "each test gets the answer the per-test check gave"
-                (is (= (mapv #(#'data-testing.models.card-test/can-save-test? (:card_id %)) tests)
+                (is (= (mapv #(boolean (some-> (data-testing.db/card (:card_id %)) (t2/hydrate :can_write) mi/can-write?)) tests)
                        (:values (hydrate :can_write 6))))))))))))
+
+(defn- card-test-answers
+  "What the current user may do with `card-test`, a test of an MBQL card: create a test of its card, change its inputs,
+  rename it, move it to the card `runnable-id` or the card `hidden-id`, and run it."
+  [card-test runnable-id hidden-id]
+  (let [writable (t2/hydrate card-test :can_write)]
+    {:create          (boolean (mi/can-create? :model/CardTest {:card_id (:card_id card-test)}))
+     :update-inputs   (boolean (mi/can-update? writable {:inputs (lib/normalize ::data-testing.schema/inputs inputs)}))
+     :update-name     (boolean (mi/can-update? writable {:name "renamed"}))
+     :move-runnable   (boolean (mi/can-update? writable {:card_id runnable-id}))
+     :move-unrunnable (boolean (mi/can-update? writable {:card_id hidden-id}))
+     :run             (boolean (mi/can-query? (t2/hydrate card-test :can_query)))}))
+
+(deftest card-test-create-update-and-run-matrix-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (perms.tu/with-no-data-perms-for-all-users!
+      (let [mp    (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+        (mt/with-temp [:model/Collection {coll-id :id}     {}
+                       :model/Collection {hidden-coll :id} {}
+                       :model/Card       {card-id :id}     {:collection_id coll-id :dataset_query query}
+                       :model/Card       {other-id :id}    {:collection_id coll-id :dataset_query query}
+                       :model/Card       {hidden-id :id}   {:collection_id hidden-coll :dataset_query query}
+                       :model/CardTest   card-test         {:card_id card-id :inputs [] :expectations expectations}]
+          (let [answers (fn [user collection-perms create-queries]
+                          (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                                        :perms/create-queries create-queries}
+                            (when collection-perms
+                              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id))
+                            (try
+                              (mt/with-current-user (mt/user->id user)
+                                (card-test-answers card-test other-id hidden-id))
+                              (finally
+                                (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)))))
+                all     (fn [& ks] (merge (zipmap [:create :update-inputs :update-name :move-runnable :move-unrunnable :run]
+                                                  (repeat false))
+                                          (zipmap ks (repeat true))))]
+            (testing "superuser"
+              (is (= (all :create :update-inputs :update-name :move-runnable :move-unrunnable :run)
+                     (answers :crowberto false :no))))
+            (testing "native queries and permission to run the card"
+              (is (= (all :create :update-inputs :update-name :move-runnable :run)
+                     (answers :rasta true :query-builder-and-native))))
+            (testing "permission to run the card without native queries"
+              (is (= (all :update-name :move-runnable :run)
+                     (answers :rasta true :query-builder))))
+            (testing "native queries without permission to run the card"
+              (is (= (all) (answers :rasta false :query-builder-and-native))))
+            (testing "neither"
+              (is (= (all) (answers :rasta false :no))))))))))

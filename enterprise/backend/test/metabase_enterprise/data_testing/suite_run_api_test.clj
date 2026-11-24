@@ -299,8 +299,8 @@
               (is (=? [200 (outcome "inside the run") (outcome "inside the run")]
                       (run-and-stored))))))
         (testing "an exception in a member's permission check is that member's error"
-          (let [answers (mt/original-fn #'data-testing.models/assoc-subject-answers)]
-            (mt/with-dynamic-fn-redefs [data-testing.models/assoc-subject-answers
+          (let [answers (mt/original-fn #'data-testing.models/assoc-can-query)]
+            (mt/with-dynamic-fn-redefs [data-testing.models/assoc-can-query
                                         (fn [tests & more]
                                           (if (some #(= id-1 (:id %)) tests)
                                             (throw (ex-info "in the permission check" {}))

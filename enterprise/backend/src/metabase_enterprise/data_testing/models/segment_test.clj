@@ -49,59 +49,47 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(defn- segment-allows?
-  "Whether `segment-check` holds for the Segment `segment-id`, hydrated with `k`, and the current user may run the
-  segment's definition and write the native SQL of a test against its Database."
-  [segment-check k segment-id]
-  (let [segment (data-testing.db/segment segment-id)]
-    (data-testing.models/query-subject-allows? segment-check k segment (:definition segment))))
-
-(mu/defn- can-save-test? :- :boolean
-  "Whether the current user may save or delete a test of the Segment `segment-id`: they may edit the segment and run
-  its definition, and write the native SQL of a test against its Database."
-  [segment-id :- ::lib.schema.id/segment]
-  (segment-allows? mi/can-write? :can_write segment-id))
-
 (methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_read]
   "Add whether the current user can read the segment of each segment test, loading the segments at once."
   [_model k segment-tests]
   (data-testing.models/with-readable-subjects k segment-tests :segment_id
     (data-testing.db/segments-by-ids (into [] (comp (keep :segment_id) (distinct)) segment-tests))))
 
-(defn- assoc-segment-answers
-  "Each of `segment-tests` with under `k` whether the current user passes `segment-check` on its segment hydrated with
-  `segment-ks` and, unless a superuser, may write native SQL against its Database, loading the segments and hydrating them
-  at once."
-  [segment-tests k segment-ks segment-check]
+(defn- segment-database-id
+  "The id of the Database of the query of `segment`."
+  [segment]
+  (data-testing.models/query-database-id (:definition segment)))
+
+(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_write]
+  "Add whether the current user may edit each segment test: they may edit its segment, loading the segments at once."
+  [_model k segment-tests]
   (vec (data-testing.models/assoc-subject-answers
         segment-tests k
         {:subject-key   :segment_id
          :subjects      (data-testing.db/segments-by-ids
                          (into [] (comp (remove nil?) (keep :segment_id) (distinct)) segment-tests))
-         :subject-ks    segment-ks
-         :subject-check segment-check
-         :db-id         (comp data-testing.models/query-database-id :definition)})))
-
-(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_write]
-  "Add whether the current user may save or delete each segment test: they may edit its segment, run the segment's query, and
-  write native SQL against its Database."
-  [_model k segment-tests]
-  (assoc-segment-answers segment-tests k [:can_write :can_query] #(and (mi/can-write? %) (mi/can-query? %))))
+         :subject-k     :can_write
+         :subject-check mi/can-write?})))
 
 (methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_query]
-  "Add whether the current user may run each segment test: they may run its segment, as its `:can_query` says,
-  and write native SQL against its Database."
+  "Add whether the current user may run each segment test: they read it and may run its segment, as its `:can_query`
+  says, loading the segments at once."
   [_model k segment-tests]
-  (assoc-segment-answers segment-tests k [:can_query] mi/can-query?))
+  (vec (data-testing.models/assoc-can-query
+        segment-tests k :segment_id
+        (data-testing.db/segments-by-ids (into [] (comp (remove nil?) (keep :segment_id) (distinct)) segment-tests)))))
 
 (defmethod mi/can-create? :model/SegmentTest
   [_model instance]
-  (can-save-test? (:segment_id instance)))
+  (data-testing.models/can-create-test? (some-> (:segment_id instance) data-testing.db/segment) segment-database-id))
 
 (defmethod mi/can-update? :model/SegmentTest
   [instance changes]
-  (and (mi/can-write? instance)
-       (can-save-test? (:segment_id changes (:segment_id instance)))))
+  (data-testing.models/can-update-test? instance changes
+                                        {:subject-key  :segment_id
+                                         :load-subject data-testing.db/segment
+                                         :db-id        segment-database-id
+                                         :writable?    (mi/can-write? instance)}))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 

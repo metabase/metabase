@@ -139,14 +139,14 @@
 (deftest segment-test-permissions-test
   (testing "no access to the segment's table: nothing"
     (is (= (allowed) (permissions-of-lucky! :blocked :no false))))
-  (testing "a user who may read the segment and write native queries: read and run"
-    (is (= (allowed :read :read-pk :run) (permissions-of-lucky! :unrestricted :query-builder-and-native false))))
-  (testing "a user who may read the segment, without native queries: read only"
-    (is (= (allowed :read :read-pk) (permissions-of-lucky! :unrestricted :query-builder false))))
+  (testing "a user who may read the segment and write native queries: read, run and create"
+    (is (= (allowed :read :read-pk :run :create) (permissions-of-lucky! :unrestricted :query-builder-and-native false))))
+  (testing "a user who may read the segment, without native queries: read and run"
+    (is (= (allowed :read :read-pk :run) (permissions-of-lucky! :unrestricted :query-builder false))))
   (testing "a data analyst who may edit the segment and write native queries: everything"
     (is (= (allowed :read :read-pk :run :create :update :write :write-pk) (permissions-of-lucky! :unrestricted :query-builder-and-native true))))
-  (testing "a data analyst who may edit the segment, without native queries: read only"
-    (is (= (allowed :read :read-pk) (permissions-of-lucky! :unrestricted :query-builder true)))))
+  (testing "a data analyst who may edit the segment, without native queries: everything but create"
+    (is (= (allowed :read :read-pk :run :update :write :write-pk) (permissions-of-lucky! :unrestricted :query-builder true)))))
 
 (deftest moving-a-segment-test-to-a-missing-segment-is-refused-test
   (mt/with-premium-features data-testing.test-util/data-analyst-features
@@ -162,7 +162,7 @@
               (testing "a segment that does not exist cannot be the test's new segment"
                 (is (false? (boolean (mi/can-update? (t2/hydrate segment-test :can_write) {:segment_id Integer/MAX_VALUE}))))))))))))
 
-(deftest moving-a-segment-test-needs-save-rights-on-the-old-and-the-new-segment-test
+(deftest moving-a-segment-test-needs-new-segment-runnable-test
   (mt/with-premium-features data-testing.test-util/data-analyst-features
     (perms.tu/with-no-data-perms-for-all-users!
       (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
@@ -191,10 +191,12 @@
                       (is (false? (boolean (mi/can-create? :model/SegmentTest {:segment_id other-id})))))
                     (testing "control: the analyst may rename the test of the first segment"
                       (is (true? (boolean (mi/can-update? (t2/hydrate test-on-writable :can_write) {:name "renamed"})))))
-                    (testing "a test cannot move to a segment whose tests the analyst may not save"
-                      (is (false? (boolean (mi/can-update? (t2/hydrate test-on-writable :can_write) {:segment_id other-id})))))
-                    (testing "a test cannot move away from a segment whose tests the analyst may not save"
-                      (is (false? (boolean (mi/can-update? (t2/hydrate test-on-other :can_write) {:segment_id writable-id})))))))))))))))
+                    (testing "a test can move to a segment the analyst may run, without native queries on its database"
+                      (is (true? (boolean (mi/can-update? (t2/hydrate test-on-writable :can_write) {:segment_id other-id})))))
+                    (testing "a test can move away from a segment whose database the analyst has no native queries on"
+                      (is (true? (boolean (mi/can-update? (t2/hydrate test-on-other :can_write) {:segment_id writable-id})))))
+                    (testing "an input change of a test on that segment needs native queries on its database"
+                      (is (false? (boolean (mi/can-update? (t2/hydrate test-on-other :can_write) {:inputs data-testing.test-util/google-segment-inputs})))))))))))))))
 
 (deftest storage-path-of-a-test-of-a-segment-whose-definition-cannot-be-exported-test
   (testing "a test is stored under its segment's table even when the segment's definition cannot be exported"
@@ -258,7 +260,7 @@
                     own         (fn [n]
                                   (t2/with-call-count [call-count]
                                     (doall (t2/hydrate (data-testing.db/segments-by-ids (vec (take n segment-ids)))
-                                                       :can_write :can_query))
+                                                       :can_write))
                                     (call-count)))
                     beyond-own  (fn [n]
                                   (own n)
@@ -268,7 +270,7 @@
                   (is (= (beyond-own 2) (beyond-own 6))))
                 (is (= [true false true false true false] (:values (hydrate 6))))
                 (testing "each test gets the answer the per-test check gave"
-                  (is (= (mapv #(#'data-testing.models.segment-test/can-save-test? (:segment_id %)) tests)
+                  (is (= (mapv #(boolean (some-> (data-testing.db/segment (:segment_id %)) (t2/hydrate :can_write) mi/can-write?)) tests)
                          (:values (hydrate 6)))))))))))))
 
 (defn- do-with-segments-on
@@ -320,11 +322,11 @@
                            beyond-own (fn [k subject-ks n]
                                         (own subject-ks n)
                                         (- (:statements (hydrate k n)) (own subject-ks n)))]
-                       (doseq [[k subject-ks] [[:can_write [:can_write :can_query]] [:can_query [:can_query]]]]
+                       (doseq [[k subject-ks] [[:can_write [:can_write]] [:can_query [:can_query]]]]
                          (beyond-own k subject-ks 1)
                          (is (= (beyond-own k subject-ks 2) (beyond-own k subject-ks 6))))))
-                   (is (= [true true true true true false] (:values (hydrate :can_write 6))))
-                   (is (= [true true true true true false] (:values (hydrate :can_query 6))))
+                   (is (= [true true true true true true] (:values (hydrate :can_write 6))))
+                   (is (= [true true true true true true] (:values (hydrate :can_query 6))))
                    (testing "each test gets the answer the per-test check gave"
-                     (is (= (mapv #(#'data-testing.models.segment-test/can-save-test? (:segment_id %)) tests)
+                     (is (= (mapv #(boolean (some-> (data-testing.db/segment (:segment_id %)) (t2/hydrate :can_write) mi/can-write?)) tests)
                             (:values (hydrate :can_write 6)))))))))))))))
