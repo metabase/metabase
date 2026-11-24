@@ -138,7 +138,7 @@ function setup({
   });
   setupEnterprisePlugins();
 
-  const result = renderRoutes(
+  const view = renderRoutes(
     toRouteObjects(
       <Route path="data-studio/transforms">
         {getDataStudioTransformRoutes()}
@@ -156,11 +156,11 @@ function setup({
       }),
     },
   );
-  const { router } = result;
+  const { router } = view;
   if (!router) {
     throw new Error("renderRoutes did not create a router");
   }
-  return { ...result, router };
+  return { ...view, router };
 }
 
 describe("transform pages with read-only remote sync", () => {
