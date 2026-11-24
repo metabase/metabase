@@ -1940,6 +1940,23 @@
                 "the provider error message is surfaced, not hidden behind 'no tool call'")
             (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
 
+(deftest call-llm-structured-provider-error-keeps-only-the-message-test
+  (testing "a streamed provider error is thrown with its message, not its `details`, which can name a GCP project"
+    (llm.tu/with-default-connections
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (test-util/mock-llm-response
+                                                          [{:type      :error
+                                                            :errorText "Permission denied."
+                                                            :error     {:code    403
+                                                                        :message "Permission denied."
+                                                                        :details [{:metadata {:resource "projects/my-project"}}]}}]))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [e (structured-call-error)]
+            (is (= "Permission denied." (ex-message e)))
+            (is (= {:message "Permission denied."} (:error (ex-data e))))
+            (is (not (re-find #"my-project" (pr-str (ex-data e)))))))))))
+
 (deftest call-llm-structured-text-reply-test
   (llm.tu/with-default-connections
     (let [schema {:type                 "object"

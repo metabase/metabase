@@ -917,6 +917,7 @@
           (let [parts    (into []
                                (comp (core/aisdk-xf)
                                      (report-aisdk-errors-xf tracking-opts)
+                                     (streamed-error-xf provider)
                                      (report-token-usage-xf tracking-opts))
                                (stream-fn streaming-opts))
                 result   (some (fn [{:keys [type arguments]}]
