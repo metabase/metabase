@@ -522,13 +522,18 @@ describe("native query preview on small screens", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not show preview table headers on top of other elements on small screens (metabase#67903)", () => {
+  it("should not show preview table headers on top of other elements and only show preview query at full width on small screens (metabase#67903, metabase#67767)", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
     H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
     H.getNotebookStep("data").findByTestId("step-preview-button").click();
     H.queryBuilderHeader().findByLabelText("View SQL").click();
     cy.findByTestId("table-header").should("not.be.visible");
+    H.sidebar()
+      .findByText("SQL for this question")
+      .then(($el) => {
+        expect($el.get(0).scrollWidth).to.eq(SCREEN_WIDTH);
+      });
   });
 });
 
