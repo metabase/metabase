@@ -29,6 +29,8 @@ export function useSecurityAdvisories(isPolling = false) {
   return {
     data: advisories,
     lastCheckedAt: response?.last_checked_at ?? null,
+    lastSyncAttemptedAt: response?.last_sync_attempted_at ?? null,
+    lastSyncError: response?.last_sync_error ?? null,
     isLoading,
     isError,
     acknowledgeAdvisory,

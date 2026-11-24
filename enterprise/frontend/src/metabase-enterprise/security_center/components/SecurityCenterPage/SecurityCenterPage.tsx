@@ -4,9 +4,13 @@ import { t } from "ttag";
 
 import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import DateTime from "metabase/common/components/DateTime";
 import EmptyState from "metabase/common/components/EmptyState";
-import { useSetting, useToast } from "metabase/common/hooks";
+import type { ToastArgs } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 import {
   Box,
   Button,
@@ -38,7 +42,8 @@ const DEFAULT_FILTER: AdvisoryFilter = {
   showAcknowledged: false,
 };
 
-const MAX_POLL_COUNT = 30;
+const SYNC_TIMEOUT_MS = 60_000;
+const SYNC_TOAST_ID = "security-center-sync";
 
 type SecurityCenterPageProps = {
   location?: Location<{ open?: string }>;
@@ -49,6 +54,8 @@ export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
   const {
     data: advisories,
     lastCheckedAt,
+    lastSyncAttemptedAt,
+    lastSyncError,
     isError,
     acknowledgeAdvisory,
     acknowledgeAdvisories,
@@ -61,58 +68,79 @@ export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
   );
   const notificationConfig = useNotificationConfigState();
   const version = useSetting("version");
-  const [sendToast] = useToast();
+  const dispatch = useDispatch();
+  const sendSyncToast = useCallback(
+    (toast: ToastArgs) => {
+      dispatch(dismissUndo({ undoId: SYNC_TOAST_ID }));
+      dispatch(addUndo({ ...toast, id: SYNC_TOAST_ID }));
+    },
+    [dispatch],
+  );
   const isSmallScreen = useIsSmallScreen();
 
-  const lastCheckedAtBeforeSync = useRef<string | null>(null);
-  const pollCountRef = useRef(0);
+  const lastSyncAttemptedAtBeforeSync = useRef<string | null>(null);
 
   const handleSync = useCallback(async () => {
-    lastCheckedAtBeforeSync.current = lastCheckedAt;
-    pollCountRef.current = 0;
+    lastSyncAttemptedAtBeforeSync.current = lastSyncAttemptedAt;
+    sendSyncToast({
+      icon: "sync",
+      message: t`Checking for security advisories…`,
+      timeout: 0,
+    });
 
     try {
       await syncAdvisories().unwrap();
-      sendToast({
-        icon: "sync",
-        message: t`Checking for security advisories…`,
-      });
       setIsPolling(true);
     } catch {
-      sendToast({
+      sendSyncToast({
         icon: "warning_triangle_filled",
         iconColor: "warning",
         message: t`Failed to check for security advisories`,
       });
     }
-  }, [lastCheckedAt, syncAdvisories, sendToast]);
+  }, [lastSyncAttemptedAt, syncAdvisories, sendSyncToast]);
 
   useEffect(() => {
     if (!isPolling) {
       return;
     }
 
-    pollCountRef.current += 1;
-
     const syncCompleted =
-      lastCheckedAt !== null &&
-      lastCheckedAt !== lastCheckedAtBeforeSync.current;
+      lastSyncAttemptedAt !== null &&
+      lastSyncAttemptedAt !== lastSyncAttemptedAtBeforeSync.current;
 
-    if (syncCompleted) {
+    if (syncCompleted && lastSyncError !== null) {
       setIsPolling(false);
-      sendToast({
+      sendSyncToast({
+        icon: "warning_triangle_filled",
+        iconColor: "warning",
+        message: t`Couldn't check for security advisories. Advisories may be out of date.`,
+      });
+    } else if (syncCompleted) {
+      setIsPolling(false);
+      sendSyncToast({
         icon: "check_filled",
         message: t`Security advisories are up to date`,
       });
-    } else if (pollCountRef.current >= MAX_POLL_COUNT) {
+    }
+  }, [isPolling, lastSyncAttemptedAt, lastSyncError, sendSyncToast]);
+
+  useEffect(() => {
+    if (!isPolling) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
       setIsPolling(false);
-      sendToast({
+      sendSyncToast({
         icon: "warning_triangle_filled",
         iconColor: "warning",
         message: t`Security advisory check is taking longer than expected. Results will appear when ready.`,
       });
-    }
-  }, [isPolling, lastCheckedAt, sendToast]);
+    }, SYNC_TIMEOUT_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [isPolling, sendSyncToast]);
 
   const isSyncInProgress = isSyncing || isPolling;
 
@@ -180,6 +208,21 @@ export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
             <Text c="text-secondary" data-testid="current-version">
               {t`Current version`}: {currentVersion}
             </Text>
+            <Stack gap="xs">
+              <Text c="text-secondary" data-testid="last-checked-at">
+                {t`Last successful check`}:{" "}
+                {lastCheckedAt ? (
+                  <DateTime value={lastCheckedAt} unit="minute" />
+                ) : (
+                  t`Never`
+                )}
+              </Text>
+              {lastSyncError !== null && (
+                <Text c="error" data-testid="last-sync-error">
+                  {t`The last check for security advisories failed. Advisories may be out of date.`}
+                </Text>
+              )}
+            </Stack>
             <UpgradeBanner targetVersion={targetVersion} />
           </Stack>
           <Stack gap="xl" className={S.content}>
