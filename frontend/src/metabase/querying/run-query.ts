@@ -18,7 +18,10 @@ import {
   makePivotAwareQueryRunner,
   shouldUsePivotEndpoint,
 } from "./api/query-endpoints";
-import { fetchGoalSourceResults } from "./goal-source-results";
+import {
+  fetchGoalSourceResults,
+  getQuestionGoalSourcesScope,
+} from "./goal-source-results";
 
 type RunQuestionQueryOptions = {
   dispatch: Dispatch;
@@ -180,7 +183,7 @@ export async function runQuestionQuery(
 ): Promise<[Dataset]> {
   fetchGoalSourceResults(
     dispatch,
-    token ? { type: "embed-card", token } : { type: "signed-in" },
+    getQuestionGoalSourcesScope({ token }),
     question.card(),
     { ignoreCache },
   );

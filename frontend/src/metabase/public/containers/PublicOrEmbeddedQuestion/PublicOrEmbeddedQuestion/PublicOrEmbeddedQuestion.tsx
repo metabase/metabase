@@ -18,7 +18,10 @@ import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
-import { fetchGoalSourceResults } from "metabase/querying/goal-source-results";
+import {
+  fetchGoalSourceResults,
+  getQuestionGoalSourcesScope,
+} from "metabase/querying/goal-source-results";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useLocation, useParams } from "metabase/router";
@@ -29,7 +32,6 @@ import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/param
 import type {
   Card,
   Dataset,
-  GoalSourcesScope,
   ParameterId,
   ParameterValuesMap,
 } from "metabase-types/api";
@@ -62,7 +64,7 @@ export const PublicOrEmbeddedQuestion = () => {
   usePublicEndpoints({ uuid, token });
 
   const goalSourcesScope = useMemo(
-    () => getGoalSourcesScope({ token, uuid }),
+    () => getQuestionGoalSourcesScope({ token, uuid }),
     [token, uuid],
   );
 
@@ -235,21 +237,3 @@ export const PublicOrEmbeddedQuestion = () => {
     </LocaleProvider>
   );
 };
-
-function getGoalSourcesScope({
-  token,
-  uuid,
-}: {
-  token: EntityToken | undefined;
-  uuid: string | undefined;
-}): GoalSourcesScope {
-  if (token) {
-    return { type: "embed-card", token };
-  }
-
-  if (uuid) {
-    return { type: "public-card", uuid };
-  }
-
-  return { type: "signed-in" };
-}

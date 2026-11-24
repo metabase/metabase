@@ -2,6 +2,7 @@ import { dynamicGoalApi } from "metabase/api/dynamic-goal";
 import type { Dispatch } from "metabase/redux/store";
 import { type GoalCard, getChartGoalSources } from "metabase/viz-core";
 import type { GoalSourcesScope } from "metabase-types/api";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 type FetchGoalSourceResultsOptions = {
   ignoreCache?: boolean;
@@ -37,6 +38,24 @@ export function prefetchGoalSourceResults(
     forceRefetch: false,
     ignoreCache: false,
   });
+}
+
+export function getQuestionGoalSourcesScope({
+  token,
+  uuid,
+}: {
+  token?: EntityToken | null;
+  uuid?: EntityUuid | null;
+}): GoalSourcesScope {
+  if (token) {
+    return { type: "embed-card", token };
+  }
+
+  if (uuid) {
+    return { type: "public-card", uuid };
+  }
+
+  return { type: "signed-in" };
 }
 
 async function initiateGoalSourceResults(
