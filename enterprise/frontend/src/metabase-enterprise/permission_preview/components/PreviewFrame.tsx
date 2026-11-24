@@ -57,19 +57,20 @@ export function PreviewFrame({
   useEffect(() => () => contentObserverRef.current?.disconnect(), []);
 
   // The frame loads before it has the token, and paints its own loader until its
-  // content has text. The caller keeps its loading state up until then.
+  // item has text. The caller keeps its loading state up until then. The frame's
+  // own "Back to collections" header paints first, so it does not count.
   function handleLoad() {
     const frameBody = frameRef.current?.contentDocument?.body;
     if (!frameBody) {
       return;
     }
     contentObserverRef.current?.disconnect();
-    if (hasText(frameBody)) {
+    if (hasItemContent(frameBody)) {
       onContentShown();
       return;
     }
     const observer = new MutationObserver(() => {
-      if (hasText(frameBody)) {
+      if (hasItemContent(frameBody)) {
         observer.disconnect();
         onContentShown();
       }
@@ -97,6 +98,6 @@ export function PreviewFrame({
   );
 }
 
-function hasText(body: HTMLElement) {
-  return body.innerText.trim() !== "";
+function hasItemContent(body: HTMLElement) {
+  return body.innerText.replace(t`Back to collections`, "").trim() !== "";
 }

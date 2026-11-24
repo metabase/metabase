@@ -429,6 +429,33 @@ describe("PreviewAccessPage", () => {
     expect(screen.getByLabelText("Address")).toHaveValue("/dashboard/12");
   });
 
+  it("keeps the loading caption up while a dashboard's frame shows only its Back to collections header", async () => {
+    setup();
+    await userEvent.click(await screen.findByText("Sandy Sales"));
+    await getFrame();
+    const address = screen.getByLabelText("Address");
+    await userEvent.clear(address);
+    await userEvent.type(address, "/dashboard/12{Enter}");
+
+    await userEvent.click(screen.getByText("Tina Tenant"));
+    const tinaFrame = await getFrame("What Tina Tenant sees");
+    expect(
+      await screen.findByText("Loading Tina Tenant's view…"),
+    ).toBeVisible();
+    loadFrame(tinaFrame);
+    await act(async () => {
+      tinaFrame.contentDocument?.body.append("Back to collections");
+    });
+
+    expect(screen.getByText("Loading Tina Tenant's view…")).toBeVisible();
+    showFrameContent(tinaFrame, "Orders overview");
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Loading Tina Tenant's view…"),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
   describe("the text typed in the link box, with the frame at All collections", () => {
     async function typeText() {
       await userEvent.click(await screen.findByText("Sandy Sales"));
