@@ -50,6 +50,7 @@
   Throws a refusal for a parenthesized join tree or a LATERAL or APPLY source.
   Port of `_join_step_source`."
   [node cte-names dialect]
+  ;; Step queries copy the node whole, so what it carries (a table hint, a PIVOT) stays in them.
   (when (instance? Expressions$Lateral node)
     (throw (unsupported "unsupported-source")))
   (let [parts (when (and (instance? Expressions$Table node)
@@ -112,7 +113,10 @@
       (#{"SEMI" "ANTI"} kind)         "inner"
       :else                           (get {"LEFT" "left", "RIGHT" "right", "FULL" "full"} side "inner"))))
 
-(defn- with-clause [^Expr select with-node]
+(defn- with-clause
+  "The query `select`, given a copy of `with-node` as its WITH clause when there is one.
+  Port of `_with`."
+  [^Expr select with-node]
   (cond-> select
     with-node (ast/set-arg! "with_" (ast/copy with-node))))
 
@@ -122,16 +126,22 @@
   (ast/create "Alias" {"this"  (ast/create "Count" {"this" (ast/create "Star")})
                        "alias" (ast/to-identifier "n")}))
 
+(defn- select-from
+  "The query `SELECT <expressions> FROM <from-node> <joins>`, with `with-node` as its WITH clause.
+  Port of `_select`."
+  [expressions from-node joins with-node]
+  (with-clause (ast/create "Select" {"expressions" expressions
+                                     "from_"       (ast/copy from-node)
+                                     "joins"       (mapv ast/copy joins)})
+    with-node))
+
 (defn- count-select
   "The query `SELECT COUNT(*) AS n FROM <from-node> <joins>`, with `with-node` as its WITH clause.
   Port of `_count_select`."
   ([from-node joins]
    (count-select from-node joins nil))
   ([from-node joins with-node]
-   (with-clause (ast/create "Select" {"expressions" [(count-star-as-n)]
-                                      "from_"       (ast/copy from-node)
-                                      "joins"       (mapv ast/copy joins)})
-     with-node)))
+   (select-from [(count-star-as-n)] from-node joins with-node)))
 
 (defn- derived [select table-alias]
   (ast/create "Subquery" {"this"  select
@@ -153,7 +163,8 @@
       with-node)))
 
 (defn- inner-variant
-  "A copy of the outer `join` made an INNER join."
+  "A copy of the outer `join` made an INNER join.
+  Port of `_inner_variant`."
   [join]
   (let [inner (ast/copy join)]
     (ast/set-arg! inner "side" nil)
@@ -182,6 +193,18 @@
     (when (instance? Expressions$Identifier identifier)
       (effective-name identifier dialect))))
 
+(defn- source-nodes
+  "The FROM source of a SELECT and the source of each of its `joins`.
+  Port of `_sources`."
+  [from-node joins]
+  (cons (ast/this from-node) (map ast/this joins)))
+
+(defn- source-names
+  "The effective names of the sources `nodes` that have one.
+  Port of `_source_names`."
+  [nodes dialect]
+  (into #{} (keep #(source-name % dialect)) nodes))
+
 (defn- where-column-source
   "The source in `names` that `column` of a WHERE conjunct names, or nil if it names none of them.
   A path may be `source.column`, `schema.source.column` or `source.struct.field`, so any part can name the source.
@@ -201,15 +224,11 @@
               from-node (when (instance? Expressions$Select parent)
                           (ast/arg parent "from_"))]
           (when-not (and from-node
-                         (some (into #{}
-                                     (keep #(source-name % dialect))
-                                     (cons (ast/this from-node) (map ast/this (ast/arg parent "joins"))))
-                               parts))
+                         (some (source-names (source-nodes from-node (ast/arg parent "joins")) dialect) parts))
             (recur parent)))))))
 
 (defn- where-may-join?
   "Whether a conjunct of `where` names a source in `comma-names` and another source.
-  The step queries leave WHERE out, so they would count the whole cross product of such a join.
   A column that names no source may belong to any of them, so it does not count as a second source.
   Port of `_where_may_join`."
   [where names comma-names dialect]
@@ -239,22 +258,24 @@
 
 (defn- on-counts-matches?
   "Whether counting the rows where the last join's ON clause holds counts exactly the rows that found a match.
-  The clause must be an AND of comparisons between literals and columns that each name one source in the chain, and
-  compare a column from each side that can be NULL-extended.
-  ClickHouse fills unmatched columns with defaults rather than NULL.
+  The clause must be an AND of comparisons between literals and columns that each name one source in the chain, so
+  it is safe to evaluate again.
+  It must also compare a column from each side that can be NULL-extended, so an unmatched row cannot satisfy it.
   Port of `_on_counts_matches`."
   [from-node chain strategy dialect]
   (let [on    (ast/arg (peek chain) "on")
-        names (mapv #(source-name % dialect) (cons (ast/this from-node) (map ast/this chain)))]
+        names (mapv #(source-name % dialect) (source-nodes from-node chain))]
+    ;; ClickHouse fills unmatched columns with defaults rather than NULL, so an unmatched row can satisfy the clause.
     (when (and on
                (not= "clickhouse" dialect)
                (every? some? names)
                (apply distinct? names))
       (let [parts    (conjuncts on)
+            name-set (set names)
             operands (when (every? #(ast/instance-of-any? join-comparisons %) parts)
                        (mapcat (fn [part]
-                                 [(operand-column (ast/this part) (set names) dialect)
-                                  (operand-column (ast/arg part "expression") (set names) dialect)])
+                                 [(operand-column (ast/this part) name-set dialect)
+                                  (operand-column (ast/arg part "expression") name-set dialect)])
                                parts))]
         (when (and (seq operands) (every? some? operands))
           (let [joined       (peek names)
@@ -267,23 +288,28 @@
               "full"  (and from-joined from-earlier))))))))
 
 (defn- on-counts
-  "`SELECT COUNT(*) AS n, COUNT(CASE WHEN <last join's ON> THEN 1 END) AS m FROM <from-node> <chain>`.
+  "The query `SELECT COUNT(*) AS n, COUNT(CASE WHEN <last join's ON> THEN 1 END) AS m FROM <from-node> <chain>`.
   Port of `_on_counts`."
   [from-node chain with-node]
   (let [one     (ast/create "Literal" {"this" "1", "is_string" false})
         matched (ast/create "Case" {"ifs" [(ast/create "If" {"this" (ast/copy (ast/arg (peek chain) "on"))
                                                              "true" one})]})]
-    (with-clause
-      (ast/create "Select"
-                  {"expressions" [(count-star-as-n)
-                                  (ast/create "Alias" {"this"  (ast/create "Count" {"this" matched})
-                                                       "alias" (ast/to-identifier "m")})]
-                   "from_"       (ast/copy from-node)
-                   "joins"       (mapv ast/copy chain)})
-      with-node)))
+    (select-from [(count-star-as-n)
+                  (ast/create "Alias" {"this"  (ast/create "Count" {"this" matched})
+                                       "alias" (ast/to-identifier "m")})]
+                 from-node
+                 chain
+                 with-node)))
+
+(defn- cte-names
+  "The effective names of the CTEs in `with-node`, in order, or an empty vector for no WITH clause.
+  Port of `_cte_names`."
+  [with-node dialect]
+  (mapv #(effective-name (ast/this (ast/arg % "alias")) dialect)
+        (some-> with-node ast/expressions)))
 
 (defn- whole-query
-  "`stmt` without brackets around the whole of it, and the WITH clause it runs under, or nil.
+  "The statement `stmt` without brackets around the whole of it, and the WITH clause it runs under, or nil.
   Throws a `not-a-select` refusal for brackets with a clause other than WITH, ORDER BY, LIMIT or OFFSET, or for several
   WITH scopes.
   Port of `_whole_query`."
@@ -298,8 +324,7 @@
                         (and (instance? Expressions$Select stmt) (ast/arg stmt "with_"))
                         (conj (ast/arg stmt "with_")))
             with-node (first withs)
-            names     (map #(effective-name (ast/this (ast/arg % "alias")) dialect)
-                           (some-> with-node ast/expressions))]
+            names     (cte-names with-node dialect)]
         ;; One WITH list cannot stand in for several scopes. sqlglot flattens some of them itself, leaving a repeated
         ;; name.
         (when (or (next withs)
@@ -319,9 +344,45 @@
       (whole-query (first stmts) dialect)
       (throw (unsupported "unparseable")))))
 
+(defn- join-refusal
+  "Why the SELECT `stmt`, run under `with-node`, cannot have its joins rebuilt from its FROM and JOIN clauses, or nil."
+  [stmt with-node dialect]
+  (let [from-node (ast/arg stmt "from_")
+        joins     (ast/arg stmt "joins")
+        kept      (cond-> (cons from-node joins) with-node (conj with-node))
+        where     (ast/arg stmt "where")
+        commas    (filter #(comma-join? % dialect) joins)]
+    (cond
+      (not (and from-node (ast/this from-node)))
+      "no-from"
+
+      (seq (ast/expressions from-node))
+      "comma-join"
+
+      ;; A placeholder is a value the step queries would have to be handed again, and nothing passes them on. One in a
+      ;; clause the steps leave out does not matter.
+      (some #(seq (ast/find-all % Expressions$Placeholder Expressions$Parameter)) kept)
+      "parameters"
+
+      ;; A sample in anything the steps keep would pick different rows in each step query.
+      (some #(seq (ast/find-all % Expressions$TableSample)) kept)
+      "unsupported-source"
+
+      ;; The step queries leave WHERE out, so they would count the whole cross product of a comma join whose condition
+      ;; is there.
+      (and (seq commas)
+           where
+           (where-may-join? where
+                            (source-names (source-nodes from-node joins) dialect)
+                            (source-names (map ast/this commas) dialect)
+                            dialect))
+      "comma-join")))
+
 (defn- statement-refusal
-  "Why the parsed statement `stmt` cannot have its join steps rebuilt, before its sources are looked at, or nil."
-  [stmt]
+  "Why the parsed statement `stmt`, run under `with-node`, cannot have its join steps rebuilt, or nil.
+  A source can still be refused when it is described.
+  Port of `_statement_refusal`."
+  [stmt with-node dialect]
   (cond
     (instance? Expressions$SetOperation stmt)     "set-operation"
     (not (instance? Expressions$Select stmt))     "not-a-select"
@@ -329,62 +390,48 @@
     (contains? (set-args stmt) "laterals")        "unsupported-join"
     ;; ClickHouse's SETTINGS and T-SQL's OPTION can change what a join returns or whether it runs at all, and the step
     ;; queries would leave them out.
-    (some (set-args stmt) ["settings" "options"]) "unsupported-join"))
+    (some (set-args stmt) ["settings" "options"]) "unsupported-join"
+    :else                                         (join-refusal stmt with-node dialect)))
+
+(defn- step-query
+  "The count query of the join at index `i` of `joins`, whose strategy is `strategy`."
+  [from-node joins i strategy with-node dialect]
+  (let [join  (nth joins i)
+        chain (subvec joins 0 (inc i))]
+    (cond
+      (not (#{"left" "right" "full"} strategy))
+      (count-select from-node chain with-node)
+
+      (on-counts-matches? from-node chain strategy dialect)
+      (on-counts from-node chain with-node)
+
+      :else
+      (two-counts (count-select from-node chain)
+                  (count-select from-node (conj (pop chain) (inner-variant join)))
+                  with-node))))
 
 (defn- steps
   "The `ok` result of [[join-steps]].
   Throws a refusal, an `ex-info` with its reason under `::reason`, for a query whose joins cannot be rebuilt."
   [dialect sql]
   (let [[stmt with-node] (parse-statement dialect sql)]
-    (when-let [reason (statement-refusal stmt)]
+    (when-let [reason (statement-refusal stmt with-node dialect)]
       (throw (unsupported reason)))
-    (let [from-node    (ast/arg stmt "from_")
-          _            (when-not (and from-node (ast/this from-node))
-                         (throw (unsupported "no-from")))
-          _            (when (seq (ast/expressions from-node))
-                         (throw (unsupported "comma-join")))
-          joins        (vec (ast/arg stmt "joins"))
-          ;; A placeholder is a value the step queries would have to be handed again, and nothing passes them on. One
-          ;; in a clause the steps leave out does not matter.
-          _            (when (some #(seq (ast/find-all % Expressions$Placeholder Expressions$Parameter))
-                                   (cond-> (cons from-node joins) with-node (conj with-node)))
-                         (throw (unsupported "parameters")))
-          ;; A sample in anything the steps keep would pick different rows in each step query.
-          _            (when (some #(seq (ast/find-all % Expressions$TableSample))
-                                   (cond-> (cons from-node joins) with-node (conj with-node)))
-                         (throw (unsupported "unsupported-source")))
-          cte-names    (into #{}
-                             (keep #(when (seq (ast/node-alias %))
-                                      (effective-name (ast/this (ast/arg % "alias")) dialect)))
-                             (some-> with-node ast/expressions))
-          where        (ast/arg stmt "where")
-          commas       (filterv #(comma-join? % dialect) joins)
-          source-names (fn [nodes] (into #{} (keep #(source-name % dialect)) nodes))
-          _            (when (and (seq commas)
-                                  where
-                                  (where-may-join? where
-                                                   (source-names (cons (ast/this from-node) (map ast/this joins)))
-                                                   (source-names (map ast/this commas))
-                                                   dialect))
-                         (throw (unsupported "comma-join")))]
+    (let [from-node (ast/arg stmt "from_")
+          joins     (vec (ast/arg stmt "joins"))
+          ctes      (set (cte-names with-node dialect))]
       {:status   "ok"
-       :from     (step-source (ast/this from-node) cte-names dialect)
+       :from     (step-source (ast/this from-node) ctes dialect)
        :base_sql (ast/sql (count-select from-node [] with-node) dialect)
-       :steps    (vec (map-indexed
-                       (fn [i join]
-                         (let [source   (step-source (ast/this join) cte-names dialect)
-                               strategy (step-strategy join dialect)
-                               chain    (subvec joins 0 (inc i))
-                               query    (if (#{"left" "right" "full"} strategy)
-                                          (if (on-counts-matches? from-node chain strategy dialect)
-                                            (on-counts from-node chain with-node)
-                                            (two-counts (count-select from-node chain)
-                                                        (count-select from-node
-                                                                      (conj (pop chain) (inner-variant join)))
-                                                        with-node))
-                                          (count-select from-node chain with-node))]
-                           (assoc source :strategy strategy :sql (ast/sql query dialect))))
-                       joins))})))
+       :steps    (into []
+                       (map-indexed
+                        (fn [i join]
+                          (let [strategy (step-strategy join dialect)]
+                            (assoc (step-source (ast/this join) ctes dialect)
+                                   :strategy strategy
+                                   :sql      (ast/sql (step-query from-node joins i strategy with-node dialect)
+                                                      dialect)))))
+                       joins)})))
 
 (defn join-steps
   "The row-count queries of each join in `sql`, a SELECT, taken one join at a time.

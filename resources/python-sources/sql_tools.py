@@ -472,10 +472,10 @@ def _effective_name(identifier, dialect):
 def _join_step_source(node, cte_names, dialect):
     """A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its table parts or None, and its alias.
 
-    Anything that is not a plain named table is `derived`. Step queries copy the node whole, so what it carries (a
-    table hint, a PIVOT) stays in them.
+    Anything that is not a plain named table is `derived`.
     Raises `_JoinStepsUnsupported` for a parenthesized join tree or a LATERAL or APPLY source.
     """
+    # Step queries copy the node whole, so what it carries (a table hint, a PIVOT) stays in them.
     if isinstance(node, exp.Lateral):
         raise _JoinStepsUnsupported("unsupported-source")
     if isinstance(node, exp.Table) and isinstance(node.this, exp.Identifier):
@@ -516,8 +516,22 @@ def _join_step_strategy(join, dialect):
     return {"LEFT": "left", "RIGHT": "right", "FULL": "full"}.get(side, "inner")
 
 
+def _inner_variant(join):
+    """A copy of the outer `join` made an INNER join."""
+    inner = join.copy()
+    inner.set("side", None)
+    if (inner.kind or "").upper() == "OUTER":
+        inner.set("kind", None)
+    return inner
+
+
+def _cte_names(with_, dialect):
+    """The effective names of the CTEs in `with_`, in order, or an empty list for no WITH clause."""
+    return [_effective_name(cte.args["alias"].this, dialect) for cte in (with_.expressions if with_ else [])]
+
+
 def _whole_query(stmt, dialect):
-    """`stmt` without brackets around the whole of it, and the WITH clause it runs under, or None.
+    """The statement `stmt` without brackets around the whole of it, and the WITH clause it runs under, or None.
 
     A trailing ORDER BY or LIMIT on the brackets is dropped with the rest of what is outside FROM and JOIN.
     Raises `_JoinStepsUnsupported` for brackets with any other clause of their own, or several WITH scopes.
@@ -535,20 +549,32 @@ def _whole_query(stmt, dialect):
     if len(withs) > 1:
         raise _JoinStepsUnsupported("not-a-select")
     with_ = withs[0] if withs else None
-    names = [_effective_name(cte.args["alias"].this, dialect) for cte in (with_.expressions if with_ else [])]
+    names = _cte_names(with_, dialect)
     if len(names) != len(set(names)):
         raise _JoinStepsUnsupported("not-a-select")
     return stmt, with_
 
 
-def _count_select(from_, joins, with_=None):
-    """The query `SELECT COUNT(*) AS n FROM <from_> <joins>`, with `with_` as its WITH clause."""
-    select = exp.Select(
-        expressions=[exp.alias_(exp.Count(this=exp.Star()), "n")], from_=from_.copy(), joins=[j.copy() for j in joins]
-    )
+def _with(select, with_):
+    """The query `select`, given a copy of `with_` as its WITH clause when there is one."""
     if with_ is not None:
         select.set("with_", with_.copy())
     return select
+
+
+def _count_star():
+    """The select expression `COUNT(*) AS n`."""
+    return exp.alias_(exp.Count(this=exp.Star()), "n")
+
+
+def _select(expressions, from_, joins, with_):
+    """The query `SELECT <expressions> FROM <from_> <joins>`, with `with_` as its WITH clause."""
+    return _with(exp.Select(expressions=expressions, from_=from_.copy(), joins=[j.copy() for j in joins]), with_)
+
+
+def _count_select(from_, joins, with_=None):
+    """The query `SELECT COUNT(*) AS n FROM <from_> <joins>`, with `with_` as its WITH clause."""
+    return _select([_count_star()], from_, joins, with_)
 
 
 def _two_counts(first, second, with_=None):
@@ -560,9 +586,13 @@ def _two_counts(first, second, with_=None):
         from_=exp.From(this=first.subquery("w")),
         joins=[exp.Join(this=second.subquery("m"), kind="CROSS")],
     )
-    if with_ is not None:
-        select.set("with_", with_.copy())
-    return select
+    return _with(select, with_)
+
+
+def _on_counts(from_, joins, with_):
+    """The query `SELECT COUNT(*) AS n, COUNT(CASE WHEN <last join's ON> THEN 1 END) AS m FROM <from_> <joins>`."""
+    matched = exp.Case(ifs=[exp.If(this=joins[-1].args["on"].copy(), true=exp.Literal.number(1))])
+    return _select([_count_star(), exp.alias_(exp.Count(this=matched), "m")], from_, joins, with_)
 
 
 _JOIN_COMPARISONS = (exp.EQ, exp.NEQ, exp.GT, exp.GTE, exp.LT, exp.LTE)
@@ -577,11 +607,21 @@ def _conjuncts(node):
     return [node]
 
 
+def _sources(from_, joins):
+    """The FROM source of a SELECT and the source of each of its `joins`."""
+    return [from_.this, *(join.this for join in joins)]
+
+
 def _source_name(node, dialect):
     """The effective name a column calls the source `node` by, or None for a source with no name."""
     alias = node.args.get("alias")
     identifier = alias.this if alias is not None and alias.this is not None else node.this
     return _effective_name(identifier, dialect) if isinstance(identifier, exp.Identifier) else None
+
+
+def _source_names(nodes, dialect):
+    """The effective names of the sources `nodes` that have one."""
+    return {_source_name(node, dialect) for node in nodes} - {None}
 
 
 def _where_column_source(column, conjunct, names, dialect):
@@ -599,17 +639,14 @@ def _where_column_source(column, conjunct, names, dialect):
     while node is not conjunct:
         node = node.parent
         from_ = node.args.get("from_") if isinstance(node, exp.Select) else None
-        if from_ is not None:
-            sources = [from_.this, *(join.this for join in node.args.get("joins") or [])]
-            if set(parts) & {_source_name(source, dialect) for source in sources}:
-                return None
+        if from_ is not None and set(parts) & _source_names(_sources(from_, node.args.get("joins") or []), dialect):
+            return None
     return next((part for part in parts if part in names), None)
 
 
 def _where_may_join(where, names, comma_names, dialect):
     """Whether a conjunct of `where` names a source in `comma_names` and another source.
 
-    The step queries leave WHERE out, so they would count the whole cross product of such a join.
     A column that names no source may belong to any of them, so it does not count as a second source.
     """
     for conjunct in _conjuncts(where.this):
@@ -625,10 +662,10 @@ def _on_counts_matches(from_, joins, strategy, dialect):
     The clause must be an AND of comparisons between literals and columns that each name one source in the chain, so
     it is safe to evaluate again.
     It must also compare a column from each side that can be NULL-extended, so an unmatched row cannot satisfy it.
-    ClickHouse fills unmatched columns with defaults rather than NULL.
     """
     on = joins[-1].args.get("on")
-    names = [_source_name(node, dialect) for node in [from_.this, *(join.this for join in joins)]]
+    names = [_source_name(node, dialect) for node in _sources(from_, joins)]
+    # ClickHouse fills unmatched columns with defaults rather than NULL, so an unmatched row can satisfy the clause.
     if on is None or dialect == "clickhouse" or None in names or len(names) != len(set(names)):
         return False
     joined = names[-1]
@@ -656,17 +693,52 @@ def _on_counts_matches(from_, joins, strategy, dialect):
     return {"left": from_joined, "right": from_earlier, "full": from_joined and from_earlier}[strategy]
 
 
-def _on_counts(from_, joins, with_):
-    """`SELECT COUNT(*) AS n, COUNT(CASE WHEN <last join's ON> THEN 1 END) AS m FROM <from_> <joins>`."""
-    matched = exp.Case(ifs=[exp.If(this=joins[-1].args["on"].copy(), true=exp.Literal.number(1))])
-    select = exp.Select(
-        expressions=[exp.alias_(exp.Count(this=exp.Star()), "n"), exp.alias_(exp.Count(this=matched), "m")],
-        from_=from_.copy(),
-        joins=[j.copy() for j in joins],
-    )
-    if with_ is not None:
-        select.set("with_", with_.copy())
-    return select
+def _statement_refusal(stmt, with_, dialect):
+    """Why the parsed statement `stmt`, run under `with_`, cannot have its join steps rebuilt, or None.
+
+    A source can still be refused when it is described.
+    """
+    if isinstance(stmt, exp.SetOperation):
+        return "set-operation"
+    if not isinstance(stmt, exp.Select):
+        return "not-a-select"
+    # Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
+    if stmt.args.get("laterals"):
+        return "unsupported-join"
+    # ClickHouse's SETTINGS and T-SQL's OPTION can change what a join returns or whether it runs at all, and the step
+    # queries would leave them out.
+    if stmt.args.get("settings") or stmt.args.get("options"):
+        return "unsupported-join"
+    from_ = stmt.args.get("from_")
+    if from_ is None or from_.this is None:
+        return "no-from"
+    if from_.expressions:
+        return "comma-join"
+    joins = stmt.args.get("joins") or []
+    kept = [node for node in [from_, *joins, with_] if node is not None]
+    # A placeholder is a value the step queries would have to be handed again, and nothing passes them on. One in a
+    # clause the steps leave out does not matter.
+    if any(node.find(exp.Placeholder, exp.Parameter) for node in kept):
+        return "parameters"
+    # A sample in anything the steps keep would pick different rows in each step query.
+    if any(node.find(exp.TableSample) for node in kept):
+        return "unsupported-source"
+    # The step queries leave WHERE out, so they would count the whole cross product of a comma join whose condition is
+    # there.
+    where = stmt.args.get("where")
+    comma_joins = [join for join in joins if _comma_join(join, dialect)]
+    if (
+        comma_joins
+        and where is not None
+        and _where_may_join(
+            where,
+            _source_names(_sources(from_, joins), dialect),
+            _source_names((join.this for join in comma_joins), dialect),
+            dialect,
+        )
+    ):
+        return "comma-join"
+    return None
 
 
 def join_steps(sql: str, dialect: str = None) -> str:
@@ -712,62 +784,27 @@ def join_steps(sql: str, dialect: str = None) -> str:
         if not stmts:
             raise _JoinStepsUnsupported("unparseable")
         stmt, with_ = _whole_query(stmts[0], dialect)
-        if isinstance(stmt, exp.SetOperation):
-            raise _JoinStepsUnsupported("set-operation")
-        if not isinstance(stmt, exp.Select):
-            raise _JoinStepsUnsupported("not-a-select")
-        # Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
-        if stmt.args.get("laterals"):
-            raise _JoinStepsUnsupported("unsupported-join")
-        # ClickHouse's SETTINGS and T-SQL's OPTION can change what a join returns or whether it runs at all, and the
-        # step queries would leave them out.
-        if stmt.args.get("settings") or stmt.args.get("options"):
-            raise _JoinStepsUnsupported("unsupported-join")
-        from_ = stmt.args.get("from_")
-        if from_ is None or from_.this is None:
-            raise _JoinStepsUnsupported("no-from")
-        if from_.expressions:
-            raise _JoinStepsUnsupported("comma-join")
+        reason = _statement_refusal(stmt, with_, dialect)
+        if reason:
+            raise _JoinStepsUnsupported(reason)
+        from_ = stmt.args["from_"]
         joins = stmt.args.get("joins") or []
-        # A placeholder is a value the step queries would have to be handed again, and nothing passes them on. One in a
-        # clause the steps leave out does not matter.
-        if any(node.find(exp.Placeholder, exp.Parameter) for node in [from_, *joins, with_] if node is not None):
-            raise _JoinStepsUnsupported("parameters")
-        # A sample in anything the steps keep would pick different rows in each step query.
-        if any(node.find(exp.TableSample) for node in [from_, *joins, with_] if node is not None):
-            raise _JoinStepsUnsupported("unsupported-source")
-
-        cte_names = {
-            _effective_name(cte.args["alias"].this, dialect) for cte in (with_.expressions if with_ else []) if cte.alias
-        }
-        where = stmt.args.get("where")
-        comma_joins = [join for join in joins if _comma_join(join, dialect)]
-        if comma_joins and where is not None:
-            names = {_source_name(node, dialect) for node in [from_.this, *(join.this for join in joins)]} - {None}
-            comma_names = {_source_name(join.this, dialect) for join in comma_joins} - {None}
-            if _where_may_join(where, names, comma_names, dialect):
-                raise _JoinStepsUnsupported("comma-join")
+        cte_names = set(_cte_names(with_, dialect))
         from_source = _join_step_source(from_.this, cte_names, dialect)
         steps = []
         for n, join in enumerate(joins, start=1):
             source = _join_step_source(join.this, cte_names, dialect)
             strategy = _join_step_strategy(join, dialect)
-            step = dict(source, strategy=strategy)
-            if strategy in ("left", "right", "full"):
-                if _on_counts_matches(from_, joins[:n], strategy, dialect):
-                    query = _on_counts(from_, joins[:n], with_)
-                else:
-                    inner = join.copy()
-                    inner.set("side", None)
-                    if (inner.kind or "").upper() == "OUTER":
-                        inner.set("kind", None)
-                    query = _two_counts(
-                        _count_select(from_, joins[:n]), _count_select(from_, joins[: n - 1] + [inner]), with_
-                    )
+            chain = joins[:n]
+            if strategy not in ("left", "right", "full"):
+                query = _count_select(from_, chain, with_)
+            elif _on_counts_matches(from_, chain, strategy, dialect):
+                query = _on_counts(from_, chain, with_)
             else:
-                query = _count_select(from_, joins[:n], with_)
-            step["sql"] = query.sql(dialect=dialect)
-            steps.append(step)
+                query = _two_counts(
+                    _count_select(from_, chain), _count_select(from_, chain[:-1] + [_inner_variant(join)]), with_
+                )
+            steps.append(dict(source, strategy=strategy, sql=query.sql(dialect=dialect)))
         return json.dumps(
             {
                 "status": "ok",
