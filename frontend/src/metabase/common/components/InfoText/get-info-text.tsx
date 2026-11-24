@@ -84,7 +84,9 @@ const getCollectionInfoText = (result: SearchResult): InfoTextData => {
 const getCollectionResult = (result: SearchResult): InfoTextData => {
   const collection = getCollection(result);
   const colUrl = collectionUrl(collection);
-  const collectionName = collection.name;
+  // PROTOTYPE: the root collection reads "Collections" in search results.
+  const collectionName =
+    collection.id === "root" ? t`Collections` : collection.name;
   return collectionName
     ? {
         icon:

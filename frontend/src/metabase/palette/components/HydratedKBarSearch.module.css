@@ -1,14 +1,19 @@
+/* PROTOTYPE: no search icon. */
 .input {
   padding: var(--mantine-spacing-xl);
-  padding-left: 3.75rem;
   font-size: 17px;
   width: 100%;
   border: none;
-  border-bottom: 1px solid var(--border-color);
-  border-top-left-radius: 0.5rem;
-  border-top-right-radius: 0.5rem;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  border-top-left-radius: var(--mantine-radius-lg);
+  border-top-right-radius: var(--mantine-radius-lg);
   color: var(--mb-color-text-primary);
   line-height: 1rem;
   outline: none;
   background-color: transparent;
+}
+
+/* Clears the official-content toggle pinned to the box's right edge. */
+.inputWithToggle {
+  padding-right: calc(var(--mantine-spacing-xl) + 2.5rem);
 }

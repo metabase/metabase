@@ -22,7 +22,7 @@ import { queryToSearch } from "metabase/router";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { getSettings, useSetting } from "metabase/settings";
-import { Icon, Text } from "metabase/ui";
+import { Button, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { modelToUrl } from "metabase/urls";
 import type { SearchQuery } from "metabase/utils/browser";
@@ -46,6 +46,13 @@ const SEARCH_RESULT_LIMIT = 20;
 // over-fetches to still fill the list after filtering.
 const OFFICIAL_SEARCH_FETCH_LIMIT = 100;
 
+/**
+ * PROTOTYPE: which part of the instance the palette's search covers, toggled
+ * by the button in the search box: "official" is content synced from git;
+ * "all" is the usual (non-trashed) search.
+ */
+export type PaletteSearchScope = "official" | "all";
+
 function isOfficialSearchResult(
   result: SearchResult,
   officialCollectionIds: Set<CollectionId>,
@@ -60,12 +67,17 @@ function isOfficialSearchResult(
 export const useCommandPalette = ({
   disabled = false,
   locationQuery,
-  includeExplorations = true,
+  scope = "all",
+  onSearchEverywhere,
 }: {
   disabled: boolean;
   locationQuery: SearchQuery;
-  /** With git integration on, also return results outside synced collections. */
-  includeExplorations?: boolean;
+  scope?: PaletteSearchScope;
+  /**
+   * PROTOTYPE: widens an official-only search to everything; offered next to
+   * its "No results" message.
+   */
+  onSearchEverywhere?: () => void;
 }) => {
   const getIcon = useGetIcon();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -111,7 +123,7 @@ export const useCommandPalette = ({
   );
 
   const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
-  const isOfficialOnly = isGitIntegrationEnabled && !includeExplorations;
+  const isOfficialOnly = isGitIntegrationEnabled && scope === "official";
 
   const officialCollectionIds = useSyncedCollectionIds({
     skip: !isOfficialOnly || disabled,
@@ -274,6 +286,24 @@ export const useCommandPalette = ({
             keywords: trimmedQuery,
             section: "search",
             disabled: true,
+            extra:
+              isOfficialOnly && onSearchEverywhere
+                ? {
+                    subtext: (
+                      <Button
+                        variant="subtle"
+                        size="compact-sm"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onSearchEverywhere();
+                        }}
+                      >
+                        {t`Try searching unofficial content`}
+                      </Button>
+                    ),
+                  }
+                : undefined,
           },
         ];
       }
@@ -290,6 +320,8 @@ export const useCommandPalette = ({
     isSearchTypeaheadEnabled,
     searchRequestId,
     getIcon,
+    isOfficialOnly,
+    onSearchEverywhere,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);
@@ -415,8 +447,14 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
     // A data app is in no collection, which getCollection would name as the root one.
     return <SubtitleText>{t`Data app`}</SubtitleText>;
   } else {
+    const collection = getCollection(wrappedSearchResult);
     return (
-      <SubtitleText>{getCollection(wrappedSearchResult)?.name}</SubtitleText>
+      <SubtitleText>
+        {/* PROTOTYPE: the root collection reads "Collections" here. */}
+        {collection?.id === ROOT_COLLECTION.id
+          ? t`Collections`
+          : collection?.name}
+      </SubtitleText>
     );
   }
 };
@@ -441,7 +479,8 @@ export const getRecentItemSubtext = (item: RecentItem) => {
     return (
       <>
         <Icon flex="0 0 auto" name="collection" size={12} />
-        <SubtitleText>{ROOT_COLLECTION.name}</SubtitleText>
+        {/* PROTOTYPE: the root collection reads "Collections" here. */}
+        <SubtitleText>{t`Collections`}</SubtitleText>
       </>
     );
   } else {

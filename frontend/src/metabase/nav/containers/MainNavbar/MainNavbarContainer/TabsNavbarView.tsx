@@ -12,6 +12,7 @@ import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-oth
 import {
   getIsTenantUser,
   getUserCanWriteToCollections,
+  getUserId,
 } from "metabase/current-user";
 import { AreaTabGroupHeading } from "metabase/nav/components/AreaLayout";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
@@ -24,10 +25,19 @@ import { PLUGIN_DATA_APPS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { getCanAccessOnboardingPage } from "metabase/selectors/onboarding";
-import { Box, Button, Divider, Flex, Icon, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Divider,
+  Flex,
+  Icon,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
-import type { IconName } from "metabase-types/api";
+import type { Collection, IconName } from "metabase-types/api";
 
 import { SidebarSection } from "../Sidebar";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
@@ -155,6 +165,7 @@ export function TabsNavbarView({
   const navigate = useNavigate();
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
   const isTenantUser = useSelector(getIsTenantUser);
+  const currentUserId = useSelector(getUserId);
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
   const showOtherUsersCollections = useShowOtherUsersCollections();
   const { regularCollections, trashCollection } = useNavCollections(
@@ -424,6 +435,29 @@ export function TabsNavbarView({
       </Button>
     ) : null;
 
+  // PROTOTYPE: the "Modern nav" variants reach other users' personal
+  // collections from a button on your own personal collection's row, instead
+  // of a row of their own.
+  const isOtherUsersButtonOnRow = isModernNav(variant);
+  const otherUsersCollectionsButton = (
+    <Tooltip label={t`Other users' personal collections`}>
+      <ActionIcon
+        variant="subtle"
+        size="sm"
+        aria-label={t`Other users' personal collections`}
+        onClick={(event) => {
+          // The row is a link to your own collection; this goes elsewhere.
+          event.preventDefault();
+          event.stopPropagation();
+          navigate(OTHER_USERS_COLLECTIONS_URL);
+          onItemSelect();
+        }}
+      >
+        <Icon name="group" />
+      </ActionIcon>
+    </Tooltip>
+  );
+
   const collectionsList = (
     <>
       {newFolderButton}
@@ -434,15 +468,28 @@ export function TabsNavbarView({
         TreeNode={SidebarCollectionLink}
         role="tree"
         aria-label="collection-tree"
-        rightSection={(item) =>
-          typeof item.id === "number" && (
-            <PLUGIN_REMOTE_SYNC.ChangesBadge
-              target={{ type: "collection", id: item.id }}
-            />
-          )
-        }
+        rightSection={(item) => {
+          // Unjustified type cast. FIXME
+          const collection = item as unknown as Collection;
+          const isOwnPersonalCollection =
+            collection.personal_owner_id != null &&
+            collection.personal_owner_id === currentUserId;
+          return (
+            <>
+              {typeof item.id === "number" && (
+                <PLUGIN_REMOTE_SYNC.ChangesBadge
+                  target={{ type: "collection", id: item.id }}
+                />
+              )}
+              {isOtherUsersButtonOnRow &&
+                showOtherUsersCollections &&
+                isOwnPersonalCollection &&
+                otherUsersCollectionsButton}
+            </>
+          );
+        }}
       />
-      {showOtherUsersCollections && (
+      {showOtherUsersCollections && !isOtherUsersButtonOnRow && (
         <SidebarLink
           icon="group"
           url={OTHER_USERS_COLLECTIONS_URL}

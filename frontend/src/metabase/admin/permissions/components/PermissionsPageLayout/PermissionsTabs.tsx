@@ -27,7 +27,8 @@ export const PermissionsTabs = ({ tab, onChangeTab }: PermissionsTabsProps) => {
       );
 
   const tabs = [
-    { name: t`Data`, value: "data" },
+    // PROTOTYPE: was "Data"; the prototype uses "Data" for the Library.
+    { name: t`Databases`, value: "data" },
     { name: t`Collections`, value: "collections" },
     ...adminPermissionsTabs,
     ...PLUGIN_APPLICATION_PERMISSIONS.tabs,
