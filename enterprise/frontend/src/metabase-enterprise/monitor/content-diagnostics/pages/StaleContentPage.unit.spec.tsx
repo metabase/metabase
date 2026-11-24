@@ -622,6 +622,52 @@ describe("StaleContentPage", () => {
     );
   });
 
+  it("shows each type's last activity date, under its own kind of activity in the sidebar", async () => {
+    const LAST_ACTIVE_AT = "2020-06-15T12:00:00Z";
+    const LAST_ACTIVE_DISPLAY = "June 15, 2020";
+    const cases = [
+      { entityType: "card", name: "Backdated question", label: "Last used" },
+      {
+        entityType: "dashboard",
+        name: "Backdated dashboard",
+        label: "Last viewed",
+      },
+      {
+        entityType: "document",
+        name: "Backdated document",
+        label: "Last viewed",
+      },
+    ] as const;
+    setup({
+      findings: cases.map(({ entityType, name }, index) =>
+        createMockContentDiagnosticsStaleFinding({
+          id: index + 1,
+          entity_type: entityType,
+          entity_id: 100 + index,
+          entity_display_name: name,
+          last_active_at: LAST_ACTIVE_AT,
+        }),
+      ),
+    });
+
+    const list = await screen.findByRole("treegrid");
+    expect(await within(list).findAllByText(LAST_ACTIVE_DISPLAY)).toHaveLength(
+      cases.length,
+    );
+
+    // Open the findings last to first, so a sidebar stuck on the first row fails.
+    for (const { name, label } of [...cases].reverse()) {
+      await userEvent.click(within(list).getByText(name));
+
+      const sidebar = await screen.findByRole("region", {
+        name: `Details for ${name}`,
+      });
+      const info = within(sidebar).getByRole("region", { name: "Info" });
+      expect(within(info).getByText(label)).toBeInTheDocument();
+      expect(within(info).getByText(LAST_ACTIVE_DISPLAY)).toBeInTheDocument();
+    }
+  });
+
   it("sets the page parameter when navigating to the next page", async () => {
     const { router } = setup({ findings: FINDINGS, total: 50 });
     await waitForListToLoad();
