@@ -390,14 +390,14 @@
     true))
 
 (mu/defn add-attributes
-  "Adds the `:attributes` key to a user. Only personal users carry attributes; for other user types (API-key, internal)
-  this is always `{}`, so e.g. sandboxed queries made with an API key report a missing user attribute instead of
+  "Adds the `:attributes` key to a user. Only personal and permission preview users carry attributes; for other user
+  types (API-key, internal) this is always `{}`, so e.g. sandboxed queries made with an API key report a missing user attribute instead of
   reading attributes stored on the user row."
   [{:keys [login_attributes jwt_attributes] :as user} :- [:merge
                                                           ::users.schema/user
                                                           [:map {:closed true}
                                                            [:type ::users.schema/user.type]]]]
-  (assoc user :attributes (if (= (:type user) :personal)
+  (assoc user :attributes (if (#{:personal :permission-preview} (:type user))
                             (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)
                             {})))
 

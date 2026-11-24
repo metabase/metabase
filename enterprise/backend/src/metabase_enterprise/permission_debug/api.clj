@@ -2,10 +2,12 @@
   "`/api/ee/permission_debug/` routes"
   (:require
    [metabase-enterprise.permission-debug.impl :as permission-debug.impl]
+   [metabase-enterprise.permission-debug.stand-in :as stand-in]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.session.core :as session]
+   [metabase.users.schema :as users.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
@@ -88,22 +90,43 @@
              403 {:message    (tru "A preview can only be started from a browser session.")
                   :error-code "preview-requires-browser-session"}))
 
+(defn- check-preview-target!
+  "Throw a 400 unless `body` names exactly one target, a user or a group, and picks attribute values only for a group."
+  [{:keys [user_id group_id attributes]}]
+  (api/check (= 1 (count (filter some? [user_id group_id])))
+             400 {:message    (tru "Give either a user or a group to preview.")
+                  :error-code "preview-target-invalid"})
+  (api/check (or group_id (nil? attributes))
+             400 {:message    (tru "Attribute values can only be picked for a group.")
+                  :error-code "preview-attributes-need-group"}))
+
 (api.macros/defendpoint :post "/preview/session" :- [:map
                                                      [:id         ms/PositiveInt]
                                                      [:token      :string]
                                                      [:expires_at :any]]
-  "Start a read-only preview as the user `user_id`. Returns the preview's `id` and `token`, which is shown only here:
-  send it as the `X-Metabase-Preview-Token` header, and every request that carries it runs as that user. A preview
-  lasts 30 minutes, renewed by a request when fewer than 20 are left, and ends with the admin's session."
+  "Start a read-only preview as the user `user_id`, or as the group `group_id` with the attribute values `attributes`
+  that its rules read, through the group's stand-in user: the last preview of a group to start sets the values of
+  every open preview of it. Returns the preview's `id` and `token`, which is shown only here: send it as the
+  `X-Metabase-Preview-Token` header, and every request that carries it runs as that person. A preview lasts 30 minutes,
+  renewed by a request when fewer than 20 are left, and ends with the admin's session."
   [_route-params
    _query-params
-   {:keys [user_id]} :- [:map {:closed true}
-                         [:user_id ms/PositiveInt]]
+   {:keys [user_id group_id attributes] :as body} :- [:map {:closed true}
+                                                      [:user_id    {:optional true} ms/PositiveInt]
+                                                      [:group_id   {:optional true} ms/PositiveInt]
+                                                      [:attributes {:optional true} users.schema/LoginAttributes]]
    request]
   (check-browser-session! request)
-  (session/start-preview! {:user-id                user_id
-                           :admin-user-id          api/*current-user-id*
-                           :admin-session-key-hash (:metabase/authed-session-key-hash request)}))
+  (check-preview-target! body)
+  (let [admin-session-key-hash (:metabase/authed-session-key-hash request)]
+    (if group_id
+      (stand-in/start-group-preview! {:group-id               group_id
+                                      :attributes             attributes
+                                      :admin-user-id          api/*current-user-id*
+                                      :admin-session-key-hash admin-session-key-hash})
+      (session/start-preview! {:user-id                user_id
+                               :admin-user-id          api/*current-user-id*
+                               :admin-session-key-hash admin-session-key-hash}))))
 
 (api.macros/defendpoint :delete "/preview/session/:id" :- ::api/generic-204-no-content
   "End the preview `id` that the current admin started."

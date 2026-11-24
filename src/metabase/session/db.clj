@@ -242,8 +242,9 @@
 
 (mu/defn permission-preview-user-info
   "The person, the admin and the `:renew?` flag of the preview with `token-hash`, or nil when there is none, it has
-  expired, its person is no longer an active non-admin user, or its admin's Session is no longer live. `:renew?` is
-  true when fewer than `renew-below-minutes` are left. The person's fields are the ones a Session's lookup returns."
+  expired, its person is no longer an active non-admin user (a stand-in user is never active), or its admin's Session is
+  no longer live. `:renew?` is true when fewer than `renew-below-minutes` are left. The person's fields are the ones a
+  Session's lookup returns."
   [token-hash                   :- :string
    renew-below-minutes          :- ms/PositiveInt
    liveness                     :- ::session.schema/liveness-params
@@ -269,7 +270,10 @@
                       :where     (into [:and
                                         [:= :preview.token_hash token-hash]
                                         [:> :preview.expires_at now]
-                                        [:= :person.is_active true]
+                                        ;; a stand-in user is inactive by design
+                                        [:or
+                                         [:= :person.is_active true]
+                                         [:= :person.type "permission-preview"]]
                                         [:= :person.is_superuser false]]
                                        (session.query/live-session-conditions liveness))
                       :limit     [:inline 1]}

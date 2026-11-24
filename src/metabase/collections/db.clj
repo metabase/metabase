@@ -602,10 +602,15 @@
     (set (t2/select-pks-set :model/Collection :id [:in collection-ids] :personal_owner_id [:not= nil]))
     #{}))
 
-(mu/defn non-api-key-user-ids
-  "The IDs of the Users among `user-ids` that are not API key users."
+(mu/defn permission-preview-user?
+  "Whether the User with `user-id` is a permission preview user."
+  [user-id :- ::lib.schema.id/user]
+  (t2/exists? :model/User :id user-id :type :permission-preview))
+
+(mu/defn personal-collection-user-ids
+  "The IDs of the Users among `user-ids` that get a Personal Collection: all but API key and permission preview users."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pks-set :model/User :id [:in user-ids] :type [:not= :api-key]))
+  (t2/select-pks-set :model/User :id [:in user-ids] :type [:not-in [:api-key :permission-preview]]))
 
 (mu/defn synced-collection-items :- [:sequential ::collections.schema/collection]
   "The Collections with `ids`, with their ancestors, as remote sync lists them."

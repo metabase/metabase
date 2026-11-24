@@ -999,8 +999,9 @@
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it.
   Personal collection should be created on user creation, but creates if missing for backwards compatibility"
   [user-or-id :- UserOrId]
-  ;; API key users do not get personal collections
-  (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
+  ;; API key and permission preview users do not get personal collections
+  (when-not (or (api-key/is-api-key-user? (u/the-id user-or-id))
+                (collections.db/permission-preview-user? (u/the-id user-or-id)))
     (or (user->existing-personal-collection user-or-id)
         (try
           (first (create-collections! [{:name              (user->personal-collection-name user-or-id :site)
@@ -1014,7 +1015,7 @@
 (defn- create-personal-collections-batch!
   "Creates the Personal Collection of each of the `user-ids`, one batch of the Users of a call, that has none."
   [user-ids]
-  (when-let [user-ids (not-empty (collections.db/non-api-key-user-ids (set user-ids)))]
+  (when-let [user-ids (not-empty (collections.db/personal-collection-user-ids (set user-ids)))]
     (let [owned   (collections.db/personal-collection-ids-by-owner user-ids)
           missing (vec (remove #(contains? owned %) (sort user-ids)))]
       (when (seq missing)
@@ -1070,7 +1071,7 @@
   [users]
   (when (seq users)
     ;; efficiently create a map of user ID -> personal collection ID
-    (let [non-api-user-ids (collections.db/non-api-key-user-ids (set (map u/the-id users)))
+    (let [non-api-user-ids (collections.db/personal-collection-user-ids (set (map u/the-id users)))
           user-id->collection-id (when (seq non-api-user-ids)
                                    (collections.db/personal-collection-ids-by-owner non-api-user-ids))]
       ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
