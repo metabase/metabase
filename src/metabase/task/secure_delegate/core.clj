@@ -80,6 +80,9 @@
   ;; checkout, makes `compile` load it instead of compiling, so a gen-class file that has gone (OS temp cleaners
   ;; remove files not read for days) is never written again.
   (let [dir (.toFile (Files/createTempDirectory "mb-quartz-secure-delegate" (make-array FileAttribute 0)))]
+    ;; Remove the dir when the JVM exits, files before the directories that hold them.
+    (.addShutdownHook (Runtime/getRuntime)
+                      (Thread. ^Runnable #(doseq [^java.io.File f (reverse (file-seq dir))] (.delete f))))
     (classloader/add-url-to-classpath! ^URL (-> dir .toURI .toURL))
     (binding [*compile-path* (str dir)]
       (compile ns-sym))))
