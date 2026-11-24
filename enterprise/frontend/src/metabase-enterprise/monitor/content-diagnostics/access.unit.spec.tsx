@@ -13,6 +13,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  within,
 } from "__support__/ui";
 import { getMonitorRoutes } from "metabase/monitor/routes";
 import { reinitialize } from "metabase/plugins";
@@ -98,7 +99,11 @@ describe("content diagnostics access (enterprise build)", () => {
     expect(
       await screen.findByRole("heading", { name: "Content diagnostics" }),
     ).toBeVisible();
-    expect(await screen.findByText(UPSELL_TITLE)).toBeVisible();
+    expect(
+      await within(await screen.findByTestId("monitor-main")).findByText(
+        UPSELL_TITLE,
+      ),
+    ).toBeVisible();
     // Give a request that the page would send after mounting time to go out.
     await act(() => new Promise((resolve) => setTimeout(resolve, 1000)));
     expect(screen.queryByText(STALE_DASHBOARD_NAME)).not.toBeInTheDocument();
