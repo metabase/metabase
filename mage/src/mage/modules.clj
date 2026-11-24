@@ -99,6 +99,7 @@
      auth-provider
      batch-processing
      bug-reporting
+     change-log
      channel
      classloader
      collections

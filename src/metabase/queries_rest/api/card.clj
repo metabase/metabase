@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.core :as eid-translation]
@@ -865,6 +866,8 @@
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]
                                                  (u/the-id card)))]
+          (change-log/log-rows! :model/Card :update :id [:in (set cards-without-position)])
+          #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
           (t2/update! (t2/table-name :model/Card)
                       {:id [:in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil}))

@@ -57,6 +57,7 @@
           (cluster-lock/with-cluster-lock {:lock lock-name :retry-transient? true}
             ;; Using t2/query instead of t2/update! avoids triggering Toucan2 model hooks,
             ;; specifically search-index enqueues on after-update.
+            #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
             (t2/query {:update (t2/table-name model)
                        :set    {:view_count [:+ :view_count (into [:case]
                                                                   (mapcat (fn [[cnt ids]]
@@ -200,6 +201,7 @@
       ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
       ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
       (cluster-lock/with-cluster-lock {:lock dashboard-statistics-lock :retry-transient? true}
+        #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
         (t2/query {:update (t2/table-name :model/Dashboard)
                    :set    {:last_viewed_at (into [:case]
                                                   (mapcat (fn [[id timestamp]]

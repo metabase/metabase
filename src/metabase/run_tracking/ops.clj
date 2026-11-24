@@ -34,6 +34,7 @@
   `active` is a HoneySQL predicate, e.g. `[:= :is_active true]`."
   [model active heartbeat-column ids]
   (when (seq ids)
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log covers no model that tracks runs
     (t2/query {:update (t2/table-name model)
                :set    {heartbeat-column :%now}
                :where  [:and active [:in :id ids]]})))
@@ -60,6 +61,7 @@
   [{:keys [model active stale terminal]}]
   (t2/with-transaction [_conn]
     (when-let [rows (not-empty (t2/select model {:where [:and active stale] :for :update}))]
+      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log covers no model that tracks runs
       (t2/query {:update (t2/table-name model)
                  :set    terminal
                  :where  [:and active [:in :id (mapv :id rows)]]})

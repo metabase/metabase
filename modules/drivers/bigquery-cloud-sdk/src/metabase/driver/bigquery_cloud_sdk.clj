@@ -1190,6 +1190,8 @@
     (log/infof "DB %s had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                (pr-str db-id))
     (try
+      ;; The change log leaves out this one-time conversion of connections that still have a `dataset-id`.
+      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
       (t2/query-one {:update (t2/table-name :model/Table)
                      :set    {:schema dataset-id}
                      :where  [:and

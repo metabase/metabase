@@ -135,6 +135,8 @@
   so the UI surfaces tables immediately."
   [matched-target-db-ids]
   (when (seq matched-target-db-ids)
+    ;; The change log leaves out the metadata file import.
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
     (t2/query {:update :metabase_database
                :set    {:initial_sync_status "complete"}
                :where  [:in :id (vec matched-target-db-ids)]})))

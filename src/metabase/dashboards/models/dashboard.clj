@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -47,7 +48,11 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/change-log))
+
+(methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
+  #{:last_viewed_at :view_count})
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]

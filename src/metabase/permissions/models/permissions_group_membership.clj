@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
@@ -13,6 +14,8 @@
 (methodical/defmethod t2/table-name :model/PermissionsGroupMembership [_model] :permissions_group_membership)
 
 (derive :model/PermissionsGroupMembership :metabase/model)
+(derive :model/PermissionsGroupMembership :hook/change-log)
+(derive :model/PermissionsGroupMembership :hook/change-log-before-update-noop)
 
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."
@@ -224,6 +227,10 @@
           ;; user/group or vice versa AFTER we check (above) but BEFORE the insert (below). So just make sure that the
           ;; number of inserted rows is correct - if not, throw an exception and we'll roll back.
           (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
+        ;; The insert skips the model, so we log the new rows to the change log by hand.
+        (change-log/log-rows! :model/PermissionsGroupMembership :insert
+                              {:where (into [:or] (for [[user-id group-id] (keys user-id-group-id->is-group-manager?)]
+                                                    [:and [:= :user_id user-id] [:= :group_id group-id]]))})
         (when (seq new-admin-ids)
           (t2/update! :model/User :id [:in new-admin-ids] {:is_superuser true}))
         (when (seq new-data-analyst-ids)

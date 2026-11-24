@@ -19,6 +19,7 @@
    [metabase.batch-processing.init]
    [metabase.bug-reporting.init]
    [metabase.cache.init]
+   [metabase.change-log.init]
    [metabase.channel.init]
    [metabase.classloader.init]
    [metabase.cloud-migration.init]

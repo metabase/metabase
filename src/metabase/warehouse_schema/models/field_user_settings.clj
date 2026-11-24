@@ -22,7 +22,8 @@
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/change-log))
 
 (methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 

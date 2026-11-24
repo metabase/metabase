@@ -11,6 +11,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
+   [metabase.change-log.core :as change-log]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -457,16 +458,20 @@
                                       ;; Only update the display name if it still matches the automatic humanization.
                                       [:= :display_name (humanization/name->human-readable-name n)] display-name
                                       ;; Otherwise, it could have been set manually, so leave it as is.
-                                      true                                                          :display_name]]))]
-    ;; Using t2/update! results in an invalid query for certain versions of PostgreSQL
-    ;; SELECT * FROM \"metabase_field\" WHERE \"id\" AND (\"table_id\" = ?) AND ...
-    ;;                                        ^^^^^
-    ;; ERROR: argument of AND must be type boolean, not type integer
-    (t2/query {:update (t2/table-name :model/Field)
-               :set    {:display_name case-statement}
-               :where  [:and
-                        [:= :table_id table-id]
-                        [:in [:lower :name] (keys field->display-name)]]})))
+                                      true                                                          :display_name]]))
+        where               [:and
+                             [:= :table_id table-id]
+                             [:in [:lower :name] (keys field->display-name)]]]
+    (t2/with-transaction [_conn]
+      (change-log/log-rows! :model/Field :update {:where where})
+      ;; Using t2/update! results in an invalid query for certain versions of PostgreSQL
+      ;; SELECT * FROM \"metabase_field\" WHERE \"id\" AND (\"table_id\" = ?) AND ...
+      ;;                                        ^^^^^
+      ;; ERROR: argument of AND must be type boolean, not type integer
+      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged above
+      (t2/query {:update (t2/table-name :model/Field)
+                 :set    {:display_name case-statement}
+                 :where  where}))))
 
 (defn- uploads-enabled? []
   (some? (:db_id (upload.settings/uploads-settings))))

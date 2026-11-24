@@ -38,7 +38,8 @@
 (doto :model/User
   (derive :metabase/model)
   (derive :hook/updated-at-timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/change-log))
 
 (defn- stringify-keys-and-values
   "Given a map, convert all the keys and values to strings."

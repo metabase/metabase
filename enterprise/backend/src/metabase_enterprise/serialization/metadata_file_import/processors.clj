@@ -367,6 +367,8 @@
       ;; — no UPDATE fires, no dead tuple. updated_at is deliberately NOT
       ;; in the predicate (otherwise the UPDATE would always fire,
       ;; defeating the optimization).
+      ;; The change log leaves out the metadata file import.
+      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
       (t2/query
        {:update :metabase_table
         :set    {:description ^:allow-subquery
@@ -399,6 +401,8 @@
       ;; schedules per-DB Quartz triggers we don't want and fires
       ;; `set-new-table-permissions!` once per row. The JOIN on db_name
       ;; silently drops staging rows whose source DB has no target appdb.
+      ;; The change log leaves out the metadata file import.
+      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
       (t2/query
        {:insert-into
         [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
@@ -773,6 +777,8 @@
   "Bring the live `metabase_field` rows that depth-`d` staging matched into line with the file. Rows
   whose payload already matches staging are left untouched."
   [d]
+  ;; The change log leaves out the metadata file import.
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
   (t2/query
    {:update :metabase_field
     ;; `fk_target_field_id` reads staging's `target_fk_target_id` — it isn't
@@ -812,6 +818,8 @@
   `target_parent_id IS NULL` are also dropped — that's the case where the
   parent field's table didn't match target, cascading the orphan downward."
   [d]
+  ;; The change log leaves out the metadata file import.
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
   (t2/query
    {:insert-into
     [[:metabase_field [:table_id :name :base_type :database_type :description

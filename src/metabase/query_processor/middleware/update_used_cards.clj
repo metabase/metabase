@@ -30,6 +30,7 @@
       ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
       ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
       (cluster-lock/with-cluster-lock {:lock cluster-lock/card-statistics-lock :retry-transient? true}
+        #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
         (t2/query {:update [(t2/table-name :model/Card)]
                    :where  [:in :id (keys card-id->timestamp)]
                    :set    {:last_used_at (into [:case]

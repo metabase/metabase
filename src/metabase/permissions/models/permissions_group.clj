@@ -31,7 +31,8 @@
 
 (doto :model/PermissionsGroup
   (derive :metabase/model)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/change-log))
 
 (defmethod serdes/hash-fields :model/PermissionsGroup
   [_user]
