@@ -171,33 +171,12 @@
             :legacy_input (json/encode (assoc (apply dissoc m search.spec/legacy-input-excluded-keys)
                                               :curated curated))))))
 
-(def ^:private boolean-columns
-  "The ingestion query columns of the attributes typed `:boolean`."
-  (into []
-        (keep (fn [[attr attr-type]]
-                (when (= :boolean attr-type)
-                  (keyword (u/->snake_case_en (name attr))))))
-        search.spec/attr-types))
-
-(defn- coerce-booleans
-  "`row` with its boolean attributes as booleans. MySQL and MariaDB return a boolean expression as a number, such as
-  `0` for a comparison or `1M` for a `COALESCE` over a `BIT` column, and Clojure treats every number, `0` included, as
-  true. PostgreSQL and H2 return booleans, so only MySQL rows need this."
-  [row]
-  (reduce (fn [row column]
-            (let [v (get row column)]
-              (cond-> row
-                (number? v) (assoc column (not (zero? v))))))
-          row
-          boolean-columns))
-
 (defn- spec-index-reducible [search-model & [where-clause]]
   ;; Joins in the spec (e.g. card → moderation_review on most_recent = true) can produce duplicate rows when the
   ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
   ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
   (->> (search.db/spec-index-reducible-rows search-model where-clause)
-       (eduction (comp (if (= :mysql (mdb/db-type)) (map coerce-booleans) identity)
-                       (map #(assoc % :model search-model))
+       (eduction (comp (map #(assoc % :model search-model))
                        (m/distinct-by (juxt :id :model))))))
 
 (defn- search-items-reducible []

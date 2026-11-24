@@ -42,9 +42,30 @@
                            (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
           [column {:optional true} ::funnysql.schema/expr])))
 
+(def ^:private boolean-columns
+  "The ingestion query columns of the attributes typed `:boolean`."
+  (into []
+        (keep (fn [[attr attr-type]]
+                (when (= :boolean attr-type)
+                  (keyword (u/->snake_case_en (name attr))))))
+        search.spec/attr-types))
+
+;; MySQL and MariaDB return a boolean expression as a number, such as `0` for a comparison or `1M` for a `COALESCE`
+;; over a `BIT` column, and Clojure treats every number as true. PostgreSQL and H2 return booleans.
+(defn- coerce-booleans
+  "The row with each boolean attribute that holds a number replaced by whether the number is nonzero."
+  [row]
+  (reduce (fn [row column]
+            (let [v (get row column)]
+              (cond-> row
+                (number? v) (assoc column (not (zero? v))))))
+          row
+          boolean-columns))
+
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
   matching `where-clause`, or every row when it is nil.
+  Boolean attributes come back as booleans on every app DB.
 
   `where-clause` is the one Honey SQL argument left in this namespace. It is the search-spec generated `:where`
   fragment of `metabase.search.spec/search-models-to-update`, which is the payload of the ingestion queue itself:
@@ -53,7 +74,10 @@
   Turning it into plain data means redesigning that queue, not restructuring a caller."
   [search-model :- :string
    where-clause :- [:maybe vector?]]
-  (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause)))
+  (let [rows (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause))]
+    (if (= :mysql (mdb/db-type))
+      (eduction (map coerce-booleans) rows)
+      rows)))
 
 (mu/defn spec-index-doc-ids-reducible
   "A reducible of at most `limit` distinct document ids `search-model` produces under `where-clause`, each row as
