@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (connection and transaction handling still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -51,14 +52,14 @@
         search.spec/attr-types))
 
 ;; MySQL and MariaDB return a boolean expression as a number, such as `0` for a comparison or `1M` for a `COALESCE`
-;; over a `BIT` column, and Clojure treats every number as true. PostgreSQL and H2 return booleans.
+;; over a `BIT` column, and MariaDB sometimes as the byte `"0"` or `"1"`. Clojure treats each of them as true.
+;; PostgreSQL and H2 return booleans.
 (defn- coerce-booleans
-  "The row with each boolean attribute that holds a number replaced by whether the number is nonzero."
+  "The row with each boolean attribute it has converted by [[api/bit->boolean]]."
   [row]
   (reduce (fn [row column]
-            (let [v (get row column)]
-              (cond-> row
-                (number? v) (assoc column (not (zero? v))))))
+            (cond-> row
+              (contains? row column) (update column api/bit->boolean)))
           row
           boolean-columns))
 
