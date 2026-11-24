@@ -1,4 +1,4 @@
-import { type Page, expect, test } from "@playwright/test";
+import { type Locator, type Page, expect, test } from "@playwright/test";
 
 const SCHEMES = ["light", "dark"] as const;
 type Scheme = (typeof SCHEMES)[number];
@@ -65,8 +65,8 @@ const isTransparent = (color: string) =>
 
 // True when the element at the centre of `selector` is inside it. Tooltips are
 // `pointer-events: none`, which hit testing skips, so it is lifted first.
-const isOnTop = (page: Page, selector: string) =>
-  page.locator(selector).evaluate((el) => {
+const isOnTop = (locator: Locator) =>
+  locator.evaluate((el) => {
     if (el instanceof HTMLElement) {
       el.style.pointerEvents = "auto";
     }
@@ -159,7 +159,7 @@ for (const scheme of SCHEMES) {
       expect(await computedStyle(page, selector, "fontFamily")).toMatch(
         /^"?Lato/,
       );
-      expect(await isOnTop(page, selector)).toBe(true);
+      expect(await isOnTop(page.locator(selector))).toBe(true);
 
       // The dialog's z-index comes from `--mb-overlay-z-index`, which the provider writes.
       const variable = await page.evaluate(() =>
@@ -189,7 +189,7 @@ for (const scheme of SCHEMES) {
           await dropdown.evaluate((el) => getComputedStyle(el).backgroundColor),
         ),
       ).toBe(false);
-      expect(await isOnTop(page, selector)).toBe(true);
+      expect(await isOnTop(page.locator(selector))).toBe(true);
     });
 
     test(`Tooltip is visible, opaque and on top (${scheme})`, async ({
@@ -205,7 +205,7 @@ for (const scheme of SCHEMES) {
       expect(
         isTransparent(await computedStyle(page, selector, "backgroundColor")),
       ).toBe(false);
-      expect(await isOnTop(page, selector)).toBe(true);
+      expect(await isOnTop(page.locator(selector))).toBe(true);
       await expect(page.getByTestId("tooltip-target")).toBeVisible();
     });
 
@@ -237,6 +237,27 @@ for (const scheme of SCHEMES) {
     });
   });
 }
+
+test("a tooltip stays above a modal with a custom overlay z-index", async ({
+  page,
+}) => {
+  await page.goto("/?high-overlay");
+  await page.getByTestId("open-modal").click();
+  const tooltip = page
+    .getByRole("tooltip")
+    .filter({ hasText: "Modal tooltip" });
+  await expect(tooltip).toBeVisible();
+  await expect(tooltip).toHaveCSS("z-index", "10000");
+  await expect.poll(() => isOnTop(tooltip)).toBe(true);
+});
+
+test("a custom tooltip z-index takes precedence", async ({ page }) => {
+  await page.goto("/?high-overlay&tooltip-override");
+  await page.getByTestId("open-modal").click();
+  await expect(
+    page.getByRole("tooltip").filter({ hasText: "Modal tooltip" }),
+  ).toHaveCSS("z-index", "11000");
+});
 
 test("@release light and dark resolve different colors", async ({ page }) => {
   const resolved: string[] = [];

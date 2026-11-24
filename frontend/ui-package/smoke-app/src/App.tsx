@@ -24,8 +24,23 @@ const colorScheme =
 export const App = () => {
   const [modalOpened, setModalOpened] = useState(false);
 
+  const params = new URLSearchParams(window.location.search);
+  const highOverlay = params.has("high-overlay");
+  const tooltipOverride = params.has("tooltip-override")
+    ? { Tooltip: { defaultProps: { zIndex: 11000 } } }
+    : undefined;
   return (
-    <MetabaseUIProvider colorScheme={colorScheme}>
+    <MetabaseUIProvider
+      colorScheme={colorScheme}
+      theme={
+        highOverlay
+          ? {
+              other: { popover: { zIndex: 9999 } },
+              components: tooltipOverride,
+            }
+          : undefined
+      }
+    >
       <Stack p="lg" gap="xl" data-testid="page">
         <Group>
           <Button variant="filled" data-testid="button-filled">
@@ -76,6 +91,11 @@ export const App = () => {
           title="Modal title"
         >
           <Text>Modal body</Text>
+          {highOverlay && (
+            <Tooltip label="Modal tooltip" opened position="top">
+              <Button>Modal tooltip target</Button>
+            </Tooltip>
+          )}
         </Modal>
       </Stack>
     </MetabaseUIProvider>

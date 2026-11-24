@@ -35,7 +35,7 @@ The provider sets up the theme, the color variables, the font variable and what 
 | `fontFamily`  | `string` (CSS value)               | `"Lato", Arial, sans-serif` |
 | `theme`       | `MetabaseUIProviderProps["theme"]` | none                        |
 
-`theme` extends Metabase's Mantine theme. The provider owns `fontFamily`, `colors`, `fn` and `other.colorScheme`; use the top-level props for font family and color scheme. If you override `other.popover.zIndex`, keep it below the default tooltip z-index (301), or set `components.Tooltip.defaultProps.zIndex` above your overlay value. Other keys, such as `components`, `headings`, `fontFamilyMonospace` and `primaryColor`, can still be overridden. `fonts.css` doesn't include the default monospace font.
+`theme` extends Metabase's Mantine theme. The provider owns `fontFamily`, `colors`, `fn` and `other.colorScheme`; use the top-level props for font family and color scheme. The provider raises the default tooltip z-index above a custom `other.popover.zIndex` when needed. An explicit tooltip z-index takes precedence. Other keys, such as `components`, `headings`, `fontFamilyMonospace` and `primaryColor`, can still be overridden. `fonts.css` doesn't include the default monospace font.
 
 ### Colors
 

@@ -1,4 +1,8 @@
-import { type MantineThemeOverride, useMantineTheme } from "@mantine/core";
+import {
+  type MantineThemeOverride,
+  getDefaultZIndex,
+  useMantineTheme,
+} from "@mantine/core";
 import { type ReactNode, useMemo } from "react";
 import { createPortal } from "react-dom";
 
@@ -35,7 +39,7 @@ export interface MetabaseUIProviderProps {
 const noop = () => undefined;
 
 // The provider owns these keys; ThemeProvider merges the override last.
-const withoutOwnedKeys = (
+const getThemeOverride = (
   theme: MantineThemeOverride | undefined,
 ): MantineThemeOverride => {
   const {
@@ -46,23 +50,54 @@ const withoutOwnedKeys = (
     ...rest
   } = theme ?? {};
   const { colorScheme: _scheme, ...otherRest } = other ?? {};
-  return { ...rest, other: otherRest };
+  const overlayZIndex = readOverlayZIndex(otherRest.popover);
+  const defaultTooltipZIndex = getDefaultZIndex("popover") + 1;
+  const tooltip = rest.components?.Tooltip;
+  const defaultProps: unknown = tooltip?.defaultProps;
+  if (
+    overlayZIndex < defaultTooltipZIndex ||
+    (defaultProps &&
+      typeof defaultProps === "object" &&
+      "zIndex" in defaultProps &&
+      defaultProps.zIndex != null)
+  ) {
+    return { ...rest, other: otherRest };
+  }
+
+  return {
+    ...rest,
+    other: otherRest,
+    components: {
+      ...rest.components,
+      Tooltip: {
+        ...tooltip,
+        defaultProps: {
+          ...(defaultProps && typeof defaultProps === "object"
+            ? defaultProps
+            : {}),
+          zIndex: overlayZIndex + 1,
+        },
+      },
+    },
+  };
 };
+
+function readOverlayZIndex(popover: unknown) {
+  return popover &&
+    typeof popover === "object" &&
+    "zIndex" in popover &&
+    typeof popover.zIndex === "number" &&
+    Number.isInteger(popover.zIndex)
+    ? popover.zIndex
+    : OVERLAY_Z_INDEX;
+}
 
 const CssVariables = ({
   colorScheme,
   fontFamily,
 }: Required<Pick<MetabaseUIProviderProps, "colorScheme" | "fontFamily">>) => {
   const theme = useMantineTheme();
-  const popover: unknown = theme.other.popover;
-  const zIndex =
-    popover &&
-    typeof popover === "object" &&
-    "zIndex" in popover &&
-    typeof popover.zIndex === "number" &&
-    Number.isInteger(popover.zIndex)
-      ? popover.zIndex
-      : OVERLAY_Z_INDEX;
+  const zIndex = readOverlayZIndex(theme.other.popover);
 
   const css = useMemo(() => {
     const { colors } = deriveFullMetabaseTheme({ colorScheme });
@@ -85,7 +120,7 @@ export const MetabaseUIProvider = ({
   fontFamily = DEFAULT_FONT_FAMILY,
   theme,
 }: MetabaseUIProviderProps) => {
-  const themeOverride = useMemo(() => withoutOwnedKeys(theme), [theme]);
+  const themeOverride = useMemo(() => getThemeOverride(theme), [theme]);
   const colorSchemeContext = useMemo<ColorSchemeContextType>(
     () => ({
       colorScheme,
