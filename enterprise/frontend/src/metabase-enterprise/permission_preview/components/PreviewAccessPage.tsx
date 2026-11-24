@@ -1,8 +1,10 @@
+import { useMediaQuery } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { PermissionsEditorEmptyState } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
+import { Sidesheet } from "metabase/common/components/Sidesheet";
 import {
   ALL_COLLECTIONS_ITEM,
   getItemFromLink,
@@ -17,6 +19,7 @@ import type { PermissionPreviewSession } from "metabase-types/api";
 
 import { getRefusalMessage } from "../utils/refusal";
 
+import { ExplainAccess } from "./ExplainAccess/ExplainAccess";
 import { PreviewBand } from "./PreviewBand";
 import { PreviewFrame } from "./PreviewFrame";
 import { PreviewSidebar } from "./PreviewSidebar";
@@ -54,6 +57,8 @@ function Preview({ target }: PreviewProps) {
   const [frameItem, setFrameItem] = useState(ALL_COLLECTIONS_ITEM);
   const [openCount, setOpenCount] = useState(0);
   const [linkText, setLinkText] = useState(getLinkText(ALL_COLLECTIONS_ITEM));
+  const [isExplainOpen, setIsExplainOpen] = useState(false);
+  const isWide = useMediaQuery("(min-width: 80rem)");
 
   const targetId = target.kind === "user" ? target.user.id : target.group.id;
 
@@ -133,25 +138,57 @@ function Preview({ target }: PreviewProps) {
           openItem(ALL_COLLECTIONS_ITEM);
           setLinkText(getLinkText(ALL_COLLECTIONS_ITEM));
         }}
+        isExplainOpen={isExplainOpen}
+        onToggleExplain={() => setIsExplainOpen((isOpen) => !isOpen)}
       />
-      <Box flex={1} mih={0} display="flex">
-        {session && (
-          <PreviewFrame
-            key={`${session.id}:${openCount}`}
-            token={session.token}
-            name={getTargetName(target)}
-            initialItem={frameItem}
-            onLocationChange={handleLocationChange}
+      <Flex flex={1} mih={0}>
+        <Box flex={1} mih={0} display="flex">
+          {session && (
+            <PreviewFrame
+              key={`${session.id}:${openCount}`}
+              token={session.token}
+              name={getTargetName(target)}
+              initialItem={frameItem}
+              onLocationChange={handleLocationChange}
+            />
+          )}
+          {!session && (
+            <Center flex={1}>
+              <Text c="text-secondary">
+                {refusal ?? t`Loading ${getTargetName(target)}'s view…`}
+              </Text>
+            </Center>
+          )}
+        </Box>
+        {session && isExplainOpen && isWide && (
+          <Box
+            component="aside"
+            w="30rem"
+            style={{ borderLeft: "1px solid var(--mb-color-border-neutral)" }}
+          >
+            <ExplainAccess
+              target={target}
+              userId={session.user_id}
+              item={frameItem}
+              onClose={() => setIsExplainOpen(false)}
+            />
+          </Box>
+        )}
+      </Flex>
+      {session && isExplainOpen && !isWide && (
+        <Sidesheet
+          isOpen
+          size="sm"
+          withOverlay={false}
+          onClose={() => setIsExplainOpen(false)}
+        >
+          <ExplainAccess
+            target={target}
+            userId={session.user_id}
+            item={frameItem}
           />
-        )}
-        {!session && (
-          <Center flex={1}>
-            <Text c="text-secondary">
-              {refusal ?? t`Loading ${getTargetName(target)}'s view…`}
-            </Text>
-          </Center>
-        )}
-      </Box>
+        </Sidesheet>
+      )}
     </Stack>
   );
 }

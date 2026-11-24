@@ -15,11 +15,13 @@ import {
 } from "metabase/embedding/permission-preview/messages";
 import type { Group, User } from "metabase-types/api";
 import {
+  createMockCard,
   createMockTenant,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
+import { createAnswer } from "./ExplainAccess/fixtures";
 import { PreviewAccessPage } from "./PreviewAccessPage";
 
 const SESSION_URL = "path:/api/ee/permission_debug/preview/session";
@@ -80,17 +82,25 @@ function setup({ users = USERS, refusal }: SetupOpts = {}) {
   setupTenantEntpoints([createMockTenant({ id: 8, name: "Acme" })]);
 
   let previewCount = 0;
-  fetchMock.post(SESSION_URL, () => {
+  fetchMock.post(SESSION_URL, (call) => {
     if (refusal) {
       return refusal;
     }
     previewCount += 1;
+    const body = JSON.parse(String(call.options.body));
     return {
       id: previewCount,
       token: `mbpv_token-${previewCount}`,
       expires_at: "2026-11-24T12:00:00Z",
+      // a group preview runs as its stand-in, which has a user of its own
+      user_id: body.user_id ?? 100 + body.group_id,
     };
   });
+  fetchMock.get(
+    "path:/api/card/12",
+    createMockCard({ id: 12, name: "Orders by state" }),
+  );
+  fetchMock.get("path:/api/ee/permission_debug", createAnswer());
   fetchMock.delete("express:/api/ee/permission_debug/preview/session/:id", 204);
 
   renderWithProviders(<PreviewAccessPage />, {
@@ -112,6 +122,19 @@ async function getFrame() {
     throw new Error("the preview is not in an iframe");
   }
   return frame;
+}
+
+function debuggedUserIds() {
+  return fetchMock.callHistory
+    .calls("path:/api/ee/permission_debug")
+    .map((call) => new URL(call.url).searchParams.get("user_id"));
+}
+
+async function openExplainAccessOnQuestion() {
+  const linkBox = await screen.findByLabelText("Link or ID");
+  await userEvent.clear(linkBox);
+  await userEvent.type(linkBox, "/question/12{Enter}");
+  await userEvent.click(screen.getByRole("button", { name: /Explain access/ }));
 }
 
 function startedBodies() {
@@ -299,5 +322,50 @@ describe("PreviewAccessPage", () => {
     await getFrame();
 
     expect(screen.getByLabelText("Link or ID")).toHaveValue("/collection/all");
+  });
+
+  it("explains the access to the item the frame shows, as the user the preview runs as", async () => {
+    setup();
+    await userEvent.click(await screen.findByText("Sandy Sales"));
+
+    await openExplainAccessOnQuestion();
+
+    expect(
+      await screen.findByText("Access to “Orders by state”"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("as Sandy Sales")).toBeInTheDocument();
+    expect(new Set(debuggedUserIds())).toEqual(new Set(["2"]));
+  });
+
+  it("explains a group's access as its stand-in user", async () => {
+    setup();
+    await screen.findByText("Sandy Sales");
+    await userEvent.click(screen.getByText("Group"));
+    await userEvent.click(await screen.findByText("Sales"));
+
+    await openExplainAccessOnQuestion();
+
+    expect(
+      await screen.findByText("Access to “Orders by state”"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("as a member of Sales")).toBeInTheDocument();
+    expect(new Set(debuggedUserIds())).toEqual(new Set(["109"]));
+  });
+
+  it("closes Explain access with the button that opened it", async () => {
+    setup();
+    await userEvent.click(await screen.findByText("Sandy Sales"));
+    await openExplainAccessOnQuestion();
+    await screen.findByText("Access to “Orders by state”");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Explain access/ }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Access to “Orders by state”"),
+      ).not.toBeInTheDocument(),
+    );
   });
 });
