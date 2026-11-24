@@ -857,16 +857,38 @@
      (query-run-answers* queries (repeat {:already-preprocessed? already-preprocessed?
                                           :throw-exceptions?     throw-non-permission-errors?})))))
 
-(mu/defn can-run-query-with-resolved-source-ids? :- :boolean
-  "[[query-run-answers]] for a query whose [[query->resolved-source-ids]] is already known, without preprocessing it.
-  Denies on empty `resolved-source-ids`, which only a failed resolution produces."
-  [query               :- ::query
-   resolved-source-ids :- ResolvedSourceIds]
-  (if (empty? resolved-source-ids)
-    (do (log/debug "Empty resolved source ids; denying")
-        false)
-    (first (query-run-answers* [query] [{:resolved-source-ids resolved-source-ids
-                                         :throw-exceptions?   false}]))))
+(mu/defn resolved-query-run-answers :- [:sequential :boolean]
+  "[[query-run-answers]] for `queries` whose [[query->resolved-source-ids]], the same element of
+  `resolved-source-ids`, are already known, without preprocessing them, denying a query whose resolved source ids are
+  empty, which only a failed resolution produces."
+  [queries             :- [:sequential ::query]
+   resolved-source-ids :- [:sequential [:maybe ResolvedSourceIds]]]
+  (let [resolved (filterv #(seq (nth resolved-source-ids %)) (range (count queries)))
+        answers  (zipmap resolved
+                         (when (seq resolved)
+                           (query-run-answers* (mapv #(nth queries %) resolved)
+                                               (mapv (fn [i] {:resolved-source-ids (nth resolved-source-ids i)
+                                                              :throw-exceptions?   false})
+                                                     resolved))))]
+    (mapv (fn [i]
+            (if (contains? answers i)
+              (get answers i)
+              (do (log/debug "Empty resolved source ids; denying")
+                  false)))
+          (range (count queries)))))
+
+(defn resolved-source-ids-answers
+  "[[query->resolved-source-ids]] of each of `queries`, in order, or what it throws for one, preprocessed under one
+  admin binding with the metadata they read loaded together."
+  [queries]
+  (lib-be/with-metadata-provider-cache
+    (let [queries (run-check-queries queries)]
+      (request/as-admin
+        (mapv #(try
+                 (query->resolved-source-ids %)
+                 (catch Throwable e
+                   e))
+              queries)))))
 
 (mu/defn native-query-database-ids :- [:set ::lib.schema.id/database]
   "The set of those of `db-ids` against which the current user may run a native query of no Cards, as
