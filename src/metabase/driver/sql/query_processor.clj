@@ -2325,20 +2325,30 @@
       [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
       [cte-name hsql])))
 
+(defn- first-compiled-stage-index
+  "The index of the last stage that reads a persisted model cache, or 0. That stage does not read the stages before
+  it, so they do not have to be compiled."
+  [stages]
+  (or (last (keep-indexed (fn [idx stage] (when (:persisted-info/native stage) idx)) stages))
+      0))
+
 (defn- stages->honeysql-ctes
   "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from."
   [driver stages]
-  (let [stages   (vec stages)
-        last-idx (dec (count stages))
-        cte-body (fn [idx]
-                   (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver (::cte-name (stages (dec idx)))))]
-                     (stage->honeysql driver prev-from (stages idx))))
-        ctes     (mapv #(stage-cte (cte-body %) (stages %)) (range last-idx))]
+  (let [stages    (vec stages)
+        first-idx (first-compiled-stage-index stages)
+        last-idx  (dec (count stages))
+        cte-body  (fn [idx]
+                    (let [prev-from (if (= idx first-idx)
+                                      {}
+                                      (cte-stage-source-form driver (::cte-name (stages (dec idx)))))]
+                      (stage->honeysql driver prev-from (stages idx))))
+        ctes      (mapv #(stage-cte (cte-body %) (stages %)) (range first-idx last-idx))]
     (update (cte-body last-idx) :with #(into ctes %))))
 
 (defn- stages->honeysql*
   [driver stages]
-  (if (::cte-name (first stages))
+  (if (some ::cte-name stages)
     (stages->honeysql-ctes driver stages)
     (stages->honeysql-subselects driver stages)))
 
@@ -2384,17 +2394,21 @@
 (defn- assign-cte-names*
   "Gives each stage that compiles to a CTE a unique `::cte-name`, starting at `__mb_stage_<n>`."
   [stages n]
-  (let [last-idx (dec (count stages))]
+  (let [first-idx (first-compiled-stage-index stages)
+        last-idx  (dec (count stages))]
     (reduce (fn [[stages n] [idx stage]]
-              (let [[joins n] (reduce (fn [[joins n] join]
-                                        (let [[join-stages n] (assign-cte-names* (:stages join) n)]
-                                          [(conj joins (assoc join :stages join-stages)) n]))
-                                      [[] n]
-                                      (:joins stage))
-                    stage     (cond-> stage
-                                (seq joins)      (assoc :joins joins)
-                                (< idx last-idx) (assoc ::cte-name (str stage-cte-prefix n)))]
-                [(conj stages stage) (cond-> n (< idx last-idx) inc)]))
+              (if (< idx first-idx)
+                [(conj stages stage) n]
+                (let [cte?      (< idx last-idx)
+                      [joins n] (reduce (fn [[joins n] join]
+                                          (let [[join-stages n] (assign-cte-names* (:stages join) n)]
+                                            [(conj joins (assoc join :stages join-stages)) n]))
+                                        [[] n]
+                                        (:joins stage))
+                      stage     (cond-> stage
+                                  (seq joins) (assoc :joins joins)
+                                  cte?        (assoc ::cte-name (str stage-cte-prefix n)))]
+                  [(conj stages stage) (cond-> n cte? inc)])))
             [[] n]
             (map-indexed vector stages))))
 
@@ -2411,11 +2425,13 @@
   [driver stages query]
   (when-let [db (and (driver-api/initialized?) (driver-api/database (driver-api/metadata-provider)))]
     (and (driver/database-supports? driver :stage-ctes db)
+         ;; A card reference like {{#123}} is compiled into a subquery of the native query.
+         (or (not (get-in query [:middleware :card-reference?]))
+             (driver/database-supports? driver :stage-ctes/card-reference db))
+         ;; If nested CTEs aren't supported, check that we don't have a native stage with a CTE,
+         ;; otherwise we could end up with nested CTEs.
          (or (driver/database-supports? driver :stage-ctes/nested db)
-             ;; If nested CTEs aren't supported, check that we don't have a card reference like {{#123}}
-             ;; and don't have a native stage with a CTE, otherwise we could end up with nested CTEs.
-             (and (not (get-in query [:middleware :card-reference?]))
-                  (not-any? native-stage-has-cte? (all-stages stages)))))))
+             (not-any? native-stage-has-cte? (all-stages stages))))))
 
 (defn- stages->honeysql
   [driver stages query]

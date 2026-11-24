@@ -47,7 +47,7 @@
     {:optional true
      :description
      "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside
-  the native query, so SQL drivers without the `:stage-ctes/nested` feature compile it without stage CTEs."}
+  the native query, so SQL drivers without the `:stage-ctes/card-reference` feature compile it without stage CTEs."}
     :boolean]
    [:userland-query?
     {:optional true

@@ -51,6 +51,7 @@
    [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -1926,15 +1927,32 @@
           (is (= [[4]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
 
+(defn- compile-honeysql
+  "The HoneySQL form that the SQL QP compiles for `query`."
+  [query]
+  (mt/with-metadata-provider (mt/id)
+    (sql.qp/mbql->honeysql :postgres (qp.preprocess/preprocess query))))
+
 (deftest ^:parallel multi-stage-card-referenced-from-native-query-test
-  (testing "a multi-stage card spliced into a native query via {{#id}}, with its CTEs inside the subquery parens, runs"
-    (mt/test-driver :postgres
-      (mt/dataset test-data
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Card card {:dataset_query (count-by-price-over-1-query mp)}]
-            (let [tag   (format "#%d" (:id card))
-                  query (-> (lib/native-query mp (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag))
-                            (lib/with-template-tags {tag {:name tag, :display-name tag, :type :card, :card-id (:id card)}}))]
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [mp         (mt/metadata-provider)
+            card-query (count-by-price-over-1-query mp)
+            ref-query  (assoc-in card-query [:middleware :card-reference?] true)]
+        (testing "a multi-stage card uses stage CTEs on its own, and subselects when a native query references it"
+          (is (seq (:with (compile-honeysql card-query))))
+          (is (nil? (:with (compile-honeysql ref-query)))))
+        (mt/with-temp [:model/Card card {:dataset_query card-query}]
+          (let [tag   (format "#%d" (:id card))
+                query (-> (lib/native-query mp (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag))
+                          (lib/with-template-tags {tag {:name         tag
+                                                        :display-name tag
+                                                        :type         :card
+                                                        :card-id      (:id card)}}))]
+            (testing "the native query has the card compiled with subselects"
+              (is (str/includes? (:query (qp.compile/compile query))
+                                 (:query (qp.compile/compile ref-query)))))
+            (testing "the native query runs"
               (is (= [[100]]
                      (mt/formatted-rows [int] (qp/process-query query)))))))))))
 
