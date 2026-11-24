@@ -1,7 +1,6 @@
 (ns metabase.session.events.revoke-on-deactivation-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.app-db.query :as app-db.query]
    [metabase.session.core :as session]
    [metabase.session.db :as session.db]
    [metabase.test :as mt]
@@ -61,7 +60,7 @@
             session-ids (vec (for [user-id user-ids, _ (range 2)] (insert-session! user-id)))]
         (let [end-sizes (atom [])
               end!      (mt/original-fn #'session.db/end-sessions-for-users!)]
-          (with-redefs [app-db.query/update-partition-size 2]
+          (mt/with-partition-size 2
             (mt/with-dynamic-fn-redefs [session.db/end-sessions-for-users! (fn [ids reason ended-by]
                                                                              (swap! end-sizes conj (count ids))
                                                                              (end! ids reason ended-by))]

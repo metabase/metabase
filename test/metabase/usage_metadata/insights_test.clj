@@ -1,6 +1,5 @@
 (ns metabase.usage-metadata.insights-test
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.lib-be.core :as lib-be]
@@ -22,8 +21,6 @@
 (def ^:private any-atom-support            @#'insights/any-atom-support)
 (def ^:private rebuild-and-clause          @#'insights/rebuild-and-clause)
 (def ^:private relative-support-ok?        @#'insights/relative-support-ok?)
-(def ^:private existing-composite-atomsets @#'insights/existing-composite-atomsets)
-(def ^:private composite-atomsets-memo     @#'insights/existing-composite-atomsets*-memo)
 
 (deftest ^:parallel itemset-support-counts-containing-baskets-weighted-by-count-test
   (let [baskets [{:atoms #{:a :b :c} :count 3}
@@ -77,39 +74,25 @@
       (is (not (contains? mined [:a])))
       (is (not (contains? mined [:b]))))))
 
-(deftest existing-segment-predicates-cached-test
-  (testing "existing-segment-predicates is TTL-memoized — repeated calls with the same opts hit the DB once"
-    (let [segment-selects (atom 0)
-          real-select     t2/select
-          existing-fn     @#'insights/existing-segment-predicates
-          memo-var        @#'insights/existing-segment-predicates*-memo]
-      (memoize/memo-clear! memo-var)
-      (with-redefs [t2/select (fn [& args]
-                                (when (and (sequential? (first args))
-                                           (= :model/Segment (ffirst args)))
-                                  (swap! segment-selects inc))
-                                (apply real-select args))]
-        (existing-fn {})
-        (existing-fn {})
-        (is (= 1 @segment-selects)))
-      (memoize/memo-clear! memo-var))))
+(deftest existing-segment-predicates-follow-new-segment-test
+  (testing "a Segment saved right before the call is among the existing predicates"
+    (let [existing-fn @#'insights/existing-segment-predicates
+          mp          (lib-be/application-database-metadata-provider (mt/id))
+          query       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/filter (lib/= (lib.metadata/field mp (mt/id :orders :tax)) 1234567)))
+          before      (existing-fn {})]
+      (mt/with-temp [:model/Segment _ {:table_id (mt/id :orders) :definition query}]
+        (is (seq (remove before (existing-fn {}))))))))
 
-(deftest existing-metric-signatures-cached-test
-  (testing "existing-metric-signatures is TTL-memoized"
-    (let [card-selects (atom 0)
-          real-select  t2/select
-          existing-fn  @#'insights/existing-metric-signatures
-          memo-var     @#'insights/existing-metric-signatures*-memo]
-      (memoize/memo-clear! memo-var)
-      (with-redefs [t2/select (fn [& args]
-                                (when (and (sequential? (first args))
-                                           (= :model/Card (ffirst args)))
-                                  (swap! card-selects inc))
-                                (apply real-select args))]
-        (existing-fn)
-        (existing-fn)
-        (is (= 1 @card-selects)))
-      (memoize/memo-clear! memo-var))))
+(deftest existing-metric-signatures-follow-new-metric-test
+  (testing "a metric Card saved right before the call is among the existing signatures"
+    (let [existing-fn @#'insights/existing-metric-signatures
+          mp          (lib-be/application-database-metadata-provider (mt/id))
+          query       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/aggregate (lib/max (lib.metadata/field mp (mt/id :orders :tax)))))
+          before      (existing-fn)]
+      (mt/with-temp [:model/Card _ {:type :metric :dataset_query query}]
+        (is (seq (remove before (existing-fn))))))))
 
 ;;; ---------- composite-segment read-path tests ----------
 
@@ -180,7 +163,6 @@
 
 (deftest suggested-segments-for-owner-happy-path-test
   (cleanup-composite-rows!)
-  (memoize/memo-clear! composite-atomsets-memo)
   (let [fact (composite-fact-for-orders)
         opts (composite-opts (mt/id :orders))]
     (try
@@ -195,19 +177,16 @@
             (is (= :table (:type source)))
             (is (= (mt/id :orders) (:id source))))))
       (finally
-        (cleanup-composite-rows!)
-        (memoize/memo-clear! composite-atomsets-memo)))))
+        (cleanup-composite-rows!)))))
 
 (deftest suggested-segments-for-owner-skips-saved-segment-match-test
   (cleanup-composite-rows!)
-  (memoize/memo-clear! composite-atomsets-memo)
   (let [fact (composite-fact-for-orders)
         opts (composite-opts (mt/id :orders))]
     (try
       (seed-composite-row! fact 3)
       (testing "precondition: candidate is present without a saved Segment"
         (is (seq (insights/suggested-segments-for-owner opts))))
-      (memoize/memo-clear! composite-atomsets-memo)
       (mt/with-temp [:model/Segment _seg {:definition (composite-orders-query)}]
         (let [results (insights/suggested-segments-for-owner opts)]
           (testing "candidate is filtered out when a saved Segment has the same atom-set"
@@ -217,31 +196,30 @@
                                  (= (:atom-count fact) itemset-size)))
                           results)))))
       (finally
-        (cleanup-composite-rows!)
-        (memoize/memo-clear! composite-atomsets-memo)))))
+        (cleanup-composite-rows!)))))
 
-(deftest existing-composite-atomsets-cached-test
-  (testing "existing-composite-atomsets is TTL-memoized — repeated calls hit the DB once"
-    (memoize/memo-clear! composite-atomsets-memo)
-    (let [segment-selects (atom 0)
-          real-select     t2/select]
+(deftest suggested-segments-for-owner-statement-count-test
+  (testing "suggestions for several sources read the saved Segments once"
+    (let [table-ids (mapv mt/id [:orders :venues :checkins :users :products :people])
+          fact      (composite-fact-for-orders)
+          opts      {:bucket-start composite-test-bucket-date
+                     :bucket-end   composite-test-bucket-date}
+          counted   (fn [n]
+                      (cleanup-composite-rows!)
+                      (doseq [table-id (take n table-ids)]
+                        (seed-composite-row! (assoc fact :source-id table-id) 3))
+                      (t2/with-call-count [call-count]
+                        (is (seq (insights/suggested-segments-for-owner opts)))
+                        (call-count)))]
       (try
-        (with-redefs [t2/select (fn [& args]
-                                  (when (and (sequential? (first args))
-                                             (= :model/Segment (ffirst args)))
-                                    (swap! segment-selects inc))
-                                  (apply real-select args))]
-          (existing-composite-atomsets {:source-type :table :source-id (mt/id :orders)})
-          (existing-composite-atomsets {:source-type :table :source-id (mt/id :orders)})
-          (is (= 1 @segment-selects)))
+        (counted 1)
+        (is (= (counted 2) (counted 6)))
         (finally
-          (memoize/memo-clear! composite-atomsets-memo))))))
+          (cleanup-composite-rows!))))))
 
 (deftest suggested-segments-for-owner-empty-when-no-rows-test
   (cleanup-composite-rows!)
-  (memoize/memo-clear! composite-atomsets-memo)
   (try
     (is (= [] (insights/suggested-segments-for-owner
                (composite-opts (mt/id :orders)))))
-    (finally
-      (memoize/memo-clear! composite-atomsets-memo))))
+    (finally)))

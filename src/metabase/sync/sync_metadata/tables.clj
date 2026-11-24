@@ -193,27 +193,35 @@
    table    :- TableMetadata]
   (insert-table! database table {:sample? (sync.db/database-sample? (:id database))}))
 
-(mu/defn- reactivate-table!
-  "Mark an existing inactive Table active again, refreshing its cruft-dependent columns. `existing`
-  is the app-DB Table instance we already hold, so we don't re-select it; `:sample?` is whether `database` is the Sample
-  Database."
+(mu/defn- reactivation-changes :- :map
+  "The changes that mark `existing`, an inactive Table instance we already hold, active again and refresh its
+  cruft-dependent columns, where `:sample?` is whether `database` is the Sample Database."
   [database          :- i/DatabaseInstance
    existing          :- (ms/InstanceOf :model/Table)
    {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
-  (sync.updates/update-table-unless-user-set! existing
-                                              (cond-> (cruft-dependent-cols existing database ::reactivate)
-                                                ;; do not unhide tables w/ cruft settings
-                                                (some? (:visibility_type existing)) (dissoc :visibility_type)
-                                                true                                (assoc :active true)
-                                                sample?                             (assoc :data_authority :ingested
-                                                                                           :data_source    :ingested))))
+  (cond-> (cruft-dependent-cols existing database ::reactivate)
+    ;; do not unhide tables w/ cruft settings
+    (some? (:visibility_type existing)) (dissoc :visibility_type)
+    true                                (assoc :active true)
+    sample?                             (assoc :data_authority :ingested
+                                               :data_source    :ingested)))
+
+(mu/defn- reactivate-tables!
+  "Mark the existing inactive Tables `existing`, Table instances we already hold, active again with one call,
+  refreshing their cruft-dependent columns, where `:sample?` is whether `database` is the Sample Database."
+  [database :- i/DatabaseInstance
+   existing :- [:sequential (ms/InstanceOf :model/Table)]
+   options  :- [:map {:closed true} [:sample? :boolean]]]
+  (when (seq existing)
+    (sync.updates/update-tables-unless-user-set! (mapv (fn [table] [table (reactivation-changes database table options)])
+                                                       existing))))
 
 (mu/defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if a matching inactive one exists."
   [database :- i/DatabaseInstance
    {schema :schema table-name :name :as table} :- TableMetadata]
   (if-let [existing (sync.db/inactive-table-by-schema-and-name (u/the-id database) schema table-name)]
-    (reactivate-table! database existing {:sample? (sync.db/database-sample? (u/the-id database))})
+    (reactivate-tables! database [existing] {:sample? (sync.db/database-sample? (u/the-id database))})
     (create-table! database table)))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
@@ -402,10 +410,9 @@
   archive-tables-threshold [-14 :day])
 
 (mu/defn- archive-tables! :- :int
-  "Mark tables that have been deactivated for longer than the configured threshold as archived
-  and suffixes their names. Skips tables with `transform_target = true` (provisional transform
-  output entries) since transforms still reference them by their original name. Returns the number
-  of tables archived."
+  "Archive the Tables deactivated for longer than the configured threshold, suffixing their names and skipping
+  provisional transform targets, with one update call, or one Table at a time when it fails so that a name clash fails
+  only its own Table, and return the number archived."
   [database :- i/DatabaseInstance]
   (let [;; we use UTC offset time for suffix, may not match db time but
         ;; it doesn't matter much, the source of time truth is `archived_at`,
@@ -413,31 +420,36 @@
         suffix (str "__mbarchiv__" (.toEpochSecond (t/offset-date-time)))
         [amount unit] archive-tables-threshold
         tables-to-archive (sync.db/tables-to-archive (u/the-id database) amount unit)
-        archived (atom 0)]
-    (doseq [table tables-to-archive
-            :let [new-name (str (:name table) suffix)]]
-      (if (> (count new-name) 256)
-        (log/warnf "Cannot archive table %s, name too long" (:name table))
-        (do
-          (log/infof "Archiving table %s (deactivated at %s, new-name %s)"
-                     (sync-util/name-for-logging table)
-                     (:deactivated_at table)
-                     new-name)
-          (let [[did-update err]
-                (try
-                  ;; in the extremely unlikely case that there already exists a table with our
-                  ;; archived name, we let it fail from hitting the unique constraints violation
-                  ;; and just report the failure
-                  (table/update-tables! [{:id (:id table) :archived_at (t/offset-date-time) :name new-name}])
-                  [1]
-                  (catch Throwable t
-                    [0 t]))]
-            (when (zero? did-update)
-              (if err
-                (log/errorf "Failed archiving table %s: %s" (sync-util/name-for-logging table) (ex-message err))
-                (log/warnf "Did not archive table %s" (sync-util/name-for-logging table))))
-            (swap! archived + did-update)))))
-    @archived))
+        archive-row       (fn [table] {:id (:id table) :archived_at (t/offset-date-time) :name (str (:name table) suffix)})
+        rows              (into []
+                                (keep (fn [table]
+                                        (let [{new-name :name :as row} (archive-row table)]
+                                          (if (> (count new-name) 256)
+                                            (log/warnf "Cannot archive table %s, name too long" (:name table))
+                                            (do
+                                              (log/infof "Archiving table %s (deactivated at %s, new-name %s)"
+                                                         (sync-util/name-for-logging table)
+                                                         (:deactivated_at table)
+                                                         new-name)
+                                              [table row])))))
+                                tables-to-archive)
+        archive-one!      (fn [[table row]]
+                            (try
+                              ;; in the extremely unlikely case that there already exists a table with our
+                              ;; archived name, we let it fail from hitting the unique constraints violation
+                              ;; and just report the failure
+                              (table/update-tables! [row])
+                              1
+                              (catch Throwable t
+                                (log/errorf "Failed archiving table %s: %s" (sync-util/name-for-logging table) (ex-message t))
+                                0)))]
+    (if (empty? rows)
+      0
+      (try
+        (table/update-tables! (mapv second rows))
+        (count rows)
+        (catch Throwable _
+          (transduce (map archive-one!) + 0 rows))))))
 
 (def ^:private SyncContext
   "State threaded through [[sync-table-batch!]] across the single reconcile pass."
@@ -474,8 +486,7 @@
                   to-reactivate  (into #{} (filter #(and (existing-row %) (not (:active (existing-row %))))) tables)
                   created        (when (seq to-create)
                                    (create-tables! database to-create (select-keys context [:sample?])))]
-              (doseq [table-metadata to-reactivate]
-                (reactivate-table! database (existing-row table-metadata) (select-keys context [:sample?])))
+              (reactivate-tables! database (mapv existing-row to-reactivate) (select-keys context [:sample?]))
               (when (seq to-reactivate)
                 (let [rows (existing-tables-by-name+schema database to-reactivate)]
                   (update-tables-metadata-if-needed! to-reactivate

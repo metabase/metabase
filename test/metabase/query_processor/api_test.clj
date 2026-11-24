@@ -1285,7 +1285,9 @@
           (let [[{user-id :id}] (user/create-users! [{:email "oss-db-access-test@example.com"}])
                 [collection]  (collection/create-collections! [{:name "Published Tables"}])]
             ;; Publish the venues table into this collection
-            (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (t2/insert! :model/TableUserSettings {:table_id      (mt/id :venues)
+                                                  :is_published  true
+                                                  :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
               ;; Set database-level permissions first to establish baseline
               (perms/set-database-permission! all-users (mt/id) :perms/view-data :unrestricted)

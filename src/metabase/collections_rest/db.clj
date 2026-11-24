@@ -35,11 +35,12 @@
 (mu/defn published-table-collection-ids
   "The distinct `:collection_id`s of the published, unarchived Tables."
   []
-  (t2/query {:select-distinct [:collection_id]
-             :from            [(t2/table-name :model/Table)]
+  (t2/query {:select-distinct [:s.collection_id]
+             :from            [[(t2/table-name :model/TableUserSettings) :s]]
+             :join            [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
              :where           [:and
-                               [:= :is_published true]
-                               [:= :archived_at nil]]}))
+                               [:= :s.is_published true]
+                               [:= :t.archived_at nil]]}))
 
 (mu/defn top-level-cards-in-collection
   "The Cards in the Collection with `collection-id` that belong to no Dashboard, newest first."

@@ -24,8 +24,7 @@ function setup({
   ancestors?: Collection[];
 }) {
   const table: Table = createMockTable({
-    collection_id: collection?.id ?? null,
-    collection: collection ?? undefined,
+    collection,
   });
 
   setupCollectionByIdEndpoint({

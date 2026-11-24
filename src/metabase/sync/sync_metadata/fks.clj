@@ -10,8 +10,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field :as field]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private fk-batch-size
   "The most foreign keys one bulk read and update of a sync step covers."
@@ -24,7 +23,7 @@
    entries  :- [:sequential i/FKMetadataEntry]]
   (let [changes (sync.db/fk-target-changes-for-entries (:id database) entries)]
     (when (seq changes)
-      (field/update-fields! (mapv (fn [{:keys [id changes]}] (assoc changes :id id)) changes)))
+      (sync.updates/update-fields! (mapv (fn [{:keys [id changes]}] (assoc changes :id id)) changes)))
     (doseq [{{:keys [fk-table-schema fk-table-name fk-column-name pk-column-name]} :entry} changes]
       (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
                                 (sync-util/table-name-for-logging :name fk-table-name :schema fk-table-schema)

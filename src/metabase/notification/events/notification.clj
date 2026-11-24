@@ -72,18 +72,34 @@
   It's an escape hatch until we implement conditional notifications."
   false)
 
+(defn- event-infos
+  "The event infos that `event` carries: one for each of its `:objects`, or the event itself."
+  [event]
+  (if (contains? event :objects)
+    (mapv #(-> event (dissoc :objects) (assoc :object %)) (:objects event))
+    [event]))
+
+(defn- send-notifications!
+  "Send `notifications` for the `event` of `topic`, with a task history row of their own."
+  [topic event notifications]
+  (task-history/with-task-history {:task         "notification-trigger"
+                                   :task_details {:trigger_type     :notification-subscription/system-event
+                                                  :event_name       topic
+                                                  :notification_ids (map :id notifications)}}
+    (log/debugf "Found %d notifications for event: %s" (count notifications) topic)
+    (doseq [event-info (event-infos event)
+            notification notifications]
+      (notification.send/send-notification! (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
+                                                                          :event_topic topic})))))
+
 (defn- maybe-send-notification-for-topic!
-  [topic event-info]
+  "Send the notifications of `topic` for `event`, or for each of the events of its `:events` when it has them, finding
+  the notifications once."
+  [topic event]
   (when-not *skip-sending-notification?*
     (when-let [notifications (notifications-for-topic topic)]
-      (task-history/with-task-history {:task         "notification-trigger"
-                                       :task_details {:trigger_type     :notification-subscription/system-event
-                                                      :event_name       topic
-                                                      :notification_ids (map :id notifications)}}
-        (log/debugf "Found %d notifications for event: %s" (count notifications) topic)
-        (doseq [notification notifications]
-          (notification.send/send-notification! (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
-                                                                              :event_topic topic})))))))
+      (doseq [event (if (contains? event :events) (:events event) [event])]
+        (send-notifications! topic event notifications)))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]
@@ -93,10 +109,11 @@
 (events/derive! :event/notification-row-create ::notification-row-create)
 
 (methodical/defmethod events/publish-event! ::notification-row-create
-  "Publish `:event/notification-create` for each Notification that the batch created, fully hydrated now that its
+  "Publish one `:event/notification-create` for the Notifications that the batch created, fully hydrated now that its
   batch wrote all of it, as the user who created it, loading them together."
   [_topic {:keys [changes user-id]}]
   (when user-id
     (when-let [ids (not-empty (mapv (comp :id :object) changes))]
-      (doseq [notification (models.notification/hydrate-notification (notification.db/notifications-by-id ids))]
-        (events/publish-event! :event/notification-create {:object notification :user-id user-id})))))
+      (events/publish-event! :event/notification-create
+                             {:objects (models.notification/hydrate-notification (notification.db/notifications-by-id ids))
+                              :user-id user-id}))))

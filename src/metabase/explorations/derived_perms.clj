@@ -179,32 +179,47 @@
                         (blocked-thread-ids (concat (finalized-queries thread-ids)
                                                     (lens-stamped-threads thread-ids))))))))
 
-(defn- exploration-content-visible?
-  "The gate's verdict for a document owned by `exploration-id` (nil => not a Summary, unaffected)."
-  [exploration-id]
-  ;; The superuser check only skips the thread-id read; the gate would pass them anyway.
-  (if (or (nil? exploration-id) api/*is-superuser?*)
-    true
-    (let [thread-ids (explorations.db/thread-ids-for-exploration exploration-id)]
-      (or (empty? thread-ids)
-          (= thread-ids (thread-ids-with-visible-derived-data thread-ids))))))
+(defn- exploration-ids-visible
+  "The subset of `exploration-ids` whose threads the current user sees the derived data of, with their threads read
+  together and one gate call over all of them."
+  [exploration-ids]
+  (let [exploration-id->thread-ids (explorations.db/thread-ids-by-exploration-id exploration-ids)
+        visible-thread-ids         (thread-ids-with-visible-derived-data (into #{} cat (vals exploration-id->thread-ids)))]
+    (into #{}
+          (filter #(set/subset? (get exploration-id->thread-ids % #{}) visible-thread-ids))
+          exploration-ids)))
 
-(defn doc-content-visible-to-current-user?
-  "Content-visibility gate installed via
-  [[metabase.documents.core/register-doc-content-visibility-fn!]] at init: a document owned by
-  an exploration (the Summary) embeds verbatim result values, so its content follows the
-  exploration's threads' derived-data visibility. Documents outside explorations are unaffected."
-  [document]
-  (cond
-    (contains? document :exploration_id)
-    (exploration-content-visible? (:exploration_id document))
+(defn doc-content-visibility-fn
+  "A predicate, installed with [[metabase.documents.core/register-doc-content-visibility-fn!]], of whether the current
+  user may see the content of one of `documents`: a Summary, which embeds result values, follows the derived-data
+  visibility of its Exploration's threads, read for all the Explorations together when it is first called, and any
+  other document is visible."
+  [documents]
+  (if api/*is-superuser?*
+    (fn [document] (boolean (or (contains? document :exploration_id) (:id document))))
+    (let [verdicts (delay
+                     (let [document-ids       (into [] (comp (remove #(contains? % :exploration_id)) (keep :id)) documents)
+                           document-id->expl  (explorations.db/exploration-ids-by-document-id document-ids)
+                           exploration-ids    (into #{}
+                                                    (comp (map #(if (contains? % :exploration_id)
+                                                                  (:exploration_id %)
+                                                                  (get document-id->expl (:id %))))
+                                                          (remove nil?))
+                                                    documents)
+                           visible            (when (seq exploration-ids) (exploration-ids-visible exploration-ids))]
+                       {:document-id->exploration document-id->expl
+                        :visible                  visible}))]
+      (fn [document]
+        (cond
+          (or (contains? document :exploration_id) (:id document))
+          (let [{:keys [document-id->exploration visible]} @verdicts
+                exploration-id (if (contains? document :exploration_id)
+                                 (:exploration_id document)
+                                 (get document-id->exploration (:id document)))]
+            (or (nil? exploration-id) (contains? visible exploration-id)))
 
-    (:id document)
-    (exploration-content-visible?
-     (explorations.db/document-exploration-id (:id document)))
-
-    :else
-    false))
+          :else
+          false)))))
 
 (defn gate-comment-contexts
   "Withhold `:context` from `comments` on `exploration-id` whose data the current user may not see.

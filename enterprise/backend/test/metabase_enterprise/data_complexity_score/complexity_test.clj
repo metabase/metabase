@@ -398,9 +398,11 @@
          :model/Table {authoritative :id} {:db_id db-id :active true :name "curated_scope_authoritative"
                                            :data_authority :authoritative}
          :model/Table {pub-final :id}     {:db_id db-id :active true :name "curated_scope_published_final"
-                                           :is_published true :data_layer :final}
+                                           :data_layer :final}
+         :model/TableUserSettings _ {:table_id pub-final :is_published true}
          :model/Table {pub-internal :id}  {:db_id db-id :active true :name "curated_scope_published_internal"
-                                           :is_published true :data_layer :internal}
+                                           :data_layer :internal}
+         :model/TableUserSettings _ {:table_id pub-internal :is_published true}
          :model/Table {plain-table :id}   {:db_id db-id :active true :name "curated_scope_plain_table"}
          :model/Table {hidden-auth :id}   {:db_id db-id :active true :name "curated_scope_hidden_authoritative"
                                            :visibility_type "hidden" :data_authority :authoritative}]
@@ -495,16 +497,16 @@
                    :model/Database   {audit-db :id} {:name "Fake Audit DB"}
                    :model/Database   {real-db :id}  {:name "Non-audit DB"}
                    ;; Audit-db tables published into the Library tree — MUST be excluded.
-                   :model/Table      _              {:db_id        audit-db :name "audit_events"
-                                                     :active       true     :is_published true
-                                                     :collection_id data-id}
+                   :model/Table      {audit-table :id} {:db_id        audit-db :name "audit_events"
+                                                        :active       true}
+                   :model/TableUserSettings _ {:table_id audit-table :is_published true :collection_id data-id}
                    ;; Audit-db metric card in the Library — MUST be excluded.
                    :model/Card       _              {:database_id  audit-db :type :metric :name "Audit Revenue"
                                                      :archived     false    :collection_id mets-id}
                    ;; Non-audit table in the Library — must still count.
-                   :model/Table      _              {:db_id        real-db  :name "orders"
-                                                     :active       true     :is_published true
-                                                     :collection_id data-id}
+                   :model/Table      {real-table :id} {:db_id        real-db  :name "orders"
+                                                       :active       true}
+                   :model/TableUserSettings _ {:table_id real-table :is_published true :collection_id data-id}
                    ;; Non-audit metric card in the Library — must still count.
                    :model/Card       _              {:database_id  real-db  :type :metric :name "Real Revenue"
                                                      :archived     false    :collection_id mets-id}]
@@ -1082,19 +1084,23 @@
        :model/Database {db-id :id}        {:name "Hermetic Library DB"}
        ;; Library tables. clients + customers are a synonym pair for the mock embedder below.
        :model/Table    {t1 :id}           {:db_id db-id :name "orders"
-                                           :active true :is_published true :collection_id data-id}
+                                           :active true}
+       :model/TableUserSettings _ {:table_id t1 :is_published true :collection_id data-id}
        :model/Table    {t2 :id}           {:db_id db-id :name "subscriptions"
-                                           :active true :is_published true :collection_id data-id}
-       :model/Table    _                  {:db_id db-id :name "clients"
-                                           :active true :is_published true :collection_id data-id}
-       :model/Table    _                  {:db_id db-id :name "customers"
-                                           :active true :is_published true :collection_id data-id}
+                                           :active true}
+       :model/TableUserSettings _ {:table_id t2 :is_published true :collection_id data-id}
+       :model/Table    {t3 :id}           {:db_id db-id :name "clients"
+                                           :active true}
+       :model/TableUserSettings _ {:table_id t3 :is_published true :collection_id data-id}
+       :model/Table    {t4 :id}           {:db_id db-id :name "customers"
+                                           :active true}
+       :model/TableUserSettings _ {:table_id t4 :is_published true :collection_id data-id}
        ;; Non-library tables: active (→ in universe) but not published into the library tree.
        ;; audit_events + audit_log are another synonym pair via the mock embedder.
        :model/Table    {t-audit :id}      {:db_id db-id :name "audit_events"
-                                           :active true :is_published false}
+                                           :active true}
        :model/Table    _                  {:db_id db-id :name "audit_log"
-                                           :active true :is_published false}
+                                           :active true}
        ;; Library fields: 2 on orders, 1 on subscriptions.
        :model/Field _                     {:table_id t1 :name "id"    :active true :base_type :type/Integer}
        :model/Field _                     {:table_id t1 :name "total" :active true :base_type :type/Float}

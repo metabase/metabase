@@ -165,12 +165,15 @@
   "None of the requested scopes were granted to this refresh token. Omit scope to refresh with the original grant.")
 
 (defn- narrowed-away-scope-description
-  "The `error_description` for an authorization request in which no requested scope is accepted by the resource."
+  "The `error_description` for an authorization or refresh request in which no requested scope is accepted by the
+  resource."
   []
   ;; Names only the server's own MCP resource URL: the client's `resource` may hold characters RFC 6749 forbids here.
-  ;; A request naming no resource never gets here: one asking only for MCP scopes is given the MCP resource by
-  ;; [[with-default-mcp-resource]], and any other keeps its non-MCP scopes. The provider cannot be built without a
-  ;; Site URL, so the URL is always there.
+  ;; A request with no `resource` of its own gets here in two ways: a refresh narrowed to its token's resource, and a
+  ;; re-signed consent form, since the decision endpoint doesn't apply [[with-default-mcp-resource]]. Only the refresh
+  ;; shows this text to the client: the decision endpoint answers every failure with
+  ;; `invalid-authorization-request-description`. The provider cannot be built without a Site URL, so the URL is
+  ;; always there.
   (str "The requested scopes are not accepted by the requested resource. "
        "The MCP server's resource URL is " (oauth-server/mcp-resource-url) "."))
 
@@ -613,7 +616,9 @@
            (every? (set (mcp/v2-scopes)) scopes))
       ;; Some MCP clients, Microsoft Copilot Studio among them, never send `resource`. Without this, [[scope-to-grant]]
       ;; reads the request as one for a REST token and drops every MCP scope, leaving nothing to grant. A request that
-      ;; also asks for a non-MCP scope stays a REST request, so MCP and REST tokens stay separate.
+      ;; also asks for a registered non-MCP scope stays a REST request, so MCP and REST tokens stay separate. A scope
+      ;; Metabase no longer registers, such as the retired `agent:table:read`, does not count, so a request for it
+      ;; alongside MCP scopes gets the MCP resource.
       (assoc :resource [mcp-resource]))))
 
 (defn- refreshable-token
@@ -640,21 +645,38 @@
    token was issued for, which is the resource oidc-provider issues the new token for. Scopes the refresh token does not
    hold are then dropped too, as RFC 6749 section 3.3 allows, so a client that always refreshes with the same `scope`
    keeps working after the user declines part of it at consent; the response's `scope` says what was granted. Throws
-   `ex-info` carrying `:oauth-error` `invalid_scope` when no requested scope survives. When neither the request nor the
-   refresh token names a resource, the resource is defaulted as [[with-default-mcp-resource]] defaults it for
-   authorization, and the body names it so the new tokens carry it.
+   `ex-info` carrying `:oauth-error` `invalid_scope` when no requested scope survives.
+
+   When neither the request nor the refresh token names a resource, the body names the one [[with-default-mcp-resource]]
+   gives the requested scopes, so the new tokens carry it.
+   A refresh with no `scope` keeps every scope the token holds, so it names the MCP resource only when every one of
+   them, registered or not, is an MCP scope.
 
    Trimmed only once [[refreshable-token]] finds the request would reach oidc-provider's scope check, so a dead token,
    another client's token, or bad client credentials still get the library's own answer. A blank `scope` is dropped,
    which RFC 6749 section 6 treats as the original grant; oidc-provider would read it as asking for no scopes and mint
    a token with none. Any other `body` is returned unchanged."
-  [provider authorization-header {:keys [grant_type scope resource] :as body}]
+  [provider authorization-header {:keys [grant_type scope resource refresh_token] :as body}]
   (cond
     (not= grant_type "refresh_token")
     body
 
     (str/blank? scope)
-    (dissoc body :scope)
+    ;; Only a token with no resource needs anything here. The token is read on every such refresh, but
+    ;; [[refreshable-token]], which authenticates the client a second time, runs only for one that needs binding. See
+    ;; the `:else` arm for why naming the resource binds the new tokens.
+    (let [body         (dissoc body :scope)
+          stored       (when (empty? resource)
+                         (some->> (not-empty refresh_token) (oidc.store/get-refresh-token (:token-store provider))))
+          ;; Not [[with-default-mcp-resource]], which looks only at the registered scopes.
+          mcp-resource (when (and stored
+                                  (empty? (:resource stored))
+                                  (seq (:scope stored))
+                                  (every? (set (mcp/v2-scopes)) (:scope stored)))
+                         (oauth-server/mcp-resource-url))]
+      (cond-> body
+        (and mcp-resource (refreshable-token provider authorization-header body))
+        (assoc :resource [mcp-resource])))
 
     :else
     (if-let [token-data (refreshable-token provider authorization-header body)]
@@ -687,8 +709,9 @@
                                                        (cond-> query-params
                                                          (str/blank? (:scope query-params)) (dissoc :scope)))
         ;; Defaulted and narrowed before signing, so the signature binds the resource and the granted scope through
-        ;; the consent form round-trip, and the decision endpoint needs neither rule of its own. The resource goes on
-        ;; the request rather than only shaping the scope, so the code and every token it yields carry it.
+        ;; the consent form round-trip. The decision endpoint takes the resource from the form without defaulting it,
+        ;; and narrows again because the user can re-sign the form (see [[scope-to-grant]]). The resource goes on the
+        ;; request rather than only shaping the scope, so the code and every token it yields carry it.
         parsed       (with-default-mcp-resource parsed)
         parsed       (assoc parsed :scope (scope-to-grant parsed))
         client       (proto/get-client (:client-store provider) (:client_id parsed))
@@ -854,7 +877,11 @@
   (let [ip-address           (request/ip-address request)
         authorization-header (get-in request [:headers "authorization"])
         client-id            (or (:client-id (oidc.token-endpoint/parse-basic-auth authorization-header))
-                                 (:client_id body))]
+                                 (:client_id body))
+        ;; oidc-provider would give the new tokens an empty `resource` in place of the old token's, so it counts as
+        ;; none. An empty string stays, for [[check-resource-indicators!]] to refuse.
+        body                 (cond-> body
+                               (= [] (:resource body)) (dissoc :resource))]
     (try
       (do-with-token-throttling ip-address client-id
                                 (fn []

@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-utils :refer [personal-collection-id]]
+   [metabase.collections.test-utils :as collections.tu :refer [personal-collection-id]]
    [metabase.documents.models.document :as document]
    [metabase.documents.schema :as documents.schema]
    [metabase.documents.test-util :as documents.tu]
@@ -26,7 +26,8 @@
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -1056,3 +1057,46 @@
       (binding [*update-events* (atom [])]
         (document/update-documents! [{:id a :archived true}])
         (is (= [true] (mapv #(-> % :object :archived_directly) (mapcat :changes @*update-events*))))))))
+
+(defn- archive-call-count
+  "The number of statements it takes to ask whether rasta may archive `documents`, which must be allowed."
+  [documents]
+  (mt/with-current-user (mt/user->id :rasta)
+    (t2/with-call-count [call-count]
+      (is (true? (mi/can-update-each? :model/Document documents {:archived true})))
+      (call-count))))
+
+(deftest can-update-each-archive-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-model-cleanup [:model/Collection :model/Document :model/Card]
+      (let [mp           (mt/metadata-provider)
+            coll-ids     (t2/insert-returning-pks! :model/Collection
+                                                   (repeatedly 41 #(t2.with-temp/with-temp-defaults :model/Collection)))
+            _            (doseq [coll-id (butlast coll-ids)]
+                           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id))
+            document-ids (t2/insert-returning-pks! :model/Document
+                                                   (for [coll-id coll-ids]
+                                                     (assoc (t2.with-temp/with-temp-defaults :model/Document)
+                                                            :collection_id coll-id)))
+            _            (t2/insert! :model/Card (for [[coll-id document-id] (map vector coll-ids document-ids)]
+                                                   (merge (t2.with-temp/with-temp-defaults :model/Card)
+                                                          {:collection_id coll-id
+                                                           :document_id   document-id
+                                                           :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))})))
+            documents    (t2/select :model/Document :id [:in document-ids] {:order-by [[:id :asc]]})
+            writable     (vec (butlast documents))]
+        (testing "a batch with one Document rasta cannot write is refused"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (false? (mi/can-update-each? :model/Document (conj (subvec writable 0 3) (last documents))
+                                             {:archived true})))))
+        (testing "the question takes as many statements for 40 Documents with a Card each as for 10"
+          (archive-call-count (subvec writable 0 2))
+          (is (= (archive-call-count (subvec writable 0 10))
+                 (archive-call-count writable))))))))
+
+(deftest can-update-each-moves-test
+  (testing "mi/can-update-each? of Documents answers a move as mi/can-update? does row by row in a fixed number of statements"
+    (mt/with-model-cleanup [:model/Document]
+      (collections.tu/check-bulk-can-update-collection-move!
+       :model/Document
+       #(t2/insert-returning-pk! :model/Document (merge (mt/with-temp-defaults :model/Document) {:collection_id %}))))))

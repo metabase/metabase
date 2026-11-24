@@ -7,6 +7,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -50,13 +51,21 @@
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
-(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
+(defn- can-access?
+  "Whether the current user may read and write PythonLibrary rows: they have the transforms permission on some
+  Database."
+  []
+  (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*))))
 
-(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
+(methodical/defmethod t2/batched-hydrate [:model/PythonLibrary :can_read]
+  "Whether the current user can read each of `libraries`, answered once for all of them."
+  [_model k libraries]
+  (mi/vary-meta-each libraries k (can-access?)))
+
+(methodical/defmethod t2/batched-hydrate [:model/PythonLibrary :can_write]
+  "Whether the current user can write each of `libraries`, answered once for all of them."
+  [_model k libraries]
+  (mi/assoc-each libraries k (can-access?)))
 
 ;;; ---------------------------------------------------- Library -----------------------------------------------------
 

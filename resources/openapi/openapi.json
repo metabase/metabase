@@ -78510,7 +78510,7 @@
                   "items" : {
                     "additionalProperties" : false,
                     "properties" : {
-                      "can_execute" : {
+                      "can_query" : {
                         "type" : "boolean"
                       },
                       "can_read" : {
@@ -78943,7 +78943,7 @@
                 "schema" : {
                   "additionalProperties" : false,
                   "properties" : {
-                    "can_execute" : {
+                    "can_query" : {
                       "type" : "boolean"
                     },
                     "can_read" : {
@@ -79568,6 +79568,9 @@
                           "type" : "null"
                         } ]
                       },
+                      "can_query" : {
+                        "type" : "boolean"
+                      },
                       "created_at" : { },
                       "description" : {
                         "anyOf" : [ {
@@ -79768,6 +79771,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_query" : {
+                      "type" : "boolean"
                     },
                     "created_at" : { },
                     "description" : {
@@ -80014,6 +80020,9 @@
                         "type" : "null"
                       } ]
                     },
+                    "can_query" : {
+                      "type" : "boolean"
+                    },
                     "created_at" : { },
                     "description" : {
                       "anyOf" : [ {
@@ -80222,6 +80231,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_query" : {
+                      "type" : "boolean"
                     },
                     "created_at" : { },
                     "description" : {
@@ -82011,7 +82023,7 @@
                 "schema" : {
                   "additionalProperties" : false,
                   "properties" : {
-                    "can_execute" : {
+                    "can_query" : {
                       "type" : "boolean"
                     },
                     "can_read" : {
@@ -82450,7 +82462,7 @@
                 "schema" : {
                   "additionalProperties" : false,
                   "properties" : {
-                    "can_execute" : {
+                    "can_query" : {
                       "type" : "boolean"
                     },
                     "can_read" : {
@@ -82922,7 +82934,7 @@
                   "items" : {
                     "additionalProperties" : false,
                     "properties" : {
-                      "can_execute" : {
+                      "can_query" : {
                         "type" : "boolean"
                       },
                       "can_read" : {

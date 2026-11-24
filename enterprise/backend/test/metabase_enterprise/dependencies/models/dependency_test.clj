@@ -309,11 +309,4 @@
                    (let [from-ids (vec (repeatedly n fresh))]
                      (doseq [from-id from-ids]
                        (deps.graph/replace-dependencies! :card from-id {:table #{(fresh)}}))
-                     (events.tu/statement-count! #(deps.graph/delete-dependencies-for-entities! :card from-ids))))))
-      (testing "deleting the dependencies of entities on an entity"
-        (counted (fn [n]
-                   (let [to-id    (fresh)
-                         from-ids (vec (repeatedly n fresh))]
-                     (doseq [from-id from-ids]
-                       (deps.graph/replace-dependencies! :card from-id {:table #{to-id}}))
-                     (events.tu/statement-count! #(deps.graph/delete-dependencies-for-dependents! :card from-ids :table to-id)))))))))
+                     (events.tu/statement-count! #(deps.graph/delete-dependencies-for-entities! :card from-ids)))))))))

@@ -2,7 +2,6 @@
   "`:metabase.api-keys.core/group-id` and `:metabase.api-keys.core/unhashed-key` have special meanings when passed to
   various Toucan CRUD methods for `:model/ApiKey`... see below."
   (:require
-   [clojure.core.memoize :as memoize]
    [java-time.api :as t]
    [malli.core :as mc]
    [malli.error :as me]
@@ -178,18 +177,6 @@
   (-> api-key
       add-masked-key))
 
-(def ^{:arglists '([user-id])} is-api-key-user?
-  "Cached function to determine whether the user with this ID is an API key user"
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[user-id]]
-                         [(mdb/unique-identifier) user-id])}
-   (fn is-api-key-user?*
-     [user-id]
-     (= :api-key (api-keys.db/user-type user-id)))
-   ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
-   ;; large
-   :ttl/threshold (* 60 60 1000)))
-
 (mu/defn key-with-unique-prefix :- ::api-keys.schema/key.secret
   "Generate an unique API key with a unique prefix."
   []
@@ -240,23 +227,24 @@
                           opts))))
 
 (defn- move-key-users!
-  "Make the User created for each key of `updates` that sets `::api-keys/group-id`, stored in `id->stored`, a member of
-  exactly All Users and that group, one removal and one addition per distinct group."
+  "Make the User created for each key of `updates` that sets `::api-keys/group-id`, stored in `id->stored`, a member
+  of exactly All Users and that group, removing and adding the memberships of all keys together."
   [updates id->stored]
-  (when-let [moving (not-empty (filterv ::api-keys/group-id updates))]
+  (when-let [moving (not-empty (filterv #(and (::api-keys/group-id %) (:user_id (id->stored (:id %)))) updates))]
     (let [all-users-id (u/the-id (perms/all-users-group))
           key-groups   (group-by :api-key-id (api-keys.db/api-key-groups (mapv :id moving)))]
-      (doseq [[group-id rows] (group-by ::api-keys/group-id moving)
-              :let [user-ids (into [] (keep (comp :user_id id->stored :id)) rows)
-                    leaving  (into [] (comp (mapcat (comp key-groups :id))
-                                            (map :group-id)
-                                            (remove #{all-users-id group-id})
-                                            (distinct))
-                                   rows)]]
-        (perms-group-membership/remove-users-from-groups! user-ids leaving)
-        (perms-group-membership/add-users-to-groups! (for [user-id user-ids
-                                                           new-id  [all-users-id group-id]]
-                                                       {:user user-id :group new-id}))))))
+      (perms-group-membership/remove-memberships!
+       (into []
+             (comp (mapcat (fn [{id :id group-id ::api-keys/group-id}]
+                             (for [{leaving :group-id} (key-groups id)
+                                   :when (not (#{all-users-id group-id} leaving))]
+                               [(:user_id (id->stored id)) leaving])))
+                   (distinct))
+             moving)
+       nil)
+      (perms-group-membership/add-users-to-groups! (for [{id :id group-id ::api-keys/group-id} moving
+                                                         new-id [all-users-id group-id]]
+                                                     {:user (:user_id (id->stored id)) :group new-id})))))
 
 (defn- move-and-rename-key-users!
   "Rename and move the Users created for the existing keys of `updates`, stored in `id->stored`, publishing the events

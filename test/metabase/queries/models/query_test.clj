@@ -67,19 +67,26 @@
              (query/query->database-and-table-ids query-with-source-card))))))
 
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
-  (mt/with-model-cleanup [:model/Query]
-    (let [new-hash (fn [] (let [bytes (byte-array 32)] (.nextBytes (java.security.SecureRandom.) bytes) bytes))
-          query    (fn [] {:database (mt/id) :type :query :query {:source-table (mt/id :venues)}})
-          entries  (fn [n]
-                     (let [rows (mapv (fn [i] {:query (query) :query-hash (new-hash) :execution-time-ms (* 100 (inc i))}) (range n))]
-                       (t2/insert! :model/Query (mapv (fn [{:keys [query-hash]}] {:query_hash query-hash :average_execution_time 100})
-                                                      (take-nth 3 (drop 1 rows))))
-                       (t2/insert! :model/Query (mapv (fn [{:keys [query query-hash]}] {:query query :query_hash query-hash :average_execution_time 100})
-                                                      (take-nth 3 (drop 2 rows))))
-                       (into rows (take 1 rows))))]
+  (let [hashes   (atom [])
+        new-hash (fn [] (let [bytes (byte-array 32)]
+                          (.nextBytes (java.security.SecureRandom.) bytes)
+                          (swap! hashes conj bytes)
+                          bytes))
+        query    (fn [] {:database (mt/id) :type :query :query {:source-table (mt/id :venues)}})
+        entries  (fn [n]
+                   (let [rows (mapv (fn [i] {:query (query) :query-hash (new-hash) :execution-time-ms (* 100 (inc i))}) (range n))]
+                     (t2/insert! :model/Query (mapv (fn [{:keys [query-hash]}] {:query_hash query-hash :average_execution_time 100})
+                                                    (take-nth 3 (drop 1 rows))))
+                     (t2/insert! :model/Query (mapv (fn [{:keys [query query-hash]}] {:query query :query_hash query-hash :average_execution_time 100})
+                                                    (take-nth 3 (drop 2 rows))))
+                     (into rows (take 1 rows))))]
+    (try
       (testing "saving queries, some new, some up to date and some of before their text was stored"
         (events.tu/statement-count! #(query/save-queries-and-update-average-execution-times! (entries 3)))
         (let [small (entries 3)
               large (entries 12)]
           (is (= (events.tu/statement-count! #(query/save-queries-and-update-average-execution-times! small))
-                 (events.tu/statement-count! #(query/save-queries-and-update-average-execution-times! large)))))))))
+                 (events.tu/statement-count! #(query/save-queries-and-update-average-execution-times! large))))))
+      (finally
+        (when (seq @hashes)
+          (t2/delete! :model/Query :query_hash [:in @hashes]))))))
