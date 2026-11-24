@@ -338,13 +338,24 @@
                  (#'sql-jdbc.describe-table/json-map->types)
                  (#'sql-jdbc.describe-table/field-types->fields)))))))
 
+;; A driver turns this off when it does not give JSON columns the `:type/SerializedJSON` semantic type.
+(defmethod driver/database-supports? [::driver/driver ::serialized-json-semantic-type]
+  [_driver _feature _database]
+  true)
+
+(defn- json-semantic-type []
+  (when (driver/database-supports? driver/*driver* ::serialized-json-semantic-type (mt/db))
+    :type/SerializedJSON))
+
 (deftest ^:parallel nested-field-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (mt/dataset json
       (when-not (mysql/mariadb? (mt/db))
         (testing "Nested field column listing"
-          (is (= [:type/JSON :type/SerializedJSON]
-                 (->> (sql-jdbc.sync/describe-table driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:name "json"})
+          (is (= [:type/JSON (json-semantic-type)]
+                 (->> (sql-jdbc.sync/describe-table driver/*driver*
+                                                    (lib.metadata/database (mt/metadata-provider))
+                                                    (t2/select-one :model/Table :id (mt/id "json")))
                       :fields
                       (filter #(= (:name %) "json_bit"))
                       first
@@ -415,11 +426,16 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                   driver/*driver*
                   (lib.metadata/database (mt/metadata-provider))
-                  {:name "json" :id (mt/id "json")}))))))))
+                  (t2/select-one :model/Table :id (mt/id "json"))))))))))
+
+;; A driver turns this off when its JSON columns cannot hold JSON arrays and scalars.
+(defmethod driver/database-supports? [::driver/driver ::json-arrays-and-scalars]
+  [_driver _feature _database]
+  true)
 
 (deftest json-columns-with-values-are-not-object-test
   (testing "able sync a db with jsonb columns where value is an array or a string #44459"
-    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns ::json-arrays-and-scalars)
       (mt/dataset (mt/dataset-definition
                    "naked_json"
                    [["json_table"
@@ -463,15 +479,15 @@
                   (sql-jdbc.sync/describe-nested-field-columns
                    driver/*driver*
                    (lib.metadata/database (mt/metadata-provider))
-                   {:name "big_json_table" :id (mt/id "big_json_table")}))))
+                   (t2/select-one :model/Table :id (mt/id "big_json_table"))))))
           (mt/with-log-messages-for-level [messages :warn]
             (sql-jdbc.sync/describe-nested-field-columns
              driver/*driver*
              (lib.metadata/database (mt/metadata-provider))
-             {:name "big_json_table" :id (mt/id "big_json_table")})
-            (is (str/includes?
-                 (-> (messages) first :message)
-                 "More nested field columns detected than maximum."))))))))
+             (t2/select-one :model/Table :id (mt/id "big_json_table")))
+            ;; not only the first message: ClickHouse logs an unrelated warning before this one
+            (is (some #(str/includes? (:message %) "More nested field columns detected than maximum.")
+                      (messages)))))))))
 
 (deftest ^:parallel big-nested-field-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
@@ -482,7 +498,7 @@
                  (count (sql-jdbc.sync/describe-nested-field-columns
                          driver/*driver*
                          (lib.metadata/database (mt/metadata-provider))
-                         {:name "big_json" :id (mt/id "big_json")})))))))))
+                         (t2/select-one :model/Table :id (mt/id "big_json")))))))))))
 
 (mt/defdataset long-json
   [["long_json_table"
@@ -531,11 +547,13 @@
                                   (defmethod driver.sql/json-field-length dispatch-value [driver field]
                                     (original-method driver field)))))
                             (thunk)))]
-                  (do-with-removed-method
-                   (fn []
-                     (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
-                              {:short_json {"b" "y"}, :long_json {"b" "yyyyyyyyyy"}}}
-                            (sample)))))))
+                  ;; a driver with its own sample query, such as ClickHouse, does not use `json-field-length`
+                  (when (registered-dispatch-value driver/*driver*)
+                    (do-with-removed-method
+                     (fn []
+                       (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
+                                {:short_json {"b" "y"}, :long_json {"b" "yyyyyyyyyy"}}}
+                              (sample))))))))
               (testing "The resulting synced fields exclude the field that corresponds to the long value"
                 (is (= #{"id"
                          "short_json"
@@ -560,7 +578,7 @@
         (sync/sync-database! (mt/id))
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
-                   {:name "jsoncol", :base_type :type/JSON, :semantic_type :type/SerializedJSON}
+                   {:name "jsoncol", :base_type :type/JSON, :semantic_type (json-semantic-type)}
                    {:name "jsoncol → myint", :base_type :type/Number, :semantic_type nil}
                    {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type nil}}
                  (mysql-test/db->fields (mt/db)))))
@@ -582,7 +600,7 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                   driver/*driver*
                   (lib.metadata/database (mt/metadata-provider))
-                  (t2/select-one :model/Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
+                  (t2/select-one :model/Table :id (mt/id "bigint-and-bool-table"))))))))))
 
 (mt/defdataset json-int-turn-string
   "Used for testing mysql json value unwrapping"
