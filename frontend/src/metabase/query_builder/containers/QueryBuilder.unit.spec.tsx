@@ -9,6 +9,7 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   renderHook,
   screen,
   waitFor,
@@ -36,8 +37,10 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS_ID,
+  PEOPLE_ID,
   createOrdersCreatedAtDatasetColumn,
   createOrdersIdDatasetColumn,
+  createPeopleStateDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -1290,6 +1293,234 @@ describe("QueryBuilder", () => {
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("columnheader", { name: "Sum of Subtotal" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+  describe("chart settings after adding a query stage", () => {
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    const STATE_COUNTS: [string, number][] = [
+      ["AK", 68],
+      ["AL", 56],
+      ["AR", 49],
+      ["AZ", 20],
+      ["CA", 90],
+    ];
+
+    const BAR_CARD = createMockCard({
+      id: 44668,
+      name: "Count by state",
+      display: "bar",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: PEOPLE_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+              breakouts: [{ type: "column", name: "STATE" }],
+              limit: 5,
+            },
+          ],
+        }),
+      ),
+      visualization_settings: {
+        "graph.metrics": ["count"],
+        "graph.dimensions": ["STATE"],
+      },
+    });
+
+    const createCountColumn = (source: "aggregation" | "fields") =>
+      createMockColumn({
+        name: "count",
+        display_name: "Count",
+        source,
+        base_type: "type/BigInteger",
+        effective_type: "type/BigInteger",
+        semantic_type: "type/Quantity",
+        field_ref:
+          source === "aggregation"
+            ? ["aggregation", 0]
+            : ["field", "count", { "base-type": "type/BigInteger" }],
+      });
+
+    const BAR_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createPeopleStateDatasetColumn({ source: "breakout" }),
+          createCountColumn("aggregation"),
+        ],
+        rows: STATE_COUNTS,
+      }),
+      row_count: STATE_COUNTS.length,
+    });
+
+    const STAGED_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createPeopleStateDatasetColumn({
+            field_ref: ["field", "STATE", { "base-type": "type/Text" }],
+          }),
+          createCountColumn("fields"),
+          createMockColumn({
+            name: "Custom String",
+            display_name: "Custom String",
+            source: "fields",
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            field_ref: ["expression", "Custom String"],
+          }),
+          createMockColumn({
+            name: "Custom Number",
+            display_name: "Custom Number",
+            source: "fields",
+            base_type: "type/BigInteger",
+            effective_type: "type/BigInteger",
+            field_ref: ["expression", "Custom Number"],
+          }),
+        ],
+        rows: STATE_COUNTS.map(([state, count]) => [
+          state,
+          count,
+          `abc_${count}`,
+          count * 2,
+        ]),
+      }),
+      row_count: STATE_COUNTS.length,
+    });
+
+    const hasCustomColumnStage = (call: CallLog) => {
+      const body: unknown = JSON.parse(String(call.options.body));
+      const expressions: unknown[] =
+        _.get(body, ["stages", 1, "expressions"]) ?? [];
+      const names = expressions.map((_expression, index) =>
+        _.get(body, [
+          "stages",
+          1,
+          "expressions",
+          index,
+          1,
+          "lib/expression-name",
+        ]),
+      );
+      return _.isEqual(names, ["Custom String", "Custom Number"]);
+    };
+
+    const addCustomColumn = async (formula: string, name: string) => {
+      const input = await screen.findByTestId("custom-expression-query-editor");
+      await waitFor(() => expect(input).toHaveProperty("readOnly", false));
+      await userEvent.click(input);
+      await userEvent.paste(formula);
+      await userEvent.tab();
+      await userEvent.type(screen.getByTestId("expression-name"), name);
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      await waitFor(() => expect(doneButton).toBeEnabled());
+      await userEvent.click(doneButton);
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("expression-editor"),
+        ).not.toBeInTheDocument(),
+      );
+    };
+
+    const getChart = () => screen.findByTestId("chart-container");
+    const getMain = () => screen.getByTestId("query-builder-main");
+    const getSidebar = () => screen.getByTestId("chartsettings-sidebar");
+
+    it("should not drop graph.metrics after adding a new query stage (metabase#44668)", async () => {
+      await setup({
+        card: BAR_CARD,
+        dataset: BAR_DATASET,
+        database: createSampleDatabase({ auto_run_queries: true }),
+      });
+      fetchMock.modifyRoute("dataset-post", {
+        response: (call: CallLog) =>
+          hasCustomColumnStage(call) ? STAGED_DATASET : BAR_DATASET,
+      });
+
+      await userEvent.click(screen.getByTestId("notebook-button"));
+      const actionButtons = await screen.findAllByTestId("action-buttons");
+      await userEvent.click(
+        within(actionButtons[actionButtons.length - 1]).getByRole("button", {
+          name: /Custom column/,
+        }),
+      );
+      await addCustomColumn('concat("abc_", [Count])', "Custom String");
+      await userEvent.click(
+        within(await screen.findByTestId("step-expression-1-0")).getByLabelText(
+          "add icon",
+        ),
+      );
+      await addCustomColumn("[Count] * 2", "Custom Number");
+      await userEvent.click(screen.getByRole("button", { name: "Visualize" }));
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory
+            .calls("path:/api/dataset", { method: "POST" })
+            .some(hasCustomColumnStage),
+        ).toBe(true),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+
+      await waitFor(async () =>
+        expect(within(await getChart()).getByText("State")).toBeInTheDocument(),
+      );
+      const chart = await getChart();
+      expect(within(chart).getByText("Count")).toBeInTheDocument();
+      for (const [state] of STATE_COUNTS) {
+        expect(within(chart).getByText(state)).toBeInTheDocument();
+      }
+      expect(
+        within(getMain()).queryByLabelText("Legend"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByTestId("viz-settings-button"));
+      await userEvent.click(
+        await within(getSidebar()).findByText("Add another series"),
+      );
+      const legend = await within(getMain()).findByLabelText("Legend");
+      expect(within(legend).getByText("Count")).toBeInTheDocument();
+      expect(within(legend).getByText("Custom Number")).toBeInTheDocument();
+      expect(
+        within(getSidebar()).queryByText("Add another series"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(getSidebar()).queryByText("Add series breakout"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(
+        within(getSidebar()).getByTestId("remove-Custom Number"),
+      );
+      await waitFor(() =>
+        expect(
+          within(getMain()).queryByLabelText("Legend"),
+        ).not.toBeInTheDocument(),
+      );
+
+      await userEvent.click(
+        within(getSidebar()).getByText("Add series breakout"),
+      );
+      const listbox = await screen.findByRole("listbox");
+      expect(
+        within(listbox).getByRole("option", { name: "Count" }),
+      ).toBeInTheDocument();
+      expect(
+        within(listbox).getByRole("option", { name: "Custom Number" }),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        within(listbox).getByRole("option", { name: "Custom String" }),
+      );
+
+      const breakoutLegend = await within(getMain()).findByLabelText("Legend");
+      for (const [, count] of STATE_COUNTS) {
+        expect(
+          within(breakoutLegend).getByText(`abc_${count}`),
+        ).toBeInTheDocument();
+      }
+      expect(
+        within(getSidebar()).queryByText("Add another series"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(getSidebar()).queryByText("Add series breakout"),
       ).not.toBeInTheDocument();
     });
   });
