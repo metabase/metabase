@@ -84,6 +84,11 @@ describe("NewActionPage", () => {
     expect(await screen.findByText("Customers")).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Insert" })).toBeChecked();
     expect(screen.getByPlaceholderText("Insert Customers")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByLabelText("Name")).toHaveValue(
+      "Insert Customers",
+    );
   });
 
   it("should create a table action with the picked operation", async () => {

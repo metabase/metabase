@@ -95,8 +95,21 @@ function setup({ action }: SetupOpts) {
   );
 }
 
-async function getLastUpdate() {
-  return fetchMock.callHistory.lastCall("action-2-put")?.request?.json();
+function setupSavedAction(initialAction: WritebackImplicitQueryAction) {
+  let savedAction = initialAction;
+  fetchMock.modifyRoute("action-2-get", { response: () => savedAction });
+  fetchMock.modifyRoute("action-2-put", {
+    response: ({ options }) => {
+      const changes = JSON.parse(String(options.body));
+      savedAction = { ...savedAction, ...changes };
+      return savedAction;
+    },
+  });
+}
+
+function getLastUpdate() {
+  const body = fetchMock.callHistory.lastCall("action-2-put")?.options?.body;
+  return body == null ? undefined : JSON.parse(String(body));
 }
 
 describe("ActionDefinitionPage", () => {
@@ -137,12 +150,49 @@ describe("ActionDefinitionPage", () => {
 
     await userEvent.click(await screen.findByRole("radio", { name: "Delete" }));
 
-    await waitFor(async () =>
-      expect(await getLastUpdate()).toEqual({ id: 2, kind: "row/delete" }),
+    await waitFor(() =>
+      expect(getLastUpdate()).toEqual({ id: 2, kind: "row/delete" }),
     );
     await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
-    await waitFor(async () =>
-      expect(await getLastUpdate()).toEqual({ id: 2, kind: "row/create" }),
+    await waitFor(() =>
+      expect(getLastUpdate()).toEqual({ id: 2, kind: "row/create" }),
+    );
+  });
+
+  it("should show the saved operation and the undone one, with a toast for each", async () => {
+    const action = createMockImplicitQueryAction({
+      id: 2,
+      model_id: null,
+      table_id: TABLE.id,
+      kind: "row/create",
+      can_write: true,
+    });
+    setup({ action });
+    setupSavedAction(action);
+
+    const updateRadio = await screen.findByRole("radio", { name: "Update" });
+    expect(updateRadio).toBeEnabled();
+    expect(updateRadio).not.toBeChecked();
+    await userEvent.click(updateRadio);
+
+    await waitFor(() =>
+      expect(getLastUpdate()).toEqual({ id: 2, kind: "row/update" }),
+    );
+    expect(
+      await screen.findByText("Action operation updated"),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("radio", { name: "Update" })).toBeChecked(),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+    await waitFor(() =>
+      expect(getLastUpdate()).toEqual({ id: 2, kind: "row/create" }),
+    );
+    expect(await screen.findByText("Change undone")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("radio", { name: "Insert" })).toBeChecked(),
     );
   });
 
@@ -162,15 +212,15 @@ describe("ActionDefinitionPage", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Pick Orders" }));
 
-    await waitFor(async () =>
-      expect(await getLastUpdate()).toEqual({
+    await waitFor(() =>
+      expect(getLastUpdate()).toEqual({
         id: 2,
         table_id: OTHER_TABLE.id,
       }),
     );
     await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
-    await waitFor(async () =>
-      expect(await getLastUpdate()).toEqual({ id: 2, table_id: TABLE.id }),
+    await waitFor(() =>
+      expect(getLastUpdate()).toEqual({ id: 2, table_id: TABLE.id }),
     );
   });
 
