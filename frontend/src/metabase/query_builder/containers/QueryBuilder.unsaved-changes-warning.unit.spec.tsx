@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
-import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
@@ -16,17 +15,18 @@ import {
   within,
 } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
+import { serializeCardForUrl } from "metabase/common/utils/card";
 import { setPendingMetabotCard } from "metabase/redux/query-builder";
 import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockDataset,
   createMockDatasetData,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
@@ -1056,38 +1056,30 @@ describe("QueryBuilder - unsaved changes warning", () => {
       // A dashboard click behavior that opens a saved question opens it with
       // the clicked value as a filter, at an ad-hoc URL that keeps the id of
       // the saved question in `original_card_id`.
-      const metadata = createMockMetadata({
-        databases: [createSampleDatabase()],
+      const filteredCard = createMockUnsavedCard({
+        name: PRODUCTS_CARD.name,
+        original_card_id: PRODUCTS_CARD.id,
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [
+              {
+                source: { type: "table", id: PRODUCTS_ID },
+                filters: [
+                  {
+                    type: "operator",
+                    operator: "=",
+                    args: [
+                      { type: "column", name: "TITLE" },
+                      { type: "literal", value: "Rustic Paper Wallet" },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
       });
-      const filteredQuestion = new Question(
-        {
-          ...PRODUCTS_CARD,
-          dataset_query: Lib.toJsQuery(
-            Lib.createTestQuery(SAMPLE_PROVIDER, {
-              stages: [
-                {
-                  source: { type: "table", id: PRODUCTS_ID },
-                  filters: [
-                    {
-                      type: "operator",
-                      operator: "=",
-                      args: [
-                        { type: "column", name: "TITLE" },
-                        { type: "literal", value: "Rustic Paper Wallet" },
-                      ],
-                    },
-                  ],
-                },
-              ],
-            }),
-          ),
-        },
-        metadata,
-      );
-      const url = Urls.question(filteredQuestion, {
-        originalQuestion: new Question(PRODUCTS_CARD, metadata),
-      });
-      expect(url).toMatch(/^\/question#/);
+      const url = `/question#${serializeCardForUrl(filteredCard)}`;
       const { router } = await setupProductsQuestion({ initialRoute: url });
 
       expect(
