@@ -639,7 +639,7 @@
    the list is in a clause the queries keep."
   [parser dialect sql]
   ;; The check reads what will run, not `sql`: a lock or function call in a clause the steps leave out never executes,
-  ;; while the WITH clause is kept, so a data-modifying CTE would run once per query.
+  ;; while a CTE the steps read is kept, so a data-modifying one would run once per query.
   (let [stripped (strip-large-literal-lists sql executable-literal-list-ceiling)
         result   (protocol/join-steps parser dialect stripped)
         queries  (when (= "ok" (:status result))

@@ -657,6 +657,40 @@ def _on_counts_matches(from_, joins, strategy, dialect):
     return {"left": from_joined, "right": from_earlier, "full": from_joined and from_earlier}[strategy]
 
 
+def _referenced_with(stmt, with_, dialect):
+    """The WITH clause `with_` cut down to the CTEs that the FROM and JOIN clauses of `stmt` read, directly or through
+    other CTEs, or None when they read none.
+
+    A statement that is not a SELECT with a FROM keeps `with_` whole, for the refusals to judge.
+    """
+    # Master's steps ran without the WITH clause, so a CTE the steps never read must not refuse them.
+    from_ = stmt.args.get("from_") if isinstance(stmt, exp.Select) else None
+    if with_ is None or from_ is None:
+        return with_
+    ctes = {_effective_name(cte.args["alias"].this, dialect): cte for cte in with_.expressions}
+
+    def reads(node):
+        names = {
+            _effective_name(table.this, dialect)
+            for table in node.find_all(exp.Table)
+            if isinstance(table.this, exp.Identifier) and not table.db and not table.catalog
+        }
+        return names & ctes.keys()
+
+    wanted = set()
+    todo = set().union(*(reads(node) for node in [from_, *(stmt.args.get("joins") or [])]))
+    while todo:
+        name = todo.pop()
+        if name not in wanted:
+            wanted.add(name)
+            todo |= reads(ctes[name].this)
+    if not wanted:
+        return None
+    pruned = with_.copy()
+    pruned.set("expressions", [cte.copy() for name, cte in ctes.items() if name in wanted])
+    return pruned
+
+
 def _statement_refusal(stmt, with_):
     """Why the parsed statement `stmt`, run under `with_`, cannot have its join steps rebuilt, or None.
 
@@ -687,6 +721,10 @@ def _statement_refusal(stmt, with_):
         return "unsupported-source"
     if any(_unsupported_join(join) for join in joins):
         return "unsupported-join"
+    # The condition of a comma or CROSS join, if it has one, is in WHERE, which the steps leave out, so its step would
+    # count the whole cross product.
+    if stmt.args.get("where") and any(_join_step_strategy(join) == "cross" for join in joins):
+        return "comma-join"
     return None
 
 
@@ -697,7 +735,7 @@ def join_steps(sql: str, dialect: str = None) -> str:
     The FROM source and every join are described, each with the SQL of a query that counts its rows.
     For the FROM source that is the source alone; for a join, the FROM source joined with every join up to and
     including it.
-    The WHERE clause and everything else outside FROM and JOIN are left out, and a WITH clause is kept.
+    The WHERE clause and everything else outside FROM and JOIN are left out, and so are the CTEs they don't read.
 
     For a LEFT, RIGHT or FULL join, the step query returns two counts in one row: the rows of the chain as written,
     and those where that last join found a match.
@@ -710,8 +748,8 @@ def join_steps(sql: str, dialect: str = None) -> str:
     A source is `{"source": "table" | "cte" | "derived", "table": [catalog, schema, table] or null, "alias": ...}`.
     A step is a source with a `strategy` (`inner`, `left`, `right`, `full` or `cross`) and its `sql`.
     Otherwise it is `{"status": "unsupported", "reason": ...}`, with one of these reasons: `unparseable`,
-    `set-operation`, `not-a-select`, `no-from`, `unsupported-join`, `unsupported-source`, `nested-join` and
-    `parameters`.
+    `set-operation`, `not-a-select`, `no-from`, `comma-join`, `unsupported-join`, `unsupported-source`, `nested-join`
+    and `parameters`.
     Of several statements, only the first is read.
 
     Examples:
@@ -733,6 +771,7 @@ def join_steps(sql: str, dialect: str = None) -> str:
         if not stmts:
             raise _JoinStepsUnsupported("unparseable")
         stmt, with_ = _whole_query(stmts[0], dialect)
+        with_ = _referenced_with(stmt, with_, dialect)
         reason = _statement_refusal(stmt, with_)
         if reason:
             raise _JoinStepsUnsupported(reason)

@@ -160,7 +160,7 @@
       :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}}
   {:name "a data-modifying CTE is refused: every count query would run it",
    :dialect "postgres",
-   :sql "WITH gone AS (DELETE FROM t RETURNING *) SELECT * FROM a JOIN b ON a.id = b.id",
+   :sql "WITH gone AS (DELETE FROM t RETURNING *) SELECT * FROM a JOIN gone ON a.id = gone.id",
    :expected {:status "unsupported", :reason "not-read-only"}}
   {:name "a lock outside FROM and JOIN is left out of the steps",
    :dialect "postgres",
@@ -175,37 +175,6 @@
       :alias "b",
       :strategy "inner",
       :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}}
-  {:name "a comma join counts the cross product, even when WHERE holds its condition",
-   :dialect "postgres",
-   :sql "SELECT * FROM a, b WHERE a.id = b.id",
-   :expected
-   {:status "ok",
-    :from {:source "table", :table [nil nil "a"], :alias "a"},
-    :base_sql "SELECT COUNT(*) AS n FROM a",
-    :steps
-    [{:source "table",
-      :table [nil nil "b"],
-      :alias "b",
-      :strategy "cross",
-      :sql "SELECT COUNT(*) AS n FROM a, b"}]}}
-  {:name "a comma join after a JOIN counts the cross product",
-   :dialect "postgres",
-   :sql "SELECT * FROM a JOIN b ON a.id = b.id, c WHERE a.x = b.x",
-   :expected
-   {:status "ok",
-    :from {:source "table", :table [nil nil "a"], :alias "a"},
-    :base_sql "SELECT COUNT(*) AS n FROM a",
-    :steps
-    [{:source "table",
-      :table [nil nil "b"],
-      :alias "b",
-      :strategy "inner",
-      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}
-     {:source "table",
-      :table [nil nil "c"],
-      :alias "c",
-      :strategy "cross",
-      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id, c"}]}}
   {:name "a set operation is refused",
    :dialect "postgres",
    :sql "SELECT id FROM a UNION SELECT id FROM b",
@@ -288,14 +257,6 @@
    :dialect "snowflake",
    :sql "SELECT * FROM a ASOF JOIN b MATCH_CONDITION (a.t >= b.t) ON a.id = b.id",
    :expected {:status "unsupported", :reason "unsupported-join"}}
-  {:name "a pivoted derived table is kept as written",
-   :dialect "postgres",
-   :sql "SELECT * FROM (SELECT 1 AS x) d PIVOT (SUM(x) FOR y IN (1))",
-   :expected
-   {:status "ok",
-    :from {:source "derived", :table nil, :alias "d"},
-    :base_sql "SELECT COUNT(*) AS n FROM (SELECT 1 AS x) AS d",
-    :steps []}}
   {:name "a parenthesized join tree is refused",
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN (b JOIN c ON b.x = c.x) ON a.x = b.x",
@@ -460,19 +421,22 @@
       :alias "b",
       :strategy "inner",
       :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"FOO\" JOIN b ON \"FOO\".id = b.id"}]}}
-  {:name "with no dialect, as for H2, a quoted lower-case name is a table, not the CTE",
+  {:name
+   "with no dialect, as for H2, a quoted lower-case name is a table, not the CTE",
    :dialect nil,
-   :sql "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"foo\" JOIN b ON \"foo\".id = b.id",
+   :sql
+   "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"foo\" JOIN b ON \"foo\".id = b.id",
    :expected
    {:status "ok",
     :from {:source "table", :table [nil nil "foo"], :alias "foo"},
-    :base_sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"foo\"",
+    :base_sql "SELECT COUNT(*) AS n FROM \"foo\"",
     :steps
     [{:source "table",
       :table [nil nil "b"],
       :alias "b",
       :strategy "inner",
-      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"foo\" JOIN b ON \"foo\".id = b.id"}]}}
+      :sql
+      "SELECT COUNT(*) AS n FROM \"foo\" JOIN b ON \"foo\".id = b.id"}]}}
   {:name "a NATURAL LEFT JOIN counts the matches with the join made INNER",
    :dialect "postgres",
    :sql "SELECT * FROM a NATURAL LEFT JOIN b",
@@ -490,19 +454,6 @@
    :dialect "tsql",
    :sql "SELECT * FROM a JOIN b ON a.id = b.id OPTION (MAXRECURSION 0)",
    :expected {:status "unsupported", :reason "unsupported-join"}}
-  {:name "a comma join counts the cross product where commas parse as CROSS",
-   :dialect "sqlite",
-   :sql "SELECT * FROM a, b WHERE a.id = b.id",
-   :expected
-   {:status "ok",
-    :from {:source "table", :table [nil nil "a"], :alias "a"},
-    :base_sql "SELECT COUNT(*) AS n FROM a",
-    :steps
-    [{:source "table",
-      :table [nil nil "b"],
-      :alias "b",
-      :strategy "cross",
-      :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN b"}]}}
   {:name "a function call in a clause the steps leave out does not matter",
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN b ON a.id = b.id WHERE pg_sleep(1) IS NULL",
@@ -528,19 +479,6 @@
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN b ON b.id IN (SELECT id FROM c TABLESAMPLE BERNOULLI (10))",
    :expected {:status "unsupported", :reason "unsupported-source"}}
-  {:name "an unaliased derived table after a comma counts where commas parse as CROSS",
-   :dialect "sqlite",
-   :sql "SELECT * FROM a, (SELECT 1 AS x) WHERE a.id = x",
-   :expected
-   {:status "ok",
-    :from {:source "table", :table [nil nil "a"], :alias "a"},
-    :base_sql "SELECT COUNT(*) AS n FROM a",
-    :steps
-    [{:source "derived",
-      :table nil,
-      :alias "",
-      :strategy "cross",
-      :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN (SELECT 1 AS x)"}]}}
   {:name "several WITH scopes are refused, even with distinct names",
    :dialect "postgres",
    :sql "WITH \"C\" AS (SELECT 1 AS id) (WITH \"c\" AS (SELECT 2 AS id) SELECT * FROM \"C\" JOIN \"c\" ON \"C\".id = \"c\".id) LIMIT 1",
@@ -673,4 +611,110 @@
       :alias "orders",
       :strategy "left",
       :sql
-      "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM s1.orders LEFT JOIN s2.orders ON s1.orders.id = 1) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM s1.orders JOIN s2.orders ON s1.orders.id = 1) AS m"}]}}]}
+      "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM s1.orders LEFT JOIN s2.orders ON s1.orders.id = 1) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM s1.orders JOIN s2.orders ON s1.orders.id = 1) AS m"}]}}
+  {:name "a CTE the steps don't read is left out, even one that writes",
+   :dialect "postgres",
+   :sql
+   "WITH gone AS (DELETE FROM t RETURNING *) SELECT * FROM a JOIN b ON a.id = b.id",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}}
+  {:name
+   "a CTE the steps don't read is left out, so its sample doesn't matter",
+   :dialect "postgres",
+   :sql
+   "WITH s AS (SELECT id FROM t TABLESAMPLE SYSTEM (1)) SELECT * FROM a JOIN b ON a.id = b.id WHERE a.id IN (SELECT id FROM s)",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}}
+  {:name "a CTE read through another CTE is kept with it",
+   :dialect "postgres",
+   :sql
+   "WITH c1 AS (SELECT id FROM t), c2 AS (SELECT id FROM c1), c3 AS (SELECT 1 AS id) SELECT * FROM a JOIN c2 ON a.id = c2.id",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql
+    "WITH c1 AS (SELECT id FROM t), c2 AS (SELECT id FROM c1) SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "cte",
+      :table nil,
+      :alias "c2",
+      :strategy "inner",
+      :sql
+      "WITH c1 AS (SELECT id FROM t), c2 AS (SELECT id FROM c1) SELECT COUNT(*) AS n FROM a JOIN c2 ON a.id = c2.id"}]}}
+  {:name "a CTE read in a join condition is kept",
+   :dialect "postgres",
+   :sql
+   "WITH k AS (SELECT id FROM t) SELECT * FROM a JOIN b ON a.id = b.id AND b.id IN (SELECT id FROM k)",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "WITH k AS (SELECT id FROM t) SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql
+      "WITH k AS (SELECT id FROM t) SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id AND b.id IN (SELECT id FROM k)"}]}}
+  {:name
+   "a comma join with a WHERE clause is refused, since its condition may be there",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b WHERE a.id = b.id",
+   :expected {:status "unsupported", :reason "comma-join"}}
+  {:name "a comma join with no WHERE clause counts the cross product",
+   :dialect "postgres",
+   :sql "SELECT * FROM a, b",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a, b"}]}}
+  {:name
+   "a comma join with a WHERE clause is refused where commas parse as CROSS",
+   :dialect "sqlite",
+   :sql "SELECT * FROM a, b WHERE a.id = b.id",
+   :expected {:status "unsupported", :reason "comma-join"}}
+  {:name
+   "an unaliased derived table after a comma counts where commas parse as CROSS",
+   :dialect "sqlite",
+   :sql "SELECT * FROM a, (SELECT 1 AS x)",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "derived",
+      :table nil,
+      :alias "",
+      :strategy "cross",
+      :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN (SELECT 1 AS x)"}]}}
+  {:name "a pivoted derived table is kept as written",
+   :dialect "snowflake",
+   :sql "SELECT * FROM (SELECT 1 AS x) d PIVOT (SUM(x) FOR y IN (1))",
+   :expected
+   {:status "ok",
+    :from {:source "derived", :table nil, :alias "d"},
+    :base_sql
+    "SELECT COUNT(*) AS n FROM (SELECT 1 AS x) AS d PIVOT(SUM(x) FOR y IN (1))",
+    :steps []}}]}

@@ -300,6 +300,39 @@
       (whole-query (first stmts) dialect)
       (throw (unsupported "unparseable")))))
 
+(defn- referenced-with
+  "The WITH clause `with-node` cut down to the CTEs that the FROM and JOIN clauses of `stmt` read, directly or through
+  other CTEs, or nil when they read none.
+  A statement that is not a SELECT with a FROM keeps `with-node` whole, for the refusals to judge.
+  Port of `_referenced_with`."
+  [stmt with-node dialect]
+  ;; Master's steps ran without the WITH clause, so a CTE the steps never read must not refuse them.
+  (let [from-node (when (instance? Expressions$Select stmt)
+                    (ast/arg stmt "from_"))]
+    (if-not (and with-node from-node)
+      with-node
+      (let [cte-name #(effective-name (ast/this (ast/arg % "alias")) dialect)
+            ctes     (into {} (map (juxt cte-name identity)) (ast/expressions with-node))
+            reads    (fn [node]
+                       (into #{}
+                             (comp (filter #(and (instance? Expressions$Identifier (ast/this %))
+                                                 (empty? (ast/text % "db"))
+                                                 (empty? (ast/text % "catalog"))))
+                                   (map #(effective-name (ast/this %) dialect))
+                                   (filter ctes))
+                             (ast/find-all node Expressions$Table)))
+            wanted   (loop [wanted #{}
+                            todo   (into #{} (mapcat reads) (cons from-node (ast/arg stmt "joins")))]
+                       (if-let [cte (first todo)]
+                         (recur (conj wanted cte)
+                                (into (disj todo cte) (remove wanted) (reads (ast/this (ctes cte)))))
+                         wanted))]
+        (when (seq wanted)
+          (doto (ast/copy with-node)
+            (ast/set-arg! "expressions" (into []
+                                              (comp (filter (comp wanted cte-name)) (map ast/copy))
+                                              (ast/expressions with-node)))))))))
+
 (defn- join-refusal
   "Why the SELECT `stmt`, run under `with-node`, cannot have its joins rebuilt from its FROM and JOIN clauses, or nil."
   [stmt with-node]
@@ -320,7 +353,13 @@
       "unsupported-source"
 
       (some unsupported-join? joins)
-      "unsupported-join")))
+      "unsupported-join"
+
+      ;; The condition of a comma or CROSS join, if it has one, is in WHERE, which the steps leave out, so its step
+      ;; would count the whole cross product.
+      (and (ast/arg stmt "where")
+           (some #(= "cross" (step-strategy %)) joins))
+      "comma-join")))
 
 (defn- statement-refusal
   "Why the parsed statement `stmt`, run under `with-node`, cannot have its join steps rebuilt, or nil.
@@ -358,7 +397,8 @@
   "The `ok` result of [[join-steps]].
   Throws a refusal, an `ex-info` with its reason under `::reason`, for a query whose joins cannot be rebuilt."
   [dialect sql]
-  (let [[stmt with-node] (parse-statement dialect sql)]
+  (let [[stmt with-node] (parse-statement dialect sql)
+        with-node        (referenced-with stmt with-node dialect)]
     (when-let [reason (statement-refusal stmt with-node)]
       (throw (unsupported reason)))
     (let [from-node (ast/arg stmt "from_")

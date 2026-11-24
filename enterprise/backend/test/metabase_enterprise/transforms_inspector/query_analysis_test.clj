@@ -179,17 +179,22 @@
             orders (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))]
         (is (= [[orders 0]] (step-counts result)))))))
 
-(deftest analyze-native-query-comma-join-counts-the-cross-product-test
+(deftest analyze-native-query-comma-join-test
   (mt/test-drivers (join-steps-drivers)
-    (testing "a comma join counts the cross product, since the steps leave out the WHERE clause that may join it"
-      (let [query    (lib/native-query
-                      (mt/metadata-provider)
-                      (str "SELECT o." (qf :orders :id) " "
-                           "FROM " (qt :orders) " o, " (qt :products) " pr "
-                           "WHERE pr." (qf :products :id) " = o." (qf :orders :product_id)))
-            result   (query-analysis/analyze-native-query (make-native-transform query) (test-sources))
-            orders   (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))
-            products (count-of (str "SELECT COUNT(*) FROM " (qt :products)))]
-        (is (=? {:join-structure [{:strategy :cross-join, :source-table (mt/id :products)}]}
-                result))
-        (is (= [[(* orders products)]] (step-counts result)))))))
+    (let [comma-join #(lib/native-query
+                       (mt/metadata-provider)
+                       (str "SELECT o." (qf :orders :id) " "
+                            "FROM " (qt :orders) " o, " (qt :products) " pr"
+                            %))
+          analyze    #(query-analysis/analyze-native-query (make-native-transform %) (test-sources))]
+      (testing "a comma join with no WHERE clause counts the cross product"
+        (let [result   (analyze (comma-join ""))
+              orders   (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))
+              products (count-of (str "SELECT COUNT(*) FROM " (qt :products)))]
+          (is (=? {:join-structure [{:strategy :cross-join, :source-table (mt/id :products)}]}
+                  result))
+          (is (= [[(* orders products)]] (step-counts result)))))
+      (testing "a comma join with a WHERE clause, which may hold its condition, has no join structure"
+        (let [result (analyze (comma-join (str " WHERE pr." (qf :products :id) " = o." (qf :orders :product_id))))]
+          (is (nil? (:join-structure result)))
+          (is (contains? (get-in result [:visited-fields :all]) (mt/id :orders :product_id))))))))

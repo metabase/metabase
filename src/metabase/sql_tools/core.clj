@@ -312,7 +312,7 @@
   The `:from` map describes the FROM source, and its `:sql` counts that source's rows.
   Each of `:steps` describes one join, in query order.
   A step's `:sql` counts the rows of the FROM source joined with every join up to and including it.
-  The WHERE clause and everything else outside FROM and JOIN are left out, and a WITH clause is kept.
+  The WHERE clause and everything else outside FROM and JOIN are left out, and so are the CTEs they don't read.
   For an outer join the `:sql` returns a second count in the same row: the rows where that join found a match.
 
   A source's `:source` is `:table`, `:cte` or `:derived`.
@@ -320,7 +320,7 @@
   Its `:alias` is the alias, or the table's name, normalized for `driver`.
 
   A query whose joins cannot be rebuilt this way returns `{:unsupported reason}`.
-  A comma join is a `:cross-join` step, which counts the cross product even when the WHERE clause joins it.
+  A comma or CROSS join is a `:cross-join` step, and is refused as `:comma-join` when the query has a WHERE clause.
   A query whose generated SQL would write or lock is refused as `:not-read-only`.
   The other reasons are `:set-operation`, `:not-a-select`, `:no-from`, `:nested-join`, `:unsupported-join`,
   `:unsupported-source`, `:parameters`, `:large-literal-list` and `:unparseable`.
