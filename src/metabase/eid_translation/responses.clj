@@ -47,7 +47,7 @@
   "For `model`, `{:references {column model-of-the-rows-it-names} :structures #{column} :exports {column export-fn}}`:
   the columns holding the ids of rows with refs; the columns holding structures, which the walk does not enter; and,
   of those, the ones the `:structures` of its eid-translation spec names, with the `:export` fn of their serialization
-  transforms."
+  transforms, and the ones its `:transforms` names, with theirs."
   [model]
   (let [spec       (serialization/spec model)
         eid-spec   (eid-translation.spec/spec model)
@@ -59,11 +59,11 @@
                                    [[column parent]])
                                  (:references eid-spec)))]
     {:references references
-     :structures (into #{}
+     :structures (into (set (keys (:transforms eid-spec)))
                        (comp (remove (fn [[column transform]] (or (:model transform) (contains? references column))))
                              (map key))
                        (:transform spec))
-     :exports    (into {}
+     :exports    (into (update-vals (:transforms eid-spec) :export)
                        (keep (fn [column] (some->> (get-in spec [:transform column :export]) (vector column))))
                        (:structures eid-spec))}))
 
