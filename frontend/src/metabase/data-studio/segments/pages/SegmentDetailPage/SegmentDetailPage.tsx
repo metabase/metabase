@@ -49,7 +49,7 @@ export function SegmentDetailPage({
   const isDirty = useMemo(
     () =>
       description !== (savedSegment.description ?? "") ||
-      !Lib.areLegacyQueriesEqual(definition, savedSegment.definition),
+      !Lib.areQueriesEqual(definition, savedSegment.definition),
     [description, definition, savedSegment],
   );
 

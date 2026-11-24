@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
@@ -36,8 +37,8 @@
   "Get or create container collection for automagic dashboards in a given location."
   [location]
   (or (xrays.db/automagic-dashboards-collection location)
-      (xrays.db/insert-collection! {:name "Automatically Generated Dashboards"
-                                    :location location})))
+      (first (collection/create-collections! [{:name     "Automatically Generated Dashboards"
+                                               :location location}]))))
 
 (defn colors
   "A vector of colors used for coloring charts. Uses [[appearance/application-colors]] for user choices."
@@ -128,29 +129,32 @@
    :dashboard_tab_id       nil
    :visualization_settings {}})
 
+(defn- cards-query-fields
+  "The query-derived columns of each of `cards`, nil for one without a query, read at once with ref validation off, as
+  X-Rays adds filters and expressions that use columns from joins before adding the joins."
+  [cards]
+  (let [with-query (filterv :dataset_query cards)
+        fields     (binding [lib.schema/*HACK-disable-ref-validation* true]
+                     (queries/populate-cards-query-fields
+                      (mapv #(hash-map :dataset_query (lib-be/normalize-query (:dataset_query %))) with-query)))
+        by-card    (zipmap with-query (map #(select-keys % [:query_type :database_id :table_id]) fields))]
+    (mapv by-card cards)))
+
 (mu/defn- add-normal-dashcard :- ::ads/dashboard
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard :- ::ads/dashboard
    {query :dataset_query, :keys [title description width height id] :as dashcard} :- ::ads/card-template
+   query-fields :- [:maybe :map]
    [x y] :- [:tuple nat-int? nat-int?]]
-  (let [query-fields (when query
-                       ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of
-                       ;; filters and whatever that use columns from joins before adding the joins themselves (same
-                       ;; with expressions), which is technically invalid at the time it happens but ends up resulting
-                       ;; in a valid query at the end of the day. Maybe one day we can rework this code to be saner
-                       (binding [lib.schema/*HACK-disable-ref-validation* true]
-                         (-> {:dataset_query (lib-be/normalize-query query)}
-                             queries/populate-card-query-fields
-                             (select-keys [:query_type :database_id :table_id]))))
-        card         (merge
-                      {:creator_id    api/*current-user-id*
-                       :dataset_query query
-                       :description   description
-                       :name          title
-                       :collection_id nil
-                       :id            (or id (gensym))}
-                      (visualization-settings dashcard)
-                      query-fields)]
+  (let [card (merge
+              {:creator_id    api/*current-user-id*
+               :dataset_query query
+               :description   description
+               :name          title
+               :collection_id nil
+               :id            (or id (gensym))}
+              (visualization-settings dashcard)
+              query-fields)]
     (update dashboard :dashcards conj
             (merge (dashcard-defaults)
                    {:col                    y
@@ -256,11 +260,11 @@
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
                     group (+ group-heading-height))]
-    (reduce (fn [[dashboard grid] dashcard]
+    (reduce (fn [[dashboard grid] [dashcard query-fields]]
               (let [xy (dashcard-position grid start-row dashcard)]
                 [(if (text-card? dashcard)
                    (add-text-card dashboard dashcard xy)
-                   (add-normal-dashcard dashboard dashcard xy))
+                   (add-normal-dashcard dashboard dashcard query-fields xy))
                  (fill-grid grid xy dashcard)]))
             (if group
               (let [xy   [(- start-row 2) 0]
@@ -272,7 +276,7 @@
                 [(add-text-card dashboard card xy)
                  (fill-grid grid xy card)])
               [dashboard grid])
-            cards)))
+            (map vector cards (cards-query-fields cards)))))
 
 (mu/defn- shown-cards :- [:sequential ::ads/card-template]
   "Pick up to `max-cards` with the highest `:card-score`.

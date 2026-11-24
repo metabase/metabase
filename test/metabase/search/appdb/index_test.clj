@@ -9,6 +9,7 @@
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.queries.models.card :as card]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.core :as search]
@@ -23,6 +24,7 @@
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [metabase.util.json :as json]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -98,7 +100,7 @@
         ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
         (is (= (if fulltext? 2 1) (count (search.index/search "Projected Revenue"))))
         (is (= 0 (count (search.index/search "Protected Avenue"))))
-        (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
+        (card/update-cards! [{:id (t2/select-one-pk :model/Card :name "Projected Revenue") :name "Protected Avenue"}])
         (is (= (if fulltext? 1 0) (count (search.index/search "Projected Revenue"))))
         (is (= 1 (count (search.index/search "Protected Avenue"))))
         ;; Delete hooks are remove for now, over performance concerns.
@@ -118,7 +120,7 @@
             db-name-fn     (comp :database_name legacy-input)
             alternate-name (str (random-uuid))]
         (is (= "Indexed Database" (db-name-fn)))
-        (t2/update! :model/Database :id db-id {:name alternate-name})
+        (database/update-databases! [{:id db-id :name alternate-name}])
         (is (= alternate-name (db-name-fn)))))))
 
 (deftest partial-word-test
@@ -387,9 +389,10 @@
                      :model/Card       {model-id :id}  {:type "model"
                                                         ;; :collection_id = coll-id
                                                         :collection_id coll-id}
-                     :model/Action     {action-id :id} {:name       action-name
-                                                        :type       "query"
-                                                        :model_id   model-id
+                     :model/Action     {action-id :id} {:name          action-name
+                                                        :type          "query"
+                                                        :collection_id coll-id
+                                                        :model_id      model-id
                                                         ;; :model_created_at = yesterday
                                                         :created_at yesterday
                                                         ;; :model_updated_at = yesterday

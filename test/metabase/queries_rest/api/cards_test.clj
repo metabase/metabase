@@ -111,13 +111,10 @@
                  :model/Card {c8 :id} {}
                  :model/Card {c9 :id} {}
                  :model/Card {c10 :id} {}]
-    (let [count1 (t2/with-call-count [c]
-                   (mt/user-http-request :rasta :post 200 "cards/dashboards"
-                                         {:card_ids [c1]})
-                   (c))
-          count2 (t2/with-call-count [c]
-                   (mt/user-http-request :rasta :post 200 "cards/dashboards"
-                                         {:card_ids [c1 c2 c3 c4 c5 c6 c7 c8 c9 c10]})
-                   (c))]
-      ;; in practice these should be equal but we'll provide a little wiggle room
-      (is (< count2 (* 2 count1))))))
+    (let [counted (fn [card-ids]
+                    (t2/with-call-count [call-count]
+                      (mt/user-http-request :rasta :post 200 "cards/dashboards" {:card_ids card-ids})
+                      (call-count)))]
+      (counted [c1])
+      (is (= (counted [c1])
+             (counted [c1 c2 c3 c4 c5 c6 c7 c8 c9 c10]))))))

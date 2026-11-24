@@ -1,7 +1,7 @@
 (ns metabase.revisions.specs.dashboard-test
   (:require
    [clojure.test :refer :all]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.spec :as revisions.spec]
    [metabase.revisions.test-util :as revisions.tu]
@@ -302,8 +302,8 @@
          :model/Action               action    {:model_id (:id card)
                                                 :type     :implicit
                                                 :name     "An action"}]
-        (let [columns    (disj (set (revisions.spec/tracked-columns :model/DashboardCard))
-                               :dashboard_id :id)
+        (let [columns    (disj (set (revisions.spec/schema-keys :metabase.dashboards.schema/dashcard.revision))
+                               :dashboard_id :id :series)
               update-col (fn [col value]
                            (cond
                              (= col :action_id)              (:id action)
@@ -334,7 +334,7 @@
       (mt/with-temp
         [:model/Dashboard     dashboard {:name "A Dashboard"}
          :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}]
-        (let [columns    (disj (set (revisions.spec/tracked-columns :model/DashboardTab))
+        (let [columns    (disj (set (revisions.spec/schema-keys :metabase.dashboards.schema/dashboard-tab.revision))
                                :dashboard_id :id)
               update-col (fn [_col value]
                            (cond
@@ -399,7 +399,7 @@
                 :width               "fixed"}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
-        (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
+        (dashboard/remove-dashcards! [(:id dashboard-card)])
         (t2/update! :model/Dashboard :id dashboard-id
                     {:name               "Revert Test"
                      :auto_apply_filters false

@@ -12,6 +12,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.transform :as transform]
    [toucan2.core :as t2])
   (:import
    (org.postgresql.util PGobject)))
@@ -152,7 +153,7 @@
             (ingest! "transform" [:= :this.id transform-id])
             (is (some? (fetch-one "transform" :model_id (str transform-id)))
                 "Transform should be in the search index after ingestion")
-            (t2/delete! :model/Transform :id transform-id)
+            (transform/delete-transforms! [transform-id])
             (is (nil? (fetch-one "transform" :model_id (str transform-id)))
                 "Transform should be removed from the search index after deletion")))))))
 

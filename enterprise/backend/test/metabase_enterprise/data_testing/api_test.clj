@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -447,3 +449,48 @@
           (is (not (t2/exists? :model/TransformTest :name "id only"))))
         (testing "control: the same input declaring every column the transform reads is saved"
           (t2/delete! :model/TransformTest :id (:id (create 200 "complete" (no-schema "ID" "NAME")))))))))
+
+(deftest a-revert-to-a-state-that-an-edit-would-refuse-is-refused-transform-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform {subject-id :id} (transform)]
+      ;; Created through the model, which does not validate, so that its creation revision has no inputs. A revision is
+      ;; recorded only under a current user.
+      (let [test-id     (mt/with-current-user (mt/user->id :crowberto)
+                          (:id (first (data-testing.models/create-transform-tests! [{:transform_id subject-id
+                                                                                     :name         "No inputs"
+                                                                                     :inputs       []
+                                                                                     :expectations (mapv #(update % :type keyword) expectations)
+                                                                                     :creator_id   (mt/user->id :crowberto)}]))))
+            path        (str "ee/transform-test/" test-id)
+            creation-id (->> (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" test-id))
+                             (m/find-first :is_creation)
+                             :id)]
+        (try
+          (is (pos-int? creation-id) "premise: the test has a creation revision")
+          (mt/user-http-request :crowberto :put 200 path {:inputs inputs})
+          (testing "control: an edit back to no inputs is refused"
+            (is (=? {:error-code "transform-test.missing-inputs"}
+                    (mt/user-http-request :crowberto :put 400 path {:inputs []}))))
+          (testing "a revert to the creation revision is refused the same way, and leaves the inputs"
+            (is (=? {:error-code "transform-test.missing-inputs"}
+                    (mt/user-http-request :crowberto :post 400 "revision/revert"
+                                          {:entity "transform-test" :id test-id :revision_id creation-id})))
+            (is (= 1 (count (:inputs (t2/select-one :model/TransformTest :id test-id))))))
+          (testing "a revert of the name alone is not validated, so it succeeds where an edit of the inputs is refused"
+            (let [revision-id (-> (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" test-id))
+                                  first
+                                  :id)]
+              (mt/user-http-request :crowberto :put 200 path {:name "Renamed"})
+              ;; The transform now reads a column that the inputs lack.
+              (t2/update! :model/Transform :id subject-id
+                          {:source {:type  :query
+                                    :query (lib/native-query (mt/metadata-provider)
+                                                             "SELECT ID, NAME, EMAIL FROM PUBLIC.PEOPLE")}})
+              (testing "premise: an edit of the inputs is refused"
+                (is (=? {:error-code "transform-test.missing-input-columns"}
+                        (mt/user-http-request :crowberto :put 400 path {:inputs inputs}))))
+              (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                    {:entity "transform-test" :id test-id :revision_id revision-id})
+              (is (= "No inputs" (t2/select-one-fn :name :model/TransformTest :id test-id)))))
+          (finally
+            (t2/delete! :model/TransformTest :id test-id)))))))

@@ -681,26 +681,24 @@
 
 (deftest ^:parallel card-query-bulk-loads-metadata-test
   (testing "card-query bulk-loads the value-source Card's metadata up front, so resolving the value field's column hits
-            the provider cache instead of fetching one entity at a time (no N+1)"
-    (let [mp           (mt/metadata-provider)
-          orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-      (mt/with-temp [:model/Card card {:database_id     (mt/id)
-                                       :table_id        (mt/id :orders)
-                                       :type            :question
-                                       :dataset_query   orders-query
-                                       :result_metadata (lib/returned-columns orders-query)}]
-        (let [card        (t2/select-one :model/Card :id (:id card))
-              value-field [:field "TOTAL" {:base-type :type/Float}]]
-          ;; The 6 batched loads are:
-          ;; - the source Card
-          ;; - the source Database
-          ;; - the Card's result-metadata Fields
-          ;; - those Fields' FK targets
-          ;; - the FK-target Tables
-          ;; - those Tables' columns
-          ;; This count is constant -- it must NOT grow with the number of columns/Tables (that would be the N+1 this
-          ;; bulk-loading exists to prevent).
-          (is (= 6 (lib-be/with-metadata-provider-cache
-                     (t2/with-call-count [call-count]
-                       (#'custom-values/can-get-card-values? (#'custom-values/card-query (:id card) (:dataset_query card)) value-field)
-                       (call-count))))))))))
+            the provider cache instead of fetching one entity at a time (no N+1): a Card with more columns and more FK
+            target Tables takes the same number of loads"
+    (let [mp            (mt/metadata-provider)
+          table-query   #(lib/query mp (lib.metadata/table mp (mt/id %)))
+          card-defaults (fn [table]
+                          {:database_id     (mt/id)
+                           :table_id        (mt/id table)
+                           :type            :question
+                           :dataset_query   (table-query table)
+                           :result_metadata (lib/returned-columns (table-query table))})]
+      (mt/with-temp [:model/Card {reviews-card-id :id} (card-defaults :reviews)
+                     :model/Card {orders-card-id :id}  (card-defaults :orders)]
+        (let [counted (fn [card-id value-field]
+                        (let [card (t2/select-one :model/Card :id card-id)]
+                          (lib-be/with-metadata-provider-cache
+                            (t2/with-call-count [call-count]
+                              (#'custom-values/can-get-card-values? (#'custom-values/card-query (:id card) (:dataset_query card)) value-field)
+                              (call-count)))))]
+          (counted reviews-card-id [:field "RATING" {:base-type :type/Integer}])
+          (is (= (counted reviews-card-id [:field "RATING" {:base-type :type/Integer}])
+                 (counted orders-card-id [:field "TOTAL" {:base-type :type/Float}]))))))))

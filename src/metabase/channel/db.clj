@@ -3,15 +3,10 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as app-db]
-   [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(def ^:private ChannelRow
-  "A whole Channel row for insert or update."
-  ::channel.schema/channel.update)
 
 (mu/defn channels
   "Every Channel."
@@ -28,21 +23,29 @@
   [channel-name :- :string]
   (t2/exists? :model/Channel :name channel-name))
 
-(mu/defn insert-channel!
-  "Insert the Channel `row` and return the inserted instance."
-  [row :- ChannelRow]
-  (t2/insert-returning-instance! :model/Channel row))
-
 (mu/defn channel
   "The Channel with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Channel :id [:auto/param id]))
 
-(mu/defn update-channel!
-  "Apply `changes` to the Channel with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- ChannelRow]
-  (t2/update! :model/Channel :id id changes))
+(defn- text-type
+  "The SQL type to cast a text parameter to, for the app DB."
+  []
+  (case (app-db/db-type)
+    :postgres :text
+    :h2       :varchar
+    :char))
+
+(mu/defn deactivated-name-clause
+  "The HoneySQL expression for the name of a Channel once it is deactivated, which frees its unique name:
+  `DEACTIVATED_<id> <name>` cut to 254 characters, where the name is `new-name`, the one the update gives, or the
+  stored one when it is nil, and the stored `name` is read only when the update does not assign it."
+  [new-name :- [:maybe :string]]
+  [:substring
+   [:concat "DEACTIVATED_" :id " " (if new-name
+                                     [:cast [:auto/param new-name] (text-type)]
+                                     :name)]
+   1 254])
 
 (mu/defn accepted-admin-emails
   "The emails of the active personal superusers who have logged in at least once, in id order."
@@ -79,11 +82,6 @@
                                       [:= :p.group_id :pg.id]
                                       [:= :p.object permission-path]]}]
                  :group-by [:pgm.user_id]}))
-
-(mu/defn delete-pulse-channels-for-channel!
-  "Delete the PulseChannels of the Channel with `channel-id`, returning the number deleted."
-  [channel-id :- ms/PositiveInt]
-  (t2/delete! :model/PulseChannel :channel_id channel-id))
 
 (mu/defn database
   "The Database with `database-id`, or nil."

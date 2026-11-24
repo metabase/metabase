@@ -3,7 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase-enterprise.search.semantic.db :as semantic-search.db]
+   [metabase-enterprise.search.semantic.models.token-tracking :as semantic.models.token-tracking]
    [metabase-enterprise.search.semantic.util :as semantic.u]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
@@ -22,7 +22,7 @@
   (when (semantic.u/semantic-search-available?)
     (log/info "Attempting to delete old semantic search usage data.")
     (let [t (Timestamp/valueOf (.minusMonths (java.time.LocalDateTime/now) storage-months))]
-      (semantic-search.db/delete-token-tracking-created-before! t))
+      (semantic.models.token-tracking/delete-token-tracking-for-cleanup! t))
     (log/info "Semantic search old data cleanup successful.")))
 
 (task/defjob SemanticSearchUsageTrimmer

@@ -298,6 +298,14 @@
   [instances]
   (enqueue-hook-selectors! instances true))
 
+(defn reindex-documents!
+  "Enqueue the re-indexing of the documents of `search-models`, a set of search model names, that `instances` feed,
+  whatever changed."
+  [instances search-models]
+  (when (supports-index?)
+    (when-let [updates (seq (filter (comp search-models first) (hook-selectors instances true)))]
+      (search.ingestion/ingest-maybe-async! updates))))
+
 (defn feeds-documents?
   "Whether [[bulk-update!]] would enqueue anything for `instances`, which a superseded moderation review, for one, does
   not, since the hook it would trigger requires `most_recent`."

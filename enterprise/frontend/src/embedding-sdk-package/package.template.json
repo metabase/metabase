@@ -1,6 +1,6 @@
 {
   "name": "@metabase/embedding-sdk-react",
-  "version": "0.66.0-alpha.0",
+  "version": "0.66.0-alpha.1",
   "sdkRelease": {
     "distTag": "66-alpha",
     "tagAsLatest": false

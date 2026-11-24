@@ -5,6 +5,8 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,11 +17,15 @@
 (t2/deftransforms :model/SemanticSearchTokenTracking
   {:request_type mi/transform-keyword})
 
-(defn record-tokens
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn record-tokens
   "Records `total-tokens` used by `model` for `request-type`.
   A failed insert is logged and counted in `:metabase-search/semantic-token-tracking-failures` instead of thrown.
   An interruption still propagates."
-  [model request-type total-tokens]
+  [model        :- [:maybe :string]
+   request-type :- [:maybe [:or :keyword :string]]
+   total-tokens :- [:maybe :int]]
   (try
     (semantic-search.db/insert-token-tracking! {:model_name   model
                                                 :request_type request-type
@@ -32,6 +38,11 @@
     (catch Exception e
       (analytics/inc! :metabase-search/semantic-token-tracking-failures {:model model})
       (log/warnf e "Failed to record %s tokens for embedding model %s" total-tokens model))))
+
+(mu/defn delete-token-tracking-for-cleanup!
+  "Delete the SemanticSearchTokenTracking rows created before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (semantic-search.db/delete-token-tracking-for-cleanup! cutoff))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -111,3 +111,14 @@
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients  []
                                        mcp-apps-cors-custom-origins ""]
       (is (= "" (mcp.settings/mcp-apps-cors-origins))))))
+
+(deftest mcp-cors-settings-on-the-response-path-test
+  (testing "every response reads the MCP CORS settings, so whatever they hold, building headers neither throws nor logs"
+    (doseq [value ["claude,zed" "Claude, VSCode" "claude,\"chatgpt"]]
+      (testing (pr-str value)
+        (mt/with-temp-env-var-value! [mb-mcp-apps-cors-enabled-clients value]
+          (mt/with-log-messages-for-level [messages [metabase.mcp :trace]]
+            (dotimes [_ 3]
+              (doseq [origin [nil "https://abc.claudemcpcontent.com" "vscode-webview://abc123"]]
+                (get-cors-origin-header origin)))
+            (is (= [] (messages)))))))))

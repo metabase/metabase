@@ -4,7 +4,9 @@
    [metabase.api.common :as api]
    [metabase.comments.api-test :as at]
    [metabase.comments.models.comment :as comment]
+   [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.schema :as comments.schema]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -102,3 +104,48 @@
         (mt/with-test-user :lucky
           (is (false? (mi/can-read? (t2/hydrate comment :can_read))))
           (is (false? (mi/can-write? (t2/hydrate comment :can_write)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Document {doc-id :id} {}]
+    (mt/with-model-cleanup [:model/Comment]
+      (let [user-id (mt/user->id :rasta)
+            rows    (fn [n]
+                      (mapv (fn [_] {:target_type "document" :target_id doc-id :creator_id user-id
+                                     :content     {:type "text" :text (mt/random-name)}})
+                            (range n)))
+            fresh!  (fn [n]
+                      (let [ids (mapv :id (comment/create-comments! (rows n)))]
+                        (comment/update-comments! (mapv (fn [id] {:id id :is_resolved true}) (take-nth 2 ids)))
+                        ids))]
+        (testing "creating comments"
+          (events.tu/statement-count! #(comment/create-comments! (rows 1)))
+          (is (= (events.tu/statement-count! #(comment/create-comments! (rows 2)))
+                 (events.tu/statement-count! #(comment/create-comments! (rows 6))))))
+        (testing "updating comments, some already holding the new value"
+          (let [update! (fn [n]
+                          (let [ids (fresh! n)]
+                            (events.tu/statement-count!
+                             #(comment/update-comments! (mapv (fn [id] {:id id :is_resolved true}) ids)))))]
+            (update! 1)
+            (is (= (update! 2) (update! 6)))))
+        (testing "deleting comments, some already deleted"
+          (let [delete! (fn [n]
+                          (let [ids (fresh! n)]
+                            (comment/soft-delete-comments! (take-nth 2 ids))
+                            (events.tu/statement-count! #(comment/soft-delete-comments! ids))))]
+            (delete! 1)
+            (is (= (delete! 2) (delete! 6)))))
+        (testing "creating and deleting reactions"
+          (let [reactions (fn [n]
+                            (let [[{comment-id :id}] (comment/create-comments! (rows 1))]
+                              (mapv (fn [i] {:comment_id comment-id :user_id user-id :emoji (str "e" i)}) (range n))))
+                create!   (fn [n]
+                            (let [rows (reactions n)]
+                              (events.tu/statement-count! #(comment-reaction/create-reactions! rows))))
+                delete!   (fn [n]
+                            (let [ids (mapv :id (comment-reaction/create-reactions! (reactions n)))]
+                              (events.tu/statement-count! #(comment-reaction/delete-reactions! ids))))]
+            (create! 1)
+            (is (= (create! 2) (create! 6)))
+            (delete! 1)
+            (is (= (delete! 2) (delete! 6)))))))))

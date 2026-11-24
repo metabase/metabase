@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
+   [metabase.events.test-util :as events.tu]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -99,3 +101,40 @@
       (is (= "shared.py" (t2/select-one-fn :path :model/PythonLibrary :id id)))
       (t2/update! :model/PythonLibrary :id id {:source "def helper(): pass"})
       (is (= "def helper(): pass" (t2/select-one-fn :source :model/PythonLibrary :id id))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/PythonLibrary]
+    (let [create! (fn [n]
+                    (python-library/create-python-libraries! (mapv (fn [_] {:path (mt/random-name) :source "a = 1"}) (range n))))
+          counted (fn [write! n]
+                    (let [ids (mapv :id (create! n))]
+                      (events.tu/statement-count! #(write! ids))))
+          update! (fn [ids] (python-library/update-python-libraries! (mapv (fn [row-id] (assoc {:source "a = 2"} :id row-id)) ids)))]
+      (testing "creating libraries"
+        (let [creating #(events.tu/statement-count! (fn [] (create! %)))]
+          (creating 1)
+          (is (= (creating 2) (creating 6)))))
+      (testing "updating libraries"
+        (counted update! 1)
+        (is (= (counted update! 2) (counted update! 6))))
+      (testing "deleting libraries"
+        (counted python-library/delete-python-libraries! 1)
+        (is (= (counted python-library/delete-python-libraries! 2)
+               (counted python-library/delete-python-libraries! 6)))))))
+
+(deftest create-python-libraries-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/PythonLibrary]
+    (let [[plain flagged] (python-library/create-python-libraries! [{:path "plain_lib" :source "x = 1"}
+                                                                    {:path "flagged_lib" :source "y = 2" :is_default true}])]
+      (is (false? (t2/select-one-fn :is_default :model/PythonLibrary :id (:id plain))))
+      (is (true? (t2/select-one-fn :is_default :model/PythonLibrary :id (:id flagged)))))))
+
+(deftest mixed-state-update-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/PythonLibrary]
+    (let [counted (fn [n]
+                    (let [libraries (python-library/create-python-libraries!
+                                     (mapv (fn [i] {:path (mt/random-name) :source (if (even? i) "a = 9" "a = 1") :is_default (odd? i)}) (range n)))]
+                      (events.tu/statement-count!
+                       #(python-library/update-python-libraries! (mapv (fn [row-id] (assoc {:source "a = 9"} :id row-id)) (mapv :id libraries))))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))
