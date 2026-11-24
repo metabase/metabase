@@ -155,25 +155,6 @@
    :content-type "image/png"
    :content      url})
 
-(defn- assoc-attachment-booleans [part-configs parts]
-  (for [{{result-card-id :id} :card :as result} parts
-        :let [result-dashboard-card-id (:id (:dashcard result))
-              is-visualizer-part (render.util/is-visualizer-dashcard? (:dashcard result))
-              ;; For visualizer dashcards we match on both card_id and dashboard_card_id
-              ;; To disambiguate between regular cards and regular cards that were turned into visualizer dashcards
-              noti-dashcard (or (and is-visualizer-part
-                                     (m/find-first (fn [config]
-                                                     (and (= (:card_id config) result-card-id)
-                                                          (= (:dashboard_card_id config) result-dashboard-card-id)))
-                                                   part-configs))
-                                ;; Fall back to just matching on card_id
-                                (m/find-first (fn [config]
-                                                (= (:card_id config) result-card-id))
-                                              part-configs))]]
-    (if result-card-id
-      (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :format_rows :pivot_results]))
-      result)))
-
 (defn- icon-bundle
   "Bundle an icon.
 
@@ -240,16 +221,19 @@
                 subscriptions
                 card]}     payload
         template           (or template (payload-type->default-template payload_type))
-        timezone           (channel.render/defaulted-timezone card)
+        timezone           (or (:timezone payload) (channel.render/defaulted-timezone card))
         rendered-card      (render-part timezone card_part {:channel.render/include-title? true
                                                             :channel.render/disable-links? (boolean (:disable_links notification_card))})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         card-attachments   (map make-message-attachment (:attachments rendered-card))
-        result-attachments (email.result-attachment/result-attachment
-                            (first (assoc-attachment-booleans
-                                    [(assoc notification_card :include_csv true :format_rows true)]
-                                    [card_part]))
-                            creator_id)
+        result-part        (email.result-attachment/card-attachment-part notification_card card_part)
+        download-level     (if (contains? payload :download_levels)
+                             (first (:download_levels payload))
+                             (first (email.result-attachment/download-levels [result-part] creator_id)))
+        providers          (if (contains? payload :metadata_providers)
+                             (:metadata_providers payload)
+                             (email.result-attachment/metadata-providers [result-part]))
+        result-attachments (email.result-attachment/result-attachment result-part download-level providers)
         attachments        (concat [icon-attachment] card-attachments result-attachments)
         html-content       (html (:content rendered-card))
         ;; card_part, not payload: find-goal-value reads the part's :result and :goal-values, which only card_part has
@@ -311,23 +295,28 @@
                 parameters
                 dashboard]} payload
         template            (or template (payload-type->default-template payload_type))
-        timezone            (some->> dashboard_parts (some :card) channel.render/defaulted-timezone)
+        timezone            (or (:timezone payload)
+                                (some->> dashboard_parts (some :card) channel.render/defaulted-timezone))
         ;; We want to walk dashboard_parts once and not retain Hiccup structures in memory to reduce memory water mark
         ;; and avoid OOMs. Hence, we:
         ;; 1. Accumulate the attachments in an imperative way.
         ;; 2. Convert Hiccup structure into HTML immediately.
         ;; 3. Later, we combine all HTMLs using ordinary string mashing.
+        parts               (email.result-attachment/assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription) dashboard_parts)
+        providers           (if (contains? payload :metadata_providers)
+                              (:metadata_providers payload)
+                              (email.result-attachment/metadata-providers parts))
         [merged-attachments
          result-attachments
          html-contents]     (reduce
-                             (fn [[merged-attachments result-attachments html-contents] part]
+                             (fn [[merged-attachments result-attachments html-contents] [part download-level]]
                                ;; Isolate each part: realizing one part's Hiccup (here, via `html`) must not
                                ;; abort the whole subscription. On failure, substitute the error placeholder so
                                ;; the remaining cards still deliver (#74007).
                                (try
                                  (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
                                                                                                  :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
-                                       result-attachment             (email.result-attachment/result-attachment part creator_id)]
+                                       result-attachment             (email.result-attachment/result-attachment part download-level providers)]
                                    [(merge merged-attachments attachments)
                                     (into result-attachments result-attachment)
                                     (when-not attachment_only
@@ -339,7 +328,9 @@
                                     (when-not attachment_only
                                       (conj html-contents (html (:content (channel.render/error-rendered-part)))))])))
                              [{} [] []]
-                             (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription) dashboard_parts))
+                             (map vector parts (if (contains? payload :download_levels)
+                                                 (:download_levels payload)
+                                                 (email.result-attachment/download-levels parts creator_id))))
         icon-attachment     (make-message-attachment (first (icon-bundle :dashboard)))
         card-attachments    (map make-message-attachment merged-attachments)
         pdf-attachment      (when include_pdf

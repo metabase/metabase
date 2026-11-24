@@ -14,6 +14,7 @@
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
 
@@ -54,23 +55,31 @@
 ;;; ----------------------------------------- Sync + evaluate + notify -----------------------------------------------
 
 (defn sync-and-evaluate!
-  "Fetch advisories, re-evaluate all, and send repeat notifications."
+  "Fetch advisories, re-evaluate all, and send repeat notifications. Records the outcome of the run in
+   `security-center-last-sync-attempted-at` and `security-center-last-sync-error`, and moves
+   `security-center-last-synced-at` only when the fetch succeeds."
   []
   (when (premium-features/security-center-enabled?)
     (log/info "Syncing security advisories")
-    (try
-      (fetch/sync-advisories!)
-      (settings/security-center-last-synced-at! (t/offset-date-time))
-      (catch Exception e
-        (log/warnf "Error fetching advisories from HM: %s" (ex-message e))))
-    (try
-      (matching/evaluate-all-advisories!)
-      (catch Exception e
-        (log/warnf "Error re-evaluating advisories: %s" (ex-message e))))
-    (try
-      (send-repeat-notifications!)
-      (catch Exception e
-        (log/warnf "Error sending repeat notifications: %s" (ex-message e))))
+    (let [attempted-at (t/offset-date-time)
+          sync-error   (try
+                         (fetch/sync-advisories!)
+                         nil
+                         (catch Exception e
+                           (log/error e "Error syncing advisories from HM")
+                           (or (ex-message e) (str e))))]
+      (try
+        (matching/evaluate-all-advisories!)
+        (catch Exception e
+          (log/warnf "Error re-evaluating advisories: %s" (ex-message e))))
+      (try
+        (send-repeat-notifications!)
+        (catch Exception e
+          (log/warnf "Error sending repeat notifications: %s" (ex-message e))))
+      (setting/set-many!
+       (cond-> {:security-center-last-sync-attempted-at attempted-at
+                :security-center-last-sync-error        sync-error}
+         (nil? sync-error) (assoc :security-center-last-synced-at attempted-at))))
     (metrics/refresh-metrics!)))
 
 (task/defjob SyncAdvisories

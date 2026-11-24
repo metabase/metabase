@@ -2,10 +2,11 @@
   "Tests for transform tag CRUD API endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.models.transform-tag]
-   [metabase.transforms.test-util :refer [with-transforms-api-users!]]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transforms-api-users!]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -109,3 +110,19 @@
                                            {:name "test"}))))
       (testing "DELETE /api/transform-tag/:tag-id"
         (is (string? (mt/user-http-request :rasta :delete 403 "transform-tag/1")))))))
+
+(deftest list-tags-statement-count-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-model-cleanup [:model/Transform :model/TransformTag]
+        (with-transforms-api-users! [user]
+          (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                        :perms/create-queries :query-builder-and-native}
+            (let [[few many] (transforms.tu/statements-at-two-sizes
+                              (fn [n]
+                                (t2/delete! :model/TransformTag :name [:like "count test tag%"])
+                                (let [tag-ids (vec (t2/insert-returning-pks! :model/TransformTag
+                                                                             (for [i (range n)] {:name (str "count test tag " i)})))]
+                                  (transforms.tu/create-count-test-transforms! n (fn [i] {:tag_ids [(nth tag-ids i)]})))
+                                #(mt/user-http-request user :get 200 "transform-tag")))]
+              (is (= few many)))))))))

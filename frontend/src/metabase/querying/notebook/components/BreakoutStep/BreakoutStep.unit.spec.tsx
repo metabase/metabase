@@ -839,20 +839,22 @@ describe("BreakoutStep", () => {
       expect(getNextBreakouts()).toMatchObject([
         { longDisplayName: "Native products - Product → CREATED_AT: Month" },
       ]);
-      expect(Lib.toLegacyQuery(getNextQuery())).toMatchObject({
-        query: {
-          breakout: [
-            [
-              "field",
-              "CREATED_AT",
-              {
-                "base-type": "type/DateTimeWithLocalTZ",
-                "join-alias": "Native products - Product",
-                "temporal-unit": "month",
-              },
+      expect(Lib.toJsQuery(getNextQuery())).toMatchObject({
+        stages: [
+          {
+            breakout: [
+              [
+                "field",
+                {
+                  "base-type": "type/DateTimeWithLocalTZ",
+                  "join-alias": "Native products - Product",
+                  "temporal-unit": "month",
+                },
+                "CREATED_AT",
+              ],
             ],
-          ],
-        },
+          },
+        ],
       });
     });
   });

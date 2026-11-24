@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
@@ -16,11 +17,13 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.model-persistence.core :as model-persistence]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.sync.core :as sync]
    [metabase.upload.based-on-upload :as based-on-upload]
    [metabase.upload.db :as upload.db]
@@ -32,6 +35,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
@@ -205,7 +209,7 @@
 (mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
-   :- [:or :metabase.warehouse-schema.schema/table :metabase.warehouse-schema.schema/table.update]]
+   :- [:or :metabase.warehouse-schema.schema/table (mut/dissoc :metabase.warehouse-schema.schema/table.update :id)]]
   (if (str/blank? schema)
     name
     (str schema "." name)))
@@ -476,7 +480,9 @@
 (defn- set-display-names!
   [table-id field->display-name]
   (let [field->display-name (update-keys field->display-name (comp u/lower-case-en name))]
-    (upload.db/set-field-display-names! table-id field->display-name)))
+    (when-let [rows (not-empty (mapv #(select-keys % [:id :display_name])
+                                     (upload.db/field-display-name-changes table-id field->display-name)))]
+      (field/update-fields! rows))))
 
 (defn- can-create-upload-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
@@ -549,14 +555,17 @@
                                                        :schema       (not-empty schema)
                                                        :display_name display-name
                                                        :data_source  :upload})
-          _set_is_upload          (upload.db/mark-table-upload! (:id table))
+          _set_is_upload          (table/update-tables! [{:id (:id table) :is_upload      true
+                                                          :data_authority :authoritative
+                                                          :data_source    :upload
+                                                          :is_writable    true}])
           _sync                   (scan-and-sync-table! table)
           _set_names              (set-display-names! (:id table) columns)
           ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
           ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
           _                       (when (auto-pk-column? driver db)
                                     (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-                                      (upload.db/set-field-display-name! (:id auto-pk-field) (:name auto-pk-field))))]
+                                      (field/update-fields! [{:id (:id auto-pk-field) :display_name (:name auto-pk-field)}])))]
       {:table table
        :stats stats})))
 
@@ -632,17 +641,17 @@
                                                           :schema       schema-name
                                                           :table-name   table-name
                                                           :display-name display-name})
-            card              (queries/create-card!
-                               {:collection_id          collection-id
-                                :type                   :model
-                                :database_id            (:id database)
-                                :dataset_query          {:database (:id database)
-                                                         :query    {:source-table (:id table)}
-                                                         :type     :query}
-                                :display                :table
-                                :name                   card-name
-                                :visualization_settings {}}
-                               @api/*current-user*)
+            card              (first (queries.card/create-cards!
+                                      [{:collection_id          collection-id
+                                        :type                   :model
+                                        :dataset_query          (lib-be/normalize-query
+                                                                 {:database (:id database)
+                                                                  :query    {:source-table (:id table)}
+                                                                  :type     :query})
+                                        :display                :table
+                                        :name                   card-name
+                                        :visualization_settings {}
+                                        :creator_id             api/*current-user-id*}]))
             upload-seconds    (/ (u/since-ms timer) 1e3)
             stats             (assoc stats :upload-seconds upload-seconds)]
         (events/publish-event! :event/upload-create
@@ -743,20 +752,19 @@
   "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
   [table]
   ;; NOTE: It is important that this logic is kept in sync with `models-based-on-upload`
-  (when-let [model-ids (->> (upload.db/unarchived-models-for-table (:id table))
-                            (filter (comp #{(:id table)} based-on-upload/only-table-id))
-                            (map :id)
-                            seq)]
+  (when-let [models (->> (upload.db/unarchived-models-for-table (:id table))
+                         (filter (comp #{(:id table)} based-on-upload/only-table-id))
+                         seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage Lib.
-    (model-persistence/invalidate! model-ids)
+    (persisted-info/invalidate! (map :id models))
     ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
-    (doseq [id model-ids]
-      (let [card     (upload.db/card-query-and-metadata id)
-            ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
-            ;; the initial upload.
-            fix-name #(update % :display_name warehouse-schema.humanization/name->human-readable-name)
-            metadata (queries/refresh-metadata card {:update-fn fix-name})]
-        (upload.db/set-card-result-metadata! id metadata)))))
+    ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
+    ;; the initial upload.
+    (let [fix-name #(update % :display_name warehouse-schema.humanization/name->human-readable-name)]
+      (queries.card/update-cards! (vec (for [card models]
+                                         {:id              (:id card)
+                                          :result_metadata (queries/refresh-metadata card {:update-fn fix-name})}))
+                                  {:writer :sync}))))
 
 (defn- translate-type-keywords [m]
   (match/replace-all m
@@ -825,7 +833,7 @@
             (set-display-names! (:id table) (zipmap column-names display-names))
             (when create-auto-pk?
               (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-                (upload.db/set-field-display-name! (:id auto-pk-field) (:name auto-pk-field))))
+                (field/update-fields! [{:id (:id auto-pk-field) :display_name (:name auto-pk-field)}])))
             (invalidate-cached-models! table)
             (events/publish-event! (if replace-rows?
                                      :event/upload-replace
@@ -892,7 +900,7 @@
     (driver.conn/with-write-connection
       (driver/drop-table! driver (:id database) table-name))
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
-    (upload.db/deactivate-table! (:id table))
+    (table/update-tables! [{:id (:id table) :active false}])
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
     ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
     ;; relies on their absence from the tables being described during the database sync itself.
@@ -906,7 +914,7 @@
     ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
     ;; Note that this does not include cases where we join to this table, or even native queries which depend .
     (when archive-cards?
-      (upload.db/archive-cards-for-table! (:id table)))
+      (queries.card/update-cards! (mapv (fn [id] {:id id :archived true}) (upload.db/unarchived-card-ids-for-table (:id table)))))
     :done))
 
 (def update-action-schema

@@ -34,7 +34,10 @@
   [session-id  :- string?
    user        :- :metabase.users.schema/user
    device-info :- request/DeviceInfo]
-  (let [history-entry (login-history/record-login-history! session-id (u/the-id user) device-info)]
+  (let [history-entry (login-history/create-login-history!
+                       (merge {:user_id    (u/the-id user)
+                               :session_id session-id}
+                              (dissoc device-info :embedded :token_exchange)))]
     (when-not (or (:embedded device-info) (:token_exchange device-info))
       (maybe-send-login-from-new-device-email history-entry))
     (when-not (:last_login user)

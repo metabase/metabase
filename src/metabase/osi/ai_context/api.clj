@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.osi.db :as osi.db]
+   [metabase.osi.models.osi-ai-context :as osi-ai-context]
    [metabase.osi.schema :as osi.schema]
    [metabase.request.core :as request]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
@@ -97,7 +98,7 @@
   ;; Upsert on the normalized (stored) key so re-posting a relabelled card updates its one row.
   ;; update-or-insert! handles the compound key, the no-op re-PUT, and the concurrent-create race
   ;; (savepoint + single retry) centrally.
-  (osi.db/upsert-ai-context! (entity-retrieval/normalize-entity-type entity-type) entity-local-id ai_context)
+  (osi-ai-context/upsert-osi-ai-context! (entity-retrieval/normalize-entity-type entity-type) entity-local-id ai_context)
   (get-entry entity-type entity-local-id))
 
 (api.macros/defendpoint :post "/reconcile"
@@ -131,5 +132,5 @@
    _query-params]
   (api/check-superuser)
   (api/check-404 (get-entry entity-type entity-local-id))
-  (osi.db/delete-ai-context! (entity-retrieval/normalize-entity-type entity-type) entity-local-id)
+  (osi-ai-context/delete-osi-ai-context! (entity-retrieval/normalize-entity-type entity-type) entity-local-id)
   api/generic-204-no-content)

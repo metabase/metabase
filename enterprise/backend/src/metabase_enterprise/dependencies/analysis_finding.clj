@@ -4,12 +4,14 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
+   [metabase-enterprise.dependencies.models.analysis-finding-status :as models.analysis-finding-status]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase.dependencies.core :as dependencies]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -27,9 +29,14 @@
        sort
        vec))
 
-(mu/defn upsert-analysis!
-  "Analyze the Toucan entity `entity` with the `:analysis` of its spec and insert or replace its AnalysisFinding,
-  reusing the caller's metadata provider cache when it has one."
+(mu/defn analyze-entity :- [:map {:closed true}
+                            [:entity-type ::deps.dependency-types/dependency-types]
+                            [:entity-id   ms/PositiveInt]
+                            [:analysis    [:map {:closed true}
+                                           [:result          :boolean]
+                                           [:finding-details [:maybe [:set ::lib.schema.validate/error-with-source]]]]]]
+  "Analyze the Toucan entity `entity` with the `:analysis` of its spec, reusing the caller's metadata provider cache
+  when it has one, returning its type, id and the finding to record."
   [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
   (lib-be/with-metadata-provider-cache
     (let [model    (t2/model entity)
@@ -39,8 +46,9 @@
                           (dependencies.db/throw-unless-app-db-reachable! e)
                           (log/errorf "Error analyzing entity: %s" (ex-message e))
                           #{(lib/validation-exception-error (.getMessage e))}))]
-      (models.analysis-finding/upsert-analysis!
-       (dependencies/model-type model) (:id entity) (empty? results) results))))
+      {:entity-type (dependencies/model-type model)
+       :entity-id   (:id entity)
+       :analysis    {:result (empty? results) :finding-details results}})))
 
 (mu/defn record-failed-finding! :- :nil
   "Record `e` as the failed finding of the entity `entity-type` `entity-id`. Logs instead of throwing when that fails."
@@ -58,7 +66,7 @@
   "Count a failed analysis of the entity `entity-type` `entity-id`; the job gives up after `dependency-max-failures`."
   [entity-type :- ::dependencies.schema/entity-type
    entity-id   :- ms/PositiveInt]
-  (when (dependencies.db/record-analysis-finding-failure! entity-type entity-id (deps.settings/dependency-max-failures))
+  (when (models.analysis-finding-status/record-analysis-finding-failure! entity-type entity-id (deps.settings/dependency-max-failures))
     (log/warnf "Giving up on analyzing %s %s until it changes" (name entity-type) entity-id))
   nil)
 
@@ -69,7 +77,7 @@
   (reduce + (for [entity-type (analyzed-types)
                   :let        [ids (dependencies.db/analysis-finding-deleted-entity-ids entity-type batch-size)]]
               (if (seq ids)
-                (dependencies.db/delete-analysis-finding-statuses! entity-type ids)
+                (models.analysis-finding-status/delete-analysis-finding-statuses! entity-type ids)
                 0))))
 
 (mu/defn- take-pending-statuses! :- [:map-of ::deps.dependency-types/dependency-types
@@ -80,7 +88,7 @@
   (reduce (fn [taken entity-type]
             (let [remaining (- batch-size (reduce + (map count (vals taken))))
                   statuses  (when (pos? remaining)
-                              (dependencies.db/take-pending-analysis-finding-statuses!
+                              (models.analysis-finding-status/take-pending-analysis-finding-statuses!
                                entity-type remaining models.analysis-finding/*current-analysis-finding-version*
                                models.dependency/current-dependency-analysis-version))]
               (cond-> taken
@@ -88,10 +96,40 @@
           {}
           (analyzed-types)))
 
+(mu/defn- handle-analysis-failure! :- :nil
+  "Count the failure `e` to analyze the entity `entity-type` `entity-id`, recording it as its finding, rethrowing an
+  Error."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-id   :- ms/PositiveInt
+   e           :- (ms/InstanceOfClass Throwable)]
+  (dependencies.db/throw-unless-app-db-reachable! e)
+  (log/errorf "Analyzing %s %s failed: %s" (name entity-type) entity-id (ex-message e))
+  (record-failed-finding! entity-type entity-id e)
+  (record-analysis-failure! entity-type entity-id)
+  (when-not (instance? Exception e)
+    (throw e)))
+
+(mu/defn- store-analyses-and-clear! :- :nil
+  "Store the findings `analyses` of the entities of `entity-type`, a map of entity id to finding, then clear their
+  `stale` counts."
+  [entity-type :- ::dependencies.schema/entity-type
+   stale       :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
+   analyses    :- [:map-of ms/PositiveInt [:map {:closed true}
+                                           [:result          :boolean]
+                                           [:finding-details [:maybe
+                                                              [:set ::lib.schema.validate/error-with-source]]]]]]
+  (t2/with-transaction [_conn]
+    (models.analysis-finding/upsert-analyses! entity-type analyses)
+    (models.analysis-finding-status/clear-analysis-finding-statuses!
+     entity-type
+     (into {} (map (fn [id] [id (stale id)])) (keys analyses))
+     models.analysis-finding/*current-analysis-finding-version*))
+  nil)
+
 (mu/defn analyze-batch! :- nat-int?
-  "Analyze up to `batch-size` analyzable entities whose AnalysisFindingStatus counts a write, is missing or is outdated,
-  clearing each one's `stale` count unless a write raised it meanwhile, or counting its failure, returning how many it
-  took."
+  "Analyze up to `batch-size` analyzable entities whose AnalysisFindingStatus counts a write, is missing or is
+  outdated, clearing each one's `stale` count unless a write raised it meanwhile, or counting its failure, returning
+  how many it took, the findings of each type stored together, or for each entity when that fails."
   [batch-size :- pos-int?]
   ;; The cache spans the select too: reading an entity attaches a `MetadataProvider` to its query
   ;; (see `metabase.lib-be.models.transforms/transform-query`), so selecting outside the cache gives every entity in
@@ -100,23 +138,32 @@
     (lib-be/with-metadata-provider-cache
       (let [taken (take-pending-statuses! batch-size)]
         (doseq [[entity-type statuses] taken
-                :let   [stale (into {} (map (juxt :entity_id :stale)) statuses)]
-                entity (dependencies.db/readable-entities #(dependencies.db/entities entity-type %)
-                                                          (set (keys stale))
-                                                          (fn [entity-id e]
-                                                            (log/errorf "Reading %s %s failed: %s"
-                                                                        (name entity-type) entity-id (ex-message e))
-                                                            (record-failed-finding! entity-type entity-id e)
-                                                            (record-analysis-failure! entity-type entity-id)))]
+                :let [stale    (into {} (map (juxt :entity_id :stale)) statuses)
+                      entities (dependencies.db/readable-entities #(dependencies.db/entities entity-type %)
+                                                                  (set (keys stale))
+                                                                  (fn [entity-id e]
+                                                                    (log/errorf "Reading %s %s failed: %s"
+                                                                                (name entity-type) entity-id (ex-message e))
+                                                                    (record-failed-finding! entity-type entity-id e)
+                                                                    (record-analysis-failure! entity-type entity-id)))
+                      analyses (into {}
+                                     (keep (fn [entity]
+                                             (try
+                                               (let [analyzed (analyze-entity entity)]
+                                                 [(:entity-id analyzed) (:analysis analyzed)])
+                                               (catch Throwable e
+                                                 (handle-analysis-failure! entity-type (:id entity) e)
+                                                 nil))))
+                                     entities)]
+                :when (seq analyses)]
           (try
-            (upsert-analysis! entity)
-            (dependencies.db/clear-analysis-finding-status!
-             entity-type (:id entity) (stale (:id entity)) models.analysis-finding/*current-analysis-finding-version*)
+            (store-analyses-and-clear! entity-type stale analyses)
             (catch Throwable e
-              (dependencies.db/throw-unless-app-db-reachable! e)
-              (log/errorf "Analyzing %s %s failed: %s" (name entity-type) (:id entity) (ex-message e))
-              (record-failed-finding! entity-type (:id entity) e)
-              (record-analysis-failure! entity-type (:id entity))
               (when-not (instance? Exception e)
-                (throw e)))))
+                (throw e))
+              (doseq [[id analysis] analyses]
+                (try
+                  (store-analyses-and-clear! entity-type stale {id analysis})
+                  (catch Throwable e
+                    (handle-analysis-failure! entity-type id e)))))))
         (+ removed (reduce + (map count (vals taken))))))))

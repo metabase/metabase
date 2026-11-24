@@ -191,3 +191,25 @@
               ;; filter out dashboards unrelated to this test
               (filter #(= (:id %) dash-id)
                       (#'related/recommended-dashboards [card-1 card-2 card-3])))))))
+
+(deftest cards-sharing-dashboard-statement-count-test
+  (testing "cards-sharing-dashboard costs as many statements for 12 other Cards on the Dashboard as for 6"
+    (mt/with-temp [:model/Card      {card-id :id}      {}
+                   :model/Dashboard {dashboard-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id}]
+      (mt/with-model-cleanup [:model/Card]
+        (let [add-cards! (fn [n]
+                           (doseq [other-id (t2/insert-returning-pks! :model/Card
+                                                                      (repeatedly n #(mt/with-temp-defaults :model/Card)))]
+                             (t2/insert! :model/DashboardCard (merge (mt/with-temp-defaults :model/DashboardCard)
+                                                                     {:dashboard_id dashboard-id :card_id other-id}))))
+              counts     (fn []
+                           (mt/with-test-user :rasta
+                             (related/cards-sharing-dashboard {:id card-id})
+                             (t2/with-call-count [call-count]
+                               (is (= 5 (count (related/cards-sharing-dashboard {:id card-id}))))
+                               (call-count))))]
+          (add-cards! 6)
+          (let [small (counts)]
+            (add-cards! 6)
+            (is (= small (counts)))))))))

@@ -9,6 +9,7 @@ import { createMockState } from "__support__/state";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockDatabase,
   createMockSegment,
   createMockTable,
@@ -25,7 +26,7 @@ type SetupOpts = {
 const setup = ({ remoteSyncType, isTablePublished }: SetupOpts) => {
   const db = createMockDatabase();
   const table = createMockTable({
-    is_published: isTablePublished,
+    collection: isTablePublished ? createMockCollection() : null,
   });
   const segment = createMockSegment({
     name: "My wonderful segment",

@@ -22,63 +22,6 @@
 
 ;;; ------------------------------------------------ Findings -------------------------------------------------
 
-(def ^:private imbalanced-details
-  "What `sparse` and `crowded` freeze: the limit that was crossed and the unit it counts in. `empty`
-  builds on this."
-  [:map {:closed true}
-   [:threshold :int]
-   [:unit      :string]])
-
-(def ^:private finding-details
-  "The scan-time evidence blob each finding type freezes into `content_diagnostics_finding.details`.
-  Closed per type, so a checker can neither persist a key the serve layer never reads nor borrow one
-  belonging to a different finding type."
-  {:stale          [:map {:closed true} [:threshold_days :int]]
-   ;; a leaf (card, transform) freezes the threshold it crossed; a container roll-up (dashboard,
-   ;; document) names its slow culprit cards instead - never both
-   :slow           [:or
-                    [:map {:closed true} [:threshold_ms :int]]
-                    [:map {:closed true} [:slow_entity_ids [:sequential ::lib.schema.id/card]]]]
-   :duplicate_name [:map {:closed true}
-                    [:normalized_name      :string]
-                    [:duplicate_entity_ids [:sequential ms/PositiveInt]]]
-   ;; `as_of` is the empty card's last clean run - a temporal here, a string in the response, because it
-   ;; round-trips through the JSON blob
-   :empty          (conj imbalanced-details [:as_of {:optional true} ms/TemporalInstant])
-   :sparse         imbalanced-details
-   :crowded        imbalanced-details})
-
-(def ^:private finding-row-columns
-  "The columns every finding writes, whatever its type. `detected_at` and `invalidated_at` are absent by
-  design: the first takes the column default, the second is stamped later by invalidation."
-  [[:scan_id                :string]
-   [:entity_type            (into [:enum] cd.schema/entity-types)]
-   [:entity_id              ms/PositiveInt]
-   [:scope_collection_id    [:maybe ::lib.schema.id/collection]]
-   [:last_active_at         [:maybe ms/TemporalInstant]]
-   [:duration_ms            [:maybe :int]]
-   [:content_count          [:maybe :int]]
-   [:duplicate_count        [:maybe :int]]
-   [:entity_name            [:maybe :string]]
-   [:entity_created_at      [:maybe ms/TemporalInstant]]
-   [:entity_creator_id      [:maybe ::lib.schema.id/user]]
-   [:entity_creator_name    [:maybe :string]]
-   [:card_type              [:maybe :keyword]]
-   [:entity_collection_name [:maybe :string]]
-   [:entity_kind            [:maybe :keyword]]])
-
-(def ^:private FindingRow
-  "One `content_diagnostics_finding` row as a scan writes it, dispatched on `finding_type` so every row
-  is checked against its own type's `details`. A finding type with no arm fails here rather than
-  persisting a blob nothing can read."
-  (into [:multi {:dispatch :finding_type}]
-        (map (fn [[finding-type details]]
-               [finding-type (into [:map {:closed true}
-                                    [:finding_type [:= finding-type]]
-                                    [:details      details]]
-                                   finding-row-columns)]))
-        finding-details))
-
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
@@ -86,7 +29,7 @@
 
 (mu/defn insert-findings!
   "Insert one chunk of `content_diagnostics_finding` `rows`."
-  [rows :- [:sequential FindingRow]]
+  [rows :- [:sequential ::cd.schema/finding.create]]
   (t2/insert! :model/ContentDiagnosticsFinding rows))
 
 (mu/defn invalidate-superseded!
@@ -107,12 +50,21 @@
                  :set    {:invalidated_at (mi/now)}
                  :where  where}))
 
+(mu/defn invalidate-findings-by-ids!
+  "Stamp `invalidated_at` on the still-active findings among `ids`; returns the row count."
+  [ids :- [:sequential ms/PositiveInt]]
+  (let [now (mi/now)]
+    (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/ContentDiagnosticsFinding
+                                                            {:id [:in %] :invalidated_at nil}
+                                                            {:invalidated_at now}) ids)))
+
 (mu/defn active-finding-ids
   "The ids among `ids` of the still-active findings that also match `where`."
   [ids   :- [:sequential ms/PositiveInt]
    where :- vector?]
-  (t2/select-pks-set :model/ContentDiagnosticsFinding
-                     {:where [:and [:in :id ids] [:= :invalidated_at nil] where]}))
+  (mdb/select-batched-set #(t2/select-pks-set :model/ContentDiagnosticsFinding
+                                              {:where [:and [:in :id %] [:= :invalidated_at nil] where]})
+                          ids))
 
 (mu/defn findings-page
   "One page of findings matching `where`, sorted by `order-by`; `limit`/`offset` may be nil for no
@@ -188,26 +140,29 @@
   "The display context of the Collections with `collection-ids`: `description`, the `location` their
   breadcrumb anchor is parsed from, `personal_owner_id`, and the tree's `namespace`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :description :location :personal_owner_id :namespace]
-             :id [:in collection-ids]))
+  (mdb/select-batched #(t2/select [:model/Collection :id :description :location :personal_owner_id :namespace]
+                                  :id [:in %])
+                      collection-ids))
 
 (mu/defn collection-names-by-id
   "`{id → name}` for the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn :name [:model/Collection :id :name] :id [:in collection-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :name [:model/Collection :id :name] :id [:in %]) collection-ids))
 
 (mu/defn collection-namespaces-by-id
   "`{id → namespace}` for the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn :namespace [:model/Collection :id :namespace] :id [:in collection-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :namespace [:model/Collection :id :namespace] :id [:in %])
+                          collection-ids))
 
 (mu/defn collection-parent-ids-by-id
   "`{id → parent collection id}` for the Collections with `collection-ids`, parsed from `location`; nil
   for a collection at the root of its tree."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn (comp collection/location-path->parent-id :location)
-                    [:model/Collection :id :location]
-                    :id [:in collection-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn (comp collection/location-path->parent-id :location)
+                                             [:model/Collection :id :location]
+                                             :id [:in %])
+                          collection-ids))
 
 ;;; --------------------------------------------- Entities of a type ------------------------------------------
 
@@ -215,7 +170,7 @@
   "`{id → collection_id}` for the rows of `model` with `ids`."
   [model :- :keyword
    ids   :- [:set ms/PositiveInt]]
-  (t2/select-pk->fn :collection_id [model :id :collection_id] :id [:in ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :collection_id [model :id :collection_id] :id [:in %]) ids))
 
 (mu/defn entity-attrs-by-id
   "`{id → {:name :created_at :creator_id :type}}` for the rows of `model` with `ids`.
@@ -224,9 +179,11 @@
   [model       :- :keyword
    select-cols :- [:maybe [:sequential :keyword]]
    ids         :- [:set ms/PositiveInt]]
-  (t2/select-pk->fn #(select-keys % [:name :created_at :creator_id :type])
-                    (into [model] select-cols)
-                    :id [:in ids]))
+  (mdb/select-batched-map (fn [ids]
+                            (t2/select-pk->fn #(select-keys % [:name :created_at :creator_id :type])
+                                              (into [model] select-cols)
+                                              :id [:in ids]))
+                          ids))
 
 (mu/defn entity-context-rows
   "The `(id, collection_id)` rows of `model` with `ids`, plus the `extra-cols` its display context
@@ -234,13 +191,13 @@
   [model      :- :keyword
    extra-cols :- [:maybe [:sequential :keyword]]
    ids        :- [:set ms/PositiveInt]]
-  (t2/select (into [model :id :collection_id] extra-cols) :id [:in ids]))
+  (mdb/select-batched #(t2/select (into [model :id :collection_id] extra-cols) :id [:in %]) ids))
 
 (mu/defn entity-rows
   "The rows of `selectable` - a model, or a model with a column projection - with `ids`."
   [selectable :- [:or :keyword vector?]
    ids        :- [:set ms/PositiveInt]]
-  (t2/select selectable :id [:in ids]))
+  (mdb/select-batched #(t2/select selectable :id [:in %]) ids))
 
 (mu/defn document-owned-card-ids
   "The ids of every Card a Document owns."
@@ -254,15 +211,18 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   ;; the projection is what `add-common-name` reads - a bare model select would fetch every user
   ;; column to derive one field
-  (t2/select-pk->fn :common_name [:model/User :id :email :first_name :last_name]
-                    :id [:in user-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :common_name [:model/User :id :email :first_name :last_name]
+                                             :id [:in %])
+                          user-ids))
 
 (mu/defn user-contacts-by-id
   "`{id → {:id :common_name :email}}` for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn #(select-keys % [:id :common_name :email])
-                    [:model/User :id :email :first_name :last_name]
-                    :id [:in user-ids]))
+  (mdb/select-batched-map (fn [ids]
+                            (t2/select-pk->fn #(select-keys % [:id :common_name :email])
+                                              [:model/User :id :email :first_name :last_name]
+                                              :id [:in ids]))
+                          user-ids))
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
 
@@ -406,21 +366,23 @@
   `card-ids` as a primary dashcard. A card on several tabs yields several rows."
   [eligible-clause :- vector?
    card-ids        :- [:sequential ::lib.schema.id/card]]
-  (t2/query {:select [[:dc.dashboard_id :dashboard_id] [:dc.card_id :card_id]]
-             :from   [[:report_dashboardcard :dc]]
-             :join   [[:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-             :where  [:and eligible-clause [:in :dc.card_id card-ids]]}))
+  (mdb/select-batched #(t2/query {:select [[:dc.dashboard_id :dashboard_id] [:dc.card_id :card_id]]
+                                  :from   [[:report_dashboardcard :dc]]
+                                  :join   [[:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
+                                  :where  [:and eligible-clause [:in :dc.card_id %]]})
+                      card-ids))
 
 (mu/defn dashboard-series-card-pairs
   "The `(dashboard_id, card_id)` pairs where a Dashboard matching `eligible-clause` renders one of
   `card-ids` as a combined-series card layered onto a dashcard."
   [eligible-clause :- vector?
    card-ids        :- [:sequential ::lib.schema.id/card]]
-  (t2/query {:select [[:dc.dashboard_id :dashboard_id] [:s.card_id :card_id]]
-             :from   [[:dashboardcard_series :s]]
-             :join   [[:report_dashboardcard :dc] [:= :dc.id :s.dashboardcard_id]
-                      [:report_dashboard :d]      [:= :d.id :dc.dashboard_id]]
-             :where  [:and eligible-clause [:in :s.card_id card-ids]]}))
+  (mdb/select-batched #(t2/query {:select [[:dc.dashboard_id :dashboard_id] [:s.card_id :card_id]]
+                                  :from   [[:dashboardcard_series :s]]
+                                  :join   [[:report_dashboardcard :dc] [:= :dc.id :s.dashboardcard_id]
+                                           [:report_dashboard :d]      [:= :d.id :dc.dashboard_id]]
+                                  :where  [:and eligible-clause [:in :s.card_id %]]})
+                      card-ids))
 
 ;;; ------------------------------------------------- Documents -----------------------------------------------
 

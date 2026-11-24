@@ -10,6 +10,7 @@
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as temp-storage]
    [metabase.permissions.core :as perms]
+   [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -356,3 +357,42 @@
                                        :user_id      (mt/user->id :rasta)
                                        :dashboard_id dash-id
                                        :parameter_id "_PRICE_"))))))))))
+
+(defn- statements-of-execute-dashboard!
+  "The number of app DB statements of [[notification.payload.execute/execute-dashboard]] for a Dashboard with
+  `n-dashcards` DashboardCards and `n-series` series Cards on its first one, the query execution itself stubbed."
+  [n-dashcards n-series]
+  (mt/with-model-cleanup [:model/DashboardCardSeries :model/DashboardCard :model/Dashboard :model/Card]
+    (let [mp         (mt/metadata-provider)
+          query      (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+          card-ids   (mapv :id (t2/insert-returning-instances!
+                                :model/Card
+                                (for [i (range (+ n-dashcards n-series))]
+                                  {:name          (str "execute-dashboard count card " i)
+                                   :dataset_query query
+                                   :display       :table
+                                   :visualization_settings {}
+                                   :database_id   (mt/id)
+                                   :creator_id    (mt/user->id :rasta)})))
+          dash-id    (:id (first (t2/insert-returning-instances! :model/Dashboard
+                                                                 [{:name       "execute-dashboard count"
+                                                                   :creator_id (mt/user->id :rasta)}])))
+          dashcards  (t2/insert-returning-instances! :model/DashboardCard
+                                                     (for [i (range n-dashcards)]
+                                                       {:dashboard_id dash-id :card_id (card-ids i) :row (* 4 i) :col 0 :size_x 4 :size_y 4 :visualization_settings {}}))]
+      (t2/insert! :model/DashboardCardSeries
+                  (for [i (range n-series)]
+                    {:dashboardcard_id (:id (first dashcards)) :card_id (card-ids (+ n-dashcards i)) :position i}))
+      (mt/with-dynamic-fn-redefs [qp.dashboard/process-query-for-dashcard
+                                  (constantly {:status :completed :row_count 1 :data {:rows [[1]] :cols []}})]
+        (let [run! #(notification.payload.execute/execute-dashboard dash-id (mt/user->id :rasta) [])]
+          (run!)
+          (t2/with-call-count [call-count]
+            (run!)
+            (call-count)))))))
+
+(deftest execute-dashboard-statements-do-not-grow-test
+  (testing "reads of execute-dashboard do not grow with the number of dashcards"
+    (is (= (statements-of-execute-dashboard! 2 0) (statements-of-execute-dashboard! 6 0))))
+  (testing "reads of execute-dashboard do not grow with the number of series of a dashcard"
+    (is (= (statements-of-execute-dashboard! 2 2) (statements-of-execute-dashboard! 2 6)))))

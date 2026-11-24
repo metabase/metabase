@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.content :as content]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -123,6 +124,23 @@
             (is (= "Renamed remotely" (t2/select-one-fn :name :model/Card :id (:id other)))))
           (testing "a forced pull discards them"
             (is (=? {:status :success} (remote-sync.tu/pull! url v1 {:force? true})))
+            (is (= "Synced card" (t2/select-one-fn :name :model/Card :id (:id card))))))))))
+
+(deftest pull-skips-unmoved-tip-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Card       card   {:name "Synced card" :collection_id (:id synced)}]
+        (let [{v1 :version} (remote-sync.tu/push! url nil)]
+          (t2/update! :model/Card :id (:id card) {:name "Renamed locally"})
+          (testing "pull of unmoved tip reads no local documents and keeps local changes"
+            (mt/with-dynamic-fn-redefs [content/local-documents (fn [] (throw (ex-info "read local documents" {})))]
+              (is (=? {:status :success :version v1 :outcome {:kind "pull-skipped"}}
+                      (remote-sync.tu/pull! url v1))))
+            (is (= "Renamed locally" (t2/select-one-fn :name :model/Card :id (:id card)))))
+          (testing "forced pull of unmoved tip still discards local changes"
+            (is (=? {:status :success :version v1 :outcome {:kind "pulled" :count 1}}
+                    (remote-sync.tu/pull! url v1 {:force? true})))
             (is (= "Synced card" (t2/select-one-fn :name :model/Card :id (:id card))))))))))
 
 (deftest pull-refuses-to-remove-what-local-changes-depend-on-test

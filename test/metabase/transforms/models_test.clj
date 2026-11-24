@@ -6,8 +6,10 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.dag-run :as transforms.dag-run]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.models.transform-job :as transform-job]
@@ -96,22 +98,22 @@
           (testing "Transform created without creator_id defaults to internal user"
             (is (= config/internal-mb-user-id (:creator_id transform))))
           (testing "Initial tag order is preserved"
-            (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag1) (:id tag3)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag2) (:id tag1) (:id tag3)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag2) (:id tag1) (:id tag3)] (:tag_ids hydrated))
                   "Tags should be in the order specified")))
           (testing "Reordering tags preserves new order"
-            (transform.model/update-transform-tags! transform-id [(:id tag3) (:id tag1) (:id tag2)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag3) (:id tag1) (:id tag2)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids hydrated))
                   "Tags should be reordered correctly")))
           (testing "Adding and removing tags preserves order"
-            (transform.model/update-transform-tags! transform-id [(:id tag1) (:id tag4)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag1) (:id tag4)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag1) (:id tag4)] (:tag_ids hydrated))
                   "Should have only the specified tags in order")))
           (testing "Duplicate tags are deduplicated while preserving order"
-            (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag3) (:id tag2) (:id tag1)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag2) (:id tag3) (:id tag2) (:id tag1)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids hydrated))
                   "Duplicates removed, order preserved"))))))))
@@ -125,12 +127,12 @@
                      :model/TransformTag tag3 {:name "tag3"}]
         (let [job-id (:id job)]
           (testing "Initial tag order is preserved"
-            (transform-job/update-job-tags! job-id [(:id tag2) (:id tag1)])
+            (transform-job/update-transform-job! job-id {:tag_ids [(:id tag2) (:id tag1)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
               (is (= [(:id tag2) (:id tag1)] (:tag_ids hydrated))
                   "Tags should be in the order specified")))
           (testing "Reordering and adding tags preserves order"
-            (transform-job/update-job-tags! job-id [(:id tag1) (:id tag3) (:id tag2)])
+            (transform-job/update-transform-job! job-id {:tag_ids [(:id tag1) (:id tag3) (:id tag2)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
               (is (= [(:id tag1) (:id tag3) (:id tag2)] (:tag_ids hydrated))
                   "Tags should be reordered with new tag added"))))))))
@@ -242,9 +244,10 @@
         (testing "Can only add allowed content types"
           (is (some? (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id transforms)))))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Card can only go in Collections in the.*"
-                                (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)}))))
+                                (card/create-cards! [(merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)})])))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Transform can only go in Collections in the :transforms namespace."
-                                (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col))))))))))
+                                (transform.model/create-transforms!
+                                 [(assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col))]))))))))
 
 (deftest deleted-transform-preserves-runs-test
   (testing "Deleting a transform sets transform_id to NULL but preserves the run"
@@ -400,44 +403,32 @@
             (is (= 2 (:total result)))))))))
 
 (defn- started-run-attributes
-  "The attributes of a started run of each run model, linked to the Transform `transform-id` and the job `job-id`, with
-  snapshot values the insert hooks replace."
+  "The attributes of a started run of each run model, linked to the Transform `transform-id` and the job `job-id`."
   [transform-id job-id]
   {:model/TransformRun    {:transform_id        transform-id
-                           :transform_name      "ignored"
-                           :transform_entity_id "ignored"
                            :status              "started"
                            :run_method          "manual"
                            :is_active           true}
    :model/TransformJobRun {:job_id        job-id
-                           :job_name      "ignored"
-                           :job_entity_id "ignored"
                            :status        "started"
                            :run_method    "cron"
                            :start_time    #t "2025-09-01T10:00:00Z"
                            :is_active     true}
    :model/TransformDagRun {:source_transform_id        transform-id
-                           :source_transform_name      "ignored"
-                           :source_transform_entity_id "ignored"
                            :direction                  :downstream
                            :transform_count            1
                            :status                     :started
                            :start_time                 #t "2025-09-01T10:00:00Z"
                            :is_active                  true}})
 
-(deftest run-snapshot-columns-are-derived-on-insert-test
+(deftest started-runs-store-snapshot-columns-test
   (mt/with-temp [:model/Transform    {transform-id :id transform-name :name transform-entity-id :entity_id} {}
                  :model/TransformJob {job-id :id job-name :name job-entity-id :entity_id} {:name "Snapshot Job"}]
-    (let [attributes (started-run-attributes transform-id job-id)]
-      (mt/with-temp [:model/TransformRun    run     (:model/TransformRun attributes)
-                     :model/TransformJobRun job-run (:model/TransformJobRun attributes)
-                     :model/TransformDagRun dag-run (:model/TransformDagRun attributes)]
-        (is (=? {:transform_name transform-name, :transform_entity_id transform-entity-id}
-                (t2/select-one :model/TransformRun :id (:id run))))
-        (is (=? {:job_name job-name, :job_entity_id job-entity-id}
-                (t2/select-one :model/TransformJobRun :id (:id job-run))))
-        (is (=? {:source_transform_name transform-name, :source_transform_entity_id transform-entity-id}
-                (t2/select-one :model/TransformDagRun :id (:id dag-run))))))))
+    (mt/with-model-cleanup [:model/TransformJobRun :model/TransformDagRun]
+      (is (=? {:job_name job-name, :job_entity_id job-entity-id}
+              (transforms.job-run/start-run! job-id :manual)))
+      (is (=? {:source_transform_name transform-name, :source_transform_entity_id transform-entity-id}
+              (transforms.dag-run/start-dag-run! transform-id :downstream nil 1))))))
 
 (deftest runs-get-end-time-when-they-end-test
   (mt/with-temp [:model/Transform    {transform-id :id} {}

@@ -5,7 +5,6 @@
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -72,14 +71,7 @@
   "The rows of `model` with `ids`."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (t2/select model :id [:in ids]))
-
-(mu/defn update-row!
-  "Apply `changes` to the row of `model` with `id`, returning the number updated."
-  [model   :- :keyword
-   id      :- ms/PositiveInt
-   changes :- :map]
-  (t2/update! model :id id changes))
+  (mdb/select-batched #(t2/select model :id [:in %]) ids))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -90,13 +82,8 @@
   "Whether one of the Cards with `card-ids` is on the Table with `table-id`."
   [card-ids :- [:set ::lib.schema.id/card]
    table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/Card :id [:in card-ids] :table_id table-id))
-
-(mu/defn update-card!
-  "Apply `changes` to the Card with `card-id`, returning the number updated."
-  [card-id :- ::lib.schema.id/card
-   changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card :id card-id changes))
+  (boolean (some #(t2/exists? :model/Card :id [:in %] :table_id table-id)
+                 (mdb/select-partitions card-ids))))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
@@ -116,13 +103,14 @@
 (mu/defn active-fk-to-fields-exists?
   "Whether an active Field on an active Table points at one of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/exists? :model/Field {:from  [(t2/table-name :model/Field)]
-                            :join  [(t2/table-name :model/Table)
-                                    [:= :metabase_field.table_id :metabase_table.id]]
-                            :where [:and
-                                    [:in :metabase_field.fk_target_field_id field-ids]
-                                    [:= :metabase_field.active true]
-                                    [:= :metabase_table.active true]]}))
+  (boolean (some #(t2/exists? :model/Field {:from  [(t2/table-name :model/Field)]
+                                            :join  [(t2/table-name :model/Table)
+                                                    [:= :metabase_field.table_id :metabase_table.id]]
+                                            :where [:and
+                                                    [:in :metabase_field.fk_target_field_id %]
+                                                    [:= :metabase_field.active true]
+                                                    [:= :metabase_table.active true]]})
+                 (mdb/select-partitions field-ids))))
 
 (mu/defn sandbox-exists-for-table?
   "Whether a Sandbox is defined on the Table with `table-id`."

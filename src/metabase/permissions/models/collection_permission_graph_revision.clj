@@ -1,11 +1,15 @@
 (ns metabase.permissions.models.collection-permission-graph-revision
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.before-update :as t2.before-update]))
 
 (methodical/defmethod t2/table-name :model/CollectionPermissionGraphRevision [_model] :collection_permission_graph_revision)
 
@@ -37,6 +41,28 @@
   []
   (or (permissions.db/latest-collection-permission-graph-revision-id)
       0))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-collection-permission-graph-revisions!
+  "Insert the CollectionPermissionGraphRevision `rows` in one transaction and return them in order."
+  [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.create]]
+  (app-db/create-batched! :model/CollectionPermissionGraphRevision rows {}))
+
+(defn- check-revision-updates
+  "Throws unless every row of `updates` whose revision `id->stored` holds satisfies these rules:
+
+  - the hooks of the revision accept the row merged into its stored row"
+  [updates id->stored]
+  (doseq [{id :id :as row} updates
+          :let [stored (id->stored id)]
+          :when stored]
+    (t2.before-update/before-update :model/CollectionPermissionGraphRevision (merge stored (dissoc row :id)))))
+
+(mu/defn update-collection-permission-graph-revisions! :- :nil
+  "Apply the `rows`, each an `:id` and its changes, to their CollectionPermissionGraphRevisions in one transaction."
+  [rows :- [:sequential ::permissions.schema/collection-permission-graph-revision.update]]
+  (app-db/update-batched! :model/CollectionPermissionGraphRevision rows {:before-update check-revision-updates}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

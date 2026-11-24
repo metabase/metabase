@@ -27,7 +27,7 @@ export function MeasureList({ table }: MeasureListProps) {
       measureId,
     });
   const canWriteMeasures = useSelector((state) =>
-    getUserCanWriteMeasures(state, table.is_published),
+    getUserCanWriteMeasures(state, table.collection != null),
   );
   const onNewMeasureClick = () => {
     // Unjustified type cast. FIXME

@@ -6,13 +6,14 @@
   `:last-edit-info` belong to the callers."
   (:require
    [clojure.set :as set]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
@@ -26,9 +27,14 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
@@ -87,16 +93,17 @@
    [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:width               {:optional true} [:maybe ::dashboards.schema/dashboard.width]]
-   [:auto_apply_filters  {:optional true} [:maybe :boolean]]])
+   [:auto_apply_filters  {:optional true} [:maybe :boolean]]
+   [:dashcards           {:optional true} [:maybe [:sequential (mut/dissoc ::dashboards.schema/dashboard-card.update :id)]]]])
 
 (mu/defn create-dashboard! :- :map
-  "Creates a Dashboard owned by the current user after its create check, calls `:in-transaction`, when given, with the
-  inserted row inside the creating transaction and returns the row."
+  "Creates a Dashboard owned by the current user after its create check, with the `:dashcards` of `attrs` when it has
+  some, and returns the row, publishing the create event of the Dashboard last."
   ([attrs :- NewDashboard]
    (create-dashboard! attrs nil))
   ([{:keys [name description parameters cache_ttl collection_id collection_position
-            width auto_apply_filters]} :- NewDashboard
-    {:keys [in-transaction]}           :- [:maybe [:map {:closed true} [:in-transaction {:optional true} ifn?]]]]
+            width auto_apply_filters dashcards]} :- NewDashboard
+    opts                                          :- :metabase.events.schema/write-opts]
    (let [dashboard-data (cond-> {:name                name
                                  :description         description
                                  :parameters          (or parameters [])
@@ -109,15 +116,13 @@
                           (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
          _              (api/create-check :model/Dashboard dashboard-data)
          _              (check-new-references (constantly no-references) {:parameters parameters})
-         dash           (events/with-batched-events (t2/with-transaction [_conn]
-                                                      ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                                                      ;; collection to change position, check that and fix up if needed
-                                                      (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
-                                                      ;; Ok, now save the Dashboard
-                                                      (let [dash (dashboards.db/insert-dashboard! dashboard-data)]
-                                                        (when in-transaction
-                                                          (in-transaction dash))
-                                                        dash)))]
+         dash           (t2/with-transaction [_conn]
+                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                          ;; collection to change position, check that and fix up if needed
+                          (collection/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
+                          (first (dashboard/create-dashboards! [(cond-> dashboard-data
+                                                                  (seq dashcards) (assoc :dashcards dashcards))]
+                                                               opts)))]
      (analytics/track-event! :snowplow/dashboard
                              {:event        :dashboard-created
                               :dashboard-id (u/the-id dash)})
@@ -193,29 +198,165 @@
                                          (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
 
-(defn- create-dashcards!
-  [dashboard dashcards]
-  (doseq [card-id (into #{} (comp (mapcat dashcard-card-ids) (filter pos-int?)) dashcards)]
-    (api/check-not-archived (dashboards.db/card card-id)))
+(defn- dashboard-id->param-field-ids
+  "Get the set of Field IDs referenced by the parameters in this Dashboard."
+  [dashboard-or-id]
+  (let [dash (-> (dashboards.db/dashboard (u/the-id dashboard-or-id))
+                 (t2/hydrate [:dashcards :card]))]
+    (params/dashcards->param-field-ids (:dashcards dash))))
+
+(defn- update-field-values-for-on-demand-dbs!
+  "If the parameters have changed since last time this Dashboard was saved, we need to update the FieldValues
+   for any Fields that belong to an 'On-Demand' synced DB."
+  [old-param-field-ids new-param-field-ids]
+  (when (and (seq new-param-field-ids)
+             (not= old-param-field-ids new-param-field-ids))
+    (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
+      (log/info "Referenced Fields in Dashboard params have changed: Was:" old-param-field-ids
+                "Is Now:" new-param-field-ids
+                "Newly Added:" newly-added-param-field-ids)
+      (sync.field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))
+
+(defn- update-on-demand-field-values-of-new-dashboard!
+  "Update the FieldValues of the Fields that the parameters of the new Dashboard with `dashboard-id` use, for those that
+  belong to an 'On-Demand' synced DB."
+  [dashboard-id]
+  (update-field-values-for-on-demand-dbs! #{} (dashboard-id->param-field-ids dashboard-id)))
+
+(defn- legacy-result-metadata-for-query
+  "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
+  [query]
+  ;; card result_metadata is persisted in legacy shape; Lib-shape migration pending
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (qp.metadata/legacy-result-metadata query api/*current-user-id*))
+
+(defn- new-card?
+  "Whether `card` is a Card to create: it has a query and is not one of `id->existing-card`."
+  [id->existing-card card]
+  (and (-> card :dataset_query not-empty)
+       (not (and (integer? (:id card)) (get id->existing-card (:id card))))))
+
+(defn- assign-slots
+  "`dashcards` with a `::slot`, its position among the new Cards in order, on each Card and series Card to create."
+  [id->existing-card dashcards]
+  (let [n    (volatile! -1)
+        slot (fn [card] (if (new-card? id->existing-card card) (assoc card ::slot (vswap! n inc)) card))]
+    (mapv (fn [dashcard]
+            (-> dashcard
+                (update :card #(some-> % slot))
+                (update :series #(some->> % (mapv slot)))))
+          dashcards)))
+
+(defn- new-card-row
+  "The row to create the Card `card` from."
+  [card]
+  (->> (-> card
+           (update :result_metadata #(or % (-> card
+                                               :dataset_query
+                                               legacy-result-metadata-for-query)))
+           (dissoc :id ::slot
+                   :public_uuid :made_public_by_id
+                   :enable_embedding :embedding_params)
+           (assoc :creator_id api/*current-user-id*))
+       (lib/normalize ::queries.schema/card.create)))
+
+(defn- create-new-cards!
+  "Creates the new Cards of `dashcards`, each of which has its `::slot`, in one call and returns them in slot order."
+  [dashcards]
+  (let [cards (into [] (comp (mapcat (fn [{:keys [card series]}] (cons card series)))
+                             (filter ::slot))
+                    dashcards)]
+    (query-perms/check-run-permissions-for-queries (mapv :dataset_query cards))
+    (if (seq cards) (queries.card/create-cards! (mapv new-card-row cards)) [])))
+
+(defn- save-card!
+  [id->existing-card created-cards card]
+  (cond
+    ;; If this is a pre-existing card, just return it
+    (and (integer? (:id card)) (get id->existing-card (:id card)))
+    (do
+      (api/read-check (get id->existing-card (:id card)))
+      card)
+
+    ;; Don't save text cards
+    (::slot card)
+    (nth created-cards (::slot card))))
+
+(defn- check-dashcard-parameter-mapping-permissions
+  [dashcards]
+  (let [mappings       (for [{:keys [card_id parameter_mappings]} dashcards
+                             mapping parameter_mappings]
+                         (assoc mapping ::card-id (or (:card_id mapping) card_id)))
+        card-ids       (into #{} (keep ::card-id) mappings)
+        card-id->query (when (seq card-ids)
+                         (dashboards.db/card-queries card-ids))
+        field-ids      (into []
+                             (keep (fn [{:keys [target] ::keys [card-id]}]
+                                     (when target
+                                       (params/param-target->field-id target {:dataset_query (card-id->query card-id)}))))
+                             mappings)]
+    (query-perms/check-parameter-field-permissions field-ids)))
+
+(defn save-transient-dashboard!
+  "Save a denormalized description of `dashboard`."
+  [dashboard parent-collection-id]
+  (queries/check-parameter-source-card-permissions
+   (lib/normalize [:maybe [:sequential :metabase.parameters.schema/parameter]] (:parameters dashboard)))
+  (t2/with-transaction [_conn]
+    (let [{dashcards      :dashcards
+           tabs           :tabs
+           :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
+          [dashboard]
+          (dashboard/create-dashboards!
+           [(->> (-> dashboard
+                     (dissoc :dashcards :tabs :rule :related
+                             :transient_name :transient_filters :param_fields :more
+                             :public_uuid :made_public_by_id
+                             :enable_embedding :embedding_params)
+                     (assoc :description description
+                            :collection_id parent-collection-id
+                            :creator_id api/*current-user-id*))
+                 (lib/normalize ::dashboards.schema/dashboard.create))])
+          dashcards  (for [dashcard dashcards]
+                       (-> dashcard
+                           (update :card #(some-> % (assoc :dashboard_id (:id dashboard)
+                                                           :collection_id parent-collection-id)))
+                           (update :series #(some->> % (mapv (fn [card] (assoc card :collection_id parent-collection-id)))))))
+          existing-card-ids (into [] (comp (mapcat (fn [{:keys [card series]}] (cons card series)))
+                                           (keep :id)
+                                           (filter pos-int?)
+                                           (distinct))
+                                  dashcards)
+          id->existing-card (m/index-by :id (t2/hydrate (dashboards.db/cards-by-ids existing-card-ids) :can_read))
+          dashcards        (assign-slots id->existing-card dashcards)
+          created-cards    (create-new-cards! dashcards)
+          dashcards-to-add (for [dashcard dashcards]
+                             (let [card     (some->> dashcard :card (save-card! id->existing-card created-cards))
+                                   series   (some->> dashcard :series (mapv #(save-card! id->existing-card created-cards %)))
+                                   dashcard (-> dashcard
+                                                (dissoc :card :id :creator_id)
+                                                (update :parameter_mappings
+                                                        (partial map #(assoc % :card_id (:id card))))
+                                                (assoc :series (into [] (comp (remove nil?) (map u/the-id)) series))
+                                                (assoc :card_id (:id card)))]
+                               dashcard))]
+      (check-dashcard-parameter-mapping-permissions dashcards-to-add)
+      (dashboard/update-dashboard! (:id dashboard)
+                                   {:tabs      (vec tabs)
+                                    :dashcards (vec dashcards-to-add)})
+      (update-on-demand-field-values-of-new-dashboard! (:id dashboard))
+      dashboard)))
+
+(defn- create-dashcards-check!
+  "Throws unless the current user may add the new `dashcards`."
+  [dashcards]
+  (let [card-ids (vec (into #{} (comp (mapcat dashcard-card-ids) (filter pos-int?)) dashcards))
+        id->card (m/index-by :id (dashboards.db/cards-by-ids card-ids))]
+    (doseq [card-id card-ids]
+      (api/check-not-archived (get id->card card-id))))
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
-                                         (assoc mapping :card-id card_id)))
-  ;; goals the dashboard already stores were read-checked when saved, whatever their display, so new dashcards may
-  ;; reuse them
-  (dashboard-card/with-copy-source-dashcards (:dashcards dashboard)
-    (api/check-500 (dashboard/add-dashcards! dashboard dashcards))))
-
-(defn- update-dashcards! [dashboard dashcards]
-  (check-updated-parameter-mapping-permissions (:id dashboard) dashcards)
-  ;; transform the dashcard data to the format of the DashboardCard model
-  ;; so update-dashcards! can compare them with existing dashcards
-  (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json dashcards))
-  dashcards)
-
-(defn- delete-dashcards! [dashcard-ids]
-  (let [dashboard-cards (dashboards.db/dashcards-by-ids dashcard-ids)]
-    (dashboard-card/delete-dashboard-cards! dashcard-ids)
-    dashboard-cards))
+                                         (assoc mapping :card-id card_id))))
 
 (defn- assert-dashcards-are-not-internal-to-other-dashboards
   "Reject `new-dashcards` that newly reference a question internal to another dashboard. Card ids the
@@ -229,26 +370,32 @@
                            (u/the-id existing-dashboard)
                            (set card-ids)))))))
 
-(defn- do-update-dashcards!
-  [dashboard current-cards new-cards]
-  (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
+(defn- check-dashcards
+  "Throw unless the current user may save `new-dashcards` as the dashcards of `dashboard`, hydrated with its current
+  `:dashcards`, the cards they newly expose, their parameter mappings and the cards they name having to be allowed
+  and the new dashcards addable, and return the `new-dashcards` with the changes that the model reads of JSON."
+  [dashboard new-dashcards]
+  (let [current-ids (into #{} (map :id) (:dashcards dashboard))
+        existing?   #(contains? current-ids (:id %))
+        to-create   (remove existing? new-dashcards)
+        to-update   (filter existing? new-dashcards)]
     ;; Grandfather against the dashboard as it was before this update, as REST does: a card that already showed
     ;; its events keeps them even if its tab is deleted and it is re-added elsewhere in the same request.
     (queries/check-newly-exposed-dashcards-timeline-permissions!
-     dashboard (:dashcards dashboard) (concat to-create to-update))
+     dashboard (:dashcards dashboard) new-dashcards)
     (queries/check-newly-exposed-dashcards-goal-permissions!
-     dashboard (:dashcards dashboard) (concat to-create to-update))
-    (dashboard-card/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
+     dashboard (:dashcards dashboard) new-dashcards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
     ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
     ;; references are grandfathered, so pre-existing foreign internal cards don't block saving (UXW-4870).
-    (assert-dashcards-are-not-internal-to-other-dashboards dashboard (concat to-create to-update))
-    (when (seq to-update)
-      (update-dashcards! dashboard to-update))
-    {:deleted-dashcards (when (seq to-delete)
-                          (delete-dashcards! (map :id to-delete)))
-     :created-dashcards (when (seq to-create)
-                          (create-dashcards! dashboard to-create))}))
+    (assert-dashcards-are-not-internal-to-other-dashboards dashboard new-dashcards)
+    (check-updated-parameter-mapping-permissions (:id dashboard) to-update)
+    (when (seq to-create)
+      (create-dashcards-check! to-create))
+    (mapv (fn [dashcard]
+            (-> (cond-> dashcard (existing? dashcard) dashboard-card/from-parsed-json)
+                (update :series #(into [] (comp (remove nil?) (map u/the-id)) %))))
+          new-dashcards)))
 
 (def UpdatedDashboardCard
   "Schema for one dashcard in a dashboard update payload. A negative `:id` marks a dashcard to
@@ -277,30 +424,30 @@
    [:position {:optional true} ::dashboards.schema/dashboard-tab.position]])
 
 (defn- track-dashcard-and-tab-events!
-  [{dashboard-id :id}
-   {:keys [created-dashcards
-           created-tab-ids deleted-tab-ids total-num-tabs]}]
-  ;; Dashcard events
-  (when (seq created-dashcards)
-    (doseq [{:keys [card_id]} created-dashcards
-            :when             (pos-int? card_id)]
+  [dashboard-id current-dashcards current-tabs dashcards tabs]
+  (let [current-dashcard-ids (into #{} (map :id) current-dashcards)
+        current-tab-ids      (into #{} (map :id) current-tabs)
+        new-tab-ids          (into #{} (map :id) tabs)
+        created-tab-ids      (remove current-tab-ids new-tab-ids)
+        deleted-tab-ids      (remove new-tab-ids current-tab-ids)]
+    (doseq [{:keys [id card_id]} dashcards
+            :when                (and (pos-int? card_id) (not (contains? current-dashcard-ids id)))]
       (analytics/track-event! :snowplow/dashboard
                               {:event        :question-added-to-dashboard
                                :dashboard-id dashboard-id
-                               :question-id  card_id})))
-  ;; Tabs events
-  (when (seq deleted-tab-ids)
-    (analytics/track-event! :snowplow/dashboard
-                            {:event          :dashboard-tab-deleted
-                             :dashboard-id   dashboard-id
-                             :num-tabs       (count deleted-tab-ids)
-                             :total-num-tabs total-num-tabs}))
-  (when (seq created-tab-ids)
-    (analytics/track-event! :snowplow/dashboard
-                            {:event          :dashboard-tab-created
-                             :dashboard-id   dashboard-id
-                             :num-tabs       (count created-tab-ids)
-                             :total-num-tabs total-num-tabs})))
+                               :question-id  card_id}))
+    (when (seq deleted-tab-ids)
+      (analytics/track-event! :snowplow/dashboard
+                              {:event          :dashboard-tab-deleted
+                               :dashboard-id   dashboard-id
+                               :num-tabs       (count deleted-tab-ids)
+                               :total-num-tabs (count tabs)}))
+    (when (seq created-tab-ids)
+      (analytics/track-event! :snowplow/dashboard
+                              {:event          :dashboard-tab-created
+                               :dashboard-id   dashboard-id
+                               :num-tabs       (count created-tab-ids)
+                               :total-num-tabs (count tabs)}))))
 
 (defn update-dashboard!
   "Update the Dashboard with `id` and return the saved row.
@@ -321,73 +468,68 @@
                                                 (dashboards.db/dashboard id)
                                                 [:dashcards :card]
                                                 :resolved-params))
-          changes-stats                      (atom nil)
           archived                           (atom nil)
+          tracked                            (volatile! nil)
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
           update-dashcards-and-tabs?         (contains? dash-updates :dashcards)
           dash-updates                       (api/updates-without-collection-when-archiving current-dash dash-updates)]
       (api/update-check current-dash dash-updates)
       (check-embedding-enabled current-dash dash-updates)
-      (api/check-500
-       (do
-         (events/with-batched-events (t2/with-transaction [_conn]
-                                       ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
-                                       ;; adjust the collection position of other dashboards in the collection
-                                       (api/maybe-reconcile-collection-position! (select-keys current-dash [:collection_id :collection_position]) (select-keys dash-updates [:collection_id :collection_position]))
-                                       (when-let [updates (not-empty
-                                                           (u/select-keys-when
-                                                            dash-updates
-                                                            :present #{:description :position :width :collection_id :collection_position :cache_ttl :embedding_type}
-                                                            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                                                       :embedding_params :archived :auto_apply_filters}))]
-                                         (dashboards.db/update-dashboard! id updates)
-                                         (when (some? (:collection_id updates))
-                                           (events/publish-event! :event/collection-touch {:collection-id (:collection_id updates) :user-id api/*current-user-id*}))
-                                         ;; Handle broken subscriptions, if any, when parameters changed
-                                         (when parameters
-                                           (reset! archived (pulse.broken-subscriptions/handle-broken-subscriptions!
-                                                             id original-params))))
-                                       (when update-dashcards-and-tabs?
-                                         (when (not (false? (:archived dash-updates)))
-                                           (api/check-not-archived current-dash))
-                                         (let [{current-dashcards :dashcards
-                                                current-tabs      :tabs
-                                                :as               hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
-                                               new-tabs                                  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
-                                               dashcards                                 (if (= 1 (count new-tabs))
-                                                                                           (let [single-tab-id (-> new-tabs first :id)]
-                                                                                             (mapv #(if (nil? (:dashboard_tab_id %))
-                                                                                                      (assoc % :dashboard_tab_id single-tab-id)
-                                                                                                      %)
-                                                                                                   dashcards))
-                                                                                           dashcards)
-                                               _                                         (when (and (seq new-tabs)
-                                                                                                    (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
-                                                                                           (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
-                                                                                                           {:status-code 400})))
-                                               {:keys [old->new-tab-id
-                                                       deleted-tab-ids]
-                                                :as   tabs-changes-stats}                (dashboard-tab/do-update-tabs! (:id current-dash) current-tabs new-tabs)
-                                               deleted-tab-ids                           (set deleted-tab-ids)
-                                               current-dashcards                         (remove (fn [dashcard]
-                                                                                                   (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))
-                                                                                                 current-dashcards)
-                                               new-dashcards                             (cond->> dashcards
-                                                                                           ;; fixup the temporary tab ids with the real ones
-                                                                                           (seq old->new-tab-id)
-                                                                                           (map (fn [card]
-                                                                                                  (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
-                                                                                                    (assoc card :dashboard_tab_id real-tab-id)
-                                                                                                    card))))
-                                               dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
-                                           (reset! changes-stats
-                                                   (merge
-                                                    (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
-                                                    (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))))
-         true))
+      (t2/with-transaction [_conn]
+        (let [updates (u/select-keys-when
+                       dash-updates
+                       :present #{:description :position :width :collection_id :collection_position :cache_ttl :embedding_type}
+                       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                                  :embedding_params :archived :auto_apply_filters})
+              parts   (volatile! nil)]
+          ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
+          ;; adjust the collection position of other dashboards in the collection
+          (collection/maybe-reconcile-collection-position! (select-keys current-dash [:collection_id :collection_position]) (select-keys dash-updates [:collection_id :collection_position]))
+          (when update-dashcards-and-tabs?
+            (when (not (false? (:archived dash-updates)))
+              (api/check-not-archived current-dash))
+            (let [{current-dashcards :dashcards
+                   current-tabs      :tabs
+                   :as               hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
+                  new-tabs                                  (map-indexed (fn [idx tab] (assoc (select-keys tab [:id :name :entity_id]) :position idx)) tabs)
+                  dashcards                                 (if (= 1 (count new-tabs))
+                                                              (let [single-tab-id (-> new-tabs first :id)]
+                                                                (mapv #(if (nil? (:dashboard_tab_id %))
+                                                                         (assoc % :dashboard_tab_id single-tab-id)
+                                                                         %)
+                                                                      dashcards))
+                                                              dashcards)]
+              (when (and (seq new-tabs)
+                         (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
+                (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
+                                {:status-code 400})))
+              (dashboard-card/check-unarchive-internal-dashboard-questions (:id current-dash) dashcards)
+              (dashboard-card/unarchive-internal-dashboard-questions! (:id current-dash) dashcards)
+              (let [dashcards (check-dashcards hydrated-current-dash dashcards)]
+                (vreset! parts {:tabs (vec new-tabs) :dashcards dashcards})
+                (vreset! tracked [current-dashcards current-tabs dashcards new-tabs]))))
+          (let [old-param-field-ids (when @parts (dashboard-id->param-field-ids id))]
+            (when (or (seq updates) @parts)
+              ;; goals the dashboard already stores were read-checked when saved, whatever their display, so new
+              ;; dashcards may reuse them
+              (dashboard-card/with-copy-source-dashcards (first @tracked)
+                (dashboard/update-dashboard! id (merge updates @parts))))
+            (when @parts
+              (update-field-values-for-on-demand-dbs! old-param-field-ids (dashboard-id->param-field-ids id))))
+          (when update-dashcards-and-tabs?
+            (dashboard-card/check-archive-internal-dashboard-questions id (:dashcards @parts))
+            (dashboard-card/archive-internal-dashboard-questions! id (:dashcards @parts)))
+          (when (seq updates)
+            (when (some? (:collection_id updates))
+              (events/publish-event! :event/collection-touch {:collection-id (:collection_id updates) :user-id api/*current-user-id*}))
+            ;; Handle broken subscriptions, if any, when parameters changed
+            (when parameters
+              (reset! archived (pulse.broken-subscriptions/handle-broken-subscriptions!
+                                id original-params))))))
       (let [dashboard (dashboards.db/dashboard id)]
-        (track-dashcard-and-tab-events! dashboard @changes-stats)
+        (when-let [[current-dashcards current-tabs dashcards new-tabs] @tracked]
+          (track-dashcard-and-tab-events! id current-dashcards current-tabs dashcards new-tabs))
         ;; In metadata, so a caller that returns the row, as the REST API does, can't send them on.
         (cond-> dashboard
           (seq @archived) (vary-meta assoc ::archived-subscriptions @archived))))))
@@ -500,17 +642,18 @@
 
 (defn remap-copied-goal-sources!
   "Points the goals of the copies in `id->new-card` (old card id -> its copy) that read a copied card at that copy,
-  saving each copy that changes. Returns `id->new-card` with the changes."
+  saving the copies that change with one call. Returns `id->new-card` with the changes."
   [id->new-card]
-  (let [id->new-id (update-vals id->new-card :id)]
-    (reduce-kv (fn [acc old-id {:keys [visualization_settings] :as new-card}]
-                 (let [viz (dynamic-goals/remap-goal-card-ids visualization_settings id->new-id)]
-                   (if (= viz visualization_settings)
-                     acc
-                     (do (dashboards.db/update-card! (:id new-card) {:visualization_settings viz})
-                         (assoc acc old-id (assoc new-card :visualization_settings viz))))))
-               id->new-card
-               id->new-card)))
+  (let [id->new-id (update-vals id->new-card :id)
+        changed    (into {}
+                         (keep (fn [[old-id {:keys [visualization_settings] :as new-card}]]
+                                 (let [viz (dynamic-goals/remap-goal-card-ids visualization_settings id->new-id)]
+                                   (when (not= viz visualization_settings)
+                                     [old-id (assoc new-card :visualization_settings viz)]))))
+                         id->new-card)]
+    (when (seq changed)
+      (queries.card/update-cards! (mapv #(select-keys % [:id :visualization_settings]) (vals changed))))
+    (merge id->new-card changed)))
 
 (defn remap-dashcard-goal-sources
   "Points the goals of `dashcards` that read a card in `id->new-card` (old card id -> its copy) at that copy."
@@ -519,37 +662,37 @@
     (map #(m/update-existing % :visualization_settings dynamic-goals/remap-goal-card-ids id->new-id) dashcards)))
 
 (defn- maybe-duplicate-cards
-  "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
+  "Takes the `decisions` of [[cards-to-copy]], and duplicates the cards both on the dashboard's cards and dashcardseries
+  as necessary, the Dashboard Questions of the new Dashboard `new-dashboard`, which has to exist for them.
 
   Returns `{:copied {old-card-id duplicated-card} :referenced {old-card-id card} :discarded [card]}` so that the new
-  dashboard can adjust accordingly. `:discarded` carries [[cards-to-copy]]'s redaction.
-
-  If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
-  [deep-copy? new-dashboard old-dashboard dest-coll-id]
+  dashboard can adjust accordingly. `:discarded` carries [[cards-to-copy]]'s redaction."
+  [decisions new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        dashcards                        (:dashcards old-dashboard)
-        {:keys [copy discard reference]} (add-goal-sources-to-copy
-                                          (cards-to-copy deep-copy? dashcards) deep-copy? dashcards)]
-    {:copied     (into {} (for [[id to-copy] copy]
-                            [id (queries/with-copy-source-card to-copy
-                                  (queries/create-card!
-                                   (cond-> to-copy
-                                     true                    (assoc :collection_id dest-coll-id)
-                                     same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                     (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
-                                   @api/*current-user*
-                                   false))]))
-     :discarded  discard
-     :referenced reference}))
-
-(defn- duplicate-tabs
-  [new-dashboard existing-tabs]
-  (let [new-tab-ids (dashboards.db/insert-dashboard-tabs!
-                     (for [tab existing-tabs]
-                       (-> tab
-                           (assoc :dashboard_id (:id new-dashboard))
-                           (dissoc :id :entity_id :created_at :updated_at))))]
-    (zipmap (map :id existing-tabs) new-tab-ids)))
+        {:keys [copy discard reference]} decisions
+        entries                          (vec (for [[id to-copy] copy]
+                                                {:id     id
+                                                 :source to-copy
+                                                 :card   (assoc to-copy :collection_id dest-coll-id)}))]
+    (when-not (queries.card/can-create-all? (mapv (juxt :card :source) entries))
+      (doseq [{:keys [source card]} entries]
+        (queries/with-copy-source-card source
+          (api/create-check :model/Card card)))
+      (api/check-403 false))
+    (let [rows   (mapv (fn [{:keys [source card]}]
+                         (queries.card/new-card-row
+                          (cond-> card
+                            same-collection?            (update :name #(str % " - " (tru "Duplicate")))
+                            (:dashboard_id source)      (assoc :dashboard_id (u/the-id new-dashboard)))
+                          api/*current-user-id*))
+                       entries)
+          copies (when (seq rows)
+                   (t2/with-transaction [_conn]
+                     (run! #(collection/maybe-reconcile-collection-position! (select-keys % [:collection_id :collection_position])) rows)
+                     (queries.card/create-cards! rows)))]
+      {:copied     (zipmap (map :id entries) copies)
+       :discarded  discard
+       :referenced reference})))
 
 (defn- update-colvalmap-setting
   "Visualizer dashcards have unique visualization settings which embed column id remapping metadata
@@ -653,30 +796,43 @@
                         :collection_id       collection_id
                         :collection_position collection_position
                         :width               (:width existing-dashboard)}
-        dashboard      (events/with-batched-events (t2/with-transaction [_conn]
-                                                     ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                                                     ;; collection to change position, check that and fix up if needed
-                                                     (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
-                                                     ;; Ok, now save the Dashboard
-                                                     (let [dash (dashboards.db/insert-dashboard! dashboard-data)
-                                                           {id->copied-card :copied
-                                                            id->referenced-card :referenced
-                                                            uncopied :discarded}
-                                                           (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
-                                                           id->new-card (remap-copied-goal-sources! id->copied-card)
-
-                                                           id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
-                                                                            (duplicate-tabs dash existing-tabs))]
-                                                       (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
-                                                                                                        id->new-card
-                                                                                                        id->referenced-card
-                                                                                                        id->new-tab-id))]
-                                                         (dashboard-card/with-copy-source-dashcards (:dashcards existing-dashboard)
-                                                           (api/check-500 (dashboard/add-dashcards!
-                                                                           dash (remap-dashcard-goal-sources dashcards id->new-card)))))
-                                                       (cond-> dash
-                                                         (seq uncopied)
-                                                         (assoc :uncopied uncopied)))))]
+        dashboard      (t2/with-transaction [_conn]
+                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                         ;; collection to change position, check that and fix up if needed
+                         (collection/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
+                         ;; Ok, now save the Dashboard
+                         (let [old-dashcards (:dashcards existing-dashboard)
+                               decisions     (add-goal-sources-to-copy (cards-to-copy is_deep_copy old-dashcards)
+                                                                       is_deep_copy
+                                                                       old-dashcards)
+                               questions?    (boolean (some :dashboard_id (vals (:copy decisions))))
+                               [created]     (when questions? (dashboard/create-dashboards! [dashboard-data]))
+                               {id->copied-card :copied
+                                id->referenced-card :referenced
+                                uncopied :discarded}
+                               (maybe-duplicate-cards decisions created existing-dashboard collection_id)
+                               id->new-card  (remap-copied-goal-sources! id->copied-card)
+                               tabs          (mapv #(select-keys % [:id :name :position]) (:tabs existing-dashboard))
+                               dashcards     (into []
+                                                   (map #(update % :series (fn [series] (into [] (comp (remove nil?) (map u/the-id)) series))))
+                                                   (remap-dashcard-goal-sources
+                                                    (update-cards-for-copy old-dashcards
+                                                                           id->new-card
+                                                                           id->referenced-card
+                                                                           (zipmap (map :id tabs) (map :id tabs)))
+                                                    id->new-card))
+                               parts         (cond-> {} (seq tabs) (assoc :tabs tabs) (seq dashcards) (assoc :dashcards dashcards))
+                               dash          (dashboard-card/with-copy-source-dashcards old-dashcards
+                                               (if questions?
+                                                 (do (when (seq parts)
+                                                       (dashboard/update-dashboard! (:id created) parts))
+                                                     created)
+                                                 (first (dashboard/create-dashboards! [(merge dashboard-data parts)]))))]
+                           (when (seq dashcards)
+                             (update-on-demand-field-values-of-new-dashboard! (:id dash)))
+                           (cond-> dash
+                             (seq uncopied)
+                             (assoc :uncopied uncopied))))]
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
                              :dashboard-id (u/the-id dashboard)})

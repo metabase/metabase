@@ -1,47 +1,39 @@
 (ns metabase.dashboards.revisions
-  "What a Dashboard needs of the revisions beyond its columns: its revert, which puts back its tabs and dashcards, and
-  the description of what changed in it."
+  "What a Dashboard needs of the revisions beyond its columns: its snapshot, which nests its cards and its tabs, what its
+  revert drops of a Revision that no longer holds, and the description of what changed in it."
   (:require
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.dashboards.db :as dashboards.db]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
-   [metabase.queries.core :as queries]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru deferred-trun]]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [metabase.util.i18n :refer [deferred-tru deferred-trun]]))
 
-(defn- check-reverted-dashcards-exposure-permissions!
-  "Reverting can put a card back on a publicly shared or embedded dashboard, exposing its selected timeline events and
-  its goals, so the current user needs read access to those timelines and to what the goals reference."
-  [dashboard-id current-cards reverted-cards]
-  (let [dashboard (dashboards.db/dashboard dashboard-id)]
-    (queries/check-newly-exposed-dashcards-timeline-permissions! dashboard current-cards reverted-cards)
-    (queries/check-newly-exposed-dashcards-goal-permissions! dashboard current-cards reverted-cards)))
+(defn- dashcard-snapshot
+  "The snapshot of the DashboardCard `dashcard` with its `:series`, which the Dashboard records among its cards."
+  [dashcard]
+  (-> (select-keys dashcard (revisions/schema-keys ::dashboards.schema/dashcard.revision))
+      (assoc :series (mapv :id (:series dashcard)))))
 
-(defn- revert-dashcards
-  [dashboard-id serialized-cards]
-  (let [current-cards    (->> (t2/hydrate (dashboards.db/dashcards dashboard-id) :series)
-                              (mapv #(revisions/snapshot :model/DashboardCard %)))
-        id->current-card (zipmap (map :id current-cards) current-cards)
-        {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
-    (check-reverted-dashcards-exposure-permissions! dashboard-id current-cards (concat to-create to-update))
-    (when (seq to-delete)
-      (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
-    (when (seq to-create)
-      ;; a restored dashcard may reuse goals still on the dashboard; one that's no longer anywhere is checked
-      (dashboard-card/with-copy-source-dashcards current-cards
-        (dashboard-card/create-dashboard-cards! (map #(assoc % :dashboard_id dashboard-id) to-create))))
-    (when (seq to-update)
-      (dashboard-card/update-dashboard-cards!
-       (for [update-card to-update]
-         [update-card (id->current-card (:id update-card))])))))
+(defn snapshot-dashcards
+  "The snapshots of the DashboardCards `dashcards`, as a Dashboard records its cards."
+  [dashcards]
+  (mapv dashcard-snapshot (dashboards.db/hydrate-series (vec dashcards))))
 
-(defn- remove-invalid-dashcards
+(defn snapshot-parts
+  "The `snapshots` of the Dashboard `rows`, each with the snapshots of its cards and of its tabs."
+  [rows snapshots]
+  (mapv (fn [row snapshot]
+          (assoc snapshot
+                 :cards (mapv dashcard-snapshot (:dashcards row))
+                 :tabs  (mapv #(select-keys % (revisions/schema-keys ::dashboards.schema/dashboard-tab.revision))
+                              (:tabs row))))
+        (dashboards.db/hydrate-snapshot-parts (vec rows))
+        snapshots))
+
+(defn remove-invalid-dashcards
   "Given a list of dashcards, remove any dashcard that references cards that are archived, do not exist, or now belong
   to other dashboards ."
   [dashboard-id dashcards]
@@ -51,7 +43,7 @@
         inactive-card-ids (set/difference card-ids active-card-ids)]
     (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
-(defn- clean-invalid-parameter-card-references
+(defn clean-invalid-parameter-card-references
   "Given a list of parameters, remove card references from any parameter whose values_source_config.card_id
   references a card that is archived or does not exist. The parameter is reset to use connected fields."
   [parameters]
@@ -66,35 +58,6 @@
                 (dissoc param :values_source_type :values_source_config)
                 param))
             parameters))))
-
-(defn revert-dashboard!
-  "Return the Dashboard `dashboard-id` to the `serialized-dashboard` that a Revision recorded: its columns, its tabs and
-  its dashcards."
-  [dashboard-id _user-id serialized-dashboard]
-  ;; Clean invalid parameter card references before reverting (cards may have been deleted since the revision)
-  (let [cleaned-parameters   (clean-invalid-parameter-card-references (or (:parameters serialized-dashboard) []))
-        serialized-dashboard (assoc serialized-dashboard :parameters cleaned-parameters)]
-    (queries/check-new-parameter-source-card-permissions "dashboard" dashboard-id cleaned-parameters)
-    ;; Update the dashboard description / name / permissions
-    (revisions/revert-columns! :model/Dashboard dashboard-id serialized-dashboard)
-    ;; Now update the tabs and cards as needed
-    (let [serialized-dashcards      (:cards serialized-dashboard)
-          current-tabs              (mapv #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
-                                          (dashboards.db/dashboard-tabs-for-dashboards [dashboard-id]))
-          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
-          _                         (dashboard-card/archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
-          serialized-dashcards      (cond->> serialized-dashcards
-                                      true
-                                      (remove-invalid-dashcards dashboard-id)
-                                      ;; in case reverting result in new tabs being created,
-                                      ;; we need to remap the tab-id
-                                      (seq old->new-tab-id)
-                                      (map (fn [card]
-                                             (if-let [new-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
-                                               (assoc card :dashboard_tab_id new-tab-id)
-                                               card))))]
-      (revert-dashcards dashboard-id serialized-dashcards))
-    serialized-dashboard))
 
 (defn describe-change
   "The strings that describe how the snapshot `prev-dashboard` of a Dashboard changed into `dashboard`, naming the

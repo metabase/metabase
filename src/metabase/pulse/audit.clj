@@ -14,18 +14,29 @@
     :subscription-create
     :pulse-create))
 
+(defn hydrate
+  "The Pulse `rows` with the Pulse as the database holds it, with its channels and their recipients, as `::stored`,
+  nil for one that no longer exists, loaded together."
+  [rows]
+  (let [stored (if-let [ids (not-empty (into [] (comp (keep :id) (distinct)) rows))]
+                 (into {}
+                       (map (juxt :id identity))
+                       (some-> (not-empty (pulse.db/pulses-with-ids ids)) vec (t2/hydrate [:channels :recipients])))
+                 {})]
+    (mapv #(assoc % ::stored (get stored (:id %))) rows)))
+
 (defn details
   "The details to store for the Pulse `row`: its name, its Dashboard and its parameters, as the database holds them, or
   as the row had them when the `event` has it as its previous row."
-  [{:keys [id] :as row} {:keys [previous-object]}]
-  (when-let [pulse (pulse.db/pulse id)]
+  [row {:keys [previous-object]}]
+  (when-let [pulse (::stored row)]
     (cond-> (select-keys pulse [:archived :name :dashboard_id :parameters])
       (identical? row previous-object) (merge (select-keys row [:archived :name :dashboard_id :parameters])))))
 
 (defn state
   "The channels, schedules and recipients that the Pulse `row` has after the write, which an update row stores whole."
-  [{:keys [id]} _event]
-  (when-let [pulse (some-> (pulse.db/pulse id) (t2/hydrate [:channels :recipients]))]
+  [row _event]
+  (when-let [pulse (::stored row)]
     (let [channels (:channels pulse)]
       {:channel    (map :channel_type channels)
        :schedule   (map :schedule_type channels)

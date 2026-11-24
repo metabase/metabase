@@ -118,7 +118,7 @@
   (if-let [existing (first (cache.db/cache-configs-for model [model_id]))]
     (api/update-check existing (cache-config/config->row config))
     (api/create-check :model/CacheConfig (cache-config/config->row config)))
-  {:id (cache-config/store! api/*current-user-id* config)})
+  {:id (cache-config/save-cache-config! config)})
 
 (api.macros/defendpoint :delete "/" :- :nil
   "Delete cache configurations."
@@ -128,8 +128,10 @@
                                 [:model    ::cache.schema/cache-config.model]
                                 [:model_id (ms/QueryVectorOf ::cache.schema/cache-config.model-id)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
-  (doseq [id model_id] (api/write-check (target-config model id)))
-  (cache-config/delete! api/*current-user-id* model model_id)
+  (doseq [config (t2/hydrate (mapv #(target-config model %) model_id) :can_write)]
+    (api/write-check config))
+  (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets model model_id)
+                                      {:context {:details {}}})
   nil)
 
 (defn- write-check-all

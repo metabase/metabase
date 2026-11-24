@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2]))
 
 (defn with-premium-feature-fixture [f]
@@ -609,21 +610,22 @@
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-id :id
-                                      tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
-                       :model/User {tenant-user-id :id} {:tenant_id tenant-id}]
-          (mt/with-perm-for-group-and-table! (perms/all-external-users-group) (mt/id :venues) :perms/view-data :unrestricted
-            (mt/with-perm-for-group-and-table! (perms/all-external-users-group) (mt/id :venues) :perms/create-queries :query-builder
-              (let [card-data {:name "New Card"
-                               :collection_id tenant-collection-id
-                               :visualization_settings {}
-                               :display "table"
-                               :database_id (mt/id)
-                               :dataset_query (mt/mbql-query venues)}
-                    response (mt/user-http-request tenant-user-id :post 200 "card" card-data)]
-                ;; TODO look into why this is failing
-                (testing "card is created in tenant collection"
-                  (is (some? (:id response)))
-                  (is (= tenant-collection-id (:collection_id response))))))))))))
+                                      tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}]
+          (mt/with-model-cleanup [:model/Card :model/User]
+            (let [[{tenant-user-id :id}] (user/create-users! [{:email (mt/random-email) :tenant_id tenant-id}])]
+              (mt/with-perm-for-group-and-table! (perms/all-external-users-group) (mt/id :venues) :perms/view-data :unrestricted
+                (mt/with-perm-for-group-and-table! (perms/all-external-users-group) (mt/id :venues) :perms/create-queries :query-builder
+                  (let [card-data {:name "New Card"
+                                   :collection_id tenant-collection-id
+                                   :visualization_settings {}
+                                   :display "table"
+                                   :database_id (mt/id)
+                                   :dataset_query (mt/mbql-query venues)}
+                        response (mt/user-http-request tenant-user-id :post 200 "card" card-data)]
+                    ;; TODO look into why this is failing
+                    (testing "card is created in tenant collection"
+                      (is (some? (:id response)))
+                      (is (= tenant-collection-id (:collection_id response))))))))))))))
 
 (deftest can-create-dashboards-in-tenant-collections-test
   (testing "Can create dashboards in tenant collections"

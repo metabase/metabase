@@ -44,7 +44,7 @@
                   (when (and (nil? env-value)
                              (not (true? new-value))
                              (setting/get-value-of-type :boolean :workspaces-enabled))
-                    (ws.db/delete-all-table-remappings!))
+                    (table-remapping/delete-all-table-remappings!))
                   (setting/set-value-of-type! :boolean :workspaces-enabled new-value)))
   ;; Outside workspace mode a node trusts its cache of the Databases with remappings, and rows may have changed
   ;; while it was in workspace mode. Fires on every node when its settings cache picks up the change.

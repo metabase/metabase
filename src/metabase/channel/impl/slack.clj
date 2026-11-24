@@ -104,6 +104,8 @@
   ([part]
    (part->sections! {} part))
   ([all-params part]
+   (part->sections! all-params part nil))
+  ([all-params part timezone]
    (let [part (channel.shared/maybe-realize-data-rows part)]
      (case (:type part)
        :card
@@ -113,7 +115,7 @@
                title                                      (or (-> dashcard :visualization_settings :card.title)
                                                               card-name)
                rendered-info                              (channel.render/render-pulse-card
-                                                           :inline (channel.render/defaulted-timezone card) card dashcard result
+                                                           :inline (or timezone (channel.render/defaulted-timezone card)) card dashcard result
                                                            {:channel.render/goal-values goal-values})
                title-link                                 (if dashcard
                                                             (urls/dashcard-url dashcard)
@@ -214,7 +216,7 @@
                          :text {:type "plain_text"
                                 :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
                                 :emoji true}}]
-                       (part->sections! (:card_part payload)))]
+                       (part->sections! {} (:card_part payload) (:timezone payload)))]
     (doall (for [channel (map notification-recipient->channel recipients)]
              {:channel channel
               :blocks  blocks}))))

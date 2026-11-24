@@ -16,7 +16,7 @@
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.db :as qp.db]
+   [metabase.query-processor.card-writes :as qp.card-writes]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt]
@@ -518,7 +518,7 @@
       (doseq [[source-type goal-id] [["card" card-id] ["card" metric-id] ["measure" measure-id]]]
         (testing (str source-type " " goal-id)
           (let [written (atom #{})]
-            (mt/with-dynamic-fn-redefs [qp.db/set-card-result-metadata! (fn [id _] (swap! written conj id))]
+            (with-redefs [qp.card-writes/save-result-metadata! (fn [_model id _] (swap! written conj id))]
               (is (= "completed" (:status (source-result (goal-values :crowberto [{:type source-type :id goal-id}])
                                                          source-type goal-id)))))
             (is (empty? @written))))))
@@ -585,10 +585,9 @@
 (deftest goal-runs-use-the-card-cache-test
   (testing "a card source runs under its cache strategy, so a repeat run is served from the cache"
     (mt/with-model-cleanup [:model/CacheConfig]
-      (cache-config/store! (mt/user->id :crowberto)
-                           {:model    "root"
-                            :model_id 0
-                            :strategy {:type :ttl :multiplier 99999 :min_duration_ms 0}})
+      (cache-config/save-cache-config! {:model    "root"
+                                        :model_id 0
+                                        :strategy {:type :ttl :multiplier 99999 :min_duration_ms 0}})
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (count-query :venues)}]
         (let [run! #(goal-values :crowberto [{:type "card" :id goal-id}] :ignore-cache? %)]
           (run! false)

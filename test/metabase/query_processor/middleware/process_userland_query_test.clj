@@ -10,7 +10,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
-   [metabase.query-processor.db :as query-processor.db]
+   [metabase.queries.models.query-execution :as query-execution]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -162,7 +162,7 @@
   (testing "when the batch fails for a reason other than a rejected row (e.g. the app DB is down), do not retry each
             row: every retry would fail too, and could wait for a connection"
     (let [calls (atom 0)]
-      (mt/with-dynamic-fn-redefs [query-processor.db/insert-query-executions!
+      (mt/with-dynamic-fn-redefs [query-execution/create-query-executions!
                                   (fn [_rows]
                                     (swap! calls inc)
                                     (throw (java.sql.SQLTransientConnectionException. "pool checkout timed out")))]

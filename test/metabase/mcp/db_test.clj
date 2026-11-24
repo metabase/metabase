@@ -1,7 +1,9 @@
 (ns metabase.mcp.db-test
   (:require
    [clojure.test :refer [are deftest is testing use-fixtures]]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.mcp.db :as mcp.db]
+   [metabase.session.models.session :as models.session]
    [metabase.session.query :as session.query]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -60,17 +62,23 @@
       []
       #{})))
 
+(defn- get-or-create-core-session!
+  [key-hashed user-id]
+  (models.session/get-or-create-mcp-session!
+   key-hashed user-id
+   (:id (models.auth-identity/get-or-create-auth-identity! user-id session.query/mcp-provider))))
+
 (deftest get-or-create-core-session-stamps-the-mcp-provider-test
   (testing "MCP-created sessions are stamped with the `mcp` provider so session management can exclude them"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [key-hashed (str "mcp-test-" (random-uuid))
-            session    (mcp.db/get-or-create-core-session! key-hashed user-id)]
+            session    (get-or-create-core-session! key-hashed user-id)]
         (try
           (is (some? (:auth_identity_id session)))
           (is (= session.query/mcp-provider
                  (t2/select-one-fn :provider :model/AuthIdentity :id (:auth_identity_id session))))
           (testing "a second handshake reuses the same auth identity rather than tripping the unique constraint"
-            (let [again (mcp.db/get-or-create-core-session! (str "mcp-test-" (random-uuid)) user-id)]
+            (let [again (get-or-create-core-session! (str "mcp-test-" (random-uuid)) user-id)]
               (try
                 (is (= (:auth_identity_id session) (:auth_identity_id again)))
                 (finally
@@ -84,3 +92,20 @@
           (finally
             (t2/delete! :core_session :id (:id session))
             (t2/delete! :model/AuthIdentity :user_id user-id :provider session.query/mcp-provider)))))))
+
+(deftest partitioned-reads-match-single-statement-reads-test
+  (let [table-ids (t2/select-pks-vec :model/Table :db_id (mt/id) {:order-by [[:id :asc]]})
+        user-ids  (t2/select-pks-vec :model/User {:order-by [[:id :asc]]})
+        read-all  (fn []
+                    {:fields  (mcp.db/active-visible-fields-for-tables table-ids)
+                     :tables  (set (map :id (mcp.db/active-tables-by-ids table-ids)))
+                     :tenants (mcp.db/user-id->tenant-id user-ids)
+                     :users   (mcp.db/active-user-ids user-ids)})
+        single    (read-all)
+        partition-reads (fn [] (mt/with-partition-size 2
+                                 (read-all)))]
+    (is (seq (:fields single)))
+    (is (= (sort-by (juxt :position :id) (:fields single)) (:fields single)))
+    (is (= single (partition-reads)))
+    (is (< (t2/with-call-count [calls] (read-all) (calls))
+           (t2/with-call-count [calls] (partition-reads) (calls))))))

@@ -34,8 +34,10 @@
 (p/import-vars
  [metabase.metabot.tools.entity-details
   get-metric-details
+  get-metrics-details
   get-report-details
-  get-table-details]
+  get-table-details
+  get-tables-details]
  [metabase.metabot.tools.util
   ->result-column])
 

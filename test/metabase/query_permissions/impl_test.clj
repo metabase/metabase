@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -13,6 +14,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log.capture :as log.capture]
@@ -692,3 +694,319 @@
           [{:table-ids #{1 2} :table-query-ids #{1} :native? false :referenced-card-ids #{20}}
            nil
            {:table-ids #{3} :table-query-ids #{3} :card-ids #{10} :native? true :referenced-card-ids #{21}}]))))
+
+(defn- run-check-outcome
+  "What `thunk`, a run permissions check, does: `:allowed`, or the message, data without the query, and cause message
+  of what it throws."
+  [thunk]
+  (try
+    (thunk)
+    :allowed
+    (catch Throwable e
+      {:message  (ex-message e)
+       :data     (dissoc (ex-data e) :query)
+       :cause    (some-> (ex-cause e) ex-message)})))
+
+(defn- run-check-queries
+  "The queries of the run permissions matrix, by name: on the Database with `db-b-id` for `:native-b`, and on Cards
+  `card-ok-id` and `card-hidden-id` for the others named so."
+  [db-b-id card-ok-id card-hidden-id]
+  (let [mp   (lib-be/application-database-metadata-provider (mt/id))
+        mp-b (lib-be/application-database-metadata-provider db-b-id)]
+    [[:mbql-t1     (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+     [:mbql-t1-t2  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :checkins))
+                                                  [(lib/= (lib.metadata/field mp (mt/id :venues :id))
+                                                          (lib.metadata/field mp (mt/id :checkins :venue_id)))])))]
+     [:native-a    (lib/native-query mp "SELECT 1")]
+     [:native-b    (lib/native-query mp-b "SELECT 1")]
+     [:card-ok     (lib/query mp (lib.metadata/card mp card-ok-id))]
+     [:card-hidden (lib/query mp (lib.metadata/card mp card-hidden-id))]]))
+
+(defn- grant-run-check-scenario!
+  "Gives All Users the data permissions of `scenario` on the test Database, none on the Database with `db-b-id`."
+  [scenario db-b-id]
+  (let [group (perms/all-users-group)]
+    (perms/set-database-permission! group db-b-id :perms/create-queries :no)
+    (case scenario
+      :superuser       nil
+      :query-builder-a (do (perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
+                           (perms/set-database-permission! group (mt/id) :perms/create-queries :query-builder))
+      :native-a        (do (perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
+                           (perms/set-database-permission! group (mt/id) :perms/create-queries :query-builder-and-native))
+      :table-t1-only   (do (perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
+                           (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)))))
+
+(def ^:private run-check-expected
+  "Which queries of [[run-check-queries]] each scenario may run."
+  {:superuser       #{:mbql-t1 :mbql-t1-t2 :native-a :native-b :card-ok :card-hidden}
+   :query-builder-a #{:mbql-t1 :mbql-t1-t2 :card-ok}
+   :native-a        #{:mbql-t1 :mbql-t1-t2 :native-a :card-ok}
+   :table-t1-only   #{:mbql-t1 :card-ok}})
+
+(deftest check-run-permissions-for-queries-matches-single-check-test
+  (testing "each query of a batch is allowed or refused, with the same error, exactly as when it is checked alone"
+    (mt/with-temp [:model/Database   {db-b-id :id}        {:engine :h2 :details (:details (mt/db))}
+                   :model/Collection {coll-ok-id :id}     {}
+                   :model/Collection {coll-hidden-id :id} {}
+                   :model/Card       {card-ok-id :id}     {:collection_id coll-ok-id
+                                                           :dataset_query (lib/query (mt/metadata-provider)
+                                                                                     (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
+                   :model/Card       {card-hidden-id :id} {:collection_id coll-hidden-id
+                                                           :dataset_query (lib/query (mt/metadata-provider)
+                                                                                     (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll-ok-id)
+        (doseq [scenario (keys run-check-expected)]
+          (testing scenario
+            (mt/with-no-data-perms-for-all-users!
+              (grant-run-check-scenario! scenario db-b-id)
+              (mt/with-test-user (if (= scenario :superuser) :crowberto :rasta)
+                (let [queries (run-check-queries db-b-id card-ok-id card-hidden-id)
+                      single  (into {} (map (fn [[k q]] [k (run-check-outcome #(query-perms/check-run-permissions-for-query q))]))
+                                    queries)
+                      allowed (into [] (comp (filter #(= :allowed (single (first %)))) (map second)) queries)]
+                  (testing "the single check answers as expected"
+                    (is (= (run-check-expected scenario)
+                           (into #{} (comp (filter #(= :allowed (val %))) (map key)) single))))
+                  (testing "a refusal says which permissions are missing"
+                    (doseq [[k outcome] single
+                            :when (not= :allowed outcome)]
+                      (is (=? {:message "You cannot save this Question because you do not have permissions to run its query."
+                               :data    {:status-code 403}}
+                              outcome)
+                          (str k))))
+                  (doseq [[k q] queries]
+                    (testing (str k " checked last in a batch after every allowed query")
+                      (is (= (single k)
+                             (run-check-outcome #(query-perms/check-run-permissions-for-queries (conj allowed q)))))))
+                  (testing "a batch of every query throws for the first refused one"
+                    (is (= (or (some #(when (not= :allowed (single (first %))) (single (first %))) queries)
+                               :allowed)
+                           (run-check-outcome #(query-perms/check-run-permissions-for-queries (mapv second queries)))))))))))))))
+
+(deftest check-run-permissions-for-queries-statement-count-test
+  (testing "the run permissions of many queries take as many statements as those of few, as a non-admin"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:collection_id coll-id
+                                                    :dataset_query (lib/query (mt/metadata-provider)
+                                                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+      (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+      (mt/with-test-user :rasta
+        (let [mp      (lib-be/application-database-metadata-provider (mt/id))
+              queries [(lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/native-query mp "SELECT 1")
+                       (lib/query mp (lib.metadata/card mp card-id))]
+              count!  (fn [f n]
+                        (lib-be/with-metadata-provider-cache
+                          (f (into [] cat (repeat 1 queries)))
+                          (t2/with-call-count [call-count]
+                            (f (into [] cat (repeat n queries)))
+                            (call-count))))
+              check!      (partial count! query-perms/check-run-permissions-for-queries)
+              preprocess! (partial count! #(request/as-admin (run! qp.preprocess/preprocess %)))]
+          (testing "only preprocessing, which the query processor does per query, grows with the queries"
+            (is (= (- (check! 6) (check! 2))
+                   (- (preprocess! 6) (preprocess! 2))))))))))
+
+(deftest card-read-check-hydrates-inside-query-database-store-test
+  (testing "Card read check hydrates `:can_read` inside metadata provider store of query's Database"
+    (mt/with-temp [:model/Database   {db-b-id :id} {:engine :h2 :details (:details (mt/db))}
+                   :model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:collection_id coll-id
+                                                    :dataset_query (lib/query (mt/metadata-provider)
+                                                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+      (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+      (mt/with-test-user :rasta
+        (let [readable-ids (mt/original-fn #'collection/content-readable-collection-ids)
+              opening      (fn [database-id]
+                             (fn [& args]
+                               (mt/with-metadata-provider database-id
+                                 (apply readable-ids args))))]
+          (testing "hydration opening store of same Database is allowed"
+            (mt/with-dynamic-fn-redefs [collection/content-readable-collection-ids (opening (mt/id))]
+              (is (nil? (query-perms/check-card-read-perms (mt/id) card-id)))
+              (is (nil? (query-perms/check-cards-read-perms (mt/id) [card-id])))))
+          (testing "hydration opening store of other Database throws"
+            (mt/with-dynamic-fn-redefs [collection/content-readable-collection-ids (opening db-b-id)]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"Attempting to initialize metadata provider with new Database"
+                                    (query-perms/check-card-read-perms (mt/id) card-id))))))))))
+
+(defn- per-table-parameter-field-check
+  "The check of parameter Fields that preprocesses a query of each of their Tables, as it was before it read the Tables'
+  `:can_query` hydration."
+  [field-ids]
+  (when (seq field-ids)
+    (doseq [table-id (t2/select-fn-set :table_id :model/Field :id [:in (set field-ids)])]
+      (when-not (query-perms/can-query-table? (t2/select-one-fn :db_id :model/Table :id table-id) table-id)
+        (throw (ex-info "You must have data permissions to add a parameter referencing this Field."
+                        {:status-code 403}))))))
+
+(defn- do-with-external-remaps!
+  "Runs `thunk` with each `[field-id readable-field-id fk-target-field-id]` of `remaps` set up as an external remap of
+  the Field to the readable Field through a foreign key to the target Field."
+  [remaps thunk]
+  (if-let [[[field-id readable-field-id fk-target-field-id] & more] (seq remaps)]
+    (mt/with-temp-vals-in-db :model/Field field-id {:fk_target_field_id fk-target-field-id}
+      (mt/with-temp [:model/Dimension _ {:field_id                field-id
+                                         :name                    "Remap"
+                                         :type                    :external
+                                         :human_readable_field_id readable-field-id}]
+        (do-with-external-remaps! more thunk)))
+    (thunk)))
+
+(defn- grant-query-builder!
+  "Gives All Users unrestricted view-data on the test Database and query-builder on the Tables with `table-kws`."
+  [& table-kws]
+  (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+  (doseq [table-kw table-kws]
+    (perms/set-table-permission! (perms/all-users-group) (mt/id table-kw) :perms/create-queries :query-builder)))
+
+(defn- grant-database-perms!
+  "Gives All Users `view-data` and `create-queries` on the test Database."
+  [view-data create-queries]
+  (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data view-data)
+  (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries create-queries))
+
+(defn- venues-category-remap
+  "The external remap of the Category of venues to the name of its category."
+  []
+  [(mt/id :venues :category_id) (mt/id :categories :name) (mt/id :categories :id)])
+
+(defn- parameter-field-cases!
+  "The cases of the parameter Field permissions matrix: venues is Table A and checkins is Table B."
+  []
+  (let [a       (mt/id :venues :name)
+        a2      (mt/id :venues :price)
+        b       (mt/id :checkins :date)
+        missing Integer/MAX_VALUE
+        a-only  (fn [thunk] (grant-query-builder! :venues) (thunk))
+        remaps  (fn [grant remaps] (fn [thunk] (grant) (do-with-external-remaps! remaps thunk)))]
+    (cond-> [{:case "superuser is allowed any Fields" :user :crowberto :setup #(%) :fields [a b] :expected :allowed}
+             {:case "no Fields are allowed" :setup a-only :fields [] :expected :allowed}
+             {:case "Field that does not exist is allowed" :setup a-only :fields [missing] :expected :allowed}
+             {:case "Fields of queried Table are allowed" :setup a-only :fields [a a2] :expected :allowed}
+             {:case "Field of other Table is refused" :setup a-only :fields [b] :expected :refused}
+             {:case "Fields of both Tables are refused" :setup a-only :fields [a b] :expected :refused}
+             {:case "Fields of both Tables in other order are refused" :setup a-only :fields [b a] :expected :refused}
+             {:case "missing Field and Field of other Table are refused" :setup a-only :fields [missing b] :expected :refused}
+             {:case "Field of queried Table and missing Field are allowed" :setup a-only :fields [a2 missing] :expected :allowed}
+             {:case     "create-queries no with unrestricted view-data is refused"
+              :setup    (fn [thunk] (grant-database-perms! :unrestricted :no) (thunk))
+              :fields   [a]
+              :expected :refused}
+             {:case     "legacy-no-self-service view-data with query-builder is allowed"
+              :setup    (fn [thunk] (grant-database-perms! :legacy-no-self-service :query-builder) (thunk))
+              :fields   [a]
+              :expected :allowed}
+             {:case     "Field of Table whose other Field shows values of Table user cannot query is refused"
+              :setup    (remaps #(grant-query-builder! :venues) [(venues-category-remap)])
+              :fields   [a]
+              :expected :refused}
+             {:case     "Field of Table whose other Field shows values of Table user queries is allowed"
+              :setup    (remaps #(grant-query-builder! :venues :categories) [(venues-category-remap)])
+              :fields   [a]
+              :expected :allowed}
+             {:case     "Field of Table whose other Field shows values of same Table through key to it is allowed"
+              :setup    (remaps #(grant-query-builder! :venues)
+                                [[(mt/id :venues :category_id) (mt/id :venues :name) (mt/id :venues :id)]])
+              :fields   [a]
+              :expected :allowed}
+             {:case     "Field of Table whose other Field shows its own Table's values through key to other Table is refused"
+              :setup    (remaps #(grant-query-builder! :venues)
+                                [[(mt/id :venues :category_id) (mt/id :venues :name) (mt/id :categories :id)]])
+              :fields   [a]
+              :expected :refused}
+             {:case     "Field of Table whose inactive Field shows values of Table user cannot query is allowed"
+              :setup    (fn [thunk]
+                          (grant-query-builder! :venues)
+                          (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:active false}
+                            (do-with-external-remaps! [(venues-category-remap)] thunk)))
+              :fields   [a]
+              :expected :allowed}
+             {:case     "Field of Table without remaps is allowed beside Table with remap to Table user cannot query"
+              :setup    (remaps #(grant-query-builder! :venues :checkins) [(venues-category-remap)])
+              :fields   [b]
+              :expected :allowed}
+             {:case     "Fields of Table without remaps and of Table with remap to Table user cannot query are refused"
+              :setup    (remaps #(grant-query-builder! :venues :checkins) [(venues-category-remap)])
+              :fields   [b a]
+              :expected :refused}]
+      (mt/when-ee-evailable true)
+      (into [{:case     "Field of Table with blocked view-data is refused"
+              :setup    (fn [thunk]
+                          (grant-database-perms! :unrestricted :query-builder)
+                          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
+                          (thunk))
+              :fields   [b]
+              :expected :refused}
+             {:case     "Field of other Table beside blocked Table is allowed"
+              :setup    (fn [thunk]
+                          (grant-database-perms! :unrestricted :query-builder)
+                          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
+                          (thunk))
+              :fields   [a]
+              :expected :allowed}
+             {:case     "Field of sandboxed Table is allowed"
+              :setup    (fn [thunk]
+                          (grant-query-builder! :venues)
+                          (mt/with-premium-features #{:sandboxes}
+                            (mt/with-temp [:model/Sandbox _ {:group_id (u/the-id (perms/all-users-group))
+                                                             :table_id (mt/id :venues)}]
+                              (thunk))))
+              :fields   [a]
+              :expected :allowed}]))))
+
+(deftest check-parameter-field-permissions-matrix-test
+  (doseq [{case-name :case, :keys [user setup fields expected]} (parameter-field-cases!)]
+    (testing case-name
+      (mt/with-no-data-perms-for-all-users!
+        (setup
+         (fn []
+           (mt/with-test-user (or user :rasta)
+             (let [outcome (run-check-outcome #(query-perms/check-parameter-field-permissions fields))]
+               (is (= (if (= :allowed expected)
+                        :allowed
+                        {:message "You must have data permissions to add a parameter referencing this Field."
+                         :data    {:status-code 403}
+                         :cause   nil})
+                      outcome))
+               (testing "same as preprocessing query of each Table"
+                 (is (= (run-check-outcome #(per-table-parameter-field-check fields))
+                        outcome)))))))))))
+
+(defn- remapped-table-fields
+  "Six Tables of the test Database, each with one Field to reference and one external remap to another Table."
+  []
+  {:fields [(mt/id :venues :name) (mt/id :checkins :date) (mt/id :orders :total) (mt/id :reviews :reviewer)
+            (mt/id :categories :name) (mt/id :users :name)]
+   :remaps [(venues-category-remap)
+            [(mt/id :checkins :venue_id) (mt/id :venues :name) (mt/id :venues :id)]
+            [(mt/id :orders :user_id) (mt/id :people :name) (mt/id :people :id)]
+            [(mt/id :reviews :product_id) (mt/id :products :title) (mt/id :products :id)]
+            [(mt/id :categories :name) (mt/id :users :name) (mt/id :users :id)]
+            [(mt/id :users :name) (mt/id :categories :name) (mt/id :categories :id)]]})
+
+(deftest check-parameter-field-permissions-statement-count-test
+  (testing "parameter Fields take as many statements for many Tables or Fields as for few, as a non-admin"
+    (mt/with-no-data-perms-for-all-users!
+      (grant-database-perms! :unrestricted :query-builder)
+      (let [{:keys [fields remaps]} (remapped-table-fields)
+            venues-fields           (mapv #(mt/id :venues %) [:id :name :category_id :latitude :longitude :price])]
+        (do-with-external-remaps!
+         remaps
+         (fn []
+           (mt/with-test-user :rasta
+             (letfn [(count! [field-ids]
+                       (query-perms/check-parameter-field-permissions field-ids)
+                       (t2/with-call-count [call-count]
+                         (query-perms/check-parameter-field-permissions field-ids)
+                         (call-count)))]
+               (is (nil? (query-perms/check-parameter-field-permissions fields)))
+               (testing "Fields in distinct Tables, each with remap"
+                 (is (= (count! (subvec fields 0 2))
+                        (count! fields))))
+               (testing "Fields of one Table"
+                 (is (= (count! (subvec venues-fields 0 2))
+                        (count! venues-fields))))))))))))

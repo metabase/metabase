@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.schema :as indexed-entities.schema]
@@ -20,8 +21,10 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; model lifecycle ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -34,9 +37,7 @@
 (derive :model/ModelIndex :hook/created-at-timestamped?)
 ;; TODO disabled due to issues having an update hook causes, seemingly due to a toucan2 bug
 #_(derive :model/ModelIndex :search/indexed)
-(doto :model/ModelIndex
-  (derive :hook/events)
-  (derive :search/indexed-deletes))
+(derive :model/ModelIndex :search/indexed-deletes)
 
 (t2/deftransforms :model/ModelIndex
   ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
@@ -57,10 +58,6 @@
   trigger without reaching into [[metabase.indexed-entities.task.index-values]], which reads this namespace."
   [model-index]
   (task/delete-trigger! (trigger-key (:id model-index))))
-
-(t2/define-before-delete :model/ModelIndex
-  [model-index]
-  (remove-indexing-job model-index))
 
 (def max-indexed-values
   "Maximum number of values we will index. Actually take one more than this to test if there are more than the
@@ -151,6 +148,8 @@
     {:additions (set/difference source current)
      :deletions (set/difference current source)}))
 
+;;; ------------------------------------------------------ Writes ------------------------------------------------------
+
 (mu/defn add-values!
   "Add indexed values to the model_index_value table."
   [model-index :- ::indexed-entities.schema/model-index]
@@ -183,37 +182,55 @@
                                                          (if (> (count values-to-index) max-indexed-values)
                                                            "overflow"
                                                            "indexed")))
-        (run! search/update! (indexed-entities.db/model-index-values-reducible (:id model-index)))
+        (transduce (comp (map t2.realize/realize)
+                         (partition-all app-db/create-partition-size)
+                         (map search/bulk-update!))
+                   (constantly nil)
+                   nil
+                   (indexed-entities.db/model-index-values-reducible (:id model-index)))
         (catch Exception e
           (log/errorf "Error saving model-index values for model-index: %d, model: %d: %s"
                       (:id model-index) (:model_id model-index) (ex-message e))
           (indexed-entities.db/mark-model-index-error! (:id model-index) (ex-message e)))))))
-
-;;;; creation
 
 (defn default-schedule
   "Default sync schedule for indexed values. Defaults to randomly once a day."
   []
   (u.cron/schedule-map->cron-string (sync.schedules/randomly-once-a-day)))
 
-(defn create
-  "Create a model index"
-  [{:keys [model-id pk-ref value-ref creator-id]}]
-  (indexed-entities.db/insert-model-index! {:model_id   model-id
-                                            ;; todo: sanitize these?
-                                            :pk_ref     pk-ref
-                                            :value_ref  value-ref
-                                            :schedule   (default-schedule)
-                                            :state      "initial"
-                                            :creator_id creator-id}))
+(defn- prepare-model-indexes
+  "The ModelIndex rows that the `rows` of a call give: each with the default schedule and the initial state."
+  [rows]
+  (mapv (fn [{:keys [model-id pk-ref value-ref creator-id]}]
+          {:model_id   model-id
+           :pk_ref     pk-ref
+           :value_ref  value-ref
+           :schedule   (default-schedule)
+           :state      "initial"
+           :creator_id creator-id})
+        rows))
+
+(mu/defn create-model-indexes! :- [:sequential :map]
+  "Create a ModelIndex from each of `rows`, with the default schedule and the initial state, and return the new
+  instances in order, in one transaction, publishing their create event."
+  [rows :- [:sequential ::indexed-entities.schema/model-index.create]]
+  (app-db/create-batched! :model/ModelIndex rows
+                          {:before-create prepare-model-indexes
+                           :after-create  #(events/publish-event! :event/model-index-create (events/create-event %))}))
+
+(defn- remove-indexing-jobs-and-publish!
+  "Remove the indexing jobs of the ModelIndexes `rows`, then publish their delete event."
+  [rows]
+  (run! remove-indexing-job rows)
+  (events/publish-event! :event/model-index-delete (events/delete-event rows)))
+
+(mu/defn delete-model-indexes! :- :nil
+  "Delete the ModelIndexes with `ids` in one transaction, removing their indexing jobs and publishing their delete event
+  right before the first statement."
+  [ids :- [:sequential ms/PositiveInt]]
+  (app-db/delete-batched! :model/ModelIndex ids {:before-delete remove-indexing-jobs-and-publish!}))
 
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------
-
-(defmethod events/spec :model/ModelIndex
-  [_model]
-  {:create :event/model-index-create
-   :update :event/model-index-update
-   :delete :event/model-index-delete})
 
 (defmethod app-db-copy/spec :model/ModelIndex [_model]
   {:skip? false})

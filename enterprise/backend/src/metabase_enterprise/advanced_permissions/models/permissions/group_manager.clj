@@ -4,7 +4,7 @@
    [clojure.set :as set]
    [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
    [metabase.api.common :as api]
-   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
@@ -56,6 +56,8 @@
           (throw (ex-info (tru "Not allowed to edit group memberships")
                           {:status-code 403}))))
       (t2/with-transaction [_conn]
-        (perms/remove-user-from-groups! user-id to-remove-group-ids)
-        (doseq [group-id to-add-group-ids]
-          (perms/add-user-to-group! user-id group-id (:is_group_manager (new-group-id->membership-info group-id))))))))
+        (perms-group-membership/remove-users-from-groups! [user-id] (vec to-remove-group-ids))
+        (perms-group-membership/add-users-to-groups! (for [group-id to-add-group-ids]
+                                                       {:user              user-id
+                                                        :group             group-id
+                                                        :is-group-manager? (:is_group_manager (new-group-id->membership-info group-id))}))))))

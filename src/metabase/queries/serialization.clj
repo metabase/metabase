@@ -220,36 +220,49 @@
                             metadata stored)))))
 
 (defn- with-model-metadata
-  "The load `item` of a Card that writes a model, without the exported overrides of its metadata when the local row
-  stores them, with the exported metadata of a native query, whose columns can't be inferred without running it, or
-  with the overrides applied to freshly inferred metadata, as an update of its query would store them."
-  [{:keys [row local] :as item}]
+  "The imported `row` of a Card that writes a model, without the exported overrides of its metadata when the `local`
+  row, nil for a new Card, stores them, with the exported metadata of a native query, whose columns can't be inferred
+  without running it, or with the overrides applied to freshly inferred metadata, as an update of its query would
+  store them."
+  [row local]
   (let [{query :dataset_query metadata :result_metadata card-type :type} row]
     (cond
       (not (and query (seq metadata) (= :model (keyword card-type)) (not-any? :id metadata)))
-      item
+      row
 
       (overrides-stored? metadata (:result_metadata local))
-      (update item :row dissoc :result_metadata)
+      (dissoc row :result_metadata)
 
       (lib/native-only-query? query)
-      item
+      row
 
       :else
       (let [overrides (mapv #(select-keys % (model-override-keys)) metadata)]
-        (assoc-in item [:row :result_metadata]
-                  (or (card.metadata/infer-metadata-with-model-overrides query (assoc row :result_metadata overrides))
-                      metadata))))))
+        (assoc row :result_metadata
+               (or (card.metadata/infer-metadata-with-model-overrides query (assoc row :result_metadata overrides))
+                   metadata))))))
 
 (defn- keep-local-metadata
-  "The load `item` of a Card without a `:result_metadata` or `:database_id` to import keeping the local ones, which
-  export leaves out of the cards whose query derives them."
-  [item]
-  (cond-> item
-    (nil? (get-in item [:row :result_metadata])) (update :row dissoc :result_metadata)
-    (nil? (get-in item [:row :database_id]))     (update :row dissoc :database_id)))
+  "The imported `row` of an existing Card without a `:result_metadata` or `:database_id` to import keeping the local
+  ones, which export leaves out of the cards whose query derives them."
+  [row]
+  (cond-> row
+    (nil? (:result_metadata row)) (dissoc :result_metadata)
+    (nil? (:database_id row))     (dissoc :database_id)))
 
-(defn before-load
-  "The Card load `items` keeping the local metadata and Database the export leaves out, and the model metadata."
-  [items]
-  (mapv (comp with-model-metadata keep-local-metadata) items))
+(defn new-card-row
+  "The imported `row` of a new Card, its model metadata applied."
+  [row]
+  (with-model-metadata row nil))
+
+(defn updated-card-row
+  "The imported `row` of the Card `local`, holding its primary key and the columns that change, keeping the local
+  metadata and Database the export leaves out and applying the model metadata."
+  [row local]
+  (let [row (keep-local-metadata row)]
+    (if (contains? row :result_metadata)
+      (let [merged (with-model-metadata (merge local row) local)]
+        (if (contains? merged :result_metadata)
+          (assoc row :result_metadata (:result_metadata merged))
+          (dissoc row :result_metadata)))
+      row)))

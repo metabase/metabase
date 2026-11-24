@@ -64,9 +64,9 @@ describe("sortActionParams", () => {
   });
 });
 
-const NATIVE_DATASET_QUERY = Lib.toLegacyQuery(
-  Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: "SELECT 1" }),
-);
+const NATIVE_DATASET_QUERY = Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+  query: "SELECT 1",
+});
 
 const ACTIONS_ENABLED_DB_ID = 10;
 
