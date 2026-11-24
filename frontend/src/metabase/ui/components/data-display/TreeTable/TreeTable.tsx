@@ -103,6 +103,17 @@ export function TreeTable<TData extends TreeNodeData>({
     [handleKeyDown, hierarchical],
   );
 
+  const showRowCheckbox =
+    typeof showCheckboxes === "function" ? showCheckboxes : undefined;
+
+  const hasCheckboxColumn = useMemo(
+    () =>
+      typeof showCheckboxes === "function"
+        ? rows.some(showCheckboxes)
+        : showCheckboxes,
+    [rows, showCheckboxes],
+  );
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) {
@@ -111,7 +122,7 @@ export function TreeTable<TData extends TreeNodeData>({
 
     const observer = new ResizeObserver(() => {
       const width = container.clientWidth - 1;
-      const adjustedWidth = showCheckboxes
+      const adjustedWidth = hasCheckboxColumn
         ? width - CHECKBOX_COLUMN_WIDTH
         : width;
       setContainerWidth(adjustedWidth);
@@ -119,7 +130,7 @@ export function TreeTable<TData extends TreeNodeData>({
 
     observer.observe(container);
     return () => observer.disconnect();
-  }, [containerRef, setContainerWidth, showCheckboxes]);
+  }, [containerRef, setContainerWidth, hasCheckboxColumn]);
 
   const hasExpandableRows = useMemo(
     () => rows.some((row) => row.getCanExpand()),
@@ -131,8 +142,10 @@ export function TreeTable<TData extends TreeNodeData>({
       (sum, w) => sum + w,
       0,
     );
-    return showCheckboxes ? columnsWidth + CHECKBOX_COLUMN_WIDTH : columnsWidth;
-  }, [columnWidths, showCheckboxes]);
+    return hasCheckboxColumn
+      ? columnsWidth + CHECKBOX_COLUMN_WIDTH
+      : columnsWidth;
+  }, [columnWidths, hasCheckboxColumn]);
 
   const measureElement = useCallback(
     (element: HTMLElement | null) => {
@@ -167,7 +180,10 @@ export function TreeTable<TData extends TreeNodeData>({
       virtualItemOrPinnedPosition={virtualItemOrPinnedPosition}
       table={table}
       columnWidths={columnWidths}
-      showCheckboxes={showCheckboxes}
+      showCheckboxes={hasCheckboxColumn}
+      showRowCheckbox={
+        showRowCheckbox ? showRowCheckbox(row) : hasCheckboxColumn
+      }
       showExpandButtons={hasExpandableRows}
       indentWidth={indentWidth}
       activeRowId={isStatic ? null : activeRowId}
@@ -231,7 +247,8 @@ export function TreeTable<TData extends TreeNodeData>({
                 <TreeTableHeader
                   table={table}
                   columnWidths={columnWidths}
-                  showCheckboxes={showCheckboxes}
+                  showCheckboxes={hasCheckboxColumn}
+                  showRowCheckbox={showRowCheckbox}
                   headerVariant={headerVariant}
                   classNames={classNames}
                   styles={styles}

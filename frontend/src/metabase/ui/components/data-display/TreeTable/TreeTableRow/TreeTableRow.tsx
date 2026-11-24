@@ -32,6 +32,7 @@ interface TreeTableRowContentProps<
   table: Table<TData>;
   columnWidths: Record<string, number>;
   showCheckboxes: boolean;
+  showRowCheckbox: boolean;
   showExpandButtons: boolean;
   indentWidth: number;
   activeRowId: string | null;
@@ -89,6 +90,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
   table,
   columnWidths,
   showCheckboxes,
+  showRowCheckbox,
   showExpandButtons,
   indentWidth,
   activeRowId,
@@ -161,19 +163,20 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
           pl="0.75rem"
           w={CHECKBOX_COLUMN_WIDTH}
           className={S.checkboxWrapper}
-          onClick={handleCheckboxToggle}
+          onClick={showRowCheckbox ? handleCheckboxToggle : undefined}
         >
-          {isLoading ? (
-            <Loader size="xs" color="core-brand" aria-label={t`Loading`} />
-          ) : (
-            <SelectionCheckbox
-              isSelected={selectionState === "all"}
-              isSomeSelected={selectionState === "some"}
-              disabled={isCheckboxDisabled}
-              onClick={handleCheckboxToggle}
-              className={classNames?.checkbox}
-            />
-          )}
+          {showRowCheckbox &&
+            (isLoading ? (
+              <Loader size="xs" color="core-brand" aria-label={t`Loading`} />
+            ) : (
+              <SelectionCheckbox
+                isSelected={selectionState === "all"}
+                isSomeSelected={selectionState === "some"}
+                disabled={isCheckboxDisabled}
+                onClick={handleCheckboxToggle}
+                className={classNames?.checkbox}
+              />
+            ))}
         </Flex>
       )}
       {visibleCells.map((cell, colIndex) => {
@@ -254,6 +257,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
   table,
   columnWidths,
   showCheckboxes,
+  showRowCheckbox = showCheckboxes,
   showExpandButtons,
   indentWidth,
   activeRowId,
@@ -280,7 +284,9 @@ export function TreeTableRow<TData extends TreeNodeData>({
   const rowProps = useMemo(() => getRowProps?.(row), [getRowProps, row]);
 
   // Selection is read outside the memoized content: a row keeps its identity when only its selection changes
-  const selectionState = getRowSelectionState(row, getSelectionState);
+  const selectionState = showRowCheckbox
+    ? getRowSelectionState(row, getSelectionState)
+    : "none";
   const isCheckboxDisabled = Boolean(
     isDisabled || (!getSelectionState && !row.getCanSelect()),
   );
@@ -292,6 +298,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
       table={table}
       columnWidths={columnWidths}
       showCheckboxes={showCheckboxes}
+      showRowCheckbox={showRowCheckbox}
       showExpandButtons={showExpandButtons}
       indentWidth={indentWidth}
       activeRowId={activeRowId ?? null}
