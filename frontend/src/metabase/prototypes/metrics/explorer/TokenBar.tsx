@@ -4,6 +4,8 @@ import {
   type KeyboardEvent,
   type ReactNode,
   type RefObject,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -39,6 +41,8 @@ export type TokenState = {
   isSelected: boolean;
   /** The caret input is attached to this token's right edge. */
   isHost: boolean;
+  /** The part of this token the arrow keys landed on, e.g. one of its filters. */
+  selectedPart: string | null;
 };
 
 export const matchesItem = (item: BarItem, query: string) => {
@@ -69,6 +73,14 @@ type TokenBarProps<T extends { key: string }> = {
   inputHostKey?: string | null;
   hostPrefix?: ReactNode;
   onExitHost?: () => void;
+  /** The caret input lost focus. */
+  onBlur?: () => void;
+  /** The parts the arrow keys step through inside a token; fewer than two: none. */
+  getParts?: (token: T) => string[];
+  /** Enter on a selected part starts to edit it. */
+  onOpenPart?: (index: number, part: string) => void;
+  /** Backspace or Delete on a selected part removes it; returns the caret afterwards. */
+  onDeletePart?: (index: number, part: string) => number;
 };
 
 /**
@@ -91,20 +103,35 @@ export function TokenBar<T extends { key: string }>({
   inputHostKey,
   hostPrefix,
   onExitHost,
+  onBlur,
+  getParts,
+  onOpenPart,
+  onDeletePart,
 }: TokenBarProps<T>) {
   const [caret, setCaret] = useState(tokens.length);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<number | null>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [partSel, setPartSel] = useState<{
+    index: number;
+    part: string;
+  } | null>(null);
+  const partsOf = (index: number) => {
+    const token = tokens[index];
+    const parts = token && getParts ? getParts(token) : [];
+    return parts.length > 1 ? parts : [];
+  };
 
   const clampedCaret = Math.min(caret, tokens.length);
   const items = getItems(query, clampedCaret);
   const list = useSuggestionList(items, query);
-  const isDropdownOpen = isFocused && selected == null && items.length > 0;
+  const isDropdownOpen =
+    isFocused && selected == null && partSel == null && items.length > 0;
 
   const moveCaret = (next: number) => {
     setCaret(Math.max(0, Math.min(tokens.length, next)));
     setSelected(null);
+    setPartSel(null);
   };
 
   const focusAt = (next: number) => {
@@ -120,6 +147,61 @@ export function TokenBar<T extends { key: string }>({
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const isEmpty = query.length === 0;
+
+    if (partSel != null && isEmpty) {
+      const parts = partsOf(partSel.index);
+      const at = parts.indexOf(partSel.part);
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        if (at > 0) {
+          setPartSel({ index: partSel.index, part: parts[at - 1] });
+        } else {
+          moveCaret(partSel.index);
+        }
+        return;
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        if (at >= 0 && at < parts.length - 1) {
+          setPartSel({ index: partSel.index, part: parts[at + 1] });
+        } else {
+          moveCaret(partSel.index + 1);
+        }
+        return;
+      }
+      if (event.key === "Enter" || event.key === "ArrowDown") {
+        event.preventDefault();
+        onOpenPart?.(partSel.index, partSel.part);
+        setPartSel(null);
+        return;
+      }
+      if (event.key === "Backspace" || event.key === "Delete") {
+        event.preventDefault();
+        moveCaret(
+          onDeletePart?.(partSel.index, partSel.part) ?? partSel.index + 1,
+        );
+        return;
+      }
+      if (event.key === "Escape") {
+        moveCaret(partSel.index + 1);
+        return;
+      }
+    }
+
+    // A pill the arrows landed on, as in the filter bar: arrows leave it,
+    // Enter or ArrowDown edit it.
+    if (selected != null && isEmpty) {
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        moveCaret(selected + (event.key === "ArrowLeft" ? 0 : 1));
+        return;
+      }
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        onOpenToken(selected);
+        return;
+      }
+    }
 
     if (selected != null && event.key === "Enter") {
       event.preventDefault();
@@ -169,7 +251,23 @@ export function TokenBar<T extends { key: string }>({
         return;
       }
       event.preventDefault();
-      moveCaret(clampedCaret + (event.key === "ArrowLeft" ? -1 : 1));
+      const isLeft = event.key === "ArrowLeft";
+      const target = isLeft ? clampedCaret - 1 : clampedCaret;
+      const parts = partsOf(target);
+      if (parts.length > 0) {
+        // A pill with filters: step into it, part by part.
+        setSelected(null);
+        setPartSel({
+          index: target,
+          part: isLeft ? parts[parts.length - 1] : parts[0],
+        });
+        return;
+      }
+      if (target >= 0 && target < tokens.length) {
+        // Land on the pill itself, so Enter can edit it.
+        setPartSel(null);
+        setSelected(target);
+      }
       return;
     }
 
@@ -221,6 +319,8 @@ export function TokenBar<T extends { key: string }>({
                   index,
                   isSelected: selected === index,
                   isHost: index === hostIndex,
+                  selectedPart:
+                    isFocused && partSel?.index === index ? partSel.part : null,
                 })}
               </span>
             </Fragment>
@@ -254,6 +354,8 @@ export function TokenBar<T extends { key: string }>({
               onBlur={() => {
                 setIsFocused(false);
                 setSelected(null);
+                setPartSel(null);
+                onBlur?.();
               }}
             />
           </span>
@@ -339,11 +441,19 @@ function SuggestionList({
   onHover: (index: number) => void;
   onPick: (item: BarItem) => void;
 }) {
+  const listRef = useRef<HTMLDivElement>(null);
+  // Keyboard moves keep the highlighted option in view.
+  useEffect(() => {
+    listRef.current
+      ?.querySelector(`[data-option-index="${highlight}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [highlight]);
+
   if (items.length === 0) {
     return <div className={S.empty}>No results</div>;
   }
   return (
-    <div className={S.options}>
+    <div className={S.options} ref={listRef}>
       {items.map((item, index) => (
         <Fragment key={item.id}>
           {item.section && item.section !== items[index - 1]?.section && (
@@ -360,6 +470,7 @@ function SuggestionList({
           )}
           <button
             className={cx(S.option, { [S.optionActive]: index === highlight })}
+            data-option-index={index}
             disabled={item.disabled}
             // Keep focus in the input while clicking an option.
             onMouseDown={(event) => event.preventDefault()}

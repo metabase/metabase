@@ -1,7 +1,15 @@
 import cx from "classnames";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { Box, Group, Icon, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 
 import { getMeasure } from "../data";
 
@@ -57,10 +65,18 @@ export function DefinitionEditor({
     onChange({ ...draft, formula: next });
   const setWhere = (next: WhereToken[]) => onChange({ ...draft, where: next });
 
-  const [filterHost, setFilterHost] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Editing | null>(null);
   const formulaInput = useRef<HTMLInputElement>(null);
   const whereInput = useRef<HTMLInputElement>(null);
+  const [filterHost, setFilterHost] = useState<string | null>(null);
+  // The filter row under the bar: open while it has filters or was just opened.
+  const [isWhereOpen, setIsWhereOpen] = useState(false);
+  const showWhere = where.length > 0 || isWhereOpen;
+  useEffect(() => {
+    if (isWhereOpen) {
+      whereInput.current?.focus();
+    }
+  }, [isWhereOpen]);
+  const [editing, setEditing] = useState<Editing | null>(null);
 
   const problem = findProblem(formula, measureName);
   const hasProblem = (key: string) => problem?.keys.includes(key) ?? false;
@@ -127,7 +143,34 @@ export function DefinitionEditor({
         disabled: !isAllowed(key),
       }),
     );
-    return [...search(measureItems, query), ...search(logic, query)];
+    // At the bottom: filter any measure in the formula, the one before the
+    // caret first. Typing "filter" (or "|") finds them.
+    const terms = formula.filter(
+      (token): token is Extract<FormulaToken, { kind: "term" }> =>
+        token.kind === "term",
+    );
+    const ordered =
+      before?.kind === "term"
+        ? [before, ...terms.filter((t) => t.key !== before.key)]
+        : terms;
+    const filterOptions = ordered.map(
+      (term): BarItem => ({
+        id: `filter-term:${term.key}`,
+        label: `Filter ${measureName(term.measureId)}`,
+        description:
+          term.filters.length > 0 ? `| ${term.filters.join(", ")}` : undefined,
+        icon: "filter",
+        hint: term.key === before?.key ? "|" : undefined,
+        aliases: ["|", "filter", "where"],
+        section: "Filter",
+        sectionIcon: "filter",
+      }),
+    );
+    return [
+      ...search(measureItems, query),
+      ...search(logic, query),
+      ...search(filterOptions, query),
+    ];
   };
 
   const handleFormulaChar = (char: string, caret: number): number | null => {
@@ -167,6 +210,10 @@ export function DefinitionEditor({
   };
 
   const pickFormulaItem = (item: BarItem, caret: number): number => {
+    if (item.id.startsWith("filter-term:")) {
+      setFilterHost(item.id.slice("filter-term:".length));
+      return caret;
+    }
     if (item.id.startsWith("logic:")) {
       return handleFormulaChar(item.id.slice("logic:".length), caret) ?? caret;
     }
@@ -188,7 +235,11 @@ export function DefinitionEditor({
 
   const renderFormulaToken = (
     token: FormulaToken,
-    { isSelected, isHost }: { isSelected: boolean; isHost: boolean },
+    {
+      isSelected,
+      isHost,
+      selectedPart,
+    }: { isSelected: boolean; isHost: boolean; selectedPart: string | null },
   ) => {
     const isError = hasProblem(token.key);
 
@@ -266,7 +317,9 @@ export function DefinitionEditor({
           </span>
         ) : (
           <button
-            className={cx(S.seg, S.segMeasure)}
+            className={cx(S.seg, S.segMeasure, {
+              [S.partSelected]: selectedPart === "measure",
+            })}
             onClick={() => setEditing({ key: token.key, part: "measure" })}
           >
             {name}
@@ -299,7 +352,9 @@ export function DefinitionEditor({
           ) : (
             <button
               key={filter}
-              className={cx(S.seg, S.segFilter)}
+              className={cx(S.seg, S.segFilter, {
+                [S.partSelected]: selectedPart === `filter:${filter}`,
+              })}
               onClick={() =>
                 setEditing({ key: token.key, part: `filter:${filter}` })
               }
@@ -309,6 +364,31 @@ export function DefinitionEditor({
             </button>
           ),
         )}
+        <Tooltip label={`Filter ${name}`}>
+          <button
+            className={S.addFilter}
+            aria-label={`Filter ${name}`}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={(event) => {
+              event.stopPropagation();
+              setFilterHost(token.key);
+              formulaInput.current?.focus();
+            }}
+          >
+            <Icon name="filter" size={12} />
+          </button>
+        </Tooltip>
+        <Icon
+          name="close"
+          size={12}
+          className={S.removeIcon}
+          aria-label="Remove"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={(event) => {
+            event.stopPropagation();
+            removeToken(token.key);
+          }}
+        />
       </span>
     );
   };
@@ -346,12 +426,23 @@ export function DefinitionEditor({
         </span>
       ) : (
         <button
-          className={S.seg}
+          className={cx(S.seg, S.segFilter)}
           onClick={() => setEditing({ key: token.key, part: "where" })}
         >
           {token.filter}
         </button>
       )}
+      <Icon
+        name="close"
+        size={12}
+        className={S.removeIcon}
+        aria-label="Remove"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={(event) => {
+          event.stopPropagation();
+          setWhere(where.filter((w) => w.key !== token.key));
+        }}
+      />
     </span>
   );
 
@@ -383,6 +474,25 @@ export function DefinitionEditor({
             part: token.kind === "term" ? "measure" : "op",
           });
         }
+      }}
+      getParts={(token) =>
+        token.kind === "term"
+          ? ["measure", ...token.filters.map((f) => `filter:${f}`)]
+          : []
+      }
+      onOpenPart={(index, part) =>
+        setEditing({ key: formula[index].key, part })
+      }
+      onDeletePart={(index, part) => {
+        const token = formula[index];
+        if (part === "measure") {
+          removeToken(token.key);
+          return index;
+        }
+        const filter = part.slice("filter:".length);
+        updateTerm(token.key, (filters) => filters.filter((f) => f !== filter));
+        // After the pill, so the next arrow steps back into it.
+        return index + 1;
       }}
       inputHostKey={filterHost}
       hostPrefix={<span className={S.pipe}>|</span>}
@@ -418,6 +528,7 @@ export function DefinitionEditor({
       onOpenToken={(index) =>
         setEditing({ key: where[index].key, part: "where" })
       }
+      onBlur={() => setIsWhereOpen(false)}
     />
   );
 
@@ -430,15 +541,33 @@ export function DefinitionEditor({
   if (layout === "explorer") {
     return (
       <Stack gap="xs">
-        {formulaBar}
-        <Group gap="sm" wrap="nowrap" align="center">
-          <Text size="sm" fw={700} c="text-secondary" w={48}>
-            Where
-          </Text>
-          <Box flex={1} miw={0}>
-            {whereBar}
-          </Box>
-        </Group>
+        {/* The Metric Explorer's search box: the formula on top, the filters
+            in their own tinted row under it. */}
+        <Box className={S.explorerBox}>
+          <Group gap="xs" wrap="nowrap" align="flex-start" pr="sm">
+            <Box flex={1} miw={0}>
+              {formulaBar}
+            </Box>
+            {!showWhere && (
+              <Tooltip label="Filter the whole metric">
+                <ActionIcon
+                  mt="sm"
+                  variant="subtle"
+                  color="filter"
+                  aria-label="Filter the whole metric"
+                  onClick={() => setIsWhereOpen(true)}
+                >
+                  <Icon name="filter_plus" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Group>
+          {showWhere && (
+            <Box className={S.explorerFilters} bg="background_page-filter">
+              {whereBar}
+            </Box>
+          )}
+        </Box>
         {problemText}
       </Stack>
     );
