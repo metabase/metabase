@@ -187,7 +187,7 @@
   - an admin is not a group manager, and a user in `new-admins` is not one of any group other than Administrators
   - a tenant user is in a tenant group, and a user outside every tenant in a group that is not one
 
-  The `new-admins` are the ids of the Users the whole write adds to Administrators, which a batch of it may not hold."
+  The `new-admins` are the ids of the Users the whole write makes admins, since one batch may hold only some."
   [memberships new-admins]
   (when (seq memberships)
     (let [members           (permissions.db/member-flags-by-user-ids (into #{} (map :user_id) memberships))
