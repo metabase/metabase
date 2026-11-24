@@ -807,15 +807,18 @@ describe("DataPickerModal > library", () => {
   });
 
   const LIBRARY_ID = 6464;
+  const DATA_COLLECTION_ID = 6465;
+  const METRICS_COLLECTION_ID = 6466;
+  const ORDERS_ID = 10;
   const DATA_COLLECTION = createMockCollection({
-    id: 6465,
+    id: DATA_COLLECTION_ID,
     name: "Data",
     type: "library-data",
     location: `/${LIBRARY_ID}/`,
     is_library_root: true,
   });
   const METRICS_COLLECTION = createMockCollection({
-    id: 6466,
+    id: METRICS_COLLECTION_ID,
     name: "Metrics",
     type: "library-metrics",
     location: `/${LIBRARY_ID}/`,
@@ -830,7 +833,7 @@ describe("DataPickerModal > library", () => {
     is_published: true,
   });
   const ORDERS = createMockTable({
-    id: 10,
+    id: ORDERS_ID,
     db_id: 1,
     schema: "PUBLIC",
     display_name: "Orders",
@@ -839,10 +842,10 @@ describe("DataPickerModal > library", () => {
     is_published: true,
   });
 
-  function toTableItem(table: typeof ORDERS) {
+  function toTableItem(id: number, name: string) {
     return createMockCollectionItem({
-      id: table.id as number,
-      name: table.display_name,
+      id,
+      name,
       model: "table",
       database_id: 1,
       collection_id: DATA_COLLECTION.id,
@@ -873,13 +876,13 @@ describe("DataPickerModal > library", () => {
           items: [
             createMockCollectionItem({
               ...DATA_COLLECTION,
-              id: DATA_COLLECTION.id as number,
+              id: DATA_COLLECTION_ID,
               model: "collection",
               here: ["table"],
             }),
             createMockCollectionItem({
               ...METRICS_COLLECTION,
-              id: METRICS_COLLECTION.id as number,
+              id: METRICS_COLLECTION_ID,
               model: "collection",
               here: [],
             }),
@@ -887,7 +890,7 @@ describe("DataPickerModal > library", () => {
         },
         {
           collection: DATA_COLLECTION,
-          items: [toTableItem(ACCOUNTS), toTableItem(ORDERS)],
+          items: [toTableItem(9, "Accounts"), toTableItem(ORDERS_ID, "Orders")],
         },
       ],
     });
@@ -911,7 +914,7 @@ describe("DataPickerModal > library", () => {
   });
 
   it("builds the path to a published table from the value", async () => {
-    await setupLibrary({ model: "table", id: ORDERS.id as number, db_id: 1 });
+    await setupLibrary({ model: "table", id: ORDERS_ID, db_id: 1 });
 
     expect(await findItem(2, "Orders")).toHaveAttribute("data-active", "true");
     expect(await findItem(2, "Accounts")).not.toHaveAttribute(
