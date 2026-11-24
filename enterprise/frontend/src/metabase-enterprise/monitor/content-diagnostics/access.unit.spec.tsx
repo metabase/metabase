@@ -2,7 +2,6 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
-  setupContentDiagnosticsCountsEndpoint,
   setupListStaleFindingsEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -57,7 +56,6 @@ function setup({ hasContentDiagnosticsFeature }: SetupOpts) {
     key: "stale",
     value: {},
   });
-  setupContentDiagnosticsCountsEndpoint();
   setupListStaleFindingsEndpoint(
     createMockListStaleFindingsResponse({
       data: [
