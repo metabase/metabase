@@ -1,0 +1,68 @@
+;; A dbt project's output schema: snapshots (`dbt_scd_id`, `dbt_updated_at`, `dbt_valid_from`, `dbt_valid_to`, and
+;; `dbt_is_deleted` with `hard_deletes: new_record`) plus the dimensional models built on them. Warehouses that dbt
+;; targets rarely declare keys, so only the models with enforced constraints have a PK.
+{:schema "analytics"
+ :tables
+ [{:name "orders_snapshot"
+   :fields [{:name "id"             :base_type :type/Integer}
+            {:name "customer_id"    :base_type :type/Integer}
+            {:name "status"         :base_type :type/Text}
+            {:name "amount"         :base_type :type/Decimal}
+            {:name "created_at"     :base_type :type/DateTime}
+            {:name "updated_at"     :base_type :type/DateTime}
+            {:name "dbt_scd_id"     :base_type :type/Text}
+            {:name "dbt_updated_at" :base_type :type/DateTime}
+            {:name "dbt_valid_from" :base_type :type/DateTime}
+            {:name "dbt_valid_to"   :base_type :type/DateTime}]}
+
+  ;; a `check` strategy snapshot with hard deletes recorded
+  {:name "customers_snapshot"
+   :fields [{:name "customer_id"    :base_type :type/Integer}
+            {:name "first_name"     :base_type :type/Text}
+            {:name "last_name"      :base_type :type/Text}
+            {:name "email"          :base_type :type/Text}
+            {:name "plan"           :base_type :type/Text}
+            {:name "dbt_scd_id"     :base_type :type/Text}
+            {:name "dbt_updated_at" :base_type :type/DateTime}
+            {:name "dbt_valid_from" :base_type :type/DateTime}
+            {:name "dbt_valid_to"   :base_type :type/DateTime}
+            {:name "dbt_is_deleted" :base_type :type/Text}]}
+
+  ;; a type 6 dimension: each version also carries the current title and department
+  {:name "dim_employee_history"
+   :fields [{:name "employee_sk"        :base_type :type/Text :semantic_type :type/SurrogateKey}
+            {:name "employee_id"        :base_type :type/Integer}
+            {:name "title"              :base_type :type/Text}
+            {:name "current_title"      :base_type :type/Text}
+            {:name "department"         :base_type :type/Text}
+            {:name "department_current" :base_type :type/Text}
+            {:name "valid_from"         :base_type :type/Date}
+            {:name "valid_to"           :base_type :type/Date}
+            {:name "is_current"         :base_type :type/Boolean}]}
+
+  {:name "dim_customers"
+   :fields [{:name "customer_id"      :base_type :type/Integer :pk true}
+            {:name "first_name"       :base_type :type/Text}
+            {:name "last_name"        :base_type :type/Text}
+            {:name "first_order_date" :base_type :type/Date}
+            {:name "number_of_orders" :base_type :type/Integer}
+            {:name "lifetime_value"   :base_type :type/Decimal}]}
+
+  {:name "fct_orders"
+   :fields [{:name "order_id"     :base_type :type/Integer :pk true}
+            {:name "customer_id"  :base_type :type/Integer :fk "dim_customers.customer_id"}
+            {:name "order_date"   :base_type :type/Date}
+            {:name "status"       :base_type :type/Text}
+            {:name "amount"       :base_type :type/Decimal}]}
+
+  {:name "fct_daily_inventory"
+   :fields [{:name "snapshot_date"    :base_type :type/Date :pk true}
+            {:name "product_id"       :base_type :type/Integer :pk true :fk "dim_products.product_id"}
+            {:name "quantity_on_hand" :base_type :type/Integer}
+            {:name "quantity_reserved" :base_type :type/Integer}]}
+
+  {:name "dim_products"
+   :fields [{:name "product_id"   :base_type :type/Integer :pk true}
+            {:name "name"         :base_type :type/Text}
+            {:name "category"     :base_type :type/Text}
+            {:name "unit_price"   :base_type :type/Decimal}]}]}

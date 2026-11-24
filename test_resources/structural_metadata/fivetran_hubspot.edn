@@ -1,0 +1,139 @@
+;; A Fivetran HubSpot destination schema. Object tables carry each HubSpot property as a `property_<name>` column;
+;; `property` defines them (one row per object type and property, with a label and a type). `*_property_history`
+;; tables keep one row per property change, `deal_stage` uses history mode, and `deal_company` / `deal_contact`
+;; associate deals with companies and contacts. Every table gets `_fivetran_synced`.
+{:schema "hubspot"
+ :tables
+ [{:name "owner"
+   :fields [{:name "owner_id"          :base_type :type/BigInteger :pk true}
+            {:name "email"             :base_type :type/Text}
+            {:name "first_name"        :base_type :type/Text}
+            {:name "last_name"         :base_type :type/Text}
+            {:name "created_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "updated_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "company"
+   :fields [{:name "id"                          :base_type :type/BigInteger :pk true}
+            {:name "portal_id"                   :base_type :type/BigInteger}
+            {:name "is_deleted"                  :base_type :type/Boolean}
+            {:name "property_name"               :base_type :type/Text}
+            {:name "property_domain"             :base_type :type/Text}
+            {:name "property_industry"           :base_type :type/Text}
+            {:name "property_annualrevenue"      :base_type :type/Float}
+            {:name "property_hubspot_owner_id"   :base_type :type/BigInteger}
+            {:name "property_createdate"         :base_type :type/DateTimeWithLocalTZ}
+            {:name "property_hs_lastmodifieddate" :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"            :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "contact"
+   :fields [{:name "id"                       :base_type :type/BigInteger :pk true}
+            {:name "portal_id"                :base_type :type/BigInteger}
+            {:name "is_deleted"               :base_type :type/Boolean}
+            {:name "property_email"           :base_type :type/Text}
+            {:name "property_firstname"       :base_type :type/Text}
+            {:name "property_lastname"        :base_type :type/Text}
+            {:name "property_lifecyclestage"  :base_type :type/Text}
+            {:name "property_associatedcompanyid" :base_type :type/BigInteger}
+            {:name "property_createdate"      :base_type :type/DateTimeWithLocalTZ}
+            {:name "property_lastmodifieddate" :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"         :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "deal_pipeline"
+   :fields [{:name "pipeline_id"       :base_type :type/Text :pk true}
+            {:name "label"             :base_type :type/Text}
+            {:name "display_order"     :base_type :type/Integer}
+            {:name "active"            :base_type :type/Boolean}
+            {:name "created_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "updated_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_deleted" :base_type :type/Boolean}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "deal_pipeline_stage"
+   :fields [{:name "stage_id"          :base_type :type/Text :pk true}
+            {:name "pipeline_id"       :base_type :type/Text :fk "deal_pipeline.pipeline_id"}
+            {:name "label"             :base_type :type/Text}
+            {:name "probability"       :base_type :type/Float}
+            {:name "display_order"     :base_type :type/Integer}
+            {:name "closed_won"        :base_type :type/Boolean}
+            {:name "active"            :base_type :type/Boolean}
+            {:name "_fivetran_deleted" :base_type :type/Boolean}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "deal"
+   :fields [{:name "deal_id"                :base_type :type/BigInteger :pk true}
+            {:name "portal_id"              :base_type :type/BigInteger}
+            {:name "deal_pipeline_id"       :base_type :type/Text :fk "deal_pipeline.pipeline_id"}
+            {:name "deal_pipeline_stage_id" :base_type :type/Text :fk "deal_pipeline_stage.stage_id"}
+            {:name "owner_id"               :base_type :type/BigInteger :fk "owner.owner_id"}
+            {:name "is_deleted"             :base_type :type/Boolean}
+            {:name "property_dealname"      :base_type :type/Text}
+            {:name "property_amount"        :base_type :type/Float}
+            {:name "property_closedate"     :base_type :type/DateTimeWithLocalTZ}
+            {:name "property_createdate"    :base_type :type/DateTimeWithLocalTZ}
+            {:name "property_dealtype"      :base_type :type/Text}
+            {:name "_fivetran_synced"       :base_type :type/DateTimeWithLocalTZ}]}
+
+  ;; history mode: one row per stage the deal entered
+  {:name "deal_stage"
+   :fields [{:name "deal_id"           :base_type :type/BigInteger :pk true :fk "deal.deal_id"}
+            {:name "_fivetran_start"   :base_type :type/DateTimeWithLocalTZ :pk true}
+            {:name "_fivetran_end"     :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_active"  :base_type :type/Boolean}
+            {:name "date_entered"      :base_type :type/DateTimeWithLocalTZ}
+            {:name "value"             :base_type :type/Text}
+            {:name "source"            :base_type :type/Text}
+            {:name "source_id"         :base_type :type/Text}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "deal_company"
+   :fields [{:name "deal_id"          :base_type :type/BigInteger :pk true :fk "deal.deal_id"}
+            {:name "company_id"       :base_type :type/BigInteger :pk true :fk "company.id"}
+            {:name "type_id"          :base_type :type/Integer}
+            {:name "category"         :base_type :type/Text}
+            {:name "_fivetran_synced" :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "deal_contact"
+   :fields [{:name "deal_id"          :base_type :type/BigInteger :pk true :fk "deal.deal_id"}
+            {:name "contact_id"       :base_type :type/BigInteger :pk true :fk "contact.id"}]}
+
+  ;; one row per object type and property: the definitions of every `property_*` column
+  {:name "property"
+   :fields [{:name "_fivetran_id"     :base_type :type/Text :pk true}
+            {:name "hubspot_object"   :base_type :type/Text}
+            {:name "name"             :base_type :type/Text}
+            {:name "label"            :base_type :type/Text}
+            {:name "type"             :base_type :type/Text}
+            {:name "field_type"       :base_type :type/Text}
+            {:name "group_name"       :base_type :type/Text}
+            {:name "description"      :base_type :type/Text}
+            {:name "calculated"       :base_type :type/Boolean}
+            {:name "_fivetran_synced" :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "property_option"
+   :fields [{:name "property_id"      :base_type :type/Text :pk true :fk "property._fivetran_id"}
+            {:name "label"            :base_type :type/Text :pk true}
+            {:name "value"            :base_type :type/Text}
+            {:name "display_order"    :base_type :type/Integer}
+            {:name "hidden"           :base_type :type/Boolean}
+            {:name "_fivetran_synced" :base_type :type/DateTimeWithLocalTZ}]}
+
+  ;; one row per property change
+  {:name "contact_property_history"
+   :fields [{:name "contact_id"       :base_type :type/BigInteger :pk true :fk "contact.id"}
+            {:name "name"             :base_type :type/Text :pk true}
+            {:name "timestamp"        :base_type :type/DateTimeWithLocalTZ :pk true}
+            {:name "value"            :base_type :type/Text}
+            {:name "source"           :base_type :type/Text}
+            {:name "source_id"        :base_type :type/Text}
+            {:name "_fivetran_synced" :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "engagement"
+   :fields [{:name "id"               :base_type :type/BigInteger :pk true}
+            {:name "portal_id"        :base_type :type/BigInteger}
+            {:name "type"             :base_type :type/Text}
+            {:name "owner_id"         :base_type :type/BigInteger :fk "owner.owner_id"}
+            {:name "active"           :base_type :type/Boolean}
+            {:name "created_at"       :base_type :type/DateTimeWithLocalTZ}
+            {:name "timestamp"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced" :base_type :type/DateTimeWithLocalTZ}]}]}
