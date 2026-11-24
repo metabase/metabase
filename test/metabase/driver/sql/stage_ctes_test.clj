@@ -195,8 +195,5 @@
               (let [query-result (qp/process-query query)]
                 (is (= [[1]]
                        (mt/formatted-rows [int] query-result)))
-                (if (driver/database-supports? driver/*driver* :stage-ctes/nested (mt/db))
-                  (is (re-find #"WITH.*__mb_stage"
-                               (-> query-result :data :native_form :query)))
-                  (is (not (re-find #"WITH.*__mb_stage"
-                                    (-> query-result :data :native_form :query)))))))))))))
+                (is (not (re-find #"WITH.*__mb_stage"
+                                  (-> query-result :data :native_form :query))))))))))))

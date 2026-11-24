@@ -1155,14 +1155,9 @@
     ;; Does this driver support compiling multi-stage queries to CTEs instead of nested subselects?
     ;; The driver should support putting a CTE at the start of a statement, or after `CREATE TABLE`
     ;; or `INSERT INTO`, or the driver should change these statements so they are valid
-    ;; (e.g. `driver/compile-insert :sqlserver`). See also `:stage-ctes/nested`.
+    ;; (e.g. `driver/compile-insert :sqlserver`). Queries with a native stage that has its own CTE, and cards that a
+    ;; native query references with `{{#123}}`, always compile with nested subselects.
     :stage-ctes
-    ;;
-    ;; Does this driver support CTEs inside another query, e.g. in the body of another CTE or in a subquery?
-    ;; This is necessary to compile queries with native stages that have their own CTEs, and native queries that
-    ;; reference a card with `{{#123}}`. If not, Metabase compiles these queries with nested subselects. By default,
-    ;; this has the same value as `:stage-ctes`.
-    :stage-ctes/nested
     ;;
     ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
     ;;
@@ -1242,11 +1237,6 @@
 (defmethod database-supports? [::driver :regex/lookaheads-and-lookbehinds]
   [driver _feature database]
   (database-supports? driver :regex database))
-
-;; by default a driver supports `:stage-ctes/nested` if it supports `:stage-ctes`
-(defmethod database-supports? [::driver :stage-ctes/nested]
-  [driver _feature database]
-  (database-supports? driver :stage-ctes database))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for

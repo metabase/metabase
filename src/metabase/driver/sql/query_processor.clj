@@ -2361,26 +2361,6 @@
     (cond-> hsql
       (and (map? hsql) (seq @ctes)) (assoc :with @ctes))))
 
-(defn- stage-raw-sql
-  "The raw SQL that `stage->honeysql` compiles for `stage`, if any."
-  [stage]
-  (let [sql (or (:persisted-info/native stage)
-                (when (lib/native-stage? stage) (:native stage)))]
-    (when (string? sql) sql)))
-
-(defn- native-sql-max-cte-number
-  [stage]
-  (when-let [sql (stage-raw-sql stage)]
-    (some->> (re-seq (re-pattern (str stage-cte-prefix #"(\d+)")) sql)
-             (map (comp parse-long second))
-             (apply max))))
-
-(defn- first-cte-number
-  "The number of the first stage CTE. Normally 0, but if the native SQL of any stage already has stage CTEs, we start
-  above them to avoid name collisions."
-  [stages]
-  (inc (reduce max -1 (keep native-sql-max-cte-number (all-stages stages)))))
-
 (defn- assign-cte-names*
   "Gives each stage that compiles to a CTE a unique `::cte-name`, starting at `__mb_stage_<n>`."
   [stages n]
@@ -2400,22 +2380,23 @@
 
 (defn- assign-cte-names
   [stages]
-  (first (assign-cte-names* stages (first-cte-number stages))))
+  (first (assign-cte-names* stages 0)))
 
 (defn- native-stage-has-cte?
   "Whether the raw SQL of `stage` contains `WITH`. A false positive only makes the query use subselects."
   [stage]
-  (boolean (some->> (stage-raw-sql stage) (re-find #"(?i)\bwith\b"))))
+  (let [sql (or (:persisted-info/native stage)
+                (when (lib/native-stage? stage) (:native stage)))]
+    (boolean (and (string? sql) (re-find #"(?i)\bwith\b" sql)))))
 
 (defn- use-stage-ctes?
   [driver stages query]
   (when-let [db (and (driver-api/initialized?) (driver-api/database (driver-api/metadata-provider)))]
     (and (driver/database-supports? driver :stage-ctes db)
-         (or (driver/database-supports? driver :stage-ctes/nested db)
-             ;; If nested CTEs aren't supported, check that we don't have a card reference like {{#123}}
-             ;; and don't have a native stage with a CTE, otherwise we could end up with nested CTEs.
-             (and (not (get-in query [:middleware :card-reference?]))
-                  (not-any? native-stage-has-cte? (all-stages stages)))))))
+         ;; A card reference like {{#123}} is compiled into a subquery of the native query, and a native stage with a
+         ;; CTE would be in the body of a stage CTE. Use subselects for both, so we never put a `WITH` inside a query.
+         (not (get-in query [:middleware :card-reference?]))
+         (not-any? native-stage-has-cte? (all-stages stages)))))
 
 (defn- stages->honeysql
   [driver stages query]
