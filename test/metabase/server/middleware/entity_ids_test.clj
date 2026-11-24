@@ -586,3 +586,41 @@
           (is (=? {:table_id    (table-ref (mt/id :venues))
                    :database_id (:name (mt/db))}
                   (get-with-entity-ids :crowberto (str "action/" (:id action))))))))))
+
+(deftest query-action-write-back-test
+  (testing "with the header, a query Action read from an instance, its query naming its Database by name, writes the
+            same Action of its restore, and creates one there"
+    (mt/with-actions-enabled
+      (mt/with-model-cleanup [:model/Card :model/Action]
+        (let [model  (mt/user-http-request :crowberto :post 200 "card" {:name                   "eid query action model"
+                                                                        :type                   :model
+                                                                        :display                :table
+                                                                        :dataset_query          (venues-query)
+                                                                        :visualization_settings {}})
+              action (mt/user-http-request :crowberto :post 200 "action"
+                                           {:name          "eid query action"
+                                            :type          "query"
+                                            :model_id      (:id model)
+                                            :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                             "UPDATE venues SET name = {{name}}")
+                                            :parameters    [{:id "name" :slug "name" :type "string/="
+                                                             :target [:variable [:template-tag "name"]]}]})
+              url    (str "action/" (:entity_id action))
+              fetch  #(without-timestamps (dissoc (get-with-entity-ids :crowberto url) :model))
+              before (fetch)
+              body   (select-keys before [:name :type :model_id :dataset_query :parameters :parameter_mappings
+                                          :visualization_settings])]
+          (is (= (:name (mt/db)) (get-in before [:dataset_query :database])))
+          (restore! [[:model/Card [(t2/select-one :model/Card :id (:id model))]]
+                     [:model/Action [(t2/select-one :model/Action :id (:id action))]]])
+          (put-with-entity-ids :crowberto url (assoc body :name "eid written back query action"))
+          (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction
+                                           :action_id (id-of :model/Action (:entity_id action)))))
+          (is (= (assoc before :name "eid written back query action")
+                 (fetch)))
+          (testing "a create body"
+            (let [created (mt/user-http-request :crowberto :post 200 "action" entity-ids
+                                                (assoc body :name "eid created query action"))]
+              (is (=? {:database_id   (:name (mt/db))
+                       :dataset_query (:dataset_query before)}
+                      created)))))))))

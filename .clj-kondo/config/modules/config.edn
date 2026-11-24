@@ -144,7 +144,7 @@
            util
            warehouses
            workspaces}
-   :model-exports #{:model/Action}
+   :model-exports #{:model/Action :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -173,6 +173,7 @@
                     :model/Card
                     :model/Collection
                     :model/Database
+                    :model/QueryAction
                     :model/Table}}
 
   activity-feed

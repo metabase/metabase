@@ -79,11 +79,14 @@
 (defn- action-body-schema
   "`schema`, the schema of an Action create or update body, whose columns of [[action-body-references]] also take refs,
   which it decodes to ids before it validates, and that in a request in entity id form also takes the `parameters`,
-  `parameter_mappings` and `visualization_settings` as serialization exports them. The decoding is here and not in
-  the schemas of [[metabase.actions.schema]], which ad-hoc execution shares."
+  `parameter_mappings` and `visualization_settings`, and a query Action's `dataset_query`, which its QueryAction
+  holds, as serialization exports them. The decoding is here and not in the schemas of [[metabase.actions.schema]],
+  which ad-hoc execution shares."
   [schema]
   [:schema {:decode/api #(cond-> % (map? %) (eid-translation/refs->ids action-body-references))}
-   (eid-translation/structures-schema :model/Action [:parameters :parameter_mappings :visualization_settings] schema)])
+   (->> schema
+        (eid-translation/structures-schema :model/QueryAction [:dataset_query])
+        (eid-translation/structures-schema :model/Action [:parameters :parameter_mappings :visualization_settings]))])
 
 (def ^:private ActionCreateBody
   (action-body-schema ::actions.schema/action.create-request))
