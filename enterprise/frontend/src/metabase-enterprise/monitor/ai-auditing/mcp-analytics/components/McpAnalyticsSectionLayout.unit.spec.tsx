@@ -20,7 +20,7 @@ import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/constants";
-import type { Database, Dataset, Field } from "metabase-types/api";
+import type { Database, Dataset, Field, RowValue } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatabase,
@@ -48,6 +48,7 @@ const TOOL_CALL_ID_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 0;
 const CREATED_AT_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 1;
 const TOOL_NAME_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 2;
 const STATUS_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 3;
+const ERROR_TYPE_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 10;
 const ERROR_MESSAGE_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 11;
 
 const BASE_TYPE = {
@@ -571,48 +572,55 @@ describe("McpAnalyticsSectionLayout", () => {
     const ERROR_TYPE = "Invalid params";
     const ERROR_MESSAGE = "missing required argument: query";
 
-    /** One successful and one failed call, as the audit DB (H2) returns them: upper-cased names. */
+    const FIELD_NAME_BY_ID = new Map(
+      (auditDatabase.tables ?? [])
+        .flatMap((table) => table.fields ?? [])
+        .map((field) => [Number(field.id), field.name] as const),
+    );
+
+    const EVENT_ROWS: Record<string, RowValue>[] = [
+      {
+        tool_call_id: "tc-2",
+        created_at: "2026-04-16T10:00:00Z",
+        tool_name: ERROR_TOOL,
+        user_display_name: "Ada",
+        status: "error",
+        duration_ms: 7,
+        error_type: ERROR_TYPE,
+        error_message: ERROR_MESSAGE,
+      },
+      {
+        tool_call_id: "tc-1",
+        created_at: "2026-04-16T09:00:00Z",
+        tool_name: SUCCESS_TOOL,
+        user_display_name: "Ada",
+        status: "success",
+        duration_ms: 42,
+        error_type: null,
+        error_message: null,
+      },
+    ];
+
+    /**
+     * One failed and one successful call, with only the columns the events query asks for
+     * (its `fields`), as the audit DB (H2) returns them: upper-cased names.
+     */
     const eventsDataset = (stage: McpMbqlStage): Dataset => {
-      const withErrorMessage = (stage.fields ?? []).some(
-        (field) => field[2] === ERROR_MESSAGE_FIELD_ID,
+      const names = (stage.fields ?? []).flatMap((field) => {
+        const name = FIELD_NAME_BY_ID.get(field[2]);
+        return name ? [name] : [];
+      });
+      const rows = EVENT_ROWS.map((row) =>
+        names.map((name) => row[name] ?? null),
       );
-      const names = [
-        "TOOL_CALL_ID",
-        "CREATED_AT",
-        "TOOL_NAME",
-        "USER_DISPLAY_NAME",
-        "STATUS",
-        "DURATION_MS",
-        "ERROR_TYPE",
-        ...(withErrorMessage ? ["ERROR_MESSAGE"] : []),
-      ];
-      const rows = [
-        [
-          "tc-2",
-          "2026-04-16T10:00:00Z",
-          ERROR_TOOL,
-          "Ada",
-          "error",
-          7,
-          ERROR_TYPE,
-          ERROR_MESSAGE,
-        ],
-        [
-          "tc-1",
-          "2026-04-16T09:00:00Z",
-          SUCCESS_TOOL,
-          "Ada",
-          "success",
-          42,
-          null,
-          null,
-        ],
-      ].map((row) => row.slice(0, names.length));
       return createMockDataset({
         data: createMockDatasetData({
           rows,
           cols: names.map((name) =>
-            createMockColumn({ name, display_name: name }),
+            createMockColumn({
+              name: name.toUpperCase(),
+              display_name: name,
+            }),
           ),
         }),
         database_id: AUDIT_DB_ID,
@@ -718,6 +726,7 @@ describe("McpAnalyticsSectionLayout", () => {
         within(successRow).queryByText(ERROR_TYPE),
       ).not.toBeInTheDocument();
       expect(requestedFieldIds).toContain(TOOL_NAME_FIELD_ID);
+      expect(requestedFieldIds).toContain(ERROR_TYPE_FIELD_ID);
       expect(requestedFieldIds).not.toContain(ERROR_MESSAGE_FIELD_ID);
       expect(
         within(table).queryByRole("columnheader", { name: /Error message/ }),
@@ -730,6 +739,7 @@ describe("McpAnalyticsSectionLayout", () => {
         await setupEventsPage(true);
 
       expect(within(errorRow).getByText(ERROR_TYPE)).toBeInTheDocument();
+      expect(requestedFieldIds).toContain(ERROR_TYPE_FIELD_ID);
       expect(requestedFieldIds).toContain(ERROR_MESSAGE_FIELD_ID);
       expect(
         within(table).getByRole("columnheader", { name: /Error message/ }),
