@@ -449,7 +449,7 @@
   "What the run permission check of a native query on the Database `db-id` answers, or `:throws`."
   [db-id]
   (try
-    (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1"))
+    (first (query-perms/query-run-answers [(lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")]))
     (catch Throwable _
       :throws)))
 
@@ -638,7 +638,7 @@
   (boolean
    (when subject
      (and (mi/can-read? (t2/hydrate subject :can_read))
-          (query-perms/can-run-query? query)
+          (first (query-perms/query-run-answers [query]))
           (or (mi/superuser?)
               (some-> (data-testing.models/query-database-id query) per-query-native?))))))
 

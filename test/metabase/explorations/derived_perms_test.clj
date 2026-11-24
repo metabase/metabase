@@ -240,7 +240,7 @@
                                              [:field (mt/id :venues :id) {:join-alias "J"}]]}]}})
 
 (deftest batching-does-not-merge-a-plain-query-with-a-card-joined-one-test
-  (testing "the verdict has a third projection the key must carry: `can-run-query?` reads `:card-ids`
+  (testing "the verdict has a third projection the key must carry: `query-run-answers` reads `:card-ids`
             off the *preprocessed* query and checks read perms on each card's collection. A plain
             breakout and one joined to a saved card over the same table agree on both projections the
             key does carry, so keyed on those alone they share a verdict — and a viewer who can query

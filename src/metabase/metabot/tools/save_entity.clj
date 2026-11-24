@@ -161,7 +161,7 @@
   A permission refusal ends the turn; invalid query content can be corrected by the agent."
   [dataset-query]
   (try
-    (query-perms/check-run-permissions-for-query dataset-query)
+    (query-perms/check-run-permissions-for-queries [dataset-query])
     (catch clojure.lang.ExceptionInfo e
       (let [status-code (:status-code (ex-data e))]
         (cond

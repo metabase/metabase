@@ -202,10 +202,10 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot be normalized"
                                 (query-perms/query->source-ids query)))
           (mt/with-test-user :crowberto
-            (is (false? (query-perms/can-run-query? query)))
+            (is (false? (first (query-perms/query-run-answers [query]))))
             (is (false? (query-perms/can-run-query-with-resolved-source-ids? query {:table-ids #{(mt/id :venues)}})))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot be normalized"
-                                  (query-perms/can-run-query? query false true)))))))))
+                                  (first (query-perms/query-run-answers [query] false true))))))))))
 
 (deftest ^:parallel joins-test
   (testing "Are permissions calculated correctly for JOINs?"
@@ -511,12 +511,12 @@
                   query     (native-queries-that-cannot-be-preprocessed stage-key)]
             (testing (pr-str stage-key (dissoc query :lib/metadata))
               (grant! :query-builder)
-              (is (false? (query-perms/can-run-query? query)))
+              (is (false? (first (query-perms/query-run-answers [query]))))
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot save this Question"
-                                    (query-perms/check-run-permissions-for-query query)))
+                                    (query-perms/check-run-permissions-for-queries [query])))
               (grant! :query-builder-and-native)
-              (is (true? (query-perms/can-run-query? query)))
-              (is (nil? (query-perms/check-run-permissions-for-query query))))))))))
+              (is (true? (first (query-perms/query-run-answers [query]))))
+              (is (nil? (query-perms/check-run-permissions-for-queries [query]))))))))))
 
 (deftest ^:parallel query->resolved-source-ids-test
   (testing "table-sourced queries resolve to their source table"
@@ -652,22 +652,22 @@
                 :perms/view-data      {(mt/id :products) :unrestricted}}
                (query-perms/required-perms-for-query query :already-preprocessed? true)))))))
 
-(deftest can-run-query?-non-permission-errors-test
+(deftest query-run-answers-non-permission-errors-test
   (let [broken {:database (mt/id) :type :query :query {:source-table "card__13371337"}}]
     (testing "a query whose permissions cannot be calculated throws when the caller asks for it"
       (mt/with-current-user (mt/user->id :rasta)
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating permissions"
-                              (query-perms/can-run-query? broken false true)))))
+                              (first (query-perms/query-run-answers [broken] false true))))))
     (testing "without the flag the calculation failure stays folded into the permission answer"
       (mt/with-no-data-perms-for-all-users!
         (mt/with-current-user (mt/user->id :rasta)
-          (is (false? (query-perms/can-run-query? broken)))))))
+          (is (false? (first (query-perms/query-run-answers [broken]))))))))
   (testing "a real permission denial reads as false in either mode"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-current-user (mt/user->id :rasta)
         (let [query (mt/mbql-query orders)]
-          (is (false? (query-perms/can-run-query? query)))
-          (is (false? (query-perms/can-run-query? query false true))))))))
+          (is (false? (first (query-perms/query-run-answers [query]))))
+          (is (false? (first (query-perms/query-run-answers [query] false true)))))))))
 
 (deftest check-result-metadata-data-perms-error-message-test
   (testing "the denied table's ID reads as a plain number, with no digit-grouping separator"
@@ -707,7 +707,7 @@
        :data     (dissoc (ex-data e) :query)
        :cause    (some-> (ex-cause e) ex-message)})))
 
-(defn- run-check-queries
+(defn- run-check-matrix-queries
   "The queries of the run permissions matrix, by name: on the Database with `db-b-id` for `:native-b`, and on Cards
   `card-ok-id` and `card-hidden-id` for the others named so."
   [db-b-id card-ok-id card-hidden-id]
@@ -738,7 +738,7 @@
                            (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)))))
 
 (def ^:private run-check-expected
-  "Which queries of [[run-check-queries]] each scenario may run."
+  "Which queries of [[run-check-matrix-queries]] each scenario may run."
   {:superuser       #{:mbql-t1 :mbql-t1-t2 :native-a :native-b :card-ok :card-hidden}
    :query-builder-a #{:mbql-t1 :mbql-t1-t2 :card-ok}
    :native-a        #{:mbql-t1 :mbql-t1-t2 :native-a :card-ok}
@@ -762,8 +762,8 @@
             (mt/with-no-data-perms-for-all-users!
               (grant-run-check-scenario! scenario db-b-id)
               (mt/with-test-user (if (= scenario :superuser) :crowberto :rasta)
-                (let [queries (run-check-queries db-b-id card-ok-id card-hidden-id)
-                      single  (into {} (map (fn [[k q]] [k (run-check-outcome #(query-perms/check-run-permissions-for-query q))]))
+                (let [queries (run-check-matrix-queries db-b-id card-ok-id card-hidden-id)
+                      single  (into {} (map (fn [[k q]] [k (run-check-outcome #(query-perms/check-run-permissions-for-queries [q]))]))
                                     queries)
                       allowed (into [] (comp (filter #(= :allowed (single (first %)))) (map second)) queries)]
                   (testing "the single check answers as expected"
@@ -784,6 +784,42 @@
                     (is (= (or (some #(when (not= :allowed (single (first %))) (single (first %))) queries)
                                :allowed)
                            (run-check-outcome #(query-perms/check-run-permissions-for-queries (mapv second queries)))))))))))))))
+
+(deftest query-run-answers-matches-one-query-calls-test
+  (testing "each query of a batch is answered, or throws, exactly as when it is asked on its own"
+    (mt/with-temp [:model/Database   {db-b-id :id}        {:engine :h2 :details (:details (mt/db))}
+                   :model/Collection {coll-ok-id :id}     {}
+                   :model/Collection {coll-hidden-id :id} {}
+                   :model/Card       {card-ok-id :id}     {:collection_id coll-ok-id
+                                                           :dataset_query (lib/query (mt/metadata-provider)
+                                                                                     (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
+                   :model/Card       {card-hidden-id :id} {:collection_id coll-hidden-id
+                                                           :dataset_query (lib/query (mt/metadata-provider)
+                                                                                     (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll-ok-id)
+        (doseq [scenario (keys run-check-expected)]
+          (testing scenario
+            (mt/with-no-data-perms-for-all-users!
+              (grant-run-check-scenario! scenario db-b-id)
+              (mt/with-test-user (if (= scenario :superuser) :crowberto :rasta)
+                (let [named   (into (run-check-matrix-queries db-b-id card-ok-id card-hidden-id)
+                                    [[:no-query nil]
+                                     [:missing-card {:database (mt/id) :type :query :query {:source-table "card__13371337"}}]])
+                      queries (mapv second named)
+                      alone   (mapv #(first (query-perms/query-run-answers [%])) queries)]
+                  (testing "a query asked on its own answers as expected"
+                    (is (= (conj (run-check-expected scenario) :no-query)
+                           (into #{}
+                                 (comp (filter second) (map first) (remove #{:missing-card}))
+                                 (map vector (map first named) alone)))))
+                  (testing "a batch answers each query as it is answered on its own"
+                    (is (= alone (query-perms/query-run-answers queries)))
+                    (is (= (rseq alone) (query-perms/query-run-answers (vec (rseq queries))))))
+                  (testing "with non-permission errors thrown, a batch throws what the first query that throws alone throws"
+                    (let [outcomes (mapv #(run-check-outcome (fn [] (query-perms/query-run-answers [%] false true))) queries)]
+                      (is (= (or (first (remove #{:allowed} outcomes)) :allowed)
+                             (run-check-outcome #(query-perms/query-run-answers queries false true)))))))))))))))
 
 (deftest check-run-permissions-for-queries-statement-count-test
   (testing "the run permissions of many queries take as many statements as those of few, as a non-admin"
@@ -825,13 +861,12 @@
                                  (apply readable-ids args))))]
           (testing "hydration opening store of same Database is allowed"
             (mt/with-dynamic-fn-redefs [collection/content-readable-collection-ids (opening (mt/id))]
-              (is (nil? (query-perms/check-card-read-perms (mt/id) card-id)))
               (is (nil? (query-perms/check-cards-read-perms (mt/id) [card-id])))))
           (testing "hydration opening store of other Database throws"
             (mt/with-dynamic-fn-redefs [collection/content-readable-collection-ids (opening db-b-id)]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                     #"Attempting to initialize metadata provider with new Database"
-                                    (query-perms/check-card-read-perms (mt/id) card-id))))))))))
+                                    (query-perms/check-cards-read-perms (mt/id) [card-id]))))))))))
 
 (defn- per-table-parameter-field-check
   "The check of parameter Fields that preprocesses a query of each of their Tables, as it was before it read the Tables'
@@ -839,7 +874,9 @@
   [field-ids]
   (when (seq field-ids)
     (doseq [table-id (t2/select-fn-set :table_id :model/Field :id [:in (set field-ids)])]
-      (when-not (query-perms/can-query-table? (t2/select-one-fn :db_id :model/Table :id table-id) table-id)
+      (when-not (first (query-perms/query-run-answers [{:database (t2/select-one-fn :db_id :model/Table :id table-id)
+                                                        :type     :query
+                                                        :query    {:source-table table-id}}]))
         (throw (ex-info "You must have data permissions to add a parameter referencing this Field."
                         {:status-code 403}))))))
 
@@ -1010,3 +1047,102 @@
                (testing "Fields of one Table"
                  (is (= (count! (subvec venues-fields 0 2))
                         (count! venues-fields))))))))))))
+
+(deftest card-can-query-statement-count-test
+  (testing "Card :can_query over more Cards on distinct Tables takes no more statements, as a non-admin"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+      (mt/with-model-cleanup [:model/Card]
+        (let [mp     (mt/metadata-provider)
+              cards  (t2/insert-returning-instances!
+                      :model/Card
+                      (for [table [:venues :checkins :users :categories :orders :people :products :reviews]]
+                        {:name                   (name table)
+                         :display                :table
+                         :visualization_settings {}
+                         :creator_id             (mt/user->id :crowberto)
+                         :collection_id          coll-id
+                         :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id table)))}))
+              count! (fn [cards]
+                       (let [cards (t2/select :model/Card :id [:in (map :id cards)])]
+                         (t2/with-call-count [call-count]
+                           (t2/hydrate cards :can_query)
+                           (call-count))))]
+          (mt/with-test-user :rasta
+            (let [answers (fn [cards] (mapv :can_query (t2/hydrate (vec cards) :can_query)))]
+              (testing "a batch answers each Card as it is answered on its own"
+                (is (= (mapv #(first (answers [%])) cards)
+                       (answers cards)))))
+            (count! (take 2 (drop 6 cards)))
+            (let [preprocess! (fn [cards]
+                                (lib-be/with-metadata-provider-cache
+                                  (let [queries (mapv :dataset_query (t2/select :model/Card :id [:in (map :id cards)]))]
+                                    (request/as-admin (run! qp.preprocess/preprocess queries))
+                                    (t2/with-call-count [call-count]
+                                      (request/as-admin (run! qp.preprocess/preprocess queries))
+                                      (call-count)))))]
+              (testing "only preprocessing statements that read no metadata grow with the Cards"
+                (is (= (- (count! (take 6 (drop 2 cards))) (count! (take 2 cards)))
+                       (- (preprocess! (take 6 (drop 2 cards))) (preprocess! (take 2 cards)))))))))))))
+
+(defn- per-card-result-metadata-check
+  "The check of the result metadata of source Cards one Card at a time, as the query processor ran it before it read
+  them together."
+  [database-id card-ids]
+  (doseq [card-id card-ids]
+    (query-perms/check-card-result-metadata-data-perms database-id card-id)))
+
+(deftest check-cards-result-metadata-data-perms-matches-per-card-check-test
+  (testing "the result metadata of Cards checked together refuses the first Card, with the same error, as one by one"
+    (let [column (fn [table field] {:name (name field) :display_name (name field) :base_type :type/Integer
+                                    :id (mt/id table field) :table_id (mt/id table)})]
+      (mt/with-temp [:model/Card {venues-id :id}   {:result_metadata [(column :venues :id)]}
+                     :model/Card {checkins-id :id} {:result_metadata [(dissoc (column :checkins :id) :table_id)]}
+                     :model/Card {orders-id :id}   {:result_metadata [(dissoc (column :orders :id) :id)]}
+                     :model/Card {empty-id :id}    {:result_metadata []}]
+        (let [card-ids [venues-id checkins-id orders-id empty-id Integer/MAX_VALUE]
+              orders   (concat [card-ids (vec (reverse card-ids))]
+                               (map vector card-ids)
+                               [[empty-id venues-id] [venues-id Integer/MAX_VALUE checkins-id]])]
+          (doseq [allowed [#{} #{:venues} #{:venues :checkins} #{:venues :checkins :orders}]]
+            (testing (pr-str allowed)
+              (mt/with-no-data-perms-for-all-users!
+                (doseq [table allowed]
+                  (perms/set-table-permission! (perms/all-users-group) (mt/id table) :perms/view-data :unrestricted))
+                (mt/with-test-user :rasta
+                  (mt/with-metadata-provider (mt/id)
+                    (doseq [ids orders]
+                      (testing (pr-str ids)
+                        (is (= (run-check-outcome #(per-card-result-metadata-check (mt/id) ids))
+                               (run-check-outcome #(query-perms/check-cards-result-metadata-data-perms (mt/id) ids))))))))))))))))
+
+(deftest check-cards-result-metadata-data-perms-statement-count-test
+  (testing "the result metadata of more Cards on distinct Tables is checked with as many statements"
+    (let [tables [:venues :checkins :users :categories :orders :people :products :reviews]
+          column (fn [table] {:name "ID" :display_name "ID" :base_type :type/Integer
+                              :id (mt/id table :id) :table_id (mt/id table)})]
+      (mt/with-model-cleanup [:model/Card]
+        (let [cards  (t2/insert-returning-instances!
+                      :model/Card
+                      (for [table tables]
+                        {:name                   (name table)
+                         :display                :table
+                         :visualization_settings {}
+                         :creator_id             (mt/user->id :crowberto)
+                         :dataset_query          (lib/query (mt/metadata-provider)
+                                                            (lib.metadata/table (mt/metadata-provider) (mt/id table)))
+                         :result_metadata        [(column table)]}))
+              count! (fn [cards]
+                       (lib-be/with-metadata-provider-cache
+                         (mt/with-metadata-provider (lib-be/application-database-metadata-provider (mt/id))
+                           (lib.metadata/bulk-metadata (lib-be/application-database-metadata-provider (mt/id))
+                                                       :metadata/card
+                                                       (map :id cards))
+                           (t2/with-call-count [call-count]
+                             (query-perms/check-cards-result-metadata-data-perms (mt/id) (map :id cards))
+                             (call-count)))))]
+          (mt/with-full-data-perms-for-all-users!
+            (mt/with-test-user :rasta
+              (count! (take 2 (drop 6 cards)))
+              (is (= (count! (take 2 cards))
+                     (count! (take 6 (drop 2 cards))))))))))))

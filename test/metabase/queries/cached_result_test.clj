@@ -112,7 +112,7 @@
   (testing "the data-perms dimension must fail the same controlled way the lens dimension does. A
             throw out of the perms check — a stored query malformed enough to trip its schema, an NPE
             from a source table that no longer exists — is not an exception to escape an
-            authorization gate (`can-run-query?` itself only absorbs `ExceptionInfo`); the
+            authorization gate (`query-run-answers` itself only absorbs `ExceptionInfo`); the
             (non-admin) viewer is denied, while superusers never reach the check (bypass)"
     (doseq [thrown [(NullPointerException. "boom")
                     (ex-info "malformed query" {})]]

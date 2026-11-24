@@ -465,7 +465,6 @@
            models
            premium-features
            queries
-           query-permissions
            util
            warehouses.schema}
    :model-exports #{:model/ViewLog}
@@ -3681,6 +3680,7 @@
            permissions
            premium-features
            queries
+           query-permissions
            query-processor
            remote-sync
            replacement

@@ -95,7 +95,7 @@
   "Return `query` if the user has data and source card permissions; otherwise throw a 403."
   [query]
   (api/check-403
-   (query-perms/can-run-query? (:dataset_query query)))
+   (first (query-perms/query-run-answers [(:dataset_query query)])))
   query)
 
 (defn- ensure-int

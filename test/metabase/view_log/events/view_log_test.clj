@@ -186,6 +186,25 @@
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
               (is (= false (:has_access (latest-view (u/id user) (u/id table))))))))))))
 
+(deftest table-read-external-remap-access-test
+  (testing "has_access of a table read is false when the Table joins an unqueryable Table for an external remap"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-model-cleanup [:model/User]
+        (let [[user] (user/create-users! [{:email (mt/random-email)}])
+              table  (t2/select-one :model/Table :id (mt/id :checkins))]
+          (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :checkins :venue_id)
+                                             :name                    "Venue"
+                                             :type                    :external
+                                             :human_readable_field_id (mt/id :venues :name)}]
+            (mt/with-full-data-perms-for-all-users!
+              (mt/with-current-user (u/id user)
+                (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
+                (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
+              (mt/with-current-user (u/id user)
+                (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
+                (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
+                (is (false? (:has_access (latest-view (u/id user) (u/id table)))))))))))))
+
 (deftest dashboard-read-ee-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User          user      {}
