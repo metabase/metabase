@@ -9,10 +9,18 @@ import { AddFilterButton } from "./AddFilterButton";
 
 type FilterPillsProps = {
   query: Lib.Query;
+  addLabel?: string;
+  /** Opens the add button's filter picker on mount. */
+  isAddPickerInitiallyOpened?: boolean;
   onChange: (query: Lib.Query) => void;
 };
 
-export const FilterPills = ({ query, onChange }: FilterPillsProps) => {
+export const FilterPills = ({
+  query,
+  addLabel,
+  isAddPickerInitiallyOpened,
+  onChange,
+}: FilterPillsProps) => {
   const items = useMemo(() => getFilterItems(query), [query]);
 
   return (
@@ -27,7 +35,12 @@ export const FilterPills = ({ query, onChange }: FilterPillsProps) => {
           onChange={onChange}
         />
       ))}
-      <AddFilterButton query={query} onChange={onChange} />
+      <AddFilterButton
+        query={query}
+        label={addLabel}
+        isInitiallyOpened={isAddPickerInitiallyOpened}
+        onChange={onChange}
+      />
     </Flex>
   );
 };

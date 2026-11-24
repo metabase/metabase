@@ -9,11 +9,18 @@ import { AddFilterPopover } from "./AddFilterPopover";
 
 type AddFilterButtonProps = {
   query: Lib.Query;
+  label?: string;
+  isInitiallyOpened?: boolean;
   onChange: (query: Lib.Query) => void;
 };
 
-export const AddFilterButton = ({ query, onChange }: AddFilterButtonProps) => {
-  const [isOpened, { close, toggle }] = useDisclosure(false);
+export const AddFilterButton = ({
+  query,
+  label = t`Add a filter`,
+  isInitiallyOpened = false,
+  onChange,
+}: AddFilterButtonProps) => {
+  const [isOpened, { close, toggle }] = useDisclosure(isInitiallyOpened);
 
   return (
     <AddFilterPopover
@@ -22,11 +29,7 @@ export const AddFilterButton = ({ query, onChange }: AddFilterButtonProps) => {
       onChange={onChange}
       onClose={close}
     >
-      <UnstyledButton
-        className={S.add}
-        aria-label={t`Add a filter`}
-        onClick={toggle}
-      >
+      <UnstyledButton className={S.add} aria-label={label} onClick={toggle}>
         <Icon name="add" size={12} />
       </UnstyledButton>
     </AddFilterPopover>
