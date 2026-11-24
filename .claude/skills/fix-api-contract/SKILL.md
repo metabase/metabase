@@ -35,6 +35,19 @@ Ordinary `type-check` does not generate or check backend contracts.
 
 ## Find which layer is wrong
 
+When `--explain` reports `$: backend type unknown` for a **response**, start at the route's
+`defendpoint` and the matching success status in `.tmp/openapi/openapi.json`.
+
+- If the endpoint has no response schema, use its handler and tests to establish what it returns,
+  then add the Malli response schema following [add-malli-schemas](../add-malli-schemas/SKILL.md).
+- If a schema exists, trace its conversion to the response body in OpenAPI. For a custom Malli
+  predicate whose shape is lost, see `empty-schema-test` for examples of describing its JSON
+  representation with `:json-schema`. Keep an intentionally unconstrained response open when that
+  is the API contract. [Malli conversion examples](../../../test/metabase/util/malli/json_schema_test.clj)
+
+After a backend fix, run `bun run api-contract-check` to regenerate from source, then rerun
+`--explain` for the endpoint before deciding whether its handwritten frontend type needs to change.
+
 Follow the diagnostic's field path through the RTK definition, its handwritten types, the Malli schema,
 handler, hydration and serialization, and relevant endpoint tests. Neither declaration is automatically
 correct. Existing behaviour is evidence but may itself contain a bug.
