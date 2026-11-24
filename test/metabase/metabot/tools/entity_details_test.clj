@@ -1576,7 +1576,8 @@
                                                                        :type          :metric
                                                                        :database_id   (mt/id)
                                                                        :dataset_query (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id table-key)))
-                                                                                                     (lib/count)))))])))
+                                                                                                     (lib/count)))))]
+               {:order-by [[:id :asc]]})))
 
 (def ^:private metrics-details-arguments
   "The arguments the data app schema details metrics with."

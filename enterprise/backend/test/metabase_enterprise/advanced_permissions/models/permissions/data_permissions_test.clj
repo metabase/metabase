@@ -163,12 +163,12 @@
     (into table-cards (map #(insert-card! collection-id (card-query db-id %))) table-cards)))
 
 (defn- warm-statement-count
-  "The lower number of app DB statements of two calls of `thunk` after a first one."
+  "The number of app DB statements of a second call of `thunk`."
   [thunk]
   (thunk)
-  (apply min (repeatedly 2 #(t2/with-call-count [call-count]
-                              (thunk)
-                              (call-count)))))
+  (t2/with-call-count [call-count]
+    (thunk)
+    (call-count)))
 
 (deftest ^:synchronized download-perms-statement-count-test
   (testing "dashboard query_metadata and GET /api/pulse cost as many statements for 10 Cards on their own Tables as for 40"
