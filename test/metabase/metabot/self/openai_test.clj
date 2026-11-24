@@ -171,6 +171,9 @@
               :error     {:code "rate_limit_exceeded" :message "Rate limit reached."}}]
             (into [] (openai/openai->aisdk-chunks-xf)
                   [{:type "error" :message "Rate limit reached." :error {:code "rate_limit_exceeded"}}]))))
+  (testing "an integer code with no message is the text as a string, and stays an integer in the :error object"
+    (is (= [{:type :error :errorText "429" :error {:code 429 :message "429"}}]
+           (into [] (openai/openai->aisdk-chunks-xf) [{:type "error" :code 429}]))))
   (testing "a string error is the text when the event has no message"
     (is (= [{:type :error :errorText "Upstream timeout" :error {:message "Upstream timeout"}}]
            (into [] (openai/openai->aisdk-chunks-xf) [{:type "error" :error "Upstream timeout"}])))

@@ -53,7 +53,7 @@
   Its text is the object's message, else its code, else a generic text."
   [error]
   (core/error-chunk error (or (:message error)
-                              (:code error)
+                              (some-> (:code error) str)
                               (tru "The model provider failed to complete the response"))))
 
 (defn- error-event-object
