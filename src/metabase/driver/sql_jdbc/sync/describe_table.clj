@@ -560,9 +560,15 @@
   "Maximum number of nested field columns."
   100)
 
-(def ^:private ^{:arglists '([s])} can-parse-datetime?
-  "Returns whether a string can be parsed to an ISO 8601 datetime or not."
+(def ^:private ^{:arglists '([s])} datetime-string?
   (mr/validator driver-api/schema.literal.string.datetime))
+
+(defn- can-parse-datetime?
+  "Returns whether a string can be parsed to an ISO 8601 datetime or not. Accepts up to 9 fractional digits of a second,
+  e.g. `2012-04-23 18:44:43.511000000`."
+  [s]
+  (or (datetime-string? s)
+      (datetime-string? (str/replace-first s #"(\.\d{6})\d{1,3}(?!\d)" "$1"))))
 
 (defn- type-by-parsing-string
   "Mostly just (type member) but with a bit to suss out strings which are ISO8601 and say that they are datetimes"

@@ -259,9 +259,11 @@
   (testing "type-by-parsing-string"
     (are [v expected] (= expected
                          (#'sql-jdbc.describe-table/type-by-parsing-string v))
-      "bleh"                    java.lang.String
-      "2017-01-13T17:09:42.411" java.time.LocalDateTime
-      11111                     java.lang.Long)))
+      "bleh"                           java.lang.String
+      "2017-01-13T17:09:42.411"        java.time.LocalDateTime
+      "2012-04-23 18:44:43.511000000"  java.time.LocalDateTime
+      "2012-04-23 18:44:43.5110000000" java.lang.String
+      11111                            java.lang.Long)))
 
 (deftest ^:parallel row->types-test
   (testing "none object rows ignored properly in JSON row->types (#21752, #44459)"
