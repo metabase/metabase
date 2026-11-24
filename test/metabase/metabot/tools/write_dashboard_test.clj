@@ -839,45 +839,50 @@
                     chart-ids)))
 
 (deftest save-charts-statement-count-test
-  (mt/with-model-cleanup [:model/Card]
+  (mt/with-model-cleanup [:model/Card :model/Dashboard]
     (sales-dashboard!
-     (fn [{:keys [dash-id]}]
-       (mt/with-temp [:model/Dashboard           {su-dash-id :id} {:name "Superuser dashboard"}
-                      :model/MetabotConversation {su-convo :id}   {:user_id (mt/user->id :crowberto)}
+     (fn [{:keys [coll-id]}]
+       (mt/with-temp [:model/MetabotConversation {su-convo :id}   {:user_id (mt/user->id :crowberto)}
                       :model/MetabotConversation {user-convo :id} {:user_id (mt/user->id :rasta)}]
-         (doseq [[user dashboard-id convo] [[:crowberto su-dash-id nil] [:crowberto su-dash-id su-convo]
-                                            [:rasta dash-id nil] [:rasta dash-id user-convo]]]
+         (doseq [[user collection-id convo] [[:crowberto nil nil] [:crowberto nil su-convo]
+                                             [:rasta coll-id nil] [:rasta coll-id user-convo]]]
            (testing (str user (when convo " in conversation"))
              (mt/with-current-user (mt/user->id user)
-               (let [calls! (fn [prefix n]
-                              (let [chart-ids (mapv #(str prefix "-" %) (range n))]
-                                (binding [shared/*memory-atom* (charts-memory convo chart-ids)]
-                                  (t2/with-call-count [call-count]
-                                    (call {:dashboard_id dashboard-id, :ops (add-chart-ops chart-ids 100)})
-                                    (call-count)))))
-                     reference! (fn [n]
-                                  (t2/with-call-count [call-count]
-                                    (lib-be/with-metadata-provider-cache
-                                      (queries.card/create-cards!
-                                       (mapv #(queries.card/new-card-row {:name                   (str "Reference " %)
-                                                                          :dataset_query          (lib/limit (table-query (if (even? %) :venues :checkins))
-                                                                                                             (inc %))
-                                                                          :display                :bar
-                                                                          :visualization_settings {}
-                                                                          :dashboard_id           dashboard-id}
-                                                                         (mt/user->id user))
-                                             (range n))))
-                                    (call-count)))]
+               (let [new-dashboard! #(first (t2/insert-returning-pks! :model/Dashboard
+                                                                      {:name          "Charts"
+                                                                       :collection_id collection-id
+                                                                       :creator_id    (mt/user->id user)}))
+                     calls!         (fn [prefix n]
+                                      (let [chart-ids    (mapv #(str prefix "-" %) (range n))
+                                            dashboard-id (new-dashboard!)]
+                                        (binding [shared/*memory-atom* (charts-memory convo chart-ids)]
+                                          (t2/with-call-count [call-count]
+                                            (lib-be/with-metadata-provider-cache
+                                              (call {:dashboard_id dashboard-id, :ops (add-chart-ops chart-ids 100)}))
+                                            (call-count)))))
+                     reference!     (fn [n]
+                                      (let [dashboard-id (new-dashboard!)
+                                            rows         (mapv #(queries.card/new-card-row
+                                                                 {:name                   (str "Reference " %)
+                                                                  :dataset_query          (lib/limit (table-query (if (even? %) :venues :checkins))
+                                                                                                     (inc %))
+                                                                  :display                :bar
+                                                                  :visualization_settings {}
+                                                                  :dashboard_id           dashboard-id}
+                                                                 (mt/user->id user))
+                                                               (range n))]
+                                        (t2/with-call-count [call-count]
+                                          (lib-be/with-metadata-provider-cache
+                                            (queries.card/create-cards! rows))
+                                          (call-count))))]
                  (calls! "warm" 2)
                  (reference! 2)
-                 (let [two         (calls! "two" 2)
-                       six         (calls! "six" 6)
-                       ref-two     (reference! 2)
-                       ref-six     (reference! 6)
-                       per-link    (if convo 1 0)]
-                   (testing (str "each chart adds at most one more create-cards! row and 6 statements, plus 1 for its link"
-                                 " in a conversation")
-                     (is (<= (- six two) (+ (- ref-six ref-two) (* 4 (+ 12 per-link))))))))))))))))
+                 (let [two     (calls! "two" 2)
+                       six     (calls! "six" 6)
+                       ref-two (reference! 2)
+                       ref-six (reference! 6)]
+                   (testing "more charts add no more statements than create-cards! adds for their rows"
+                     (is (<= (- six two) (- ref-six ref-two))))))))))))))
 
 (defn- saved-card-shape
   "The columns of `card` that do not depend on its id or dashboard, with result metadata without fingerprints."
