@@ -14,13 +14,14 @@
   Quartz's `driverDelegateClass`; it must run before the scheduler initializes (see
   `metabase.app-db.quartz`)."
   (:require
-   [clojure.java.io :as io]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.util.deserialization-allowlist :as deserialization-allowlist]
    [metabase.util.log :as log])
   (:import
    (java.net URL)
+   (java.nio.file Files)
+   (java.nio.file.attribute FileAttribute)
    (java.sql Blob ResultSet)))
 
 (set! *warn-on-reflection* true)
@@ -75,8 +76,10 @@
   bytecode or mutates the classpath in a shipped uberjar (there the class is AOT-compiled)."
   [ns-sym]
   (assert (not (config/jar?)) "dev-compile-delegate! must not run from a jar")
-  (let [dir (io/file (System/getProperty "java.io.tmpdir") "mb-quartz-secure-delegate")]
-    (.mkdirs dir)
+  ;; The dir is new for each compile: in a shared one, an `__init.class` newer than the source, left by another
+  ;; checkout, makes `compile` load it instead of compiling, so a gen-class file that has gone (OS temp cleaners
+  ;; remove files not read for days) is never written again.
+  (let [dir (.toFile (Files/createTempDirectory "mb-quartz-secure-delegate" (make-array FileAttribute 0)))]
     (classloader/add-url-to-classpath! ^URL (-> dir .toURI .toURL))
     (binding [*compile-path* (str dir)]
       (compile ns-sym))))
@@ -96,6 +99,8 @@
                              "AOT-compiled at build time. This is a build problem.")
                         {:class class})))
       (log/infof "Compiling Quartz secure delegate %s (running from source, no AOT)" class)
-      (dev-compile-delegate! ns))
+      (dev-compile-delegate! ns)
+      (when-not (class-loadable? class)
+        (throw (ex-info (str "Compiled " ns ", but " class " still cannot be loaded") {:class class}))))
     (System/setProperty driver-delegate-property class)
     class))

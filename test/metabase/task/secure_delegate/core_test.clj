@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.classloader.core :as classloader]
    [metabase.task.secure-delegate.core :as secure-delegate]
+   [metabase.test :as mt]
    [metabase.util.deserialization-allowlist :as dal])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream ObjectOutputStream)
@@ -79,3 +80,10 @@
             m (.getMethod k "getObjectFromBlob" (into-array Class [ResultSet String]))]
         (is (= k (.getDeclaringClass m))
             (str class-name " declares its own getObjectFromBlob override"))))))
+
+(deftest install!-throws-when-the-compiled-class-will-not-load-test
+  (testing "a compile that leaves the class unloadable throws instead of installing a class Quartz cannot load"
+    (mt/with-dynamic-fn-redefs [secure-delegate/class-loadable?        (constantly false)
+                                secure-delegate/dev-compile-delegate! (fn [_ns-sym])]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SecurePostgresDelegate still cannot be loaded"
+                            (secure-delegate/install! :postgres))))))
