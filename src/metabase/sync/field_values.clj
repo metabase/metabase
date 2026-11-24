@@ -190,8 +190,9 @@
             by-table (group-by :table_id eligible)
             tables   (into [] (mapcat #(sync.db/tables-by-schema-and-name (vec %)))
                            (partition-all table-chunks/tables-per-chunk (keys by-table)))
-            database (memoize driver.u/lib-database)]
-        (sync-fields-of-tables! tables (comp database :db_id) by-table fvs-map)))))
+            id->db   (database-routing/with-anonymous-router-access
+                       (into {} (map (juxt identity driver.u/lib-database)) (distinct (map :db_id tables))))]
+        (sync-fields-of-tables! tables (comp id->db :db_id) by-table fvs-map)))))
 
 (defn- clear-field-values!
   "Delete the FieldValues of `fields`, which should no longer have any, returning the counts of the Fields that had

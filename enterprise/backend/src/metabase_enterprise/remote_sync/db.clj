@@ -3,6 +3,7 @@
   the module runs a query itself."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -28,28 +29,30 @@
   "Those of the `entity-ids` of rows of `model` that every instance has."
   [model      :- :keyword
    entity-ids :- [:sequential :string]]
-  (if (seq entity-ids)
-    (into #{}
-          (map :entity_id)
-          (t2/query {:select [:row.entity_id]
-                     :from   [[(t2/table-name model) :row]]
-                     :where  [:and [:in :row.entity_id entity-ids] (remote-sync/built-in-filter-clause model :row)]}))
-    #{}))
+  (into #{}
+        (map :entity_id)
+        (mdb/select-batched #(t2/query {:select [:row.entity_id]
+                                        :from   [[(t2/table-name model) :row]]
+                                        :where  [:and
+                                                 [:in :row.entity_id %]
+                                                 (remote-sync/built-in-filter-clause model :row)]})
+                            entity-ids)))
 
 (mu/defn rows-not-built-in
   "The rows of `model` with the primary keys `pks` that not every instance has."
   [model :- :keyword
    pks   :- [:sequential [:or :int :string]]]
-  (if (seq pks)
-    (let [pk (u/qualified-key :row (first (t2/primary-keys model)))]
-      (t2/select [model :row.*] {:from  [[(t2/table-name model) :row]]
-                                 :where [:and [:in pk pks] [:not (remote-sync/built-in-filter-clause model :row)]]}))
-    []))
+  (let [pk (u/qualified-key :row (first (t2/primary-keys model)))]
+    (mdb/select-batched #(t2/select [model :row.*] {:from  [[(t2/table-name model) :row]]
+                                                    :where [:and
+                                                            [:in pk %]
+                                                            [:not (remote-sync/built-in-filter-clause model :row)]]})
+                        pks)))
 
 (mu/defn collections
   "The Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Collection :id [:in collection-ids]))
+  (mdb/select-batched #(t2/select :model/Collection :id [:in %]) collection-ids))
 
 (mu/defn synced-card-counts-by-type :- [:map-of :keyword :int]
   "The number of Cards remote sync syncs, by `:type`."
@@ -165,4 +168,4 @@
 (mu/defn users-by-id
   "A map of User ID to User for `user-ids`."
   [user-ids :- [:sequential [:maybe ::lib.schema.id/user]]]
-  (t2/select-pk->fn identity :model/User :id [:in user-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/User :id [:in %]) user-ids))

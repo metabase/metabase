@@ -44,13 +44,21 @@
     (contains? (perms/application-permissions-for-user (api/current-user-info)) :monitoring)
     (mi/superuser?)))
 
-(methodical/defmethod t2/simple-hydrate [:model/TaskHistory :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (can-access?))))
+(methodical/defmethod t2/batched-hydrate [:model/TaskHistory :can_read]
+  "Whether the current user can read each of `rows`, answered once for all of them."
+  [_model k rows]
+  (let [answer (boolean (can-access?))]
+    (for [row rows]
+      (when row
+        (vary-meta row assoc k answer)))))
 
-(methodical/defmethod t2/simple-hydrate [:model/TaskHistory :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (can-access?))))
+(methodical/defmethod t2/batched-hydrate [:model/TaskHistory :can_write]
+  "Whether the current user can write each of `rows`, answered once for all of them."
+  [_model k rows]
+  (let [answer (boolean (can-access?))]
+    (for [row rows]
+      (when row
+        (assoc row k answer)))))
 
 (t2/deftransforms :model/TaskHistory
   {:task_details mi/transform-json-eliding

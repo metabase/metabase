@@ -12,6 +12,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
    [metabase.queries.models.card :as queries.card]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -211,3 +212,32 @@
                                                                                   (assoc (row "Described") :description "About")])]
         (is (nil? (t2/select-one-fn :description :model/CardTest :id (:id plain))))
         (is (= "About" (t2/select-one-fn :description :model/CardTest :id (:id described))))))))
+
+(deftest can-write-statements-do-not-grow-with-tests-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (perms.tu/with-no-data-perms-for-all-users!
+      (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                    :perms/create-queries :query-builder-and-native}
+        (mt/with-temp [:model/Collection {writable :id}  {}
+                       :model/Collection {readable :id}  {}
+                       :model/Card       {written :id}   {:collection_id writable
+                                                          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                       :model/Card       {read-only :id} {:collection_id readable
+                                                          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [tests   (mapv #(t2/instance :model/CardTest {:id % :card_id (if (even? %) written read-only)}) (range 6))
+                  hydrate (fn [n]
+                            (t2/with-call-count [call-count]
+                              (let [hydrated (doall (t2/hydrate (vec (take n tests)) :can_write))]
+                                {:statements (call-count)
+                                 :values     (mapv :can_write hydrated)})))]
+              (testing "the statements of the hydration itself, the query permission check of each row aside"
+                (mt/with-dynamic-fn-redefs [query-perms/can-run-query? (constantly true)]
+                  (hydrate 1)
+                  (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))))
+              (is (= [true false true false true false] (:values (hydrate 6))))
+              (testing "each test gets the answer the per-test check gave"
+                (is (= (mapv #(#'data-testing.models.card-test/can-save-test? (:card_id %)) tests)
+                       (:values (hydrate 6))))))))))))

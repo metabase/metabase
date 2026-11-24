@@ -81,19 +81,17 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (mdb/select-batched #(t2/select :model/Field :id [:in %]) field-ids))
 
 (mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
   "The Database id of each of the Tables with `table-ids`, by Table id."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (if (seq table-ids)
-    (t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param (vec table-ids)]])
-    {}))
+  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param %]]) table-ids))
 
 (mu/defn fields-fk-info
   "The id, FK target, and semantic type of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids]))
+  (mdb/select-batched #(t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in %]) field-ids))
 
 (mu/defn field-fk-target-field-id
   "The FK target Field id of the Field with `field-id`, or nil."
@@ -140,23 +138,29 @@
   "The advanced FieldValues of the Fields with `field-ids` whose hash key is one of `hash-keys`, by descending id."
   [field-ids :- [:sequential ::lib.schema.id/field]
    hash-keys :- [:sequential :string]]
-  (t2/select :model/FieldValues :field_id [:in field-ids], :type :advanced, :hash_key [:in hash-keys]
-             {:order-by [[:id :desc]]}))
+  (->> (mdb/select-batched (fn [field-ids]
+                             (mdb/select-batched #(t2/select :model/FieldValues :field_id [:in field-ids], :type :advanced, :hash_key [:in %]
+                                                             {:order-by [[:id :desc]]})
+                                                 hash-keys))
+                           field-ids)
+       (sort-by :id #(compare %2 %1))
+       vec))
 
 (mu/defn active-name-fields-for-tables
   "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`."
   [columns   :- [:sequential :keyword]
    table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select (into [:model/Field] columns)
-             :table_id      [:in table-ids]
-             :semantic_type (mdb/isa :type/Name)
-             :active        true))
+  (mdb/select-batched #(t2/select (into [:model/Field] columns)
+                                  :table_id      [:in %]
+                                  :semantic_type (mdb/isa :type/Name)
+                                  :active        true)
+                      table-ids))
 
 (mu/defn fields-with-columns
   "The `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field] columns) :id [:in field-ids]))
+  (mdb/select-batched #(t2/select (into [:model/Field] columns) :id [:in %]) field-ids))
 
 (mu/defn fk-relationships-for-database
   "Rows describing FK -> PK Field relationships (`:f1`/`:t1` FK Field/Table ids, `:f2`/`:t2` PK Field/Table ids)

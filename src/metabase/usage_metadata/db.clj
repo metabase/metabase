@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.malli :as mu]
@@ -23,13 +24,13 @@
 (mu/defn raw-field-fingerprints
   "The stored fingerprints of the Fields with `field-ids`, as they sit in the table, by Field id."
   [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
-  (t2/select-fn->fn :id :fingerprint :metabase_field :id [:in [:auto/param field-ids]]))
+  (app-db/select-batched-map #(t2/select-fn->fn :id :fingerprint :metabase_field :id [:in [:auto/param %]]) field-ids))
 
 (mu/defn queries-reducible
   "A reducible over `conn` of the hash and query of the Queries with `query-hashes`."
   [conn         :- (ms/InstanceOfClass java.sql.Connection)
    query-hashes :- [:sequential {:min 1} bytes?]]
-  (t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in [:auto/param query-hashes]]))
+  (app-db/select-batched-reducible #(t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in [:auto/param %]]) query-hashes))
 
 (mu/defn delete-segment-rollups-before!
   "Delete the SourceSegmentDaily rollup rows bucketed before `bucket-date`."
@@ -114,22 +115,22 @@
 (mu/defn field-names
   "The id, name, and display name of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :display_name] :id [:in (mapv long field-ids)]))
+  (app-db/select-batched #(t2/select [:model/Field :id :name :display_name] :id [:in (mapv long %)]) field-ids))
 
 (mu/defn table-names
   "The id, name, display name, Database id, and schema of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :db_id :schema] :id [:in (mapv long table-ids)]))
+  (app-db/select-batched #(t2/select [:model/Table :id :name :display_name :db_id :schema] :id [:in (mapv long %)]) table-ids))
 
 (mu/defn table-database-ids
   "The id and Database id of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in (mapv long table-ids)]))
+  (app-db/select-batched #(t2/select [:model/Table :id :db_id] :id [:in (mapv long %)]) table-ids))
 
 (mu/defn card-names
   "The id and name of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name] :id [:in (mapv long card-ids)]))
+  (app-db/select-batched #(t2/select [:model/Card :id :name] :id [:in (mapv long %)]) card-ids))
 
 (defn- grouped-rollup-where
   [source-type source-id bucket-start bucket-end]

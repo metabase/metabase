@@ -50,13 +50,26 @@
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
-(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
+(defn- can-access?
+  "Whether the current user may read and write PythonLibrary rows: they have the transforms permission on some Database."
+  []
+  (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*))))
 
-(methodical/defmethod t2/simple-hydrate [:model/PythonLibrary :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))))
+(methodical/defmethod t2/batched-hydrate [:model/PythonLibrary :can_read]
+  "Whether the current user can read each of `libraries`, answered once for all of them."
+  [_model k libraries]
+  (let [answer (can-access?)]
+    (for [library libraries]
+      (when library
+        (vary-meta library assoc k answer)))))
+
+(methodical/defmethod t2/batched-hydrate [:model/PythonLibrary :can_write]
+  "Whether the current user can write each of `libraries`, answered once for all of them."
+  [_model k libraries]
+  (let [answer (can-access?)]
+    (for [library libraries]
+      (when library
+        (assoc library k answer)))))
 
 ;;; ---------------------------------------------------- Library -----------------------------------------------------
 

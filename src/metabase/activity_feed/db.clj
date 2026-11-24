@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.activity-feed.schema :as activity-feed.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
@@ -13,37 +14,40 @@
 (mu/defn recent-cards
   "The recently viewed Cards with `ids`, with their Collection and Dashboard names."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Card
-              :id :name :collection_id :description :display
-              :dataset_query :type :archived :card_schema
-              ;; required alongside :card_schema for the Card schema upgrade
-              :entity_id :result_metadata :dimensions :dimension_mappings
-              :collection.authority_level [:collection.name :collection_name]
-              [:dashboard.name :dashboard_name] :dashboard_id]
-             {:where     [:in :report_card.id ids]
-              :left-join [:collection [:= :collection.id :report_card.collection_id]
-                          [:report_dashboard :dashboard] [:= :dashboard.id :report_card.dashboard_id]]}))
+  (mdb/select-batched #(t2/select [:model/Card
+                                   :id :name :collection_id :description :display
+                                   :dataset_query :type :archived :card_schema
+                                   ;; required alongside :card_schema for the Card schema upgrade
+                                   :entity_id :result_metadata :dimensions :dimension_mappings
+                                   :collection.authority_level [:collection.name :collection_name]
+                                   [:dashboard.name :dashboard_name] :dashboard_id]
+                                  {:where     [:in :report_card.id %]
+                                   :left-join [:collection [:= :collection.id :report_card.collection_id]
+                                               [:report_dashboard :dashboard] [:= :dashboard.id :report_card.dashboard_id]]})
+                      ids))
 
 (mu/defn recent-dashboards
   "The recently viewed Dashboards with `ids`, with their Collection names."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Dashboard
-              :id :name :collection_id :description
-              :archived
-              :collection.authority_level [:collection.name :collection_name]]
-             {:where     [:in :report_dashboard.id ids]
-              :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]}))
+  (mdb/select-batched #(t2/select [:model/Dashboard
+                                   :id :name :collection_id :description
+                                   :archived
+                                   :collection.authority_level [:collection.name :collection_name]]
+                                  {:where     [:in :report_dashboard.id %]
+                                   :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]})
+                      ids))
 
 (mu/defn recent-tables
   "The recently viewed Tables with `ids`, with their Database names and sync status."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Table
-              :id :name :db_id :active
-              :display_name [:metabase_database.initial_sync_status :initial-sync-status]
-              [:visibility_type :visibility_type]
-              [:metabase_database.name :database-name]]
-             {:where     [:in :metabase_table.id ids]
-              :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]}))
+  (mdb/select-batched #(t2/select [:model/Table
+                                   :id :name :db_id :active
+                                   :display_name [:metabase_database.initial_sync_status :initial-sync-status]
+                                   [:visibility_type :visibility_type]
+                                   [:metabase_database.name :database-name]]
+                                  {:where     [:in :metabase_table.id %]
+                                   :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]})
+                      ids))
 
 (mu/defn recent-dashboard-and-table-views
   "Up to `limit` most recently viewed unarchived, active Dashboards and Tables with their view counts and last
@@ -145,17 +149,20 @@
   "The RecentViews of the Users with `user-ids` in `contexts`, newest first, with the type of the viewed Card."
   [user-ids :- [:sequential ::lib.schema.id/user]
    contexts :- [:sequential :string]]
-  (t2/select :model/RecentViews
-             {:select    [:rv.id :rv.user_id :rv.context :rv.model :rv.model_id [:rc.type :card_type]]
-              :from      [[:recent_views :rv]]
-              :where     [:and
-                          [:in :rv.user_id [:auto/param user-ids]]
-                          [:in :rv.context (mapv h2x/literal contexts)]]
-              :left-join [[:report_card :rc]
-                          [:and
-                           [:= :rv.model (h2x/literal "card")]
-                           [:= :rc.id :rv.model_id]]]
-              :order-by  [[:rv.timestamp :desc]]}))
+  (->> (mdb/select-batched #(t2/select :model/RecentViews
+                                       {:select    [:rv.id :rv.user_id :rv.context :rv.model :rv.model_id [:rc.type :card_type] :rv.timestamp]
+                                        :from      [[:recent_views :rv]]
+                                        :where     [:and
+                                                    [:in :rv.user_id [:auto/param %]]
+                                                    [:in :rv.context (mapv h2x/literal contexts)]]
+                                        :left-join [[:report_card :rc]
+                                                    [:and
+                                                     [:= :rv.model (h2x/literal "card")]
+                                                     [:= :rc.id :rv.model_id]]]
+                                        :order-by  [[:rv.timestamp :desc]]})
+                           user-ids)
+       (sort-by :timestamp #(compare %2 %1))
+       (mapv #(dissoc % :timestamp))))
 
 (mu/defn insert-recent-views!
   "Insert the RecentViews `rows`."
@@ -165,7 +172,7 @@
 (mu/defn delete-recent-views!
   "Delete the RecentViews with `ids`."
   [ids :- [:set ms/PositiveInt]]
-  (t2/delete! :model/RecentViews :id [:in ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/RecentViews :id [:in %]) ids))
 
 (mu/defn most-recently-viewed-dashboard-id
   "The id of the unarchived Dashboard the User with `user-id` viewed most recently after `since`, or nil."
@@ -188,12 +195,13 @@
   permissions."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/hydrate
-   (t2/select :model/Collection
-              {:select [:id :name :description :authority_level
-                        :archived :location :type :namespace :is_remote_synced]
-               :where [:and
-                       [:in :id collection-ids]
-                       [:= :archived false]]})
+   (mdb/select-batched #(t2/select :model/Collection
+                                   {:select [:id :name :description :authority_level
+                                             :archived :location :type :namespace :is_remote_synced]
+                                    :where [:and
+                                            [:in :id %]
+                                            [:= :archived false]]})
+                       collection-ids)
    :effective_parent :can_read :can_write))
 
 (mu/defn recent-views-with-card-type

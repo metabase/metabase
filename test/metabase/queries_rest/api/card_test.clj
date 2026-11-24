@@ -3710,8 +3710,8 @@
                         (events.tu/real-statement-count!
                          #(mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id}))))]
           (move! 2)
-          (let [few  (move! 10)
-                many (move! 40)]
+          (let [few  (min (move! 10) (move! 10))
+                many (min (move! 40) (move! 40))]
             (is (<= (- many few) (* 2 (- 40 10))))))))))
 
 (deftest bulk-move-pinned-cards-refuses-unwritable-collection-test

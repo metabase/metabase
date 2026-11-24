@@ -13,22 +13,25 @@
    [toucan2.core :as t2]))
 
 (mu/defn active-visible-tables-for-databases
-  "The active, visible Tables of the Databases with `database-ids`, in schema then display name order."
+  "The active, visible Tables of the Databases with `database-ids`, in schema then display name order within each
+  Database."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Table
-             :active          true
-             :db_id           [:in database-ids]
-             :visibility_type nil
-             {:order-by [[:%lower.schema :asc]
-                         [:%lower.display_name :asc]]}))
+  (mdb/select-batched #(t2/select :model/Table
+                                  :active          true
+                                  :db_id           [:in %]
+                                  :visibility_type nil
+                                  {:order-by [[:%lower.schema :asc]
+                                              [:%lower.display_name :asc]]})
+                      database-ids))
 
 (mu/defn active-visible-schemas-for-databases
   "The Database id and schema of each active, visible Table of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select [:model/Table :db_id :schema]
-             :db_id           [:in database-ids]
-             :active          true
-             :visibility_type nil))
+  (mdb/select-batched #(t2/select [:model/Table :db_id :schema]
+                                  :db_id           [:in %]
+                                  :active          true
+                                  :visibility_type nil)
+                      database-ids))
 
 (mu/defn databases-where
   "The Databases visible to the user with `user-id` (`is-superuser?`/`is-data-analyst?` further widen visibility), in
@@ -179,9 +182,10 @@
 (mu/defn non-sensitive-fields-for-tables
   "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
-             :table_id        [:in table-ids]
-             :visibility_type [:not-in ["sensitive" "retired"]]))
+  (mdb/select-batched #(t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
+                                  :table_id        [:in %]
+                                  :visibility_type [:not-in ["sensitive" "retired"]])
+                      table-ids))
 
 (mu/defn sample-database
   "The sample Database, or nil."

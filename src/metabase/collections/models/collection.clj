@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.util :as mut]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
@@ -464,6 +465,16 @@
        (get (perms/collection-permissions-for-user (api/current-user-info) [nil] {:root-namespace (:namespace root)}) nil)
        permission)))
 
+(defn- root-permissions
+  "Whether the current user has `permission` or more on each root Collection among `collections`, by namespace, each
+  namespace answered once."
+  [collections permission]
+  (into {}
+        (comp (filter #(and (some? %) (collection.root/is-root-collection? %)))
+              (m/distinct-by :namespace)
+              (map (fn [root] [(:namespace root) (boolean (root-collection-permission-at-least? root permission))])))
+        collections))
+
 (defn- hydrate-can-read
   "Keeps in the metadata of each of `collections`, under `:can_read`, whether the current user reads it: the trash,
   and otherwise a Collection that is not the hidden audit Collection, on which they have read permission or which is
@@ -472,14 +483,15 @@
   (let [rows        (into [] (remove #(or (nil? %) (collection.root/is-root-collection? %))) collections)
         _           (run! check-can-read-keys rows)
         permissions (collection-permissions rows)
-        hidden-ids  (when (seq rows) (hidden-audit-collection-ids))]
+        hidden-ids  (when (seq rows) (hidden-audit-collection-ids))
+        roots       (root-permissions collections :read)]
     (for [{:keys [id] :as collection} collections]
       (cond
         (nil? collection)
         nil
 
         (collection.root/is-root-collection? collection)
-        (vary-meta collection assoc :can_read (boolean (root-collection-permission-at-least? collection :read)))
+        (vary-meta collection assoc :can_read (get roots (:namespace collection)))
 
         :else
         (vary-meta collection assoc :can_read
@@ -497,14 +509,15 @@
   (let [rows        (into [] (remove #(or (nil? %) (collection.root/is-root-collection? %))) collections)
         _           (run! check-can-write-keys rows)
         permissions (collection-permissions rows)
-        audit-ids   (when (seq rows) (audit/audit-collection-ids))]
+        audit-ids   (when (seq rows) (audit/audit-collection-ids))
+        roots       (root-permissions collections :read-and-write)]
     (for [{:keys [id] :as collection} collections]
       (cond
         (nil? collection)
         nil
 
         (collection.root/is-root-collection? collection)
-        (assoc collection :can_write (boolean (root-collection-permission-at-least? collection :read-and-write)))
+        (assoc collection :can_write (get roots (:namespace collection)))
 
         :else
         (assoc collection :can_write
@@ -523,15 +536,15 @@
   [_model _k collections]
   (hydrate-can-write collections))
 
-(methodical/defmethod t2/simple-hydrate [metabase.collections.models.collection.root.RootCollection :can_read]
-  "Whether the current user reads `root`, a root Collection."
-  [_model k root]
-  (vary-meta root assoc k (boolean (root-collection-permission-at-least? root :read))))
+(methodical/defmethod t2/batched-hydrate [metabase.collections.models.collection.root.RootCollection :can_read]
+  "Whether the current user reads each of `collections`, led by a root Collection."
+  [_model _k collections]
+  (hydrate-can-read collections))
 
-(methodical/defmethod t2/simple-hydrate [metabase.collections.models.collection.root.RootCollection :can_write]
-  "Whether the current user writes `root`, a root Collection."
-  [_model k root]
-  (assoc root k (boolean (root-collection-permission-at-least? root :read-and-write))))
+(methodical/defmethod t2/batched-hydrate [metabase.collections.models.collection.root.RootCollection :can_write]
+  "Whether the current user writes each of `collections`, led by a root Collection."
+  [_model _k collections]
+  (hydrate-can-write collections))
 
 (defn content-readable-collection-ids
   "The ids among `collection-ids`, a nil id for the root Collection of the `:root-namespace` option included, of the
@@ -1233,18 +1246,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          Nested Collections: Ancestors, Children, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(mu/defn- ancestors* :- [:maybe [:sequential (ms/InstanceOf :model/Collection)]]
-  [{:keys [location]} :- CollectionWithLocationOrRoot]
-  (when-let [ancestor-ids (seq (location-path->ids location))]
-    (collections.db/ancestor-summaries ancestor-ids)))
-
-(mi/define-simple-hydration-method ancestors
-  :ancestors
-  "Fetch ancestors (parent, grandparent, etc.) of a `collection`. These are returned in order starting with the
-  highest-level (e.g. most distant) ancestor."
-  [collection]
-  (ancestors* collection))
 
 (defn- effective-ancestors*
   "The effective ancestors at `effective-location`: `root` when the current user can read it, then the readable

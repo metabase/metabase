@@ -19,31 +19,41 @@
   [:map-of ::lib.schema.id/table :int])
 
 (defn- field-counts-by-table
-  "The number of Fields matching `where` of each Table that has any, by Table id."
-  [where]
+  "The number of Fields matching `(where-fn ids)` of each of the Tables with `table-ids` that has any, by Table id."
+  [table-ids where-fn]
   (into {}
         (map (juxt :table_id :field_count))
-        (t2/query {:select   [:table_id [:%count.* :field_count]]
-                   :from     [(t2/table-name :model/Field)]
-                   :where    where
-                   :group-by [:table_id]})))
+        (app-db/select-batched #(t2/query {:select   [:table_id [:%count.* :field_count]]
+                                           :from     [(t2/table-name :model/Field)]
+                                           :where    (where-fn %)
+                                           :group-by [:table_id]})
+                               table-ids)))
 
 (defn- first-fields-by-table
-  "The first `limit` Fields by id of each Table among the Fields matching `where`, lowest id first."
-  [where limit]
-  (t2/select :model/Field
-             {:select   [:f.*]
-              :from     [[(t2/table-name :model/Field) :f]]
-              :join     [[^:allow-subquery
-                          {:select [:id [[:over [[:row_number]
-                                                 ^:allow-subquery {:partition-by :table_id
-                                                                   :order-by     [[:id :asc]]}]]
-                                         :row_num]]
-                           :from   [(t2/table-name :model/Field)]
-                           :where  where}
-                          :ranked]
-                         [:and [:= :ranked.id :f.id] [:<= :ranked.row_num [:auto/param limit]]]]
-              :order-by [[:f.id :asc]]}))
+  "The first `limit` Fields by id of each of the Tables with `table-ids` among the Fields matching `(where-fn ids)`,
+  lowest id first."
+  [table-ids where-fn limit]
+  (vec (sort-by :id (app-db/select-batched
+                     #(t2/select :model/Field
+                                 {:select   [:f.*]
+                                  :from     [[(t2/table-name :model/Field) :f]]
+                                  :join     [[^:allow-subquery
+                                              {:select [:id [[:over [[:row_number]
+                                                                     ^:allow-subquery {:partition-by :table_id
+                                                                                       :order-by     [[:id :asc]]}]]
+                                                             :row_num]]
+                                               :from   [(t2/table-name :model/Field)]
+                                               :where  (where-fn %)}
+                                              :ranked]
+                                             [:and [:= :ranked.id :f.id] [:<= :ranked.row_num [:auto/param limit]]]]
+                                  :order-by [[:f.id :asc]]})
+                     table-ids))))
+
+(defn- first-fields-after
+  "The first `limit` Fields by id of those `(select-fn ids)` returns for the partitions of `table-ids`, each partition
+  read with that same limit and order."
+  [select-fn table-ids limit]
+  (into [] (take limit) (sort-by :id (app-db/select-batched select-fn table-ids))))
 
 ;;; ------------------------------------------------ Fingerprints ------------------------------------------------
 
@@ -102,9 +112,9 @@
   [table-ids           :- ::table-ids
    refingerprint?      :- :boolean
    version->base-types :- ::version->base-types]
-  (field-counts-by-table [:and
-                          [:in :table_id [:auto/param table-ids]]
-                          (needs-fingerprint-update-clause refingerprint? version->base-types)]))
+  (field-counts-by-table table-ids #(vector :and
+                                            [:in :table_id [:auto/param %]]
+                                            (needs-fingerprint-update-clause refingerprint? version->base-types))))
 
 (mu/defn fields-to-fingerprint :- [:sequential (ms/InstanceOf :model/Field)]
   "The first `limit` Fields by id of each of the Tables with `table-ids` whose fingerprint needs to be re-calculated.
@@ -113,9 +123,10 @@
    refingerprint?      :- :boolean
    version->base-types :- ::version->base-types
    limit               :- ms/PositiveInt]
-  (first-fields-by-table [:and
-                          [:in :table_id [:auto/param table-ids]]
-                          (needs-fingerprint-update-clause refingerprint? version->base-types)]
+  (first-fields-by-table table-ids
+                         #(vector :and
+                                  [:in :table_id [:auto/param %]]
+                                  (needs-fingerprint-update-clause refingerprint? version->base-types))
                          limit))
 
 ;;; ------------------------------------------------ Classification ------------------------------------------------
@@ -127,26 +138,28 @@
    fingerprint-version :- :int
    after-id            :- [:int {:min 0}]
    limit               :- ms/PositiveInt]
-  (t2/select :model/Field
-             {:where    [:and
-                         [:in :table_id [:auto/param table-ids]]
-                         [:= :active true]
-                         [:not-in :visibility_type ["sensitive" "retired"]]
-                         [:= :fingerprint_version [:auto/param fingerprint-version]]
-                         [:= :last_analyzed nil]
-                         [:> :id [:auto/param after-id]]]
-              :order-by [[:id :asc]]
-              :limit    limit}))
+  (first-fields-after #(t2/select :model/Field
+                                  {:where    [:and
+                                              [:in :table_id [:auto/param %]]
+                                              [:= :active true]
+                                              [:not-in :visibility_type ["sensitive" "retired"]]
+                                              [:= :fingerprint_version [:auto/param fingerprint-version]]
+                                              [:= :last_analyzed nil]
+                                              [:> :id [:auto/param after-id]]]
+                                   :order-by [[:id :asc]]
+                                   :limit    limit})
+                      table-ids
+                      limit))
 
 (mu/defn name-field-counts :- ::field-counts
   "The number of active, visible Fields whose semantic type is `:type/Name` of each of the Tables with `table-ids` that
   has any."
   [table-ids :- ::table-ids]
-  (field-counts-by-table [:and
-                          [:in :table_id [:auto/param table-ids]]
-                          [:= :active true]
-                          [:not-in :visibility_type ["sensitive" "retired"]]
-                          [:= :semantic_type (u/qualified-name :type/Name)]]))
+  (field-counts-by-table table-ids #(vector :and
+                                            [:in :table_id [:auto/param %]]
+                                            [:= :active true]
+                                            [:not-in :visibility_type ["sensitive" "retired"]]
+                                            [:= :semantic_type (u/qualified-name :type/Name)])))
 
 ;;; ------------------------------------------------ Field values ------------------------------------------------
 
@@ -161,13 +174,13 @@
 (mu/defn normal-field-counts :- ::field-counts
   "The number of active, normal-visibility Fields of each of the Tables with `table-ids` that has any."
   [table-ids :- ::table-ids]
-  (field-counts-by-table (normal-fields-clause table-ids)))
+  (field-counts-by-table table-ids normal-fields-clause))
 
 (mu/defn normal-fields :- [:sequential (ms/InstanceOf :model/Field)]
   "The first `limit` active, normal-visibility Fields by id of each of the Tables with `table-ids`."
   [table-ids :- ::table-ids
    limit     :- ms/PositiveInt]
-  (first-fields-by-table (normal-fields-clause table-ids) limit))
+  (first-fields-by-table table-ids normal-fields-clause limit))
 
 ;;; ---------------------------------------------- Data sensitivity ----------------------------------------------
 
@@ -179,19 +192,21 @@
    rescan-public? :- :boolean
    after-id       :- [:int {:min 0}]
    limit          :- ms/PositiveInt]
-  (t2/select :model/Field
-             {:where    [:and
-                         [:in :table_id [:auto/param table-ids]]
-                         [:= :active true]
-                         [:not= :visibility_type "retired"]
-                         (if rescan-public?
-                           [:or [:= :data_sensitivity nil] [:= :data_sensitivity "PUBLIC"]]
-                           [:= :data_sensitivity nil])
-                         [:not [:exists ^:allow-subquery {:select [1]
-                                                          :from   [[(t2/table-name :model/FieldUserSettings) :s]]
-                                                          :where  [:and
-                                                                   [:= :s.field_id :metabase_field.id]
-                                                                   [:not= :s.data_sensitivity nil]]}]]
-                         [:> :id [:auto/param after-id]]]
-              :order-by [[:id :asc]]
-              :limit    limit}))
+  (first-fields-after #(t2/select :model/Field
+                                  {:where    [:and
+                                              [:in :table_id [:auto/param %]]
+                                              [:= :active true]
+                                              [:not= :visibility_type "retired"]
+                                              (if rescan-public?
+                                                [:or [:= :data_sensitivity nil] [:= :data_sensitivity "PUBLIC"]]
+                                                [:= :data_sensitivity nil])
+                                              [:not [:exists ^:allow-subquery {:select [1]
+                                                                               :from   [[(t2/table-name :model/FieldUserSettings) :s]]
+                                                                               :where  [:and
+                                                                                        [:= :s.field_id :metabase_field.id]
+                                                                                        [:not= :s.data_sensitivity nil]]}]]
+                                              [:> :id [:auto/param after-id]]]
+                                   :order-by [[:id :asc]]
+                                   :limit    limit})
+                      table-ids
+                      limit))

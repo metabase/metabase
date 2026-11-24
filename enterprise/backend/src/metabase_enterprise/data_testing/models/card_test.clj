@@ -13,12 +13,14 @@
    [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -74,9 +76,21 @@
   (data-testing.models/with-readable-subjects k card-tests :card_id
     (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) card-tests))))
 
-(methodical/defmethod t2/simple-hydrate [:model/CardTest :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (can-save-test? (:card_id instance)))))
+(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_write]
+  "Add whether the current user may save or delete each card test, loading the cards and answering their
+  `:can_write` at once, and the native SQL question once per Database."
+  [_model k card-tests]
+  (lib-be/with-metadata-provider-cache
+    (let [cards   (u/index-by :id (t2/hydrate (data-testing.db/cards-by-ids
+                                               (into [] (comp (remove nil?) (keep :card_id) (distinct)) card-tests))
+                                              :can_write))
+          native? (memoize data-testing.models/can-run-native-query?)]
+      (mapv (fn [card-test]
+              (when card-test
+                (let [card (get cards (:card_id card-test))]
+                  (assoc card-test k (data-testing.models/query-subject-allows?
+                                      mi/can-write? :can_write card (:dataset_query card) native?)))))
+            card-tests))))
 
 (defmethod mi/can-create? :model/CardTest
   [_model instance]

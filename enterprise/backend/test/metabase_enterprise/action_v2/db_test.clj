@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.db :as action-v2.db]
+   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]))
 
@@ -25,3 +26,17 @@
                                                                        :semantic_type    :type/Category})
       (is (= [{:id field-id, :lower_name "status"}]
              (action-v2.db/category-list-field-ids-by-name table-id ["status"]))))))
+
+(deftest ^:synchronized superseding-change-exists-over-partitions-test
+  (testing "a change is found whichever partitions of Tables and rows hold it"
+    (mt/with-temp [:model/Table {table-id :id} {}
+                   :model/User  {user-id :id}  {}
+                   :model/Undo  _              {:table_id table-id, :row_pk {:id 3}, :batch_num 5, :undone false
+                                                :user_id user-id, :scope "test", :raw_before {:id 3}, :raw_after {:id 3}}]
+      (let [table-ids #{(+ table-id 1000) (+ table-id 1001) table-id}
+            row-pks   #{{:id 1} {:id 2} {:id 3}}
+            f         #(action-v2.db/superseding-change-exists? true table-ids row-pks 1)]
+        (is (true? (f)))
+        (is (true? (with-redefs [mdb.query/select-partition-size 2] (f))))
+        (is (false? (with-redefs [mdb.query/select-partition-size 2]
+                      (action-v2.db/superseding-change-exists? true table-ids #{{:id 1} {:id 2}} 1))))))))

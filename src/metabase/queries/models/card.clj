@@ -231,7 +231,7 @@
                                  (if-let [snapshots (summary-card-snapshots card document)]
                                    (and (contains? @summary-readable (:collection_id document))
                                         (every? cached-result/viewer-can-view-cached-result? snapshots))
-                                   (mi/can-read? (t2/hydrate document :can_read)))))))))))))
+                                   (mi/can-read? document))))))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :can_write]
   "Whether the current user writes each of `cards`: its Collection's content, and, for a Card of a Document, the
@@ -1407,12 +1407,16 @@
   "Hydrate can_manage_db onto cards. Indicates whether the current user has access to the database admin page for the
   database powering this card."
   [_model _k cards]
-  (map
-   (fn [card]
-     (assoc card
-            :can_manage_db
-            (perms/user-has-permission-for-databases? (perms/user-info api/*current-user-id*) :perms/manage-database :yes [(:database_id card)])))
-   cards))
+  (let [values (perms/database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                    :perms/manage-database
+                                                    (into [] (comp (keep :database_id) (distinct)) cards))]
+    (map
+     (fn [card]
+       (assoc card
+              :can_manage_db
+              (boolean (when-let [db-id (:database_id card)]
+                         (perms/at-least-as-permissive? :perms/manage-database (get values db-id) :yes)))))
+     cards)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]

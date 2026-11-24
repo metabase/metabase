@@ -65,7 +65,7 @@
 
 (mu/defn mark-data-app-dependency-statuses-stale!
   "Mark the DependencyStatuses of the DataApps whose resource collection is one of the Collections with
-  `collection-ids` stale, in one UPDATE."
+  `collection-ids` stale, in one UPDATE for each 1,000 of them."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (dependencies.db/mark-data-app-dependency-statuses-stale! collection-ids))
 

@@ -45,33 +45,34 @@
 (mu/defn unarchived-dashboard-ids-in-collections-reducible
   "Reducible `:id` rows of the unarchived Dashboards in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/reducible-select [:model/Dashboard :id]
-                       {:where [:and [:= :archived false]
-                                [:in :collection_id collection-ids]]}))
+  (mdb/select-batched-reducible #(t2/reducible-select [:model/Dashboard :id]
+                                                      {:where [:and [:= :archived false]
+                                                               [:in :collection_id %]]}) collection-ids))
 
 (mu/defn collection-owners-and-locations
   "The ID, owner, and location of the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :personal_owner_id :location] :id [:in collection-ids]))
+  (mdb/select-batched #(t2/select [:model/Collection :id :personal_owner_id :location] :id [:in %]) collection-ids))
 
 (mu/defn personal-collection-owners
   "The ID and owner of the personal Collections among `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :personal_owner_id]
-             :id [:in collection-ids]
-             :personal_owner_id [:not= nil]))
+  (mdb/select-batched #(t2/select [:model/Collection :id :personal_owner_id]
+                                  :id [:in %]
+                                  :personal_owner_id [:not= nil])
+                      collection-ids))
 
 (mu/defn collection-locations
   "The ID and location of the raw collection rows with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select [:collection :id :location] :id [:in collection-ids]))
+  (mdb/select-batched #(t2/select [:collection :id :location] :id [:in %]) collection-ids))
 
 (mu/defn instances
   "The instances of `modelable` with `ids`.
   A modelable is a model, or a vector of a model and the columns to select."
   [modelable :- [:or :keyword [:cat :keyword [:+ :keyword]]]
    ids       :- [:sequential ms/PositiveInt]]
-  (t2/select modelable :id [:in ids]))
+  (mdb/select-batched #(t2/select modelable :id [:in %]) ids))
 
 (defn- search-doc-select
   [{:keys [id model]}]

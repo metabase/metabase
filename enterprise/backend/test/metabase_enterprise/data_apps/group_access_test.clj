@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.api.macros :as api.macros]
@@ -510,3 +511,26 @@
             (is (thrown? Exception (perms/grant-collection-read-permissions-to-groups!
                                     [[other coll-id] [(:id (perms/admin-group)) coll-id]])))
             (is (empty? (objects-of other)))))))))
+
+(deftest can-read-statements-do-not-grow-with-apps-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/Collection {granted-coll :id} {:namespace :data-apps}
+                   :model/DataApp granted {:resource_collection_id granted-coll}
+                   :model/Collection {closed-coll :id} {:namespace :data-apps}
+                   :model/DataApp closed {:resource_collection_id closed-coll}
+                   :model/PermissionsGroup group {}]
+      (group-access/add-groups! granted [(:id group)])
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group (:id group)}])
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [apps    (mapv #(t2/instance :model/DataApp {:id (:id (if (even? %) granted closed))}) (range 6))
+              hydrate (fn [n]
+                        (t2/with-call-count [call-count]
+                          (let [hydrated (doall (t2/hydrate (vec (take n apps)) :can_read))]
+                            {:statements (call-count)
+                             :values     (mapv mi/can-read? hydrated)})))]
+          (hydrate 1)
+          (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+          (is (= [true false true false true false] (:values (hydrate 6))))
+          (testing "each app gets the answer the per-app check gave"
+            (is (= (mapv #(data-apps.db/data-app-readable? (mt/user->id :rasta) (:id %)) apps)
+                   (:values (hydrate 6))))))))))

@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -60,3 +62,31 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
                                 (cd.db/insert-findings! [(row 2 :empty {:threshold 0 :unit "rows"
                                                                         :as_of (str as-of)})]))))))))
+
+(defn- partitioned!
+  "Call `f` with every partition size of the app DB set to 2."
+  [f]
+  (with-redefs [mdb.query/select-partition-size 2
+                mdb/select-partition-size       2
+                mdb/update-partition-size       2]
+    (f)))
+
+(deftest ^:synchronized reads-and-invalidations-over-partitions-test
+  (mt/with-temp [:model/Collection {coll1 :id} {:name "Partitioned A"}
+                 :model/Collection {coll2 :id} {:name "Partitioned B"}
+                 :model/Collection {coll3 :id} {:name "Partitioned C"}]
+    (testing "a map from partitions"
+      (is (= {coll1 "Partitioned A" coll2 "Partitioned B" coll3 "Partitioned C"}
+             (cd.db/collection-names-by-id #{coll1 coll2 coll3})
+             (partitioned! #(cd.db/collection-names-by-id #{coll1 coll2 coll3}))))
+      (is (= (cd.db/user-names-by-id #{(mt/user->id :rasta) (mt/user->id :crowberto) (mt/user->id :lucky)})
+             (partitioned! #(cd.db/user-names-by-id #{(mt/user->id :rasta) (mt/user->id :crowberto) (mt/user->id :lucky)})))))
+    (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+      (cd.db/insert-findings! [(row 1 :slow {:threshold_ms 1}) (row 2 :slow {:threshold_ms 1}) (row 3 :slow {:threshold_ms 1})])
+      (let [ids (vec (t2/select-pks-vec :model/ContentDiagnosticsFinding :scan_id "db-test"))]
+        (testing "a set from partitions"
+          (is (= (set ids)
+                 (partitioned! #(cd.db/active-finding-ids ids [:= :scan_id "db-test"])))))
+        (testing "an update count summed over partitions"
+          (is (= 3 (partitioned! #(cd.db/invalidate-findings-by-ids! ids))))
+          (is (nil? (cd.db/active-finding-ids ids [:= :scan_id "db-test"]))))))))

@@ -3,6 +3,8 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -35,6 +37,16 @@
       (seq table_ids)    (conj [:in (table-column :id)    (sort table_ids)])
       (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))))
 
+(defn- select-by-selectors
+  "The rows, each once by `:id`, that `select-fn` returns for the `:where` clause of each partition of each list of
+  `selectors`."
+  [select-fn selectors]
+  (into []
+        (comp (mapcat (fn [[k values]]
+                        (app-db/select-batched #(select-fn (table-selectors-where {k %})) values)))
+              (m/distinct-by :id))
+        selectors))
+
 (mu/defn fk-remapped-table-ids-for-tables
   "The `:table_id`s reached through external Dimensions from the Tables with `table-ids`, reading the Table id
   of the `input-table-id` column and returning that of the `output-table-id` column, excluding ids already in
@@ -43,16 +55,17 @@
    output-table-id    :- :keyword
    table-ids          :- [:set ::lib.schema.id/table]
    exclude-table-ids  :- [:set ::lib.schema.id/table]]
-  (t2/reducible-query {:select [[output-table-id :table_id]]
-                       :from   [[(t2/table-name :model/Dimension) :dim]]
-                       :join   [[(t2/table-name :model/Field) :source_field]
-                                [:= :dim.field_id :source_field.id]
-                                [(t2/table-name :model/Field) :target_field]
-                                [:= :dim.human_readable_field_id :target_field.id]]
-                       :where  [:and
-                                [:= :dim.type "external"]
-                                [:in input-table-id table-ids]
-                                [:not [:in output-table-id exclude-table-ids]]]}))
+  (eduction (comp (mapcat #(t2/reducible-query {:select [[output-table-id :table_id]]
+                                                :from   [[(t2/table-name :model/Dimension) :dim]]
+                                                :join   [[(t2/table-name :model/Field) :source_field]
+                                                         [:= :dim.field_id :source_field.id]
+                                                         [(t2/table-name :model/Field) :target_field]
+                                                         [:= :dim.human_readable_field_id :target_field.id]]
+                                                :where  [:and
+                                                         [:= :dim.type "external"]
+                                                         [:in input-table-id %]]}))
+                  (remove (comp exclude-table-ids :table_id)))
+            (app-db/select-partitions table-ids)))
 
 (mu/defn fk-remapped-table-ids-for-selectors
   "The `:table_id`s reached through external Dimensions from the Tables picked out by `selectors`, reading the
@@ -80,22 +93,22 @@
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (app-db/select-batched #(t2/select :model/Database :id [:in %]) database-ids))
 
 (mu/defn tables-matching-selectors
   "The Tables picked out by `selectors`, a map of `:database_ids`, `:schema_ids`, and/or `:table_ids`."
   [selectors :- TableSelectors]
-  (t2/select :model/Table {:where (table-selectors-where selectors)}))
+  (select-by-selectors #(t2/select :model/Table {:where %}) selectors))
 
 (mu/defn tables-matching-selectors-in-id-order
   "The Tables picked out by `selectors`, in id order."
   [selectors :- TableSelectors]
-  (t2/select :model/Table {:where (table-selectors-where selectors), :order-by [[:id]]}))
+  (vec (sort-by :id (select-by-selectors #(t2/select :model/Table {:where %, :order-by [[:id]]}) selectors))))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (app-db/select-batched #(t2/select :model/Table :id [:in %]) table-ids))
 
 (def ^:private selection-columns
   "The select list for the id, database, name, display name, schema, and published flag of a Table, for a query with
@@ -111,10 +124,11 @@
   out by `selectors`."
   [selectors :- TableSelectors
    limit     :- ms/PositiveInt]
-  (t2/select selection-columns
-             {:left-join settings-join, :where (table-selectors-where selectors), :limit limit}))
+  (into [] (take limit) (select-by-selectors #(t2/select selection-columns {:left-join settings-join, :where %, :limit limit})
+                                             selectors)))
 
 (mu/defn selection-columns-for-tables
   "The id, database, name, display name, schema, and published flag (nil when not set) of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select selection-columns {:left-join settings-join, :where [:in (table-column :id) table-ids]}))
+  (app-db/select-batched #(t2/select selection-columns {:left-join settings-join, :where [:in (table-column :id) %]})
+                         table-ids))

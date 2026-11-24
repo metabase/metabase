@@ -366,6 +366,7 @@
           metabase.eid-translation.spec}
    :uses #{api
            api-scope
+           app-db
            batch-processing
            models
            settings
@@ -951,6 +952,7 @@
   {:team "Data Apps"
    :api  #{metabase.data-studio.api}
    :uses #{api
+           app-db
            database-routing
            driver
            events
@@ -1372,7 +1374,8 @@
   {:team "Querying"
    :ns-prefix "metabase.lib-be"
    :api  #{metabase.lib-be.core metabase.lib-be.init metabase.lib-be.schema}
-   :uses #{lib
+   :uses #{app-db
+           lib
            lib.legacy-mbql
            lib.metadata
            lib.schema
@@ -1421,7 +1424,8 @@
   {:team "UX West"
    :ns-prefix "metabase.lib-metric"
    :api #{metabase.lib-metric.core metabase.lib-metric.schema}
-   :uses #{lib
+   :uses #{app-db
+           lib
            lib.be
            lib.metadata
            lib.schema
@@ -1802,6 +1806,7 @@
           metabase.llm.settings
           metabase.llm.startup}
    :uses #{api
+           app-db
            lib
            lib.be
            lib.metadata
@@ -1831,6 +1836,7 @@
    :uses    #{analytics
               analytics.interface
               api
+              app-db
               channel
               formatter
               lib
@@ -1852,6 +1858,7 @@
   {:team "Metabot"
    :api  #{metabase.metabot.toolkit.dashboard-op-schema metabase.metabot.toolkit.dashboard-ops metabase.metabot.toolkit.dashboard-write}
    :uses #{api
+           app-db
            dashboards
            lib
            models
@@ -2127,6 +2134,7 @@
    :ns-prefix "metabase.permissions-rest"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
+           app-db
            audit-app
            lib.schema
            permissions
@@ -2209,6 +2217,7 @@
    :uses #{actions
            analytics
            api
+           app-db
            dashboards
            dashboards.rest
            documents
@@ -2374,6 +2383,7 @@
    :uses #{api
            api-scope
            api.eid-translation
+           app-db
            collections
            data-apps
            events
@@ -2405,6 +2415,7 @@
   {:team "Security"
    :api  #{metabase.query-permissions.core metabase.query-permissions.schema}
    :uses #{api
+           app-db
            lib
            lib.be
            lib.metadata
@@ -2717,7 +2728,7 @@
   search.entity-retrieval
   {:team "Metabot"
    :api #{metabase.search.entity-retrieval.core metabase.search.entity-retrieval.mirror}
-   :uses #{premium-features util}
+   :uses #{app-db premium-features util}
    :model-imports #{:model/OsiAiContext}}
 
   security-center
@@ -2972,6 +2983,7 @@
               metabase.sso.init
               metabase.sso.settings}
    :uses    #{api
+              app-db
               lib.schema
               permissions
               premium-features
@@ -3359,6 +3371,7 @@
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
+           app-db
            events
            models
            request
@@ -3395,6 +3408,7 @@
    :uses #{analytics
            analytics.interface
            api
+           app-db
            appearance
            driver
            events
@@ -3741,6 +3755,7 @@
            metabase.xrays.related
            metabase.xrays.spec}
    :uses #{api
+           app-db
            appearance
            collections
            dashboards
@@ -3931,7 +3946,8 @@
   enterprise/cache
   {:team "UX West"
    :api  #{metabase-enterprise.cache.init}
-   :uses #{cache
+   :uses #{app-db
+           cache
            lib.schema
            premium-features
            query-processor
@@ -4133,6 +4149,7 @@
   {:team "Data Apps"
    :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
+           app-db
            collections
            lib.schema
            models
@@ -4321,6 +4338,7 @@
    :api  #{metabase-enterprise.library.api}
    :uses #{api
            api-scope
+           app-db
            collections
            lib.schema
            permissions
@@ -4406,6 +4424,7 @@
    :ns-prefix "metabase-enterprise.metabot-analytics"
    :api #{metabase-enterprise.metabot-analytics.api}
    :uses #{api
+           app-db
            driver
            lib.schema
            metabot
@@ -4486,8 +4505,8 @@
                      enterprise/permissions.sandbox}
    :api #{metabase-enterprise.advanced-permissions.api.routes}
    :uses #{api
+           app-db
            audit-app
-           collections
            lib
            lib.schema
            permissions
@@ -4509,6 +4528,7 @@
    :ns-prefix "metabase-enterprise.permission-debug"
    :api #{metabase-enterprise.permission-debug.api}
    :uses #{api
+           app-db
            lib
            lib.schema
            models
@@ -4827,6 +4847,7 @@
    :uses #{analytics.interface
            api
            api-keys
+           app-db
            lib.schema
            models
            permissions
@@ -4911,6 +4932,7 @@
    :api  #{metabase-enterprise.transforms-inspector.api}
    :uses #{analytics.interface
            api
+           app-db
            driver
            events
            lib
@@ -4972,6 +4994,7 @@
    :ns-prefix "metabase-enterprise.erd"
    :api #{metabase-enterprise.erd.api}
    :uses #{api
+           app-db
            lib.schema
            models
            util

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -378,3 +379,19 @@
         (is (= #{"x?"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
       (finally
         (t2/delete! :setting :key [:in [guard-test-key other-key]])))))
+
+(deftest ^:synchronized automagic-hydration-partitions-test
+  (let [user-ids (mapv mt/user->id [:rasta :crowberto :lucky :trashbird :rasta])
+        cards    (fn [n] (mapv #(t2/instance :model/Card {:id %2, :creator_id %1}) (take n user-ids) (range 1 (inc n))))
+        hydrate  (fn [rows] (t2/with-call-count [call-count]
+                              [(mapv (comp :id :creator) (t2/hydrate rows :creator)) (call-count)]))]
+    (testing "rows beyond one partition hydrate as they do in one statement"
+      (let [[expected statements] (hydrate (cards 5))]
+        (is (= user-ids expected))
+        (is (= statements (second (hydrate (cards 2)))))
+        (is (= expected (first (with-redefs [mdb.query/select-partition-size 2]
+                                 (hydrate (cards 5))))))))
+    (testing "each partition of rows reads with its own statement"
+      (is (< (second (hydrate (cards 5)))
+             (second (with-redefs [mdb.query/select-partition-size 2]
+                       (hydrate (cards 5)))))))))

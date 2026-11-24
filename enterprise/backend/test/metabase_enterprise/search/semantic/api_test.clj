@@ -1,8 +1,7 @@
 (ns metabase-enterprise.search.semantic.api-test
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
-   [metabase-enterprise.search.semantic.api :as semantic.api]
+   [metabase-enterprise.search.semantic.api]
    [metabase-enterprise.search.semantic.env :as semantic.env]
    [metabase-enterprise.search.semantic.index :as semantic.index]
    [metabase-enterprise.search.semantic.index-metadata :as semantic.index-metadata]
@@ -22,7 +21,6 @@
                                                                                        {:index @index-ref
                                                                                         :status :active})]
             (let [expected-search-items-count (search.ingestion/search-items-count)]
-              (memoize/memo-clear! @#'semantic.api/indexible-items-count)
               (testing "Correctly reports empty index status"
                 (let [{:keys [indexed_count total_est]} (mt/user-http-request :crowberto :get 200 "ee/semantic-search/status")]
                   (is (= 0 indexed_count))

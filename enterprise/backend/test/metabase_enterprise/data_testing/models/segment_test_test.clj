@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.segments.models.segment :as segment]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
@@ -231,3 +232,29 @@
                  {:label "A test" :key test-eid}]
                 (test-path)))
         (is (= (conj (segment-path) {:label "A test" :key test-eid}) (test-path)))))))
+
+(deftest can-write-statements-do-not-grow-with-tests-test
+  (mt/with-premium-features data-testing.test-util/data-analyst-features
+    (perms.tu/with-no-data-perms-for-all-users!
+      (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                    :perms/create-queries :query-builder-and-native}
+        (mt/with-temp [:model/Segment {segment-id :id} (data-testing.test-util/from-google-segment)
+                       :model/Segment {deleted-id :id} (data-testing.test-util/from-google-segment)]
+          (segment/delete-segments! [deleted-id])
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/with-current-user (mt/user->id :lucky)
+              (let [tests   (mapv #(t2/instance :model/SegmentTest {:id % :segment_id (if (even? %) segment-id deleted-id)})
+                                  (range 6))
+                    hydrate (fn [n]
+                              (t2/with-call-count [call-count]
+                                (let [hydrated (doall (t2/hydrate (vec (take n tests)) :can_write))]
+                                  {:statements (call-count)
+                                   :values     (mapv :can_write hydrated)})))]
+                (testing "the statements of the hydration itself, the query permission check of each row aside"
+                  (mt/with-dynamic-fn-redefs [query-perms/can-run-query? (constantly true)]
+                    (hydrate 1)
+                    (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))))
+                (is (= [true false true false true false] (:values (hydrate 6))))
+                (testing "each test gets the answer the per-test check gave"
+                  (is (= (mapv #(#'data-testing.models.segment-test/can-save-test? (:segment_id %)) tests)
+                         (:values (hydrate 6)))))))))))))

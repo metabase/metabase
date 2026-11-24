@@ -2,6 +2,7 @@
   "Application database queries for the audit-app module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for transactions and connections."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.models :as models.notification]
    [metabase.pulse.models.pulse :as pulse]
@@ -27,7 +28,7 @@
   "The Tables of the Database with `database-id` named one of `table-names`."
   [database-id :- ::lib.schema.id/database
    table-names :- [:or [:set :string] [:sequential :string]]]
-  (t2/select :model/Table :db_id database-id :name [:in table-names]))
+  (mdb/select-batched #(t2/select :model/Table :db_id database-id :name [:in %]) table-names))
 
 (mu/defn tables-of-database-in-id-order
   "The `:id`, `:name`, `:schema`, and `:active` of the Tables of the Database with `database-id`, in ID order."
@@ -109,9 +110,10 @@
 (mu/defn table-ids-referenced-by-cards
   "The distinct `:table_id` rows of the Cards on the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/query {:select-distinct [:table_id]
-             :from            [(t2/table-name :model/Card)]
-             :where           [:in :table_id table-ids]}))
+  (mdb/select-batched #(t2/query {:select-distinct [:table_id]
+                                  :from            [(t2/table-name :model/Card)]
+                                  :where           [:in :table_id %]})
+                      table-ids))
 
 (mu/defn first-superuser
   "The `:id` and `:email` of the oldest superuser, or nil."

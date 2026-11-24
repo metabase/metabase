@@ -810,3 +810,183 @@
           (testing "only preprocessing, which the query processor does per query, grows with the queries"
             (is (= (- (check! 6) (check! 2))
                    (- (preprocess! 6) (preprocess! 2))))))))))
+
+;;; ------------------------------------------ Parameter Field permissions -------------------------------------------
+
+(defn- per-table-parameter-field-check
+  "The check of parameter Fields that preprocesses a query of each of their Tables, as it was before it read the Tables'
+  `:can_query` hydration."
+  [field-ids]
+  (when (seq field-ids)
+    (doseq [table-id (t2/select-fn-set :table_id :model/Field :id [:in (set field-ids)])]
+      (when-not (query-perms/can-query-table? (t2/select-one-fn :db_id :model/Table :id table-id) table-id)
+        (throw (ex-info "You must have data permissions to add a parameter referencing this Field."
+                        {:status-code 403}))))))
+
+(defn- do-with-external-remaps!
+  "Runs `thunk` with each `[field-id readable-field-id fk-target-field-id]` of `remaps` set up as an external remap of
+  the Field to the readable Field through a foreign key to the target Field."
+  [remaps thunk]
+  (if-let [[[field-id readable-field-id fk-target-field-id] & more] (seq remaps)]
+    (mt/with-temp-vals-in-db :model/Field field-id {:fk_target_field_id fk-target-field-id}
+      (mt/with-temp [:model/Dimension _ {:field_id                field-id
+                                         :name                    "Remap"
+                                         :type                    :external
+                                         :human_readable_field_id readable-field-id}]
+        (do-with-external-remaps! more thunk)))
+    (thunk)))
+
+(defn- grant-query-builder!
+  "Gives All Users unrestricted view-data on the test Database and query-builder on the Tables with `table-kws`."
+  [& table-kws]
+  (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+  (doseq [table-kw table-kws]
+    (perms/set-table-permission! (perms/all-users-group) (mt/id table-kw) :perms/create-queries :query-builder)))
+
+(defn- grant-database-perms!
+  "Gives All Users `view-data` and `create-queries` on the test Database."
+  [view-data create-queries]
+  (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data view-data)
+  (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries create-queries))
+
+(defn- venues-category-remap
+  "The external remap of the Category of venues to the name of its category."
+  []
+  [(mt/id :venues :category_id) (mt/id :categories :name) (mt/id :categories :id)])
+
+(defn- parameter-field-cases!
+  "The cases of the parameter Field permissions matrix: venues is Table A and checkins is Table B."
+  []
+  (let [a       (mt/id :venues :name)
+        a2      (mt/id :venues :price)
+        b       (mt/id :checkins :date)
+        missing Integer/MAX_VALUE
+        a-only  (fn [thunk] (grant-query-builder! :venues) (thunk))
+        remaps  (fn [grant remaps] (fn [thunk] (grant) (do-with-external-remaps! remaps thunk)))]
+    (cond-> [{:case "superuser is allowed any Fields" :user :crowberto :setup #(%) :fields [a b] :expected :allowed}
+             {:case "no Fields are allowed" :setup a-only :fields [] :expected :allowed}
+             {:case "Field that does not exist is allowed" :setup a-only :fields [missing] :expected :allowed}
+             {:case "Fields of queried Table are allowed" :setup a-only :fields [a a2] :expected :allowed}
+             {:case "Field of other Table is refused" :setup a-only :fields [b] :expected :refused}
+             {:case "Fields of both Tables are refused" :setup a-only :fields [a b] :expected :refused}
+             {:case "Fields of both Tables in other order are refused" :setup a-only :fields [b a] :expected :refused}
+             {:case "missing Field and Field of other Table are refused" :setup a-only :fields [missing b] :expected :refused}
+             {:case "Field of queried Table and missing Field are allowed" :setup a-only :fields [a2 missing] :expected :allowed}
+             {:case     "create-queries no with unrestricted view-data is refused"
+              :setup    (fn [thunk] (grant-database-perms! :unrestricted :no) (thunk))
+              :fields   [a]
+              :expected :refused}
+             {:case     "legacy-no-self-service view-data with query-builder is allowed"
+              :setup    (fn [thunk] (grant-database-perms! :legacy-no-self-service :query-builder) (thunk))
+              :fields   [a]
+              :expected :allowed}
+             {:case     "Field of Table whose other Field shows values of Table user cannot query is refused"
+              :setup    (remaps #(grant-query-builder! :venues) [(venues-category-remap)])
+              :fields   [a]
+              :expected :refused}
+             {:case     "Field of Table whose other Field shows values of Table user queries is allowed"
+              :setup    (remaps #(grant-query-builder! :venues :categories) [(venues-category-remap)])
+              :fields   [a]
+              :expected :allowed}
+             {:case     "Field of Table whose other Field shows values of same Table through key to it is allowed"
+              :setup    (remaps #(grant-query-builder! :venues)
+                                [[(mt/id :venues :category_id) (mt/id :venues :name) (mt/id :venues :id)]])
+              :fields   [a]
+              :expected :allowed}
+             {:case     "Field of Table whose other Field shows its own Table's values through key to other Table is refused"
+              :setup    (remaps #(grant-query-builder! :venues)
+                                [[(mt/id :venues :category_id) (mt/id :venues :name) (mt/id :categories :id)]])
+              :fields   [a]
+              :expected :refused}
+             {:case     "Field of Table whose inactive Field shows values of Table user cannot query is allowed"
+              :setup    (fn [thunk]
+                          (grant-query-builder! :venues)
+                          (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:active false}
+                            (do-with-external-remaps! [(venues-category-remap)] thunk)))
+              :fields   [a]
+              :expected :allowed}
+             {:case     "Field of Table without remaps is allowed beside Table with remap to Table user cannot query"
+              :setup    (remaps #(grant-query-builder! :venues :checkins) [(venues-category-remap)])
+              :fields   [b]
+              :expected :allowed}
+             {:case     "Fields of Table without remaps and of Table with remap to Table user cannot query are refused"
+              :setup    (remaps #(grant-query-builder! :venues :checkins) [(venues-category-remap)])
+              :fields   [b a]
+              :expected :refused}]
+      (mt/when-ee-evailable true)
+      (into [{:case     "Field of Table with blocked view-data is refused"
+              :setup    (fn [thunk]
+                          (grant-database-perms! :unrestricted :query-builder)
+                          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
+                          (thunk))
+              :fields   [b]
+              :expected :refused}
+             {:case     "Field of other Table beside blocked Table is allowed"
+              :setup    (fn [thunk]
+                          (grant-database-perms! :unrestricted :query-builder)
+                          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
+                          (thunk))
+              :fields   [a]
+              :expected :allowed}
+             {:case     "Field of sandboxed Table is allowed"
+              :setup    (fn [thunk]
+                          (grant-query-builder! :venues)
+                          (mt/with-premium-features #{:sandboxes}
+                            (mt/with-temp [:model/Sandbox _ {:group_id (u/the-id (perms/all-users-group))
+                                                             :table_id (mt/id :venues)}]
+                              (thunk))))
+              :fields   [a]
+              :expected :allowed}]))))
+
+(deftest check-parameter-field-permissions-matrix-test
+  (doseq [{case-name :case, :keys [user setup fields expected]} (parameter-field-cases!)]
+    (testing case-name
+      (mt/with-no-data-perms-for-all-users!
+        (setup
+         (fn []
+           (mt/with-test-user (or user :rasta)
+             (let [outcome (run-check-outcome #(query-perms/check-parameter-field-permissions fields))]
+               (is (= (if (= :allowed expected)
+                        :allowed
+                        {:message "You must have data permissions to add a parameter referencing this Field."
+                         :data    {:status-code 403}
+                         :cause   nil})
+                      outcome))
+               (testing "same as preprocessing query of each Table"
+                 (is (= (run-check-outcome #(per-table-parameter-field-check fields))
+                        outcome)))))))))))
+
+(defn- remapped-table-fields
+  "Six Tables of the test Database, each with one Field to reference and one external remap to another Table."
+  []
+  {:fields [(mt/id :venues :name) (mt/id :checkins :date) (mt/id :orders :total) (mt/id :reviews :reviewer)
+            (mt/id :categories :name) (mt/id :users :name)]
+   :remaps [(venues-category-remap)
+            [(mt/id :checkins :venue_id) (mt/id :venues :name) (mt/id :venues :id)]
+            [(mt/id :orders :user_id) (mt/id :people :name) (mt/id :people :id)]
+            [(mt/id :reviews :product_id) (mt/id :products :title) (mt/id :products :id)]
+            [(mt/id :categories :name) (mt/id :users :name) (mt/id :users :id)]
+            [(mt/id :users :name) (mt/id :categories :name) (mt/id :categories :id)]]})
+
+(deftest check-parameter-field-permissions-statement-count-test
+  (testing "parameter Fields take as many statements for many Tables or Fields as for few, as a non-admin"
+    (mt/with-no-data-perms-for-all-users!
+      (grant-database-perms! :unrestricted :query-builder)
+      (let [{:keys [fields remaps]} (remapped-table-fields)
+            venues-fields           (mapv #(mt/id :venues %) [:id :name :category_id :latitude :longitude :price])]
+        (do-with-external-remaps!
+         remaps
+         (fn []
+           (mt/with-test-user :rasta
+             (letfn [(count! [field-ids]
+                       (query-perms/check-parameter-field-permissions field-ids)
+                       (t2/with-call-count [call-count]
+                         (query-perms/check-parameter-field-permissions field-ids)
+                         (call-count)))]
+               (is (nil? (query-perms/check-parameter-field-permissions fields)))
+               (testing "Fields in distinct Tables, each with remap"
+                 (is (= (count! (subvec fields 0 2))
+                        (count! fields))))
+               (testing "Fields of one Table"
+                 (is (= (count! (subvec venues-fields 0 2))
+                        (count! venues-fields))))))))))))

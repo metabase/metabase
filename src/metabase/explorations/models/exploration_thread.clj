@@ -32,9 +32,10 @@
     (and (:exploration_id thread) (not (contains? thread :position)))
     (assoc :position (explorations.db/next-thread-position-clause (:exploration_id thread)))))
 
-(methodical/defmethod t2/simple-hydrate [:model/ExplorationThread :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (explorations.db/exploration (:exploration_id instance)) (t2/hydrate :can_read) mi/can-read?))))
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :can_read]
+  "Add whether the current user can read each ExplorationThread, which is whether they can read its parent."
+  [_model k instances]
+  (exploration/hydrate-can-read-from-parents k instances :exploration_id :model/Exploration))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :can_write]
   "Add whether the current user can write each ExplorationThread, which is whether they can write its parent."

@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
@@ -40,6 +41,21 @@
   [selectors]
   ^:allow-subquery {:select [:id] :from [(t2/table-name :model/Table)] :where (table-selectors-expr selectors)})
 
+(defn- remapped-table-ids-query
+  "The query of the `:table_id` of the `output-table-id` column of the external Dimensions whose `input-table-id` column
+  is in `table-ids`, a list or a subquery, and that match `extra-clause`."
+  [input-table-id output-table-id table-ids extra-clause]
+  {:select [[output-table-id :table_id]]
+   :from   [[(t2/table-name :model/Dimension) :dim]]
+   :join   [[(t2/table-name :model/Field) :source_field]
+            [:= :dim.field_id :source_field.id]
+            [(t2/table-name :model/Field) :target_field]
+            [:= :dim.human_readable_field_id :target_field.id]]
+   :where  [:and
+            [:= :dim.type "external"]
+            [:in input-table-id table-ids]
+            extra-clause]})
+
 (mu/defn remapped-table-ids-reducible
   "Reducible `:table_id` rows of the Tables reachable from `tables` through FK remapping Dimensions, from the
   `input-field` side to the `output-field` side (`:source_field` or `:target_field`), excluding `tables` themselves.
@@ -48,26 +64,17 @@
    output-field :- :keyword
    tables       :- [:or [:set ms/PositiveInt] TableSelectors]]
   (let [input-table-id  (keyword (name input-field) "table_id")
-        output-table-id (keyword (name output-field) "table_id")
-        table-ids       (if (map? tables)
-                          (table-selectors-subquery tables)
-                          tables)
-        not-in-tables   (if (map? tables)
-                          [:not [:exists (-> table-ids
-                                             (assoc :select [1])
-                                             (update :where (fn [where]
-                                                              [:and where [:= (table-column :id) output-table-id]])))]]
-                          [:not [:in output-table-id tables]])]
-    (t2/reducible-query {:select [[output-table-id :table_id]]
-                         :from   [[(t2/table-name :model/Dimension) :dim]]
-                         :join   [[(t2/table-name :model/Field) :source_field]
-                                  [:= :dim.field_id :source_field.id]
-                                  [(t2/table-name :model/Field) :target_field]
-                                  [:= :dim.human_readable_field_id :target_field.id]]
-                         :where  [:and
-                                  [:= :dim.type "external"]
-                                  [:in input-table-id table-ids]
-                                  not-in-tables]})))
+        output-table-id (keyword (name output-field) "table_id")]
+    (if (map? tables)
+      (let [subquery (table-selectors-subquery tables)]
+        (t2/reducible-query (remapped-table-ids-query input-table-id output-table-id subquery
+                                                      [:not [:exists (-> subquery
+                                                                         (assoc :select [1])
+                                                                         (update :where (fn [where]
+                                                                                          [:and where [:= (table-column :id) output-table-id]])))]])))
+      (eduction (comp (mapcat #(t2/reducible-query (remapped-table-ids-query input-table-id output-table-id % nil)))
+                      (remove (comp tables :table_id)))
+                (app-db/select-partitions tables)))))
 
 (mu/defn table-ids-matching-selectors
   "The IDs of the Tables selected by `selectors` (`{:database-ids :table-ids :schema-ids}`) plus, when given, the
@@ -75,28 +82,34 @@
   [selectors        :- TableSelectors
    extra-table-ids  :- [:maybe [:set ::lib.schema.id/table]]
    extra-mode       :- [:enum :unpublished :any]]
-  (t2/select-fn-set :id [:model/Table :id]
-                    {:left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id (table-column :id)]]
-                     :where     (let [selector-expr (table-selectors-expr selectors)]
-                                  (if (seq extra-table-ids)
-                                    [:or selector-expr (case extra-mode
-                                                         :unpublished [:and
-                                                                       [:in (table-column :id) extra-table-ids]
-                                                                       [:or
-                                                                        [:= :s.is_published nil]
-                                                                        [:= :s.is_published false]]]
-                                                         :any         [:in (table-column :id) extra-table-ids])]
-                                    selector-expr))}))
+  (let [select-ids  #(t2/select-fn-set :id [:model/Table :id]
+                                       {:left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id (table-column :id)]]
+                                        :where     %})
+        extra-expr  (fn [ids]
+                      (case extra-mode
+                        :unpublished [:and
+                                      [:in (table-column :id) ids]
+                                      [:or
+                                       [:= :s.is_published nil]
+                                       [:= :s.is_published false]]]
+                        :any         [:in (table-column :id) ids]))]
+    (not-empty
+     (into #{}
+           cat
+           [(mapcat (fn [[k values]]
+                      (app-db/select-batched #(select-ids (table-selectors-expr {k %})) values))
+                    selectors)
+            (app-db/select-batched #(select-ids (extra-expr %)) extra-table-ids)]))))
 
 (mu/defn published-table-ids
   "The IDs of the published Tables among `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn-set :table_id [:model/TableUserSettings :table_id] :table_id [:in table-ids] :is_published true))
+  (app-db/select-batched-set #(t2/select-fn-set :table_id [:model/TableUserSettings :table_id] :table_id [:in %] :is_published true) table-ids))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (app-db/select-batched #(t2/select :model/Table :id [:in %]) table-ids))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
@@ -106,9 +119,7 @@
 (mu/defn collections
   "The Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (if (seq collection-ids)
-    (t2/select :model/Collection :id [:in collection-ids])
-    []))
+  (app-db/select-batched #(t2/select :model/Collection :id [:in %]) collection-ids))
 
 (mu/defn latest-table-publishing-event
   "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
@@ -140,9 +151,10 @@
 (mu/defn published-table-collection-ids :- [:map-of ::lib.schema.id/table [:maybe ::lib.schema.id/collection]]
   "The Collection id of each published Table among `table-ids`, as `{table-id collection-id}`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn->fn :table_id :collection_id [:model/TableUserSettings :table_id :collection_id]
-                    :table_id [:in table-ids]
-                    :is_published true))
+  (app-db/select-batched-map #(t2/select-fn->fn :table_id :collection_id [:model/TableUserSettings :table_id :collection_id]
+                                                :table_id [:in %]
+                                                :is_published true)
+                             table-ids))
 
 (mu/defn published-table-clause :- [:fn vector?]
   "A clause holding when the Table aliased `table-alias` has published settings, aliased `published_settings`, that

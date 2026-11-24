@@ -672,6 +672,74 @@
           (is (contains? hydrated :can_query))
           (is (boolean? (:can_query hydrated))))))))
 
+(defn- do-with-external-remaps!
+  "Runs `thunk` with each `[field-id readable-field-id fk-target-field-id]` of `remaps` set up as an external remap of
+  the Field to the readable Field through a foreign key to the target Field."
+  [remaps thunk]
+  (if-let [[[field-id readable-field-id fk-target-field-id] & more] (seq remaps)]
+    (mt/with-temp-vals-in-db :model/Field field-id {:fk_target_field_id fk-target-field-id}
+      (mt/with-temp [:model/Dimension _ {:field_id                field-id
+                                         :name                    "Remap"
+                                         :type                    :external
+                                         :human_readable_field_id readable-field-id}]
+        (do-with-external-remaps! more thunk)))
+    (thunk)))
+
+(defn- can-query-by-table
+  "The `:can_query` of the test Tables with `table-kws` hydrated together, by Table keyword."
+  [table-kws]
+  (let [tables (t2/hydrate (t2/select :model/Table :id [:in (mapv mt/id table-kws)]) :can_query)]
+    (into {} (map (fn [table-kw] [table-kw (:can_query (first (filter #(= (mt/id table-kw) (:id %)) tables)))]))
+          table-kws)))
+
+(deftest table-can-query-hydration-external-remaps-test
+  (testing ":can_query of Table needs query access to Tables its Fields show values of"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (doseq [table-kw [:venues :orders :people :checkins]]
+        (perms/set-table-permission! (perms/all-users-group) (mt/id table-kw) :perms/create-queries :query-builder))
+      (do-with-external-remaps!
+       [[(mt/id :venues :category_id) (mt/id :categories :name) (mt/id :categories :id)]
+        [(mt/id :orders :user_id) (mt/id :people :name) (mt/id :people :id)]]
+       (fn []
+         (testing "non-admin in one batch"
+           (mt/with-test-user :rasta
+             (is (= {:venues     false
+                     :orders     true
+                     :checkins   true
+                     :categories false}
+                    (can-query-by-table [:venues :orders :checkins :categories])))
+             (testing ":can_read keeps plain rule"
+               (is (mi/can-read? (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :can_read))))))
+         (testing "superuser"
+           (mt/with-test-user :crowberto
+             (is (= {:venues true :orders true :checkins true :categories true}
+                    (can-query-by-table [:venues :orders :checkins :categories]))))))))))
+
+(deftest table-can-query-hydration-statement-count-test
+  (testing ":can_query of many Tables with remaps takes as many statements as of few, as a non-admin"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+      (do-with-external-remaps!
+       [[(mt/id :venues :category_id) (mt/id :categories :name) (mt/id :categories :id)]
+        [(mt/id :checkins :venue_id) (mt/id :venues :name) (mt/id :venues :id)]
+        [(mt/id :orders :user_id) (mt/id :people :name) (mt/id :people :id)]
+        [(mt/id :reviews :product_id) (mt/id :products :title) (mt/id :products :id)]
+        [(mt/id :categories :name) (mt/id :users :name) (mt/id :users :id)]
+        [(mt/id :users :name) (mt/id :categories :name) (mt/id :categories :id)]]
+       (fn []
+         (mt/with-test-user :rasta
+           (let [tables (t2/select :model/Table :id [:in (mapv mt/id [:venues :checkins :orders :reviews :categories :users])])
+                 count! (fn [n]
+                          (t2/hydrate (take n tables) :can_query)
+                          (t2/with-call-count [call-count]
+                            (doall (t2/hydrate (take n tables) :can_query))
+                            (call-count)))]
+             (is (= 6 (count tables)))
+             (is (every? :can_query (t2/hydrate tables :can_query)))
+             (is (= (count! 2) (count! 6))))))))))
+
 (deftest data-layer-legacy-serdes-round-trip-test
   (testing "Importing a v58 serialization export with legacy medallion data_layer values maps them to current values"
     (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}

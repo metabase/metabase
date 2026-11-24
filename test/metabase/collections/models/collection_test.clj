@@ -2441,3 +2441,23 @@
                 (is (every? :archived rows))
                 (is (every? :archive_operation_id rows))
                 (is (every? #(= (contains? roots (:id %)) (:archived_directly %)) rows))))))))))
+
+(deftest root-collection-permissions-statements-do-not-grow-with-rows-test
+  (mt/with-premium-features #{}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-test-user :rasta
+        (let [roots   (vec (for [i (range 6)]
+                             (collection/root-collection-with-ui-details (when (odd? i) "snippets"))))
+              hydrate (fn [n]
+                        (t2/with-call-count [call-count]
+                          (let [hydrated (doall (t2/hydrate (vec (take n roots)) :can_read :can_write))]
+                            {:statements (call-count)
+                             :values     (mapv (juxt mi/can-read? :can_write) hydrated)})))]
+          (hydrate 1)
+          (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+          (is (= (map #(vector % %) [false true false true false true]) (:values (hydrate 6))))
+          (testing "each root gets the answer the per-root check gave"
+            (is (= (mapv (fn [root] [(#'collection/root-collection-permission-at-least? root :read)
+                                     (#'collection/root-collection-permission-at-least? root :read-and-write)])
+                         roots)
+                   (:values (hydrate 6))))))))))

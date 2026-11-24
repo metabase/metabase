@@ -76,7 +76,7 @@
 (mu/defn query-average-execution-times
   "A map of query hash to average execution time for the Queries with `query-hashes`."
   [query-hashes :- [:sequential bytes?]]
-  (t2/select-fn->fn :query_hash :average_execution_time :model/Query :query_hash [:in query-hashes]))
+  (app-db/select-batched-map #(t2/select-fn->fn :query_hash :average_execution_time :model/Query :query_hash [:in %]) query-hashes))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -86,16 +86,12 @@
 (mu/defn fields-by-ids
   "The Fields with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (seq ids)
-    (t2/select :model/Field :id [:in ids])
-    []))
+  (app-db/select-batched #(t2/select :model/Field :id [:in %]) ids))
 
 (mu/defn card-queries
   "A map of the id of each Card with `card-ids` to its query."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (if (seq card-ids)
-    (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids])
-    {}))
+  (app-db/select-batched-map #(t2/select-pk->fn :dataset_query :model/Card :id [:in %]) card-ids))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."

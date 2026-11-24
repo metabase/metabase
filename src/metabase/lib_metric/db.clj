@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -12,7 +13,7 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (app-db/select-batched #(t2/select :model/Field :id [:in %]) field-ids))
 
 (mu/defn card-table-and-database-id
   "The `:table_id` and `:database_id` of the Card with `card-id`, or nil."
@@ -23,6 +24,18 @@
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id :model/Table :id table-id))
+
+(defn- select-spec-batched
+  "The rows `select-fn` returns for `metadata-spec`, with each of its `ks` lists bound in partitions of at most
+  [[app-db/select-partition-size]], in one vector."
+  ([select-fn metadata-spec]
+   (select-spec-batched select-fn metadata-spec [:id :name :table-ids :card-ids]))
+  ([select-fn metadata-spec ks]
+   (if-let [[k & more] (seq ks)]
+     (if-let [values (seq (get metadata-spec k))]
+       (app-db/select-batched #(select-spec-batched select-fn (assoc metadata-spec k (set %)) more) values)
+       (recur select-fn metadata-spec more))
+     (select-fn metadata-spec))))
 
 (defn- metric-where
   "The `:where` map for the metric Cards picked out by `metadata-spec` (its `:id`, `:name`,
@@ -46,7 +59,7 @@
                      [:name      {:optional true} [:maybe [:set :string]]]
                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]
                      [:card-ids  {:optional true} [:maybe [:set ::lib.schema.id/card]]]]]
-  (t2/select :metadata/metric (h2x/assert-map-or-nil! (metric-where metadata-spec))))
+  (select-spec-batched #(t2/select :metadata/metric (h2x/assert-map-or-nil! (metric-where %))) metadata-spec))
 
 (defn- measure-where
   "The `:where` map for the `:metadata/measure` rows picked out by `metadata-spec` (its `:id`, `:name`, and
@@ -67,4 +80,4 @@
                      [:id        {:optional true} [:maybe [:set ms/PositiveInt]]]
                      [:name      {:optional true} [:maybe [:set :string]]]
                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]]]
-  (t2/select :metadata/measure (h2x/assert-map-or-nil! (measure-where metadata-spec))))
+  (select-spec-batched #(t2/select :metadata/measure (h2x/assert-map-or-nil! (measure-where %))) metadata-spec))

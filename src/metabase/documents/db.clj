@@ -4,6 +4,7 @@
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -61,7 +62,7 @@
 (mu/defn explorations
   "The Explorations with `exploration-ids`."
   [exploration-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Exploration :id [:in exploration-ids]))
+  (mdb/select-batched #(t2/select :model/Exploration :id [:in %]) exploration-ids))
 
 (mu/defn unarchived-document
   "The Document with `id` if it is not archived, or nil."
@@ -79,9 +80,7 @@
 (mu/defn documents
   "The Documents with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (seq ids)
-    (t2/select :model/Document :id [:in ids])
-    []))
+  (mdb/select-batched #(t2/select :model/Document :id [:in %]) ids))
 
 (mu/defn document-public-uuid
   "The public uuid of the Document with `id`, or nil."
@@ -96,9 +95,9 @@
 (mu/defn exploration-ids-by-document-id
   "A map of the id of each Document with `ids` to its Exploration id, nil for one outside an Exploration."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (seq ids)
-    (into {} (map (juxt :id :exploration_id)) (t2/select [:model/Document :id :exploration_id] :id [:in ids]))
-    {}))
+  (into {}
+        (map (juxt :id :exploration_id))
+        (mdb/select-batched #(t2/select [:model/Document :id :exploration_id] :id [:in %]) ids)))
 
 (mu/defn public-documents
   "The name, id, and public uuid of the unarchived Documents that are publicly shared."
@@ -113,15 +112,16 @@
 (mu/defn cards-by-ids
   "The Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids]))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %]) card-ids))
 
 (mu/defn cards-not-in-document
   "The Cards with `card-ids` that do not belong to the Document with `document-id`."
   [card-ids    :- [:sequential ::lib.schema.id/card]
    document-id :- ms/PositiveInt]
-  (t2/select :model/Card {:where [:and [:in :id card-ids]
-                                  [:or [:<> :document_id document-id]
-                                   [:= :document_id nil]]]}))
+  (mdb/select-batched #(t2/select :model/Card {:where [:and [:in :id %]
+                                                       [:or [:<> :document_id document-id]
+                                                        [:= :document_id nil]]]})
+                      card-ids))
 
 (mu/defn cards-for-document
   "The Cards of the Document with `document-id`."
@@ -131,7 +131,7 @@
 (mu/defn unarchived-cards-for-documents
   "The unarchived Cards of the Documents with `document-ids`."
   [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Card :document_id [:in document-ids] :archived false))
+  (mdb/select-batched #(t2/select :model/Card :document_id [:in %] :archived false) document-ids))
 
 (mu/defn unarchived-card-in-document-exists?
   "Whether the unarchived Card with `card-id` belongs to the Document with `document-id`."
@@ -142,33 +142,35 @@
 (mu/defn cards-archived-with-documents
   "The unarchived Cards in the Documents with `document-ids`, which archiving them archives along with them."
   [document-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/Card :document_id [:in [:auto/param document-ids]] :archived false))
+  (mdb/select-batched #(t2/select :model/Card :document_id [:in [:auto/param %]] :archived false) document-ids))
 
 (mu/defn cards-restored-with-documents
   "The Cards in the Documents with `document-ids` that were archived along with them, which restoring them restores."
   [document-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/Card :document_id [:in [:auto/param document-ids]] :archived true :archived_directly false))
+  (mdb/select-batched #(t2/select :model/Card :document_id [:in [:auto/param %]] :archived true :archived_directly false)
+                      document-ids))
 
 (mu/defn card-ids-archived-with-documents
   "The IDs of the unarchived Cards in the Documents with `document-ids`, which archiving them archives along with them."
   [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pks-vec :model/Card :document_id [:in document-ids] :archived false))
+  (not-empty (mdb/select-batched #(t2/select-pks-vec :model/Card :document_id [:in %] :archived false) document-ids)))
 
 (mu/defn card-ids-restored-with-documents
   "The IDs of the Cards in the Documents with `document-ids` that were archived along with them, which restoring them
   restores."
   [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pks-vec :model/Card :document_id [:in document-ids] :archived true :archived_directly false))
+  (not-empty (mdb/select-batched #(t2/select-pks-vec :model/Card :document_id [:in %] :archived true :archived_directly false)
+                                 document-ids)))
 
 (mu/defn card-ids-of-documents
   "The IDs of the Cards in the Documents with `document-ids`."
   [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pks-vec :model/Card :document_id [:in document-ids]))
+  (not-empty (mdb/select-batched #(t2/select-pks-vec :model/Card :document_id [:in %]) document-ids)))
 
 (mu/defn user-columns
   "The id, email, and name of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (mdb/select-batched #(t2/select [:model/User :id :email :first_name :last_name] :id [:in %]) user-ids))
 
 (mu/defn table
   "The Table with `id`, or nil."
@@ -185,19 +187,20 @@
   `updated_at`, as a raw update rather than `t2/update!`, which would publish `:event/document-update`, returning
   the number updated as a one-element sequence."
   [document-id->timestamp :- [:map-of ms/PositiveInt ms/TemporalInstant]]
-  (t2/query {:update (t2/table-name :model/Document)
-             :set    {:last_viewed_at (into [:case]
-                                            (mapcat (fn [[id timestamp]]
-                                                      [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
-                                                    document-id->timestamp))
-                      :updated_at :updated_at}
-             :where  [:in :id (keys document-id->timestamp)]}))
+  [(mdb/sum-batched mdb/update-partition-size (fn [entries]
+                                                (first (t2/query {:update (t2/table-name :model/Document)
+                                                                  :set    {:last_viewed_at (into [:case]
+                                                                                                 (mapcat (fn [[id timestamp]]
+                                                                                                           [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                                                                         entries))
+                                                                           :updated_at :updated_at}
+                                                                  :where  [:in :id (map first entries)]}))) document-id->timestamp)])
 
 (mu/defn synced-document-items :- [:sequential ::documents.schema/document]
   "The Documents with `ids`, with their Collection and its ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/Document :id :name :collection_id] :id [:in ids])
+    (-> (mdb/select-batched #(t2/select [:model/Document :id :name :collection_id] :id [:in %]) ids)
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
@@ -283,23 +286,25 @@
 (mu/defn recent-view-documents
   "The Documents with `document-ids` with their Collection, none for no ids."
   [document-ids :- [:maybe [:sequential ms/PositiveInt]]]
-  (if (empty? document-ids)
-    []
-    (t2/hydrate
-     (t2/select :model/Document
-                {:select [:d.id
-                          :d.name
-                          :d.archived
-                          [:d.collection_id :entity-coll-id]
-                          [:c.id :collection_id]
-                          [:c.name :collection_name]
-                          [:c.authority_level :collection_authority_level]]
-                 :from [[:document :d]]
-                 :where [:in :d.id document-ids]
-                 :left-join [[:collection :c]
-                             [:and
-                              [:= :c.id :d.collection_id]
-                              [:= :c.archived false]]]}) :can_read :can_write)))
+  (t2/hydrate
+   (mdb/select-batched
+    (fn [document-ids]
+      (t2/select :model/Document
+                 {:select [:d.id
+                           :d.name
+                           :d.archived
+                           [:d.collection_id :entity-coll-id]
+                           [:c.id :collection_id]
+                           [:c.name :collection_name]
+                           [:c.authority_level :collection_authority_level]]
+                  :from [[:document :d]]
+                  :where [:in :d.id document-ids]
+                  :left-join [[:collection :c]
+                              [:and
+                               [:= :c.id :d.collection_id]
+                               [:= :c.archived false]]]}))
+    document-ids)
+   :can_read :can_write))
 
 (mu/defn set-document-last-viewed-at!
   "Set `last_viewed_at` of the Document with `document-id`, returning the number updated."
@@ -321,8 +326,11 @@
   "The `:id`, `:collection_id` and `:collection_position` of the Documents that have a position in the Collections with
   `collection-ids`, nil for the root."
   [collection-ids :- [:sequential [:maybe ::lib.schema.id/collection]]]
-  (t2/select [:model/Document :id :collection_id :collection_position]
-             {:where [:and [:not= :collection_position nil] (collection/collection-ids-clause collection-ids)]}))
+  (let [select-positioned #(t2/select [:model/Document :id :collection_id :collection_position]
+                                      {:where [:and [:not= :collection_position nil] (collection/collection-ids-clause %)]})]
+    (if (seq collection-ids)
+      (mdb/select-batched select-positioned collection-ids)
+      (select-positioned []))))
 
 (mu/defn update-document-columns!
   "Apply `changes` to the Document with `document-id` in one statement through the model, returning the number

@@ -50,18 +50,19 @@
 (mu/defn api-key-groups
   "The group name, group id, and api key id of the PermissionsGroups of the ApiKeys with `api-key-ids`."
   [api-key-ids :- [:sequential ms/PositiveInt]]
-  (t2/query {:select [[:pg.name :group-name]
-                      [:pg.id :group-id]
-                      [:api_key.id :api-key-id]]
-             :from   [[:permissions_group :pg]]
-             :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
-                      :api_key [:= :api_key.user_id :pgm.user_id]]
-             :where  [:in :api_key.id api-key-ids]}))
+  (mdb/select-batched #(t2/query {:select [[:pg.name :group-name]
+                                           [:pg.id :group-id]
+                                           [:api_key.id :api-key-id]]
+                                  :from   [[:permissions_group :pg]]
+                                  :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
+                                           :api_key [:= :api_key.user_id :pgm.user_id]]
+                                  :where  [:in :api_key.id %]})
+                      api-key-ids))
 
 (mu/defn user-types :- [:map-of ::lib.schema.id/user :keyword]
   "The map from id to `:type` of the Users with `user-ids`."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
-  (into {} (map (juxt :id :type)) (t2/select [:model/User :id :type] :id [:in user-ids])))
+  (into {} (map (juxt :id :type)) (mdb/select-batched #(t2/select [:model/User :id :type] :id [:in %]) user-ids)))
 
 (mu/defn api-key-prefix-exists?
   "Whether an ApiKey with `prefix` exists."

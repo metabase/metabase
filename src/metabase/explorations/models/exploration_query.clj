@@ -28,9 +28,10 @@
    :data_access_token      perms/data-access-token-transform
    :resolved_source_ids    query-perms/resolved-source-ids-transform})
 
-(methodical/defmethod t2/simple-hydrate [:model/ExplorationQuery :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (explorations.db/thread-exploration-id-row (:exploration_thread_id instance)) (t2/hydrate :can_read) mi/can-read?))))
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :can_read]
+  "Add whether the current user can read each ExplorationQuery, which is whether they can read its parent."
+  [_model k instances]
+  (exploration/hydrate-can-read-from-parents k instances :exploration_thread_id :model/ExplorationThread))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :can_write]
   "Add whether the current user can write each ExplorationQuery, which is whether they can write its parent."

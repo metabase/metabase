@@ -22,6 +22,7 @@
    [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.card-schema :as card-schema]
@@ -2747,3 +2748,58 @@
                           (card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids)))))]
          (is (= 3 (count emails)))
          (is (every? #(= "One of your alerts has stopped working" (:subject %)) emails)))))))
+
+(defn- hydrated-values
+  "The statements hydrating `k` on `cards` takes and what `f` reads from each hydrated card."
+  [cards k f]
+  (t2/with-call-count [call-count]
+    (let [hydrated (doall (t2/hydrate (vec cards) k))]
+      {:statements (call-count)
+       :values     (mapv f hydrated)})))
+
+(deftest document-card-can-read-statements-do-not-grow-with-cards-test
+  (let [creator (mt/user->id :crowberto)]
+    (mt/with-temp [:model/Collection {open :id}       {}
+                   :model/Collection {closed :id}     {}
+                   :model/Document   {open-doc :id}   {:name "Open" :creator_id creator :collection_id open}
+                   :model/Document   {closed-doc :id} {:name "Closed" :creator_id creator :collection_id closed}
+                   :model/Card       {c1 :id}         {:collection_id open :document_id open-doc}
+                   :model/Card       {c2 :id}         {:collection_id closed :document_id closed-doc}
+                   :model/Card       {c3 :id}         {:collection_id open :document_id open-doc}
+                   :model/Card       {c4 :id}         {:collection_id closed :document_id closed-doc}
+                   :model/Card       {c5 :id}         {:collection_id open :document_id open-doc}
+                   :model/Card       {c6 :id}         {:collection_id closed :document_id closed-doc}]
+      (mt/with-non-admin-groups-no-collection-perms open
+        (mt/with-non-admin-groups-no-collection-perms closed
+          (perms/grant-collection-read-permissions! (perms-group/all-users) open)
+          (mt/with-test-user :rasta
+            (let [cards (mapv #(t2/select-one :model/Card :id %) [c1 c2 c3 c4 c5 c6])]
+              (hydrated-values (take 1 cards) :can_read mi/can-read?)
+              (is (= (:statements (hydrated-values (take 2 cards) :can_read mi/can-read?))
+                     (:statements (hydrated-values cards :can_read mi/can-read?))))
+              (is (= [true false true false true false] (:values (hydrated-values cards :can_read mi/can-read?))))
+              (testing "each card gets the answer it gets alone"
+                (is (= (mapv #(mi/can-read? (t2/hydrate % :can_read)) cards)
+                       (:values (hydrated-values cards :can_read mi/can-read?))))))))))))
+
+(defn- per-card-can-manage-db?
+  "The answer the per-card `:can_manage_db` hydration gave: the permission of the current user on the Database of
+  `card` asked alone."
+  [card]
+  (data-perms/user-has-permission-for-databases? (data-perms/user-info api/*current-user-id*)
+                                                 :perms/manage-database :yes [(:database_id card)]))
+
+(deftest can-manage-db-statements-do-not-grow-with-cards-test
+  (mt/with-temp [:model/Database                   {other-db :id} {}
+                 :model/PermissionsGroup           {group-id :id} {}
+                 :model/PermissionsGroupMembership _              {:user_id (mt/user->id :rasta) :group_id group-id}]
+    (mt/with-restored-data-perms!
+      (data-perms/set-database-permission! group-id (mt/id) :perms/manage-database :yes)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [cards (mapv #(t2/instance :model/Card {:id % :database_id (if (even? %) (mt/id) other-db)}) (range 6))]
+          (hydrated-values (take 1 cards) :can_manage_db :can_manage_db)
+          (is (= (:statements (hydrated-values (take 2 cards) :can_manage_db :can_manage_db))
+                 (:statements (hydrated-values cards :can_manage_db :can_manage_db))))
+          (is (= [true false true false true false] (:values (hydrated-values cards :can_manage_db :can_manage_db))))
+          (is (= (mapv per-card-can-manage-db? cards)
+                 (:values (hydrated-values cards :can_manage_db :can_manage_db)))))))))

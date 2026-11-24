@@ -85,9 +85,12 @@
                        (mapcat (fn [[type group]]
                                  (let [[bookmark-model item-key] (bookmark-model+item-key type)]
                                    (map (fn [bookmark] [[type (get bookmark item-key) (:user_id bookmark)] bookmark])
-                                        (t2/select bookmark-model
-                                                   item-key   [:in (into [] (comp (map :item_id) (distinct)) group)]
-                                                   :user_id   [:in (into [] (comp (map :user_id) (distinct)) group)])))))
+                                        (mdb/select-batched (fn [item-ids]
+                                                              (mdb/select-batched #(t2/select bookmark-model
+                                                                                              item-key [:in item-ids]
+                                                                                              :user_id [:in %])
+                                                                                  (into [] (comp (map :user_id) (distinct)) group)))
+                                                            (into [] (comp (map :item_id) (distinct)) group))))))
                        by-type)
         missing  (into {}
                        (map (juxt (juxt :type :item_id :user_id) identity))
@@ -113,11 +116,12 @@
   (run! (comp bookmark-model+item-key :type) rows)
   (doseq [[type group] (group-by :type rows)
           :let [[bookmark-model item-key] (bookmark-model+item-key type)]]
-    (t2/delete! bookmark-model
-                {:where (into [:or]
-                              (map (fn [{:keys [item_id user_id]}]
-                                     [:and [:= item-key [:auto/param item_id]] [:= :user_id [:auto/param user_id]]]))
-                              (distinct group))})))
+    (run! #(t2/delete! bookmark-model
+                       {:where (into [:or]
+                                     (map (fn [{:keys [item_id user_id]}]
+                                            [:and [:= item-key [:auto/param item_id]] [:= :user_id [:auto/param user_id]]]))
+                                     %)})
+          (partition-all mdb/delete-partition-size (distinct group)))))
 
 (mu/defn delete-bookmark-orderings-for-user!
   "Delete the BookmarkOrderings of the User with `user-id`."

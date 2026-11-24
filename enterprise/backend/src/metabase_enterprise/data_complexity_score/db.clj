@@ -14,17 +14,18 @@
 (mu/defn active-field-counts-by-table
   "Rows of `:table_id` and `:field_count` of active Fields for `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/query {:select   [:table_id [:%count.* :field_count]]
-             :from     [:metabase_field]
-             :where    [:and
-                        [:= :active true]
-                        [:in :table_id table-ids]]
-             :group-by [:table_id]}))
+  (mdb/select-batched #(t2/query {:select   [:table_id [:%count.* :field_count]]
+                                  :from     [:metabase_field]
+                                  :where    [:and
+                                             [:= :active true]
+                                             [:in :table_id %]]
+                                  :group-by [:table_id]})
+                      table-ids))
 
 (mu/defn unarchived-measure-names
   "The Table ID and name of the unarchived Measures on the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Measure :table_id :name] :archived false :table_id [:in table-ids]))
+  (mdb/select-batched #(t2/select [:model/Measure :table_id :name] :archived false :table_id [:in %]) table-ids))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."

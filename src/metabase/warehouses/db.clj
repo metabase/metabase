@@ -16,9 +16,10 @@
 (mu/defn router-database-ids :- [:map-of ::lib.schema.id/database ::lib.schema.id/database]
   "A map from the id of each destination among the Databases with `database-ids` to the id of its router."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-fn->fn :id :router_database_id :model/Database
-                    :id [:in database-ids]
-                    :router_database_id [:not= nil]))
+  (mdb/select-batched-map #(t2/select-fn->fn :id :router_database_id :model/Database
+                                             :id [:in %]
+                                             :router_database_id [:not= nil])
+                          database-ids))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -28,9 +29,8 @@
 (mu/defn database-settings-by-name :- [:map-of :string :any]
   "The `:settings` of the Databases named one of `database-names`, by name; no other column is read."
   [database-names :- [:sequential :string]]
-  (if (empty? database-names)
-    {}
-    (t2/select-fn->fn :name :settings [:model/Database :name :settings] :name [:in [:auto/param (vec database-names)]])))
+  (mdb/select-batched-map #(t2/select-fn->fn :name :settings [:model/Database :name :settings] :name [:in [:auto/param %]])
+                          (distinct database-names)))
 
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
@@ -40,12 +40,12 @@
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (mdb/select-batched #(t2/select :model/Database :id [:in %]) database-ids))
 
 (mu/defn databases-by-ids :- [:map-of ::lib.schema.id/database :map]
   "The Databases with `database-ids`, by id."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (into {} (t2/select-fn->fn :id identity :model/Database :id [:in database-ids])))
+  (mdb/select-batched-map #(t2/select-fn->fn :id identity :model/Database :id [:in %]) database-ids))
 
 (mu/defn database-by-name
   "The Database named `database-name`, or nil."
@@ -84,8 +84,8 @@
 (mu/defn disable-uploads-for-databases!
   "Disable uploads on the Databases with `database-ids`, returning the number updated."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/update! :model/Database :id [:in database-ids]
-              {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/Database :id [:in %]
+                                                          {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}) database-ids))
 
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`, in case-insensitive display name order."
@@ -95,10 +95,11 @@
 (mu/defn active-tables-for-databases
   "The active Tables of the Databases with `database-ids`, in database then display name order."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Table
-             :db_id  [:in database-ids]
-             :active true
-             {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
+  (mdb/select-batched #(t2/select :model/Table
+                                  :db_id  [:in %]
+                                  :active true
+                                  {:order-by [[:db_id :asc] [:%lower.display_name :asc]]})
+                      (sort (distinct database-ids))))
 
 (mu/defn active-table-ids-for-database
   "The ids of the active Tables of the Database with `database-id`, or nil."
@@ -108,4 +109,4 @@
 (mu/defn pk-fields-for-tables
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)))
+  (mdb/select-batched #(t2/select :model/Field :table_id [:in %] :semantic_type (mdb/isa :type/PK)) table-ids))

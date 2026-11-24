@@ -467,14 +467,17 @@
                            (update event :changes into (:changes (events/touch-event touched))))))
 
 (defn- publish-cards!
-  "Publish the audit events of the dashcards `added` to and `removed` from the Dashboards of `dashboards`, a map from id
-  to the instance, one for each Dashboard and each of them."
+  "Publish the audit event of the dashcards `added` to and of those `removed` from the Dashboards of `dashboards`, a map
+  from id to the instance, one event for each of them holding an entry `:object` with its `:dashcards` for each Dashboard."
   [dashboards added removed]
   (doseq [[topic dashcards] [[:event/dashboard-add-cards added] [:event/dashboard-remove-cards removed]]
-          [dashboard-id group] (group-by :dashboard_id dashcards)]
-    (events/publish-event! topic {:object    (get dashboards dashboard-id)
-                                  :user-id   (mi/current-user-id)
-                                  :dashcards (vec group)})))
+          :when (seq dashcards)]
+    (events/publish-event! topic {:objects (into []
+                                                 (map (fn [[dashboard-id group]]
+                                                        {:object    (get dashboards dashboard-id)
+                                                         :dashcards (vec group)}))
+                                                 (group-by :dashboard_id dashcards))
+                                  :user-id (mi/current-user-id)})))
 
 (defn- replace-parts!
   "Replace the tabs, for each Dashboard of `parts`, a map from its id to the part lists it gives, when it holds

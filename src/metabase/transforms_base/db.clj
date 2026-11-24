@@ -2,6 +2,7 @@
   "Application database queries for the transforms base module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -28,10 +29,12 @@
 (mu/defn active-tables-named
   "The id, Database id, schema and name of the active Tables of the `[database-id schema name]` triples."
   [triples :- [:sequential {:min 1} [:tuple ::lib.schema.id/database [:maybe :string] :string]]]
-  (t2/select [:model/Table :id :db_id :schema :name]
-             :active true
-             :db_id [:in [:auto/param (into [] (comp (map first) (distinct)) triples)]]
-             :name [:in [:auto/param (into [] (comp (map #(nth % 2)) (distinct)) triples)]]))
+  (let [db-ids (into [] (comp (map first) (distinct)) triples)]
+    (mdb/select-batched #(t2/select [:model/Table :id :db_id :schema :name]
+                                    :active true
+                                    :db_id [:in [:auto/param db-ids]]
+                                    :name [:in [:auto/param %]])
+                        (into [] (comp (map #(nth % 2)) (distinct)) triples))))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
@@ -82,18 +85,20 @@
   "The id, Database id, schema, and name of the Tables matching any of `refs` (each a `[db-id schema table-name]`
   triple; `schema` may be nil)."
   [refs :- [:sequential [:tuple ms/PositiveInt [:maybe :string] :string]]]
-  (t2/select [:model/Table :id :db_id :schema :name]
-             {:where (into [:or]
-                           (map (fn [[db-id schema table-name]]
-                                  [:and
-                                   [:= :db_id db-id]
-                                   (if (some? schema)
-                                     [:= :schema schema]
-                                     [:is :schema nil])
-                                   [:= :name table-name]]))
-                           refs)}))
+  (mdb/select-batched (fn [refs]
+                        (t2/select [:model/Table :id :db_id :schema :name]
+                                   {:where (into [:or]
+                                                 (map (fn [[db-id schema table-name]]
+                                                        [:and
+                                                         [:= :db_id db-id]
+                                                         (if (some? schema)
+                                                           [:= :schema schema]
+                                                           [:is :schema nil])
+                                                         [:= :name table-name]]))
+                                                 refs)}))
+                      refs))
 
 (mu/defn table-refs
   "The id, Database id, schema, and name of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :schema :name] :id [:in table-ids]))
+  (mdb/select-batched #(t2/select [:model/Table :id :db_id :schema :name] :id [:in %]) table-ids))

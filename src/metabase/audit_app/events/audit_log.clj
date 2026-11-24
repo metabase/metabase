@@ -246,22 +246,26 @@
 (events/derive! :event/dashboard-remove-cards ::dashboard-cards-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-cards-event
-  "Record the dashcards that the write of a Dashboard added or removed, with the name and the description of their
-  Cards."
-  [topic {:keys [object dashcards user-id]}]
+  "Record the dashcards that a write added to or removed from Dashboards, with the name and the description of their
+  Cards, one row for each entry of `:objects`, each an `:object` with its `:dashcards`, in one insert, as [[record-each!]]
+  does, reading the Cards once. An event without `:objects` is one such entry itself."
+  [topic {:keys [objects object dashcards user-id]}]
   (when (and user-id (premium-features/log-enabled?))
-    (let [cards (into {}
-                      (map (juxt :id #(select-keys % [:name :description])))
-                      (audit-app.db/cards (mapv :card_id dashcards)))]
-      (record! topic
-               {:details  (-> (select-keys object [:description :name :id])
-                              (assoc :dashcards (for [{:keys [id card_id]} dashcards]
-                                                  (-> (get cards card_id)
-                                                      (assoc :id id)
-                                                      (assoc :card_id card_id)))))
-                :user-id  user-id
-                :model    :model/Dashboard
-                :model-id (:id object)}))))
+    (let [entries (or objects [{:object object :dashcards dashcards}])
+          cards   (into {}
+                        (map (juxt :id #(select-keys % [:name :description])))
+                        (audit-app.db/cards (into [] (comp (mapcat :dashcards) (map :card_id)) entries)))]
+      (record-each! (fn [{:keys [object dashcards]}]
+                      (audit-log/audit-row topic
+                                           {:details  (-> (select-keys object [:description :name :id])
+                                                          (assoc :dashcards (for [{:keys [id card_id]} dashcards]
+                                                                              (-> (get cards card_id)
+                                                                                  (assoc :id id)
+                                                                                  (assoc :card_id card_id)))))
+                                            :user-id  user-id
+                                            :model    :model/Dashboard
+                                            :model-id (:id object)}))
+                    entries))))
 
 (def ^:private object-columns
   "The columns that the row of each event of a manual action stores of its object, for the models that have no audit

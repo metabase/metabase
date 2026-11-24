@@ -1,6 +1,8 @@
 (ns metabase.queries-rest.api.cards-test
   (:require
    [clojure.test :refer :all]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -271,3 +273,77 @@
           (let [few  (counted 10)
                 many (counted 40)]
             (is (= few many))))))))
+
+(defn- count-events-by-topic!
+  "Call `thunk` with the events it publishes delivered as usual, and return the number of events of each topic."
+  [thunk]
+  (let [published (atom {})
+        publish!  events/publish-event!]
+    (with-redefs [events/publish-event! (fn [topic event]
+                                          (swap! published update topic (fnil inc 0))
+                                          (publish! topic event))]
+      (thunk))
+    @published))
+
+(deftest ^:synchronous move-dashboard-questions-off-dashboards-audit-test
+  (testing "POST /api/cards/move of dashboard questions of many Dashboards publishes one event and takes as many statements as for few, with one audit row for each Dashboard"
+    (mt/with-premium-features #{:audit-app}
+      (mt/user-http-request :rasta :get 200 "user/current")
+      (mt/with-temp [:model/Collection {from-id :id} {}
+                     :model/Collection {to-id :id}   {}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-id)
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+        (mt/with-model-cleanup [:model/Card :model/Dashboard :model/AuditLog]
+          (let [move! (fn [n]
+                        (let [dashboard-ids (vec (repeatedly n #(insert-dashboard! from-id)))
+                              card-ids      (mapv (fn [dashboard-id]
+                                                    (t2/insert-returning-pk! :model/Card
+                                                                             (merge (mt/with-temp-defaults :model/Card)
+                                                                                    {:name "leaving" :collection_id from-id :dashboard_id dashboard-id})))
+                                                  dashboard-ids)
+                              _             (t2/insert! :model/DashboardCard
+                                                        (mapv #(merge (mt/with-temp-defaults :model/DashboardCard)
+                                                                      {:card_id %1 :dashboard_id %2})
+                                                              card-ids dashboard-ids))
+                              dest-id       (insert-dashboard! to-id)
+                              topics        (atom nil)
+                              statements    (events.tu/real-statement-count!
+                                             (fn []
+                                               (reset! topics (count-events-by-topic!
+                                                               #(mt/user-http-request :rasta :post 200 "cards/move"
+                                                                                      {:card_ids card-ids :dashboard_id dest-id})))))]
+                          (is (= #{dest-id} (t2/select-fn-set :dashboard_id :model/Card :id [:in card-ids])))
+                          (is (= 1 (get @topics :event/dashboard-remove-cards)))
+                          (is (= 1 (get @topics :event/dashboard-add-cards)))
+                          (is (= n (t2/count :model/AuditLog :topic "dashboard-remove-cards" :model "Dashboard" :model_id [:in dashboard-ids])))
+                          statements))]
+            (move! 2)
+            (let [few  (move! 2)
+                  many (move! 6)]
+              (is (= few many)))))))))
+
+(deftest ^:synchronous add-dashcards-to-dashboards-audit-test
+  (testing "adding dashcards to many Dashboards publishes one event and takes as many statements as for few, with one audit row for each Dashboard"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-model-cleanup [:model/Card :model/Dashboard :model/AuditLog]
+          (let [add! (fn [n]
+                       (let [dashboard-ids (vec (repeatedly n #(insert-dashboard! coll-id)))
+                             card-ids      (insert-cards! n coll-id)
+                             rows          (mapv (fn [dashboard-id card-id]
+                                                   {:dashboard_id dashboard-id :card_id card-id
+                                                    :row 0 :col 0 :size_x 4 :size_y 4})
+                                                 dashboard-ids card-ids)
+                             topics        (atom nil)
+                             statements    (events.tu/real-statement-count!
+                                            (fn []
+                                              (mt/with-test-user :rasta
+                                                (reset! topics (count-events-by-topic!
+                                                                #(dashboard/add-dashcards! rows))))))]
+                         (is (= 1 (get @topics :event/dashboard-add-cards)))
+                         (is (= n (t2/count :model/AuditLog :topic "dashboard-add-cards" :model "Dashboard" :model_id [:in dashboard-ids])))
+                         statements))]
+            (add! 2)
+            (let [few  (add! 2)
+                  many (add! 6)]
+              (is (= few many)))))))))

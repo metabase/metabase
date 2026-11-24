@@ -50,9 +50,7 @@
   [model  :- :keyword
    column :- [:enum :id :entity_id]
    values :- [:sequential [:or ms/PositiveInt :string]]]
-  (if (seq values)
-    (t2/select model column [:in values])
-    []))
+  (app-db/select-batched #(t2/select model column [:in %]) values))
 
 (mu/defn test-suites :- [:sequential ::data-testing.schema/test-suite]
   "Every TestSuite, in name order."
@@ -72,12 +70,14 @@
 (mu/defn test-suites-by-ids :- [:sequential ::data-testing.schema/test-suite]
   "The TestSuites with `ids`."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/TestSuite :id [:in [:auto/param ids]]))
+  (app-db/select-batched #(t2/select :model/TestSuite :id [:in [:auto/param %]]) ids))
 
 (mu/defn test-suites-for-update :- [:sequential ::data-testing.schema/test-suite]
   "The TestSuites with `ids`, their rows locked in the order of their ids until the transaction ends."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/TestSuite :id [:in [:auto/param ids]] {:order-by [[:id :asc]] :for :update}))
+  (app-db/select-batched #(t2/select :model/TestSuite :id [:in [:auto/param %]]
+                                     {:order-by [[:id :asc]] :for :update})
+                         (sort (distinct ids))))
 
 (mu/defn update-test-suites!
   "Apply to the TestSuite rows their changes in `updates`, each the `:id` of a row and the columns to change."
@@ -87,12 +87,12 @@
 (mu/defn touch-test-suites!
   "Set the update time of the TestSuites with `ids` to the database's current time."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/update! :model/TestSuite :id [:in [:auto/param ids]] {:updated_at :%now}))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuite :id [:in [:auto/param %]] {:updated_at :%now}) ids))
 
 (mu/defn delete-members-of-suites!
   "Delete the members of the TestSuites with `suite-ids`."
   [suite-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/TestSuiteMember :suite_id [:in [:auto/param suite-ids]]))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TestSuiteMember :suite_id [:in [:auto/param %]]) suite-ids))
 
 (mu/defn insert-suite-members! :- [:sequential ::data-testing.schema/test-suite.member]
   "Insert the TestSuiteMember `rows` and return the inserted instances."
@@ -103,26 +103,30 @@
   "Apply `changes` to the TestSuiteMembers with `ids`."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
    changes :- (mut/dissoc ::data-testing.schema/test-suite-member.update :id)]
-  (t2/update! :model/TestSuiteMember :id [:in [:auto/param ids]] changes))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuiteMember :id [:in [:auto/param %]] changes) ids))
 
 (mu/defn delete-suite-members!
   "Delete the TestSuiteMembers with `ids`."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/TestSuiteMember :id [:in [:auto/param ids]]))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TestSuiteMember :id [:in [:auto/param %]]) ids))
 
 (mu/defn suite-members-of-tests :- [:sequential ::data-testing.schema/test-suite.member]
   "The members of the TestSuites that name the `test-type` tests with `entity-ids`."
   [test-type  :- ::data-testing.schema/test-type
    entity-ids :- [:sequential {:min 1} :string]]
-  (t2/select :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in [:auto/param entity-ids]]))
+  (app-db/select-batched #(t2/select :model/TestSuiteMember
+                                     :test_type (name test-type)
+                                     :test_entity_id [:in [:auto/param %]])
+                         entity-ids))
 
 (mu/defn suite-members :- [:sequential ::data-testing.schema/test-suite.member]
   "The members of the TestSuites with `suite-ids`, by suite and then position."
   [suite-ids :- [:sequential ms/PositiveInt]]
-  (if (seq suite-ids)
-    (t2/select :model/TestSuiteMember {:where    [:in :suite_id suite-ids]
-                                       :order-by [[:suite_id :asc] [:position :asc]]})
-    []))
+  (vec (sort-by (juxt :suite_id :position)
+                (app-db/select-batched #(t2/select :model/TestSuiteMember
+                                                   {:where    [:in :suite_id %]
+                                                    :order-by [[:suite_id :asc] [:position :asc]]})
+                                       suite-ids))))
 
 (mu/defn insert-suite-run! :- ::data-testing.schema/test-suite-run
   "Insert a started TestSuiteRun of the suite `suite-id` and return it."
@@ -183,15 +187,14 @@
   [model          :- saved-test-model
    subject-column :- :keyword
    subject-ids    :- [:sequential ms/PositiveInt]]
-  (if (seq subject-ids)
-    (vec (t2/select-pks-vec model subject-column [:in [:auto/param subject-ids]]))
-    []))
+  (app-db/select-batched #(t2/select-pks-vec model subject-column [:in [:auto/param %]]) subject-ids))
 
 (mu/defn delete-suite-members-of-tests! :- :nil
   "Remove the `test-type` tests with `entity-ids` from every TestSuite."
   [test-type  :- ::data-testing.schema/test-type
    entity-ids :- [:sequential {:min 1} :string]]
-  (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in [:auto/param entity-ids]])
+  (doseq [batch (partition-all app-db/delete-partition-size entity-ids)]
+    (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in [:auto/param (vec batch)]]))
   nil)
 
 (mu/defn clear-test-ids-of-runs! :- :nil
@@ -199,7 +202,8 @@
   deleted."
   [test-type :- ::data-testing.schema/test-type
    test-ids  :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/update! :model/DataTestRun :test_type (name test-type) :test_id [:in [:auto/param test-ids]] {:test_id nil})
+  (doseq [batch (partition-all app-db/update-partition-size test-ids)]
+    (t2/update! :model/DataTestRun :test_type (name test-type) :test_id [:in [:auto/param (vec batch)]] {:test_id nil}))
   nil)
 
 (mu/defn insert-test-run! :- ::data-testing.schema/data-test-run
@@ -256,40 +260,51 @@
   [filters :- RunFilters
    limit   :- ms/PositiveInt
    offset  :- ms/IntGreaterThanOrEqualToZero]
-  (t2/select :model/DataTestRun {:where    (run-filter-clause filters)
-                                 :order-by [[:start_time :desc] [:id :desc]]
-                                 :limit    limit
-                                 :offset   offset}))
+  (->> (app-db/select-batched #(t2/select :model/DataTestRun
+                                          {:where    (run-filter-clause (assoc filters :test-ids (set %)))
+                                           :order-by [[:start_time :desc] [:id :desc]]
+                                           :limit    (+ offset limit)})
+                              (:test-ids filters))
+       (sort-by (juxt :start_time :id) #(compare %2 %1))
+       (drop offset)
+       (into [] (take limit))))
 
 (mu/defn test-run-count :- :int
   "The number of DataTestRuns matching `filters`."
   [filters :- RunFilters]
-  (t2/count :model/DataTestRun {:where (run-filter-clause filters)}))
+  (transduce (map #(t2/count :model/DataTestRun {:where (run-filter-clause (assoc filters :test-ids (set %)))}))
+             +
+             0
+             (app-db/select-partitions (:test-ids filters))))
 
 (mu/defn latest-test-runs :- [:sequential ::data-testing.schema/data-test-run]
   "The newest DataTestRun, by start time and then id, of each of the `test-type` tests with `test-ids`, among the runs
   that started no earlier than their test was created."
   [test-type :- ::data-testing.schema/test-type
    test-ids  :- [:set ms/PositiveInt]]
-  (t2/select :model/DataTestRun
-             {:where [:and
-                      (runs-of-tests-clause test-type test-ids)
-                      ;; A newer run starts no earlier than this one, so it passes the start-time guard too.
-                      [:not [:exists ^:allow-subquery {:select [1]
-                                                       :from   [[:data_test_run :newer]]
-                                                       :where  [:and
-                                                                [:= :newer.test_type :data_test_run.test_type]
-                                                                [:= :newer.test_id :data_test_run.test_id]
-                                                                [:or
-                                                                 [:> :newer.start_time :data_test_run.start_time]
-                                                                 [:and
-                                                                  [:= :newer.start_time :data_test_run.start_time]
-                                                                  [:> :newer.id :data_test_run.id]]]]}]]]}))
+  (app-db/select-batched
+   #(t2/select :model/DataTestRun
+               {:where [:and
+                        (runs-of-tests-clause test-type (set %))
+                        ;; A newer run starts no earlier than this one, so it passes the start-time guard too.
+                        [:not [:exists ^:allow-subquery {:select [1]
+                                                         :from   [[:data_test_run :newer]]
+                                                         :where  [:and
+                                                                  [:= :newer.test_type :data_test_run.test_type]
+                                                                  [:= :newer.test_id :data_test_run.test_id]
+                                                                  [:or
+                                                                   [:> :newer.start_time :data_test_run.start_time]
+                                                                   [:and
+                                                                    [:= :newer.start_time :data_test_run.start_time]
+                                                                    [:> :newer.id :data_test_run.id]]]]}]]]})
+   test-ids))
 
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                                                :id [:in %])
+                             user-ids))
 
 (mu/defn finish-started-test-run!
   "Set `status` and the end time of DataTestRun `run-id` if it is still started."
@@ -308,9 +323,7 @@
 (mu/defn cards-by-ids
   "The Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (if (seq card-ids)
-    (t2/select :model/Card :id [:in card-ids])
-    []))
+  (app-db/select-batched #(t2/select :model/Card :id [:in %]) card-ids))
 
 (mu/defn card-test :- [:maybe ::data-testing.schema/card-test]
   "The CardTest with `id`, or nil."
@@ -347,9 +360,7 @@
 (mu/defn segments-by-ids
   "The Segments with `segment-ids`."
   [segment-ids :- [:sequential ::lib.schema.id/segment]]
-  (if (seq segment-ids)
-    (t2/select :model/Segment :id [:in segment-ids])
-    []))
+  (app-db/select-batched #(t2/select :model/Segment :id [:in %]) segment-ids))
 
 (mu/defn segment-test :- [:maybe ::data-testing.schema/segment-test]
   "The SegmentTest with `id`, or nil."
@@ -372,9 +383,7 @@
 (mu/defn transforms
   "The Transforms with `transform-ids`."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (if (seq transform-ids)
-    (t2/select :model/Transform :id [:in transform-ids])
-    []))
+  (app-db/select-batched #(t2/select :model/Transform :id [:in %]) transform-ids))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
@@ -395,20 +404,20 @@
   "The TransformTests with `ids`, with their Transform and its Collection and ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection :transforms)]
-    (-> (t2/select [:model/TransformTest :id :name :transform_id] :id [:in ids])
+    (-> (app-db/select-batched #(t2/select [:model/TransformTest :id :name :transform_id] :id [:in %]) ids)
         (t2/hydrate [:transform [:collection :effective_ancestors]])
         (->> (mapv (fn [row] (update row :transform #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
 
 (mu/defn synced-test-suite-items :- [:sequential ::data-testing.schema/test-suite.synced-item]
   "The TestSuites with `ids`, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
-  (t2/select [:model/TestSuite :id :name] :id [:in ids]))
+  (app-db/select-batched #(t2/select [:model/TestSuite :id :name] :id [:in %]) ids))
 
 (mu/defn synced-card-test-items :- [:sequential ::data-testing.schema/card-test]
   "The CardTests with `ids`, with their Card and its Collection and ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/CardTest :id :name :card_id] :id [:in ids])
+    (-> (app-db/select-batched #(t2/select [:model/CardTest :id :name :card_id] :id [:in %]) ids)
         (t2/hydrate [:card [:collection :effective_ancestors]])
         (->> (mapv (fn [row] (update row :card #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
 
@@ -417,7 +426,7 @@
   lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/SegmentTest :id :name :segment_id] :id [:in ids])
+    (-> (app-db/select-batched #(t2/select [:model/SegmentTest :id :name :segment_id] :id [:in %]) ids)
         (t2/hydrate [:segment [:table [:collection :effective_ancestors]]])
         (->> (mapv (fn [row]
                      (update row :segment
@@ -445,4 +454,4 @@
                 [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
                 [:is_active {:optional true} [:maybe :boolean]]
                 [:message   {:optional true} [:maybe :string]]]]
-  (t2/query (rt/terminal-statement model [:status "started"] run-ids terminal)))
+  [(app-db/sum-batched app-db/update-partition-size #(first (t2/query (rt/terminal-statement model [:status "started"] % terminal))) run-ids)])

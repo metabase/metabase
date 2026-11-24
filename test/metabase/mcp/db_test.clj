@@ -1,6 +1,8 @@
 (ns metabase.mcp.db-test
   (:require
    [clojure.test :refer [are deftest is testing use-fixtures]]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as mdb.query]
    [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.mcp.db :as mcp.db]
    [metabase.session.models.session :as models.session]
@@ -92,3 +94,21 @@
           (finally
             (t2/delete! :core_session :id (:id session))
             (t2/delete! :model/AuthIdentity :user_id user-id :provider session.query/mcp-provider)))))))
+
+(deftest partitioned-reads-match-single-statement-reads-test
+  (let [table-ids (t2/select-pks-vec :model/Table :db_id (mt/id) {:order-by [[:id :asc]]})
+        user-ids  (t2/select-pks-vec :model/User {:order-by [[:id :asc]]})
+        read-all  (fn []
+                    {:fields  (mcp.db/active-visible-fields-for-tables table-ids)
+                     :tables  (set (map :id (mcp.db/active-tables-by-ids table-ids)))
+                     :tenants (mcp.db/user-id->tenant-id user-ids)
+                     :users   (mcp.db/active-user-ids user-ids)})
+        single    (read-all)
+        partition-reads (fn [] (with-redefs [mdb.query/select-partition-size 2
+                                             mdb/select-partition-size       2]
+                                 (read-all)))]
+    (is (seq (:fields single)))
+    (is (= (sort-by (juxt :position :id) (:fields single)) (:fields single)))
+    (is (= single (partition-reads)))
+    (is (< (t2/with-call-count [calls] (read-all) (calls))
+           (t2/with-call-count [calls] (partition-reads) (calls))))))

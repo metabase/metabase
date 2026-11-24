@@ -2,6 +2,7 @@
   "Application database queries for the x-rays module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -21,7 +22,7 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (mdb/select-batched #(t2/select :model/Table :id [:in %]) table-ids))
 
 (mu/defn tables-in-schema
   "The Tables in `schema` of the Database with `database-id`. `schema` may be nil (some drivers have no
@@ -82,7 +83,7 @@
 (mu/defn field-id->table-id :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
   "A map from each of the Fields with `field-ids` to the id of its Table."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn->fn :id :table_id :model/Field :id [:in field-ids]))
+  (mdb/select-batched-map #(t2/select-fn->fn :id :table_id :model/Field :id [:in %]) field-ids))
 
 (mu/defn field-name
   "The name of the Field with `field-id`, or nil."
@@ -102,7 +103,7 @@
 (mu/defn fk-fields-for-tables
   "The FK Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :fk_target_field_id [:not= nil] :table_id [:in table-ids]))
+  (mdb/select-batched #(t2/select :model/Field :fk_target_field_id [:not= nil] :table_id [:in %]) table-ids))
 
 (mu/defn active-fk-fields-for-table
   "The active FK Fields of the Table with `table-id`."
@@ -125,16 +126,17 @@
 (mu/defn table-ids-of-fields-targeting
   "The Table ids of the active Fields whose FK target is one of `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :fk_target_field_id [:in field-ids] :active true))
+  (mdb/select-batched-set #(t2/select-fn-set :table_id :model/Field :fk_target_field_id [:in %] :active true) field-ids))
 
 (mu/defn visible-fields-for-tables
   "The active, normally visible, previewable Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Field
-             :table_id [:in table-ids]
-             :visibility_type "normal"
-             :preview_display true
-             :active true))
+  (mdb/select-batched #(t2/select :model/Field
+                                  :table_id [:in %]
+                                  :visibility_type "normal"
+                                  :preview_display true
+                                  :active true)
+                      table-ids))
 
 (mu/defn other-visible-fields-in-table
   "The active, normally visible Fields of the Table with `table-id` other than `field-id`."
@@ -154,7 +156,7 @@
 (mu/defn cards
   "The Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids]))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %]) card-ids))
 
 (mu/defn model-card
   "The model Card with `card-id`, or nil."
@@ -179,8 +181,7 @@
   [table-ids  :- [:sequential [:maybe ::lib.schema.id/table]]
    card-types :- [:sequential :keyword]]
   (let [ids (into [] (comp (remove nil?) (distinct)) table-ids)]
-    (concat (when (seq ids)
-              (t2/select :model/Card :table_id [:in ids] :type [:in card-types] :archived false))
+    (concat (mdb/select-batched #(t2/select :model/Card :table_id [:in %] :type [:in card-types] :archived false) ids)
             (when (some nil? table-ids)
               (t2/select :model/Card :table_id nil :type [:in card-types] :archived false)))))
 
@@ -233,7 +234,7 @@
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
-  (t2/select :model/Dashboard :id [:in dashboard-ids]))
+  (mdb/select-batched #(t2/select :model/Dashboard :id [:in %]) dashboard-ids))
 
 (mu/defn recently-edited-dashboard-ids-for-user
   "The ids of the Dashboards the User with `user-id` has revised, most recent first."
@@ -258,16 +259,20 @@
   "The Card ids other than `card-id` of the DashboardCards of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]
    card-id       :- ::lib.schema.id/card]
-  (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id [:in dashboard-ids] :card_id [:not= card-id]))
+  (mdb/select-batched-set #(t2/select-fn-set :card_id :model/DashboardCard :dashboard_id [:in %] :card_id [:not= card-id]) dashboard-ids))
 
 (mu/defn dashcard-card-and-dashboard-ids
   "The Card and Dashboard ids of the DashboardCards, optionally narrowed to `card-ids` and/or excluding
   `excluded-dashboard-ids`."
   [card-ids                :- [:maybe [:sequential ::lib.schema.id/card]]
    excluded-dashboard-ids  :- [:maybe [:sequential ::lib.schema.id/dashboard]]]
-  (apply t2/select [:model/DashboardCard :card_id :dashboard_id]
-         (concat (when (seq card-ids) [:card_id [:in card-ids]])
-                 (when (seq excluded-dashboard-ids) [:dashboard_id [:not-in excluded-dashboard-ids]]))))
+  (if (seq card-ids)
+    (let [excluded (set excluded-dashboard-ids)]
+      (into []
+            (remove #(contains? excluded (:dashboard_id %)))
+            (mdb/select-batched #(t2/select [:model/DashboardCard :card_id :dashboard_id] :card_id [:in %]) card-ids)))
+    (apply t2/select [:model/DashboardCard :card_id :dashboard_id]
+           (when (seq excluded-dashboard-ids) [:dashboard_id [:not-in excluded-dashboard-ids]]))))
 
 (mu/defn model-index
   "The ModelIndex with `model-index-id`, or nil."

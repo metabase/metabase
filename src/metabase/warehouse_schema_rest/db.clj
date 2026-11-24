@@ -18,7 +18,7 @@
 (mu/defn fields-by-ids
   "The Fields with `field-ids`."
   [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (app-db/select-batched #(t2/select :model/Field :id [:in %]) field-ids))
 
 (mu/defn nested-fields-exist? :- :boolean
   "Whether the Table with `table-id` has Fields whose NFC path matches the SQL LIKE `nfc-path-pattern`."
@@ -97,7 +97,7 @@
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (app-db/select-batched #(t2/select :model/Table :id [:in %]) table-ids))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -127,4 +127,4 @@
 (mu/defn active-fields-targeting
   "The active Fields whose FK target is one of `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :fk_target_field_id [:in field-ids] :active true))
+  (app-db/select-batched #(t2/select :model/Field :fk_target_field_id [:in %] :active true) field-ids))

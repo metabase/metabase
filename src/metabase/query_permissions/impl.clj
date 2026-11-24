@@ -697,18 +697,21 @@
                    :query    {:source-table table-id}}))
 
 (mu/defn check-parameter-field-permissions
-  "Throw a 403 unless the current user could run an ad-hoc query against the Tables the Fields with `field-ids` belong
-  to."
+  "Throw a 403 unless the current user can query each Table the Fields with `field-ids` belong to, answered by the
+  Tables' `:can_query` hydration."
   [field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
-  (when (seq field-ids)
-    (let [table-ids             (query-permissions.db/field-table-ids (set field-ids))
-          table-id->database-id (when (seq table-ids)
-                                  (query-permissions.db/table-id->database-id table-ids))]
+  (when-let [table-ids (when (seq field-ids)
+                         (query-permissions.db/field-table-ids (set field-ids)))]
+    (let [id->table (into {}
+                          (map (fn [table] [(:id table) table]))
+                          (t2/hydrate (mapv (fn [[id db-id]] (t2/instance :model/Table {:id id :db_id db-id}))
+                                            (query-permissions.db/table-id->database-id table-ids))
+                                      :can_query))]
       (doseq [table-id table-ids
-              :let     [database-id (table-id->database-id table-id)]]
-        (when-not (can-query-table? database-id table-id)
-          (throw (ex-info (tru "You must have data permissions to add a parameter referencing this Field.")
-                          {:status-code 403})))))))
+              :let     [table (id->table table-id)]
+              :when    (and table (not (mi/can-query? table)))]
+        (throw (ex-info (tru "You must have data permissions to add a parameter referencing this Field.")
+                        {:status-code 403}))))))
 
 (mr/def ::run-check-options
   "Options of [[check-run-permissions-for-query]]."

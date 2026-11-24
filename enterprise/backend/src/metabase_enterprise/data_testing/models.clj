@@ -98,17 +98,19 @@
 
 (defn query-subject-allows?
   "Whether `subject-check` holds for `subject`, a card or a segment, hydrated with `k`, and the current user may run
-  `query`, the subject's query, and write the native SQL of a test against the Database of `query`. False when
-  `subject` is nil."
-  [subject-check k subject query]
-  (boolean
-   (when subject
-     (and (subject-check (t2/hydrate subject k))
-          ;; A run compiles the query with the cards, snippets and segments it includes, and a run's errors can quote
-          ;; their SQL, so the user must be allowed to run the query, not only to read the subject.
-          (query-perms/can-run-query? query)
-          (or (mi/superuser?)
-              (some-> (not-empty query) lib/database-id can-run-native-query?))))))
+  `query`, the subject's query, and write the native SQL of a test against the Database of `query`, as `native?`, by
+  default [[can-run-native-query?]], answers for a Database id. False when `subject` is nil."
+  ([subject-check k subject query]
+   (query-subject-allows? subject-check k subject query can-run-native-query?))
+  ([subject-check k subject query native?]
+   (boolean
+    (when subject
+      (and (subject-check (t2/hydrate subject k))
+           ;; A run compiles the query with the cards, snippets and segments it includes, and a run's errors can quote
+           ;; their SQL, so the user must be allowed to run the query, not only to read the subject.
+           (query-perms/can-run-query? query)
+           (or (mi/superuser?)
+               (some-> (not-empty query) lib/database-id native?)))))))
 
 (defn- can-save-for-transform?
   "Whether the current user may save or delete a test of `transform`: they may edit it, as `transform-writable?` says,

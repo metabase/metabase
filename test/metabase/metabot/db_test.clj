@@ -1,6 +1,8 @@
 (ns metabase.metabot.db-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as mdb.query]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.db :as metabot.db]
@@ -79,3 +81,22 @@
             (is (= (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id card-id) :can_read)) (mi/can-read? (t2/hydrate row :can_read))))
             (is (false? (boolean (mi/can-read? (t2/hydrate row :can_read))))
                 "and the narrowed row does not make a restricted card look readable")))))))
+
+(deftest partitioned-reads-match-single-statement-reads-test
+  (let [table-ids (t2/select-pks-vec :model/Table :db_id (mt/id) {:order-by [[:id :asc]]})
+        read-all  (fn []
+                    (mt/with-test-user :crowberto
+                      {:tables    (metabot.db/tables-by-id (set table-ids))
+                       :like      (frequencies (map (juxt :schema :name)
+                                                    (metabot.db/database-table-names-like (mt/id) ["v" "ve" "o"])))
+                       :excluding (into #{} (map :id) (metabot.db/visible-tables-excluding (mt/id) (take 4 table-ids)))}))
+        single    (read-all)
+        partition-reads (fn [] (with-redefs [mdb.query/select-partition-size 2
+                                             mdb/select-partition-size       2]
+                                 (read-all)))]
+    (is (= (count table-ids) (count (:tables single))))
+    (is (= #{1} (set (vals (:like single)))))
+    (is (= (- (count table-ids) 4) (count (:excluding single))))
+    (is (= single (partition-reads)))
+    (is (< (t2/with-call-count [calls] (read-all) (calls))
+           (t2/with-call-count [calls] (partition-reads) (calls))))))

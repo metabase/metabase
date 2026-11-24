@@ -2,6 +2,7 @@
   "Application database queries for the measures module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -55,7 +56,7 @@
   "The Measures with `ids`, with their Table and its Collection and ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/Measure :id :name :table_id] :id [:in ids])
+    (-> (mdb/select-batched #(t2/select [:model/Measure :id :name :table_id] :id [:in %]) ids)
         (t2/hydrate [:table [:collection :effective_ancestors]])
         (->> (mapv (fn [row] (update row :table #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
 

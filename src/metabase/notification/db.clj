@@ -172,12 +172,12 @@
 (mu/defn notifications-by-id
   "The Notifications with `notification-ids`."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Notification :id [:in notification-ids]))
+  (mdb/select-batched #(t2/select :model/Notification :id [:in %]) notification-ids))
 
 (mu/defn card-notifications
   "The card Notifications among `notification-ids`."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Notification :id [:in notification-ids] :payload_type :notification/card))
+  (mdb/select-batched #(t2/select :model/Notification :id [:in %] :payload_type :notification/card) notification-ids))
 
 (mu/defn active-card-notifications-for-card
   "The active card Notifications attached to the Card with `card-id`."
@@ -192,14 +192,15 @@
 (mu/defn active-card-notifications-for-cards
   "The active card Notifications attached to the Cards with `card-ids`."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
-  (t2/select :model/Notification
-             :active true
-             :payload_type :notification/card
-             {:where [:exists ^:allow-subquery {:select [1]
-                                                :from   [[:notification_card :nc]]
-                                                :where  [:and
-                                                         [:= :nc.id :notification.payload_id]
-                                                         [:in :nc.card_id [:auto/param card-ids]]]}]}))
+  (mdb/select-batched #(t2/select :model/Notification
+                                  :active true
+                                  :payload_type :notification/card
+                                  {:where [:exists ^:allow-subquery {:select [1]
+                                                                     :from   [[:notification_card :nc]]
+                                                                     :where  [:and
+                                                                              [:= :nc.id :notification.payload_id]
+                                                                              [:in :nc.card_id [:auto/param %]]]}]})
+                      card-ids))
 
 (mu/defn active-system-event-notifications
   "The active Notifications subscribed to the system event named `event-name`."
@@ -243,7 +244,8 @@
   "Delete the rows of `model`, a model of a part of a Notification, with `ids`, writing no change log."
   [model :- PartModel
    ids   :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! model :id [:in [:auto/param ids]])
+  (doseq [chunk (partition-all mdb/delete-partition-size ids)]
+    (t2/delete! model :id [:in [:auto/param (vec chunk)]]))
   nil)
 
 ;;; ------------------------------------------- NotificationCard -------------------------------------------
@@ -251,7 +253,7 @@
 (mu/defn notification-cards
   "The NotificationCards with `notification-card-ids`."
   [notification-card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select :model/NotificationCard :id [:in notification-card-ids]))
+  (mdb/select-batched #(t2/select :model/NotificationCard :id [:in %]) notification-card-ids))
 
 (mu/defn notification-card-exists?
   "Whether a NotificationCard with `notification-card-id` exists."
@@ -274,13 +276,14 @@
   "Delete the NotificationCards that are the payloads of the card Notifications with `notification-ids`, in one
   statement, returning the number deleted."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (let [payload-ids [:in ^:allow-subquery {:select [:payload_id]
-                                           :from   [:notification]
-                                           :where  [:and
-                                                    [:in :id [:auto/param notification-ids]]
-                                                    [:= :payload_type "notification/card"]]}]]
-    (change-log/log-rows! :model/NotificationCard :delete :id payload-ids)
-    (t2/delete! :model/NotificationCard :id payload-ids)))
+  (mdb/sum-batched mdb/delete-partition-size (fn [chunk]
+                                               (let [payload-ids [:in ^:allow-subquery {:select [:payload_id]
+                                                                                        :from   [:notification]
+                                                                                        :where  [:and
+                                                                                                 [:in :id [:auto/param (vec chunk)]]
+                                                                                                 [:= :payload_type "notification/card"]]}]]
+                                                 (change-log/log-rows! :model/NotificationCard :delete :id payload-ids)
+                                                 (t2/delete! :model/NotificationCard :id payload-ids))) notification-ids))
 
 ;;; --------------------------------------- NotificationSubscription ---------------------------------------
 
@@ -292,7 +295,7 @@
 (mu/defn subscriptions-for-notifications
   "The NotificationSubscriptions of the Notifications with `notification-ids` (nil entries are ignored)."
   [notification-ids :- [:sequential [:maybe ms/PositiveInt]]]
-  (t2/select :model/NotificationSubscription :notification_id [:in notification-ids]))
+  (mdb/select-batched #(t2/select :model/NotificationSubscription :notification_id [:in %]) notification-ids))
 
 (mu/defn active-cron-subscriptions-by-id
   "A map of ID to cron NotificationSubscription for every active Notification."
@@ -317,7 +320,7 @@
 (mu/defn handlers-for-notifications
   "The NotificationHandlers of the Notifications with `notification-ids`."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/NotificationHandler :notification_id [:in notification-ids]))
+  (mdb/select-batched #(t2/select :model/NotificationHandler :notification_id [:in %]) notification-ids))
 
 (mu/defn handler-notification-ids-for-email
   "The set of Notification IDs of the handlers whose recipients (joined to their user) have an exact, lower-cased
@@ -328,13 +331,16 @@
   (let [user-clause [:and
                      [:= :nr.type "notification-recipient/user"]
                      [:= [:lower :cu.email] lower-email]]]
-    (t2/select-fn-set :notification_id (t2/table-name :model/NotificationHandler)
-                      {:join      [[(t2/table-name :model/NotificationRecipient) :nr]
-                                   [:= :nr.notification_handler_id :notification_handler.id]]
-                       :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
-                       :where     (if (seq raw-value-handler-ids)
-                                    [:or user-clause [:in :notification_handler.id raw-value-handler-ids]]
-                                    user-clause)})))
+    (letfn [(notification-ids-where [where]
+              (t2/select-fn-set :notification_id (t2/table-name :model/NotificationHandler)
+                                {:join      [[(t2/table-name :model/NotificationRecipient) :nr]
+                                             [:= :nr.notification_handler_id :notification_handler.id]]
+                                 :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
+                                 :where     where}))]
+      (if (seq raw-value-handler-ids)
+        (mdb/select-batched-set #(notification-ids-where [:or user-clause [:in :notification_handler.id %]])
+                                raw-value-handler-ids)
+        (notification-ids-where user-clause)))))
 
 (mu/defn insert-handlers!
   "Insert the NotificationHandler `handlers` with one statement per distinct set of columns, returning the inserted
@@ -346,7 +352,7 @@
 (mu/defn recipients-for-handlers
   "The NotificationRecipients of the NotificationHandlers with `handler-ids` (nil entries are ignored)."
   [handler-ids :- [:sequential [:maybe ms/PositiveInt]]]
-  (t2/select :model/NotificationRecipient :notification_handler_id [:in handler-ids]))
+  (mdb/select-batched #(t2/select :model/NotificationRecipient :notification_handler_id [:in %]) handler-ids))
 
 (mu/defn raw-value-recipients-for-handler
   "The raw-value NotificationRecipients of the NotificationHandler with `handler-id`."
@@ -376,13 +382,14 @@
 (mu/defn delete-recipients!
   "Delete the NotificationRecipients with `recipient-ids`, returning the number deleted."
   [recipient-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (change-log/log-rows! :model/NotificationRecipient :delete :id [:in recipient-ids])
-  (t2/delete! :model/NotificationRecipient :id [:in recipient-ids]))
+  (mdb/sum-batched mdb/delete-partition-size (fn [chunk]
+                                               (change-log/log-rows! :model/NotificationRecipient :delete :id [:in (vec chunk)])
+                                               (t2/delete! :model/NotificationRecipient :id [:in (vec chunk)])) recipient-ids))
 
 (mu/defn recipients-for-users
   "The NotificationRecipients of the Users with `user-ids`."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
-  (t2/select :model/NotificationRecipient :user_id [:in user-ids]))
+  (mdb/select-batched #(t2/select :model/NotificationRecipient :user_id [:in %]) user-ids))
 
 (mu/defn user-recipients-for-notification
   "The NotificationRecipients for the User with `user-id` on the Notification with `notification-id`."
@@ -399,12 +406,12 @@
 (mu/defn active-channels-by-id
   "A map of ID to active Channel for `channel-ids`."
   [channel-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn->fn :id identity :model/Channel :id [:in channel-ids] :active true))
+  (mdb/select-batched-map #(t2/select-fn->fn :id identity :model/Channel :id [:in %] :active true) channel-ids))
 
 (mu/defn channel-templates-by-id
   "A map of ID to ChannelTemplate for `template-ids`."
   [template-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn->fn :id identity :model/ChannelTemplate :id [:in template-ids]))
+  (mdb/select-batched-map #(t2/select-fn->fn :id identity :model/ChannelTemplate :id [:in %]) template-ids))
 
 ;;; ---------------------------------------------- Task runs ----------------------------------------------
 
@@ -460,25 +467,27 @@
   [preferred-task :- :string
    run-ids        :- [:set ms/PositiveInt]
    task-name      :- [:maybe :string]]
-  (t2/select :model/TaskHistory
-             {:select [:run_id :task_details]
-              :from   [[^:allow-subquery
-                        {:select [:run_id :task_details
-                                  [[:over [[:row_number]
-                                           ^:allow-subquery
-                                           {:partition-by [:run_id]
-                                            :order-by     [[[:case
-                                                             [:= :task preferred-task] 0
-                                                             :else                     1] :asc]
-                                                           [:ended_at :desc]]}]]
-                                   :rn]]
-                         :from   [:task_history]
-                         :where  [:and
-                                  [:in :run_id run-ids]
-                                  [:in :status ["failed" "abandoned"]]
-                                  (when task-name [:= :task task-name])]}
-                        :sub]]
-              :where  [:= :sub.rn 1]}))
+  (mdb/select-batched
+   #(t2/select :model/TaskHistory
+               {:select [:run_id :task_details]
+                :from   [[^:allow-subquery
+                          {:select [:run_id :task_details
+                                    [[:over [[:row_number]
+                                             ^:allow-subquery
+                                             {:partition-by [:run_id]
+                                              :order-by     [[[:case
+                                                               [:= :task preferred-task] 0
+                                                               :else                     1] :asc]
+                                                             [:ended_at :desc]]}]]
+                                     :rn]]
+                           :from   [:task_history]
+                           :where  [:and
+                                    [:in :run_id %]
+                                    [:in :status ["failed" "abandoned"]]
+                                    (when task-name [:= :task task-name])]}
+                          :sub]]
+                :where  [:= :sub.rn 1]})
+   run-ids))
 
 ;;; --------------------------------------------- Admin listing ---------------------------------------------
 
@@ -669,9 +678,15 @@
 (mu/defn admin-notifications-count
   "The number of admin notification-list rows matching `filters`."
   [filters :- AdminFilters]
-  (:count (t2/query-one (-> (admin-list-query filters)
-                            (assoc :select [[[:count :notification.id] :count]])
-                            (dissoc :order-by)))))
+  (let [count-matching (fn [filters]
+                         (:count (t2/query-one (-> (admin-list-query filters)
+                                                   (assoc :select [[[:count :notification.id] :count]])
+                                                   (dissoc :order-by)))))
+        recipient-ids  (:recipient_notification_ids filters)]
+    (if (> (count recipient-ids) mdb/select-partition-size)
+      (transduce (map #(count-matching (assoc filters :recipient_notification_ids %)))
+                 + 0 (mdb/select-partitions recipient-ids))
+      (count-matching filters))))
 
 (mu/defn admin-notification-detail-row
   "The admin notification-list row (skipping the run-summary joins) for the Notification with `notification-id`, or
@@ -698,7 +713,7 @@
 (mu/defn cards
   "The Cards with `card-ids`, a non-empty collection."
   [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in [:auto/param (vec card-ids)]]))
+  (mdb/select-batched #(t2/select :model/Card :id [:in [:auto/param %]]) card-ids))
 
 (mu/defn unarchived-card
   "The Card with `card-id` if it is not archived, or nil."
@@ -749,4 +764,4 @@
 (mu/defn active-users-by-id
   "A map of ID to active User for `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-fn->fn :id identity :model/User :id [:in user-ids] :is_active true))
+  (mdb/select-batched-map #(t2/select-fn->fn :id identity :model/User :id [:in %] :is_active true) user-ids))

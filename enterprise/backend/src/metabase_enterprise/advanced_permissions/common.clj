@@ -3,20 +3,9 @@
    [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]))
-
-(defenterprise current-user-can-write-field?
-  "Enterprise version: whether the current user can manage the metadata of the table of the field `instance`, which
-  nobody can when a read-only instance syncs the table."
-  :feature :advanced-permissions
-  [instance]
-  (let [table (or (:table instance)
-                  (advanced-permissions.db/table (:table_id instance)))]
-    (and (collection/remote-sync-writable-table? table)
-         (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {(:table_id instance) (:db_id table)}))))
 
 (defenterprise current-user-can-manage-schema-metadata?
   "Enterprise version. Returns a boolean whether the current user has permission to edit table metadata for any tables

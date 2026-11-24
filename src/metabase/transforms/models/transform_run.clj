@@ -42,19 +42,18 @@
    :run_method mi/transform-keyword})
 
 ;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
-(methodical/defmethod t2/simple-hydrate [:model/TransformRun :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k
-             (boolean
-              (or api/*is-superuser?*
-                  (boolean (when-let [transform-id (:transform_id instance)]
-                             (some-> (transforms.db/transform transform-id) (t2/hydrate :can_read) mi/can-read?)))))))
-
-(mi/define-simple-hydration-method add-transform-runs
-  :transform-runs
-  "Add transform-runs for a transform. Must have :id field."
-  [transform]
-  (transforms.db/runs-for-transform (:id transform)))
+(methodical/defmethod t2/batched-hydrate [:model/TransformRun :can_read]
+  "Whether the current user can read each of `runs`: a superuser any, others those of a Transform they read, the
+  Transforms loaded and answered together."
+  [_model k runs]
+  (let [transforms (when-not api/*is-superuser?*
+                     (u/index-by :id (t2/hydrate (transforms.db/transforms
+                                                  (into [] (comp (remove nil?) (keep :transform_id) (distinct)) runs))
+                                                 :can_read)))]
+    (for [run runs]
+      (when run
+        (vary-meta run assoc k (boolean (or api/*is-superuser?*
+                                            (some-> (get transforms (:transform_id run)) mi/can-read?))))))))
 
 (mr/def ::canceled-run
   "A TransformRun force-canceled by [[cancel-old-canceling-runs!]], with the time its cancelation was requested."

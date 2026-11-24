@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.db :as api-keys.db]
+   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -51,3 +52,10 @@
             skipped    (api-keys.db/update-api-keys-last-used-at! {available ts, deleted-id ts})]
         (is (= {} skipped) "the deleted id is dropped, not carried forward for another retry")
         (is (= ts (last-used-at available)))))))
+
+(deftest user-types-partitions-test
+  (let [user-ids (mapv mt/user->id [:rasta :lucky :crowberto :trashbird])
+        single   (api-keys.db/user-types user-ids)]
+    (is (= (set user-ids) (set (keys single))))
+    (is (= single (with-redefs [mdb.query/select-partition-size 2]
+                    (api-keys.db/user-types user-ids))))))

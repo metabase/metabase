@@ -143,6 +143,14 @@
   :args ::define-hydration-method
   :ret  any?)
 
+(methodical/defmethod t2.hydrate/hydrate-with-strategy :around ::t2.hydrate/automagic-batched
+  "Hydrate the instances in partitions of at most [[mdb/select-partition-size]], as each partition reads the rows it
+  points to with one `IN` list."
+  [model strategy dest-key instances]
+  (into []
+        (mapcat #(next-method model strategy dest-key %))
+        (mdb/select-partitions instances)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan 2 Extensions                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+

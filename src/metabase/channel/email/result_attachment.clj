@@ -182,22 +182,25 @@
    (when (and (attachment-wanted? part)
               (keyword? download-level)
               (not= download-level :no))
-     (let [database-id (get-in part [:result :database_id])]
-       (qp.store/with-metadata-provider (get providers database-id database-id)
-         (let [result           (:result (channel.shared/maybe-realize-data-rows part))
-               ;; the dashboard-level title override (incl. the visualizer's) names the attachment, matching the card's
-               ;; displayed title; falls back to the card's own name (see [[render.util/dashcard-title]]).
-               filename-prefix  (render.util/dashcard-title card dashcard)]
-           (when-not (:render/too-large? result)
-             (->>
-              [(when-let [temp-file (and (:include_csv card)
-                                         (create-temp-file-or-throw! "csv"))]
-                 (with-open [os (io/output-stream temp-file)]
-                   (stream-api-results-to-export-format! os {:export-format :csv :format-rows? format-rows :pivot? pivot-results :csv-include-bom? true} result))
-                 (create-result-attachment-map "csv" filename-prefix temp-file))
-               (when-let [temp-file (and (:include_xls card)
-                                         (create-temp-file-or-throw! "xlsx"))]
-                 (with-open [os (io/output-stream temp-file)]
-                   (stream-api-results-to-export-format! os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
-                 (create-result-attachment-map "xlsx" filename-prefix temp-file))]
-              (filterv some?)))))))))
+     (let [provider (get providers (get-in part [:result :database_id]))
+           attach   (fn []
+                      (let [result           (:result (channel.shared/maybe-realize-data-rows part))
+                            ;; the dashboard-level title override (incl. the visualizer's) names the attachment, matching the card's
+                            ;; displayed title; falls back to the card's own name (see [[render.util/dashcard-title]]).
+                            filename-prefix  (render.util/dashcard-title card dashcard)]
+                        (when-not (:render/too-large? result)
+                          (->>
+                           [(when-let [temp-file (and (:include_csv card)
+                                                      (create-temp-file-or-throw! "csv"))]
+                              (with-open [os (io/output-stream temp-file)]
+                                (stream-api-results-to-export-format! os {:export-format :csv :format-rows? format-rows :pivot? pivot-results :csv-include-bom? true} result))
+                              (create-result-attachment-map "csv" filename-prefix temp-file))
+                            (when-let [temp-file (and (:include_xls card)
+                                                      (create-temp-file-or-throw! "xlsx"))]
+                              (with-open [os (io/output-stream temp-file)]
+                                (stream-api-results-to-export-format! os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
+                              (create-result-attachment-map "xlsx" filename-prefix temp-file))]
+                           (filterv some?)))))]
+       (if provider
+         (qp.store/with-metadata-provider provider (attach))
+         (attach))))))

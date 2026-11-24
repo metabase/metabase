@@ -66,7 +66,7 @@
 (mu/defn database-on-demand-flags
   "A map of Database ID to its `:is_on_demand` flag for `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-pk->fn :is_on_demand :model/Database :id [:in database-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn :is_on_demand :model/Database :id [:in %]) database-ids))
 
 (mu/defn synced-user-database-exists?
   "Whether any non-sample, non-audit Database has completed its initial sync."
@@ -143,18 +143,19 @@
   `:lower_schema`."
   [database-id :- ::lib.schema.id/database
    lower-names :- [:sequential {:min 1} :string]]
-  (t2/select [:model/Table :metabase_table.* [:%lower.name :lower_name] [:%lower.schema :lower_schema]]
-             {:where [:and
-                      [:= :db_id [:auto/param database-id]]
-                      [:in [:lower :name] [:auto/param lower-names]]
-                      [:= :active true]]}))
+  (app-db/select-batched #(t2/select [:model/Table :metabase_table.* [:%lower.name :lower_name] [:%lower.schema :lower_schema]]
+                                     {:where [:and
+                                              [:= :db_id [:auto/param database-id]]
+                                              [:in [:lower :name] [:auto/param %]]
+                                              [:= :active true]]})
+                         (distinct lower-names)))
 
 (mu/defn tables-by-name
   "The `columns` of the Tables of the Database with `database-id` named one of `table-names`."
   [columns      :- [:sequential :keyword]
    database-id  :- ::lib.schema.id/database
    table-names  :- [:sequential :string]]
-  (t2/select columns :db_id database-id :name [:in table-names]))
+  (app-db/select-batched #(t2/select columns :db_id database-id :name [:in %]) (distinct table-names)))
 
 (mu/defn tables-to-archive
   "The inactive, unarchived, non-transform-target Tables of the Database with `database-id` deactivated more than
@@ -172,7 +173,7 @@
 (mu/defn table-database-ids
   "A map of Table ID to Database ID for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in %]) table-ids))
 
 (mu/defn table-schemas-reducible
   "Reducible `:schema` rows of the Tables of the Database with `database-id`."
@@ -241,21 +242,20 @@
 (mu/defn table-user-settings-for-tables :- [:sequential ::warehouse-schema.schema/table-user-settings]
   "The TableUserSettings of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (if (seq table-ids)
-    (t2/select :model/TableUserSettings :table_id [:in table-ids])
-    []))
+  (app-db/select-batched #(t2/select :model/TableUserSettings :table_id [:in %]) table-ids))
 
 (mu/defn fields
   "The Fields with `field-ids`, which `our-metadata` diffs against the warehouse."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (app-db/select-batched #(t2/select :model/Field :id [:in %]) field-ids))
 
 (mu/defn fields-for-field-values
   "The columns needed to scan FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select [:model/Field :name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type
-              :table_id :has_field_values]
-             :id [:in field-ids]))
+  (app-db/select-batched #(t2/select [:model/Field :name :id :base_type :effective_type :coercion_strategy :semantic_type
+                                      :visibility_type :table_id :has_field_values]
+                                     :id [:in %])
+                         field-ids))
 
 (defn- base-types->descendants
   "Given a set of `base-types`, an expanded set including those types and all their descendants in the type
@@ -336,14 +336,16 @@
 (mu/defn active-fields-metadata-for-tables
   "The sync metadata columns of the active Fields of the Tables with `table-ids`, with their `:table_id`."
   [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
-  (t2/select [:model/Field :table_id :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
-              :parent_id :id :description :database_position :nfc_path
-              :database_is_auto_increment :database_required
-              :database_default :database_is_generated :database_is_nullable :database_is_pk
-              :database_partitioned :json_unfolding :position :preview_display]
-             {:where [:and
-                      [:in :table_id [:auto/param table-ids]]
-                      [:= :active true]]}))
+  (app-db/select-batched
+   #(t2/select [:model/Field :table_id :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
+                :parent_id :id :description :database_position :nfc_path
+                :database_is_auto_increment :database_required
+                :database_default :database_is_generated :database_is_nullable :database_is_pk
+                :database_partitioned :json_unfolding :position :preview_display]
+               {:where [:and
+                        [:in :table_id [:auto/param %]]
+                        [:= :active true]]})
+   table-ids))
 
 (mu/defn normal-fields-for-table
   "Up to `limit` active, normal-visibility Fields of the Table with `table-id`, ordered by ID."
@@ -360,23 +362,28 @@
   [table-id    :- ::lib.schema.id/table
    parent-id   :- [:maybe ms/PositiveInt]
    lower-names :- [:sequential :string]]
-  (t2/select :model/Field
-             :table_id table-id
-             :%lower.name [:in lower-names]
-             :parent_id parent-id
-             :active false))
+  (app-db/select-batched #(t2/select :model/Field
+                                     :table_id table-id
+                                     :%lower.name [:in %]
+                                     :parent_id parent-id
+                                     :active false)
+                         (distinct lower-names)))
 
 (mu/defn inactive-top-level-fields-by-lower-name-for-tables
   "The inactive top-level Fields of the Tables with `table-ids` whose lower-cased name is one of `lower-names`, each
   with its lower-cased name as the database computes it under `:lower_name`."
   [table-ids   :- [:sequential {:min 1} ::lib.schema.id/table]
    lower-names :- [:sequential {:min 1} :string]]
-  (t2/select [:model/Field :metabase_field.* [:%lower.name :lower_name]]
-             {:where [:and
-                      [:in :table_id [:auto/param table-ids]]
-                      [:in [:lower :name] [:auto/param lower-names]]
-                      [:= :parent_id nil]
-                      [:= :active false]]}))
+  (app-db/select-batched
+   (fn [table-ids]
+     (app-db/select-batched #(t2/select [:model/Field :metabase_field.* [:%lower.name :lower_name]]
+                                        {:where [:and
+                                                 [:in :table_id [:auto/param table-ids]]
+                                                 [:in [:lower :name] [:auto/param %]]
+                                                 [:= :parent_id nil]
+                                                 [:= :active false]]})
+                            (distinct lower-names)))
+   table-ids))
 
 (mu/defn incomplete-analysis-fields-for-table
   "The active, visible Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not yet analyzed."
@@ -442,26 +449,27 @@
 (mu/defn fields-for-interestingness-scoring :- [:sequential (ms/InstanceOf :model/Field)]
   "The Fields with `field-ids`, for interestingness scoring."
   [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (app-db/select-batched #(t2/select :model/Field :id [:in %]) field-ids))
 
 (mu/defn top-level-field-ids-by-name
   "The IDs of the top-level Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
-  (t2/select-pks-vec :model/Field :name [:in field-names] :table_id table-id :parent_id nil))
+  (not-empty (app-db/select-batched #(t2/select-pks-vec :model/Field :name [:in %] :table_id table-id :parent_id nil)
+                                    (distinct field-names))))
 
 (mu/defn top-level-field-ids-by-schema-table-and-name-reducible
   "Reducible `:id` rows of the top-level Fields of the Database with `database-id` matching one of the
   `[schema table-name field-name]` triples in `schema+table+names`, with a nil schema spelled `\"__null__\"`."
   [database-id        :- ::lib.schema.id/database
    schema+table+names :- [:sequential [:tuple :string :string :string]]]
-  (t2/reducible-query {:select     [[:f.id]]
-                       :from      [[(t2/table-name :model/Field) :f]]
-                       :inner-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
-                       :where      [:and
-                                    [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] schema+table+names]
-                                    [:= :t.db_id database-id]
-                                    [:= :parent_id nil]]}))
+  (app-db/select-batched-reducible #(t2/reducible-query {:select     [[:f.id]]
+                                                         :from       [[(t2/table-name :model/Field) :f]]
+                                                         :inner-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
+                                                         :where      [:and
+                                                                      [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] %]
+                                                                      [:= :t.db_id database-id]
+                                                                      [:= :parent_id nil]]}) schema+table+names))
 
 (mu/defn indexed-field-ids-for-table
   "The IDs of the Fields of the Table with `table-id` marked as indexed."
@@ -487,9 +495,7 @@
 (mu/defn field-user-settings-for-fields :- [:sequential ::warehouse-schema.schema/field-user-settings]
   "The FieldUserSettings of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (if (seq field-ids)
-    (t2/select :model/FieldUserSettings :field_id [:in field-ids])
-    []))
+  (app-db/select-batched #(t2/select :model/FieldUserSettings :field_id [:in %]) field-ids))
 
 (defn- lower-key
   "The key by which fk metadata and Fields are matched: the lower-cased schema, table and column names."
@@ -503,26 +509,28 @@
   "For each of `entries`, foreign key metadata with the `:fk-table-schema`, `:fk-table-name` and `:fk-column-name` of a
   Field and the `:pk-` ones of the Field it points at, in the Database with `db-id`: the id of the Field and the changes
   that point it at the target, with the entry, leaving out an entry whose Fields are missing, that already points
-  there, or whose Field has a user-set target. Reads the Fields of all entries in one query, then their rows and
-  settings in one each, however many entries there are."
+  there, or whose Field has a user-set target. Reads the Fields of all entries, then their rows and settings, in one
+  query each per partition of at most [[app-db/select-partition-size]] names or ids."
   [db-id   :- ::lib.schema.id/database
    entries :- [:sequential :map]]
   (if (empty? entries)
     []
     (let [table-names (into [] (comp (mapcat (juxt :fk-table-name :pk-table-name)) (map u/lower-case-en) (distinct)) entries)
-          candidates  (t2/query {:select    [:f.id [:f.name :column] [:t.name :table] [:t.schema :schema]
-                                             [:u.fk_target_field_id_set :fk_set] [:u.semantic_type_set :semantic_set]]
-                                 :from      [[(t2/table-name :model/Field) :f]]
-                                 :join      [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
-                                 :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :f.id :u.field_id]]
-                                 :where     [:and
-                                             [:= :t.db_id [:auto/param db-id]]
-                                             [:in [:lower :t.name] [:auto/param table-names]]
-                                             [:= :f.active true]
-                                             [:not= :f.visibility_type "retired"]
-                                             [:= :t.active true]
-                                             [:= :t.visibility_type nil]]
-                                 :order-by  [[:f.id :asc]]})
+          candidates  (sort-by :id (app-db/select-batched
+                                    #(t2/query {:select    [:f.id [:f.name :column] [:t.name :table] [:t.schema :schema]
+                                                            [:u.fk_target_field_id_set :fk_set] [:u.semantic_type_set :semantic_set]]
+                                                :from      [[(t2/table-name :model/Field) :f]]
+                                                :join      [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
+                                                :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :f.id :u.field_id]]
+                                                :where     [:and
+                                                            [:= :t.db_id [:auto/param db-id]]
+                                                            [:in [:lower :t.name] [:auto/param %]]
+                                                            [:= :f.active true]
+                                                            [:not= :f.visibility_type "retired"]
+                                                            [:= :t.active true]
+                                                            [:= :t.visibility_type nil]]
+                                                :order-by  [[:f.id :asc]]})
+                                    table-names))
           lowest      (fn [rows] (reduce (fn [m {:keys [id schema table column]}]
                                            (let [k (lower-key schema table column)]
                                              (cond-> m (not (contains? m k)) (assoc k id))))
@@ -541,8 +549,9 @@
                             entries)]
       (if (empty? resolved)
         []
-        (let [fields   (u/index-by :id (t2/select [:model/Field :id :fk_target_field_id :has_field_values]
-                                                  :id [:in (mapv :id resolved)]))
+        (let [fields   (u/index-by :id (app-db/select-batched #(t2/select [:model/Field :id :fk_target_field_id :has_field_values]
+                                                                          :id [:in %])
+                                                              (mapv :id resolved)))
               settings (u/index-by :field_id (field-user-settings-for-fields (mapv :id resolved)))]
           (into []
                 (keep (fn [{:keys [id pk-id entry]}]

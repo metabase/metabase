@@ -2,6 +2,7 @@
   "Application database queries for the database-routing module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -21,12 +22,14 @@
   "Whether the router with `router-database-id` already has a destination Database named one of `names`."
   [router-database-id :- ::lib.schema.id/database
    names              :- [:sequential :string]]
-  (t2/exists? :model/Database :router_database_id router-database-id :name [:in names]))
+  (boolean (some #(t2/exists? :model/Database :router_database_id router-database-id :name [:in %])
+                 (app-db/select-partitions names))))
 
 (mu/defn destination-database-exists?
   "Whether one of the Databases with `database-ids` is a routing destination."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
-  (t2/exists? :model/Database :id [:in [:auto/param (vec (distinct database-ids))]] :router_database_id [:not= nil]))
+  (boolean (some #(t2/exists? :model/Database :id [:in [:auto/param %]] :router_database_id [:not= nil])
+                 (app-db/select-partitions (distinct database-ids)))))
 
 (mu/defn transform-exists-for-source-database?
   "Whether a Transform reads from the Database with `database-id`."
@@ -46,7 +49,7 @@
 (mu/defn router-ids-for-databases
   "The ids of the DatabaseRouters of the Databases with `database-ids`."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
-  (t2/select-pks-vec :model/DatabaseRouter :database_id [:in [:auto/param database-ids]]))
+  (not-empty (app-db/select-batched #(t2/select-pks-vec :model/DatabaseRouter :database_id [:in [:auto/param %]]) database-ids)))
 
 (mu/defn router-user-attribute
   "The user attribute the router of the Database with `database-id` routes on."
@@ -61,4 +64,5 @@
 (mu/defn router-user-attributes-by-database
   "A map of Database ID to routing user attribute for `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
+  (app-db/select-batched-map #(t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in %])
+                             database-ids))

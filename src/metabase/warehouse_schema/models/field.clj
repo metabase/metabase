@@ -6,14 +6,12 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
-   [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.serialization.core :as serialization]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -266,23 +264,17 @@
   [_model k fields]
   (hydrate-table-permission k fields))
 
-(defenterprise current-user-can-write-field?
-  "OSS implementation: whether the current user, a superuser, can write the field `instance`, which nobody can when a
-  read-only instance syncs its table."
-  metabase-enterprise.advanced-permissions.common
-  [instance]
-  (let [table (or (:table instance)
-                  (warehouse-schema.db/table (:table_id instance)))]
-    (and (collection/remote-sync-writable-table? table)
-         (mi/superuser?))))
-
 (methodical/defmethod t2/batched-hydrate [:model/Field :can_write]
-  "Whether the current user can change the metadata of each of `fields`, their Tables hydrated first."
+  "Whether the current user can change the metadata of each of `fields`, which is whether they can change that of its
+  Table, the Tables hydrated and answered together."
   [_model k fields]
-  (let [writable (u/index-by :id (comp boolean current-user-can-write-field?) (t2/hydrate (remove nil? fields) :table))]
+  (let [rows     (t2/hydrate (remove nil? fields) :table)
+        writable (u/index-by :id :can_write (t2/hydrate (into [] (comp (keep :table) (m/distinct-by :id)) rows)
+                                                        :can_write))
+        by-field (u/index-by :id #(boolean (get writable (:id (:table %)))) rows)]
     (for [field fields]
       (when field
-        (assoc field k (boolean (get writable (:id field))))))))
+        (assoc field k (get by-field (:id field) false))))))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
