@@ -975,6 +975,22 @@ describe("QueryBuilder - unsaved changes warning", () => {
       fetchMock.callHistory.calls("path:/api/dataset", { method: "POST" })
         .length;
 
+    // The filter runs the question. The notebook opens only after that run
+    // ends, so its result cannot land after the next run starts.
+    const waitForFilteredRun = async (runCount: number, value: string) => {
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory
+            .calls("path:/api/dataset", { method: "POST" })
+            .slice(runCount)
+            .some((call) =>
+              String(call.options.body).includes(JSON.stringify(value)),
+            ),
+        ).toBe(true),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+    };
+
     const removeFilterInNotebookAndVisualize = async (
       router: { location: { pathname: string } },
       filterName: string,
@@ -1017,6 +1033,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       );
       const popover = await screen.findByRole("dialog");
       await userEvent.click(await within(popover).findByText("Gadget"));
+      const runCount = getDatasetRunCount();
       await userEvent.click(
         within(popover).getByRole("button", { name: "Add filter" }),
       );
@@ -1025,6 +1042,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
           "Category is Gadget",
         ),
       ).toBeInTheDocument();
+      await waitForFilteredRun(runCount, "Gadget");
 
       await removeFilterInNotebookAndVisualize(router, "Category is Gadget");
     });
@@ -1040,6 +1058,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       const popover = await screen.findByRole("dialog");
       await userEvent.click(await within(popover).findByText("Category"));
       await userEvent.click(await within(popover).findByText("Gadget"));
+      const runCount = getDatasetRunCount();
       await userEvent.click(
         within(popover).getByRole("button", { name: "Apply filter" }),
       );
@@ -1048,6 +1067,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
           "Category is Gadget",
         ),
       ).toBeInTheDocument();
+      await waitForFilteredRun(runCount, "Gadget");
 
       await removeFilterInNotebookAndVisualize(router, "Category is Gadget");
     });
@@ -1086,6 +1106,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
           "Title is Rustic Paper Wallet",
         ),
       ).toBeInTheDocument();
+      await waitForFilteredRun(0, "Rustic Paper Wallet");
 
       await removeFilterInNotebookAndVisualize(
         router,
