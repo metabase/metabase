@@ -342,6 +342,71 @@ describe("DuplicatedContentPage", () => {
     );
   });
 
+  it("names the other transform as the duplicate of a selected transform", async () => {
+    const name = "Nightly transform";
+    setup({
+      findings: [
+        createMockContentDiagnosticsDuplicatedFinding({
+          id: 1,
+          entity_type: "transform",
+          entity_id: 10,
+          entity_display_name: name,
+          duplicate_count: 1,
+          details: {
+            view_count: undefined,
+            duplicate_entities: [
+              createMockContentDiagnosticsDuplicateEntity({
+                id: 11,
+                name,
+                entity_type: "transform",
+                view_count: undefined,
+              }),
+            ],
+          },
+        }),
+        createMockContentDiagnosticsDuplicatedFinding({
+          id: 2,
+          entity_type: "transform",
+          entity_id: 11,
+          entity_display_name: name,
+          duplicate_count: 1,
+          details: {
+            view_count: undefined,
+            duplicate_entities: [
+              createMockContentDiagnosticsDuplicateEntity({
+                id: 10,
+                name,
+                entity_type: "transform",
+                view_count: undefined,
+              }),
+            ],
+          },
+        }),
+      ],
+    });
+
+    const list = await screen.findByRole("treegrid");
+    const rows = await within(list).findAllByText(name);
+    expect(rows).toHaveLength(2);
+    // open the second finding, so the peer must be the first transform
+    await userEvent.click(rows[1]);
+
+    const sidebar = await screen.findByTestId("content-diagnostics-sidebar");
+    expect(within(sidebar).getByRole("link", { name })).toHaveAttribute(
+      "href",
+      "/data-studio/transforms/11",
+    );
+    const duplicates = within(sidebar).getByRole("region", {
+      name: "Duplicates",
+    });
+    expect(within(duplicates).getByText("Duplicates (1)")).toBeInTheDocument();
+    const peerLink = within(duplicates).getByRole("link", {
+      name: `${name}, Transform`,
+    });
+    expect(peerLink).toHaveAttribute("href", "/data-studio/transforms/10");
+    expect(peerLink).toHaveTextContent(name);
+  });
+
   it("reports duplicates that aren't visible to the user", async () => {
     const noneVisible = createMockContentDiagnosticsDuplicatedFinding({
       id: 1,
