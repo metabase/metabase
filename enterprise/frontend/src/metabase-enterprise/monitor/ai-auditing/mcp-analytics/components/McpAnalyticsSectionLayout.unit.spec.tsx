@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -46,6 +47,8 @@ const GROUP_MEMBERS_TABLE_ID = 2002;
 const TOOL_CALL_ID_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 0;
 const CREATED_AT_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 1;
 const TOOL_NAME_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 2;
+const STATUS_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 3;
+const ERROR_MESSAGE_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 11;
 
 const BASE_TYPE = {
   text: "type/Text",
@@ -95,6 +98,9 @@ const auditDatabase: Database = createMockDatabase({
       ["text", "user_display_name", "type/Name"],
       ["text", "client_display_name", "type/Category"],
       ["text", "client_version", "type/Category"],
+      ["text", "ip_address", null],
+      ["text", "error_type", "type/Category"],
+      ["text", "error_message", null],
     ]),
     buildTable(GROUP_MEMBERS_TABLE_ID, "v_group_members", [
       ["integer", "user_id", "type/Description"],
@@ -180,6 +186,7 @@ const emptyDatasetResponse: Dataset = createMockDataset({
 function setupEndpoints(
   dataset: Dataset = datasetResponse,
   datasetError = false,
+  datasetHandler?: (stage: McpMbqlStage) => Dataset,
 ) {
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
   // useAuditTable pulls the table's fields (and its FK targets') from here.
@@ -195,6 +202,12 @@ function setupEndpoints(
       status: 500,
       body: { message: "Audit query failed" },
     });
+  } else if (datasetHandler) {
+    fetchMock.post(
+      "path:/api/dataset",
+      (call) => datasetHandler(parseFirstStage(call.options.body) ?? {}),
+      { name: "dataset" },
+    );
   } else {
     fetchMock.post("path:/api/dataset", dataset, { name: "dataset" });
   }
@@ -204,17 +217,21 @@ function setupEndpoints(
 function setup({
   dataset,
   datasetError,
+  datasetHandler,
+  hasPii = false,
   initialRoute = Urls.monitorAiAuditingMcpUsage(),
 }: {
   dataset?: Dataset;
   datasetError?: boolean;
+  datasetHandler?: (stage: McpMbqlStage) => Dataset;
+  hasPii?: boolean;
   initialRoute?: string;
 } = {}) {
   // TreeTable measures column/row sizes via the DOM; jsdom needs a stubbed rect
   // for its virtualized rows to render.
   mockGetBoundingClientRect({ width: 100, height: 100 });
   setupEnterprisePlugins();
-  setupEndpoints(dataset, datasetError);
+  setupEndpoints(dataset, datasetError, datasetHandler);
 
   return renderWithProviders(
     <Route path={Urls.monitorAiAuditingMcp()}>
@@ -231,6 +248,7 @@ function setup({
         settings: mockSettings({
           "token-features": createMockTokenFeatures({ audit_app: true }),
           "mcp-enabled?": true,
+          "analytics-pii-retention-enabled": hasPii,
         }),
       }),
     },
@@ -245,22 +263,67 @@ type EventsMbqlStage = {
   "order-by"?: OrderByClause[];
 };
 
+// MBQL 5 field ref and filter clause: ["field", opts, fieldId] and [operator, opts, ...args]
+type FieldRef = [string, unknown, number];
+type FilterClause = [string, unknown, ...unknown[]];
+
+type McpMbqlStage = EventsMbqlStage & {
+  aggregation?: unknown[];
+  breakout?: unknown[];
+  filters?: FilterClause[];
+  fields?: FieldRef[];
+};
+
+function parseFirstStage(body: unknown): McpMbqlStage | undefined {
+  if (typeof body !== "string") {
+    return undefined;
+  }
+  // JSON.parse is untyped (`any`); the request body is an MBQL query, so assert its shape.
+  const query = JSON.parse(body) as { stages?: McpMbqlStage[] };
+  return query.stages?.[0];
+}
+
+/** The page's single-number "has any data?" probe: a count with no breakout and no paging. */
+const isCountProbe = (stage: McpMbqlStage) =>
+  stage.aggregation != null && stage.breakout == null && stage.page == null;
+
+/** Whether the stage keeps only failed calls (`status = "error"`). */
+const isErrorsOnly = (stage: McpMbqlStage) =>
+  (stage.filters ?? []).some(
+    ([operator, , column, value]) =>
+      operator === "=" &&
+      Array.isArray(column) &&
+      column[2] === STATUS_FIELD_ID &&
+      value === "error",
+  );
+
+const countDataset = (count: number): Dataset =>
+  createMockDataset({
+    data: createMockDatasetData({
+      rows: [[count]],
+      cols: [
+        createMockColumn({
+          source: "aggregation",
+          name: "count",
+          display_name: "Count",
+        }),
+      ],
+    }),
+    database_id: AUDIT_DB_ID,
+    row_count: 1,
+    running_time: 1,
+  });
+
 /**
  * The first MBQL stage of every adhoc `dataset` request issued so far. The row-level events query
  * is the one that carries a `:page` clause on stage 0 (the chart queries don't), so tests filter
  * on `.page`. Non-string bodies are skipped.
  */
-const eventsDatasetStages = (): EventsMbqlStage[] =>
+const eventsDatasetStages = (): McpMbqlStage[] =>
   fetchMock.callHistory
     .calls("dataset")
-    .map((call) => call.options?.body)
-    .filter((body): body is string => typeof body === "string")
-    .map((body) => {
-      // JSON.parse is untyped (`any`); the request body is an MBQL query, so assert its shape.
-      const query = JSON.parse(body) as { stages?: EventsMbqlStage[] };
-      return query.stages?.[0];
-    })
-    .filter((stage): stage is EventsMbqlStage => stage != null);
+    .map((call) => parseFirstStage(call.options?.body))
+    .filter((stage): stage is McpMbqlStage => stage != null);
 
 describe("McpAnalyticsSectionLayout", () => {
   it("redirects from root route to the /usage sub-route", async () => {
@@ -500,5 +563,169 @@ describe("McpAnalyticsSectionLayout", () => {
     // stuck true forever, so the page never got past the loader.
     expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
     expect(screen.queryByText("Calls by tool")).not.toBeInTheDocument();
+  });
+  describe("errors", () => {
+    const SUCCESS_TOOL = "e2e_smoke_tool";
+    const ERROR_TOOL = "e2e_error_tool";
+    // The view maps JSON-RPC error_code -32602 to this error_type.
+    const ERROR_TYPE = "Invalid params";
+    const ERROR_MESSAGE = "missing required argument: query";
+
+    /** One successful and one failed call, as the audit DB (H2) returns them: upper-cased names. */
+    const eventsDataset = (stage: McpMbqlStage): Dataset => {
+      const withErrorMessage = (stage.fields ?? []).some(
+        (field) => field[2] === ERROR_MESSAGE_FIELD_ID,
+      );
+      const names = [
+        "TOOL_CALL_ID",
+        "CREATED_AT",
+        "TOOL_NAME",
+        "USER_DISPLAY_NAME",
+        "STATUS",
+        "DURATION_MS",
+        "ERROR_TYPE",
+        ...(withErrorMessage ? ["ERROR_MESSAGE"] : []),
+      ];
+      const rows = [
+        [
+          "tc-2",
+          "2026-04-16T10:00:00Z",
+          ERROR_TOOL,
+          "Ada",
+          "error",
+          7,
+          ERROR_TYPE,
+          ERROR_MESSAGE,
+        ],
+        [
+          "tc-1",
+          "2026-04-16T09:00:00Z",
+          SUCCESS_TOOL,
+          "Ada",
+          "success",
+          42,
+          null,
+          null,
+        ],
+      ].map((row) => row.slice(0, names.length));
+      return createMockDataset({
+        data: createMockDatasetData({
+          rows,
+          cols: names.map((name) =>
+            createMockColumn({ name, display_name: name }),
+          ),
+        }),
+        database_id: AUDIT_DB_ID,
+        row_count: rows.length,
+        running_time: 1,
+      });
+    };
+
+    const handlerWithErrorCount =
+      (errorCount: number) =>
+      (stage: McpMbqlStage): Dataset => {
+        if (stage.page != null) {
+          return eventsDataset(stage);
+        }
+        if (isCountProbe(stage)) {
+          return countDataset(isErrorsOnly(stage) ? errorCount : 2);
+        }
+        return datasetResponse;
+      };
+
+    it("shows the Errors section on the Usage tab when there are failed calls", async () => {
+      setup({ datasetHandler: handlerWithErrorCount(1) });
+
+      expect(await screen.findByText("Calls by tool")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Errors" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Errors by type")).toBeInTheDocument();
+    });
+
+    it("hides the Errors section on the Usage tab when no call failed", async () => {
+      setup({ datasetHandler: handlerWithErrorCount(0) });
+
+      expect(await screen.findByText("Calls by tool")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          eventsDatasetStages().filter(
+            (stage) => isCountProbe(stage) && isErrorsOnly(stage),
+          ),
+        ).not.toHaveLength(0);
+      });
+      // Let the errors-only count response land and render before asserting the absence.
+      await fetchMock.callHistory.flush(true);
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+      expect(
+        screen.queryByRole("heading", { name: "Errors" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Errors by type")).not.toBeInTheDocument();
+    });
+
+    const setupEventsPage = async (hasPii: boolean) => {
+      setup({
+        datasetHandler: handlerWithErrorCount(1),
+        hasPii,
+        initialRoute: Urls.monitorAiAuditingMcpEvents(),
+      });
+
+      const table = await screen.findByRole("treegrid", {
+        name: "Tool calls",
+      });
+      const findRow = async (toolName: string) => {
+        const rows = await within(table).findAllByTestId("mcp-event");
+        const row = rows.find((element) =>
+          within(element).queryByText(toolName),
+        );
+        if (!row) {
+          throw new Error(`No row for ${toolName}`);
+        }
+        return row;
+      };
+      const errorRow = await findRow(ERROR_TOOL);
+      const successRow = await findRow(SUCCESS_TOOL);
+
+      const eventsStage = eventsDatasetStages().find(
+        (stage) => stage.page != null,
+      );
+      const requestedFieldIds = (eventsStage?.fields ?? []).map(
+        (field) => field[2],
+      );
+
+      return { table, errorRow, successRow, requestedFieldIds };
+    };
+
+    it("lists failed tool calls with their error type, without the error message when PII retention is off", async () => {
+      const { table, errorRow, successRow, requestedFieldIds } =
+        await setupEventsPage(false);
+
+      expect(within(errorRow).getByText(ERROR_TYPE)).toBeInTheDocument();
+      expect(
+        within(successRow).queryByText(ERROR_TYPE),
+      ).not.toBeInTheDocument();
+      expect(requestedFieldIds).toContain(TOOL_NAME_FIELD_ID);
+      expect(requestedFieldIds).not.toContain(ERROR_MESSAGE_FIELD_ID);
+      expect(
+        within(table).queryByRole("columnheader", { name: /Error message/ }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(ERROR_MESSAGE)).not.toBeInTheDocument();
+    });
+
+    it("shows the error message of a failed tool call when PII retention is on", async () => {
+      const { table, errorRow, successRow, requestedFieldIds } =
+        await setupEventsPage(true);
+
+      expect(within(errorRow).getByText(ERROR_TYPE)).toBeInTheDocument();
+      expect(requestedFieldIds).toContain(ERROR_MESSAGE_FIELD_ID);
+      expect(
+        within(table).getByRole("columnheader", { name: /Error message/ }),
+      ).toBeInTheDocument();
+      expect(within(errorRow).getByText(ERROR_MESSAGE)).toBeInTheDocument();
+      expect(
+        within(successRow).queryByText(ERROR_MESSAGE),
+      ).not.toBeInTheDocument();
+    });
   });
 });
