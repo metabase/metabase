@@ -228,7 +228,7 @@
                   (let [[created] (queries.card/create-cards!
                                    [(queries.card/new-card-row row api/*current-user-id*)])]
                     (queries.card/place-new-dashboard-questions! [created] [row])
-                    (queries.card/link-to-metabot-conversation! (:id created) id chart_id)
+                    (queries.card/link-to-metabot-conversation! id [[(:id created) chart_id]])
                     created))]
     (assoc created
            :metabot_conversation_id id

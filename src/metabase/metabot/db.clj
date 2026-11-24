@@ -937,18 +937,19 @@
              :archived false
              {:order-by [[:id :asc]]}))
 
-(mu/defn conversation-dashboard-questions
-  "The unarchived dashboard questions of `dashboard-id` that were saved from `chart-id` in the conversation with
-  `conversation-id`, oldest first."
+(mu/defn conversation-dashboard-chart-questions :- [:sequential :map]
+  "The unarchived dashboard questions of `dashboard-id` that were saved from any of `chart-ids` in the conversation with
+  `conversation-id`, oldest first for each chart."
   [conversation-id :- :string
-   chart-id        :- :string
+   chart-ids       :- [:sequential :string]
    dashboard-id    :- ::lib.schema.id/dashboard]
-  (t2/select :model/Card
-             :metabot_conversation_id conversation-id
-             :metabot_chart_id        chart-id
-             :dashboard_id            dashboard-id
-             :archived                false
-             {:order-by [[:id :asc]]}))
+  (mdb/select-batched #(t2/select :model/Card
+                                  :metabot_conversation_id [:auto/param conversation-id]
+                                  :metabot_chart_id        [:in [:auto/param %]]
+                                  :dashboard_id            [:auto/param dashboard-id]
+                                  :archived                false
+                                  {:order-by [[:id :asc]]})
+                      chart-ids))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 

@@ -390,7 +390,7 @@
                             "dashboard"  (save-to-dashboard! args)
                             "document"   (save-to-document! args))]
                 (when-let [conversation-id (shared/current-conversation-id)]
-                  (queries.card/link-to-metabot-conversation! (:id (:card saved)) conversation-id chart_id))
+                  (queries.card/link-to-metabot-conversation! conversation-id [[(:id (:card saved)) chart_id]]))
                 saved)))
           instruction-text (te/lines
                             (str "Saved \"" question-name "\" to " destination-name ".")

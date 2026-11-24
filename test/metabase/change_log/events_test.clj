@@ -222,7 +222,7 @@
           (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}
                          :model/Card                card                 {}]
             (is (= [["report_card" (:id card) "update"]]
-                   (logged-by #(card/link-to-metabot-conversation! (:id card) conversation-id "chart"))))))
+                   (logged-by #(card/link-to-metabot-conversation! conversation-id [[(:id card) "chart"]]))))))
         (testing "the classifier's data sensitivity cleared, for a table and then for its database"
           (mt/with-temp [:model/Database db      {}
                          :model/Table    table-a {:db_id (:id db)}

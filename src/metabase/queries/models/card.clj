@@ -2454,14 +2454,17 @@
   (invalidate-cached-results! card-ids invalidated-at))
 
 (mu/defn link-to-metabot-conversation! :- :int
-  "Record that the Card with `card-id` was saved from the MetabotConversation with `conversation-id` as `chart-id`, in
-  the change log and in one statement that publishes no event, returning the number updated."
-  [card-id         :- ::lib.schema.id/card
-   conversation-id :- :string
-   chart-id        :- :string]
-  (t2/with-transaction [_conn]
-    (change-log/log-rows! :model/Card :update :id card-id)
-    (queries.db/set-card-metabot-chart! card-id conversation-id chart-id)))
+  "Record that the Card of each `[card-id chart-id]` of `card-chart-ids` was saved from the MetabotConversation with
+  `conversation-id` as its chart, in the change log and in one statement per Card that publishes no event, returning
+  the number updated."
+  [conversation-id :- :string
+   card-chart-ids  :- [:sequential [:tuple ::lib.schema.id/card :string]]]
+  (if (empty? card-chart-ids)
+    0
+    (t2/with-transaction [_conn]
+      (change-log/log-changes! :model/Card :update (mapv (fn [[card-id _]] {:id card-id}) card-chart-ids))
+      (transduce (map (fn [[card-id chart-id]] (queries.db/set-card-metabot-chart! card-id conversation-id chart-id)))
+                 + 0 card-chart-ids))))
 
 (defmethod qp.card-writes/touch-last-used! :model/Card
   [_model card-id->timestamp]
