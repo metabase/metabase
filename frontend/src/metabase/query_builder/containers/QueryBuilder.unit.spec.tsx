@@ -56,6 +56,7 @@ import {
   createPeopleStateDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { isObject } from "metabase-types/guards";
 
 import { getQuestion } from "../store/selectors";
 
@@ -79,6 +80,13 @@ registerVisualizations();
 
 // A field id that is not in the sample database metadata
 const MISSING_FIELD_ID = 9999;
+
+function getSourceTableId(call: CallLog): unknown {
+  const body: unknown = JSON.parse(String(call.options.body));
+  const stages = isObject(body) ? body.stages : undefined;
+  const firstStage = Array.isArray(stages) ? stages[0] : undefined;
+  return isObject(firstStage) ? firstStage["source-table"] : undefined;
+}
 
 describe("QueryBuilder", () => {
   setupCanvasTextMeasurement();
@@ -348,6 +356,38 @@ describe("QueryBuilder", () => {
         ),
       ).toBeInTheDocument();
       expect(within(visualization).getByText(message)).toBeInTheDocument();
+    });
+
+    it("renders the permission error when the backend refuses an ad-hoc question with a 403", async () => {
+      // Registered before `setup`, so it matches before the default dataset route.
+      fetchMock.post("path:/api/dataset", (call: CallLog) =>
+        getSourceTableId(call) === ORDERS_ID
+          ? {
+              status: 403,
+              body: {
+                data: { rows: [], cols: [] },
+                row_count: 0,
+                status: "failed",
+                error: "You do not have permissions to run this query.",
+                error_type: "missing-required-permissions",
+              },
+            }
+          : createMockDataset(),
+      );
+      await setup({ card: TEST_UNSAVED_STRUCTURED_CARD });
+
+      const visualization = await screen.findByTestId(
+        "query-visualization-root",
+      );
+      expect(
+        await within(visualization).findByText(
+          "Sorry, you don't have permission to run this query.",
+        ),
+      ).toBeInTheDocument();
+      const runCall = checkNotNull(
+        fetchMock.callHistory.lastCall("path:/api/dataset", { method: "POST" }),
+      );
+      expect(getSourceTableId(runCall)).toBe(ORDERS_ID);
     });
   });
 
