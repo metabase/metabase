@@ -59,7 +59,7 @@
    [:type             {:optional true} [:maybe ::lib.schema.id/field]]])
 
 (mr/def ::facets
-  "A Field's `facets`: the roles it plays besides its semantic type, by facet."
+  "A Field's `facets`: the roles it plays besides its semantic type."
   [:ref ::lib.schema.metadata/column.facets])
 
 (mr/def ::dimension.type

@@ -331,11 +331,9 @@
   (into [:enum {:decode/normalize keyword}] column-data-sensitivity-types))
 
 (mr/def ::column.facets
-  "A Field's `facets`: the roles it plays besides its semantic type. Each key holds one of the types
-  [[types/field-facet-types]] lists for it."
-  (into [:map {:closed true}]
-        (map (fn [k] [k {:optional true} (into [:enum {:decode/normalize keyword}] (types/field-facet-types k))]))
-        types/field-facet-keys))
+  "A Field's `facets`: the roles it plays besides its semantic type, each one of the types
+  [[types/field-facet-types]] lists."
+  [:sequential (into [:enum {:decode/normalize keyword}] (mapcat types/field-facet-types) types/field-facet-keys)])
 
 (mr/def ::column.legacy-source
   "Possible values for `column.source` -- this is added by [[metabase.lib.metadata.result-metadata]] for historical

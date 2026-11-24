@@ -10,7 +10,7 @@
 (def ^:private structural-metadata
   {:is_grain           false
    :attribute_scd_type 1
-   :facets             {:time :type/EventTimestamp}})
+   :facets             [:type/EventTimestamp]})
 
 (deftest structural-metadata-round-trip-test
   (mt/with-temp [:model/Field             {field-id :id} {}
@@ -23,8 +23,8 @@
 (deftest invalid-structural-metadata-test
   (mt/with-temp [:model/Field {field-id :id} {}]
     (doseq [[column value] [[:attribute_scd_type 4]
-                            [:facets {:time :type/NotAType}]
-                            [:facets {:color :type/Category}]]]
+                            [:facets [:type/NotAType]]
+                            [:facets {:time :type/EventTimestamp}]]]
       (testing (pr-str column value)
         (is (=? {:status-code 400, :errors {column some?}}
                 (try
@@ -48,14 +48,14 @@
 (deftest bad-stored-facet-is-dropped-test
   (mt/with-temp [:model/Field             {field-id :id} {}
                  :model/FieldUserSettings _              {:field_id field-id, :display_name "User Name"}]
-    (t2/update! :metabase_field_user_settings :field_id field-id {:facets "{\"time\":\"type/NotAType\"}"})
+    (t2/update! :metabase_field_user_settings :field_id field-id {:facets "[\"type/NotAType\"]"})
     (testing "stored facets that are all dropped read as nil"
       (is (nil? (t2/select-one-fn :facets :model/FieldUserSettings :field_id field-id))))))
 
 (deftest bad-stored-facets-read-as-nil-test
   (mt/with-temp [:model/Field             {field-id :id} {}
                  :model/FieldUserSettings _              {:field_id field-id, :display_name "User Name"}]
-    (doseq [stored ["not json" "[\"type/Category\"]"]]
+    (doseq [stored ["not json" "{\"time\":\"type/EventTimestamp\"}"]]
       (testing stored
         (t2/update! :metabase_field_user_settings :field_id field-id {:facets stored})
         (is (nil? (t2/select-one-fn :facets :model/FieldUserSettings :field_id field-id)))))))
@@ -63,7 +63,7 @@
 (def ^:private synced-structural-metadata
   {:is_grain           true
    :attribute_scd_type 2
-   :facets             {:key :type/DurableKey}})
+   :facets             [:type/DurableKey]})
 
 (def ^:private structural-metadata-flags
   {:is_grain_set true, :attribute_scd_type_set true, :facets_set true})

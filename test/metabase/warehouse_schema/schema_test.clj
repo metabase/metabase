@@ -89,22 +89,19 @@
 
 (deftest ^:parallel facets-schema-test
   (is (mr/validate ::warehouse-schema.schema/facets
-                   {:time :type/EventTimestamp, :key :type/DurableKey, :structure :type/CustomProperty
-                    :lifecycle :type/SoftDeleteFlag}))
-  (is (mr/validate ::warehouse-schema.schema/facets {}))
-  (testing "a facet holds a known type under a known key"
-    (is (not (mr/validate ::warehouse-schema.schema/facets {:time :type/NotAType})))
-    (is (not (mr/validate ::warehouse-schema.schema/facets {:time :role/Fact})))
-    (is (not (mr/validate ::warehouse-schema.schema/facets {:color :type/Category})))
-    (is (not (mr/validate ::warehouse-schema.schema/facets {:time nil}))))
-  (testing "a facet holds only a type its key lists"
-    (is (not (mr/validate ::warehouse-schema.schema/facets {:time :type/PK})))
-    (is (not (mr/validate ::warehouse-schema.schema/facets {:time :type/DurableKey})))
-    (is (not (mr/validate ::warehouse-schema.schema/facets {:key :type/HashKey}))
-        "a descendant of a listed type is not listed"))
+                   [:type/EventTimestamp :type/DurableKey :type/CustomProperty :type/SoftDeleteFlag]))
+  (is (mr/validate ::warehouse-schema.schema/facets []))
+  (testing "facets are a list of listed facet types"
+    (is (not (mr/validate ::warehouse-schema.schema/facets [:type/NotAType])))
+    (is (not (mr/validate ::warehouse-schema.schema/facets [:role/Fact])))
+    (is (not (mr/validate ::warehouse-schema.schema/facets [:type/PK])))
+    (is (not (mr/validate ::warehouse-schema.schema/facets [nil])))
+    (is (not (mr/validate ::warehouse-schema.schema/facets {:time :type/EventTimestamp}))))
+  (testing "a descendant of a listed type is not listed"
+    (is (not (mr/validate ::warehouse-schema.schema/facets [:type/HashKey]))))
   (testing "string types normalize to keywords"
-    (is (= {:time :type/EventTimestamp}
-           (lib/normalize ::warehouse-schema.schema/facets {:time "type/EventTimestamp"})))))
+    (is (= [:type/EventTimestamp]
+           (lib/normalize ::warehouse-schema.schema/facets ["type/EventTimestamp"])))))
 
 (deftest ^:parallel table-structural-metadata-schema-test
   (let [table {:id                 1
@@ -127,8 +124,8 @@
       (is (not (mr/validate ::warehouse-schema.schema/table.update {:grain (apply str (repeat 255 "x"))}))))))
 
 (deftest ^:parallel field-structural-metadata-schema-test
-  (let [field {:id 1, :is_grain true, :attribute_scd_type 2, :facets {:time :type/EventTimestamp}}]
+  (let [field {:id 1, :is_grain true, :attribute_scd_type 2, :facets [:type/EventTimestamp]}]
     (is (mr/validate ::warehouse-schema.schema/field field))
     (is (mr/validate ::warehouse-schema.schema/field-user-settings (dissoc field :id)))
-    (is (not (mr/validate ::warehouse-schema.schema/field (assoc field :facets "{\"time\":\"type/EventTimestamp\"}"))))
+    (is (not (mr/validate ::warehouse-schema.schema/field (assoc field :facets "[\"type/EventTimestamp\"]"))))
     (is (not (mr/validate ::warehouse-schema.schema/field-user-settings {:attribute_scd_type 4})))))

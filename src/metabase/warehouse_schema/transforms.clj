@@ -102,24 +102,24 @@
                                            nil))))}))
 
 (defn- facets-out
-  "The facets `json-out` reads from the stored JSON `s`, without any facet with an unknown key or a type its key does
-  not allow. Facets that are not a JSON object, or that were all dropped, read as nil."
+  "The facets `json-out` reads from the stored JSON `s`, without any facet that is not a facet type. Facets that are
+  not a JSON array, or that were all dropped, read as nil."
   [json-out s]
   (let [facets (json-out s)]
     (cond
-      (nil? facets)       nil
-      (not (map? facets)) (do (log/warnf "Invalid facets %s: reading them as nil" (pr-str s))
-                              nil)
-      :else               (let [kept (into {}
-                                           (keep (fn [[k v]]
-                                                   (let [t (some-> v keyword)]
-                                                     (if (mr/validate ::warehouse-schema.schema/facets {k t})
-                                                       [k t]
-                                                       (do (log/warnf "Invalid facet %s %s: dropping it" k (pr-str v))
-                                                           nil)))))
-                                           facets)]
-                            (when (or (seq kept) (empty? facets))
-                              kept)))))
+      (nil? facets)              nil
+      (not (sequential? facets)) (do (log/warnf "Invalid facets %s: reading them as nil" (pr-str s))
+                                     nil)
+      :else                      (let [kept (into []
+                                                  (keep (fn [v]
+                                                          (let [t (some-> v keyword)]
+                                                            (if (mr/validate ::warehouse-schema.schema/facets [t])
+                                                              t
+                                                              (do (log/warnf "Invalid facet %s: dropping it" (pr-str v))
+                                                                  nil)))))
+                                                  facets)]
+                                   (when (or (seq kept) (empty? facets))
+                                     kept)))))
 
 (def ^:private transform-facets
   (let [{json-out :out} (mi/transform-json-with-schema "facets" ::warehouse-schema.schema/facets)]

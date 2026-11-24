@@ -447,17 +447,14 @@
 (def ^:private structural-metadata
   {:is_grain           true
    :attribute_scd_type 2
-   :facets             {:time      :type/EventTimestamp
-                        :key       :type/DurableKey
-                        :structure :type/CustomProperty
-                        :lifecycle :type/SoftDeleteFlag}})
+   :facets             [:type/EventTimestamp :type/DurableKey :type/CustomProperty :type/SoftDeleteFlag]})
 
 (def ^:private invalid-structural-metadata
   [[:attribute_scd_type 4]
    [:attribute_scd_type -1]
-   [:facets             {:time :type/NotAType}]
-   [:facets             {:color :type/Category}]
-   [:facets             ["type/Category"]]])
+   [:facets             [:type/NotAType]]
+   [:facets             ["type/Category"]]
+   [:facets             {:time :type/EventTimestamp}]])
 
 (deftest structural-metadata-round-trip-test
   (mt/with-temp [:model/Field {field-id :id} structural-metadata]
@@ -471,8 +468,8 @@
            (select-keys (t2/select-one :model/Field :id field-id) (keys structural-metadata))))))
 
 (deftest facets-string-values-test
-  (mt/with-temp [:model/Field {field-id :id} {:facets {:time "type/EventTimestamp"}}]
-    (is (= {:time :type/EventTimestamp} (t2/select-one-fn :facets :model/Field :id field-id)))))
+  (mt/with-temp [:model/Field {field-id :id} {:facets ["type/EventTimestamp"]}]
+    (is (= [:type/EventTimestamp] (t2/select-one-fn :facets :model/Field :id field-id)))))
 
 (deftest structural-metadata-is-valid-lib-column-metadata-test
   (mt/with-temp [:model/Field {field-id :id} structural-metadata]
@@ -505,12 +502,12 @@
 (deftest bad-stored-facet-is-dropped-test
   (mt/with-temp [:model/Field {field-id :id} {}]
     (t2/update! :metabase_field :id field-id
-                {:facets "{\"time\":\"type/EventTimestamp\",\"key\":\"type/NotAType\",\"color\":\"type/Category\"}"})
-    (is (= {:time :type/EventTimestamp} (t2/select-one-fn :facets :model/Field :id field-id)))))
+                {:facets "[\"type/EventTimestamp\",\"type/NotAType\",\"type/Category\"]"})
+    (is (= [:type/EventTimestamp] (t2/select-one-fn :facets :model/Field :id field-id)))))
 
 (deftest bad-stored-facets-read-as-nil-test
   (mt/with-temp [:model/Field {field-id :id} {}]
-    (doseq [stored ["not json" "[\"type/Category\"]"]]
+    (doseq [stored ["not json" "{\"time\":\"type/EventTimestamp\"}"]]
       (testing stored
         (t2/update! :metabase_field :id field-id {:facets stored})
         (is (nil? (t2/select-one-fn :facets :model/Field :id field-id)))))))

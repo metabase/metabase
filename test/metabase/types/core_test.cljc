@@ -219,6 +219,15 @@
     (let [ts (mapcat val types/field-facet-types)]
       (is (= (count ts) (count (set ts)))))))
 
+(deftest ^:parallel field-facet-type->key-test
+  (is (= :time (types/field-facet-type->key :type/ValidFrom)))
+  (is (= :structure (types/field-facet-type->key :type/CustomProperty)))
+  (is (nil? (types/field-facet-type->key :type/PK)))
+  (testing "every listed type maps back to the kind that lists it"
+    (doseq [[facet-key ts] types/field-facet-types
+            t              ts]
+      (is (= facet-key (types/field-facet-type->key t))))))
+
 (deftest ^:parallel semantic-layer-types-test
   (testing "semantic-layer types derive from the type consumers check with isa?"
     (are [t parent] (isa? t parent)

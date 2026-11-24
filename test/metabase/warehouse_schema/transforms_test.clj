@@ -81,24 +81,22 @@
 (deftest ^:parallel facets-test
   (let [transforms warehouse-schema.transforms/field-transforms]
     (testing "a read keeps the valid facets and drops the others"
-      (is (= {:time :type/EventTimestamp}
+      (is (= [:type/EventTimestamp :type/DurableKey]
              (read-back transforms :facets
-                        "{\"time\":\"type/EventTimestamp\",\"key\":\"type/NotAType\",\"color\":\"type/Category\"}")))
-      (is (= {:key :type/DurableKey}
-             (read-back transforms :facets
-                        "{\"key\":\"type/DurableKey\",\"time\":\"type/DurableKey\",\"lifecycle\":\"type/Flag\"}"))
-          "a type under a key that does not list it is dropped"))
+                        "[\"type/EventTimestamp\",\"type/NotAType\",\"type/DurableKey\",\"type/Flag\"]"))))
     (testing "stored facets that are all dropped read as nil, but stored empty facets read as empty"
-      (is (nil? (read-back transforms :facets "{\"time\":\"type/PK\"}")))
-      (is (= {} (read-back transforms :facets "{}"))))
-    (testing "stored facets that are not a JSON object read as nil"
-      (is (nil? (read-back transforms :facets "[\"type/Category\"]")))
+      (is (nil? (read-back transforms :facets "[\"type/PK\"]")))
+      (is (= [] (read-back transforms :facets "[]"))))
+    (testing "stored facets that are not a JSON array read as nil"
+      (is (nil? (read-back transforms :facets "{\"time\":\"type/EventTimestamp\"}")))
       (is (nil? (read-back transforms :facets "not json"))))
     (testing "a write with an unknown facet throws a 400"
       (is (=? {:status-code 400, :errors {:facets some?}}
-              (write-error transforms :facets {:color :type/Category})))
+              (write-error transforms :facets [:type/Category])))
       (is (=? {:status-code 400, :errors {:facets some?}}
-              (write-error transforms :facets {:time :type/PK}))))))
+              (write-error transforms :facets [:type/PK])))
+      (is (=? {:status-code 400, :errors {:facets some?}}
+              (write-error transforms :facets {:time :type/EventTimestamp}))))))
 
 (deftest ^:parallel check-values-test
   (testing "scd_type is 0 to 7"

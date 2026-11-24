@@ -57,7 +57,7 @@
 
 (def ^:private custom-property-facet
   "The values a wildcard column's custom property facet is saved as."
-  {:facets {:structure :type/CustomProperty}})
+  {:facets [:type/CustomProperty]})
 
 (defn- classify
   "Every prototype classifier's output for the Table `table`, given the other `schema-tables` in its schema."
@@ -116,7 +116,7 @@
   - `:low-confidence-role`, `:low-confidence-history`, `:low-confidence-eav`: a guess is stored like a sure answer.
   - `:scd-6-current-values`: the columns holding each entity's current value are only named in the signal.
   - `[:wildcard-definition-table name]`: the table defining this table's wildcard columns has no column.
-  - `[:custom-property-facet field-name]`: the facet's prefix and suffix become `{:structure :type/CustomProperty}`."
+  - `[:custom-property-facet field-name]`: the facet's prefix and suffix become `[:type/CustomProperty]`."
   [{:keys [table-role history eav wildcard-definition-table custom-property-facets]} id->name]
   (cond-> (into #{}
                 (map (fn [field-id] [:custom-property-facet (id->name field-id)]))
