@@ -21,6 +21,7 @@ import {
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { Outlet, Route, toRouteObjects } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Table, TableId } from "metabase-types/api";
 import {
@@ -220,10 +221,11 @@ describe("published table pages", () => {
       );
       expect(
         await breadcrumbs.findByRole("link", { name: "Semantic layer" }),
-      ).toBeInTheDocument();
-      expect(
-        breadcrumbs.getByRole("link", { name: "Data" }),
-      ).toBeInTheDocument();
+      ).toHaveAttribute("href", Urls.dataStudioLibrary({ expandedIds: [] }));
+      expect(breadcrumbs.getByRole("link", { name: "Data" })).toHaveAttribute(
+        "href",
+        Urls.dataStudioLibrary({ expandedIds: [DATA_COLLECTION.id] }),
+      );
       expect(breadcrumbs.getByText("Orders")).toBeInTheDocument();
 
       const sidebar = within(screen.getByTestId("table-description-sidebar"));
