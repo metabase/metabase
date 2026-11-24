@@ -186,9 +186,15 @@ jobs:
             echo "::error::Expected exactly one tarball in pack/, got ${#FILES[@]}"
             exit 1
           fi
-          PACKED=$(tar -xzOf "${FILES[0]}" package/package.json | jq -r .version)
-          if [ "$PACKED" != "$VERSION" ]; then
-            echo "::error::Tarball version '$PACKED' does not match release version '$VERSION'"
+          MANIFEST=$(tar -xzOf "${FILES[0]}" package/package.json)
+          PACKED_NAME=$(jq -r .name <<< "$MANIFEST")
+          if [ "$PACKED_NAME" != "@metabase/ui" ]; then
+            echo "::error::Tarball package name '$PACKED_NAME' does not match @metabase/ui"
+            exit 1
+          fi
+          PACKED_VERSION=$(jq -r .version <<< "$MANIFEST")
+          if [ "$PACKED_VERSION" != "$VERSION" ]; then
+            echo "::error::Tarball version '$PACKED_VERSION' does not match release version '$VERSION'"
             exit 1
           fi
           case "$NPM_TAG" in
