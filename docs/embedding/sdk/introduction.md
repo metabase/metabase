@@ -27,7 +27,7 @@ Try out the SDK in the [Modular embedding SDK playground](https://sdk-playground
 
 ## Modular embedding SDK prerequisites
 
-- React 19. If your app uses React 18 or earlier, the SDK displays an error. To use React 18, use [Metabase 64 LTS](https://www.metabase.com/version-support).
+- React 19, starting with Metabase 66. If your app uses React 18 or earlier, the SDK displays an error. To use React 18, use [Metabase 64 LTS](https://www.metabase.com/version-support).
 - Nodejs 20.x or higher.
 - Metabase version 1.52 or higher.
 
