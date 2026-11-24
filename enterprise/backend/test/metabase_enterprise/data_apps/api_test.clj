@@ -285,10 +285,13 @@
         (testing "PUT /:slug can disable an app"
           (is (=? {:slug "demo" :enabled false}
                   (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled false}))))
-        (testing "a disabled app is not served to a user with access"
+        (testing "a disabled app is not found by a user without access"
+          (mt/user-http-request :rasta :get 404 "ee/apps/demo")
+          (mt/user-real-request :rasta :get 404 "ee/apps/demo/bundle"))
+        (testing "a disabled app is not found by a user with access"
           (group-access/add-groups! (t2/select-one :model/DataApp :slug "demo") [(:id (perms/all-users-group))])
-          (mt/user-http-request :rasta :get 403 "ee/apps/demo")
-          (mt/user-real-request :rasta :get 403 "ee/apps/demo/bundle"))
+          (mt/user-http-request :rasta :get 404 "ee/apps/demo")
+          (mt/user-real-request :rasta :get 404 "ee/apps/demo/bundle"))
         (testing "a superuser still reads a disabled app's metadata and bundle"
           (is (=? {:slug "demo" :enabled false}
                   (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))
