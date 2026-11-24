@@ -70,6 +70,8 @@ registerVisualizations();
 const MISSING_FIELD_ID = 9999;
 
 describe("QueryBuilder", () => {
+  setupCanvasTextMeasurement();
+
   beforeEach(() => {
     setupLastDownloadFormatEndpoints();
   });
@@ -1024,7 +1026,6 @@ describe("QueryBuilder", () => {
     });
   });
   describe("saving a chart from the raw table view", () => {
-    setupCanvasTextMeasurement();
     mockGetBoundingClientRect({ width: 1000, height: 800 });
 
     const LINE_CARD = createMockUnsavedCard({
@@ -1303,7 +1304,6 @@ describe("QueryBuilder", () => {
     });
   });
   describe("chart settings after adding a query stage", () => {
-    setupCanvasTextMeasurement();
     mockGetBoundingClientRect({ width: 1000, height: 800 });
 
     const STATE_COUNTS: [string, number][] = [
@@ -1543,7 +1543,6 @@ describe("QueryBuilder", () => {
     });
   });
   describe("chart settings after removing query clauses", () => {
-    setupCanvasTextMeasurement();
     mockGetBoundingClientRect({ width: 1000, height: 800 });
 
     const countByMonthStage: TestStageWithSourceSpec = {
@@ -1733,16 +1732,18 @@ function getIn(value: unknown, path: (string | number)[]): unknown {
  * echarts keeps the first 2D canvas context it measures text with, and the
  * file's `afterEach` resets every mock, including the `jest.fn` methods
  * jest-canvas-mock puts on that context. A chart rendered after another chart
- * then measures text as `undefined` and never settles. This gives echarts a
- * context of the current test.
+ * then measures text as `undefined` and never settles. This makes echarts
+ * measure text with a new context of the current document on each call.
+ * echarts stays loaded after this file when the test runner keeps packages
+ * loaded between files, so the function must not keep a context of this file.
  */
 function setupCanvasTextMeasurement() {
   beforeEach(() => {
-    const context = checkNotNull(
-      document.createElement("canvas").getContext("2d"),
-    );
     setPlatformAPI({
       measureText: (text: string, font?: string) => {
+        const context = checkNotNull(
+          document.createElement("canvas").getContext("2d"),
+        );
         context.font = font ?? "12px sans-serif";
         return context.measureText(text);
       },
