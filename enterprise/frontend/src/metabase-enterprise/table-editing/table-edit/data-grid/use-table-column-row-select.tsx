@@ -1,5 +1,6 @@
 import type { Row, Table } from "@tanstack/react-table";
 import { useMemo } from "react";
+import { useLatest } from "react-use";
 
 import { BaseCell, type ColumnOptions } from "metabase/data-grid";
 import { Checkbox, Flex, Group, Icon, Tooltip } from "metabase/ui";
@@ -17,9 +18,15 @@ type UseTableColumnRowSelectProps = {
 export function useTableColumnRowSelect({
   onRowEditClick,
 }: UseTableColumnRowSelectProps) {
+  // The callback changes with the dataset, so it is read at click time to keep the column's cells mounted
+  const onRowEditClickRef = useLatest(onRowEditClick);
+
   return useMemo<ColumnOptions<RowValues, RowValue> | undefined>(
-    () => getRowSelectColumn({ onRowEditClick }),
-    [onRowEditClick],
+    () =>
+      getRowSelectColumn({
+        onRowEditClick: (rowIndex) => onRowEditClickRef.current(rowIndex),
+      }),
+    [onRowEditClickRef],
   );
 }
 

@@ -267,13 +267,9 @@ async function setupGrid(options?: Parameters<typeof setup>[0]) {
 }
 
 /**
- * Each time the dataset, the table metadata or a form description arrives, the
- * grid builds new header and cell components for every column, and React
- * remounts those cells. A click whose pointer events straddle a remount lands
- * on a detached node and is lost, and a cell clicked before the update form
- * description arrives does not know that its column is readonly. The sort
- * indicator is read from the URL, so it shows before the dataset refetch that
- * the sort starts has finished.
+ * A cell clicked before the update form description arrives does not know that
+ * its column is readonly. The sort indicator is read from the URL, so it shows
+ * before the dataset refetch that the sort starts has finished.
  *
  * So wait for every running API request, then for the animation frame on
  * which RTK's `autoBatchEnhancer` notifies subscribers of the results, so that
@@ -322,10 +318,6 @@ function getCell(rowIndex: number, columnId: string) {
   return cell;
 }
 
-/**
- * The header remounts each time the grid gets new data, so query it again for
- * each assertion.
- */
 function getHeader() {
   return within(screen.getByTestId("table-header"));
 }
@@ -629,6 +621,34 @@ describe("EditTableDataContainer", () => {
         ).not.toBeInTheDocument(),
       );
       expect(router?.location.search).toBe("");
+    });
+
+    it("keeps handling header clicks while a sort refetch runs", async () => {
+      const { store } = await setupGrid();
+      fetchMock.modifyRoute("dataset", { delay: 300 });
+      const nameHeader = getHeader().getByText("Name");
+
+      await userEvent.click(nameHeader);
+      await userEvent.click(nameHeader);
+
+      await waitForGridToSettle(store, { datasetRequests: 3 });
+      expect(
+        getHeader().getByLabelText("chevrondown icon"),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps body cells mounted when the dataset is refetched", async () => {
+      const { store } = await setupGrid();
+      const nameCellContent = within(getCell(1, "name")).getByText("Bravo");
+      const rowCheckbox = getRowSelectSection(1).getByTestId(
+        "row-select-checkbox",
+      );
+
+      await userEvent.click(getHeader().getByText("Score"));
+      await waitForGridToSettle(store, { datasetRequests: 2 });
+
+      expect(nameCellContent).toBeInTheDocument();
+      expect(rowCheckbox).toBeInTheDocument();
     });
 
     it("adds a filter and keeps filter and sort in the URL across reloads", async () => {
