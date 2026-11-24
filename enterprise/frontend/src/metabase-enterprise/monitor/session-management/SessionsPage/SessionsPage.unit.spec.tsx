@@ -265,6 +265,232 @@ describe("SessionsPage", () => {
     });
   });
 
+  describe("ended tab", () => {
+    const user = (id: number, common_name: string) =>
+      createMockSessionUser({ id, common_name });
+    const DEACTIVATED = createMockSession({
+      id: "deactivated-session",
+      user: user(5, "No Data Tableton"),
+      status: "ended",
+      end_reason: "user-deactivated",
+    });
+    const PASSWORD_CHANGED = createMockSession({
+      id: "password-changed-session",
+      user: user(6, "Robert Tableton"),
+      status: "ended",
+      end_reason: "password-change",
+    });
+    const SUPPORT_ACCESS = createMockSession({
+      id: "support-access-session",
+      user: user(7, "Support Engineer"),
+      provider: "support-access-grant",
+      status: "ended",
+      end_reason: "support-grant-revoked",
+    });
+    const LOGGED_OUT = createMockSession({
+      id: "logged-out-session",
+      user: user(8, "Read Only Tableton"),
+      status: "ended",
+      end_reason: "logout",
+    });
+    const ENDED = [DEACTIVATED, PASSWORD_CHANGED, SUPPORT_ACCESS, LOGGED_OUT];
+
+    /** Lists the ended sessions that match the request, as the endpoint would */
+    const getEndedListResponse = (
+      params: URLSearchParams,
+    ): SessionListResponse => {
+      const reason = params.get("reason");
+      const providers = params.getAll("provider");
+      const query = params.get("query")?.toLowerCase();
+      const data =
+        params.get("status") !== "ended"
+          ? []
+          : ENDED.filter(
+              (session) =>
+                (reason === null || session.end_reason === reason) &&
+                (providers.length === 0 ||
+                  providers.includes(session.provider)) &&
+                (query === undefined ||
+                  session.user.common_name?.toLowerCase().includes(query)),
+            );
+      return { data, total: data.length, limit: PAGE_SIZE, offset: 0 };
+    };
+
+    const expectOnlyListed = async (...listed: Session[]) => {
+      await waitFor(() => {
+        ENDED.forEach((session) => {
+          const row = screen.queryByTestId(`session-row-${session.id}`);
+          if (listed.includes(session)) {
+            expect(row).toBeInTheDocument();
+          } else {
+            expect(row).not.toBeInTheDocument();
+          }
+        });
+      });
+    };
+
+    const openFilters = () =>
+      userEvent.click(screen.getByRole("button", { name: "Show filters" }));
+
+    const applyFilters = async () =>
+      userEvent.click(
+        within(await screen.findByRole("dialog")).getByRole("button", {
+          name: "Apply",
+        }),
+      );
+
+    const clearFilters = async () => {
+      await openFilters();
+      await userEvent.click(
+        within(await screen.findByRole("dialog")).getByRole("button", {
+          name: "Clear filters",
+        }),
+      );
+    };
+
+    it("narrows the ended sessions by reason, auth method and search", async () => {
+      const { router } = setup({
+        initialRoute: `${PATHNAME}?tab=ended`,
+        getListResponse: getEndedListResponse,
+      });
+      await expectOnlyListed(...ENDED);
+      expect(
+        await screen.findByTestId("session-row-logged-out-session"),
+      ).toHaveTextContent("Signed out");
+      expect(
+        screen.getByTestId("session-row-deactivated-session"),
+      ).toHaveTextContent("User deactivated");
+      expect(
+        screen.getByTestId("session-row-password-changed-session"),
+      ).toHaveTextContent("Password changed");
+      expect(
+        screen.getByTestId("session-row-support-access-session"),
+      ).toHaveTextContent("Support access revoked");
+
+      await openFilters();
+      await userEvent.click(
+        within(await screen.findByRole("dialog")).getByRole("textbox", {
+          name: "Reason",
+        }),
+      );
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Password changed" }),
+      );
+      await applyFilters();
+      await expectOnlyListed(PASSWORD_CHANGED);
+      expect(getLastListParams().get("reason")).toBe("password-change");
+
+      await clearFilters();
+      // the unfiltered list comes back from the cache, without a new request
+      await expectOnlyListed(...ENDED);
+      await waitFor(() => {
+        expect(router?.location.search).toBe("?tab=ended");
+      });
+
+      await openFilters();
+      await userEvent.click(
+        within(await screen.findByRole("dialog")).getByRole("button", {
+          name: "Support access",
+        }),
+      );
+      await applyFilters();
+      await expectOnlyListed(SUPPORT_ACCESS);
+      expect(getLastListParams().getAll("provider")).toEqual([
+        "support-access-grant",
+      ]);
+
+      await clearFilters();
+      await expectOnlyListed(...ENDED);
+      await userEvent.type(
+        screen.getByLabelText("Search sessions"),
+        "Read Only",
+      );
+      await expectOnlyListed(LOGGED_OUT);
+      expect(getLastListParams().get("query")).toBe("Read Only");
+      expect(getLastListParams().has("provider")).toBe(false);
+    });
+
+    it("is read-only: no selection, and no way to revoke an ended session itself", async () => {
+      const revokedByAdmin = (id: string, userId: number, name: string) =>
+        createMockSession({
+          id,
+          user: user(userId, name),
+          status: "ended",
+          end_reason: "admin",
+        });
+      setup({
+        initialRoute: `${PATHNAME}?tab=ended`,
+        sessions: [
+          revokedByAdmin("first-revoked", 5, "No Data Tableton"),
+          revokedByAdmin("second-revoked", 6, "Robert Tableton"),
+        ],
+      });
+
+      await userEvent.click(
+        await screen.findByTestId("session-row-second-revoked"),
+      );
+
+      expect(
+        within(screen.getByTestId("sessions-table")).queryAllByRole("checkbox"),
+      ).toHaveLength(0);
+      const sidebar = await getSidebar();
+      expect(
+        within(sidebar).getByRole("heading", { name: "Robert Tableton" }),
+      ).toBeInTheDocument();
+      expect(within(sidebar).getByText("Revoked by admin")).toBeInTheDocument();
+      expect(
+        within(sidebar).getByRole("button", { name: "Revoke active sessions" }),
+      ).toBeInTheDocument();
+      expect(
+        within(sidebar).queryByRole("button", { name: "Revoke session" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("the admin's own session", () => {
+    it("can't be selected or revoked from here", async () => {
+      const own = createMockSession({
+        id: "own-session",
+        user: createMockSessionUser({ id: 1, common_name: "Bobby Tables" }),
+        current: true,
+      });
+      setup({ sessions: [ANN_SESSION, own, BOB_SESSION] });
+
+      const ownRow = await screen.findByTestId("session-row-own-session");
+      expect(within(ownRow).getByText("This session")).toBeInTheDocument();
+      expect(within(ownRow).getByRole("checkbox")).toBeDisabled();
+      expect(
+        within(screen.getByTestId("session-row-ann-session")).getByRole(
+          "checkbox",
+        ),
+      ).toBeEnabled();
+
+      await userEvent.click(ownRow);
+
+      const sidebar = await getSidebar();
+      expect(
+        within(sidebar).getByRole("heading", { name: "Bobby Tables" }),
+      ).toBeInTheDocument();
+      expect(
+        within(sidebar).queryByRole("button", { name: "Revoke session" }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(sidebar).queryByRole("button", {
+          name: "Revoke active sessions",
+        }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(
+        within(sidebar).getByRole("button", { name: "Close" }),
+      );
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("session-detail-sidebar"),
+        ).not.toBeInTheDocument();
+      });
+    });
+  });
+
   describe("detail sidebar", () => {
     it("opens a session from its row and closes again, keeping the search in the URL", async () => {
       const { router } = setup({ initialRoute: `${PATHNAME}?query=ann` });

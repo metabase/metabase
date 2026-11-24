@@ -13,6 +13,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
     "metabase-enterprise/monitor/content-diagnostics",
   monitor_dependency_diagnostics:
     "metabase-enterprise/monitor/dependency-diagnostics",
+  monitor_session_management: "metabase-enterprise/monitor/session-management",
   advanced_permissions: "metabase-enterprise/advanced_permissions",
   sharing: "metabase-enterprise/sharing",
   metabot: "metabase-enterprise/metabot",
