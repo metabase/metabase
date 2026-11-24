@@ -5016,6 +5016,7 @@
                                          :user_id          (mt/user->id :crowberto)}]
         (testing "The pulses are active"
           (is (false? (t2/select-one-fn :archived :model/Pulse :id bad-pulse-id)))
+          (is (false? (t2/select-one-fn :archived :model/Pulse :id bad-slack-pulse-id)))
           (is (false? (t2/select-one-fn :archived :model/Pulse :id good-pulse-id))))
         (mt/with-fake-inbox
           (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
@@ -5038,8 +5039,9 @@
                                                                                          (str/includes? email-body-pattern))))))]
             (testing "The dashboard parameters were removed"
               (is (empty? parameters)))
-            (testing "The broken pulse was archived"
-              (is (true? (t2/select-one-fn :archived :model/Pulse :id bad-pulse-id))))
+            (testing "The broken pulses were archived"
+              (is (true? (t2/select-one-fn :archived :model/Pulse :id bad-pulse-id)))
+              (is (true? (t2/select-one-fn :archived :model/Pulse :id bad-slack-pulse-id))))
             (testing "The unbroken pulse is still active"
               (is (false? (t2/select-one-fn :archived :model/Pulse :id good-pulse-id))))
             (testing "The dashboard creator, pulse creator, and recipients were emailed about the removed pulse"
