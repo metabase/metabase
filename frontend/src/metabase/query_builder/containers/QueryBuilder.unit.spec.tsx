@@ -25,6 +25,7 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Dataset, DatasetQuery } from "metabase-types/api";
+import type { Dataset, TestStageWithSourceSpec } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -70,7 +71,7 @@ describe("QueryBuilder", () => {
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
     setupJestCanvasMock();
   });
 
@@ -1213,17 +1214,17 @@ describe("QueryBuilder", () => {
     });
 
     const isFilteredByTax = (call: CallLog) => {
-      const body: unknown = JSON.parse(String(call.options.body));
-      const aggregations: unknown[] = _.get(body, ["stages", 0, "aggregation"]);
-      const aggregatedFieldIds = aggregations.map((_aggregation, index) =>
-        _.get(body, ["stages", 0, "aggregation", index, 2, 2]),
-      );
-      const filter = ["stages", 1, "filters", 0];
+      const body = getRequestBody(call);
+      const aggregations = getIn(body, ["stages", 0, "aggregation"]);
+      const aggregatedFieldIds = Array.isArray(aggregations)
+        ? aggregations.map((aggregation) => getIn(aggregation, [2, 2]))
+        : [];
+      const filter = getIn(body, ["stages", 1, "filters", 0]);
       return (
         _.isEqual(aggregatedFieldIds, [ORDERS.TAX, ORDERS.TOTAL]) &&
-        _.get(body, [...filter, 0]) === ">" &&
-        _.get(body, [...filter, 2, 2]) === "sum" &&
-        _.get(body, [...filter, 3]) === 100
+        getIn(filter, [0]) === ">" &&
+        getIn(filter, [2, 2]) === "sum" &&
+        getIn(filter, [3]) === 100
       );
     };
 
@@ -1389,19 +1390,16 @@ describe("QueryBuilder", () => {
     });
 
     const hasCustomColumnStage = (call: CallLog) => {
-      const body: unknown = JSON.parse(String(call.options.body));
-      const expressions: unknown[] =
-        _.get(body, ["stages", 1, "expressions"]) ?? [];
-      const names = expressions.map((_expression, index) =>
-        _.get(body, [
-          "stages",
-          1,
-          "expressions",
-          index,
-          1,
-          "lib/expression-name",
-        ]),
-      );
+      const expressions = getIn(getRequestBody(call), [
+        "stages",
+        1,
+        "expressions",
+      ]);
+      const names = Array.isArray(expressions)
+        ? expressions.map((expression) =>
+            getIn(expression, [1, "lib/expression-name"]),
+          )
+        : [];
       return _.isEqual(names, ["Custom String", "Custom Number"]);
     };
 
@@ -1527,14 +1525,10 @@ describe("QueryBuilder", () => {
   describe("chart settings after removing query clauses", () => {
     mockGetBoundingClientRect({ width: 1000, height: 800 });
 
-    const countByMonthStage = {
-      source: { type: "table" as const, id: ORDERS_ID },
-      aggregations: [
-        { type: "operator" as const, operator: "count", args: [] },
-      ],
-      breakouts: [
-        { type: "column" as const, name: "CREATED_AT", unit: "month" },
-      ],
+    const countByMonthStage: TestStageWithSourceSpec = {
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count", args: [] }],
+      breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
     };
 
     const WATERFALL_CARD = createMockCard({
@@ -1624,14 +1618,15 @@ describe("QueryBuilder", () => {
     });
 
     const isCountByMonthQuery = (call: CallLog) => {
-      const body: unknown = JSON.parse(String(call.options.body));
-      const stages: unknown[] = _.get(body, ["stages"]) ?? [];
+      const body = getRequestBody(call);
+      const stages = getIn(body, ["stages"]);
       return (
+        Array.isArray(stages) &&
         stages.length === 1 &&
-        _.get(body, ["stages", 0, "aggregation", 0, 0]) === "count" &&
-        _.get(body, ["stages", 0, "breakout", 0, 1, "temporal-unit"]) ===
+        getIn(body, ["stages", 0, "aggregation", 0, 0]) === "count" &&
+        getIn(body, ["stages", 0, "breakout", 0, 1, "temporal-unit"]) ===
           "month" &&
-        _.get(body, ["stages", 0, "joins"]) == null
+        getIn(body, ["stages", 0, "joins"]) == null
       );
     };
 
@@ -1697,3 +1692,18 @@ describe("QueryBuilder", () => {
     });
   });
 });
+
+function getRequestBody(call: CallLog): unknown {
+  return JSON.parse(String(call.options.body));
+}
+
+/** Reads a nested value of a request body, or undefined when it is missing */
+function getIn(value: unknown, path: (string | number)[]): unknown {
+  return path.reduce<unknown>(
+    (current, key) =>
+      current != null && typeof current === "object" && key in current
+        ? Reflect.get(current, key)
+        : undefined,
+    value,
+  );
+}

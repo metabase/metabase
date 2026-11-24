@@ -1057,7 +1057,6 @@ describe("QueryBuilder - unsaved changes warning", () => {
       // the clicked value as a filter, at an ad-hoc URL that keeps the id of
       // the saved question in `original_card_id`.
       const filteredCard = createMockUnsavedCard({
-        name: PRODUCTS_CARD.name,
         original_card_id: PRODUCTS_CARD.id,
         dataset_query: Lib.toJsQuery(
           Lib.createTestQuery(SAMPLE_PROVIDER, {
