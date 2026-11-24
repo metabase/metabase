@@ -36,7 +36,7 @@ function setup(opts: SetupOpts) {
 }
 
 const KEPT_MEASURE = createOrdersMeasure({ id: 1, name: "Kept Measure" });
-const TOTAL_REVENUE = createOrdersMeasure({ id: 2, name: "Total Revenue" });
+const TOTAL_REVENUE = createOrdersMeasure({ id: 3, name: "Total Revenue" });
 
 describe("measures of a published table", () => {
   afterEach(async () => {
@@ -52,7 +52,7 @@ describe("measures of a published table", () => {
     await userEvent.click(await screen.findByText("Total Revenue"));
 
     await waitFor(() =>
-      expect(getPathname()).toBe(`${PUBLISHED_ORDERS_URL}/measures/2`),
+      expect(getPathname()).toBe(`${PUBLISHED_ORDERS_URL}/measures/3`),
     );
     expect(
       await screen.findByDisplayValue("Total Revenue"),
@@ -130,7 +130,7 @@ describe("measures of a published table", () => {
   it("shows collection breadcrumbs and goes back to the measures list", async () => {
     const { getPathname } = setup({
       measures: [KEPT_MEASURE, TOTAL_REVENUE],
-      initialRoute: `${PUBLISHED_ORDERS_URL}/measures/2`,
+      initialRoute: `${PUBLISHED_ORDERS_URL}/measures/3`,
     });
 
     const header = await screen.findByTestId("measure-pane-header");
@@ -148,7 +148,7 @@ describe("measures of a published table", () => {
   it("removes a measure and goes back to the measures list", async () => {
     const { getPathname, server } = setup({
       measures: [KEPT_MEASURE, TOTAL_REVENUE],
-      initialRoute: `${PUBLISHED_ORDERS_URL}/measures/2`,
+      initialRoute: `${PUBLISHED_ORDERS_URL}/measures/3`,
     });
 
     await screen.findByDisplayValue("Total Revenue");
@@ -168,7 +168,7 @@ describe("measures of a published table", () => {
     );
     expect(server.updates).toEqual([
       {
-        id: 2,
+        id: 3,
         body: { archived: true, revision_message: "Removed from Data Studio" },
       },
     ]);

@@ -37,7 +37,7 @@ function setup(opts: SetupOpts) {
 
 const KEPT_MEASURE = createOrdersMeasure({ id: 1, name: "Kept Measure" });
 const TOTAL_REVENUE = createOrdersMeasure({
-  id: 2,
+  id: 3,
   name: "Total Revenue",
   description: "Test description",
 });
@@ -59,7 +59,7 @@ describe("measures in the data model (enterprise)", () => {
     );
 
     await waitFor(() =>
-      expect(getPathname()).toBe(`${DATA_MODEL_ORDERS_URL}/measures/2`),
+      expect(getPathname()).toBe(`${DATA_MODEL_ORDERS_URL}/measures/3`),
     );
     expect(
       await screen.findByDisplayValue("Total Revenue"),
@@ -168,7 +168,7 @@ describe("measures in the data model (enterprise)", () => {
     it("updates the name and the description, and goes back to the measures tab", async () => {
       const { getPathname, server } = setup({
         measures: [KEPT_MEASURE, TOTAL_REVENUE],
-        initialRoute: `${DATA_MODEL_ORDERS_URL}/measures/2`,
+        initialRoute: `${DATA_MODEL_ORDERS_URL}/measures/3`,
       });
 
       const nameInput = await screen.findByDisplayValue("Total Revenue");
@@ -178,7 +178,7 @@ describe("measures in the data model (enterprise)", () => {
       expect(await findToast()).toHaveTextContent("Measure name updated");
       expect(server.updates).toEqual([
         {
-          id: 2,
+          id: 3,
           body: {
             name: "Total Revenue Updated",
             revision_message: "Updated measure name",
@@ -201,7 +201,7 @@ describe("measures in the data model (enterprise)", () => {
       );
       expect(server.updates).toHaveLength(2);
       expect(server.updates[1]).toEqual({
-        id: 2,
+        id: 3,
         body: expect.objectContaining({
           name: "Total Revenue Updated",
           description: "Updated description",
@@ -227,7 +227,7 @@ describe("measures in the data model (enterprise)", () => {
     it("removes the measure and goes back to the list", async () => {
       const { getPathname, server } = setup({
         measures: [KEPT_MEASURE, TOTAL_REVENUE],
-        initialRoute: `${DATA_MODEL_ORDERS_URL}/measures/2`,
+        initialRoute: `${DATA_MODEL_ORDERS_URL}/measures/3`,
       });
 
       await screen.findByDisplayValue("Total Revenue");
@@ -245,7 +245,7 @@ describe("measures in the data model (enterprise)", () => {
       expect(await findToast()).toHaveTextContent("Measure removed");
       expect(server.updates).toEqual([
         {
-          id: 2,
+          id: 3,
           body: {
             archived: true,
             revision_message: "Removed from Data Studio",
@@ -268,13 +268,13 @@ describe("measures in the data model (enterprise)", () => {
       const { getPathname } = setup({
         measures: [
           KEPT_MEASURE,
-          createOrdersMeasure({ id: 2, name: "Updated Name" }),
+          createOrdersMeasure({ id: 3, name: "Updated Name" }),
         ],
         revisions: {
           1: [createMockRevision({ id: 10, is_creation: true })],
-          2: MEASURE_REVISIONS,
+          3: MEASURE_REVISIONS,
         },
-        initialRoute: `${DATA_MODEL_ORDERS_URL}/measures/2`,
+        initialRoute: `${DATA_MODEL_ORDERS_URL}/measures/3`,
       });
 
       await screen.findByDisplayValue("Updated Name");
@@ -284,7 +284,7 @@ describe("measures in the data model (enterprise)", () => {
 
       await waitFor(() =>
         expect(getPathname()).toBe(
-          `${DATA_MODEL_ORDERS_URL}/measures/2/revisions`,
+          `${DATA_MODEL_ORDERS_URL}/measures/3/revisions`,
         ),
       );
       expect(
@@ -297,7 +297,7 @@ describe("measures in the data model (enterprise)", () => {
       await userEvent.click(screen.getByRole("tab", { name: /Dependencies/ }));
       await waitFor(() =>
         expect(getPathname()).toBe(
-          `${DATA_MODEL_ORDERS_URL}/measures/2/dependencies`,
+          `${DATA_MODEL_ORDERS_URL}/measures/3/dependencies`,
         ),
       );
       const graph = await screen.findByTestId("dependency-graph");
@@ -322,8 +322,8 @@ describe("measures in the data model (enterprise)", () => {
       setup({
         isAdmin: false,
         measures: [KEPT_MEASURE, TOTAL_REVENUE],
-        revisions: { 2: [createMockRevision({ id: 1, is_creation: true })] },
-        initialRoute: `${DATA_MODEL_ORDERS_URL}/measures/2`,
+        revisions: { 3: [createMockRevision({ id: 1, is_creation: true })] },
+        initialRoute: `${DATA_MODEL_ORDERS_URL}/measures/3`,
       });
 
       expect(await screen.findByDisplayValue("Total Revenue")).toBeDisabled();
