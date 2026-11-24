@@ -201,6 +201,6 @@
                                                          :memory-atom (atom {})}
                                                         tool-name
                                                         args)
-        failed-queries            (-> outcome :structured-output :data meta :failed-queries seq)]
+        failed-queries            (-> outcome :structured-output :data meta :failed-queries not-empty)]
     (cond-> outcome
-      failed-queries (assoc :failed-queries (vec failed-queries)))))
+      failed-queries (assoc :failed-queries failed-queries))))

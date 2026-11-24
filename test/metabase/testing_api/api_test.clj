@@ -206,9 +206,7 @@
 (deftest ^:parallel metabot-retrieve-is-for-admins-test
   (is (= "You don't have permissions to do that."
          (mt/user-http-request :rasta :post 403 "testing/metabot/retrieve"
-                               {:retriever "general", :arguments {:keyword_queries ["orders"]}})))
-  (is (some? (:errors (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
-                                            {:retriever "run_sql", :arguments {}})))))
+                               {:retriever "general", :arguments {:keyword_queries ["orders"]}}))))
 
 (deftest metabot-retrieve-runs-the-named-tool-test
   (doseq [[retriever types arguments] [["general"
@@ -228,13 +226,22 @@
         (is (= types (vec (:entity-types @opts))))
         (is (= ["orders"] (:term-queries @opts)))))))
 
+(deftest metabot-retrieve-rejects-bad-arguments-test
+  (testing "an unknown retriever is rejected by the route's schema"
+    (is (some? (:errors (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                              {:retriever "run_sql", :arguments {}})))))
+  (testing "arguments the tool rejects are the caller's mistake"
+    (is (=? {:error-class "validation"}
+            (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                  {:retriever "sql", :arguments {:keyword_queries ["orders"]}})))))
+
 (deftest metabot-retrieve-reports-a-failed-call-test
   (mt/with-premium-features #{}
-    (is (= "Library search is unavailable."
-           (re-find #"Library search is unavailable\."
-                    (str (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
-                                               {:retriever "library"
-                                                :arguments {:user_search_prompt "Where are the orders?"}})))))))
+    (is (=? {:error-code  "metabase.metabot.tools.entity-retrieval/library-search-unavailable"
+             :error-class "recoverable"}
+            (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
+                                  {:retriever "library"
+                                   :arguments {:user_search_prompt "Where are the orders?"}})))))
 
 (deftest metabot-retrieve-reports-failed-queries-test
   (testing "a search that lost some of its queries is a failure, not a smaller result"
@@ -243,9 +250,3 @@
                :output         #"(?s).*Total results: 0.*"}
               (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
                                     {:retriever "general", :arguments {:keyword_queries ["orders" "people"]}}))))))
-
-(deftest metabot-retrieve-rejects-bad-arguments-test
-  (testing "arguments the tool rejects are the caller's mistake"
-    (is (=? {:retrieval-error {:class "validation"}}
-            (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
-                                  {:retriever "sql", :arguments {:keyword_queries ["orders"]}})))))

@@ -41,6 +41,7 @@
    [metabase.transforms.models.transform :as transform]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.users.models.user :as user]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -621,9 +622,9 @@
 (api.macros/defendpoint :post "/metabot/retrieve" :- [:map {:closed true} [:output :string]]
   "Run one of Metabot's read-only retrieval tools with fixed arguments and no model, for search evals.
   Admins only, because the testing routes are not behind the authentication middleware.
-  Answers 400 when the tool rejects the arguments, and 502 when the call fails or any of its queries fails, so a
-  caller can tell a failed or partial search from one that found nothing. A partial search's 502 still carries the
-  other queries' `output`, for debugging."
+  Answers 400 when the tool rejects the arguments, and 502 when the call or any of its queries fails.
+  That way a caller can tell a failed or partial search from one that found nothing.
+  The 502 for a partial search still carries the other queries' `output`, for debugging."
   [_route-params
    _query-params
    {:keys [retriever arguments]} :- [:map {:closed true}
@@ -640,10 +641,10 @@
                                                                            (metabot.config/resolve-metabot nil))]
     (cond
       error
-      (throw (ex-info output {:status-code     (if (= :validation (:class error)) 400 502)
-                              :error-code      (name (:code error))
-                              :retrieval-error (select-keys error [:class :code])
-                              :response/keys   #{:retrieval-error}}))
+      (throw (ex-info output {:status-code   (if (= :validation (:class error)) 400 502)
+                              :error-code    (u/qualified-name (:code error))
+                              :error-class   (:class error)
+                              :response/keys #{:error-class}}))
 
       failed-queries
       (throw (ex-info "The search failed for some of its queries."
