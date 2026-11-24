@@ -478,8 +478,11 @@ def _join_step_source(node, cte_names, dialect):
     # Step queries copy the node whole, so what it carries (a table hint, a PIVOT) stays in them.
     if isinstance(node, exp.Lateral):
         raise _JoinStepsUnsupported("unsupported-source")
-    # In `JOIN b JOIN c ON ... ON ...` the join to `c` hangs off `b`, so the step of `b` would run both.
-    if node.args.get("joins"):
+    # A join tree nested in a source would run in that source's step.
+    # In `JOIN b JOIN c ON ... ON ...`, the join to `c` hangs off `b`.
+    # A bracketed `JOIN (b JOIN c ON ...) ON ...` is a Subquery around something that is neither a query nor VALUES.
+    bracketed = isinstance(node, exp.Subquery) and not isinstance(node.this, (exp.Query, exp.Values))
+    if node.args.get("joins") or bracketed:
         raise _JoinStepsUnsupported("nested-join")
     if isinstance(node, exp.Table) and isinstance(node.this, exp.Identifier):
         parts = table_parts(node)
@@ -487,9 +490,6 @@ def _join_step_source(node, cte_names, dialect):
             if not node.db and not node.catalog and _effective_name(node.this, dialect) in cte_names:
                 return {"source": "cte", "table": None, "alias": node.alias_or_name}
             return {"source": "table", "table": list(parts), "alias": node.alias_or_name}
-    # `JOIN (b JOIN c ON ...) ON ...` is a Subquery around something that is neither a query nor VALUES.
-    if isinstance(node, exp.Subquery) and not isinstance(node.this, (exp.Query, exp.Values)):
-        raise _JoinStepsUnsupported("nested-join")
     return {"source": "derived", "table": None, "alias": node.alias_or_name}
 
 

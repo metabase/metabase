@@ -54,8 +54,12 @@
   ;; Step queries copy the node whole, so what it carries (a table hint, a PIVOT) stays in them.
   (when (instance? Expressions$Lateral node)
     (throw (unsupported "unsupported-source")))
-  ;; In `JOIN b JOIN c ON ... ON ...` the join to `c` hangs off `b`, so the step of `b` would run both.
-  (when (contains? (set-args node) "joins")
+  ;; A join tree nested in a source would run in that source's step.
+  ;; In `JOIN b JOIN c ON ... ON ...`, the join to `c` hangs off `b`.
+  ;; A bracketed `JOIN (b JOIN c ON ...) ON ...` is a Subquery around something that is neither a query nor VALUES.
+  (when (or (contains? (set-args node) "joins")
+            (and (instance? Expressions$Subquery node)
+                 (not (ast/instance-of-any? [Expressions$Query Expressions$Values] (ast/this node)))))
     (throw (unsupported "nested-join")))
   (let [parts (when (and (instance? Expressions$Table node)
                          (instance? Expressions$Identifier (ast/this node)))
@@ -69,11 +73,6 @@
 
       parts
       {:source "table", :table parts, :alias (alias-or-name node)}
-
-      ;; `JOIN (b JOIN c ON ...) ON ...` is a Subquery around something that is neither a query nor VALUES.
-      (and (instance? Expressions$Subquery node)
-           (not (ast/instance-of-any? [Expressions$Query Expressions$Values] (ast/this node))))
-      (throw (unsupported "nested-join"))
 
       :else
       {:source "derived", :table nil, :alias (alias-or-name node)})))
