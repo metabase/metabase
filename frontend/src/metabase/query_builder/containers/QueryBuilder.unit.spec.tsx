@@ -3,6 +3,7 @@ import fetchMock, { type CallLog } from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import {
+  setupCardQueryMetadataEndpoint,
   setupLastDownloadFormatEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -24,6 +25,7 @@ import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Dataset, DatasetQuery } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
@@ -1010,6 +1012,109 @@ describe("QueryBuilder", () => {
       expect(
         within(main).queryByTestId("loading-indicator"),
       ).not.toBeInTheDocument();
+    });
+  });
+  describe("saving a chart from the raw table view", () => {
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    const LINE_CARD = createMockUnsavedCard({
+      display: "line",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+              ],
+            },
+          ],
+        }),
+      ),
+      visualization_settings: {},
+    });
+
+    const LINE_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createOrdersCreatedAtDatasetColumn({
+            source: "breakout",
+            unit: "month",
+            display_name: "Created At: Month",
+            field_ref: [
+              "field",
+              ORDERS.CREATED_AT,
+              { "base-type": "type/DateTime", "temporal-unit": "month" },
+            ],
+          }),
+          createMockColumn({
+            name: "count",
+            display_name: "Count",
+            source: "aggregation",
+            base_type: "type/BigInteger",
+            effective_type: "type/BigInteger",
+            semantic_type: "type/Quantity",
+            field_ref: ["aggregation", 0],
+          }),
+        ],
+        rows: [
+          ["2025-04-01T00:00:00Z", 1],
+          ["2025-05-01T00:00:00Z", 19],
+        ],
+      }),
+      row_count: 2,
+    });
+
+    it("should save the chart settings when the question is saved from the raw table view (metabase#41612)", async () => {
+      fetchMock.post("path:/api/card", (call: CallLog) =>
+        createMockCard({
+          ...JSON.parse(String(call.options.body)),
+          id: 41612,
+        }),
+      );
+      setupCardQueryMetadataEndpoint(
+        createMockCard({ id: 41612 }),
+        createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
+      );
+      const { router } = await setup({
+        card: LINE_CARD,
+        dataset: LINE_DATASET,
+        database: createSampleDatabase({ auto_run_queries: true }),
+      });
+
+      await userEvent.click(await screen.findByLabelText("Switch to data"));
+      expect(
+        await screen.findByRole("columnheader", { name: "Created At: Month" }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      const modal = await screen.findByTestId("save-question-modal");
+      await waitFor(() =>
+        expect(
+          within(modal).getByLabelText(/Where do you want to save this/),
+        ).toHaveTextContent("Our analytics"),
+      );
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Save" }),
+      );
+
+      const createCall = await waitFor(() =>
+        checkNotNull(
+          fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" }),
+        ),
+      );
+      const createdCard: unknown = JSON.parse(String(createCall.options.body));
+      expect(createdCard).toMatchObject({
+        display: "line",
+        visualization_settings: {
+          "graph.metrics": ["count"],
+          "graph.dimensions": ["CREATED_AT"],
+        },
+      });
+      await waitFor(() =>
+        expect(router.location.pathname).toMatch(/^\/question\/41612/),
+      );
     });
   });
 });
