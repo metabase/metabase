@@ -24,6 +24,7 @@ import { parseSearchQuery } from "metabase/utils/browser";
 import type {
   ContentDiagnosticsImbalancedFinding,
   ContentDiagnosticsImbalancedFindingType,
+  ContentDiagnosticsImbalancedUnit,
   ContentDiagnosticsImbalancedUserParams,
   ListImbalancedFindingsResponse,
 } from "metabase-types/api";
@@ -284,6 +285,160 @@ describe("ImbalancedContentPage", () => {
     const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
     expect(sidebarRegion).toHaveTextContent("Grace Creator");
     expect(sidebarRegion).toHaveTextContent("150 items");
+  });
+
+  describe("sidebar content count per entity type", () => {
+    type CountCase = {
+      entityType: ContentDiagnosticsImbalancedFinding["entity_type"];
+      entityId: number;
+      name: string;
+      count: number;
+      unit: ContentDiagnosticsImbalancedUnit;
+      label: string;
+    };
+
+    // The same dashboard (entity 32) is crowded on tabs and empty on dashcards at once: the
+    // checkers run independently, so one entity can be reported on more than one tab.
+    const CASES: Record<ContentDiagnosticsImbalancedFindingType, CountCase[]> =
+      {
+        empty: [
+          {
+            entityType: "collection",
+            entityId: 11,
+            name: "Bare collection",
+            count: 0,
+            unit: "items",
+            label: "0 items",
+          },
+          {
+            entityType: "dashboard",
+            entityId: 32,
+            name: "Tabbed dashboard",
+            count: 0,
+            unit: "dashcards",
+            label: "0 dashcards",
+          },
+          {
+            entityType: "document",
+            entityId: 13,
+            name: "Blank document",
+            count: 0,
+            unit: "cards",
+            label: "0 cards",
+          },
+          {
+            entityType: "card",
+            entityId: 14,
+            name: "Rowless question",
+            count: 0,
+            unit: "rows",
+            label: "0 rows",
+          },
+        ],
+        sparse: [
+          {
+            entityType: "collection",
+            entityId: 21,
+            name: "Thin collection",
+            count: 2,
+            unit: "items",
+            label: "2 items",
+          },
+          {
+            entityType: "dashboard",
+            entityId: 22,
+            name: "Thin dashboard",
+            count: 1,
+            unit: "dashcards",
+            label: "1 dashcard",
+          },
+        ],
+        crowded: [
+          {
+            entityType: "collection",
+            entityId: 31,
+            name: "Crowded collection",
+            count: 3,
+            unit: "items",
+            label: "3 items",
+          },
+          {
+            entityType: "dashboard",
+            entityId: 32,
+            name: "Tabbed dashboard",
+            count: 2,
+            unit: "tabs",
+            label: "2 tabs",
+          },
+          {
+            entityType: "dashboard",
+            entityId: 33,
+            name: "Packed dashboard",
+            count: 2,
+            unit: "dashcards",
+            label: "2 dashcards on one tab",
+          },
+          {
+            entityType: "document",
+            entityId: 34,
+            name: "Crowded document",
+            count: 2,
+            unit: "cards",
+            label: "2 cards",
+          },
+        ],
+      };
+
+    function toFinding(
+      mode: ContentDiagnosticsImbalancedFindingType,
+      { entityType, entityId, name, count, unit }: CountCase,
+      index: number,
+    ) {
+      return createMockContentDiagnosticsImbalancedFinding({
+        id: index + 1,
+        finding_type: mode,
+        entity_type: entityType,
+        entity_id: entityId,
+        entity_display_name: name,
+        content_count: count,
+        details: { threshold: 1, unit },
+      });
+    }
+
+    it.each(["empty", "sparse", "crowded"] as const)(
+      "counts each %s finding in the unit it was measured in",
+      async (mode) => {
+        const cases = CASES[mode];
+        setup({
+          mode,
+          getResponse: (url) => {
+            const params = new URL(url, "http://localhost").searchParams;
+            const isTabType =
+              params.getAll("finding-types").join() === String(mode);
+            const data = isTabType
+              ? cases.map((testCase, index) => toFinding(mode, testCase, index))
+              : [];
+            return createMockListImbalancedFindingsResponse({
+              data,
+              total: data.length,
+            });
+          },
+        });
+
+        const list = await screen.findByRole("treegrid");
+        // Open the findings last to first, so a sidebar stuck on the first row fails.
+        for (const { name, label } of [...cases].reverse()) {
+          await userEvent.click(await within(list).findByText(name));
+
+          const sidebar = await screen.findByRole("region", {
+            name: `Details for ${name}`,
+          });
+          const info = within(sidebar).getByRole("region", { name: "Info" });
+          expect(within(info).getByText("Content count")).toBeInTheDocument();
+          expect(within(info).getByText(label)).toBeInTheDocument();
+        }
+      },
+    );
   });
 
   it("offers collections as an entity type and sends the selection to the server", async () => {
