@@ -131,12 +131,12 @@ describe("QueryBuilder", () => {
 
         expect(
           await screen.findByDisplayValue("Reproduce 28221"),
-        ).toBeInTheDocument();
+        ).toBeVisible();
         expect(
           await within(screen.getByTestId("step-expression-0-0")).findByText(
             customColumnName,
           ),
-        ).toBeInTheDocument();
+        ).toBeVisible();
       });
 
       it("removes a breakout of a pivot question in the notebook (metabase#28874)", async () => {
