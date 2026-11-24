@@ -30,59 +30,32 @@
 
 ;;; Query/Chart URL Generation
 
-(defn ->legacy-mbql
-  "Convert an MBQL 5 query to legacy MBQL.
-
-  Non-MBQL 5 values and queries that fail conversion are returned unchanged.
-  Use [[->frontend-query]] for frontend links and chart data.
-
-  DEPRECATED -- Conversion to Legacy MBQL is deprecated and will be removed before the end of 2026, DO NOT use this
-  going forward."
-  {:deprecated "0.66.0"}
-  [query]
-  (if (and (map? query)
-           ;; `:stages` alone (no `:lib/type`) also counts: a query stripped of its internal `:lib/*` keys is
-           ;; still MBQL 5. Guarding on `:lib/type` alone let such a query fall through unconverted, leaking raw
-           ;; MBQL 5 into the `/question#<base64>` hash and crashing the frontend with "Stage 0 does not exist"
-           ;; (BOT-1604 follow-up).
-           (or (:lib/type query) (:stages query)))
-    (try
-      ;; existing usage -- do not use going forward
-      #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
-      (lib/->legacy-MBQL (query-repair/normalize-query query))
-      (catch Exception e
-        ;; A ref that [[query-repair/normalize-query]] cannot repoint, such as one of several aggregations in a
-        ;; `:lib/*`-stripped query, fails conversion. Fall back to the raw query rather than failing the whole agent turn over a link.
-        (log/warn e "Failed to convert MBQL 5 query to legacy MBQL for link resolution")
-        query))
-    query))
-
 (defn ->frontend-query
   "Prepare a query for frontend links and chart data.
 
-  Structured MBQL 5 queries stay in MBQL 5 so temporal filters survive JSON serialization (BOT-1972),
-  and they keep their `:parameters`.
-  Native-only queries use legacy MBQL because the embedding SDK opens its SQL editor only when
-  `dataset_query.type` is `\"native\"`.
+  An MBQL 5 query, structured or native, is normalized and keeps its `:parameters`.
 
-  A query with `:stages` but no `:lib/type` stays in MBQL 5 if it normalizes to a valid query; see
-  [[query-repair/normalize-query]] for the refs it repairs on the way. Conversation state repairs such a query as it
-  is read, so this is the last guard, for a query that reaches a link by another way. All other values go through
-  [[->legacy-mbql]]."
+  A query with `:stages` but no `:lib/type` is still MBQL 5, and goes out with its `:lib/type` if it normalizes to a
+  valid query; see [[query-repair/normalize-query]] for the refs it repairs on the way. Conversation state repairs
+  such a query as it is read, so this is the last guard, for a query that reaches a link by another way.
+
+  Any other value is returned unchanged: a legacy query from a conversation older than Metabot's MBQL 5 queries, a
+  value that is not a query, a query without `:lib/type` that does not normalize into a valid one, and a query whose
+  normalization throws. A query that has its `:lib/type` is not validated."
   [query]
   (or (when (and (map? query) (or (:lib/type query) (:stages query)))
         (try
           (let [normalized (query-repair/normalize-query query)]
-            (when (and (not (lib/native-only-query? normalized))
-                       (or (:lib/type query) (mr/validate :metabase.lib.schema/query normalized)))
+            ;; Normalizing a query that lost its `:lib/*` keys gives every clause a new `:lib/uuid`, which can leave
+            ;; a ref dangling. Such a query goes out as it came in.
+            (when (or (:lib/type query) (mr/validate :metabase.lib.schema/query normalized))
               (cond-> (lib/prepare-for-serialization normalized)
                 (:parameters normalized) (assoc :parameters (:parameters normalized)))))
           (catch Exception e
+            ;; A link to a query the frontend cannot open costs less than a failed agent turn.
             (log/warn e "Failed to normalize MBQL 5 query for the frontend")
             nil)))
-      ;; existing usage -- do not use going forward
-      #_{:clj-kondo/ignore [:deprecated-var]}
-      (->legacy-mbql query)))
+      query))
 
 (defn- query->url-hash
   "Convert an MBQL query to a base64-encoded URL hash for /question# URLs."

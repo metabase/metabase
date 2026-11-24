@@ -7,8 +7,8 @@
   the stage has one aggregation the ref can only mean that one, and it is pointed there.
 
   [[repair-stripped-query]] runs on every query of conversation state as it is normalized, so every tool reads a
-  valid MBQL 5 query. [[normalize-query]] is the same repair for a query on its way to the frontend, where the link
-  path keeps its own fallback."
+  valid MBQL 5 query. [[normalize-query]] is the same repair for a query on its way to the frontend; see
+  [[metabase.metabot.agent.links/->frontend-query]]."
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]

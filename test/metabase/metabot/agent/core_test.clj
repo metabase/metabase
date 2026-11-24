@@ -12,9 +12,11 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.channel.settings :as channel.settings]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
@@ -47,6 +49,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -803,6 +806,39 @@
               (is (nil? (:structured-output blank-result)))
               (is (= "SELECT 3" (metabot.u/extract-sql-content (get-in final-state [:queries "q1"]))))
               (is (= (if (= profile :sql) :terminal-tool :stop) (:finish-reason (last replaced)))))))))))
+
+(deftest created-sql-query-state-test
+  (testing "create_sql_query stores an MBQL 5 native query, which the frontend can open after a JSON round trip"
+    ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [sql             "SELECT * FROM VENUES WHERE NAME = {{name}}"
+            {:keys [parts]} (run-turn! :internal "Query that database"
+                                       [[{:type      :tool-input
+                                          :id        "create"
+                                          :function  "create_sql_query"
+                                          :arguments {:database_id (mt/id) :sql_query sql :title "Results"}}]]
+                                       :context {:capabilities ["permission:write_sql_queries"]})
+            created         (some #(when (and (= :tool-output (:type %)) (= "create" (:id %)))
+                                     (:result %))
+                                  parts)
+            query-id        (get-in created [:structured-output :query-id])
+            state           (some #(when (= "state" (:data-type %)) (:data %)) parts)
+            stored          (get-in state [:queries query-id])
+            shape           {:lib/type :mbql/query
+                             :database (mt/id)
+                             :stages   [{:lib/type      :mbql.stage/native
+                                         :native        sql
+                                         :template-tags [{:type :text :name "name"}]}]}]
+        (is (nil? (:error created)) (:output created))
+        (testing "the state holds the query as MBQL 5, native-only, with its SQL and its template tag"
+          (is (=? shape stored))
+          (is (lib/native-only-query? stored)))
+        (testing "the query read back from JSON goes to the frontend as a valid MBQL 5 native query"
+          (let [frontend-query (links/->frontend-query (json/decode+kw (json/encode stored)))]
+            (is (=? shape frontend-query))
+            (is (lib/native-only-query? frontend-query))
+            (is (not (contains? frontend-query :lib/metadata)))
+            (is (mr/validate ::lib.schema/query frontend-query))))))))
 
 (defn- edit-viewed-sql!
   "Run an agent turn in which the mocked LLM edits the query on screen with `edit_sql_query`.

@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.metabot.tools.sql.create :as create-sql-query]
    [metabase.test :as mt]))
 
@@ -21,10 +22,12 @@
             (is (contains? result :query-id))
             (is (re-find #"(?si)SELECT\s+1\s+AS\s+\"?test\"?" (:query-content result)))
             (is (= db-id (:database result)))
-            (is (=? {:database db-id
-                     :type :native
-                     :native {:query #(re-find #"(?si)SELECT\s+1\s+AS\s+\"?test\"?" %)}}
-                    (:query result)))))))))
+            (is (=? {:lib/type :mbql/query
+                     :database db-id
+                     :stages   [{:lib/type :mbql.stage/native
+                                 :native   #(re-find #"(?si)SELECT\s+1\s+AS\s+\"?test\"?" %)}]}
+                    (:query result)))
+            (is (lib/native-only-query? (:query result)))))))))
 
 (deftest create-sql-query-validation-error-test
   (mt/test-drivers #{:postgres}

@@ -172,33 +172,30 @@
         (testing "no table has a column line with no comma before the next column"
           (is (nil? (re-find #"[^,(]\n  \S" output))))))))
 
+(defn- create-sql-query-stub
+  "A stand-in for [[create-sql-query-tools/create-sql-query]] that accepts the SQL and returns `query`, an MBQL 5 native
+  query as the tool returns one."
+  [query]
+  (fn [_]
+    {:validation-result {:valid? true :dialect "postgres"}
+     :action-result     {:query-id "q-1" :query query}}))
+
 (deftest document-construct-sql-chart-tool-test
   (testing "builds chart draft payload from SQL query"
-    (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
-                                (fn [_]
-                                  {:validation-result {:valid? true
-                                                       :dialect "postgres"}
-                                   :action-result     {:query-id "q-1"
-                                                       :query {:database 1
-                                                               :type "native"
-                                                               :native {:query "SELECT * FROM test"
-                                                                        :template-tags {}}}}})
-                                qp/process-query (fn [_] nil)]
-      (let [result     (invoke-document-tool "document_construct_sql_chart" sql-chart-args)
-            structured (:structured-output result)]
-        (is (nil? (:error result)))
-        (is (= "Draft chart payload generated from SQL query." (:output result)))
-        (is (= "document_construct_sql_chart" (:tool structured)))
-        (is (= "Test Name" (:name structured)))
-        (is (= "Test Desc" (:description structured)))
-        (is (= "bar" (:display structured)))
-        (is (= "bar" (:chart_type structured)))
-        (is (= :chart-draft (:result-type structured)))
-        (is (= {:database 1
-                :type "native"
-                :native {:query "SELECT * FROM test"
-                         :template-tags {}}}
-               (:dataset_query structured)))))))
+    (let [query (lib/native-query (mt/metadata-provider) "SELECT * FROM test")]
+      (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query (create-sql-query-stub query)
+                                  qp/process-query                        (fn [_] nil)]
+        (let [result     (invoke-document-tool "document_construct_sql_chart" sql-chart-args)
+              structured (:structured-output result)]
+          (is (nil? (:error result)))
+          (is (= "Draft chart payload generated from SQL query." (:output result)))
+          (is (= "document_construct_sql_chart" (:tool structured)))
+          (is (= "Test Name" (:name structured)))
+          (is (= "Test Desc" (:description structured)))
+          (is (= "bar" (:display structured)))
+          (is (= "bar" (:chart_type structured)))
+          (is (= :chart-draft (:result-type structured)))
+          (is (= query (:dataset_query structured))))))))
 
 (deftest document-construct-sql-chart-syntax-error-test
   (testing "SQL that fails validation gets the SQL tools' syntax error, with the parser's text on one quoted line"
@@ -280,24 +277,15 @@
              [(ex-info nil {:type :invalid-query})
               "Query failed: unknown error\nFix the query and retry."]]]
       (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
-                                  (fn [_]
-                                    {:validation-result {:valid? true :dialect "postgres"}
-                                     :action-result     {:query-id "q-1"
-                                                         :query    {:database 1
-                                                                    :type     "native"
-                                                                    :native   {:query "SELECT * FROM missing_table"}}}})
+                                  (create-sql-query-stub
+                                   (lib/native-query (mt/metadata-provider) "SELECT * FROM missing_table"))
                                   qp/process-query (fn [_] (throw thrown))]
         (let [result (invoke-document-tool "document_construct_sql_chart" sql-chart-args)]
           (is (= {:class :recoverable :code ::sql.common/query-failed} (:error result)))
           (is (= expected (:output result)))))))
   (testing "a long database error is shortened so the fix still fits in the output"
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
-                                (fn [_]
-                                  {:validation-result {:valid? true :dialect "postgres"}
-                                   :action-result     {:query-id "q-1"
-                                                       :query    {:database 1
-                                                                  :type     "native"
-                                                                  :native   {:query "SELECT 1"}}}})
+                                (create-sql-query-stub (lib/native-query (mt/metadata-provider) "SELECT 1"))
                                 qp/process-query (fn [_]
                                                    (throw (ex-info (apply str (repeat 2000 "\u001b"))
                                                                    {:type :invalid-query})))]
@@ -323,12 +311,7 @@
                     (RuntimeException. "boom")]]
       (testing (pr-str thrown)
         (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
-                                    (fn [_]
-                                      {:validation-result {:valid? true :dialect "postgres"}
-                                       :action-result     {:query-id "q-1"
-                                                           :query    {:database 1
-                                                                      :type     "native"
-                                                                      :native   {:query "SELECT 1"}}}})
+                                    (create-sql-query-stub (lib/native-query (mt/metadata-provider) "SELECT 1"))
                                     qp/process-query (fn [_] (throw thrown))]
           (is (= mut/internal-failure (invoke-document-tool "document_construct_sql_chart" sql-chart-args))))))))
 
@@ -378,12 +361,7 @@
                                      ["referenced question" (referenced-card-error) "referenced question #123"]]]
       (testing label
         (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
-                                    (fn [_]
-                                      {:validation-result {:valid? true :dialect "postgres"}
-                                       :action-result     {:query-id "q-1"
-                                                           :query    {:database 1
-                                                                      :type     "native"
-                                                                      :native   {:query "SELECT 1"}}}})
+                                    (create-sql-query-stub (lib/native-query (mt/metadata-provider) "SELECT 1"))
                                     qp/process-query (fn [_] (throw thrown))]
           (let [output (:output (invoke-document-tool "document_construct_sql_chart" sql-chart-args))]
             (is (str/includes? output expected))

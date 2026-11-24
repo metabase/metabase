@@ -611,7 +611,7 @@
                (assoc (save-entity/savable-chart chart_id) :chart-id chart_id :name (:name op))))))
 
 (defn- comparable-query
-  "A value equal for two forms of the same query, such as a chart's legacy query and the question saved from it."
+  "A value equal for two forms of the same query, such as a chart's query and the question saved from it."
   [query]
   ;; The results cache's key: its canonical form drops uuids and names each aggregation ref by index, in every stage.
   (vec (lib-be/query-hash query)))

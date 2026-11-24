@@ -1,6 +1,8 @@
 import {
+  deserializeCard,
   deserializeCardFromQuery,
   getMetricSeriesWithDefaultDisplay,
+  serializeCardForUrl,
 } from "metabase/common/utils/card";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import * as Lib from "metabase-lib";
@@ -9,6 +11,7 @@ import {
   createMockCard,
   createMockDashCardDataSeries,
   createMockDataset,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
@@ -25,6 +28,20 @@ describe("deserializeCardFromQuery", () => {
     expect(deserializeCardFromQuery(`/question#${WRAPPED_B64}`)).toEqual(
       CARD_PAYLOAD,
     );
+  });
+});
+
+describe("deserializeCard", () => {
+  it("should round-trip an MBQL 5 native query with a template tag", () => {
+    const datasetQuery = Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT * FROM ORDERS WHERE ID = {{id}}",
+      templateTags: { id: { type: "number", "display-name": "ID" } },
+    });
+    const serializedCard = serializeCardForUrl(
+      createMockUnsavedCard({ dataset_query: datasetQuery }),
+    );
+
+    expect(deserializeCard(serializedCard).dataset_query).toEqual(datasetQuery);
   });
 });
 
