@@ -745,6 +745,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :email [:model/User :email] :id [:auto/param user-id]))
 
+(mu/defn user-emails :- [:map-of ::lib.schema.id/user [:maybe :string]]
+  "A map of ID to email of the Users with `user-ids`."
+  [user-ids :- [:set ::lib.schema.id/user]]
+  (mdb/select-batched-map #(t2/select-pk->fn :email [:model/User :id :email] :id [:in [:auto/param %]]) user-ids))
+
 (mu/defn user-summary
   "The ID, names, email, and derived common name of the User with `user-id`, or nil (also for a nil `user-id`, e.g.
   a system-created notification without a creator)."
