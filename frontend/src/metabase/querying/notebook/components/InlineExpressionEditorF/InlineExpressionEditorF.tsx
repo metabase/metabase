@@ -1,4 +1,5 @@
 import { EditorView } from "@codemirror/view";
+import cx from "classnames";
 import { type KeyboardEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -6,12 +7,10 @@ import {
   EXPRESSION_HIDE_AI_SETTING,
   usePrototypeSetting,
 } from "metabase/prototype";
-import {
-  type ExpressionError,
-  isEnterForTheEditor,
-} from "metabase/querying/expressions";
+import type { ExpressionError } from "metabase/querying/expressions";
 import { useSetting } from "metabase/settings";
-import { Box, Icon, Loader, UnstyledButton } from "metabase/ui";
+import { Box, Button, Icon, UnstyledButton } from "metabase/ui";
+import { METAKEY } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 
 import { EditorF } from "../../../components/expressions/EditorF";
@@ -64,16 +63,46 @@ function isInCode(target: EventTarget) {
   return target instanceof HTMLElement && target.matches(".cm-content");
 }
 
+/** True while an input method composes characters in the code. */
+function isComposingInCode(target: EventTarget) {
+  return (
+    target instanceof HTMLElement &&
+    EditorView.findFromDOM(target)?.composing === true
+  );
+}
+
 /**
- * True when Enter in the code may save: not when it picks a suggestion or
- * moves to the next placeholder of a function or template.
+ * The button at the end of the editor: Cancel while there is nothing to run,
+ * Run for a prompt or code that hasn't run, Stop while the AI works, and
+ * Done once the code has run.
  */
-function isOnPlainCode(target: EventTarget) {
-  if (!isInCode(target) || !(target instanceof HTMLElement)) {
-    return false;
+type ActionButton = "cancel" | "run" | "stop" | "done";
+
+function getActionButton({
+  mode,
+  prompt,
+  lastRunPrompt,
+  isGenerating,
+  hasCode,
+  hasCodeToRun,
+}: {
+  mode: Mode;
+  prompt: string;
+  /** The prompt of the AI's last answer, which stays in the input. */
+  lastRunPrompt: string | undefined;
+  isGenerating: boolean;
+  hasCode: boolean;
+  hasCodeToRun: boolean;
+}): ActionButton {
+  if (isGenerating) {
+    return "stop";
   }
-  const view = EditorView.findFromDOM(target);
-  return view != null && !view.composing && !isEnterForTheEditor(view.state);
+  const hasPromptToRun =
+    mode === "ai" && prompt.trim() !== "" && prompt !== lastRunPrompt;
+  if (hasPromptToRun || (mode === "code" && hasCodeToRun)) {
+    return "run";
+  }
+  return hasCode ? "done" : "cancel";
 }
 
 function getBreakoutKey(
@@ -129,7 +158,9 @@ export function InlineExpressionEditorF({
       ? "ai"
       : "code",
   );
+  // The prompt stays after the AI answers, to edit and send again.
   const [prompt, setPrompt] = useState("");
+  const [lastRunPrompt, setLastRunPrompt] = useState<string>();
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiError, setAiError] = useState<string>();
 
@@ -148,8 +179,13 @@ export function InlineExpressionEditorF({
   breakoutKeyRef.current = breakoutKey;
   const [previewBreakoutKey, setPreviewBreakoutKey] = useState(breakoutKey);
 
+  // The text of the last run (Cmd+Enter, Run, ▶ or the AI's answer), which
+  // closing the preview keeps. Run shows until the code changes from it.
+  const [lastRunSource, setLastRunSource] = useState<string>();
+
   const showPreview = useCallback((run: PreviewRun) => {
     setPreviewRun(run);
+    setLastRunSource(run.source);
     setPreviewBreakoutKey(breakoutKeyRef.current);
     setPreviewRefreshKey((key) => key + 1);
   }, []);
@@ -202,10 +238,13 @@ export function InlineExpressionEditorF({
   // In AI mode, the code that the prompt changes.
   const context = isEmpty ? null : (editedSource ?? null);
 
-  // Removing the code from the prompt starts over: no code, no preview.
+  // Removing the code from the prompt starts over: no code, no preview. The
+  // prompt stays, to run again without the code.
   const clearContext = () => {
     clearCodeRef.current?.();
     setPreviewRun(undefined);
+    setLastRunSource(undefined);
+    setLastRunPrompt(undefined);
   };
 
   const enterCode = () => {
@@ -215,14 +254,15 @@ export function InlineExpressionEditorF({
     requestAnimationFrame(() => focusCodeRef.current?.());
   };
 
+  // The prompt of the last answer is still there, with the code as context.
   const enterAi = () => {
     setMode("ai");
-    setPrompt("");
     setAiError(undefined);
   };
 
   const sendPrompt = async () => {
-    const request = prompt.trim();
+    const sentPrompt = prompt;
+    const request = sentPrompt.trim();
     if (request === "" || isGenerating || generateRef.current == null) {
       return;
     }
@@ -236,7 +276,7 @@ export function InlineExpressionEditorF({
     if (result.status === "error") {
       setAiError(result.message);
     } else if (result.status === "done") {
-      setPrompt("");
+      setLastRunPrompt(sentPrompt);
       enterCode();
     }
   };
@@ -247,29 +287,31 @@ export function InlineExpressionEditorF({
     setIsGenerating(false);
   };
 
-  // Enter in the code saves and keeps the editor open (see saveAndShow), and
-  // Shift+Enter starts a new line. Escape closes the editor, once it doesn't
-  // close the suggestions or leave the placeholders (the code does that
-  // first). The capture phase comes before the keymap of the code editor.
+  // Cmd+Enter (Ctrl+Enter) in the code saves and keeps the editor open (see
+  // saveAndShow). Enter is the code editor's: it picks a suggestion, moves to
+  // the next placeholder, or starts a new line. Escape closes the editor,
+  // once it doesn't close the suggestions or leave the placeholders (the code
+  // does that first). The capture phase comes before the keymap of the code
+  // editor.
   const handleKeyDownCapture = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && isInCode(event.target)) {
+    if (!isInCode(event.target)) {
+      return;
+    }
+    if (event.key === "Escape") {
       event.preventDefault();
       onDiscard();
       return;
     }
-    if (event.key !== "Enter") {
-      return;
-    }
+    const isSaveKey =
+      event.key === "Enter" &&
+      (event.metaKey || event.ctrlKey) &&
+      !event.shiftKey &&
+      !event.altKey;
     // Enter also confirms the characters of an input method (Japanese,
     // Chinese, Korean…) while they're composed.
-    const isComposing = event.nativeEvent.isComposing;
-    if (
-      event.shiftKey ||
-      event.altKey ||
-      isComposing ||
-      readOnly ||
-      !isOnPlainCode(event.target)
-    ) {
+    const isComposing =
+      event.nativeEvent.isComposing || isComposingInCode(event.target);
+    if (!isSaveKey || isComposing || readOnly) {
       return;
     }
     event.preventDefault();
@@ -316,7 +358,7 @@ export function InlineExpressionEditorF({
     }
   };
 
-  // Enter saves, and keeps the editor open to show what was saved: the text
+  // Cmd+Enter saves, and keeps the editor open to show what was saved: the text
   // tidied, like `subtotal + total` to `[Subtotal] + [Total]`, and the
   // preview of the result. A text that isn't valid shows its errors.
   const saveAndShow = async () => {
@@ -327,6 +369,35 @@ export function InlineExpressionEditorF({
     const formatted = await formatRef.current?.();
     showPreview(formatted ?? run);
   };
+
+  // The editor reports the text of an opened clause or draft only once it's
+  // edited or checked; until then, that text counts as code that has run.
+  const hasCode =
+    editedSource !== undefined
+      ? !isEmpty
+      : clause != null ||
+        initialExpressionClause != null ||
+        (initialSource ?? "").trim() !== "";
+  const hasCodeToRun =
+    editedSource !== undefined && !isEmpty && editedSource !== lastRunSource;
+  const actionButton = getActionButton({
+    mode,
+    prompt,
+    lastRunPrompt,
+    isGenerating,
+    hasCode,
+    hasCodeToRun,
+  });
+  const actionButtonProps = {
+    cancel: { label: t`Cancel`, isPrimary: false, onClick: onDiscard },
+    run: {
+      label: t`Run`,
+      isPrimary: true,
+      onClick: mode === "ai" ? sendPrompt : saveAndShow,
+    },
+    stop: { label: t`Stop`, isPrimary: false, onClick: cancelPrompt },
+    done: { label: t`Done`, isPrimary: true, onClick: handleDone },
+  }[actionButton];
 
   return (
     <div className={S.root}>
@@ -395,20 +466,24 @@ export function InlineExpressionEditorF({
             toolbarEnd={
               readOnly ? undefined : (
                 <div className={S.toolbar}>
-                  {isGenerating ? (
-                    <>
-                      <Loader size="sm" aria-label={t`Loading`} />
-                      <UnstyledButton
-                        className={S.textButton}
-                        onClick={cancelPrompt}
-                      >{t`Cancel`}</UnstyledButton>
-                    </>
-                  ) : (
-                    <UnstyledButton
-                      className={S.textButton}
-                      onClick={handleDone}
-                    >{t`Done`}</UnstyledButton>
+                  {actionButton === "stop" && (
+                    <span
+                      className={S.loader}
+                      role="status"
+                      aria-label={t`Loading`}
+                    />
                   )}
+                  <Button
+                    className={cx(S.actionButton, {
+                      [S.isPrimary]: actionButtonProps.isPrimary,
+                    })}
+                    size="sm"
+                    variant={actionButtonProps.isPrimary ? "light" : "subtle"}
+                    color={actionButtonProps.isPrimary ? "brand" : "neutral"}
+                    onClick={() => actionButtonProps.onClick()}
+                  >
+                    {actionButtonProps.label}
+                  </Button>
                 </div>
               )
             }
@@ -454,7 +529,7 @@ export function InlineExpressionEditorF({
               name={getResultName(expressionMode, previewRun.name ?? name)}
               refreshKey={previewRefreshKey}
               isOutdated={isPreviewOutdated}
-              runLabel={t`Update preview (Enter)`}
+              runLabel={t`Update preview (${METAKEY}+Enter)`}
               onRun={runPreview}
             />
           </div>

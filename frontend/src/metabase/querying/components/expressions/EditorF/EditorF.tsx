@@ -308,9 +308,8 @@ export function EditorF(props: EditorFProps) {
     database,
     openDocs: stableExtensions.openDocs,
     isDocsOpen: stableExtensions.isDocsOpen,
-    // Enter saves, so a suggestion for a plain word isn't highlighted until
-    // Down.
-    highlightFirstSuggestion: false,
+    // Cmd+Enter saves, so Enter and Tab can pick the first suggestion.
+    highlightFirstSuggestion: true,
     extensions: [customTooltip, columnHover, stableExtensions.prefix],
   });
 

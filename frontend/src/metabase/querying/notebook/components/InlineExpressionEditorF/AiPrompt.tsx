@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ChangeEvent, KeyboardEvent } from "react";
+import { type ChangeEvent, type KeyboardEvent, useEffect, useRef } from "react";
 import { jt, t } from "ttag";
 
 import { Icon, Textarea, UnstyledButton } from "metabase/ui";
@@ -33,6 +33,14 @@ export function AiPrompt({
   onRemoveContext,
   onClose,
 }: AiPromptProps) {
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // A prompt kept from the last answer opens with the cursor at its end.
+  useEffect(() => {
+    const input = inputRef.current;
+    input?.setSelectionRange(input.value.length, input.value.length);
+  }, []);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     const hasModifier = event.metaKey || event.ctrlKey || event.altKey;
     // Typed only: a pasted "=IF(…)" is a formula for the AI to convert.
@@ -41,11 +49,13 @@ export function AiPrompt({
       onEnterCode();
       return;
     }
-    if (
+    // Cmd+Enter (Ctrl+Enter) sends; Enter starts a new line.
+    const isSendKey =
       event.key === "Enter" &&
+      (event.metaKey || event.ctrlKey) &&
       !event.shiftKey &&
-      !event.nativeEvent.isComposing
-    ) {
+      !event.altKey;
+    if (isSendKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       onSubmit();
       return;
@@ -72,6 +82,7 @@ export function AiPrompt({
               wrapper: S.promptWrapper,
               input: cx(S.promptInput, { [S.isGenerating]: isGenerating }),
             }}
+            ref={inputRef}
             autoFocus
             onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
               onPromptChange(event.target.value)
@@ -81,12 +92,12 @@ export function AiPrompt({
           {prompt === "" && (
             <div className={S.placeholder} aria-hidden>
               {context != null
-                ? jt`Ask AI, or press ${(
+                ? jt`Ask AI, or type ${(
                     <kbd key="key" className={S.key}>
                       =
                     </kbd>
                   )} to edit the expression`
-                : jt`Ask AI, or press ${(
+                : jt`Ask AI, or type ${(
                     <kbd key="key" className={S.key}>
                       =
                     </kbd>
