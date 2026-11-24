@@ -83,3 +83,31 @@
         loaded         (if (seq action-eids) (dashboards.db/action-entity-ids-in action-eids) #{})
         keep-dashcard? #(or (nil? (:action_id %)) (contains? loaded (:action_id %)))]
     (mapv #(m/update-existing-in % [:entity :dashcards] (partial filterv keep-dashcard?)) items)))
+
+(defn- walk-link-collection
+  "A walk of the visualization settings of a dashcard that replaces the Collection of a link card's entity, which the
+  API hydrates and serialization does not name, by what `visit` gives for it, when `replace?` of it is true."
+  [replace?]
+  (fn [visit settings]
+    (m/update-existing-in settings [:link :entity :collection_id]
+                          #(cond->> % (replace? %) (visit :model/Collection)))))
+
+(defn- export-api-visualization-settings
+  "Exports the `visualization_settings` values `xs` of dashcards as the API gives them: as serialization exports them,
+  with the Collection of a link card's entity by entity id."
+  [store dashcards xs opts]
+  (serialization/export-in-bulk
+   store
+   ((:export serialization/visualization-settings-transform) store dashcards xs opts)
+   (walk-link-collection pos-int?)))
+
+(defn- import-api-visualization-settings
+  "Imports the `visualization_settings` values `xs` of dashcards as [[export-api-visualization-settings]] gives them."
+  [store dashcards xs opts]
+  ((:import serialization/visualization-settings-transform)
+   store dashcards (serialization/import-in-bulk store xs opts (walk-link-collection string?)) opts))
+
+(def api-visualization-settings-transform
+  "The transform of the `visualization_settings` of dashcards as the API gives them."
+  {:export export-api-visualization-settings
+   :import import-api-visualization-settings})

@@ -377,3 +377,59 @@
           (is (=? {:table_id    (table-ref (mt/id :venues))
                    :database_id (:name (mt/db))}
                   (get-with-entity-ids :crowberto (str "action/" (:id action))))))))))
+
+(deftest link-card-collection-test
+  (testing "a link card's entity names its Collection by entity id"
+    (mt/with-temp [:model/Collection    {coll-id :id coll-eid :entity_id} {}
+                   :model/Card          {card-id :id}                     {:collection_id coll-id :dataset_query (venues-query)}
+                   :model/Dashboard     {dash-id :id}                     {}
+                   :model/DashboardCard _                                 {:dashboard_id           dash-id
+                                                                           :card_id                nil
+                                                                           :visualization_settings {:link         {:entity {:id card-id :model "card"}}
+                                                                                                    :virtual_card {:display "link"}}}]
+      (is (=? {:dashcards [{:visualization_settings {:link {:entity {:collection_id coll-eid}}}}]}
+              (get-with-entity-ids :crowberto (str "dashboard/" dash-id)))))))
+
+(deftest implicit-action-parameters-test
+  (testing "the parameters of an implicit Action name their Fields by natural keys"
+    (mt/with-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (let [action     (mt/user-http-request :crowberto :post 200 "action"
+                                               {:name "eid parameters action" :type "implicit" :kind "row/create"
+                                                :table_id (mt/id :venues)})
+              parameters (:parameters (get-with-entity-ids :crowberto (str "action/" (:id action))))]
+          (is (seq parameters))
+          (is (some #{(field-ref (mt/id :venues :price))} (map :metabase.actions.models/field-id parameters)))
+          (is (= [] (int-paths parameters))))))))
+
+(deftest search-result-references-test
+  (testing "a search result names its Database and last editor by natural keys"
+    (mt/with-model-cleanup [:model/Card :model/Segment]
+      (let [price   (lib.metadata/field (mt/metadata-provider) (mt/id :venues :price))
+            card    (mt/user-http-request :crowberto :post 200 "card" {:name                   "eid searched card"
+                                                                       :display                :table
+                                                                       :dataset_query          (venues-query)
+                                                                       :visualization_settings {}})
+            segment (mt/user-http-request :crowberto :post 200 "segment"
+                                          {:name "eid searched segment" :definition (lib/filter (venues-query) (lib/= price 1))})
+            results (:data (get-with-entity-ids :crowberto "search" :search_engine "in-place" :q "eid searched"))]
+        (is (=? [{:database_id    (:name (mt/db))
+                  :last_editor_id "crowberto@metabase.com"}]
+                (filter #(= (:entity_id card) (:id %)) results)))
+        (is (=? [{:database_id (:name (mt/db))}]
+                (filter #(= (:entity_id segment) (:id %)) results)))))))
+
+(deftest table-pk-field-test
+  (testing "a Table names its primary key Field by natural key"
+    (is (=? {:pk_field (field-ref (mt/id :venues :id))}
+            (get-with-entity-ids :crowberto (str "table/" (mt/id :venues)))))))
+
+(deftest current-user-test
+  (testing "the current User names their personal Collection and groups by entity ids"
+    (let [response (get-with-entity-ids :crowberto "user/current")]
+      (is (= (t2/select-one-fn :entity_id :model/Collection :personal_owner_id (mt/user->id :crowberto))
+             (:personal_collection_id response)))
+      (is (= (set (t2/select-fn-vec :entity_id :model/PermissionsGroup
+                                    {:join  [:permissions_group_membership [:= :permissions_group_membership.group_id :permissions_group.id]]
+                                     :where [:= :permissions_group_membership.user_id (mt/user->id :crowberto)]}))
+             (set (:group_ids response)))))))

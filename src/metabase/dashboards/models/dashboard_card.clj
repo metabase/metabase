@@ -519,4 +519,5 @@
 
 (defmethod eid-translation/spec :model/DashboardCard [_model]
   {:names      [:dashboard-card]
-   :structures [:parameter_mappings :visualization_settings]})
+   :structures [:parameter_mappings]
+   :transforms {:visualization_settings dashboards.serialization/api-visualization-settings-transform}})

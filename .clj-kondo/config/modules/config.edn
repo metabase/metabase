@@ -3489,8 +3489,10 @@
            util
            util.config}
    :model-exports #{:model/User :model/UserParameterValue}
-   :model-imports #{:model/Dashboard
+   :model-imports #{:model/Collection
+                    :model/Dashboard
                     :model/Database
+                    :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/PulseChannelRecipient
                     :model/Tenant}}
