@@ -1,12 +1,11 @@
-import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { Box, Button, Code, Flex, Icon, Loader, Text } from "metabase/ui";
+import { Icon, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import S from "./Errors/Errors.module.css";
+import S from "./SqlHint.module.css";
 import {
   type SqlFix,
   applyAllSqlFixes,
@@ -103,68 +102,71 @@ export function useSqlHint({
   }
 
   return (
-    <Flex direction="column" gap="xs" w="100%" className={S.sqlHint}>
-      <Flex gap="sm" align="flex-start">
-        <Icon name="warning" className={cx(S.icon, S.noteIcon)} />
-        <Text lh="1.4">
+    <>
+      <span className={S.title}>{t`Looks like SQL`}</span>
+      <div className={S.body}>
+        <span>
           {isSql
-            ? t`This looks like SQL. Custom expressions use their own formula language, like a spreadsheet: [Column] for columns and functions like isNull([Column]).`
-            : t`Some parts look like SQL, which custom expressions do not use.`}{" "}
+            ? t`Custom expressions use their own syntax: [Column] for columns, and functions like isNull([Column]).`
+            : t`Some parts use SQL syntax, which custom expressions do not support.`}
           {showMetabaseLinks && (
-            <a
-              href={docsUrl}
-              target="_blank"
-              rel="noreferrer"
-              className={S.link}
-            >{t`Learn the syntax`}</a>
+            <>
+              {" "}
+              <a
+                href={docsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className={S.link}
+              >{t`Learn the syntax`}</a>
+            </>
           )}
-        </Text>
-      </Flex>
-      {fixes.slice(0, MAX_SHOWN_FIXES).map((fix, index) => (
-        <FixRow
-          key={index}
-          fix={fix}
-          onApply={() => applySource(applySqlFixes(source, [fix]))}
-        />
-      ))}
-      <Flex gap="sm" pl="lg">
-        {hasMoreFixes && (
-          <Button
-            size="compact-sm"
-            variant="default"
-            onClick={() => applySource(allFixed)}
-          >{t`Apply all fixes`}</Button>
+        </span>
+        {fixes.slice(0, MAX_SHOWN_FIXES).map((fix, index) => (
+          <FixRow
+            key={index}
+            fix={fix}
+            onApply={() => applySource(applySqlFixes(source, [fix]))}
+          />
+        ))}
+        <div className={S.actions}>
+          {hasMoreFixes && (
+            <button
+              type="button"
+              className={S.action}
+              onClick={() => applySource(allFixed)}
+            >{t`Apply all fixes`}</button>
+          )}
+          <button
+            type="button"
+            className={S.action}
+            disabled={isConverting}
+            onClick={handleConvert}
+          >
+            {isConverting ? (
+              <Loader size={12} />
+            ) : (
+              <Icon name="metabot" size={12} />
+            )}
+            {t`Convert with AI`}
+          </button>
+        </div>
+        {refusal?.source === source && (
+          <span className={S.refusal}>{refusal.message}</span>
         )}
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          leftSection={
-            isConverting ? <Loader size="xs" /> : <Icon name="metabot" />
-          }
-          disabled={isConverting}
-          onClick={handleConvert}
-        >{t`Convert with AI`}</Button>
-      </Flex>
-      {refusal?.source === source && (
-        <Text fz="sm" c="text-secondary" pl="lg">
-          {refusal.message}
-        </Text>
-      )}
-    </Flex>
+      </div>
+    </>
   );
 }
 
 function FixRow({ fix, onApply }: { fix: SqlFix; onApply: () => void }) {
   return (
-    <Flex gap="sm" align="center" pl="lg" wrap="wrap">
-      <Code className={S.code}>{fix.original}</Code>
-      <Icon name="arrow_right" size={12} />
-      <Code className={S.code}>{fix.replacement}</Code>
-      <Box>
-        <Button size="compact-sm" variant="subtle" onClick={onApply}>
-          {t`Apply`}
-        </Button>
-      </Box>
-    </Flex>
+    <div className={S.fix}>
+      <code className={S.code}>{fix.original}</code>
+      <Icon name="arrow_right" size={12} className={S.arrow} />
+      <code className={S.code}>{fix.replacement}</code>
+      <button type="button" className={S.action} onClick={onApply}>
+        {t`Apply`}
+      </button>
+    </div>
   );
 }

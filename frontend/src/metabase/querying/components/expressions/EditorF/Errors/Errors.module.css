@@ -15,33 +15,3 @@
     color: var(--mb-color-feedback-warning-strong);
   }
 }
-
-/* Sized to line up with the first line of text */
-.icon {
-  flex: 0 0 auto;
-  margin-top: 1px;
-  color: var(--mb-color-feedback-negative);
-}
-
-.title {
-  flex-shrink: 0;
-  font-weight: bold;
-}
-
-.noteIcon {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.sqlHint {
-  color: var(--mb-color-text-primary);
-}
-
-.link {
-  color: var(--mb-color-text-brand);
-  text-decoration: underline;
-}
-
-.code {
-  font-size: 12px;
-}

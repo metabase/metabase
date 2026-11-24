@@ -194,8 +194,6 @@ const RULES: Rule[] = [
     pattern: /\b(CURRENT_TIMESTAMP|GETDATE\s*\(\s*\)|SYSDATE)\b/gi,
     fix: () => "now()",
   },
-  // Texts in single quotes, after the rules that read them.
-  { pattern: /('x*')/g, fix: ([text]) => toDoubleQuotes(text) },
   { pattern: /<>/g, fix: () => "!=" },
   { pattern: /==/g, fix: () => "=" },
   { pattern: /&&/g, fix: () => "AND" },

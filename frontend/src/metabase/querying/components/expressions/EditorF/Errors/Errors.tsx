@@ -22,7 +22,11 @@ export function Errors({
     return null;
   }
   if (content != null) {
-    return <div className={S.errors}>{content}</div>;
+    return (
+      <div className={S.errors} role="alert">
+        {content}
+      </div>
+    );
   }
   return (
     <div className={S.errors} role="alert">
