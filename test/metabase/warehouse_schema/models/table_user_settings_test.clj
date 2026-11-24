@@ -130,3 +130,59 @@
       (table-user-settings/upsert-table-user-settings! table {:data_layer :hidden})
       (is (=? {:visibility_type :cruft :data_layer :hidden :visibility_type_set true :data_layer_set true}
               (t2/select-one :model/TableUserSettings :table_id table-id))))))
+
+(def ^:private structural-metadata
+  {:table_role         :role/Fact
+   :grain              "order line"
+   :grain_description  "One row for each line of an order"
+   :period_granularity :day
+   :mutability         :append_only
+   :load_strategy      :incremental
+   :scd_type           0
+   :history_definition {:valid_from 15}
+   :eav_definition     {:entity_key 31, :definition_table 9}})
+
+(deftest structural-metadata-round-trip-test
+  (mt/with-temp [:model/Table               {table-id :id} {}
+                 :model/TableUserSettings   _              (assoc structural-metadata
+                                                                  :table_id table-id
+                                                                  :display_name "User Name")]
+    (is (= structural-metadata
+           (select-keys (t2/select-one :model/TableUserSettings :table_id table-id) (keys structural-metadata))))))
+
+(deftest invalid-structural-metadata-test
+  (mt/with-temp [:model/Table {table-id :id} {}]
+    (doseq [[column value] [[:table_role :role/NotARole]
+                            [:period_granularity :fortnight]
+                            [:mutability :append-only]
+                            [:load_strategy :upsert]
+                            [:scd_type 8]
+                            [:history_definition {:surrogate_key 12}]
+                            [:eav_definition {:entity_key "31"}]]]
+      (testing (pr-str column value)
+        (is (=? {:status-code 400, :errors {column some?}}
+                (try
+                  (t2/insert! :model/TableUserSettings {:table_id table-id, :display_name "User Name", column value})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    (ex-data e)))))))))
+
+(deftest invalid-scd-type-update-test
+  (mt/with-temp [:model/Table             {table-id :id} {}
+                 :model/TableUserSettings _              {:table_id table-id, :display_name "User Name", :scd_type 1}]
+    (is (=? {:status-code 400, :errors {:scd_type some?}}
+            (try
+              (t2/update! :model/TableUserSettings :table_id table-id {:scd_type 8})
+              nil
+              (catch clojure.lang.ExceptionInfo e
+                (ex-data e)))))
+    (is (= 1 (t2/select-one-fn :scd_type :model/TableUserSettings :table_id table-id)))))
+
+(deftest bad-stored-structural-metadata-reads-as-nil-test
+  (mt/with-temp [:model/Table             {table-id :id} {}
+                 :model/TableUserSettings _              {:table_id table-id, :display_name "User Name"}]
+    (t2/update! :metabase_table_user_settings :table_id table-id {:table_role         "role/NotARole"
+                                                                  :mutability         "append-only"
+                                                                  :history_definition "{\"surrogate_key\":12}"})
+    (is (=? {:table_role nil, :mutability nil, :history_definition nil}
+            (t2/select-one :model/TableUserSettings :table_id table-id)))))

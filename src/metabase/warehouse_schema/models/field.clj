@@ -27,6 +27,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
+   [metabase.warehouse-schema.transforms :as warehouse-schema.transforms]
    [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
    [metabase.warehouses.models.database :as database]
    [metabase.xrays.spec :as xrays]
@@ -53,51 +54,24 @@
 (methodical/defmethod t2/model-for-automagic-hydration [:default :origin]               [_model _k]  :model/Field)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :human_readable_field] [_model _k]  :model/Field)
 
-(defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
-  (fn [k]
-    (when-let [k (some-> k keyword)]
-      (when-not (some
-                 (partial isa? k)
-                 ancestor-types)
-        (let [message (tru "Invalid value for Field column {0}: {1} is not a descendant of any of these types: {2}"
-                           (pr-str column-name) (pr-str k) (pr-str ancestor-types))]
-          (throw (ex-info message
-                          {:status-code       400
-                           :errors            {column-name message}
-                           :value             k
-                           :allowed-ancestors ancestor-types}))))
-      (u/qualified-name k))))
-
-(defn- hierarchy-keyword-out [column-name & {:keys [fallback-type ancestor-types]}]
-  (fn [s]
-    (when (seq s)
-      (let [k (keyword s)]
-        (if (some
-             (partial isa? k)
-             ancestor-types)
-          k
-          (do
-            (log/warnf "Invalid Field %s %s: falling back to %s" column-name k fallback-type)
-            fallback-type))))))
-
 (def ^:private transform-field-base-type
-  {:in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
-   :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*)})
+  (warehouse-schema.transforms/hierarchy-keyword :model/Field :base_type
+                                                 :ancestor-types [:type/*], :fallback-type :type/*))
 
 (def transform-field-effective-type
   "Transform effective_type"
-  {:in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
-   :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*)})
+  (warehouse-schema.transforms/hierarchy-keyword :model/Field :effective_type
+                                                 :ancestor-types [:type/*], :fallback-type :type/*))
 
 (def transform-field-semantic-type
   "Transform semantic_type"
-  {:in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
-   :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil)})
+  (warehouse-schema.transforms/hierarchy-keyword :model/Field :semantic_type
+                                                 :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil))
 
 (def transform-field-coercion-strategy
   "Transform coercion_strategy"
-  {:in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
-   :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil)})
+  (warehouse-schema.transforms/hierarchy-keyword :model/Field :coercion_strategy
+                                                 :ancestor-types [:Coercion/*], :fallback-type nil))
 
 (defn- maybe-parse-semantic-numeric-values [maybe-double-value]
   (if (string? maybe-double-value)
@@ -128,7 +102,7 @@
    :nfc_path          mi/transform-json
    :json_unfolding    mi/transform-boolean})
 
-(t2/deftransforms :model/Field field-transforms)
+(t2/deftransforms :model/Field (merge field-transforms warehouse-schema.transforms/field-transforms))
 
 (doto :model/Field
   (derive :metabase/model)
@@ -205,6 +179,7 @@
 
 (t2/define-before-insert :model/Field
   [field]
+  (warehouse-schema.transforms/check-field-values field)
   (let [field (merge field
                      {:display_name (:display_name field (humanization/name->human-readable-name (:name field)))}
                      (coercion-changes field field))]
@@ -216,6 +191,7 @@
   [{:keys [id table_id] :as field}]
   (let [changes (t2/changes field)
         field   (merge field (coercion-changes field changes))]
+    (warehouse-schema.transforms/check-field-values changes)
     (when (contains? changes :table_id)
       (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
     (when (and (contains? changes :fk_target_field_id) (:fk_target_field_id field))

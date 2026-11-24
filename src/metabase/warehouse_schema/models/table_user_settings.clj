@@ -14,6 +14,7 @@
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
+   [metabase.warehouse-schema.transforms :as warehouse-schema.transforms]
    [metabase.warehouse-schema.user-settings :as user-settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -25,18 +26,19 @@
 (methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
 
 (t2/deftransforms :model/TableUserSettings
-  {:entity_type     mi/transform-keyword
-   :visibility_type mi/transform-keyword
-   :field_order     mi/transform-keyword
-   :data_layer      (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum table/data-layers)
-                     (some-fn table/legacy-data-layer->current identity))
-   :data_source     (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum table/data-sources)
-                     (some-fn keyword identity))
-   :data_authority  table/transform-data-authority})
+  (merge {:entity_type     mi/transform-keyword
+          :visibility_type mi/transform-keyword
+          :field_order     mi/transform-keyword
+          :data_layer      (mi/transform-validator-with-fixes
+                            mi/transform-keyword
+                            (partial mi/assert-optional-enum table/data-layers)
+                            (some-fn table/legacy-data-layer->current identity))
+          :data_source     (mi/transform-validator-with-fixes
+                            mi/transform-keyword
+                            (partial mi/assert-optional-enum table/data-sources)
+                            (some-fn keyword identity))
+          :data_authority  table/transform-data-authority}
+         warehouse-schema.transforms/table-transforms))
 
 (doto :model/TableUserSettings
   (derive :metabase/model)
@@ -99,6 +101,7 @@
 
 (t2/define-before-insert :model/TableUserSettings
   [settings]
+  (warehouse-schema.transforms/check-table-values settings)
   (completed-settings settings settings))
 
 (t2/define-after-insert :model/TableUserSettings
@@ -107,7 +110,9 @@
 
 (t2/define-before-update :model/TableUserSettings
   [settings]
-  (completed-settings settings (t2/changes settings)))
+  (let [changes (t2/changes settings)]
+    (warehouse-schema.transforms/check-table-values changes)
+    (completed-settings settings changes)))
 
 (t2/define-after-update :model/TableUserSettings
   [settings]

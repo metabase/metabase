@@ -2,12 +2,15 @@
   "Tests for specific behavior related to the Field model."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
@@ -440,3 +443,74 @@
                    :model/Dimension _              {:field_id field-id :type :internal :name "Rating"}]
       (sync-util/update-field-unless-user-set! field-id {:semantic_type :type/Score})
       (is (t2/exists? :model/Dimension :field_id field-id :type "internal")))))
+
+(def ^:private structural-metadata
+  {:is_grain           true
+   :attribute_scd_type 2
+   :facets             {:time      :type/EventTimestamp
+                        :key       :type/DurableKey
+                        :structure :type/CustomProperty
+                        :lifecycle :type/SoftDeleteFlag}})
+
+(def ^:private invalid-structural-metadata
+  [[:attribute_scd_type 4]
+   [:attribute_scd_type -1]
+   [:facets             {:time :type/NotAType}]
+   [:facets             {:color :type/Category}]
+   [:facets             ["type/Category"]]])
+
+(deftest structural-metadata-round-trip-test
+  (mt/with-temp [:model/Field {field-id :id} structural-metadata]
+    (is (= structural-metadata
+           (select-keys (t2/select-one :model/Field :id field-id) (keys structural-metadata))))))
+
+(deftest structural-metadata-update-round-trip-test
+  (mt/with-temp [:model/Field {field-id :id} {}]
+    (t2/update! :model/Field :id field-id structural-metadata)
+    (is (= structural-metadata
+           (select-keys (t2/select-one :model/Field :id field-id) (keys structural-metadata))))))
+
+(deftest facets-string-values-test
+  (mt/with-temp [:model/Field {field-id :id} {:facets {:time "type/EventTimestamp"}}]
+    (is (= {:time :type/EventTimestamp} (t2/select-one-fn :facets :model/Field :id field-id)))))
+
+(deftest structural-metadata-is-valid-lib-column-metadata-test
+  (mt/with-temp [:model/Field {field-id :id} structural-metadata]
+    (is (nil? (mr/explain ::lib.schema.metadata/column
+                          (lib-be/instance->metadata (t2/select-one :model/Field :id field-id) :metadata/column))))))
+
+(deftest invalid-structural-metadata-insert-test
+  (mt/with-temp [:model/Table {table-id :id} {}]
+    (doseq [[column value] invalid-structural-metadata]
+      (testing (pr-str column value)
+        (is (=? {:status-code 400, :errors {column some?}}
+                (try
+                  (t2/insert! :model/Field {:table_id table-id, :name "bad", :base_type :type/Text, column value})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    (ex-data e)))))))))
+
+(deftest invalid-structural-metadata-update-test
+  (mt/with-temp [:model/Field {field-id :id} structural-metadata]
+    (doseq [[column value] invalid-structural-metadata]
+      (testing (pr-str column value)
+        (is (=? {:status-code 400, :errors {column some?}}
+                (try
+                  (t2/update! :model/Field :id field-id {column value})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    (ex-data e)))))
+        (is (= (get structural-metadata column) (t2/select-one-fn column :model/Field :id field-id)))))))
+
+(deftest bad-stored-facet-is-dropped-test
+  (mt/with-temp [:model/Field {field-id :id} {}]
+    (t2/update! :metabase_field :id field-id
+                {:facets "{\"time\":\"type/EventTimestamp\",\"key\":\"type/NotAType\",\"color\":\"type/Category\"}"})
+    (is (= {:time :type/EventTimestamp} (t2/select-one-fn :facets :model/Field :id field-id)))))
+
+(deftest bad-stored-facets-read-as-nil-test
+  (mt/with-temp [:model/Field {field-id :id} {}]
+    (doseq [stored ["not json" "[\"type/Category\"]"]]
+      (testing stored
+        (t2/update! :metabase_field :id field-id {:facets stored})
+        (is (nil? (t2/select-one-fn :facets :model/Field :id field-id)))))))

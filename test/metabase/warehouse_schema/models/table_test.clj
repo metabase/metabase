@@ -735,3 +735,78 @@
         (is (=? {:data_layer :internal :data_authority :unconfigured}
                 (t2/select-one [:model/Table :data_layer :data_authority]
                                :name "raw-insert-probe" :db_id db-id)))))))
+
+(def ^:private structural-metadata
+  {:table_role         :role/HistoryDimension
+   :grain              "user version"
+   :grain_description  "One row for each version of a user"
+   :period_granularity :month
+   :mutability         :versioned
+   :load_strategy      :merge
+   :scd_type           2
+   :history_definition {:durable_key 12, :valid_from 15, :valid_to 16, :current_flag nil}
+   :eav_definition     {:entity_key 31, :property_name 32, :property_value 33, :definition_table 9}})
+
+(def ^:private invalid-structural-metadata
+  [[:table_role         :role/NotARole]
+   [:table_role         :entity/UserTable]
+   [:period_granularity :fortnight]
+   [:mutability         :append-only]
+   [:load_strategy      :upsert]
+   [:scd_type           8]
+   [:scd_type           -1]
+   [:history_definition {:durable_key 12, :surrogate_key 13}]
+   [:history_definition {:durable_key "12"}]
+   [:eav_definition     {:definition_table 0}]])
+
+(deftest structural-metadata-round-trip-test
+  (mt/with-temp [:model/Table {table-id :id} structural-metadata]
+    (is (= structural-metadata
+           (select-keys (t2/select-one :model/Table :id table-id) (keys structural-metadata))))))
+
+(deftest structural-metadata-update-round-trip-test
+  (mt/with-temp [:model/Table {table-id :id} {}]
+    (t2/update! :model/Table :id table-id structural-metadata)
+    (is (= structural-metadata
+           (select-keys (t2/select-one :model/Table :id table-id) (keys structural-metadata))))))
+
+(deftest structural-metadata-string-values-test
+  (testing "keyword columns take the names of their values"
+    (mt/with-temp [:model/Table {table-id :id} {:table_role "role/Fact", :mutability "append_only"}]
+      (is (=? {:table_role :role/Fact, :mutability :append_only} (t2/select-one :model/Table :id table-id))))))
+
+(deftest invalid-structural-metadata-insert-test
+  (doseq [[column value] invalid-structural-metadata]
+    (testing (pr-str column value)
+      (is (=? {:status-code 400, :errors {column some?}}
+              (try
+                (t2/insert! :model/Table {:db_id (mt/id), :name "bad_structural_metadata", column value})
+                nil
+                (catch clojure.lang.ExceptionInfo e
+                  (ex-data e))))))))
+
+(deftest invalid-structural-metadata-update-test
+  (mt/with-temp [:model/Table {table-id :id} structural-metadata]
+    (doseq [[column value] invalid-structural-metadata]
+      (testing (pr-str column value)
+        (is (=? {:status-code 400, :errors {column some?}}
+                (try
+                  (t2/update! :model/Table :id table-id {column value})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    (ex-data e)))))
+        (is (= (get structural-metadata column) (t2/select-one-fn column :model/Table :id table-id)))))))
+
+(deftest bad-stored-structural-metadata-reads-as-nil-test
+  (mt/with-temp [:model/Table {table-id :id} {}]
+    (t2/update! :metabase_table :id table-id {:table_role         "role/NotARole"
+                                              :period_granularity "fortnight"
+                                              :mutability         "append-only"
+                                              :load_strategy      "upsert"
+                                              :history_definition "{\"surrogate_key\":12}"
+                                              :eav_definition     "not json"})
+    (is (= {:table_role nil, :period_granularity nil, :mutability nil, :load_strategy nil
+            :history_definition nil, :eav_definition nil}
+           (select-keys (t2/select-one :model/Table :id table-id)
+                        [:table_role :period_granularity :mutability :load_strategy
+                         :history_definition :eav_definition])))))

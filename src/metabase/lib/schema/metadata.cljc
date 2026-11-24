@@ -14,6 +14,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
+   [metabase.types.core :as types]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [empty? get-in]]))
 
@@ -329,6 +330,19 @@
 (mr/def ::column.data-sensitivity
   (into [:enum {:decode/normalize keyword}] column-data-sensitivity-types))
 
+(mr/def ::column.facet-type
+  "The value of one of a Field's `facets`: a type in the global type hierarchy."
+  [:and
+   ::lib.schema.common/keyword
+   [:fn {:error/message "valid type"}
+    (fn [k] (or (isa? k :type/*) (isa? k :Semantic/*) (isa? k :Relation/*)))]])
+
+(mr/def ::column.facets
+  "A Field's `facets`: the roles it plays besides its semantic type, by facet."
+  (into [:map {:closed true}]
+        (map (fn [k] [k {:optional true} [:ref ::column.facet-type]]))
+        types/field-facet-keys))
+
 (mr/def ::column.legacy-source
   "Possible values for `column.source` -- this is added by [[metabase.lib.metadata.result-metadata]] for historical
   reasons (it is used in a few places in the FE). DO NOT use this in the backend for any purpose, use `:lib/source`
@@ -576,10 +590,9 @@
    [:created-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
    [:updated-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
    [:last-analyzed              {:optional true} [:maybe [:ref ::column.timestamp]]]
-   ;; structural metadata, as stored: `facets` is the raw JSON string
    [:is-grain                   {:optional true} [:maybe :boolean]]
    [:attribute-scd-type         {:optional true} [:maybe :int]]
-   [:facets                     {:optional true} [:maybe :string]]
+   [:facets                     {:optional true} [:maybe [:ref ::column.facets]]]
    ;; the Field a foreign key points at, and the Field that names this table's rows: hydrated onto a Field by the
    ;; application database metadata provider, but only an id reference in the metadata the frontend hands over
    [:target                     {:optional true} [:maybe [:or ::lib.schema.id/field [:ref ::column]]]]

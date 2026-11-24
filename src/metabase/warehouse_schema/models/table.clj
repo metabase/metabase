@@ -29,6 +29,7 @@
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.recent-views :as warehouse-schema.recent-views]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.transforms :as warehouse-schema.transforms]
    [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
@@ -142,21 +143,23 @@
    :gold   :final})
 
 (t2/deftransforms :model/Table
-  {:entity_type             mi/transform-keyword
-   :is_published            mi/transform-boolean
-   :show_in_getting_started mi/transform-boolean
-   :visibility_type         mi/transform-keyword
-   :data_layer              (mi/transform-validator-with-fixes
-                             mi/transform-keyword
-                             (partial mi/assert-optional-enum data-layers)
-                             (some-fn legacy-data-layer->current identity))
-   :field_order             mi/transform-keyword
-   :data_source             (mi/transform-validator-with-fixes
-                             mi/transform-keyword
-                             (partial mi/assert-optional-enum data-sources)
-                             (some-fn keyword identity))
-   ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority          transform-data-authority})
+  (merge
+   {:entity_type             mi/transform-keyword
+    :is_published            mi/transform-boolean
+    :show_in_getting_started mi/transform-boolean
+    :visibility_type         mi/transform-keyword
+    :data_layer              (mi/transform-validator-with-fixes
+                              mi/transform-keyword
+                              (partial mi/assert-optional-enum data-layers)
+                              (some-fn legacy-data-layer->current identity))
+    :field_order             mi/transform-keyword
+    :data_source             (mi/transform-validator-with-fixes
+                              mi/transform-keyword
+                              (partial mi/assert-optional-enum data-sources)
+                              (some-fn keyword identity))
+    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
+    :data_authority          transform-data-authority}
+   warehouse-schema.transforms/table-transforms))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
@@ -226,6 +229,7 @@
 
 (t2/define-before-insert :model/Table
   [table]
+  (warehouse-schema.transforms/check-table-values table)
   (check-publication table)
   (collection/check-allowed-content :table (:collection_id table))
   (merge table
@@ -242,6 +246,7 @@
   [table]
   (let [changes  (t2/changes table)
         original (t2/original table)]
+    (warehouse-schema.transforms/check-table-values changes)
     (check-changes changes original)
     (when (some #(contains? changes %) [:is_published :collection_id])
       (check-publication table))

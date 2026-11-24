@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.schema :as models.schema]
@@ -59,16 +60,11 @@
 
 (mr/def ::facet-type
   "The value of one of a Field's `facets`: a type in the global type hierarchy."
-  [:and
-   ::lib.schema.common/keyword
-   [:fn {:error/message "valid type"}
-    (fn [k] (some #(isa? k %) [:type/* :Semantic/* :Relation/*]))]])
+  [:ref ::lib.schema.metadata/column.facet-type])
 
 (mr/def ::facets
   "A Field's `facets`: the roles it plays besides its semantic type, by facet."
-  (into [:map {:closed true}]
-        (map (fn [k] [k {:optional true} ::facet-type]))
-        types/field-facet-keys))
+  [:ref ::lib.schema.metadata/column.facets])
 
 (mr/def ::dimension.type
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :internal :external])

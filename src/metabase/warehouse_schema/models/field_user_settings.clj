@@ -15,6 +15,7 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
+   [metabase.warehouse-schema.transforms :as warehouse-schema.transforms]
    [metabase.warehouse-schema.user-settings :as user-settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -24,13 +25,14 @@
 (methodical/defmethod t2/table-name :model/FieldUserSettings [_model] :metabase_field_user_settings)
 
 (t2/deftransforms :model/FieldUserSettings
-  {:effective_type    field/transform-field-effective-type
-   :coercion_strategy field/transform-field-coercion-strategy
-   :semantic_type     field/transform-field-semantic-type
-   :visibility_type   mi/transform-keyword
-   :has_field_values  mi/transform-keyword
-   :data_sensitivity  mi/transform-keyword
-   :settings          mi/transform-json})
+  (merge {:effective_type    field/transform-field-effective-type
+          :coercion_strategy field/transform-field-coercion-strategy
+          :semantic_type     field/transform-field-semantic-type
+          :visibility_type   mi/transform-keyword
+          :has_field_values  mi/transform-keyword
+          :data_sensitivity  mi/transform-keyword
+          :settings          mi/transform-json}
+         warehouse-schema.transforms/field-transforms))
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
@@ -57,6 +59,7 @@
 
 (t2/define-before-insert :model/FieldUserSettings
   [settings]
+  (warehouse-schema.transforms/check-field-values settings)
   (with-set-flags settings settings))
 
 (t2/define-after-insert :model/FieldUserSettings
@@ -65,7 +68,9 @@
 
 (t2/define-before-update :model/FieldUserSettings
   [settings]
-  (with-set-flags settings (t2/changes settings)))
+  (let [changes (t2/changes settings)]
+    (warehouse-schema.transforms/check-field-values changes)
+    (with-set-flags settings changes)))
 
 (t2/define-after-update :model/FieldUserSettings
   [settings]
