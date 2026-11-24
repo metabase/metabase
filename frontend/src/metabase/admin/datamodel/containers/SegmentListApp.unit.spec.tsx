@@ -21,6 +21,7 @@ import * as Analytics from "metabase/analytics";
 import { Outlet, toRouteObjects } from "metabase/router";
 import type { EnterpriseSettings, Revision, Segment } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockRevision,
   createMockSegment,
   createMockTokenFeatures,
@@ -110,8 +111,8 @@ function setup({
   setupDatabasesEndpoints([
     createSampleDatabase({
       tables: [
-        createOrdersTable({ is_published: true }),
-        createPeopleTable({ is_published: false }),
+        createOrdersTable({ collection: createMockCollection() }),
+        createPeopleTable({ collection: null }),
       ],
     }),
   ]);

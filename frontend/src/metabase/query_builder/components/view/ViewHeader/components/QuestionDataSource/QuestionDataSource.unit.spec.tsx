@@ -331,7 +331,7 @@ function getQuestionFromUrl(relativeUrl: string) {
 }
 
 function areQuestionUrlsEquivalent(url1: string, url2: string) {
-  return Lib.areLegacyQueriesEqual(
+  return Lib.areQueriesEqual(
     getQuestionFromUrl(url1).datasetQuery(),
     getQuestionFromUrl(url2).datasetQuery(),
   );

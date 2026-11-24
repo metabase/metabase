@@ -46,7 +46,7 @@
                               :notes                 notes
                               :grant_start_timestamp now
                               :grant_end_timestamp   grant-end}
-          grant              (-> (support-access-grants.db/insert-grant! grant-record)
+          grant              (-> (sag.model/create-support-access-grant! grant-record)
                                  (t2/hydrate :user_info))
           support-email      (sag.settings/support-access-grant-email)
           support-user       (sag.model/fetch-or-create-support-user!)
@@ -87,9 +87,7 @@
       (throw (ex-info (tru "Grant is already revoked")
                       {:status-code 400})))
     (let [now (t/instant)]
-      (support-access-grants.db/update-grant! grant-id
-                                              {:revoked_at now
-                                               :revoked_by_user_id user-id})
+      (sag.model/revoke-support-access-grant! grant-id now user-id)
       (-> (support-access-grants.db/grant grant-id)
           (t2/hydrate :user_info)))))
 

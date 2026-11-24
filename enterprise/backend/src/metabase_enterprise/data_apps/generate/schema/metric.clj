@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.generate.schema.common :as schemas.common]
-   [metabase-enterprise.data-apps.generate.schema.table :as schemas.table]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
@@ -15,18 +14,17 @@
 (set! *warn-on-reflection* true)
 
 (defn- metric-result-column
-  "Returns the metric aggregation result column inferred by Lib."
-  [card]
-  (schemas.common/aggregation-result-column (:database_id card) (:dataset_query card)))
+  "Returns the metric aggregation result column inferred by Lib with `metadata-provider`."
+  [metadata-provider card]
+  (schemas.common/aggregation-result-column-with-metadata-provider metadata-provider (:dataset_query card)))
 
 (defn- metric-filters
   "Returns the display names of the filters `card`'s query applies. The schema exposes a metric only as an
   aggregation, so they are the only hint that it counts a subset of the rows."
-  [card]
+  [metadata-provider card]
   (when-let [query-definition (not-empty (:dataset_query card))]
     (try
-      (let [query (lib/query (lib-be/application-database-metadata-provider (:database_id card))
-                             query-definition)]
+      (let [query (lib/query metadata-provider query-definition)]
         (not-empty (vec (for [stage-number  (range (lib/stage-count query))
                               filter-clause (lib/filters query stage-number)]
                           (lib/display-name query stage-number filter-clause)))))
@@ -49,20 +47,28 @@
     :card-type (:type card)}
    :status-code (:status-code error-data)))
 
-(defn- metric-details
-  "Returns metric details with queryable dimensions for schema generation."
-  [card]
-  (let [response (metabot/get-metric-details {:metric-id                       (:id card)
-                                              ;; The generated schema does not use the default temporal dimension.
-                                              :with-default-temporal-breakout? false
-                                              :with-field-values?              false
-                                              :with-queryable-dimensions?      true
-                                              :with-segments?                  false})]
-    (or (:structured-output response)
-        (let [error-message (:output response)]
-          (throw (ex-info (metric-details-error-message card error-message)
-                          (assoc (metric-details-error-data card response)
-                                 :error-message error-message)))))))
+(defn- check-metric-details
+  "The details of `card` in the `response` of the metric details lookup, which throws when it failed."
+  [card response]
+  (or (:structured-output response)
+      (let [error-message (:output response)]
+        (throw (ex-info (metric-details-error-message card error-message)
+                        (assoc (metric-details-error-data card response)
+                               :error-message error-message))))))
+
+(defn- metrics-details
+  "Returns metric details with queryable dimensions for schema generation, for each of `cards` of the Database with
+  `database-id`."
+  [database-id cards]
+  (mapv check-metric-details
+        cards
+        (metabot/get-metrics-details database-id
+                                     cards
+                                     {;; The generated schema does not use the default temporal dimension.
+                                      :with-default-temporal-breakout? false
+                                      :with-field-values?              false
+                                      :with-queryable-dimensions?      true
+                                      :with-segments?                  false})))
 
 (defn- persisted-dimension->column
   "Converts persisted metric dimensions to column-shaped maps.
@@ -84,15 +90,11 @@
   (or field_id (some-> dimension :sources first :field-id)))
 
 (defn- dimension-table-id
-  "Returns the table id that backs a metric dimension, when known."
-  ([dimension]
-   (dimension-table-id dimension nil))
-  ([dimension field-table-ids]
-   (or (:table_id dimension)
-       (:table-id dimension)
-       (if field-table-ids
-         (get field-table-ids (dimension-field-id dimension))
-         (schemas.table/table-by-field-id (dimension-field-id dimension))))))
+  "Returns the table id that backs a metric dimension, when known, from `field-table-ids` for one without its own."
+  [dimension field-table-ids]
+  (or (:table_id dimension)
+      (:table-id dimension)
+      (get field-table-ids (dimension-field-id dimension))))
 
 (defn- field-table-ids
   "Returns backing table ids for dimensions that need field-based resolution."
@@ -101,10 +103,11 @@
                         (comp (remove #(or (:table_id %) (:table-id %)))
                               (keep dimension-field-id))
                         dimensions)]
-    (when (seq field-ids)
+    (if (seq field-ids)
       (into {}
             (map (juxt :id :table_id))
-            (data-apps.db/field-ids-and-table-ids field-ids)))))
+            (data-apps.db/field-ids-and-table-ids field-ids))
+      {})))
 
 (defn- dimension-schema
   "Returns the schema for a metric dimension."
@@ -147,11 +150,13 @@
           dimensions)))
 
 (defn- sync-and-fetch-metric-dimensions!
-  "Syncs and returns persisted metric dimensions with mapping metadata."
-  [{:keys [id]}]
-  (metrics/sync-dimensions! :metadata/metric id)
-  (let [{:keys [dimensions dimension_mappings]} (data-apps.db/card-dimensions id)]
-    (enrich-dimensions-with-mappings dimensions dimension_mappings)))
+  "Syncs and returns persisted dimensions with mapping metadata of the metrics with `metric-ids`, by metric id."
+  [metric-ids]
+  (metrics/sync-all-dimensions! :metadata/metric metric-ids)
+  (into {}
+        (map (fn [{:keys [id dimensions dimension_mappings]}]
+               [id (enrich-dimensions-with-mappings dimensions dimension_mappings)]))
+        (data-apps.db/cards-dimensions metric-ids)))
 
 (defn- table-source-rows
   "Returns table rows for table-backed metric dimensions."
@@ -197,39 +202,38 @@
    :displayName name
    :jsType      "unknown"})
 
+(defn- metric-dimensions
+  "Returns the dimensions of a metric: its persisted ones, else the queryable ones of its `details`."
+  [details persisted-dimensions]
+  (or (seq persisted-dimensions)
+      (:queryable-dimensions details)))
+
 (defn- metric-dimensions-with-table-ids
   "Returns metric dimensions paired with their backing table ids, filtering mapped dimensions for card metrics."
-  [details source-card-id-value]
-  (let [dimensions (or (seq (sync-and-fetch-metric-dimensions! details))
-                       (:queryable-dimensions details))
-        field-table-ids (field-table-ids dimensions)]
-    (cond->> (mapv (fn [dimension]
-                     [dimension (dimension-table-id dimension field-table-ids)])
-                   dimensions)
-      source-card-id-value (remove (fn [[_dimension table-id]]
-                                     (integer? table-id))))))
+  [dimensions source-card-id-value field-table-ids]
+  (cond->> (mapv (fn [dimension]
+                   [dimension (dimension-table-id dimension field-table-ids)])
+                 dimensions)
+    source-card-id-value (remove (fn [[_dimension table-id]]
+                                   (integer? table-id)))))
 
 (defn- metric-dimension-schemas
   "Returns dimension schemas and mapped table ids for a metric."
-  [details source-card-id-value]
-  (let [dimension-table-id-pairs (metric-dimensions-with-table-ids details source-card-id-value)
-        table-ids                (->> dimension-table-id-pairs (keep second) (filter integer?) distinct)
-        table-rows               (table-source-rows table-ids)
-        table-key-by-id          (table-key-disambiguators table-rows)
-        dimension-schemas        (mapv (fn [[dimension table-id]]
-                                         (dimension-schema dimension table-id table-key-by-id))
-                                       dimension-table-id-pairs)]
+  [dimension-table-id-pairs table-key-by-id]
+  (let [dimension-schemas (mapv (fn [[dimension table-id]]
+                                  (dimension-schema dimension table-id table-key-by-id))
+                                dimension-table-id-pairs)]
     {:dimension-schemas dimension-schemas
      :mapped-table-ids  (->> dimension-schemas (keep :tableId) distinct sort vec)}))
 
 (defn- metric-schema
   "Returns the schema for a metric and its queryable dimensions."
   [{:keys [id name description verified portable_entity_id base_table_portable_fk] :as details}
-   card]
-  (let [result-column (or (some-> (metric-result-column card) schemas.common/column-schema)
+   card metadata-provider dimension-table-id-pairs table-key-by-id]
+  (let [result-column (or (some-> (metric-result-column metadata-provider card) schemas.common/column-schema)
                           (fallback-metric-column details))
         source-card-id-value (source-card-id card)
-        {:keys [dimension-schemas mapped-table-ids]} (metric-dimension-schemas details source-card-id-value)]
+        {:keys [dimension-schemas mapped-table-ids]} (metric-dimension-schemas dimension-table-id-pairs table-key-by-id)]
     (m/assoc-some
      {:type    "metric"
       :key     (schemas.common/generated-key name id)
@@ -240,11 +244,28 @@
      :sourceCardId source-card-id-value
      :entityId portable_entity_id
      :description description
-     :filters (metric-filters card)
+     :filters (metric-filters metadata-provider card)
      :verified (when verified true)
      :sourceTable (source-table-schema base_table_portable_fk)
      :mappedTableIds (not-empty mapped-table-ids)
      :dimensions (not-empty (schemas.common/keyed-map dimension-schemas)))))
+
+(defn- database-metric-schemas
+  "Returns the schemas of metric `cards` of the Database with `database-id`, by card id, read with one metadata
+  provider and their dimensions synced and read at once."
+  [database-id cards]
+  (let [metadata-provider (lib-be/application-database-metadata-provider database-id)
+        details           (metrics-details database-id cards)
+        persisted         (sync-and-fetch-metric-dimensions! (mapv :id cards))
+        dimensions        (mapv #(metric-dimensions %1 (persisted (:id %2))) details cards)
+        field-table-ids   (field-table-ids (into [] cat dimensions))
+        pairs             (mapv #(metric-dimensions-with-table-ids %1 (source-card-id %2) field-table-ids) dimensions cards)
+        table-ids         (into [] (comp cat (keep second) (filter integer?) (distinct)) pairs)
+        table-key-by-id   (table-key-disambiguators (table-source-rows table-ids))]
+    (into {}
+          (map (fn [details card pairs]
+                 [(:id card) (metric-schema details card metadata-provider pairs table-key-by-id)])
+               details cards pairs))))
 
 (defn- references-saved-card?
   "Whether `metric`'s query depends on a saved card anywhere, not only as its stage-0 source."
@@ -252,14 +273,20 @@
   (boolean (seq (lib/all-source-card-ids (:dataset_query metric)))))
 
 (defn metric-schemas
-  "Returns the schemas of the metrics in the collections with `collection-ids`."
-  [collection-ids]
-  (for [metric (remove source-card-id
-                       (schemas.common/without-unavailable-cards (data-apps.db/metric-cards-in-collections collection-ids)))
-        ;; A data app's questions can use only metrics that resolve entirely from tables, as they
-        ;; read no saved question. `source-card-id` sees only stage 0, so a table-sourced metric
-        ;; joining a saved question would get through; check the whole query instead.
-        :when (not (references-saved-card? metric))
-        :let [details (metric-details metric)]
-        :when details]
-    (metric-schema details metric)))
+  "Returns the schemas of the metrics in the collections with `collection-ids`, only those with `metric-ids` when it
+  has any."
+  [collection-ids metric-ids]
+  (let [metrics             (into []
+                                  (comp (remove source-card-id)
+                                        ;; A data app's questions can use only metrics that resolve entirely from
+                                        ;; tables, as they read no saved question. `source-card-id` sees only stage 0,
+                                        ;; so a table-sourced metric joining a saved question would get through; check
+                                        ;; the whole query instead.
+                                        (remove references-saved-card?))
+                                  (schemas.common/without-unavailable-cards
+                                   (data-apps.db/metric-cards-in-collections collection-ids metric-ids)))
+        schema-by-metric-id (into {}
+                                  (mapcat (fn [[database-id cards]]
+                                            (database-metric-schemas database-id cards)))
+                                  (group-by :database_id metrics))]
+    (keep (comp schema-by-metric-id :id) metrics)))

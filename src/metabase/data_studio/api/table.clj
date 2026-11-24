@@ -18,6 +18,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [toucan2.core :as t2]))
@@ -129,6 +130,12 @@
    [:published_downstream_tables [:sequential ::bulk-table-info]]
    [:unpublished_upstream_tables [:sequential ::bulk-table-info]]])
 
+(defn- bulk-table-info
+  "`table`, a row of selection columns, as a `::bulk-table-info`: its published flag, nil when not set, becomes a
+  boolean."
+  [table]
+  (update table :is_published boolean))
+
 (defn- writable-tables
   "`tables`, or a 403 unless the current user can change the metadata of every one of them."
   [tables]
@@ -189,14 +196,9 @@
                             (data-studio.db/selection-columns-for-tables upstream-ids))
         downstream-tables (when (seq downstream-ids)
                             (data-studio.db/selection-columns-for-tables downstream-ids))]
-    {:selected_table              selected-table
-     :published_downstream_tables (filterv :is_published downstream-tables)
-     :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
-
-(defn- sync-schema-async!
-  [table user-id]
-  (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
+    {:selected_table              (some-> selected-table bulk-table-info)
+     :published_downstream_tables (into [] (comp (filter :is_published) (map bulk-table-info)) downstream-tables)
+     :unpublished_upstream_tables (into [] (comp (remove :is_published) (map bulk-table-info)) upstream-tables)}))
 
 (api.macros/defendpoint :post "/sync-schema" :- :nil
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
@@ -217,8 +219,9 @@
         (catch Throwable e
           (log/warn (u/format-color :red "Cannot connect to database %s in order to sync tables" (:id database)))
           (throw (ex-info (ex-message e) {:status-code 422})))))
+    (events/publish-event! :event/table-manual-sync {:objects tables :user-id api/*current-user-id*})
     (doseq [table tables]
-      (sync-schema-async! table api/*current-user-id*))))
+      (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))))
 
 (api.macros/defendpoint :post "/rescan-values" :- :nil
   "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does."
@@ -228,9 +231,9 @@
   (api/check-data-studio-access)
   (let [tables (writable-tables (data-studio.db/tables-matching-selectors-in-id-order body))]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
-    (doseq [table tables]
-      (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
-      (request/as-admin
+    (events/publish-event! :event/table-manual-scan {:objects tables :user-id api/*current-user-id*})
+    (request/as-admin
+      (doseq [table tables]
         (quick-task/submit-task! #(sync/update-field-values-for-table! table))))))
 
 (api.macros/defendpoint :post "/discard-values" :- :nil
@@ -240,7 +243,7 @@
    body :- ::table-selectors]
   (api/check-data-studio-access)
   (let [tables (writable-tables (data-studio.db/tables-matching-selectors-in-id-order body))]
-    (data-studio.db/delete-field-values-for-tables! (map :id tables))
+    (field-values/delete-field-values! (field-values/ids-of-tables (mapv :id tables)))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes

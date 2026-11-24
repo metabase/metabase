@@ -43,7 +43,6 @@ import {
 import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
-import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
 import { applyDocumentLocales } from "metabase/utils/boot-locale";
@@ -132,24 +131,22 @@ async function _init(
   root.render(
     <MetabaseReduxProvider store={store}>
       <AppMountedMark />
-      <EmotionCacheProvider>
-        <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
-          <OverlayStackProvider>
-            <AppThemeProvider>
-              <GlobalStyles />
-              {createPortal(<PortalContainer />, document.body)}
-              <MetabotProvider>
-                <RouterProvider
-                  routes={routes}
-                  onLocationChange={mirrorLocation}
-                  loadingFallback={<DelayedLoadingSpinner />}
-                  chunkErrorFallback={ChunkLoadFailed}
-                />
-              </MetabotProvider>
-            </AppThemeProvider>
-          </OverlayStackProvider>
-        </DragDropContextProvider>
-      </EmotionCacheProvider>
+      <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
+        <OverlayStackProvider>
+          <AppThemeProvider>
+            <GlobalStyles />
+            {createPortal(<PortalContainer />, document.body)}
+            <MetabotProvider>
+              <RouterProvider
+                routes={routes}
+                onLocationChange={mirrorLocation}
+                loadingFallback={<DelayedLoadingSpinner />}
+                chunkErrorFallback={ChunkLoadFailed}
+              />
+            </MetabotProvider>
+          </AppThemeProvider>
+        </OverlayStackProvider>
+      </DragDropContextProvider>
     </MetabaseReduxProvider>,
   );
 

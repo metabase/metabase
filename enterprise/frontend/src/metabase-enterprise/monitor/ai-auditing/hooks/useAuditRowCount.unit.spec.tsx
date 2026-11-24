@@ -132,9 +132,6 @@ function requestStage(call: CallLog | undefined): unknown {
   if (body === null || typeof body !== "object") {
     return null;
   }
-  if ("query" in body) {
-    return body.query;
-  }
   if (!("stages" in body) || !Array.isArray(body.stages)) {
     return null;
   }
@@ -142,9 +139,20 @@ function requestStage(call: CallLog | undefined): unknown {
   return stages[0];
 }
 
+// The counter is the only request that counts rows under the date filter alone.
 function isCounterQuery(call: CallLog): boolean {
-  const body = requestBody(call);
-  return body !== null && typeof body === "object" && "query" in body;
+  const stage = requestStage(call);
+  return (
+    stage !== null &&
+    typeof stage === "object" &&
+    "aggregation" in stage &&
+    "filters" in stage &&
+    Array.isArray(stage.filters) &&
+    stage.filters.length === 1 &&
+    !("page" in stage) &&
+    !("breakout" in stage) &&
+    !("joins" in stage)
+  );
 }
 
 function countCalls() {
@@ -332,25 +340,15 @@ describe.each(SECTIONS)("$label tab count", (section) => {
     expect(Lib.currentLimit(query, -1)).toBeNull();
   });
 
-  it("matches the unfiltered table's date window and total", async () => {
-    setup({ section, initialRoute: section.eventsPath, tableTotal: 137 });
+  it("shares one count request with the unfiltered table's total", async () => {
+    setup({ section, initialRoute: section.eventsPath });
 
     expect(await within(getTab(section)).findByText("137")).toBeVisible();
     expect(await screen.findByTestId("pagination-total")).toHaveTextContent(
       "137",
     );
-    const totalCall = fetchMock.callHistory
-      .calls("filtered-dataset")
-      .find((call) => {
-        const stage = requestStage(call);
-        return (
-          stage !== null &&
-          typeof stage === "object" &&
-          "aggregation" in stage &&
-          !("page" in stage)
-        );
-      });
-    const query = parseRequestQuery(totalCall, section);
+    expect(countCalls()).toHaveLength(1);
+    const query = parseRequestQuery(countCalls()[0], section);
     expect(Lib.primarySourceTableId(query)).toBe(EVENTS_TABLE_ID);
     const filters = Lib.filters(query, -1);
     expect(filters).toHaveLength(1);
@@ -513,7 +511,7 @@ describe("CLI Calls grid loading", () => {
     let requests = 0;
     setup({
       initialRoute: CLI_SECTION.eventsPath,
-      tableTotal: 26,
+      getCountResponse: () => countDataset(26),
       getEventsResponse: () =>
         ++requests === 1 ? initial.promise : pending.promise,
     });

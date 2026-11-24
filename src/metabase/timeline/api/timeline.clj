@@ -44,7 +44,7 @@
   (api/create-check :model/Timeline {:collection_id collection-id})
   (let [tl (cond-> (assoc body :creator_id api/*current-user-id*)
              (nil? (:icon body)) (dissoc :icon))]
-    (u/prog1 (timeline.db/insert-timeline! tl))))
+    (first (timeline/create-timelines! [tl]))))
 
 (mu/defn list-timelines :- [:sequential (ms/InstanceOf :model/Timeline)]
   "List timelines visible to the current user with no hydration."
@@ -64,11 +64,12 @@
    {:keys [include], archived? :archived} :- [:map {:closed true}
                                               [:include  {:optional true} ::include]
                                               [:archived {:default false} ms/BooleanValue]]]
-  (let [timelines (->> (list-timelines archived?)
-                       (map collection.root/hydrate-root-collection))]
-    (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
+  (let [root      (collection.root/hydrated-root-collection)
+        timelines (->> (list-timelines archived?)
+                       (map #(collection.root/hydrate-root-collection % root)))]
+    (cond-> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
       (= include :events)
-      (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
+      (timeline-event/include-events {:events/all? archived?}))))
 
 (api.macros/defendpoint :get "/:id" :- ::Timeline
   "Fetch the `Timeline` with `id`. Include `include=events` to unarchived events included on the timeline. Add
@@ -115,7 +116,7 @@
                                      :present #{:description :icon :collection_id :default :archived}
                                      :non-nil #{:name})]
     (api/update-check existing changes)
-    (timeline.db/update-timeline! id changes)
+    (timeline/update-timelines! [(assoc changes :id id)] nil)
     (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced))))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
@@ -123,7 +124,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Timeline id)
-  (timeline.db/delete-timeline! id)
+  (timeline/delete-timelines! [id])
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

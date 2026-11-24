@@ -5,6 +5,7 @@ import type {
   CardAutocompleteSuggestion,
   CreateDatabaseRequest,
   Database,
+  DatabaseAnonymousReach,
   DatabaseId,
   DatabaseUsageInfo,
   Engine,
@@ -101,6 +102,16 @@ export const databaseApi = Api.injectEndpoints({
       query: (id) => ({
         method: "GET",
         url: `/api/database/${id}/usage_info`,
+      }),
+      providesTags: (_response, _error, id) => [idTag("database", id)],
+    }),
+    getDatabaseAnonymousReach: builder.query<
+      DatabaseAnonymousReach,
+      DatabaseId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/database/${id}/anonymous-reach`,
       }),
       providesTags: (_response, _error, id) => [idTag("database", id)],
     }),
@@ -317,6 +328,7 @@ export const {
   useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
   useGetDatabaseUsageInfoQuery,
+  useGetDatabaseAnonymousReachQuery,
   useGetDatabaseSettingsAvailableQuery,
   useListDatabaseSchemasQuery,
   useLazyListDatabaseSchemasQuery,

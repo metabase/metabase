@@ -7,15 +7,18 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.sync.sync-metadata.fks :as sync-fks]
-   [metabase.sync.util :as sync-util]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -23,6 +26,7 @@
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouses.models.database :as database]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
 
@@ -433,8 +437,8 @@
                 ;; 3. sync the metadata for each table
                 (if (= "for entire DB" message)
                   (let [tables-updated (atom nil)
-                        original-set-initial-table-sync-complete-for-db! (mt/original-fn #'sync-util/set-initial-table-sync-complete-for-db!)]
-                    (mt/with-dynamic-fn-redefs [sync-util/set-initial-table-sync-complete-for-db!
+                        original-set-initial-table-sync-complete-for-db! (mt/original-fn #'sync.updates/set-initial-table-sync-complete-for-db!)]
+                    (mt/with-dynamic-fn-redefs [sync.updates/set-initial-table-sync-complete-for-db!
                                                 (fn [& args]
                                                   (let [r (apply original-set-initial-table-sync-complete-for-db! args)]
                                                     (reset! tables-updated r)
@@ -465,45 +469,57 @@
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-columns ["l"]}}]
-      (sync-metadata/sync-db-metadata! (:id db))
-      (is (= [["details" :details-only]]
-             (->> (db->fields db)
-                  (filter #(= :details-only (:visibility_type %)))
-                  (mapv (juxt :name :visibility_type))))))))
+      (try
+        (sync-metadata/sync-db-metadata! (:id db))
+        (is (= [["details" :details-only]]
+               (->> (db->fields db)
+                    (filter #(= :details-only (:visibility_type %)))
+                    (mapv (juxt :name :visibility_type)))))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
 (deftest auto-cruft-all-fields-and-they-stay-crufted-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-columns [".*"]}}]
-      (sync-metadata/sync-db-metadata! (:id db))
-      (is (= {:details-only 12}
-             (->> (db->fields db)
-                  (mapv :visibility_type)
-                  frequencies)))
-      ;; remove cruft column directive:
-      (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns []}})
-      (sync-metadata/sync-db-metadata! (:id db))
-      (is (= {:details-only 12}
-             (->> (db->fields db)
-                  (mapv :visibility_type)
-                  frequencies))))))
+      (try
+        (sync-metadata/sync-db-metadata! (:id db))
+        (is (= {:details-only 12}
+               (->> (db->fields db)
+                    (mapv :visibility_type)
+                    frequencies)))
+        ;; remove cruft column directive:
+        (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns []}})
+        (sync-metadata/sync-db-metadata! (:id db))
+        (is (= {:details-only 12}
+               (->> (db->fields db)
+                    (mapv :visibility_type)
+                    frequencies)))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
 (deftest auto-cruft-sets-preview-display-false-test
   (testing "When a field becomes crufty via auto-cruft settings, preview_display should be set to false (#10851)"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-      (sync-metadata/sync-db-metadata! (:id db))
-      (let [details-field (t2/select-one :model/Field :name "details"
-                                         :table_id [:in (map :id (t2/select :model/Table :db_id (u/the-id db)))])]
-        (is (=? {:visibility_type :normal
-                 :preview_display true}
-                details-field)
-            "before auto-cruft: field has default visibility and preview_display")
-        (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
-        (sync-metadata/sync-db-metadata! (:id (t2/select-one :model/Database :id (u/the-id db))))
-        (is (=? {:visibility_type :details-only
-                 :preview_display false}
-                (t2/select-one :model/Field :id (:id details-field)))
-            "after auto-cruft: field should have visibility_type=details-only AND preview_display=false")))))
+      (try
+        (sync-metadata/sync-db-metadata! (:id db))
+        (let [details-field (t2/select-one :model/Field :name "details"
+                                           :table_id [:in (map :id (t2/select :model/Table :db_id (u/the-id db)))])]
+          (is (=? {:visibility_type :normal
+                   :preview_display true}
+                  details-field)
+              "before auto-cruft: field has default visibility and preview_display")
+          (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
+          (sync-metadata/sync-db-metadata! (:id (t2/select-one :model/Database :id (u/the-id db))))
+          (is (=? {:visibility_type :details-only
+                   :preview_display false}
+                  (t2/select-one :model/Field :id (:id details-field)))
+              "after auto-cruft: field should have visibility_type=details-only AND preview_display=false"))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
 (deftest sync-fields-resilient-to-non-existence-test
   (testing "[[sync-fields/sync-fields-for-table!]] doesn't crash on a non-existent table (SEM-39)"
@@ -604,7 +620,8 @@
                    :model/Field    {fk-id :id :as fk-field} {:table_id fk-table :name "pk_id" :has_field_values :auto-list}]
       (field-user-settings/upsert-field-user-settings! {:id pk-id} {:semantic_type :type/PK})
       (field-user-settings/upsert-field-user-settings! fk-field {:has_field_values :auto-list})
-      (is (= 1 (sync.db/mark-fk! db-id "s" "fk_table" "pk_id" "s" "pk_table" "id")))
+      (is (= 1 (#'sync-fks/mark-fks! (driver.u/lib-database db-id) [{:fk-table-schema "s" :fk-table-name "fk_table" :fk-column-name "pk_id"
+                                                                     :pk-table-schema "s" :pk-table-name "pk_table" :pk-column-name "id"}])))
       (is (=? {:fk_target_field_id pk-id :semantic_type :type/FK :has_field_values :auto-list}
               (t2/select-one :model/Field :id fk-id))))))
 
@@ -748,3 +765,137 @@
           (dotimes [_ 2]
             (is (= custom-order (field-order)))
             (sync-fields/sync-fields-for-table! (t2/select-one :model/Table :id table-id))))))))
+
+(defn- h2-warehouse-spec
+  "The JDBC spec of the in-memory H2 warehouse named `warehouse-name`."
+  [warehouse-name]
+  {:classname "org.h2.Driver" :subprotocol "h2" :subname (str "mem:" warehouse-name ";DB_CLOSE_DELAY=-1")})
+
+(defn- do-with-h2-warehouse!
+  "Call `(f database-id spec)` with a Database, inserted and cleaned up by hand since the transaction of `with-temp`
+  would change what sync caches, over a fresh in-memory H2 warehouse with the JDBC `spec` and `n` Tables `T0`, `T1` and
+  so on of the columns `ID`, `A`, `B` and `C`."
+  [warehouse-name n f]
+  (let [spec (h2-warehouse-spec warehouse-name)]
+    (jdbc/execute! spec ["DROP ALL OBJECTS"])
+    (doseq [i (range n)]
+      (jdbc/execute! spec [(format "CREATE TABLE T%d (ID INT PRIMARY KEY, A VARCHAR, B VARCHAR, C VARCHAR)" i)]))
+    (mt/with-model-cleanup [:model/Database]
+      (f (t2/insert-returning-pk! :model/Database {:name    warehouse-name
+                                                   :engine  :h2
+                                                   :details {:db (str "mem:" warehouse-name ";DB_CLOSE_DELAY=-1")}})
+         spec))))
+
+(defn- sync-step-statement-counts!
+  "The number of app DB statements each of `steps`, pairs of a key and a function of the Database, issues in order over
+  a warehouse of `n` Tables after `(prepare! database-id spec)`, with what `(check database-id)` returns afterwards
+  under `:check`."
+  [n prepare! steps check]
+  (do-with-h2-warehouse!
+   (str "sync_statement_counts_" n) n
+   (fn [db-id spec]
+     (prepare! db-id spec)
+     (let [database (driver.u/lib-database db-id)]
+       (-> (into {}
+                 (map (fn [[k step!]]
+                        [k (events.tu/real-statement-count! #(step! database))]))
+                 steps)
+           (assoc :check (check db-id)))))))
+
+(defn- statement-counts-at-two-sizes!
+  "[[sync-step-statement-counts!]] at 4 and 16 Tables, the lower of two measurements at each size so that a one-time
+  read such as a cache refill does not count, after a warm-up at 2 Tables."
+  ([prepare! steps]
+   (statement-counts-at-two-sizes! prepare! steps (constantly nil)))
+  ([prepare! steps check]
+   (sync-step-statement-counts! 2 prepare! steps check)
+   (mapv (fn [n]
+           (merge-with #(if (number? %1) (min %1 %2) %1)
+                       (sync-step-statement-counts! n prepare! steps check)
+                       (sync-step-statement-counts! n prepare! steps check)))
+         [4 16])))
+
+(defn- sync-tables!
+  "Sync the Tables of the Database with `db-id`, but not their Fields."
+  [db-id _spec]
+  (sync-tables/sync-tables-and-database! (driver.u/lib-database db-id)))
+
+(defn- sync-metadata!
+  "Sync the metadata of the Database with `db-id`."
+  [db-id _spec]
+  (sync-metadata/sync-db-metadata! db-id))
+
+(deftest sync-fields-statement-count-test
+  (mt/test-driver :h2
+    (testing "sync-fields! issues as many statements for 16 Tables as for 4"
+      (testing "when every Table is new"
+        (let [[small large] (statement-counts-at-two-sizes! sync-tables! [[:fields sync-fields/sync-fields!]])]
+          (is (= small large))))
+      (testing "when nothing changed"
+        (let [[small large] (statement-counts-at-two-sizes! sync-metadata! [[:fields sync-fields/sync-fields!]])]
+          (is (= small large))))
+      (testing "when a column is dropped from every Table"
+        (let [[small large] (statement-counts-at-two-sizes!
+                             (fn [db-id spec]
+                               (sync-metadata! db-id spec)
+                               (doseq [table-name (t2/select-fn-vec :name :model/Table :db_id db-id)]
+                                 (jdbc/execute! spec [(format "ALTER TABLE %s DROP COLUMN C" table-name)])))
+                             [[:fields sync-fields/sync-fields!]]
+                             (fn [db-id]
+                               (t2/count :model/Field
+                                         :table_id [:in (t2/select-pks-vec :model/Table :db_id db-id)]
+                                         :name "C"
+                                         :active false)))]
+          (is (= (:fields small) (:fields large)))
+          (testing "and retires that column in every Table"
+            (is (= [4 16] [(:check small) (:check large)]))))))))
+
+(deftest sync-reactivated-tables-statement-count-test
+  (mt/test-driver :h2
+    (testing "syncing Tables that come back issues as many statements for 16 Tables as for 4"
+      (let [[small large] (statement-counts-at-two-sizes!
+                           (fn [db-id spec]
+                             (sync-metadata! db-id spec)
+                             (t2/update! :model/Table :db_id db-id {:active false}))
+                           [[:tables sync-tables/sync-tables-and-database!]
+                            [:fields sync-fields/sync-fields!]]
+                           (fn [db-id] (t2/count :model/Table :db_id db-id :active true)))]
+        (is (= (:tables small) (:tables large)))
+        (is (= (:fields small) (:fields large)))
+        (testing "and reactivates every Table"
+          (is (= [4 16] [(:check small) (:check large)])))))))
+
+(deftest sync-fields-isolates-failing-table-test
+  (mt/test-driver :h2
+    (testing "a Table whose columns cannot be read fails alone and the other Tables of its chunk are synced"
+      (do-with-h2-warehouse!
+       "sync_fields_failing_table" 4
+       (fn [db-id spec]
+         (sync-tables! db-id spec)
+         (let [original (mt/original-fn #'fetch-metadata/include-nested-fields-for-table)
+               field-count #(t2/count :model/Field :table_id (t2/select-one-pk :model/Table :db_id db-id :name %))]
+           (mt/with-dynamic-fn-redefs [fetch-metadata/include-nested-fields-for-table
+                                       (fn [fields database table]
+                                         (if (= "T1" (:name table))
+                                           (throw (ex-info "boom" {}))
+                                           (original fields database table)))]
+             (mt/with-log-messages-for-level [messages [metabase.sync.sync-metadata.fields :warn]]
+               (is (= {:total-fields 16 :updated-fields 12}
+                      (sync-fields/sync-fields! (driver.u/lib-database db-id))))
+               (is (some #(re-find #"T1" (:message %)) (messages)))))
+           (is (= {"T0" 4 "T1" 0 "T2" 4 "T3" 4}
+                  (into {} (map (juxt identity field-count)) ["T0" "T1" "T2" "T3"])))))))))
+
+(deftest sync-fields-falls-back-to-table-by-table-test
+  (mt/test-driver :h2
+    (testing "when syncing the Tables of a chunk together fails, each of them is synced on its own"
+      (do-with-h2-warehouse!
+       "sync_fields_fallback" 4
+       (fn [db-id spec]
+         (sync-tables! db-id spec)
+         (mt/with-dynamic-fn-redefs [sync-instances/sync-instances-of-tables! (fn [_entries] (throw (ex-info "boom" {})))]
+           (is (= {:total-fields 16 :updated-fields 16}
+                  (sync-fields/sync-fields! (driver.u/lib-database db-id)))))
+         (is (= 16 (t2/count :model/Field
+                             :table_id [:in (t2/select-pks-vec :model/Table :db_id db-id)]
+                             :active true))))))))

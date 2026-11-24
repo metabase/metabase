@@ -97,7 +97,7 @@
     (mt/dataset test-data
       (let [orders-product-id-field-id (mt/id :orders :product_id)
             reviews-product-id-field-id (mt/id :reviews :product_id)]
-        (field-values/clear-field-values-for-field! (mt/id :products :id))
+        (field-values/delete-field-values! (field-values/ids-of-fields [(mt/id :products :id)]))
         ;; Create dashboard with parameter mapped to both fields
         (mt/with-temp [:model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
                        :model/Card {reviews-card-id :id} {:dataset_query (mt/mbql-query reviews)}

@@ -756,3 +756,19 @@
              {:ran @ran, :failures (mapv (fn [[label e]] [label (ex-message e)]) failures)}))))
   (testing "with no failures it returns an empty vector"
     (is (= [] (u/run-each! [[:a (constantly :ok)]])))))
+
+(deftest map-by-key-set-test
+  (testing "each group of rows with the same keys goes to one call, and the results keep the order of the rows"
+    (let [calls (atom [])]
+      (is (= [:a :c :b]
+             (u/map-by-key-set (fn [group]
+                                 (swap! calls conj (count group))
+                                 (mapv #(if (contains? % :x) (if (= 1 (:x %)) :a :b) :c) group))
+                               [{:x 1} {:y 1} {:x 2}])))
+      (is (= [1 2] (sort @calls)))))
+  (testing "rows with the same keys in a different order are one group"
+    (let [calls (atom 0)]
+      (u/map-by-key-set (fn [group] (swap! calls inc) group) [{:a 1 :b 2} {:b 3 :a 4}])
+      (is (= 1 @calls))))
+  (testing "no rows, no calls"
+    (is (= [] (u/map-by-key-set (fn [_] (throw (ex-info "called" {}))) [])))))

@@ -593,7 +593,7 @@ export class UnconnectedDataSelector extends Component<
   ): Promise<CollectionId | null> {
     try {
       const table = await this.props.fetchFields(tableId);
-      return table.collection != null ? table.collection_id : null;
+      return table.collection?.id ?? null;
     } catch {
       return null;
     }

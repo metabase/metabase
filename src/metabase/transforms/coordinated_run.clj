@@ -89,16 +89,20 @@
    run-id    :- ms/PositiveInt]
   (boolean
    (when (pos? (cancel-started-run! model run-id))
-     (doseq [member-run-id (transforms.db/active-run-ids-of-parent member-fk run-id)]
-       (transform-run-cancelation/mark-cancel-started-run! member-run-id)
-       (canceling/chan-signal-cancel! member-run-id))
+     (let [member-run-ids (transforms.db/active-run-ids-of-parent member-fk run-id)]
+       (if (transform-run-cancelation/mark-cancel-started-runs! member-run-ids)
+         (run! canceling/chan-signal-cancel! member-run-ids)
+         (doseq [member-run-id member-run-ids]
+           (transform-run-cancelation/mark-cancel-started-run! member-run-id)
+           (canceling/chan-signal-cancel! member-run-id))))
      true)))
 
 (mu/defn heartbeat-runs! :- [:maybe [:sequential :int]]
   "Stamp `last_heartbeat = now` on the given still-active run-ids."
   [model   :- ::transforms.schema/coordinated-run-model
    run-ids :- [:sequential ms/PositiveInt]]
-  (rt/heartbeat-ids! model [:is_active true] :last_heartbeat run-ids))
+  (when (seq run-ids)
+    (transforms.db/heartbeat-active-runs! model run-ids)))
 
 (mu/defn reap-orphaned-runs! :- [:maybe [:sequential [:or ::transforms.schema/transform-job-run ::transforms.schema/transform-dag-run]]]
   "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
@@ -111,7 +115,8 @@
    {:model    model
     :active   [:is_active true]
     :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
-    :terminal {:status "timeout" :end_time :%now :is_active nil :message "Timed out: crashed"}
+    :set-terminal! #(transforms.db/set-active-runs-terminal!
+                     model % {:status "timeout" :end_time :%now :is_active nil :message "Timed out: crashed"})
     :metrics  {:total-metric   :metabase-transforms/timeouts-total
                :latency-metric :metabase-transforms/timeout-detection-latency-ms
                :tags           {:type type-tag}

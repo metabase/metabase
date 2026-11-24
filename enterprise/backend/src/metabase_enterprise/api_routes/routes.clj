@@ -25,6 +25,7 @@
    [metabase-enterprise.data-testing.card-api]
    [metabase-enterprise.data-testing.run-api]
    [metabase-enterprise.data-testing.segment-api]
+   [metabase-enterprise.data-testing.suite-api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.dependencies.api]
@@ -160,6 +161,7 @@
    "/mfa"                          metabase-enterprise.mfa.routes/routes
    "/browser-sandboxing"           metabase-enterprise.browser-sandboxing.api/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   "/test-suite"                   (premium-handler metabase-enterprise.data-testing.suite-api/routes :transforms-testing)
    "/transform-test"               (premium-handler metabase-enterprise.data-testing.api/routes :transforms-testing)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)

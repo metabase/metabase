@@ -855,7 +855,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.log("exclude an unrelated temporal unit");
       H.dashboardParameterSidebar().findByText("All").click();
       H.popover().findByLabelText("Month").click();
-      H.popover().findByLabelText("Month").should("not.be.checked");
+      H.popover()
+        .findByLabelText("Month")
+        .should("have.attr", "aria-checked", "false");
       H.dashboardParameterSidebar()
         .findByLabelText("Default value")
         .should("contain.text", "Year");

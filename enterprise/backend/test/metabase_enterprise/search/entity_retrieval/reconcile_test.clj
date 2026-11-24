@@ -148,10 +148,11 @@
                        :model/Collection {data-id :id}    {:type "library-data" :location (str "/" lib-id "/")}
                        :model/Collection {metrics-id :id}  {:type "library-metrics" :location (str "/" lib-id "/")}
                        :model/Database   {db-id :id}       {}
-                       :model/Table      {table-id :id}    {:db_id db-id :collection_id data-id
-                                                            :is_published true :active true
+                       :model/Table      {table-id :id}    {:db_id db-id
+                                                            :active true
                                                             :name "orders" :display_name "Orders"
                                                             :description "All orders"}
+                       :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id data-id}
                        :model/Card       {metric-id :id}   {:type "metric" :collection_id metrics-id
                                                             :name "Revenue" :description "Total revenue"
                                                             :database_id db-id}
@@ -189,7 +190,7 @@
                 (is (= "Sales Orders" (:doc_text (first names))))
                 (is (not= old-name-id (:doc_id (first names)))))))
           (testing "unpublishing the table removes it from the library, GCing all its docs"
-            (t2/update! :model/Table :id table-id {:is_published false :collection_id nil})
+            (t2/update! :model/TableUserSettings :table_id table-id {:is_published false :collection_id nil})
             (reconcile/reconcile! ds (constantly model))
             (is (empty? (docs-for ds "table" table-id)))
             (is (seq (docs-for ds "metric" metric-id)) "the metric is untouched")))))))
@@ -202,11 +203,10 @@
           (let [model semantic.tu/mock-embedding-model]
             (mt/with-temp [:model/Database {db-id :id}    {}
                            :model/Table    {table-id :id} {:db_id         db-id
-                                                           :collection_id (:id data)
-                                                           :is_published  true
                                                            :active        true
                                                            :name          "orders"
-                                                           :display_name  "Orders"}]
+                                                           :display_name  "Orders"}
+                           :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id (:id data)}]
               (testing "the run returns the diff and populates the index"
                 (let [result (reconcile/reconcile! ds (constantly model))]
                   (is (pos? (:inserted result)))
@@ -221,9 +221,10 @@
         (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                        :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
                        :model/Database   {db-id :id}    {}
-                       :model/Table      {table-id :id} {:db_id db-id :collection_id data-id
-                                                         :is_published true :active true
-                                                         :name "orders" :display_name "Orders"}]
+                       :model/Table      {table-id :id} {:db_id db-id
+                                                         :active true
+                                                         :name "orders" :display_name "Orders"}
+                       :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id data-id}]
           (testing "populate the index under the original model"
             (reconcile/reconcile! ds (constantly model))
             (is (seq (docs-for ds "table" table-id)))
@@ -326,7 +327,7 @@
                                                                         (-> (lib/query mp (lib.metadata/table mp orders))
                                                                             (lib/filter (lib/= 1 1))))}]
             ;; publish the (real, fielded) orders table into the library for the duration of the test
-            (mt/with-temp-vals-in-db :model/Table orders {:collection_id data-id :is_published true}
+            (mt/with-temp [:model/TableUserSettings _ {:table_id orders :is_published true :collection_id data-id}]
               (reconcile/reconcile! ds (constantly model))
               (testing "both are indexed with name + description docs"
                 (is (= {"name" 1 "description" 1}
@@ -355,15 +356,17 @@
           (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                          :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
                          :model/Database   {db-id :id}    {}
-                         :model/Table {edited :id}  {:db_id db-id :collection_id data-id :is_published true
+                         :model/Table {edited :id}  {:db_id db-id
                                                      :active true :name "a" :display_name "Edited Orig"}
-                         :model/Table {leaving :id} {:db_id db-id :collection_id data-id :is_published true
-                                                     :active true :name "b" :display_name "Leaving"}]
+                         :model/TableUserSettings _ {:table_id edited :is_published true :collection_id data-id}
+                         :model/Table {leaving :id} {:db_id db-id
+                                                     :active true :name "b" :display_name "Leaving"}
+                         :model/TableUserSettings _ {:table_id leaving :is_published true :collection_id data-id}]
             (reconcile/reconcile! ds (constantly model))
             ;; `edited` is renamed (old name doc -> orphan, new name doc -> to-insert);
             ;; `leaving` is unpublished (its docs -> orphans, with nothing in to-insert).
             (t2/update! :model/Table :id edited {:display_name "Edited New"})
-            (t2/update! :model/Table :id leaving {:is_published false :collection_id nil})
+            (t2/update! :model/TableUserSettings :table_id leaving {:is_published false :collection_id nil})
             ;; force the insert of the only to-insert batch (edited's new name doc) to fail.
             (mt/with-dynamic-fn-redefs [reconcile/insert-batch! (fn [& _] (throw (ex-info "boom" {})))]
               (reconcile/reconcile! ds (constantly model)))
@@ -379,11 +382,13 @@
         (collections.tu/with-library [{data :data}]
           (let [model semantic.tu/mock-embedding-model]
             (mt/with-temp [:model/Database {db-id :id} {}
-                           :model/Table {a-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                           :model/Table {a-id :id} {:db_id db-id
                                                     :active true :name "a" :display_name "Orders"
                                                     :description "all orders"}
-                           :model/Table {b-id :id} {:db_id db-id :collection_id (:id data) :is_published true
-                                                    :active true :name "b" :display_name "Customers"}]
+                           :model/TableUserSettings _ {:table_id a-id :is_published true :collection_id (:id data)}
+                           :model/Table {b-id :id} {:db_id db-id
+                                                    :active true :name "b" :display_name "Customers"}
+                           :model/TableUserSettings _ {:table_id b-id :is_published true :collection_id (:id data)}]
               (reconcile/reconcile! ds (constantly model))
               (let [b-before (set (map :doc_id (docs-for ds "table" b-id)))]
                 (testing "adding ai_context to A then reconciling only A inserts A's synonym, leaves B alone"
@@ -402,14 +407,16 @@
         (collections.tu/with-library [{data :data}]
           (let [model semantic.tu/mock-embedding-model]
             (mt/with-temp [:model/Database {db-id :id} {}
-                           :model/Table {a-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                           :model/Table {a-id :id} {:db_id db-id
                                                     :active true :name "a" :display_name "Orders"}
-                           :model/Table {b-id :id} {:db_id db-id :collection_id (:id data) :is_published true
-                                                    :active true :name "b" :display_name "Customers"}]
+                           :model/TableUserSettings {a-settings :id} {:table_id a-id :is_published true :collection_id (:id data)}
+                           :model/Table {b-id :id} {:db_id db-id
+                                                    :active true :name "b" :display_name "Customers"}
+                           :model/TableUserSettings _ {:table_id b-id :is_published true :collection_id (:id data)}]
               (reconcile/reconcile! ds (constantly model))
               (is (seq (docs-for ds "table" a-id)))
               (let [b-before (set (map :doc_id (docs-for ds "table" b-id)))]
-                (mt/with-temp-vals-in-db :model/Table a-id {:is_published false :collection_id nil}
+                (mt/with-temp-vals-in-db :model/TableUserSettings a-settings {:is_published false :collection_id nil}
                   (is (=? {:inserted 0} (reconcile/reconcile-entity! ds (constantly model) "table" a-id)))
                   (is (empty? (docs-for ds "table" a-id)) "A (no longer a member) is GC'd")
                   (is (= b-before (set (map :doc_id (docs-for ds "table" b-id)))) "B untouched"))))))))))
@@ -421,9 +428,10 @@
         (collections.tu/with-library [{data :data}]
           (let [model semantic.tu/mock-embedding-model]
             (mt/with-temp [:model/Database {db-id :id} {}
-                           :model/Table {a-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                           :model/Table {a-id :id} {:db_id db-id
                                                     :active true :name "a" :display_name "Orders"
                                                     :description "all orders"}
+                           :model/TableUserSettings _ {:table_id a-id :is_published true :collection_id (:id data)}
                            :model/OsiAiContext _ {:entity_type "table" :entity_local_id a-id
                                                   :ai_context {:synonyms ["sales" "revenue"]}}]
               (reconcile/reconcile! ds (constantly model))
@@ -439,11 +447,12 @@
     (mt/with-premium-features #{:library :library-retrieval}
       (collections.tu/with-library [{data :data metrics :metrics}]
         (mt/with-temp [:model/Database {db-id :id} {}
-                       :model/Table {tbl :id}      {:db_id db-id :collection_id (:id data) :is_published true
+                       :model/Table {tbl :id}      {:db_id db-id
                                                     :active true :name "t" :display_name "T"}
+                       :model/TableUserSettings _ {:table_id tbl :is_published true :collection_id (:id data)}
                        :model/Card  {metric :id}   {:type "metric" :collection_id (:id metrics)
                                                     :name "M" :database_id db-id}
-                       :model/Table {unpub :id}    {:db_id db-id :is_published false
+                       :model/Table {unpub :id}    {:db_id db-id
                                                     :active true :name "u"}
                        :model/Card  {archived :id} {:type "metric" :collection_id (:id metrics) :archived true
                                                     :name "A" :database_id db-id}]
@@ -472,10 +481,12 @@
         (collections.tu/with-library [{data :data}]
           (let [model semantic.tu/mock-embedding-model]
             (mt/with-temp [:model/Database {db-id :id} {}
-                           :model/Table {a-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                           :model/Table {a-id :id} {:db_id db-id
                                                     :active true :name "a" :display_name "Orders"}
-                           :model/Table {b-id :id} {:db_id db-id :collection_id (:id data) :is_published true
-                                                    :active true :name "b" :display_name "Customers"}]
+                           :model/TableUserSettings _ {:table_id a-id :is_published true :collection_id (:id data)}
+                           :model/Table {b-id :id} {:db_id db-id
+                                                    :active true :name "b" :display_name "Customers"}
+                           :model/TableUserSettings _ {:table_id b-id :is_published true :collection_id (:id data)}]
               ;; No prior reconcile! — reconcile-entity! is the first caller, so ensure-tables! returns :created
               ;; (empty table). It must repopulate the whole library, not index only the one dirty entity.
               (reconcile/reconcile-entity! ds (constantly model) "table" a-id)
@@ -490,10 +501,12 @@
         (collections.tu/with-library [{data :data}]
           (let [model semantic.tu/mock-embedding-model]
             (mt/with-temp [:model/Database {db-id :id} {}
-                           :model/Table {a-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                           :model/Table {a-id :id} {:db_id db-id
                                                     :active true :name "a" :display_name "Orders"}
-                           :model/Table {b-id :id} {:db_id db-id :collection_id (:id data) :is_published true
-                                                    :active true :name "b" :display_name "Customers"}]
+                           :model/TableUserSettings _ {:table_id a-id :is_published true :collection_id (:id data)}
+                           :model/Table {b-id :id} {:db_id db-id
+                                                    :active true :name "b" :display_name "Customers"}
+                           :model/TableUserSettings _ {:table_id b-id :is_published true :collection_id (:id data)}]
               (reconcile/reconcile! ds (constantly model))
               (is (seq (docs-for ds "table" a-id)))
               (is (seq (docs-for ds "table" b-id)))

@@ -6,24 +6,27 @@
   - `:track`, the columns that a snapshot records and a revert restores, the change of one of which makes a Revision.
   - `:skip`, the columns that no snapshot records and no revert restores, so that a change of only these makes no
     Revision.
+  - `:schema`, the schema of a snapshot as a Revision stores it, named `::<model>.revision` in the schema namespace
+    of the module of the model, which may differ from the schema of the model: a snapshot holds the tracked columns
+    and, for a parent, its parts, each under the key that its schema nests the schema of the part. A snapshot that is
+    taken is a value of it. A revert decodes the snapshot that a Revision stores with it and refuses one that is
+    invalid after that, so that its decoding is where the older formats of a snapshot are handled: a closed map
+    schema drops the keys it does not list, and its `:decode/normalize` properties rename, default and convert the
+    rest.
 
-  Together they list every column of the table but `:id`, `:created_at` and `:updated_at`, which no spec lists. All
-  the other keys are optional:
+  `:track` and `:skip` together list every column of the table but `:id`, `:created_at` and `:updated_at`, which no
+  spec lists. All the other keys are optional:
 
-  - `:parent {:model parent-model :key column}`: a row of this model belongs to the Revision of the row of
-    `parent-model` whose id its `column` holds, a parent that has a `:parent` of its own passing it on up. A snapshot
-    of such a row keeps its `:id`.
-  - `:children`, a map from a key to `{:model child-model :as hydration-key}`: the snapshot nests the snapshots of the
-    child rows under the key, the child rows being those that the row hydrates under `hydration-key`.
   - `:same?`, a map from a column to a fn of the row before and the row after, true when the column is unchanged,
     `=` of the two values by default.
   - `:snapshot`, a fn of a vector of rows and the vector of their snapshots returning the snapshots to store, for what
-    the columns alone do not say.
+    the columns alone do not say, such as the parts of a parent.
   - `:defaults`, a map from a column to the value that a snapshot recorded without it is read with, as when it was
     recorded before the column existed.
-  - `:before-revert`, a fn of the id, the id of the user and a snapshot returning the snapshot to write, which checks
-    and upgrades the snapshot, identity by default.
-  - `:revert!`, a fn of the id, the id of the user and a snapshot that replaces the revert of the tracked columns.
+  - `:before-revert`, a fn of the id, the id of the user and the decoded snapshot returning the snapshot to write,
+    which checks it against what is not its shape, identity by default.
+  - `:revert!`, a fn of the id, the id of the user and the decoded snapshot that reverts the row through the write
+    function of its model, which every revisioned entity has.
   - `:describe`, a fn of the snapshots before and after and the names that [[metabase.revisions.models.revision]]
     gives returning the strings that describe the change, which replaces the description of the changed columns.
   - `:diff-columns`, the columns whose change the diff of two snapshots lists, each as `{column {:before :after}}`,
@@ -32,6 +35,8 @@
   - `:authorize`, `:snapshot` to check each snapshot against the current user's permissions on its own, `:current`
     (the default) to let whoever reads the current row read its history."
   (:require
+   [malli.core :as mc]
+   [metabase.util.malli.registry :as mr]
    [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
@@ -68,20 +73,20 @@
   [model]
   (:track (spec model)))
 
-(defn parent
-  "The `:parent` of `model`, nil for a model whose rows have Revisions of their own."
+(defn schema
+  "The `:schema` of `model`, the schema of its snapshots, nil for a model without Revisions."
   [model]
-  (:parent (spec model)))
+  (:schema (spec model)))
 
-(defn children
-  "The `:children` of `model`, a map from a snapshot key to a child model."
-  [model]
-  (:children (spec model)))
+(defn schema-keys
+  "The keys of the map schema registered as `schema-key`."
+  [schema-key]
+  (mapv first (mc/entries (mc/deref-all (mr/schema schema-key)))))
 
 (defn snapshot-keys
-  "The keys of a snapshot of `model`, apart from `:id`: the tracked columns and the keys of the children."
+  "The keys of a snapshot of `model`, apart from `:id`: those of its `:schema`."
   [model]
-  (into (vec (tracked-columns model)) (keys (children model))))
+  (into [] (remove #{:id}) (schema-keys (schema model))))
 
 (defn same?
   "Whether the `column` of `model` is the same in the row `before` and the row `after`."

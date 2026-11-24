@@ -45,6 +45,7 @@
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
    [metabase.session.core :as session]
+   [metabase.session.models.session :as models.session]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -115,10 +116,10 @@
         ;; Need redirect to IdP
         (= :redirect (:success? auth-result))
         (do
-          (relay-state/persist! {:id           relay-key
-                                 :continue-url continue
-                                 :origin       (when embedding? (get-in req [:headers "origin"]))
-                                 :embedding?   embedding?})
+          (relay-state/create-sso-relay-state! {:id           relay-key
+                                                :continue-url continue
+                                                :origin       (when embedding? (get-in req [:headers "origin"]))
+                                                :embedding?   embedding?})
           (if embedding?
             {:status 200
              :body {:url (:redirect-url auth-result)
@@ -211,7 +212,7 @@
           (do
             ;; Consume the single-use key only now that login succeeded — a failed or retried callback keeps
             ;; the key alive so the user can complete login. (Legacy Base64 logins have no `:relay-key`.)
-            (when relay-key (relay-state/delete! relay-key))
+            (when relay-key (relay-state/delete-sso-relay-state! relay-key))
             (if (= mode :embedding)
               (saml-utils/create-token-response (:session login-result) origin continue-url (:nonce request))
               (request/set-session-cookies request
@@ -241,7 +242,7 @@
                                           :response-validators [:signature :require-authenticated :issuer]})]
       (if-let [metabase-session-key (and (saml/logout-success? response) (get-in cookies [request/metabase-session-cookie :value]))]
         (do
-          (session/end-sessions! {:key_hashed (session/hash-session-key metabase-session-key)} "sso-logout" :self)
+          (models.session/end-session-for-key! (session/hash-session-key metabase-session-key) "sso-logout" :self)
           (request/clear-session-cookie (response/redirect (system/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

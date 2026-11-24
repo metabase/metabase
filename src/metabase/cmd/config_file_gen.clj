@@ -34,9 +34,10 @@
   (config-file-settings (dox/get-settings)))
 
 (defn get-name-and-default
-  "Get a setting's name and its default."
-  [{:keys [munged-name default]}]
-  {(keyword munged-name) default})
+  "Get a setting's config file name and its default. The config file uses the real setting name, with its `?`, not
+  the munged name of the environment variable."
+  [{:keys [default] :as setting}]
+  {(keyword (dox/config-file-name setting)) default})
 
 ;;;; Add settings to YAML template
 

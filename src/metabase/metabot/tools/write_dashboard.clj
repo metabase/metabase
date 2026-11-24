@@ -32,7 +32,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.util :as u]
    [metabase.util.quoting :as quoting]
    [toucan2.core :as t2]))
@@ -640,15 +640,15 @@
                             (reusable-card chart-id dashboard-id dataset_query display))]
       (cond-> {:chart-id chart-id, :card-id (:id reused)}
         (not= name (:name reused)) (assoc :kept-name (:name reused)))
-      (let [card (queries/create-card! {:name                   name
-                                        :dataset_query          dataset_query
-                                        :display                display
-                                        :visualization_settings {}
-                                        :dashboard_id           dashboard-id}
-                                       {:id api/*current-user-id*}
-                                       false)]
+      (let [[card] (queries.card/create-cards!
+                    [(queries.card/new-card-row {:name                   name
+                                                 :dataset_query          dataset_query
+                                                 :display                display
+                                                 :visualization_settings {}
+                                                 :dashboard_id           dashboard-id}
+                                                api/*current-user-id*)])]
         (when conversation-id
-          (metabot.db/link-card-to-conversation! (:id card) conversation-id chart-id))
+          (queries.card/link-to-metabot-conversation! (:id card) conversation-id chart-id))
         {:chart-id chart-id, :card-id (:id card), :card card}))))
 
 (defn- with-card-ids
@@ -858,21 +858,22 @@
                                      (u/format-plural recipient-count "recipient"))
                                 " with no recipients")
                               ", which used " (str/join ", " (map filter-label parameters))))
-        lines          (fn [group]
-                         (let [{readable true unreadable false} (group-by (comp boolean :readable?) group)
-                               n                                (count unreadable)]
-                           (concat (map describe readable)
-                                   (when (pos? n)
-                                     [(str "  - " n (if (seq readable) " more " " ") (u/format-plural n "subscription")
-                                           " the user can't see")]))))
+        {readable   true
+         unreadable false} (group-by :readable? subscriptions)
         {broken true
-         caused false} (group-by (comp boolean :already-broken?) subscriptions)]
+         caused false}     (group-by :already-broken? readable)]
     [(when (seq caused)
        (cons "The change removed filters that these subscriptions set values for, so they were archived:"
-             (lines caused)))
+             (map describe caused)))
      (when (seq broken)
        (cons "These subscriptions already used filters the dashboard no longer had, and were archived too:"
-             (lines broken)))
+             (map describe broken)))
+     (when (seq unreadable)
+       ;; Unreadable ones aren't split into caused and already-broken, so the line says either could apply.
+       (let [n (count unreadable)]
+         (str "The change " (when (seq readable) "also ") "archived " n " " (u/format-plural n "subscription")
+              " the user can't see, which used filters the dashboard doesn't have. This change may have removed "
+              "them, or they were missing before.")))
      (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email is set "
           "up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]))
 

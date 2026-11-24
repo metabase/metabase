@@ -54,16 +54,14 @@ export type ConversationChart = {
   visualization_settings?: { chart_type?: CardDisplayType };
 };
 
-export const hasLinkableChartQuery = (chart: ConversationChart): boolean => {
-  const query = chart.queries?.[0];
-  return query != null && !("lib/type" in query);
-};
+export const hasLinkableChartQuery = (chart: ConversationChart): boolean =>
+  chart.queries?.[0] != null;
 
 export const conversationChartUrl = (
   chart: ConversationChart,
 ): string | undefined => {
   const query = chart.queries?.[0];
-  if (query == null || !hasLinkableChartQuery(chart)) {
+  if (query == null) {
     return undefined;
   }
   const hash = serializeCardForUrl(
