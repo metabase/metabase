@@ -449,6 +449,7 @@
                       (concat [pulse-creator dashboard-creator])
                       (keep :email)
                       distinct)
+     :bcc? true
      :message-type :html
      :message (channel.template/render
                "broken_subscription_notification"
