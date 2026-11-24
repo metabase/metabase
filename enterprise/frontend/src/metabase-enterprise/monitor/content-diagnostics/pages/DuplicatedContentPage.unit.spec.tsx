@@ -252,6 +252,94 @@ describe("DuplicatedContentPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("labels same-named cards by sub-kind and points each side at the other", async () => {
+    const NAME = "Hybrid report";
+    const findings = [
+      createMockContentDiagnosticsDuplicatedFinding({
+        id: 1,
+        entity_type: "card",
+        card_type: "question",
+        entity_id: 101,
+        entity_display_name: NAME,
+        details: {
+          duplicate_entities: [
+            createMockContentDiagnosticsDuplicateEntity({
+              id: 102,
+              name: NAME,
+              entity_type: "card",
+              card_type: "model",
+            }),
+          ],
+        },
+      }),
+      createMockContentDiagnosticsDuplicatedFinding({
+        id: 2,
+        entity_type: "card",
+        card_type: "model",
+        entity_id: 102,
+        entity_display_name: NAME,
+        details: {
+          duplicate_entities: [
+            createMockContentDiagnosticsDuplicateEntity({
+              id: 101,
+              name: NAME,
+              entity_type: "card",
+              card_type: "question",
+            }),
+          ],
+        },
+      }),
+      ...(["dashboard", "document"] as const).flatMap((entityType, index) =>
+        [0, 1].map((side) =>
+          createMockContentDiagnosticsDuplicatedFinding({
+            id: 10 + index * 2 + side,
+            entity_type: entityType,
+            entity_id: 200 + index * 2 + side,
+            entity_display_name: `Twin ${entityType}`,
+            details: {
+              duplicate_entities: [
+                createMockContentDiagnosticsDuplicateEntity({
+                  id: 200 + index * 2 + (1 - side),
+                  name: `Twin ${entityType}`,
+                  entity_type: entityType,
+                }),
+              ],
+            },
+          }),
+        ),
+      ),
+    ];
+    setup({ findings });
+
+    const list = await screen.findByRole("treegrid");
+    expect(await within(list).findAllByText(NAME)).toHaveLength(2);
+    expect(within(list).getAllByText("Twin dashboard")).toHaveLength(2);
+    expect(within(list).getAllByText("Twin document")).toHaveLength(2);
+    expect(within(list).getByRole("img", { name: "Question" })).toBeVisible();
+
+    const modelRow = within(list)
+      .getAllByRole("row", { name: new RegExp(NAME) })
+      .find((row) => within(row).queryByRole("img", { name: "Model" }));
+    if (modelRow == null) {
+      throw new Error("No row carries the Model icon");
+    }
+    await userEvent.click(within(modelRow).getByText(NAME));
+
+    const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
+    const duplicates = within(sidebarRegion).getByRole("region", {
+      name: "Duplicates",
+    });
+    expect(within(duplicates).getByText("Duplicates (1)")).toBeVisible();
+    const peerLink = within(duplicates).getByRole("link", {
+      name: `${NAME}, Question`,
+    });
+    expect(peerLink).toBeVisible();
+    expect(peerLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("/question/101"),
+    );
+  });
+
   it("reports duplicates that aren't visible to the user", async () => {
     const noneVisible = createMockContentDiagnosticsDuplicatedFinding({
       id: 1,
