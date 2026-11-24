@@ -103,13 +103,13 @@
     (if-not (= "ok" (:status result))
       {:unsupported (keyword (:reason result))}
       (let [normalize #(sql-tools.common/normalize-name driver %)
-            source    (fn [{:keys [table alias] :as s}]
-                        {:source (keyword (:source s))
+            describe  (fn [{:keys [source table alias]}]
+                        {:source (keyword source)
                          :table  (some-> (last table) normalize)
                          :alias  (normalize alias)})]
-        {:from  (assoc (source (:from result)) :sql (:base_sql result))
+        {:from  (assoc (describe (:from result)) :sql (:base_sql result))
          :steps (mapv (fn [step]
-                        (assoc (source step)
+                        (assoc (describe step)
                                :strategy (join-strategies (:strategy step))
                                :sql      (:sql step)))
                       (:steps result))}))))

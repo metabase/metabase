@@ -14,6 +14,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -70,10 +71,8 @@
 (defn- sources->table-id-lookup
   "A map from the normalized name of each table in `sources` to its id."
   [driver sources]
-  (into {}
-        (map (fn [{:keys [table_name table_id]}]
-               [(sql.normalize/normalize-name driver table_name) table_id]))
-        sources))
+  (u/for-map [{:keys [table_name table_id]} sources]
+    [(sql.normalize/normalize-name driver table_name) table_id]))
 
 (defn- native-join-structure
   "The join structure of `native-query`, each join with its step query as `:step-sql`, from [[sql-tools/join-steps]].

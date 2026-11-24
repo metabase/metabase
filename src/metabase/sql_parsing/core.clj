@@ -649,6 +649,7 @@
       (nil? queries)
       result
 
+      ;; The pattern matches what `strip-large-literal-lists` leaves in place of a list: `(NULL, ...)` or `[NULL]`.
       (and (not= stripped sql)
            (some #(re-find #"\(NULL(, NULL)*\)|\[NULL\]" %) queries))
       {:status "unsupported", :reason "large-literal-list"}
