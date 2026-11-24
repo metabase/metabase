@@ -223,29 +223,28 @@
 ;;; The Transform Inspector's step queries as it built them from Macaw's AST before sqlglot, so that the Macaw backend
 ;;; keeps them until it is retired.
 
+(defn- identifier
+  "The HoneySQL identifier of `kind` for the name parts `parts`, each normalized for `driver`, leaving out nil ones."
+  [driver kind & parts]
+  (apply h2x/identifier kind (keep #(some->> % (sql.normalize/normalize-name driver)) parts)))
+
 (defn- table->hsql
   "The Macaw table node `node` as a HoneySQL FROM or JOIN entry: `[identifier alias]`, or `[identifier]` unaliased."
   [driver {:keys [schema table table-alias]}]
-  (let [identifier (apply h2x/identifier :table (remove nil? [(some->> schema (sql.normalize/normalize-name driver))
-                                                              (sql.normalize/normalize-name driver table)]))]
-    (if table-alias
-      [identifier (keyword (sql.normalize/normalize-name driver table-alias))]
-      [identifier])))
+  (cond-> [(identifier driver :table schema table)]
+    table-alias (conj (keyword (sql.normalize/normalize-name driver table-alias)))))
 
 (defn- expr->hsql
   "The Macaw column or literal `node` as HoneySQL, or nil for anything else."
   [driver {:keys [schema table column value] :as node}]
   (case (:type node)
-    :macaw.ast/column  (apply h2x/identifier :field (remove nil? [(some->> schema (sql.normalize/normalize-name driver))
-                                                                  (some->> table (sql.normalize/normalize-name driver))
-                                                                  (sql.normalize/normalize-name driver column)]))
+    :macaw.ast/column  (identifier driver :field schema table column)
     ;; Inlined, because the steps are returned as SQL alone, with no parameters.
     :macaw.ast/literal (when (some? value) [:inline value])
     nil))
 
 (defn- condition->hsql
-  "The Macaw binary expression `condition` as a HoneySQL condition, or nil if any part of it is not a column or
-  literal."
+  "The Macaw binary expression `condition` as HoneySQL, or nil if any operand is not a column or literal."
   [driver {:keys [operator left right] :as condition}]
   (when (= :macaw.ast/binary-expression (:type condition))
     (let [op (u/upper-case-en (str operator))]
@@ -302,16 +301,15 @@
                           (let [node      (:source join)
                                 strategy  (get join-type->strategy (:join-type join) :inner-join)
                                 condition (join-condition->hsql driver join)]
-                            {:node      node
+                            {:source    (join-step-source driver node)
                              :strategy  strategy
                              :condition condition
                              :join-by   [(strategy->hsql-join strategy) [(table->hsql driver node) condition]]}))
                         (:join ast))]
     {:from  (assoc (join-step-source driver (:from ast)) :sql (count-sql {:select [[[:count :*]]], :from from}))
-     :steps (vec (for [n    (range 1 (inc (count joins)))
-                       :let [chain                             (subvec joins 0 n)
-                             {:keys [node strategy condition]} (peek chain)]]
-                   (assoc (join-step-source driver node)
+     :steps (vec (for [chain (rest (reductions conj [] joins))
+                       :let  [{:keys [source strategy condition]} (peek chain)]]
+                   (assoc source
                           :strategy strategy
                           :sql      (count-sql {:select  (if (and condition
                                                                   (#{:left-join :right-join :full-join} strategy))
@@ -320,8 +318,8 @@
                                                 :from    from
                                                 :join-by (into [] (mapcat :join-by) chain)}))))}))
 
-(defn- join-steps
-  [driver query]
+(defmethod sql-tools/join-steps-impl :macaw
+  [_parser driver query]
   (let [parsed (parsed-query (lib/raw-native-query query) driver)
         ast    (when-not (:error parsed)
                  (macaw.ast/->ast parsed {:with-instance? false}))]
@@ -338,7 +336,3 @@
 
       :else
       (join-steps-sql driver ast))))
-
-(defmethod sql-tools/join-steps-impl :macaw
-  [_parser driver query]
-  (join-steps driver query))
