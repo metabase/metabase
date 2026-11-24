@@ -137,7 +137,6 @@ export type SdkIframeEmbedComponentTagMessage =
 type SdkIframeEmbedTagDataAppPathChangeMessage = {
   type: "metabase.embed.dataAppPathChange";
   data: {
-    /** Uses the same format as the host's `path`: the app slug, the route, the query and the hash. The app root is the bare slug. */
     path: string;
 
     /**
