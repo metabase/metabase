@@ -22,6 +22,8 @@ The list shows each app's **Name**, **Address**, **Status**, and **Last synced**
 
 To open a live app, click the **three dots** on the app's row and select **Open app**.
 
+To embed a live app in your own site, click the **three dots** and select **Embed**. Metabase gives you the code to add to your site. To embed an app, you also need to set up [JWT SSO or SAML](../embedding/authentication.md).
+
 ## See what an app reads and writes
 
 Before you let more people open an app, check which data the app reads and writes. In the list of data apps, click the app. The app's **Overview** tab has a preview of the app. The **Questions** and **Actions** tabs list the questions and actions in the app's collection, and the **Permissions** tab lists the groups that can open the app.
@@ -56,13 +58,13 @@ On the app's **Permissions** tab:
 
 Admins can always open live apps, so you can't add the **Administrators** group. If an app has no groups, only admins can open it.
 
-[Tenant users](../embedding/tenants.md#user-types) can't open data apps, so you can add only [internal groups](../embedding/tenants.md#group-types) to an app. You can't add [tenant groups](../embedding/tenants.md#create-tenant-groups) or the **All tenant users** group.
+If you've [enabled tenants](../embedding/tenants.md#enable-multi-tenant-strategy), you can also add [tenant groups](../embedding/tenants.md#create-tenant-groups), including **All tenant users**. [Tenant users](../embedding/tenants.md#user-types) can open an app only if you add one of their tenant groups to it. Adding an [internal group](../embedding/tenants.md#group-types), like **All internal users**, doesn't give tenant users access.
 
 ### Check that groups can see the app's data
 
 Adding a group to an app lets people in that group open the app, and gives the group read access to the app's collection. Adding a group doesn't change their [data permissions](../permissions/data.md).
 
-If the **Data access** column says **Missing N tables**, people in that group don't have [Can view](../permissions/data.md#can-view-data-permission) access to some of the tables that the app's questions and actions read. The check counts the group's own access, and All Users access, but not access that people get from their other groups. The check also doesn't look at [row and column security](../permissions/row-and-column-security.md): a group with row and column security can show **All tables**, but people in that group can't run the app's actions on that database. And since the check uses the [dependency graph](../data-modeling/tools/graph.md), which updates in the background, a warning can lag behind your latest edits.
+If the **Data access** column says **Missing N tables**, people in that group don't have [Can view](../permissions/data.md#can-view-data-permission) access to some of the tables that the app's questions and actions read. The check counts the group's own access, and All Users access (for tenant groups, All tenant users access), but not access that people get from their other groups. The check also doesn't look at [row and column security](../permissions/row-and-column-security.md): a group with row and column security can show **All tables**, but people in that group can't run the app's actions on that database. And since the check uses the [dependency graph](../data-modeling/tools/graph.md), which updates in the background, a warning can lag behind your latest edits.
 
 ![Data app Permissions tab](./images/data-apps-permissions-tab.png)
 
@@ -85,7 +87,9 @@ Deleting an app also deletes its collection (with its questions and actions), it
 
 ## Serve apps from a separate address
 
-On a self-hosted Metabase, you can serve apps from a second address to keep app code away from people's sessions. Browsers don't send the session cookie to that address, so an app can reach Metabase only through the page that shows it. People still open apps at your [Site URL](../configuring-metabase/settings.md#site-url).
+On a self-hosted Metabase, you can serve apps from a second address to keep app code away from people's sessions. Browsers don't send the session cookie to that address, so an app can reach Metabase only through the page that shows it. Embedded data apps don't use the second address.
+
+Once you set a second address, people can open apps only at your [Site URL](../configuring-metabase/settings.md#site-url). If people can also reach your Metabase at another address, the app page there shows an **Open data app** button that goes to the Site URL.
 
 1. Pick a host name on a separate domain. For a Metabase at `metabase.example.com`, use something like `example-isolated.com`.
 
@@ -93,10 +97,12 @@ On a self-hosted Metabase, you can serve apps from a second address to keep app 
 
 2. Point the host name at the same Metabase. Your reverse proxy must pass on the host name in the `Host` or `X-Forwarded-Host` header, or apps won't load. If Metabase runs under a path, use the same path on both addresses.
 
-3. Set the environment variable to the second address, then restart Metabase:
+3. Set the [`MB_ISOLATED_ORIGIN`](../configuring-metabase/environment-variables.md#mb_isolated_origin) environment variable to the second address, then restart Metabase:
 
    ```
    MB_ISOLATED_ORIGIN=https://example-isolated.com
    ```
 
-The value can have only a scheme, host name, and port. The host name must differ from the Site URL's, and the value must use `https` if the Site URL does. If the value breaks these rules, or you haven't set a Site URL, Metabase turns data apps off. The app page says **Data apps are unavailable**, and the [server logs](../monitor/application-logs.md) say why.
+   The value can have only a scheme, host name, and port. Leave out the path, even if Metabase runs under one. The host name must differ from the Site URL's (a different port isn't enough), and the value must use `https` if the Site URL does.
+
+If the value breaks these rules, or you haven't set a Site URL, Metabase turns off data apps, except embedded ones. The app page says **Data apps are unavailable**, and the [server logs](../monitor/application-logs.md) say why.
