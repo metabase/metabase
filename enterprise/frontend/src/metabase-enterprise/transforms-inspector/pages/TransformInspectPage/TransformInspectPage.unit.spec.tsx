@@ -357,7 +357,7 @@ type SetupOpts = {
   lastRun?: Transform["last_run"];
   availableLenses?: InspectorLensMetadata[];
   lenses?: InspectorLens[];
-  queryRows?: Record<string, Dataset>;
+  queryRowsByLens?: Record<InspectorLens["id"], Record<string, Dataset>>;
   queryDelayMsByLens?: Record<InspectorLens["id"], number>;
 };
 
@@ -366,7 +366,10 @@ function setup({
   lastRun = createMockTransformRun({ status: "succeeded" }),
   availableLenses = [SUMMARY_LENS, COLUMN_DISTRIBUTIONS_LENS],
   lenses = [SUMMARY_LENS_RESPONSE, COLUMN_DISTRIBUTIONS_LENS_RESPONSE],
-  queryRows = { ...SUMMARY_QUERY_ROWS, ...DISTRIBUTION_QUERY_ROWS },
+  queryRowsByLens = {
+    [SUMMARY_LENS.id]: SUMMARY_QUERY_ROWS,
+    [COLUMN_DISTRIBUTIONS_LENS.id]: DISTRIBUTION_QUERY_ROWS,
+  },
   queryDelayMsByLens = {},
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 800, height: 400 });
@@ -417,7 +420,7 @@ function setup({
     setupRunInspectorQueryEndpoint(
       TRANSFORM_ID,
       lens.id,
-      queryResponder(queryRows),
+      queryResponder(queryRowsByLens[lens.id] ?? {}),
       { delayMs: queryDelayMsByLens[lens.id] },
     ),
   );
@@ -607,7 +610,10 @@ describe("TransformInspectPage", () => {
       setup({
         availableLenses: [SUMMARY_LENS, JOIN_ANALYSIS_LENS],
         lenses: [SUMMARY_LENS_RESPONSE, JOIN_ANALYSIS_LENS_RESPONSE],
-        queryRows: { ...SUMMARY_QUERY_ROWS, ...JOIN_QUERY_ROWS },
+        queryRowsByLens: {
+          [SUMMARY_LENS.id]: SUMMARY_QUERY_ROWS,
+          [JOIN_ANALYSIS_LENS.id]: JOIN_QUERY_ROWS,
+        },
       });
 
       expect(
