@@ -1392,18 +1392,32 @@ describe("QueryBuilder", () => {
       row_count: STATE_COUNTS.length,
     });
 
+    // Matches `concat("abc_", [Count])` named "Custom String" and
+    // `[Count] * 2` named "Custom Number", both on the count of stage 0
     const hasCustomColumnStage = (call: CallLog) => {
       const expressions = getIn(getRequestBody(call), [
         "stages",
         1,
         "expressions",
       ]);
-      const names = Array.isArray(expressions)
-        ? expressions.map((expression) =>
-            getIn(expression, [1, "lib/expression-name"]),
-          )
-        : [];
-      return _.isEqual(names, ["Custom String", "Custom Number"]);
+      if (!Array.isArray(expressions) || expressions.length !== 2) {
+        return false;
+      }
+      const [customString, customNumber] = expressions;
+      const isCountRef = (ref: unknown) =>
+        getIn(ref, [0]) === "field" && getIn(ref, [2]) === "count";
+      return (
+        getIn(customString, [0]) === "concat" &&
+        getIn(customString, [1, "lib/expression-name"]) === "Custom String" &&
+        getIn(customString, [2]) === "abc_" &&
+        isCountRef(getIn(customString, [3])) &&
+        getIn(customString, ["length"]) === 4 &&
+        getIn(customNumber, [0]) === "*" &&
+        getIn(customNumber, [1, "lib/expression-name"]) === "Custom Number" &&
+        isCountRef(getIn(customNumber, [2])) &&
+        getIn(customNumber, [3]) === 2 &&
+        getIn(customNumber, ["length"]) === 4
+      );
     };
 
     const addCustomColumn = async (formula: string, name: string) => {
