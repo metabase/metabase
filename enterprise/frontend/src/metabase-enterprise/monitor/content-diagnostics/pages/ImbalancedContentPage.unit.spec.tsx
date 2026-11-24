@@ -557,9 +557,7 @@ describe("ImbalancedContentPage", () => {
       await waitFor(() =>
         expect(screen.getByText("Dismissed 2 findings")).toBeVisible(),
       );
-      expect(
-        await screen.findByText("No empty content found"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("No empty content found")).toBeVisible();
       expect(
         screen.queryByTestId("content-diagnostics-bulk-actions"),
       ).not.toBeInTheDocument();
