@@ -674,6 +674,14 @@ describe("Custom columns visualization settings", () => {
         .should("be.checked");
     });
     saveModifiedQuestion();
+
+    cy.log("The saved setting survives a reload");
+    cy.reload();
+    cy.findByTestId("qb-header-action-panel")
+      .findByText("Save")
+      .should("not.exist");
+    goToExpressionSidebarVisualizationSettings();
+    H.popover().findByLabelText("Show a mini bar chart").should("be.checked");
   });
 });
 
