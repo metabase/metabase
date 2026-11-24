@@ -15,6 +15,6 @@
     (mdb/setup-db! :create-sample-content? true :manage-encryption-state? false))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
   (if (= :valid (mdb/encryption-check-status))
-    (log/info "Database is already encrypted with MB_ENCRYPTION_SECRET_KEY; nothing to do.")
+    (println "Database is already encrypted with MB_ENCRYPTION_SECRET_KEY; nothing to do.")
     ;; an :invalid sentinel makes encrypt-db abort before touching any row
     (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)))

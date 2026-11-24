@@ -3,7 +3,14 @@
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [metabase.cmd.core :as cmd]
-   [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
+   [metabase.cmd.rotate-encryption-key :as rotate-encryption-key]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
+   [metabase.util.encryption :as encryption])
+  (:import
+   (clojure.lang ExceptionInfo)
+   (java.io StringWriter)))
+
+(set! *warn-on-reflection* true)
 
 (defn- do-with-captured-call-enterprise-calls! [thunk]
   (dynamic-redefs/with-dynamic-fn-redefs [cmd/call-enterprise list]
@@ -21,6 +28,41 @@
   (is (= ["The 'rotate-encryption-key' command requires the following arguments: [new-key], but received: []."]
          (#'cmd/validate "rotate-encryption-key" [])))
   (is (nil? (#'cmd/validate "rotate-encryption-key" [:some-arg]))))
+
+(defn- do-with-captured-output!
+  "Run `thunk` with `system-exit!` throwing instead of exiting. Returns the exit code and what was printed."
+  [thunk]
+  (let [out (StringWriter.), err (StringWriter.)]
+    (dynamic-redefs/with-dynamic-fn-redefs [cmd/system-exit! (fn [code] (throw (ex-info "exit" {::exit code})))]
+      (binding [*out* out, *err* err]
+        (let [exit (try
+                     (thunk)
+                     nil
+                     (catch ExceptionInfo e
+                       (or (::exit (ex-data e)) (throw e))))]
+          {:exit exit, :out (str out), :err (str err)})))))
+
+(deftest errors-go-to-stderr-test
+  (testing "a command that cannot run says why on stderr, not through the log"
+    (dynamic-redefs/with-dynamic-fn-redefs [encryption/default-encryption-enabled? (constantly false)]
+      (doseq [command [cmd/enable-encryption cmd/remove-encryption]]
+        (is (= {:exit 1, :out "", :err "MB_ENCRYPTION_SECRET_KEY environment variable has not been set\n"}
+               (do-with-captured-output! command))))))
+  (testing "a command that fails with an exception prints it on stderr"
+    (dynamic-redefs/with-dynamic-fn-redefs [rotate-encryption-key/rotate-encryption-key!
+                                            (fn [_] (throw (ex-info "no database" {})))]
+      (is (=? {:exit 1, :out "", :err #"(?s).*no database.*ERROR ROTATING KEY\.\n"}
+              (do-with-captured-output! #(cmd/rotate-encryption-key "a-new-key"))))))
+  (testing "a usage error is printed on stderr"
+    (is (=? {:exit 1, :out "", :err #"(?s)Usage:\nrotate-encryption-key.*requires the following arguments.*"}
+            (do-with-captured-output! #(cmd/run-cmd "rotate-encryption-key" identity []))))))
+
+(deftest results-go-to-stdout-test
+  (dynamic-redefs/with-dynamic-fn-redefs [rotate-encryption-key/rotate-encryption-key! (constantly nil)
+                                          cmd/print-exception! (fn [e _] (throw e))]
+    (let [{:keys [out err]} (do-with-captured-output! #(cmd/rotate-encryption-key "a-new-key"))]
+      (is (= "Encryption key rotation OK.\n" out))
+      (is (= "" err)))))
 
 (deftest import-command-test
   (do-with-captured-call-enterprise-calls!

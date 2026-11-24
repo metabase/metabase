@@ -926,7 +926,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^metabase(?:-enterprise)?\\..*\\.cmd$)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)|(?:^dev\\..*)"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^metabase(?:-enterprise)?\\..*\\.(?:cmd|cli)$)|(?:^metabase\\.core\\.bootstrap$)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)|(?:^dev\\..*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
    :name    metabase-lib}
