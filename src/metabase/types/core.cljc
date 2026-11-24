@@ -466,7 +466,8 @@
 (derive :type/Balance :type/Number)
 (derive :type/Rate :type/Share)             ; a ratio stored as a number: exchange_rate, tax_rate, ctr
 (derive :type/UnitPrice :type/Price)        ; multiply by a quantity; never sum
-(derive :type/Count :Semantic/*)            ; an integer count of things: impressions, clicks
+(derive :type/Count :Semantic/*)            ; a numeric count of things: impressions, clicks
+(derive :type/Count :type/Number)
 (derive :type/Weight :type/Share)           ; allocation factor on a bridge row, sums to 1 per parent
 (derive :type/RangeBound :Semantic/*)       ; min/max/floor/ceiling of a range; aggregate with min or max
 (derive :type/RangeBound :type/Number)

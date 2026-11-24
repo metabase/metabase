@@ -148,10 +148,10 @@
         (is (not (isa? t :entity/*))))))
   (testing "the subjects"
     (is (set/subset? #{:entity/GenericTable
-             :entity/PersonTable :entity/UserTable :entity/ContactTable :entity/EmployeeTable :entity/CustomerTable
-             :entity/CompanyTable :entity/OrganizationTable :entity/TransactionTable :entity/LineItemTable
-             :entity/ProductTable :entity/SubscriptionTable :entity/EventTable :entity/MessageTable
-             :entity/SessionTable :entity/CampaignTable :entity/OpportunityTable :entity/TicketTable
+                       :entity/PersonTable :entity/UserTable :entity/ContactTable :entity/EmployeeTable :entity/CustomerTable
+                       :entity/CompanyTable :entity/OrganizationTable :entity/TransactionTable :entity/LineItemTable
+                       :entity/ProductTable :entity/SubscriptionTable :entity/EventTable :entity/MessageTable
+                       :entity/SessionTable :entity/CampaignTable :entity/OpportunityTable :entity/TicketTable
                        :entity/ProjectTable :entity/LocationTable :entity/DeviceTable :entity/CalendarTable}
                      (hierarchy-keywords types/entity-hierarchy))))
   (testing "people subjects share a parent"
@@ -228,7 +228,7 @@
       :type/Rate                  :type/Share
       :type/UnitPrice             :type/Price
       :type/UnitPrice             :type/Currency
-      :type/Count                 :Semantic/*
+      :type/Count                 :type/Number
       :type/Weight                :type/Share
       :type/RangeBound            :type/Number
       :type/Bytes                 :type/Quantity
@@ -272,6 +272,6 @@
 
 (deftest ^:parallel semantic-layer-types-without-data-type-test
   (testing "types stored in more than one data type have no data type parent"
-    (doseq [t [:type/Flag :type/Tags :type/Count :type/PeriodKey]]
+    (doseq [t [:type/Flag :type/Tags :type/PeriodKey]]
       (testing t
         (is (not (isa? t :type/*)))))))
