@@ -46,6 +46,7 @@ import {
   ORDERS,
   ORDERS_ID,
   PEOPLE_ID,
+  PRODUCTS,
   PRODUCTS_ID,
   createOrdersCreatedAtDatasetColumn,
   createOrdersIdDatasetColumn,
@@ -722,6 +723,138 @@ describe("QueryBuilder", () => {
           },
         ],
       });
+    });
+  });
+
+  describe("sorting in the raw table mode (metabase#42723)", () => {
+    const LINE_CARD = createMockCard({
+      id: 42723,
+      name: "Products by month and category",
+      display: "line",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: PRODUCTS_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+                { type: "column", name: "CATEGORY" },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
+
+    const COLS = [
+      createMockColumn({
+        name: "CREATED_AT",
+        display_name: "Created At: Month",
+        source: "breakout",
+        field_ref: [
+          "field",
+          PRODUCTS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+        base_type: "type/DateTime",
+        effective_type: "type/DateTime",
+        unit: "month",
+      }),
+      createMockColumn({
+        name: "CATEGORY",
+        display_name: "Category",
+        source: "breakout",
+        field_ref: ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        base_type: "type/Text",
+        effective_type: "type/Text",
+      }),
+      createMockColumn({
+        id: undefined,
+        table_id: undefined,
+        name: "count",
+        display_name: "Count",
+        source: "aggregation",
+        field_ref: ["aggregation", 0],
+        base_type: "type/BigInteger",
+        effective_type: "type/BigInteger",
+      }),
+    ];
+
+    const DATASET = createMockDataset({
+      data: createMockDatasetData({
+        rows: [
+          ["2027-01-01T00:00:00Z", "Gadget", 7],
+          ["2027-02-01T00:00:00Z", "Widget", 3],
+        ],
+        cols: COLS,
+      }),
+    });
+
+    const SORTED_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        rows: [
+          ["2027-02-01T00:00:00Z", "Widget", 3],
+          ["2027-01-01T00:00:00Z", "Gadget", 7],
+        ],
+        cols: COLS,
+      }),
+    });
+
+    function isSortedByCountQuery(call: CallLog) {
+      const body: unknown = JSON.parse(String(call.options.body));
+      return JSON.stringify(body).includes('"order-by":[["asc"');
+    }
+
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    it("keeps the line chart after sorting by a column in the data view", async () => {
+      await setup({ card: LINE_CARD, dataset: DATASET });
+      fetchMock.modifyRoute("dataset-post", {
+        response: (call: CallLog) =>
+          isSortedByCountQuery(call) ? SORTED_DATASET : DATASET,
+      });
+      expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText("Switch to data"));
+      const headerCell = await screen.findByRole("columnheader", {
+        name: "Count",
+      });
+      await userEvent.click(within(headerCell).getByText("Count"));
+      await userEvent.click(
+        await screen.findByTestId("click-actions-sort-control-sort.ascending"),
+      );
+
+      await waitFor(() =>
+        expect(
+          within(
+            screen.getByRole("columnheader", { name: /Count/ }),
+          ).getByLabelText("chevronup icon"),
+        ).toBeInTheDocument(),
+      );
+      const runCall = checkNotNull(
+        fetchMock.callHistory.lastCall("path:/api/dataset", { method: "POST" }),
+      );
+      const runBody: unknown = JSON.parse(String(runCall.options.body));
+      expect(runBody).toMatchObject({
+        stages: [
+          {
+            "source-table": PRODUCTS_ID,
+            "order-by": [
+              [
+                "asc",
+                expect.anything(),
+                ["aggregation", expect.anything(), expect.anything()],
+              ],
+            ],
+          },
+        ],
+      });
+      await userEvent.click(screen.getByLabelText("Switch to visualization"));
+      expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("columnheader", { name: /Count/ }),
+      ).not.toBeInTheDocument();
     });
   });
 
