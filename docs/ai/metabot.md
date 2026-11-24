@@ -158,4 +158,4 @@ Thumbs up are just as helpful as thumbs down. If you give a thumbs down, you can
 - Incomplete response
 - Other
 
-> On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see your feedback along with the conversation it's about. On Metabase Cloud, Metabase (the company) can see your feedback too. See [AI privacy](./privacy.md#who-can-see-your-feedback).
+> On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see your feedback along with the conversation. On Metabase Cloud, Metabase (the company) can see your feedback too. See [AI privacy](./privacy.md#who-can-see-your-feedback).

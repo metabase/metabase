@@ -62,7 +62,7 @@ If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses) on a
 
 Who else can see your feedback depends on where your Metabase runs:
 
-- **Self-hosted**: your feedback stays in your Metabase instance. Your Metabase instance doesn't send it to Metabase (the company).
+- **Self-hosted**: your feedback stays in your Metabase.
 - **Metabase Cloud**: Metabase (the company) hosts your application database, so it can see your feedback.
 
 On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see feedback next to the conversation it's about in [AI usage auditing](./usage-auditing.md#conversation-detail).
