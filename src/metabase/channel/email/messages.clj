@@ -469,12 +469,16 @@
                                                       notification-type
                                                       (update :notification-type name)))
                                                   (into
-                                                   [{:notification-type :email
-                                                     :recipient         (:common_name dashboard-creator)
-                                                     :role              "Dashboard Creator"}
-                                                    {:notification-type :email
-                                                     :recipient         (:common_name pulse-creator)
-                                                     :role              "Subscription Creator"}]
+                                                   (cond-> []
+                                                     dashboard-creator
+                                                     (conj {:notification-type :email
+                                                            :recipient         (:common_name dashboard-creator)
+                                                            :role              "Dashboard Creator"})
+
+                                                     pulse-creator
+                                                     (conj {:notification-type :email
+                                                            :recipient         (:common_name pulse-creator)
+                                                            :role              "Subscription Creator"}))
                                                    (map #(assoc % :role "Recipient") affected-users)))
                        :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)
                        :disable_links            disable_links})))))

@@ -5055,14 +5055,28 @@
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify affected users (#30100)"
-    (let [params {:dash-creator-id (mt/user->id :rasta)
+    (let [params {:disable-links? false
+                  :dash-creator-id (mt/user->id :rasta)
                   :pulse-creator-id (mt/user->id :lucky)
                   :expected-email-pulse-recipients #{"rasta@metabase.com" "lucky@metabase.com" "crowberto@metabase.com" "yo@broken.sub"}
                   :expected-slack-pulse-recipients #{"rasta@metabase.com" "lucky@metabase.com"}}]
       (testing "Send emails links when disable_links: false"
-        (test-handle-broken-subscription-notification! (assoc params :disable-links? false)))
+        (test-handle-broken-subscription-notification! params))
       (testing "Do not include linsk in emails when disable_links: true"
-        (test-handle-broken-subscription-notification! (assoc params :disable-links? true))))))
+        (test-handle-broken-subscription-notification! (assoc params :disable-links? true)))
+      (testing "Do not email inactive dashboard creator"
+        (test-handle-broken-subscription-notification!
+         (assoc params
+                :dash-creator-id (mt/user->id :trashbird)
+                :expected-email-pulse-recipients #{"lucky@metabase.com" "crowberto@metabase.com" "yo@broken.sub"}
+                :expected-slack-pulse-recipients #{"lucky@metabase.com"})))
+      (testing "Do not email inactive pulse creator"
+        (test-handle-broken-subscription-notification!
+         (assoc params
+                :dash-creator-id (mt/user->id :trashbird)
+                :pulse-creator-id (mt/user->id :trashbird)
+                :expected-email-pulse-recipients #{"crowberto@metabase.com" "yo@broken.sub"}
+                :expected-slack-pulse-recipients #{}))))))
 
 (deftest update-response-leaves-out-archived-subscriptions-test
   (testing "a REST save that archives a subscription doesn't return what the archive reports"

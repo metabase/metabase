@@ -15,7 +15,7 @@
   "Given a pulse and bad parameters, return relevant notification data:
   - The name of the pulse
   - Which selected parameter values are broken
-  - The user info for the creator of the pulse
+  - The user info for the creator of the pulse (if active)
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
   (let [creator (pulse.db/user-name-and-email creator_id)
@@ -70,23 +70,22 @@
   "Given a dashboard id and original parameters, return data (if any) on any broken subscriptions. This will be a seq
   of maps, each containing:
   - The pulse id that was broken
-  - name and email data for the dashboard creator and pulse creator
+  - name and email data for the dashboard creator and pulse creator (if active)
   - Affected recipient information
   - Basic descriptive data on the affected dashboard, pulse, and parameters for use in downstream notifications"
   [dashboard-id original-dashboard-params]
   (when-some [broken-pulses (broken-pulses dashboard-id original-dashboard-params)]
     (let [{dashboard-name        :name
            dashboard-description :description
-           dashboard-creator     :creator} (t2/hydrate
-                                            (pulse.db/dashboard-name-description-creator dashboard-id)
-                                            :creator)]
+           dashboard-creator-id  :creator_id} (pulse.db/dashboard-name-description-creator dashboard-id)
+          dashboard-creator (pulse.db/user-name-and-email dashboard-creator-id)]
       (for [broken-pulse broken-pulses]
         (assoc
          (bad-pulse-notification-data broken-pulse)
          :dashboard-id dashboard-id
          :dashboard-name dashboard-name
          :dashboard-description dashboard-description
-         :dashboard-creator (select-keys dashboard-creator [:first_name :last_name :email :common_name])
+         :dashboard-creator dashboard-creator
          ;; We will not include links to Metabase for subscriptions created in modular embeddings
          :disable_links (:disable_links broken-pulse))))))
 
