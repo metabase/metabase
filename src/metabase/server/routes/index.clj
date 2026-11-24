@@ -161,6 +161,14 @@
                  (seq query-string) (str "?" query-string))]
     (response/redirect (str (system/site-url) "/auth/login?redirect=" (codec/url-encode target)))))
 
+(defn permission-preview-content
+  "`/embed/permission-preview-content/*` entrypoint, the page the Preview access page frames. Only an admin's session
+  gets it; the document is the embed entrypoint, and its client code picks the preview out by the path."
+  [{:keys [is-superuser?] :as request} respond raise]
+  (if is-superuser?
+    (embed request respond raise)
+    (respond {:status 403 :body "Only admins can open the permission preview."})))
+
 (defn data-app
   "`/embed/apps/:name` and `/embed/embedded-apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
    enabled; without it, responds nil so routing falls through to the generic embed handler — the
