@@ -702,18 +702,16 @@
   "The number of app-DB statements `thunk` runs on the calling thread, leaving out the reads of group memberships and
   table remappings that the query processor makes each time it analyzes a query."
   [thunk]
+  ;; A thread-local redefinition, so statements other threads run meanwhile, such as those of the consumers of the
+  ;; events the transforms' creation published, are not counted.
   (let [statements (atom [])
-        thread     (Thread/currentThread)
-        reduce-fn  @#'t2.jdbc.query/reduce-jdbc-query]
+        reduce-fn  (mt/original-fn #'t2.jdbc.query/reduce-jdbc-query)
+        recording  (fn [& args]
+                     (swap! statements conj (str (first (second (take-last 3 args)))))
+                     (apply reduce-fn args))]
     (events.tu/without-delivery
-     (with-redefs-fn {#'t2.jdbc.query/reduce-jdbc-query
-                      (fn [& args]
-                        ;; The redefinition is global, so it also sees statements other threads run meanwhile, such as
-                        ;; the consumers of the events the transforms' creation published.
-                        (when (identical? thread (Thread/currentThread))
-                          (swap! statements conj (str (first (second (take-last 3 args))))))
-                        (apply reduce-fn args))}
-       thunk))
+     (mt/with-dynamic-fn-redefs [t2.jdbc.query/reduce-jdbc-query recording]
+       (thunk)))
     (count (remove #(re-find #"(?i)permissions_group_membership|table_remapping" %) @statements))))
 
 (deftest query-definition-update-statement-count-does-not-grow-with-rows-test
