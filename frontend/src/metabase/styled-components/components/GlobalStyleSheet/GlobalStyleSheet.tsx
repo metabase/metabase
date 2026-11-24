@@ -7,8 +7,9 @@ type GlobalStyleSheetProps = {
 };
 
 /**
- * Appends a style element to the document head on mount.
- * Updates replace its text in place, so it keeps its position in the cascade.
+ * Renders global CSS as a `<style>` element in the document head, with the CSP nonce.
+ * A change to `styles` updates that element in place, so it keeps its position in the cascade.
+ * The element is removed on unmount.
  */
 export function GlobalStyleSheet({ styles }: GlobalStyleSheetProps) {
   const styleRef = useRef<HTMLStyleElement | null>(null);
