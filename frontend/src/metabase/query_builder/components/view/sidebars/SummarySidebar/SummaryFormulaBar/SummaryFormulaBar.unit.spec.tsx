@@ -4,7 +4,10 @@ import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
-import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabaseEndpoints,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
 import {
   act,
   fireEvent,
@@ -178,6 +181,8 @@ async function setup({
   } else {
     setupDatabaseEndpoints(database);
   }
+  setupUserMetabotPermissionsEndpoint();
+
   const onQueryChange = jest.fn<void, [Lib.Query, SummaryPivotChange?]>();
   const metadata = createMockMetadata({
     databases: [database],

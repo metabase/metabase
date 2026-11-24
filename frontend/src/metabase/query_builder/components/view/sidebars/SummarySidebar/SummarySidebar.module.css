@@ -133,6 +133,21 @@
   min-width: 0;
 }
 
+.searchOptionDescription {
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1rem;
+  color: var(--mb-color-text-secondary);
+}
+
+.generateOptionLabel {
+  font-weight: bold;
+}
+
+.searchDropdown .generateOption[data-combobox-disabled] {
+  opacity: 1;
+  cursor: progress;
+}
+
 .searchDropdown .searchEmpty {
   padding: var(--mantine-spacing-sm);
   font-size: var(--mantine-font-size-sm);
