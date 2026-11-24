@@ -1,31 +1,42 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import {
-  Badge,
-  Box,
-  Flex,
-  Icon,
-  Stack,
-  Text,
-  UnstyledButton,
-} from "metabase/ui";
+import { Badge, Flex, Icon, Stack } from "metabase/ui";
 import type {
-  PermissionDebugAnswer,
   PermissionDebugCollection,
   PermissionDebugGroupValue,
-  PermissionDebugSandbox,
+  PermissionDebugImpersonation,
+  PermissionDebugReasons,
   PermissionDebugTable,
 } from "metabase-types/api";
 
+import { AttributeTag } from "../AttributeChip";
 import type { PreviewTarget } from "../types";
 
-import { getSubject } from "./explain";
 import {
+  BodyText,
+  ItemLine,
+  PlainStatus,
+  SheetCard,
+  SmallText,
+} from "./ExplainAccessParts";
+import {
+  capitalize,
+  getCollectionName,
+  getSourceText,
+  getSubject,
+  getTableProblemNotes,
+  getTableStatusDisplay,
+} from "./explain";
+import {
+  type ValueStatus,
+  getCollectionStatus,
   getCollectionValueLabel,
-  getCreateQueriesLabel,
+  getCreateQueriesStatus,
   getDownloadLabel,
+  getDownloadStatus,
   getViewDataLabel,
+  getViewDataStatus,
 } from "./labels";
 
 export type TablePermission =
@@ -34,75 +45,68 @@ export type TablePermission =
   | "download-results";
 
 export type ExplainDetail =
-  | { kind: "collection" }
+  | { kind: "collection"; collection: PermissionDebugCollection }
   | { kind: "table"; tableId: number; permission: TablePermission };
 
 interface ExplainAccessDetailProps {
   detail: ExplainDetail;
   target: PreviewTarget;
-  query?: PermissionDebugAnswer;
-  collection?: PermissionDebugCollection;
-  onBack: () => void;
+  reasons?: PermissionDebugReasons;
 }
 
+/** The reason behind one value: what it says in words, the rule behind it, and what each group gives. */
 export function ExplainAccessDetail({
   detail,
   target,
-  query,
-  collection,
-  onBack,
+  reasons,
 }: ExplainAccessDetailProps) {
   if (detail.kind === "collection") {
-    return collection ? (
-      <DetailPage
-        title={t`${collection.name} · Collection access`}
-        onBack={onBack}
-      >
-        <GroupsCard
-          target={target}
-          groups={collection.groups}
-          getLabel={getCollectionValueLabel}
-          isNothing={(value) => value === "none"}
-          note={
-            collection["by-rule"]
-              ? t`Curated by rule, not by a group.`
-              : undefined
-          }
-        />
-      </DetailPage>
-    ) : null;
+    return <CollectionDetail collection={detail.collection} target={target} />;
   }
-
-  const table = query?.reasons.tables?.find(
+  const table = reasons?.tables?.find(
     (candidate) => candidate["table-id"] === detail.tableId,
   );
-  return table ? (
+  return table && reasons ? (
     <TableDetail
       table={table}
       permission={detail.permission}
       target={target}
-      onBack={onBack}
+      reasons={reasons}
     />
   ) : null;
 }
 
-interface DetailPageProps {
-  title: string;
-  onBack: () => void;
-  children: ReactNode;
+interface CollectionDetailProps {
+  collection: PermissionDebugCollection;
+  target: PreviewTarget;
 }
 
-function DetailPage({ title, onBack, children }: DetailPageProps) {
+function CollectionDetail({ collection, target }: CollectionDetailProps) {
+  const who = capitalize(getSubject(target));
+  const name = getCollectionName(collection, target);
+  const source = getSourceText(collection.groups);
+  const sentence =
+    collection.value === "none"
+      ? t`${who} can't open the ${name} collection.`
+      : source
+        ? t`${who} has ${getCollectionValueLabel(collection.value)} access to the ${name} collection, ${source}.`
+        : t`${who} has ${getCollectionValueLabel(collection.value)} access to the ${name} collection.`;
+
   return (
-    <Stack gap="md">
-      <UnstyledButton onClick={onBack} aria-label={t`Back`}>
-        <Flex gap="xs" align="center">
-          <Icon name="chevronleft" />
-          <Text fw="bold">{title}</Text>
-        </Flex>
-      </UnstyledButton>
-      {children}
-    </Stack>
+    <>
+      <ItemLine icon="folder" name={name} target={target} />
+      <ResultCard status={getCollectionStatus(collection.value)}>
+        {sentence}
+      </ResultCard>
+      <GroupsCard
+        target={target}
+        groups={collection.groups}
+        getStatus={(value) => getCollectionStatus(value)}
+        isNothing={(value) => value === "none"}
+        permission={t`Collection access`}
+        nothingText={t`No group ${getSubject(target)} is in gives access.`}
+      />
+    </>
   );
 }
 
@@ -110,152 +114,290 @@ interface TableDetailProps {
   table: PermissionDebugTable;
   permission: TablePermission;
   target: PreviewTarget;
-  onBack: () => void;
+  reasons: PermissionDebugReasons;
 }
 
-function TableDetail({ table, permission, target, onBack }: TableDetailProps) {
+function TableDetail({ table, permission, target, reasons }: TableDetailProps) {
+  const subject = getSubject(target);
   const enforcedSandboxes = table.sandboxes.filter(
     (sandbox) => sandbox["enforced?"],
   );
-  const permissionLabels = {
+  const impersonations = (reasons.impersonations ?? []).filter(
+    (impersonation) =>
+      impersonation["db-id"] === table["db-id"] && impersonation["enforced?"],
+  );
+  const isView = permission === "view-data";
+  const notes = isView ? getTableProblemNotes(table, reasons, target) : [];
+  const permissionName = {
     "view-data": t`View data`,
     "create-queries": t`Create queries`,
     "download-results": t`Download results`,
-  };
-  const getLabel = {
-    "view-data": getViewDataLabel,
-    "create-queries": getCreateQueriesLabel,
-    "download-results": getDownloadLabel,
   }[permission];
 
   return (
-    <DetailPage
-      title={t`${table.name} · ${permissionLabels[permission]}`}
-      onBack={onBack}
-    >
-      {permission === "view-data" && enforcedSandboxes.length > 0 && (
-        <SandboxCard
-          subject={getSubject(target)}
-          tableName={table.name}
-          sandboxes={enforcedSandboxes}
-        />
-      )}
+    <>
+      <ItemLine
+        icon="table"
+        name={table.name}
+        database={table["db-name"]}
+        target={target}
+      />
+      <ResultCard
+        status={getResultStatus(
+          table,
+          permission,
+          enforcedSandboxes.length > 0,
+        )}
+        notes={notes}
+      >
+        {getResultSentence(
+          table,
+          permission,
+          target,
+          enforcedSandboxes,
+          impersonations,
+        )}
+      </ResultCard>
+      {isView &&
+        enforcedSandboxes.map((sandbox) => (
+          <SheetCard
+            key={sandbox["sandbox-id"]}
+            title={t`Row and column security`}
+          >
+            <Stack gap="lg" py="sm">
+              <KeyValue label={t`Set by`}>{sandbox["group-name"]}</KeyValue>
+              <KeyValue label={t`Rows`}>
+                <Stack gap="sm">
+                  {sandbox.filters.map((filter) => (
+                    <Flex
+                      key={filter.attribute}
+                      align="center"
+                      gap="sm"
+                      wrap="wrap"
+                    >
+                      <AttributeTag
+                        name={filter.attribute}
+                        value={filter.value ?? undefined}
+                      />
+                      <SmallText>{`→ ${filter.column}`}</SmallText>
+                    </Flex>
+                  ))}
+                </Stack>
+              </KeyValue>
+              <KeyValue label={t`Columns`}>
+                {sandbox["columns-limited?"]
+                  ? t`Limited by a saved question`
+                  : t`All columns`}
+              </KeyValue>
+            </Stack>
+          </SheetCard>
+        ))}
+      {isView &&
+        impersonations.map((impersonation) => (
+          <ImpersonationCard
+            key={impersonation["group-id"]}
+            impersonation={impersonation}
+          />
+        ))}
       <GroupsCard
         target={target}
         groups={table[permission].groups}
-        getLabel={getLabel}
-        isNothing={(value) => isNothingValue(permission, value)}
+        getStatus={getGroupStatus(permission)}
+        isNothing={(value) =>
+          (isView && value === "blocked") || (!isView && value === "no")
+        }
+        permission={permissionName}
         nothingText={
-          permission === "view-data"
-            ? t`Blocked in every group ${getSubject(target)} is in.`
+          isView
+            ? t`${capitalize(subject)} is blocked in every group they're in. To let them see this table, give one of those groups access.`
             : undefined
         }
         rowsFilteredGroupIds={enforcedSandboxes.map(
           (sandbox) => sandbox["group-id"],
         )}
       />
-    </DetailPage>
+    </>
   );
 }
 
-function isNothingValue(permission: TablePermission, value: string) {
+function getGroupStatus(permission: TablePermission) {
+  return {
+    "view-data": getViewDataStatus,
+    "create-queries": getCreateQueriesStatus,
+    "download-results": getDownloadStatus,
+  }[permission];
+}
+
+function getResultStatus(
+  table: PermissionDebugTable,
+  permission: TablePermission,
+  isFiltered: boolean,
+): ValueStatus {
+  if (permission === "view-data") {
+    return isFiltered
+      ? getTableStatusDisplay("filtered")
+      : getViewDataStatus(table["view-data"].value);
+  }
+  return permission === "create-queries"
+    ? getCreateQueriesStatus(table["create-queries"].value)
+    : getDownloadStatus(table["download-results"].value);
+}
+
+function getResultSentence(
+  table: PermissionDebugTable,
+  permission: TablePermission,
+  target: PreviewTarget,
+  sandboxes: PermissionDebugTable["sandboxes"],
+  impersonations: PermissionDebugImpersonation[],
+) {
+  const who = capitalize(getSubject(target));
+  const tableName = table.name;
+  const database = table["db-name"];
+  const source = getSourceText(table[permission].groups);
+  const suffix = source ? `, ${source}` : "";
+
+  if (permission === "view-data") {
+    if (table["view-data"].value === "blocked") {
+      return t`${who} is blocked from ${database} / ${tableName}.`;
+    }
+    if (sandboxes.some((sandbox) => sandbox["columns-limited?"])) {
+      return t`${who} sees only the ${tableName} rows and columns that the saved question below returns.`;
+    }
+    if (sandboxes.length > 0) {
+      return t`${who} sees only the ${tableName} rows that match the user attributes below.`;
+    }
+    if (impersonations.length > 0) {
+      return t`${who} queries ${database} with the database role below.`;
+    }
+    const value = getViewDataLabel(table["view-data"].value);
+    return t`${who} has View data set to ${value} on ${tableName}${suffix}.`;
+  }
+
+  if (permission === "create-queries") {
+    switch (table["create-queries"].value) {
+      case "query-builder-and-native":
+        return t`${who} can explore ${tableName} with the query builder and native queries${suffix}.`;
+      case "query-builder":
+        return t`${who} can explore ${tableName} with the query builder, but not with native queries${suffix}.`;
+      default:
+        return t`${who} can't explore ${tableName}.`;
+    }
+  }
+
+  const value = getDownloadLabel(table["download-results"].value);
+  return t`${who} has Download results set to ${value} on ${tableName}${suffix}.`;
+}
+
+interface ResultCardProps {
+  status: ValueStatus;
+  notes?: string[];
+  children: string;
+}
+
+function ResultCard({ status, notes = [], children }: ResultCardProps) {
   return (
-    (permission === "view-data" && value === "blocked") ||
-    (permission !== "view-data" && value === "no")
+    <SheetCard title={t`Result`}>
+      <Stack gap="sm" py="sm">
+        <Flex gap="sm" align="flex-start" wrap="nowrap">
+          <Icon name={status.icon} c={status.color} mt="xs" flex="none" />
+          <BodyText>{children}</BodyText>
+        </Flex>
+        {notes.map((note) => (
+          <BodyText key={note}>{note}</BodyText>
+        ))}
+      </Stack>
+    </SheetCard>
   );
 }
 
-interface SandboxCardProps {
-  subject: string;
-  tableName: string;
-  sandboxes: PermissionDebugSandbox[];
+function KeyValue({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <SmallText>{label}</SmallText>
+      <BodyText>{children}</BodyText>
+    </div>
+  );
 }
 
-function SandboxCard({ subject, tableName, sandboxes }: SandboxCardProps) {
-  const groupNames = sandboxes
-    .map((sandbox) => sandbox["group-name"])
-    .join(", ");
-
+function ImpersonationCard({
+  impersonation,
+}: {
+  impersonation: PermissionDebugImpersonation;
+}) {
   return (
-    <Stack gap="sm">
-      <Text fw="bold">{t`Result`}</Text>
-      <Text>{t`${subject} sees only the ${tableName} rows that match the attributes below, from ${groupNames}.`}</Text>
-      {sandboxes.map((sandbox) => (
-        <Stack key={sandbox["sandbox-id"]} gap="xs">
-          <Text fw="bold">{t`Row and column security`}</Text>
-          <Text c="text-secondary">{t`Set by ${sandbox["group-name"]}`}</Text>
-          {sandbox.filters.map((filter) => (
-            <Flex key={filter.attribute} gap="sm" align="center" wrap="wrap">
-              <Badge>
-                <Text component="span" fw="bold" size="sm">
-                  {filter.attribute}
-                </Text>{" "}
-                {filter["missing?"] ? t`No value` : filter.value}
-              </Badge>
-              <Text c="text-secondary">{`→ ${filter.column}`}</Text>
-              {filter["missing?"] && (
-                <Text c="feedback-negative-strong">{t`No value for ${filter.attribute}. Set a value for ${filter.attribute} to see this table.`}</Text>
-              )}
-            </Flex>
-          ))}
-          <Text c="text-secondary">
-            {sandbox["columns-limited?"]
-              ? t`Columns: limited by a saved question`
-              : t`Columns: all columns`}
-          </Text>
-        </Stack>
-      ))}
-    </Stack>
+    <SheetCard title={t`Connection impersonation`}>
+      <Stack gap="lg" py="sm">
+        <KeyValue label={t`Set by`}>{impersonation["group-name"]}</KeyValue>
+        <KeyValue label={t`Database role`}>
+          {impersonation.value ?? t`No value`}
+        </KeyValue>
+      </Stack>
+    </SheetCard>
   );
 }
 
 interface GroupsCardProps {
   target: PreviewTarget;
   groups: PermissionDebugGroupValue[];
-  getLabel: (value: string) => string;
+  permission: string;
+  getStatus: (value: string) => ValueStatus;
   isNothing: (value: string) => boolean;
   nothingText?: string;
   rowsFilteredGroupIds?: number[];
-  note?: string;
 }
 
 function GroupsCard({
   target,
   groups,
-  getLabel,
+  permission,
+  getStatus,
   isNothing,
   nothingText,
   rowsFilteredGroupIds = [],
-  note,
 }: GroupsCardProps) {
+  const subject = capitalize(getSubject(target));
+  const ordered = [
+    ...groups.filter((group) => group["applies?"]),
+    ...groups.filter((group) => !group["applies?"]),
+  ];
   const isNothingEverywhere =
     groups.length > 0 && groups.every((group) => isNothing(group.value));
+  const sharedValue = groups.every((group) => group.value === groups[0]?.value)
+    ? groups[0]?.value
+    : undefined;
 
   return (
-    <Stack gap="sm">
-      <Text fw="bold">{t`Groups`}</Text>
-      {groups.map((group) => (
-        <Flex key={group["group-id"]} gap="sm" align="center">
-          <Text flex={1} miw={0} truncate>
-            {group["group-name"]}
-          </Text>
-          {group["applies?"] && <Badge>{t`Applies`}</Badge>}
-          <Text>
-            {rowsFilteredGroupIds.includes(group["group-id"])
-              ? t`Rows filtered`
-              : getLabel(group.value)}
-          </Text>
-        </Flex>
-      ))}
-      <Box>
-        <Text c="text-secondary">
-          {isNothingEverywhere
-            ? (nothingText ??
-              t`No group ${getSubject(target)} is in gives access.`)
-            : t`The most permissive group applies.`}
-        </Text>
-        {note && <Text c="text-secondary">{note}</Text>}
-      </Box>
-    </Stack>
+    <SheetCard title={t`Groups`}>
+      <Stack gap="lg" py="sm">
+        {ordered.map((group) => (
+          <Flex
+            key={group["group-id"]}
+            gap="sm"
+            align="flex-start"
+            justify="space-between"
+            wrap="wrap"
+          >
+            <BodyText>{group["group-name"]}</BodyText>
+            <Flex gap="sm" align="center">
+              {group["applies?"] && <Badge variant="light">{t`Applies`}</Badge>}
+              <PlainStatus
+                status={
+                  rowsFilteredGroupIds.includes(group["group-id"])
+                    ? getTableStatusDisplay("filtered")
+                    : getStatus(group.value)
+                }
+              />
+            </Flex>
+          </Flex>
+        ))}
+        <BodyText>
+          {isNothingEverywhere && nothingText
+            ? nothingText
+            : sharedValue !== undefined && groups.length > 1
+              ? t`${subject} has ${permission} set to ${getStatus(sharedValue).label} in every group they're in.`
+              : t`The most permissive group applies.`}
+        </BodyText>
+      </Stack>
+    </SheetCard>
   );
 }

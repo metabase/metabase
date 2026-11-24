@@ -47,9 +47,18 @@ export type PermissionDebugGroupValue = {
 export type PermissionDebugCollection = {
   "collection-id": number | null;
   name: string;
+  "personal?": boolean;
   value: "curate" | "view" | "none";
   "by-rule": boolean;
   groups: PermissionDebugGroupValue[];
+};
+
+export type PermissionDebugAccessRequest = { "user-id": UserId };
+
+/** Everything a person can reach: every collection, and every table as a query check lists them */
+export type PermissionDebugAccess = {
+  collections: (PermissionDebugCollection & { location: string })[];
+  reasons: PermissionDebugReasons;
 };
 
 export type PermissionDebugTablePermission = {

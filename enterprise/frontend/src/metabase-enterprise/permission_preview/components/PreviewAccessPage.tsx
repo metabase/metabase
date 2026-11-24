@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { PermissionsEditorEmptyState } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
-import { Sidesheet } from "metabase/common/components/Sidesheet";
 import {
   ALL_COLLECTIONS_ITEM,
   getLinkText,
@@ -14,7 +13,7 @@ import {
   useEndPermissionPreviewMutation,
   useStartPermissionPreviewMutation,
 } from "metabase-enterprise/api";
-import type { PermissionPreviewSession } from "metabase-types/api";
+import type { PermissionPreviewSession, UserId } from "metabase-types/api";
 
 import { getRefusalMessage } from "../utils/refusal";
 
@@ -217,36 +216,55 @@ function Preview({ target }: PreviewProps) {
           )}
         </Box>
       </Flex>
-      {session && isExplainOpen && isWide && (
-        <Box
-          component="aside"
-          flex="0 0 auto"
-          w="30rem"
-          style={{ borderLeft: "1px solid var(--mb-color-border-neutral)" }}
-        >
-          <ExplainAccess
-            target={target}
-            userId={session.user_id}
-            item={frameItem}
-            onClose={() => setIsExplainOpen(false)}
-          />
-        </Box>
-      )}
-      {session && isExplainOpen && !isWide && (
-        <Sidesheet
-          isOpen
-          size="sm"
-          withOverlay={false}
+      {session && isExplainOpen && (
+        <PreviewExplainAccess
+          isWide={isWide}
+          target={target}
+          userId={session.user_id}
+          item={frameItem}
           onClose={() => setIsExplainOpen(false)}
-        >
-          <ExplainAccess
-            target={target}
-            userId={session.user_id}
-            item={frameItem}
-          />
-        </Sidesheet>
+        />
       )}
     </>
+  );
+}
+
+interface PreviewExplainAccessProps {
+  isWide: boolean;
+  target: PreviewTarget;
+  userId: UserId;
+  item: string;
+  onClose: () => void;
+}
+
+/** Explain access beside the frame when the window is wide, a sheet over it when it is not. */
+function PreviewExplainAccess({
+  isWide,
+  target,
+  userId,
+  item,
+  onClose,
+}: PreviewExplainAccessProps) {
+  const explainAccess = (
+    <ExplainAccess
+      target={target}
+      userId={userId}
+      item={item}
+      isSheet={!isWide}
+      onClose={onClose}
+    />
+  );
+  return isWide ? (
+    <Box
+      component="aside"
+      flex="0 0 auto"
+      w="30rem"
+      style={{ borderLeft: "1px solid var(--mb-color-border-neutral)" }}
+    >
+      {explainAccess}
+    </Box>
+  ) : (
+    explainAccess
   );
 }
 

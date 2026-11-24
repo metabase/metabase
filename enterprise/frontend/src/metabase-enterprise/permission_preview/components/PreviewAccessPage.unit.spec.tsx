@@ -444,7 +444,7 @@ describe("PreviewAccessPage", () => {
       setup({ attributes: ["state"] });
       await previewSales();
       await openExplainAccessOnQuestion();
-      await screen.findByText("Access to “Orders by state”");
+      await screen.findByText("Orders by state");
       const answersBefore = debuggedUserIds().length;
 
       await pickValue("state", "TX");
@@ -585,9 +585,7 @@ describe("PreviewAccessPage", () => {
 
     await openExplainAccessOnQuestion();
 
-    expect(
-      await screen.findByText("Access to “Orders by state”"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Orders by state")).toBeInTheDocument();
     expect(screen.getByText("as Sandy Sales")).toBeInTheDocument();
     expect(new Set(debuggedUserIds())).toEqual(new Set(["2"]));
   });
@@ -600,9 +598,7 @@ describe("PreviewAccessPage", () => {
 
     await openExplainAccessOnQuestion();
 
-    expect(
-      await screen.findByText("Access to “Orders by state”"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Orders by state")).toBeInTheDocument();
     expect(screen.getByText("as a member of Sales")).toBeInTheDocument();
     expect(new Set(debuggedUserIds())).toEqual(new Set(["109"]));
   });
@@ -611,16 +607,14 @@ describe("PreviewAccessPage", () => {
     setup();
     await userEvent.click(await screen.findByText("Sandy Sales"));
     await openExplainAccessOnQuestion();
-    await screen.findByText("Access to “Orders by state”");
+    await screen.findByText("Orders by state");
 
     await userEvent.click(
       screen.getByRole("button", { name: /Explain access/ }),
     );
 
     await waitFor(() =>
-      expect(
-        screen.queryByText("Access to “Orders by state”"),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByText("Orders by state")).not.toBeInTheDocument(),
     );
   });
 });

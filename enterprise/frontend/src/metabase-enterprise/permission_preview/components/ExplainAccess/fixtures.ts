@@ -1,4 +1,5 @@
 import type {
+  PermissionDebugAccess,
   PermissionDebugAnswer,
   PermissionDebugCollection,
   PermissionDebugGroupValue,
@@ -87,6 +88,7 @@ export function createCollection(
   return {
     "collection-id": 5,
     name: "Sales reports",
+    "personal?": false,
     value: "curate",
     "by-rule": false,
     groups: [
@@ -111,4 +113,10 @@ export function createAnswer(
     reasons: { collection: createCollection() },
     ...opts,
   };
+}
+
+export function createAccess(
+  opts: Partial<PermissionDebugAccess> = {},
+): PermissionDebugAccess {
+  return { collections: [], reasons: { tables: [] }, ...opts };
 }

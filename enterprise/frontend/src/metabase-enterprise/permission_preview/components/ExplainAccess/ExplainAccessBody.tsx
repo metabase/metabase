@@ -1,123 +1,120 @@
-import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Alert,
-  Badge,
-  Box,
-  Flex,
-  Icon,
-  Stack,
-  Text,
-  UnstyledButton,
-} from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import type {
   PermissionDebugAnswer,
   PermissionDebugCollection,
   PermissionDebugImpersonation,
+  PermissionDebugReasons,
   PermissionDebugTable,
 } from "metabase-types/api";
 
+import { AttributeTag } from "../AttributeChip";
 import type { PreviewTarget } from "../types";
 
-import { ExplainAccessDetail, type ExplainDetail } from "./ExplainAccessDetail";
+import type { ExplainDetail } from "./ExplainAccessDetail";
+import {
+  BodyText,
+  FoldStatus,
+  Row,
+  SheetCard,
+  SmallText,
+  StatusButton,
+  SummaryLink,
+  ToggleRow,
+  VerdictView,
+} from "./ExplainAccessParts";
 import {
   type ExplainAnswers,
   type ExplainedItemType,
   type TableStatus,
-  getConflictSentence,
+  getCollectionName,
   getItemNoun,
   getRouteSentence,
   getSourceText,
   getSubject,
-  getTableStatus,
+  getTableProblemNotes,
+  getTableStatusDisplay,
+  getTableStatusLabel,
   getVerdict,
   groupTablesByValue,
+  sortTablesByStatus,
 } from "./explain";
 import {
-  getCollectionValueLabel,
-  getCreateQueriesLabel,
-  getDownloadLabel,
-  getViewDataLabel,
+  type ValueStatus,
+  getCollectionStatus,
+  getCreateQueriesStatus,
+  getDownloadStatus,
+  getViewDataStatus,
 } from "./labels";
 
 interface ExplainAccessBodyProps {
   itemType: ExplainedItemType;
   target: PreviewTarget;
   answers: ExplainAnswers;
+  onOpenDetail: (detail: ExplainDetail) => void;
+  onOpenSummary: () => void;
 }
 
 export function ExplainAccessBody({
   itemType,
   target,
   answers,
+  onOpenDetail,
+  onOpenSummary,
 }: ExplainAccessBodyProps) {
-  const [detail, setDetail] = useState<ExplainDetail | null>(null);
   const { read, query, download } = answers;
   const collection = read.reasons.collection ?? query?.reasons.collection;
-
-  if (detail) {
-    return (
-      <ExplainAccessDetail
-        detail={detail}
-        target={target}
-        query={query}
-        collection={collection}
-        onBack={() => setDetail(null)}
-      />
-    );
-  }
-
-  const verdict = getVerdict(itemType, getSubject(target), answers);
-  const tables = query?.reasons.tables ?? [];
+  const subject = getSubject(target);
+  const verdict = getVerdict(itemType, subject, answers);
   const item = getItemNoun(itemType);
+  // A person who can't open the item has nothing else to explain
+  const canOpen = read.decision !== "denied";
+  const reasons = canOpen ? query?.reasons : undefined;
+  const tables = reasons?.tables ?? [];
 
   return (
-    <Stack gap="lg">
-      <VerdictAlert tone={verdict.tone} text={verdict.text} />
-      {query && <ConflictNotes query={query} />}
+    <Stack gap="xl">
+      <VerdictView verdict={verdict} />
       {collection && (
-        <Section
-          title={
-            itemType === "collection"
-              ? t`Collection access`
-              : t`Opening this ${item}`
-          }
-        >
-          <Row
-            label={t`Collection`}
-            name={collection.name}
-            status={getCollectionStatus(collection)}
-            onClick={() => setDetail({ kind: "collection" })}
-          />
-        </Section>
+        <OpeningCard
+          item={item}
+          collection={collection}
+          target={target}
+          onOpen={() => onOpenDetail({ kind: "collection", collection })}
+        />
       )}
-      {query && tables.length > 0 && (
-        <DataSection
+      {query && reasons && tables.length > 0 && (
+        <DataCard
           item={item}
           tables={tables}
-          query={query}
+          reasons={reasons}
+          target={target}
           onOpen={(tableId) =>
-            setDetail({ kind: "table", tableId, permission: "view-data" })
+            onOpenDetail({ kind: "table", tableId, permission: "view-data" })
           }
         />
       )}
-      {query && <ConnectionSection query={query} />}
-      {query && tables.length > 0 && (
-        <ExploringSection
+      {reasons && <ConnectionCard reasons={reasons} />}
+      {tables.length > 0 && (
+        <ExploringCard
           item={item}
           tables={tables}
           onOpen={(tableId) =>
-            setDetail({ kind: "table", tableId, permission: "create-queries" })
+            onOpenDetail({
+              kind: "table",
+              tableId,
+              permission: "create-queries",
+            })
           }
         />
       )}
-      {query && tables.length > 0 && (
-        <DownloadSection
+      {query && tables.length > 0 && itemType === "question" && (
+        <DownloadCard
           tables={tables}
           download={download}
           onOpen={(tableId) =>
-            setDetail({
+            onOpenDetail({
               kind: "table",
               tableId,
               permission: "download-results",
@@ -125,237 +122,239 @@ export function ExplainAccessBody({
           }
         />
       )}
-      {itemType !== "collection" && collection && (
-        <Section title={t`Editing this ${item}`}>
-          <Text>
-            {t`To edit this ${item}, they also need`}{" "}
-            <Text component="span" fw="bold">{t`Curate`}</Text>{" "}
-            {t`access to its collection.`}
-          </Text>
-        </Section>
+      {canOpen && itemType !== "collection" && collection && (
+        <SheetCard title={t`Editing this ${item}`}>
+          <Flex p="sm">
+            <BodyText>
+              {t`To edit this ${item}, they also need Curate access to its collection.`}
+            </BodyText>
+          </Flex>
+        </SheetCard>
       )}
-      {query && (
-        <AllPermissions
-          item={item}
+      {canOpen && query && (
+        <AllPermissionsCard
+          isQuestion={itemType === "question"}
           collection={collection}
           tables={tables}
-          onOpen={setDetail}
+          target={target}
+          onOpen={onOpenDetail}
         />
       )}
+      <SummaryLink subject={subject} onClick={onOpenSummary} />
     </Stack>
   );
 }
 
-interface VerdictAlertProps {
-  tone: "success" | "warning" | "error";
-  text: string;
+interface OpeningCardProps {
+  item: string;
+  collection: PermissionDebugCollection;
+  target: PreviewTarget;
+  onOpen: () => void;
 }
 
-function VerdictAlert({ tone, text }: VerdictAlertProps) {
-  if (tone === "success") {
-    return <Text fw="bold">{text}</Text>;
-  }
+function OpeningCard({ item, collection, target, onOpen }: OpeningCardProps) {
+  const name = getCollectionName(collection, target);
+  const source = collection["by-rule"]
+    ? t`by rule`
+    : getSourceText(collection.groups);
+
   return (
-    <Alert color={tone} icon={<Icon name="warning" />}>
-      {text}
-    </Alert>
+    <SheetCard
+      title={t`Opening this ${item}`}
+      info={{
+        label: t`About collection permissions`,
+        text: t`${capitalizePlural(item)} don't have their own permissions. Anyone who can see the ${item}'s collection can open the ${item}.`,
+      }}
+    >
+      <Row
+        label={t`Collection`}
+        name={name}
+        detail={collection.value === "none" ? null : source}
+      >
+        <StatusButton
+          status={getCollectionStatus(collection.value)}
+          rowName={name}
+          onClick={onOpen}
+        />
+      </Row>
+    </SheetCard>
   );
 }
 
-function ConflictNotes({ query }: { query: PermissionDebugAnswer }) {
-  const sentences = (query.reasons.problems ?? []).flatMap((problem) => {
-    const sentence = getConflictSentence(problem, query);
-    return sentence ? [sentence] : [];
-  });
-
-  return (
-    <>
-      {sentences.map((sentence) => (
-        <Text key={sentence}>{sentence}</Text>
-      ))}
-    </>
-  );
+function capitalizePlural(item: string) {
+  const plural = `${item}s`;
+  return plural.charAt(0).toUpperCase() + plural.slice(1);
 }
 
-interface SectionProps {
-  title: string;
-  children: ReactNode;
-}
-
-function Section({ title, children }: SectionProps) {
-  return (
-    <Stack gap="sm">
-      <Text fw="bold">{title}</Text>
-      {children}
-    </Stack>
-  );
-}
-
-interface RowProps {
-  label?: string;
-  name: string;
-  status: string;
-  detail?: ReactNode;
-  onClick: () => void;
-}
-
-function Row({ label, name, status, detail, onClick }: RowProps) {
-  return (
-    <Stack gap="xs">
-      <UnstyledButton onClick={onClick} aria-label={`${name}, ${status}`}>
-        <Flex gap="sm" align="center" wrap="nowrap">
-          {label && <Text c="text-secondary">{label}</Text>}
-          <Text flex={1} miw={0} truncate>
-            {name}
-          </Text>
-          <Text>{status}</Text>
-          <Icon name="chevronright" size={12} />
-        </Flex>
-      </UnstyledButton>
-      {detail}
-    </Stack>
-  );
-}
-
-function getCollectionStatus(collection: PermissionDebugCollection) {
-  const label = getCollectionValueLabel(collection.value);
-  if (collection["by-rule"]) {
-    return t`${label} · by rule`;
-  }
-  const source = getSourceText(collection.groups);
-  return source ? `${label} · ${source}` : label;
-}
-
-const TABLE_STATUS_ICONS: Record<TableStatus, string> = {
-  blocked: "✕",
-  "cant-load": "⚠",
-  filtered: "◐",
-  "can-view": "✓",
-};
-
-function getTableStatusLabel(status: TableStatus) {
-  switch (status) {
-    case "blocked":
-      return t`Blocked`;
-    case "cant-load":
-      return t`Can't load`;
-    case "filtered":
-      return t`Rows filtered`;
-    case "can-view":
-      return t`Can view`;
-  }
-}
-
-interface DataSectionProps {
+interface DataCardProps {
   item: string;
   tables: PermissionDebugTable[];
-  query: PermissionDebugAnswer;
+  reasons: PermissionDebugReasons;
+  target: PreviewTarget;
   onOpen: (tableId: number) => void;
 }
 
-function DataSection({ item, tables, query, onOpen }: DataSectionProps) {
-  const rows = tables.map((table) => ({
-    table,
-    status: getTableStatus(table, query),
-  }));
-  const viewable = rows.filter(({ status }) => status === "can-view");
-  const limiting = rows.filter(({ status }) => status !== "can-view");
-  const folds = viewable.length > 1;
+function DataCard({ item, tables, reasons, target, onOpen }: DataCardProps) {
+  const rows = sortTablesByStatus(tables, reasons);
+  const ofStatus = (...statuses: TableStatus[]) =>
+    rows.filter(({ status }) => statuses.includes(status));
+  const blocked = ofStatus("blocked");
+  const opening = ofStatus("cant-load", "filtered");
+  const viewable = ofStatus("can-view");
+  const hasToggleRow =
+    opening.length > 0 || blocked.length > 1 || viewable.length > 1;
 
   return (
-    <Section title={t`Data in this ${item}`}>
-      {limiting.map(({ table, status }) => (
-        <Row
+    <SheetCard
+      title={t`Data in this ${item}`}
+      info={{
+        label: t`About View data`,
+        text: t`View data on each table decides whether the ${item}'s results load. Row and column security shows only the rows that match the person's user attributes.`,
+      }}
+    >
+      <TableRows
+        rows={blocked}
+        hasChevronSlot={hasToggleRow}
+        onOpen={onOpen}
+        reasons={reasons}
+        target={target}
+      />
+      {opening.map(({ table, status }) => (
+        <ToggleRow
           key={table["table-id"]}
           name={table.name}
-          status={`${TABLE_STATUS_ICONS[status]} ${getTableStatusLabel(status)}`}
-          detail={<TableNotes table={table} status={status} query={query} />}
-          onClick={() => onOpen(table["table-id"])}
-        />
+          database={table["db-name"]}
+          initiallyOpen
+          status={
+            <StatusButton
+              status={getTableStatusDisplay(status)}
+              rowName={table.name}
+              onClick={() => onOpen(table["table-id"])}
+            />
+          }
+        >
+          <TableRules table={table} reasons={reasons} target={target} />
+        </ToggleRow>
       ))}
-      {folds ? (
-        <Text c="text-secondary">
-          {t`${viewable.length} tables · ${getTableStatusLabel("can-view")}`}
-        </Text>
-      ) : (
-        viewable.map(({ table }) => (
-          <Row
-            key={table["table-id"]}
-            name={table.name}
-            status={`${TABLE_STATUS_ICONS["can-view"]} ${getTableStatusLabel("can-view")}`}
-            onClick={() => onOpen(table["table-id"])}
-          />
-        ))
-      )}
-    </Section>
+      <TableRows
+        rows={viewable}
+        hasChevronSlot={hasToggleRow}
+        onOpen={onOpen}
+        reasons={reasons}
+        target={target}
+      />
+    </SheetCard>
   );
 }
 
-interface TableNotesProps {
-  table: PermissionDebugTable;
-  status: TableStatus;
-  query: PermissionDebugAnswer;
+interface TableRowsProps {
+  rows: { table: PermissionDebugTable; status: TableStatus }[];
+  hasChevronSlot: boolean;
+  reasons: PermissionDebugReasons;
+  target: PreviewTarget;
+  onOpen: (tableId: number) => void;
 }
 
-function TableNotes({ table, status, query }: TableNotesProps) {
-  if (status === "cant-load") {
-    const attributes = (query.reasons.problems ?? []).flatMap((problem) =>
-      problem.type === "missing-attribute" ? [problem.attribute] : [],
-    );
-    return (
-      <Box>
-        {attributes.map((attribute) => (
-          <Text key={attribute} c="feedback-negative-strong">
-            {t`No value for ${attribute}. Set a value for ${attribute} to see this table.`}
-          </Text>
-        ))}
-      </Box>
-    );
+/** Two or more tables with one status fold into a row; one stays its own row. */
+function TableRows({ rows, hasChevronSlot, onOpen }: TableRowsProps) {
+  if (rows.length === 0) {
+    return null;
   }
-  const sandboxes = table.sandboxes.filter((sandbox) => sandbox["enforced?"]);
+  const items = rows.map(({ table, status }) => (
+    <Row
+      key={table["table-id"]}
+      name={table.name}
+      database={table["db-name"]}
+      hasChevronSlot={rows.length === 1 && hasChevronSlot}
+    >
+      <StatusButton
+        status={getTableStatusDisplay(status)}
+        rowName={table.name}
+        onClick={() => onOpen(table["table-id"])}
+      />
+    </Row>
+  ));
+  if (rows.length === 1) {
+    return items;
+  }
+  const label = getTableStatusLabel(rows[0].status);
   return (
-    <Stack gap="xs" pl="md">
-      {sandboxes.map((sandbox) => (
-        <Stack key={sandbox["sandbox-id"]} gap="xs">
-          {sandbox.filters.map((filter) => (
-            <Flex key={filter.attribute} gap="sm" align="center">
-              <Badge>{`${filter.attribute} ${filter.value ?? ""}`}</Badge>
-              <Text c="text-secondary">{`→ ${filter.column}`}</Text>
-            </Flex>
-          ))}
-          <Text c="text-secondary" size="sm">
-            {t`Rules set by ${sandbox["group-name"]}`}
-          </Text>
-        </Stack>
+    <ToggleRow
+      name={t`${rows.length} tables`}
+      status={<FoldStatus label={label} />}
+      initiallyOpen
+    >
+      {items}
+    </ToggleRow>
+  );
+}
+
+interface TableRulesProps {
+  table: PermissionDebugTable;
+  reasons: PermissionDebugReasons;
+  target: PreviewTarget;
+}
+
+/** What a table's rule says: why it fails, one line per attribute, and who set it. */
+export function TableRules({ table, reasons, target }: TableRulesProps) {
+  const notes = getTableProblemNotes(table, reasons, target);
+  const sandboxes = table.sandboxes.filter((sandbox) => sandbox["enforced?"]);
+  const groups = [
+    ...new Set(sandboxes.map((sandbox) => sandbox["group-name"])),
+  ];
+
+  return (
+    <Stack gap="sm" p="sm">
+      {notes.map((note) => (
+        <BodyText key={note}>{note}</BodyText>
       ))}
+      {sandboxes.flatMap((sandbox) =>
+        sandbox.filters.map((filter) => (
+          <Flex
+            key={`${sandbox["sandbox-id"]}-${filter.attribute}`}
+            align="center"
+            gap="sm"
+            wrap="wrap"
+          >
+            <AttributeTag
+              name={filter.attribute}
+              value={filter.value ?? undefined}
+            />
+            <SmallText>{`→ ${filter.column}`}</SmallText>
+          </Flex>
+        )),
+      )}
+      {groups.length > 0 && (
+        <SmallText>{t`Rules set by ${groups.join(", ")}`}</SmallText>
+      )}
     </Stack>
   );
 }
 
-interface ConnectionSectionProps {
-  query: PermissionDebugAnswer;
-}
-
-function ConnectionSection({ query }: ConnectionSectionProps) {
-  const impersonations = (query.reasons.impersonations ?? []).filter(
+function ConnectionCard({ reasons }: { reasons: PermissionDebugReasons }) {
+  const impersonations = (reasons.impersonations ?? []).filter(
     (impersonation) => impersonation["enforced?"],
   );
-  const routes = query.reasons.routes ?? [];
+  const routes = reasons.routes ?? [];
 
   if (impersonations.length === 0 && routes.length === 0) {
     return null;
   }
   return (
-    <Section title={t`Connection`}>
-      {routes.map((route) => (
-        <Text key={`route-${route["db-id"]}`}>{getRouteSentence(route)}</Text>
-      ))}
-      {impersonations.map((impersonation) => (
-        <Text key={`impersonation-${impersonation["db-id"]}`}>
-          {getImpersonationSentence(impersonation)}
-        </Text>
-      ))}
-    </Section>
+    <SheetCard title={t`Connection`}>
+      <Stack gap="sm" p="sm">
+        {routes.map((route) => (
+          <BodyText key={`route-${route["db-id"]}`}>
+            {getRouteSentence(route)}
+          </BodyText>
+        ))}
+        {impersonations.map((impersonation) => (
+          <BodyText key={`impersonation-${impersonation["db-id"]}`}>
+            {getImpersonationSentence(impersonation)}
+          </BodyText>
+        ))}
+      </Stack>
+    </SheetCard>
   );
 }
 
@@ -366,54 +365,83 @@ function getImpersonationSentence(impersonation: PermissionDebugImpersonation) {
     : t`${database}: connects as the role ${impersonation.value}, set by ${impersonation.attribute}.`;
 }
 
-interface ExploringSectionProps {
+interface ExploringCardProps {
   item: string;
   tables: PermissionDebugTable[];
   onOpen: (tableId: number) => void;
 }
 
-function ExploringSection({ item, tables, onOpen }: ExploringSectionProps) {
-  const rows = groupTablesByValue(
+function ExploringCard({ item, tables, onOpen }: ExploringCardProps) {
+  const values = groupTablesByValue(
     tables,
     (table) => table["create-queries"].value,
   );
+  const names = tables.map((table) => table.name).join(", ");
+  const [first] = values;
+  const isShared = values.length === 1;
+
   return (
-    <Section title={t`Exploring this ${item}`}>
-      {rows.map(({ value, tables: rowTables }) => {
-        const source = getSourceText(rowTables[0]["create-queries"].groups);
-        const label = getCreateQueriesLabel(value);
-        return (
-          <Row
-            key={value}
-            name={rowTables.map((table) => table.name).join(", ")}
-            status={source ? `${label} · ${source}` : label}
-            onClick={() => onOpen(rowTables[0]["table-id"])}
-          />
-        );
-      })}
-    </Section>
+    <SheetCard
+      title={t`Exploring this ${item}`}
+      info={{
+        label: t`About Create queries`,
+        text: t`Create queries on each table decides whether the person can explore the ${item}'s results or start a new question from those results. Editing the ${item} also needs Curate on the ${item}'s collection.`,
+      }}
+    >
+      <Row
+        name={names}
+        detail={
+          isShared
+            ? getSourceText(first.tables[0]["create-queries"].groups)
+            : null
+        }
+      >
+        <StatusButton
+          status={
+            isShared
+              ? getCreateQueriesStatus(first.value)
+              : {
+                  label: t`Varies by table`,
+                  icon: "permissions_limited",
+                  color: "feedback-warning",
+                }
+          }
+          rowName={names}
+          onClick={() => onOpen(first.tables[0]["table-id"])}
+        />
+      </Row>
+    </SheetCard>
   );
 }
 
-interface DownloadSectionProps {
+interface DownloadCardProps {
   tables: PermissionDebugTable[];
   download?: PermissionDebugAnswer;
   onOpen: (tableId: number) => void;
 }
 
-function DownloadSection({ tables, download, onOpen }: DownloadSectionProps) {
+function DownloadCard({ tables, download, onOpen }: DownloadCardProps) {
   return (
-    <Section title={t`Downloading`}>
-      {download && <Text>{getDownloadVerdict(download)}</Text>}
+    <SheetCard title={t`Downloading`}>
+      {download && (
+        <Flex p="sm">
+          <BodyText>{getDownloadVerdict(download)}</BodyText>
+        </Flex>
+      )}
       {tables.map((table) => (
         <Row
           key={table["table-id"]}
           name={table.name}
-          status={getDownloadLabel(table["download-results"].value)}
-          onClick={() => onOpen(table["table-id"])}
-        />
+          database={table["db-name"]}
+        >
+          <StatusButton
+            status={getDownloadStatus(table["download-results"].value)}
+            rowName={table.name}
+            onClick={() => onOpen(table["table-id"])}
+          />
+        </Row>
       ))}
-    </Section>
+    </SheetCard>
   );
 }
 
@@ -427,87 +455,95 @@ function getDownloadVerdict(download: PermissionDebugAnswer) {
   return t`They can download the full result.`;
 }
 
-interface AllPermissionsProps {
-  item: string;
+interface AllPermissionsCardProps {
+  isQuestion: boolean;
   collection?: PermissionDebugCollection;
   tables: PermissionDebugTable[];
+  target: PreviewTarget;
   onOpen: (detail: ExplainDetail) => void;
 }
 
-function AllPermissions({
-  item,
+interface PermissionRow {
+  key: string;
+  name: string;
+  status: ValueStatus;
+  detail: ExplainDetail;
+}
+
+function AllPermissionsCard({
+  isQuestion,
   collection,
   tables,
+  target,
   onOpen,
-}: AllPermissionsProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const rows = [
+}: AllPermissionsCardProps) {
+  const rows: PermissionRow[] = [
     ...(collection
       ? [
           {
             key: "collection",
-            name: t`${collection.name} · Collection access`,
-            status: getCollectionValueLabel(collection.value),
-            detail: { kind: "collection" } as const,
+            name: t`${getCollectionName(collection, target)} · Collection access`,
+            status: getCollectionStatus(collection.value),
+            detail: { kind: "collection", collection } as const,
           },
         ]
       : []),
-    ...tables.flatMap((table) => [
+    ...tables.flatMap((table): PermissionRow[] => [
       {
         key: `${table["table-id"]}-view-data`,
         name: t`${table.name} · View data`,
-        status: getViewDataLabel(table["view-data"].value),
+        status: getViewDataStatus(table["view-data"].value),
         detail: {
           kind: "table",
           tableId: table["table-id"],
           permission: "view-data",
-        } as const,
+        },
       },
       {
         key: `${table["table-id"]}-create-queries`,
         name: t`${table.name} · Create queries`,
-        status: getCreateQueriesLabel(table["create-queries"].value),
+        status: getCreateQueriesStatus(table["create-queries"].value),
         detail: {
           kind: "table",
           tableId: table["table-id"],
           permission: "create-queries",
-        } as const,
+        },
       },
-      {
-        key: `${table["table-id"]}-download-results`,
-        name: t`${table.name} · Download results`,
-        status: getDownloadLabel(table["download-results"].value),
-        detail: {
-          kind: "table",
-          tableId: table["table-id"],
-          permission: "download-results",
-        } as const,
-      },
+      ...(isQuestion
+        ? [
+            {
+              key: `${table["table-id"]}-download-results`,
+              name: t`${table.name} · Download results`,
+              status: getDownloadStatus(table["download-results"].value),
+              detail: {
+                kind: "table",
+                tableId: table["table-id"],
+                permission: "download-results",
+              } as const,
+            },
+          ]
+        : []),
     ]),
   ];
 
+  const shownCount = (collection ? 1 : 0) + tables.length + 1;
+
+  if (rows.length <= shownCount) {
+    return null;
+  }
   return (
-    <Stack gap="sm">
-      <UnstyledButton
-        onClick={() => setIsOpen((current) => !current)}
-        aria-expanded={isOpen}
-      >
-        <Flex gap="xs" align="center">
-          <Icon name={isOpen ? "chevrondown" : "chevronright"} size={12} />
-          <Text fw="bold">
-            {t`All permissions on this ${item} (${rows.length})`}
-          </Text>
-        </Flex>
-      </UnstyledButton>
-      {isOpen &&
-        rows.map((row) => (
-          <Row
-            key={row.key}
-            name={row.name}
-            status={row.status}
-            onClick={() => onOpen(row.detail)}
-          />
+    <SheetCard>
+      <ToggleRow name={t`All permissions (${rows.length})`} status={null}>
+        {rows.map((row) => (
+          <Row key={row.key} name={row.name}>
+            <StatusButton
+              status={row.status}
+              rowName={row.name}
+              onClick={() => onOpen(row.detail)}
+            />
+          </Row>
         ))}
-    </Stack>
+      </ToggleRow>
+    </SheetCard>
   );
 }
