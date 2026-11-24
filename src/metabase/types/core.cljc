@@ -143,6 +143,24 @@
       (derive :role/Tie :role/*)
       (derive :role/Knot :role/*)))
 
+;;; Structural metadata values
+
+(def table-period-granularities
+  "Valid values for a Table's `period_granularity`."
+  [:day :week :month :quarter :year])
+
+(def table-mutabilities
+  "Valid values for a Table's `mutability`."
+  [:append_only :mutable :versioned :rebuilt_each_load])
+
+(def table-load-strategies
+  "Valid values for a Table's `load_strategy`."
+  [:full :incremental :merge :insert_only :cdc :snapshot])
+
+(def field-facet-keys
+  "The keys of a Field's `facets`, each naming a role the Field plays besides its semantic type."
+  [:time :key :structure :lifecycle])
+
 ;;; Modifier Types
 
 ;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific

@@ -195,6 +195,18 @@
       (is (not (isa? types/table-role-hierarchy :role/ArrayChild :role/Fact)))
       (is (not (isa? types/table-role-hierarchy :role/HistoryDimension :role/Fact))))))
 
+(deftest ^:parallel table-period-granularities-test
+  (is (= [:day :week :month :quarter :year] types/table-period-granularities)))
+
+(deftest ^:parallel table-mutabilities-test
+  (is (= [:append_only :mutable :versioned :rebuilt_each_load] types/table-mutabilities)))
+
+(deftest ^:parallel table-load-strategies-test
+  (is (= [:full :incremental :merge :insert_only :cdc :snapshot] types/table-load-strategies)))
+
+(deftest ^:parallel field-facet-keys-test
+  (is (= [:time :key :structure :lifecycle] types/field-facet-keys)))
+
 (deftest ^:parallel semantic-layer-types-test
   (testing "semantic-layer types derive from the type consumers check with isa?"
     (are [t parent] (isa? t parent)
