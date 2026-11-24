@@ -70,12 +70,14 @@ From the repository root: `bun run build-ui-package` builds `dist/`, and `bun ru
 3. `X.Y.Z` publishes to the `latest` dist-tag and `X.Y.Z-canary.N` to `canary`. No other version shape is accepted.
 4. Run the "Release UI Package" workflow from `master`; it refuses other refs. Run it first with `dry_run` on (the default), then again with it off.
 
+Before enabling live publishing, create the GitHub environment `ui-package-release` and restrict deployments to the `master` branch only. In npm, register `metabase/metabase`, workflow `release-ui-package.yml`, and environment `ui-package-release` as the trusted publisher. Enable `npm publish` under **Allowed actions**; staged publish alone is not enough.
+
 A dry run resolves the version, checks that the `ui-v<version>` tag and the npm version don't exist yet, builds the package, and smoke-tests the packed archive in Chromium. It doesn't prove that npm authentication works, so the first real run can still fail at the publish step.
 
-The tested archive is uploaded as the `metabase-ui-<version>-<sha7>` artifact, also on dry runs, and kept for 90 days. A real run builds and tests again, publishes the archive its own smoke job tested, then pushes the `ui-v<version>` tag on the released commit. It doesn't reuse an earlier dry run's archive.
+The tested archive is uploaded as the `metabase-ui-<version>-<sha7>-attempt-<n>` artifact, also on dry runs, and kept for 90 days. A real run builds and tests again, publishes the archive its own smoke job tested, then pushes the `ui-v<version>` tag on the released commit. It doesn't reuse an earlier dry run's archive.
 
-If the publish succeeds but the tag push fails, use **Re-run failed jobs** on that run, which only repeats the tag step, or push the tag by hand. **Re-run all jobs** would stop at the npm version check.
+If the publish job succeeded but the tag job failed, use **Re-run failed jobs** to retry the tag job. If npm accepted the tarball but the publish job reported failure, do not retry the publish. Compare `npm view @metabase/ui@<version> dist.integrity` with the SHA-512 integrity of the tested tarball (`sha512-` followed by the base64-encoded digest). Only if they match, and the tag is absent, create the tag on the commit recorded in that run's summary.
 
 ### Manual first publish
 
-If the workflow can't publish yet (for example, npm trusted publishing isn't set up), download the artifact from a green dry run on the commit you're releasing, unzip it to get the `.tgz` file, publish that file with `npm publish <file> --tag <dist-tag> --access public` without rebuilding, then push the `ui-v<version>` tag on that commit by hand. Don't run the workflow for that version again.
+If the workflow can't publish yet (for example, npm trusted publishing isn't set up), download the artifact from a green dry run on the commit you're releasing, unzip it to get the `.tgz` file, publish that file with `npm publish ./<file>.tgz --access public` without rebuilding (add `--tag canary` for a canary; do not pass `--tag latest` for a stable release), then push the `ui-v<version>` tag on that commit by hand. Don't run the workflow for that version again.

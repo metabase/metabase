@@ -2,7 +2,8 @@
 # dry_run) publishes that exact file to npm and tags the commit ui-v<version>.
 #
 # npm trusted publisher registration for @metabase/ui must match:
-#   repository: metabase/metabase, workflow filename: release-ui-package.yml, environment: (none)
+#   repository: metabase/metabase, workflow: release-ui-package.yml, environment: ui-package-release
+#   Allowed actions: npm publish. Restrict the GitHub environment to master before registration.
 name: Release UI Package
 run-name: Release @metabase/ui from ${{ github.ref_name }}${{ inputs.dry_run && ' (dry run)' || '' }}
 
@@ -35,7 +36,6 @@ jobs:
       version: ${{ steps.resolve.outputs.version }}
       npm_tag: ${{ steps.resolve.outputs.npm_tag }}
       git_tag: ${{ steps.resolve.outputs.git_tag }}
-      artifact: ${{ steps.artifact.outputs.name }}
     steps:
       - name: Fail unless running on master
         env:
@@ -71,13 +71,6 @@ jobs:
             exit 1
           fi
 
-      - name: Name the artifact
-        id: artifact
-        env:
-          VERSION: ${{ steps.resolve.outputs.version }}
-          SHA: ${{ github.sha }}
-        run: echo "name=metabase-ui-$VERSION-${SHA::7}" >> "$GITHUB_OUTPUT"
-
       - name: Fail if git tag already exists on the remote
         env:
           GIT_TAG: ${{ steps.resolve.outputs.git_tag }}
@@ -108,6 +101,8 @@ jobs:
     needs: determine-release
     runs-on: ubuntu-22.04
     timeout-minutes: 30
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v7
@@ -122,12 +117,21 @@ jobs:
 
       # Builds, checks, packs one tarball and tests that tarball in Chromium.
       - name: Build and smoke-test the package
-        run: bun run smoke-ui-package -- --release-only --with-deps
+        run: bun run smoke-ui-package -- --with-deps
+
+      - name: Name the artifact
+        id: artifact
+        env:
+          VERSION: ${{ needs.determine-release.outputs.version }}
+          SHA: ${{ github.sha }}
+          ATTEMPT: ${{ github.run_attempt }}
+        run: echo "name=metabase-ui-$VERSION-${SHA::7}-attempt-$ATTEMPT" >> "$GITHUB_OUTPUT"
 
       - name: Upload packed tarball
+        id: upload
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ needs.determine-release.outputs.artifact }}
+          name: ${{ steps.artifact.outputs.name }}
           path: frontend/ui-package/.pack/*.tgz
           # .pack is a hidden directory, which the action skips by default.
           include-hidden-files: true
@@ -140,7 +144,7 @@ jobs:
           VERSION: ${{ needs.determine-release.outputs.version }}
           NPM_TAG: ${{ needs.determine-release.outputs.npm_tag }}
           GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
-          ARTIFACT: ${{ needs.determine-release.outputs.artifact }}
+          ARTIFACT: ${{ steps.artifact.outputs.name }}
           COMMIT: ${{ github.sha }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
@@ -155,19 +159,14 @@ jobs:
             echo "- **Artifact**: \`$ARTIFACT\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Dry run — skipping npm publish and git tag push
+      - name: Confirm dry run
         if: ${{ inputs.dry_run }}
-        env:
-          NPM_TAG: ${{ needs.determine-release.outputs.npm_tag }}
-          GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
-          ARTIFACT: ${{ needs.determine-release.outputs.artifact }}
-        run: |
-          echo "dry_run=true → skipped 'npm publish <tarball from $ARTIFACT> --tag $NPM_TAG --access public'"
-          echo "dry_run=true → skipped 'git push origin $GIT_TAG'"
+        run: echo "dry_run=true; skipping publish and tag jobs"
 
   publish:
     needs: [determine-release, smoke]
-    if: ${{ !inputs.dry_run }}
+    if: ${{ !inputs.dry_run && github.ref == 'refs/heads/master' }}
+    environment: ui-package-release
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     permissions:
@@ -177,7 +176,8 @@ jobs:
       - name: Download the smoke-tested tarball
         uses: actions/download-artifact@v8
         with:
-          name: ${{ needs.determine-release.outputs.artifact }}
+          artifact-ids: ${{ needs.smoke.outputs.artifact-id }}
+          merge-multiple: true
           path: pack
 
       # Trusted publishing requires npm >= 11.5.1 and Node >= 22.14.0.
@@ -194,7 +194,7 @@ jobs:
           VERSION: ${{ needs.determine-release.outputs.version }}
         run: |
           shopt -s nullglob
-          FILES=(pack/*.tgz)
+          FILES=(./pack/*.tgz)
           if [ "${#FILES[@]}" -ne 1 ]; then
             echo "::error::Expected exactly one tarball in pack/, got ${#FILES[@]}"
             exit 1
@@ -204,7 +204,12 @@ jobs:
             echo "::error::Tarball version '$PACKED' does not match release version '$VERSION'"
             exit 1
           fi
-          npm publish "${FILES[0]}" --tag "$NPM_TAG" --access public
+          case "$NPM_TAG" in
+            latest) TAG_ARGS=() ;;
+            canary) TAG_ARGS=(--tag canary) ;;
+            *) echo "::error::Unexpected npm tag '$NPM_TAG'"; exit 1 ;;
+          esac
+          npm publish "${FILES[0]}" --access public "${TAG_ARGS[@]}"
 
   tag-git:
     needs: [determine-release, publish]
