@@ -37,7 +37,7 @@ import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
-  createMockCollectionItem,
+  createMockCollectionItemFromCollection,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
@@ -374,11 +374,8 @@ describe("QueryBuilder", () => {
       setupCollectionItemsEndpoint({
         collection: { id: "root" },
         collectionItems: [TEST_COLLECTION, firstCollection].map((collection) =>
-          createMockCollectionItem({
-            id: collection.id,
-            name: collection.name,
-            model: "collection",
-            location: "/",
+          createMockCollectionItemFromCollection({
+            ...collection,
             can_write: true,
             here: ["collection"],
           }),
