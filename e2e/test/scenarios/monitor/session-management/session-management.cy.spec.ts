@@ -265,6 +265,25 @@ describe("scenarios > monitor > session management", () => {
   });
 });
 
+describe("scenarios > monitor > session management > upsell", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    // a valid token that lacks the feature, rather than no token at all
+    H.activateToken("starter");
+  });
+
+  // Jest covers which page the route renders; this checks the upsell is visible in a real layout, which jsdom can't
+  it("shows the upsell to an admin without the feature", () => {
+    cy.visit("/monitor/sessions");
+    cy.findByTestId("monitor-main")
+      .findByText(
+        /See who is signed in to your Metabase. Revoke individual sessions/,
+      )
+      .should("be.visible");
+  });
+});
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 type SessionAlias = string;
