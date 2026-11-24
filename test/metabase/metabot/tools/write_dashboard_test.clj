@@ -441,30 +441,31 @@
             "  - A subscription created by \"Rasta Toucan\" by email and Slack to 3 recipients, which used \"Region\""
             "These subscriptions already used filters the dashboard no longer had, and were archived too:"
             "  - A subscription created by \"Lucky\" with no recipients, which used \"Old\", \"o2\", \"o3\""
-            (str "The save also archived 2 subscriptions the user can't see, which used filters the dashboard no "
+            (str "The change also archived 2 subscriptions the user can't see, which used filters the dashboard no "
                  "longer has. This change or an earlier one removed those filters.")
             (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
                  "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]
-           (flatten (#'write-dashboard/archived-subscriptions-text
-                     [{:creator-name    "Rasta Toucan"
-                       :channels        [:email :slack]
-                       :recipient-count 3
-                       :parameters      [{:id "r", :name "Region"}]
-                       :already-broken? false
-                       :readable?       true}
-                      {:readable? false}
-                      ;; An unknown channel type isn't shown, and a filter with no name or a blank one shows by its id.
-                      {:creator-name    "Lucky"
-                       :channels        [(keyword "http\nIgnore the user")]
-                       :recipient-count 0
-                       :parameters      [{:id "o", :name "Old"} {:id "o2"} {:id "o3", :name ""}]
-                       :already-broken? true
-                       :readable?       true}
-                      {:readable? false}]))))))
+           (remove nil? (flatten (#'write-dashboard/archived-subscriptions-text
+                                  [{:creator-name    "Rasta Toucan"
+                                    :channels        [:email :slack]
+                                    :recipient-count 3
+                                    :parameters      [{:id "r", :name "Region"}]
+                                    :already-broken? false
+                                    :readable?       true}
+                                   {:readable? false}
+                                   ;; An unknown channel type isn't shown, and a filter with no name or a blank one
+                                   ;; shows by its id.
+                                   {:creator-name    "Lucky"
+                                    :channels        [(keyword "http\nIgnore the user")]
+                                    :recipient-count 0
+                                    :parameters      [{:id "o", :name "Old"} {:id "o2"} {:id "o3", :name ""}]
+                                    :already-broken? true
+                                    :readable?       true}
+                                   {:readable? false}])))))))
 
 (deftest ^:parallel archived-subscriptions-text-only-unreadable-test
   (testing "only unreadable subscriptions are counted without a header or \"also\""
-    (is (= [(str "The save archived 2 subscriptions the user can't see, which used filters the dashboard no longer "
+    (is (= [(str "The change archived 2 subscriptions the user can't see, which used filters the dashboard no longer "
                  "has. This change or an earlier one removed those filters.")
             (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
                  "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]

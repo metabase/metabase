@@ -871,7 +871,7 @@
      (when (seq unreadable)
        ;; Unreadable ones aren't split into caused and already-broken, so the line says either could apply.
        (let [n (count unreadable)]
-         (str "The save " (when (seq readable) "also ") "archived " n " " (u/format-plural n "subscription")
+         (str "The change " (when (seq readable) "also ") "archived " n " " (u/format-plural n "subscription")
               " the user can't see, which used filters the dashboard no longer has. This change or an earlier one "
               "removed those filters.")))
      (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email is set "
