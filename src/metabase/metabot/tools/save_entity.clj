@@ -205,6 +205,13 @@
                         (some-> (get-in chart [:chart_config :display_type]) keyword)
                         :table)}))
 
+(defn- check-chart-curated
+  "Throws, when this Metabot uses only curated content, unless `dataset-query` of the chart `chart-id` reads only
+  curated content."
+  [chart-id dataset-query]
+  (when (shared/curated-only?)
+    (curation/check-curated-query! (str "chart " chart-id) dataset-query)))
+
 (defn savable-chart
   "The chart `chart-id` from agent memory as `{:dataset_query :display}`, ready to save as a card.
   Throws when the chart is unknown or the user can't run its query, and, when this Metabot uses only curated
@@ -213,9 +220,24 @@
   (let [{:keys [dataset_query] :as chart} (resolve-chart chart-id)]
     (check-query-permissions! dataset_query)
     ;; A chart may hold a query from the user's viewing context, which nothing judged on the way in.
-    (when (shared/curated-only?)
-      (curation/check-curated-query! (str "chart " chart-id) dataset_query))
+    (check-chart-curated chart-id dataset_query)
     chart))
+
+(defn savable-charts
+  "[[savable-chart]] of each of `chart-ids` in order, with the run permissions of all their queries read together, and
+  one by one, so that a refusal names the same chart, when they do not allow them all."
+  [chart-ids]
+  (if-let [charts (try
+                    (let [charts (mapv resolve-chart chart-ids)]
+                      (query-perms/check-run-permissions-for-queries (mapv :dataset_query charts))
+                      charts)
+                    (catch Throwable _
+                      nil))]
+    (mapv (fn [chart-id {:keys [dataset_query] :as chart}]
+            (check-chart-curated chart-id dataset_query)
+            chart)
+          chart-ids charts)
+    (mapv savable-chart chart-ids)))
 
 (defn personal-collection-id
   "The current user's personal collection ID. Throws [[no-personal-collection!]] when the user has none."

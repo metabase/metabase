@@ -602,13 +602,14 @@
 
 (defn- requested-charts
   "The charts the ops name, in order, each `{:chart-id :name :dataset_query :display}`.
-  Each must be one [[save-entity/savable-chart]] accepts. A chart that several ops name takes the name from the first."
+  Each must be one [[save-entity/savable-charts]] accepts. A chart that several ops name takes the name from the first."
   [ops]
-  (->> ops
-       (filter :chart_id)
-       (m/distinct-by :chart_id)
-       (mapv (fn [{:keys [chart_id] :as op}]
-               (assoc (save-entity/savable-chart chart_id) :chart-id chart_id :name (:name op))))))
+  (let [ops (->> ops (filter :chart_id) (m/distinct-by :chart_id) vec)]
+    (mapv (fn [{:keys [chart_id] :as op} chart]
+            (assoc chart :chart-id chart_id :name (:name op)))
+          ops
+          (when (seq ops)
+            (save-entity/savable-charts (mapv :chart_id ops))))))
 
 (defn- comparable-query
   "A value equal for two forms of the same query, such as a chart's legacy query and the question saved from it."
