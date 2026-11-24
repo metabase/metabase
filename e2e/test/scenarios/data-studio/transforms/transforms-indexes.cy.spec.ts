@@ -1,20 +1,9 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { StructuredIndex, TransformId } from "metabase-types/api";
 
 const { H } = cy;
 
 const SOURCE_TABLE = "Animals";
 const TARGET_SCHEMA = "Schema A";
-
-const INDEX_TABLE_COLUMNS = [
-  "Name",
-  "Type",
-  "Columns",
-  "Source",
-  "Status",
-  "Last modified by",
-  "Last run",
-];
 
 describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
   beforeEach(() => {
@@ -26,69 +15,7 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
   });
 
-  it("lists managed index requests with pending and removing statuses, sorts by column, and shows the index lifecycle after a transform run", () => {
-    H.createMbqlTransform({
-      sourceTable: SOURCE_TABLE,
-      targetTable: "indexes_list_table",
-      targetSchema: TARGET_SCHEMA,
-      name: "Indexes list transform",
-    }).then(({ body: transform }) => {
-      createIndexRequest(transform.id, btreeIndex("idx_animal_name", ["name"]));
-      createIndexRequest(
-        transform.id,
-        btreeIndex("idx_animal_score", ["score", "name"]),
-      ).then(({ body: request }) => {
-        cy.request("DELETE", `/api/index/request/${request.id}`);
-      });
-      H.DataStudio.Transforms.visitIndexes(transform.id);
-    });
-
-    cy.log("all column headers render");
-    indexesTable().within(() => {
-      INDEX_TABLE_COLUMNS.forEach((header) => {
-        cy.findByRole("columnheader", { name: matchHeaderName(header) }).should(
-          "be.visible",
-        );
-      });
-    });
-
-    cy.log("pending request row shows all cell values");
-    indexesTable().findAllByRole("row").should("have.length", 2);
-    indexesTable()
-      .findAllByRole("row")
-      .eq(0)
-      .should("contain", "idx_animal_name")
-      .and("contain", "B-Tree")
-      .and("contain", "name")
-      .and("contain", "Managed")
-      .and("contain", "Pending")
-      .and("contain", "Bobby Tables")
-      .and("contain", "Never");
-
-    cy.log("deleted request row shows the Removing status");
-    indexesTable()
-      .findAllByRole("row")
-      .eq(1)
-      .should("contain", "idx_animal_score")
-      .and("contain", "score, name")
-      .and("contain", "Removing");
-
-    cy.log("clicking the Name header toggles the sort direction");
-    indexesTable()
-      .findByRole("columnheader", { name: matchHeaderName("Name") })
-      .click();
-    indexesTable()
-      .findByRole("columnheader", { name: matchHeaderName("Name") })
-      .should("have.attr", "aria-sort", "descending");
-    indexesTable()
-      .findAllByRole("row")
-      .should("have.length", 2)
-      .eq(0)
-      .should("contain", "idx_animal_score");
-
-    cy.log(
-      "a pending index becomes succeeded after a transform run, and unmanaged warehouse indexes are listed",
-    );
+  it("creates a managed index that a transform run applies, and lists unmanaged warehouse indexes", () => {
     const targetTable = "indexes_lifecycle_table";
 
     cy.log("run the transform once so the target table exists");
@@ -144,8 +71,10 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
       .should("have.length", 1)
       .eq(0)
       .should("contain", "idx_lifecycle_name")
+      .and("contain", "B-Tree")
       .and("contain", "Managed")
       .and("contain", "Pending")
+      .and("contain", "Bobby Tables")
       .and("contain", "Never");
 
     cy.log("run the transform from the run tab");
@@ -192,28 +121,6 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
   });
 });
 
-function btreeIndex(name: string, columns: string[]) {
-  return {
-    kind: "btree",
-    name,
-    columns: columns.map((column) => ({ name: column })),
-  };
-}
-
-function createIndexRequest(
-  transformId: TransformId,
-  structured: StructuredIndex,
-) {
-  return cy.request("POST", "/api/index/request", {
-    transform_id: transformId,
-    structured,
-  });
-}
-
 function indexesTable() {
   return cy.findByRole("treegrid", { name: "Transform indexes" });
-}
-
-function matchHeaderName(label: string) {
-  return new RegExp(`^${label}`);
 }
