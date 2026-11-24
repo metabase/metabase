@@ -3334,6 +3334,14 @@
       :auth        "google"     403 {:error {:code 403 :message "Permission denied" :status "PERMISSION_DENIED"}}
       :not-found   "openai"     404 {:error {:code "model_not_found" :message "The model `gpt-9` does not exist"}}
       :not-found   "google"     404 {:error {:code 404 :message "Publisher Model was not found" :status "NOT_FOUND"}}
+      ;; https://docs.mistral.ai/resources/error-glossary
+      :not-found   "mistral"    400 {:object "error" :type "invalid_model" :code "1500" :message "Invalid model: m"}
+      ;; https://docs.z.ai/api-reference/api-code
+      :not-found   "zai"        400 {:error {:code "1211" :message "Unknown Model, please check the model code."}}
+      :not-found   "zai"        400 {:error {:code 1211 :message "Unknown Model, please check the model code."}}
+      ;; OpenRouter sends no code for a wrong model ID, only this text (probed 2026-11-24)
+      :not-found   "openrouter" 400 {:error {:code 400 :message "does-not-exist-123 is not a valid model ID"}
+                                     :user_id "org_1"}
       :unavailable "anthropic"  529 {:error {:type "overloaded_error" :message "Overloaded"}}
       :unavailable "openai"     503 {:error {:message "The server is overloaded or not ready yet."}}
       nil          "anthropic"  400 {:error {:type    "invalid_request_error"

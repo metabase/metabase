@@ -431,6 +431,10 @@
    "invalid_api_key"             :auth
    "not_found_error"             :not-found
    "model_not_found"             :not-found
+   ;; Mistral's 400 for a model that does not exist. https://docs.mistral.ai/resources/error-glossary
+   "invalid_model"               :not-found
+   ;; Z.AI's 400 "Unknown Model". https://docs.z.ai/api-reference/api-code
+   "1211"                        :not-found
    "server_error"                :unavailable
    ;; Z.AI's finish reason for a failure upstream of it. https://docs.z.ai/api-reference/llm/chat-completion
    "network_error"               :unavailable
@@ -462,20 +466,31 @@
                flagged_input
                (#{"content_policy_violation" "refusal"} error_type))))
 
+(defn- unknown-model?
+  "True when the `error` is OpenRouter's 400 for a model ID that does not exist."
+  ;; OpenRouter sends no code for it, only this text (probed 2026-11-24, stream and non-stream):
+  ;; {"error": {"message": "does-not-exist-123 is not a valid model ID", "code": 400}}
+  [status {:keys [message]}]
+  (and (= 400 status)
+       (boolean (re-find #"is not a valid model ID" (str message)))))
+
 (defn- provider-failure-kind
   "Classify a provider failure as `:billing`, `:rate-limit`, `:auth`, `:not-found` or `:unavailable`, or nil when
   the provider rejected a request that Metabot made, such as a malformed, too long, flagged or refused one.
 
   Reads the same `status` and `error` as [[provider-failure]], and the [[streamed-status]] when `status` is nil.
 
-  All rules read a status, a type or a code, with one exception: Anthropic sends a used-up credit balance as a plain
-  400 with no billing code, so `:billing` for it comes from the message text that [[provider-failure]] matches. When
-  Anthropic changes that text, the failure gets no kind."
+  All rules read a status, a type or a code, with two exceptions that read the message text, because the provider
+  sends a plain 400 with no code: Anthropic's used-up credit balance, which [[provider-failure]] matches for
+  `:billing`, and OpenRouter's [[unknown-model?]] for `:not-found`. When a provider changes that text, the failure
+  gets no kind."
   [status {error-type :type error-code :code :as error}]
   (let [status (or status (streamed-status error))]
     (when-not (and (= 403 status) (content-rejection? error))
       (or (provider-failure status error)
-          (some kind-only-failures [status error-type error-code])))))
+          (when (unknown-model? status error) :not-found)
+          ;; A provider can send its own numeric code as a number or as a string, so read it as a string too.
+          (some kind-only-failures [status error-type error-code (some-> error-code str)])))))
 
 (def ^:private transport-error-codes
   "The `:error-code` of each exception for a request that Metabot sent and that got no response from the provider:
