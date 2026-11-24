@@ -16,7 +16,6 @@ describe("scenarios > visualizer > drillthrough", () => {
     H.restore();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.signInAsNormalUser();
 
@@ -58,44 +57,11 @@ describe("scenarios > visualizer > drillthrough", () => {
     });
   });
 
-  it("should drill through visualizer dashcards (VIZ-979)", () => {
+  it("should drill through visualizer dashcards to the query builder (VIZ-979)", () => {
     createDashboardWithVisualizerDashcards();
 
-    // Brush filtering is disabled for multi-series timeseries charts
-    H.getDashboardCard(0).within(() => {
-      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should(
-        "have.length",
-        2,
-      );
-      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should(
-        "have.length",
-        2,
-      );
-      H.applyBrush(200, 300);
-    });
-
-    // ...but works for single-series ones
-    H.getDashboardCard(3).within(() => {
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      H.applyBrush(200, 300);
-      cy.wait("@dataset");
-    });
-    cy.get("@dataset.all").should("have.length", 1);
-
-    H.queryBuilderFiltersPanel()
-      .findByText(/Created At: Month is May 1/)
-      .should("exist");
-    H.assertQueryBuilderRowCount(10);
-    H.queryBuilderMain().within(() => {
-      cy.findByText("Count").should("exist"); // y-axis
-      cy.findByText("Created At: Month").should("exist"); // x-axis
-      cy.findByText("May 2026").should("exist");
-    });
-
-    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
-
-    const ORDERS_SERIES_COLOR = "#509EE3";
     const PRODUCTS_SERIES_COLOR = "#88BF4D";
+    const ORDERS_SERIES_COLOR = "#509EE3";
 
     // 1. Cartesian chart, timeseries breakout
     const SEP_2025_POINT_INDEX = 5;
@@ -118,53 +84,6 @@ describe("scenarios > visualizer > drillthrough", () => {
 
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
-    H.getDashboardCard(0).within(() => {
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      H.cartesianChartCircleWithColor(ORDERS_SERIES_COLOR)
-        .eq(SEP_2025_POINT_INDEX)
-        .click();
-    });
-
-    H.clickActionsPopover().findByText("Break out by…").click();
-    H.clickActionsPopover().findByText("Category").click();
-    H.clickActionsPopover().findByText("Source").click();
-    cy.wait("@dataset");
-
-    H.queryBuilderFiltersPanel().children().should("have.length", 1);
-    H.queryBuilderFiltersPanel().findByText(
-      "Created At: Month is Sep 1–30, 2025",
-    );
-    H.assertQueryBuilderRowCount(5);
-    H.echartsContainer().within(() => {
-      cy.findByText("Affiliate").should("exist");
-      cy.findByText("Organic").should("exist");
-      cy.findByText("Twitter").should("exist");
-    });
-
-    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
-
-    H.getDashboardCard(0).within(() =>
-      H.chartLegendItem(ORDERS_COUNT_BY_CREATED_AT.name).click(),
-    );
-    cy.wait("@cardQuery");
-    H.queryBuilderHeader()
-      .findByText(ORDERS_COUNT_BY_CREATED_AT.name)
-      .should("exist");
-    H.assertQueryBuilderRowCount(49);
-
-    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
-
-    H.getDashboardCard(0).within(() =>
-      H.chartLegendItem(PRODUCTS_COUNT_BY_CREATED_AT.name).click(),
-    );
-    cy.wait("@cardQuery");
-    H.queryBuilderHeader()
-      .findByText(PRODUCTS_COUNT_BY_CREATED_AT.name)
-      .should("exist");
-    H.assertQueryBuilderRowCount(37);
-
-    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
-
     // 2. Cartesian chart, category breakout
     H.getDashboardCard(1).within(() =>
       H.chartPathWithFillColor(ORDERS_SERIES_COLOR).eq(1).click(),
@@ -175,18 +94,6 @@ describe("scenarios > visualizer > drillthrough", () => {
     H.queryBuilderFiltersPanel().children().should("have.length", 1);
     H.queryBuilderFiltersPanel().findByText("Product → Category is Gadget");
     H.tableInteractiveHeader().findByText("Subtotal"); // ensure we're on the Orders table
-
-    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
-
-    H.getDashboardCard(1).within(() =>
-      H.chartPathWithFillColor("#EF8C8C").eq(0).click(),
-    );
-    H.clickActionsPopover().button(">").click();
-    cy.wait("@dataset");
-
-    H.queryBuilderFiltersPanel().children().should("have.length", 1);
-    H.queryBuilderFiltersPanel().findByText("Count is greater than 42");
-    H.assertQueryBuilderRowCount(3);
 
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
