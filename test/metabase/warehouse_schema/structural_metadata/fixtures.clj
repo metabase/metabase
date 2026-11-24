@@ -9,9 +9,9 @@
    [metabase.util.performance :refer [some]]
    [toucan2.core :as t2]))
 
-;; The prototype's `name.clj` (prototype/semantic-layer-1-structure, commit 3dc2ec9ad3b) types columns that the copied
-;; classifiers read by semantic type. Only the rules for types they read are inlined here; the rest of that file's
-;; changes are left out. `head` rules sat before the base rules there, `tail` rules after them.
+;; The prototype's name classifier types columns that the copied classifiers read by semantic type. Only the rules for
+;; types they read are inlined here. `head` rules run before [[analyze/infer-semantic-type-by-name]], `tail` rules
+;; after it.
 
 (def ^:private prototype-head-name-rules
   [[#"^_fivetran_active$"                                      #{:type/Boolean}  :type/CurrentRowFlag]
@@ -36,7 +36,7 @@
 
 (defn prototype-semantic-type
   "The semantic type the prototype's sync gives a column with `field-name` and `base-type`, as far as the copied
-  classifiers care: the inlined prototype rules, around the base branch's own name classifier."
+  classifiers care: the inlined prototype rules, around [[analyze/infer-semantic-type-by-name]]."
   [field-name base-type]
   (let [lower-name (u/lower-case-en field-name)]
     (or (match-rule prototype-head-name-rules lower-name base-type)
@@ -49,9 +49,10 @@
   (-> (str "structural_metadata/" fixture-name ".edn") io/resource slurp edn/read-string))
 
 (defn database-fixture
-  "The tables and fields of the Database `db-id`, e.g. the `test-data` dataset, in the shape of an EDN fixture."
-  [db-id]
-  (let [tables    (t2/select :model/Table :db_id db-id :active true {:order-by [[:name :asc]]})
+  "The tables named `table-names` in the Database `db-id`, e.g. the `test-data` dataset, and their fields, in the shape
+  of an EDN fixture. Naming the tables keeps out any table another test left in a shared Database."
+  [db-id table-names]
+  (let [tables    (t2/select :model/Table :db_id db-id :active true :name [:in table-names] {:order-by [[:name :asc]]})
         fields    (t2/select :model/Field :table_id [:in (map :id tables)] :active true
                              {:order-by [[:table_id :asc] [:position :asc] [:id :asc]]})
         id->field (u/index-by :id fields)
@@ -69,7 +70,8 @@
                                       (assoc :pk true)
 
                                       target
-                                      (assoc :fk (str (:name (id->table (:table_id target))) "." (:name target))))))}))}))
+                                      (assoc :fk (str (:name (id->table (:table_id target)))
+                                                      "." (:name target))))))}))}))
 
 (defn- field-semantic-type [{field-name :name, :keys [base_type semantic_type pk fk], :as field}]
   (cond

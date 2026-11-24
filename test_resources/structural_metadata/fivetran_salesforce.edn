@@ -1,7 +1,8 @@
 ;; A Fivetran Salesforce destination schema. Fivetran keeps Salesforce's own column names (snake_cased, custom fields
-;; keep their `__c` suffix), adds `_fivetran_synced` and `_fivetran_deleted` to every table, and in history mode adds
-;; `_fivetran_start`, `_fivetran_end` and `_fivetran_active` with `_fivetran_start` joining the primary key. Field
-;; history tables (`*_field_history`) are Salesforce's own audit trail. `fivetran_audit` is the connector's log table.
+;; keep their `__c` suffix), adds `_fivetran_synced` to every table and `_fivetran_deleted` to every table but the
+;; history tables and `fivetran_audit`, and in history mode adds `_fivetran_start`, `_fivetran_end` and
+;; `_fivetran_active` with `_fivetran_start` joining the primary key. Field history tables (`*_field_history`) are
+;; Salesforce's own audit trail. `fivetran_audit` is the connector's log table.
 ;; Semantic types left out here are inferred the way the prototype's sync would (see the fixtures namespace).
 {:schema "salesforce"
  :tables

@@ -1,6 +1,6 @@
 (ns metabase.warehouse-schema.structural-metadata.design-check-test
   "Runs the prototype classifiers over fixture schemas and saves what they find through the models, to check that the
-  Phase 1 structural metadata columns can hold it.
+  structural metadata columns can hold it.
 
   Every classifier output either maps to a column or is one of the [[dropped-outputs]]; anything else fails. Each
   fixture also declares the mismatches that lose something about one of its tables (see [[table-mismatches]]), so the
@@ -18,7 +18,7 @@
    [toucan2.core :as t2]))
 
 (def ^:private dropped-outputs
-  "Classifier outputs that no Phase 1 column holds, as `[classifier key]`, with why."
+  "Classifier outputs that no structural metadata column holds, as `[classifier key]`, with why."
   {[:table-role :signal]
    "The one-line reason for an admin has no column."
    [:table-role :confidence]
@@ -55,6 +55,10 @@
    :current_flag :current_flag
    :version      :version})
 
+(def ^:private custom-property-facet
+  "The values a wildcard column's custom property facet is saved as."
+  {:facets {:structure :type/CustomProperty}})
+
 (defn- classify
   "Every prototype classifier's output for the Table `table`, given the other `schema-tables` in its schema."
   [{table-name :name, :keys [fields]} schema-tables]
@@ -74,10 +78,10 @@
                                       fields)}))
 
 (defn- rename-binding
-  "`binding` with its keys renamed by `key-map`, plus the keys `key-map` does not know."
-  [binding key-map]
-  {:value   (update-keys (select-keys binding (keys key-map)) key-map)
-   :unknown (set (keys (apply dissoc binding (keys key-map))))})
+  "`bound` with its keys renamed by `key-map`, plus the keys `key-map` does not know."
+  [bound key-map]
+  {:value   (update-keys (select-keys bound (keys key-map)) key-map)
+   :unknown (set (keys (apply dissoc bound (keys key-map))))})
 
 (defn- leftover-keys
   "The `[classifier key]` paths of the keys of `output`, which may be nil, besides `used-keys`."
@@ -95,7 +99,7 @@
                   history    (assoc :scd_type (:scd_type history)
                                     :history_definition (:value history-binding))
                   eav        (assoc :eav_definition (:value eav-binding)))
-     :fields    (update-vals custom-property-facets (constantly {:facets {:structure :type/CustomProperty}}))
+     :fields    (update-vals custom-property-facets (constantly custom-property-facet))
      :leftovers (set/union (leftover-keys :table-role table-role [:role])
                            (leftover-keys :history history [:scd_type :binding])
                            (leftover-keys :eav eav [:binding])
@@ -123,10 +127,37 @@
     (= 6 (:scd_type history))         (conj :scd-6-current-values)
     wildcard-definition-table         (conj [:wildcard-definition-table (:name wildcard-definition-table)])))
 
+(defn- check-table!
+  "Classify the inserted `table`, save the translated values through the models, and check that they read back
+  unchanged. Returns its `:table-name`, its `:saved` values read back (history and EAV IDs replaced by names, plus
+  `:fields`, field name to its values read back), and its `:mismatches`, the [[table-mismatches]]."
+  [{table-name :name, table-id :id, :as table} schema-tables id->name]
+  (let [outputs (classify table schema-tables)
+        {table-changes :table, field-changes :fields, :keys [leftovers]} (translate outputs)]
+    (testing table-name
+      (testing "every classifier output either maps to a column or is a known dropped output"
+        (is (empty? (remove dropped-outputs leftovers))))
+      (when (seq table-changes)
+        (sync-util/update-table-unless-user-set! table-id table-changes))
+      (doseq [[field-id changes] field-changes]
+        (sync-util/update-field-unless-user-set! field-id changes))
+      (let [saved-table  (select-keys (t2/select-one :model/Table :id table-id) (keys table-changes))
+            saved-fields (into {}
+                               (for [[field-id changes] field-changes]
+                                 [field-id (select-keys (t2/select-one :model/Field :id field-id) (keys changes))]))]
+        (testing "the saved values read back unchanged"
+          (is (= table-changes saved-table))
+          (is (= field-changes saved-fields)))
+        {:table-name table-name
+         :saved      (cond-> (-> saved-table
+                                 (m/update-existing :history_definition update-vals id->name)
+                                 (m/update-existing :eav_definition update-vals id->name))
+                       (seq saved-fields) (assoc :fields (update-keys saved-fields id->name)))
+         :mismatches (table-mismatches outputs id->name)}))))
+
 (defn- run-design-check!
-  "Insert `fixture`, classify each of its tables, save the translated values through the models, and check that they
-  read back unchanged. Returns `:saved`, table name to the values read back (history and EAV IDs replaced by names,
-  plus `:fields`, field name to its values read back), and `:mismatches`, table name to its [[table-mismatches]]."
+  "Insert `fixture` and run [[check-table!]] on each of its tables, in fixture order. Returns `:saved`, table name to
+  its saved values, and `:mismatches`, table name to its [[table-mismatches]] when it has any."
   [fixture]
   (mt/with-temp [:model/Database {db-id :id} {}]
     (let [tables        (fixtures/insert-fixture! db-id fixture)
@@ -134,33 +165,9 @@
           id->name      (into {}
                               (concat (for [table (vals tables)] [(:id table) (:name table)])
                                       (for [table (vals tables), field (:fields table)] [(:id field) (:name field)])))
-          results       (for [{table-name :name} (:tables fixture)
-                              :let [table   (tables table-name)
-                                    outputs (classify table schema-tables)
-                                    {table-changes :table, field-changes :fields
-                                     :keys [leftovers]} (translate outputs)]]
-                          (testing table-name
-                            (testing "every classifier output either maps to a column or is a known dropped output"
-                              (is (empty? (remove dropped-outputs leftovers))))
-                            (when (seq table-changes)
-                              (sync-util/update-table-unless-user-set! (:id table) table-changes))
-                            (doseq [[field-id changes] field-changes]
-                              (sync-util/update-field-unless-user-set! field-id changes))
-                            (let [saved-table  (select-keys (t2/select-one :model/Table :id (:id table))
-                                                            (keys table-changes))
-                                  saved-fields (into {}
-                                                     (for [[field-id changes] field-changes]
-                                                       [field-id (select-keys (t2/select-one :model/Field :id field-id)
-                                                                              (keys changes))]))]
-                              (testing "the saved values read back unchanged"
-                                (is (= table-changes saved-table))
-                                (is (= field-changes saved-fields)))
-                              {:table-name table-name
-                               :saved      (cond-> (-> saved-table
-                                                       (m/update-existing :history_definition update-vals id->name)
-                                                       (m/update-existing :eav_definition update-vals id->name))
-                                             (seq saved-fields) (assoc :fields (update-keys saved-fields id->name)))
-                               :mismatches (table-mismatches outputs id->name)})))]
+          results       (mapv (fn [{table-name :name}]
+                                (check-table! (tables table-name) schema-tables id->name))
+                              (:tables fixture))]
       {:saved      (into {} (map (juxt :table-name :saved)) results)
        :mismatches (into {}
                          (keep (fn [{:keys [table-name mismatches]}]
@@ -205,26 +212,26 @@
     (testing "saved values"
       (is (= {"owner"                    {}
               "company"                  {:table_role :role/EntityDimension
-                                          :fields     {"property_name"                {:facets {:structure :type/CustomProperty}}
-                                                       "property_domain"              {:facets {:structure :type/CustomProperty}}
-                                                       "property_industry"            {:facets {:structure :type/CustomProperty}}
-                                                       "property_annualrevenue"       {:facets {:structure :type/CustomProperty}}
-                                                       "property_hubspot_owner_id"    {:facets {:structure :type/CustomProperty}}
-                                                       "property_createdate"          {:facets {:structure :type/CustomProperty}}
-                                                       "property_hs_lastmodifieddate" {:facets {:structure :type/CustomProperty}}}}
-              "contact"                  {:fields {"property_email"               {:facets {:structure :type/CustomProperty}}
-                                                   "property_firstname"           {:facets {:structure :type/CustomProperty}}
-                                                   "property_lastname"            {:facets {:structure :type/CustomProperty}}
-                                                   "property_lifecyclestage"      {:facets {:structure :type/CustomProperty}}
-                                                   "property_associatedcompanyid" {:facets {:structure :type/CustomProperty}}
-                                                   "property_createdate"          {:facets {:structure :type/CustomProperty}}
-                                                   "property_lastmodifieddate"    {:facets {:structure :type/CustomProperty}}}}
+                                          :fields     {"property_name"                custom-property-facet
+                                                       "property_domain"              custom-property-facet
+                                                       "property_industry"            custom-property-facet
+                                                       "property_annualrevenue"       custom-property-facet
+                                                       "property_hubspot_owner_id"    custom-property-facet
+                                                       "property_createdate"          custom-property-facet
+                                                       "property_hs_lastmodifieddate" custom-property-facet}}
+              "contact"                  {:fields {"property_email"               custom-property-facet
+                                                   "property_firstname"           custom-property-facet
+                                                   "property_lastname"            custom-property-facet
+                                                   "property_lifecyclestage"      custom-property-facet
+                                                   "property_associatedcompanyid" custom-property-facet
+                                                   "property_createdate"          custom-property-facet
+                                                   "property_lastmodifieddate"    custom-property-facet}}
               "deal"                     {:table_role :role/EntityDimension
-                                          :fields     {"property_dealname"   {:facets {:structure :type/CustomProperty}}
-                                                       "property_amount"     {:facets {:structure :type/CustomProperty}}
-                                                       "property_closedate"  {:facets {:structure :type/CustomProperty}}
-                                                       "property_createdate" {:facets {:structure :type/CustomProperty}}
-                                                       "property_dealtype"   {:facets {:structure :type/CustomProperty}}}}
+                                          :fields     {"property_dealname"   custom-property-facet
+                                                       "property_amount"     custom-property-facet
+                                                       "property_closedate"  custom-property-facet
+                                                       "property_createdate" custom-property-facet
+                                                       "property_dealtype"   custom-property-facet}}
               "deal_pipeline"            {:table_role :role/EntityDimension}
               ;; `_fivetran_synced` counts as the table's one timestamp
               "deal_pipeline_stage"      {:table_role :role/EventFact}
@@ -236,7 +243,7 @@
               "engagement"               {}
               "property"                 {:table_role :role/ConfigurationTable}
               "property_option"          {:table_role :role/EventFact
-                                          :fields     {"property_id" {:facets {:structure :type/CustomProperty}}}}
+                                          :fields     {"property_id" custom-property-facet}}
               ;; one column is both the start of each version and its version
               "contact_property_history" {:table_role         :role/HistoryDimension
                                           :scd_type           2
@@ -285,9 +292,9 @@
               "user"                 {:table_role :role/EntityDimension}
               "group"                {:table_role :role/EntityDimension}
               "ticket"               {:table_role :role/EntityDimension
-                                      :fields     {"custom_order_number"  {:facets {:structure :type/CustomProperty}}
-                                                   "custom_product_area"  {:facets {:structure :type/CustomProperty}}
-                                                   "custom_refund_amount" {:facets {:structure :type/CustomProperty}}}}
+                                      :fields     {"custom_order_number"  custom-property-facet
+                                                   "custom_product_area"  custom-property-facet
+                                                   "custom_refund_amount" custom-property-facet}}
               "ticket_comment"       {}
               "satisfaction_rating"  {}
               "ticket_field"         {:table_role :role/ConfigurationTable}
@@ -353,7 +360,10 @@
              mismatches)))))
 
 (deftest test-data-test
-  (let [{:keys [saved mismatches]} (run-design-check! (fixtures/database-fixture (mt/id)))]
+  (let [{:keys [saved mismatches]} (run-design-check! (fixtures/database-fixture
+                                                       (mt/id)
+                                                       ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS"
+                                                        "REVIEWS" "USERS" "VENUES"]))]
     (testing "saved values"
       (is (= {"CATEGORIES" {:table_role :role/LookupDimension}
               "CHECKINS"   {:table_role :role/EventFact}

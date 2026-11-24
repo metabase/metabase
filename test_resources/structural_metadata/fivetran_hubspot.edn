@@ -1,7 +1,7 @@
 ;; A Fivetran HubSpot destination schema. Object tables carry each HubSpot property as a `property_<name>` column;
 ;; `property` defines them (one row per object type and property, with a label and a type). `*_property_history`
 ;; tables keep one row per property change, `deal_stage` uses history mode, and `deal_company` / `deal_contact`
-;; associate deals with companies and contacts. Every table gets `_fivetran_synced`.
+;; associate deals with companies and contacts. Every table but `deal_contact` gets `_fivetran_synced`.
 {:schema "hubspot"
  :tables
  [{:name "owner"
