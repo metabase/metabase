@@ -11,7 +11,7 @@ type EditTableDataGridHeaderCellProps = HeaderContext<RowValues, RowValue>;
 export function EditTableDataGridHeaderCell({
   column,
 }: EditTableDataGridHeaderCellProps) {
-  const { columnsByName, getColumnSortDirection, onColumnSort } =
+  const { columnsByName, sortDirectionsByName, onColumnSort } =
     useEditTableDataGridContext();
   const datasetColumn = columnsByName.get(column.id);
 
@@ -19,7 +19,7 @@ export function EditTableDataGridHeaderCell({
     return null;
   }
 
-  const sortDirection = getColumnSortDirection?.(datasetColumn);
+  const sortDirection = sortDirectionsByName.get(column.id);
 
   return (
     <Box

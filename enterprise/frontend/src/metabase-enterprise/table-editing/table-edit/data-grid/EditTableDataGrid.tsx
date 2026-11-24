@@ -56,6 +56,14 @@ export const EditTableDataGrid = ({
 
   const columnsOptions = useEditDataGridColumnOptions(cols);
 
+  const sortDirectionsByName = useMemo(
+    () =>
+      new Map(
+        cols.map((column) => [column.name, getColumnSortDirection?.(column)]),
+      ),
+    [cols, getColumnSortDirection],
+  );
+
   const contextValue = useMemo<EditTableDataGridContextValue>(
     () => ({
       columnsByName: new Map(cols.map((column) => [column.name, column])),
@@ -65,9 +73,9 @@ export const EditTableDataGrid = ({
           parameter,
         ]),
       ),
+      sortDirectionsByName,
       editingCell,
       getCellState,
-      getColumnSortDirection,
       onColumnSort,
       onCancelEditing: handleCancelEditing,
       onValueUpdated: handleUpdateEditingCell,
@@ -75,9 +83,9 @@ export const EditTableDataGrid = ({
     [
       cols,
       updateFormDescription,
+      sortDirectionsByName,
       editingCell,
       getCellState,
-      getColumnSortDirection,
       onColumnSort,
       handleCancelEditing,
       handleUpdateEditingCell,
