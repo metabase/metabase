@@ -242,9 +242,10 @@ function respondToDatasetQuery(body: string, hasCalls: boolean): Dataset {
     );
   }
   if (stage.breakout == null || stage.breakout.length === 0) {
-    return dataset([column("count", "aggregation")], [
-      [matchesSeededCall ? 1 : 0],
-    ]);
+    return dataset(
+      [column("count", "aggregation")],
+      [[matchesSeededCall ? 1 : 0]],
+    );
   }
   return dataset(
     [column("count", "aggregation"), column("dimension", "breakout")],
@@ -368,7 +369,9 @@ describe("ApiKeyUsageSectionLayout", () => {
     await selectApiKey(UNUSED_KEY.name);
 
     await waitFor(() =>
-      expect(within(table).queryByText(SEEDED_KEY.name)).not.toBeInTheDocument(),
+      expect(
+        within(table).queryByText(SEEDED_KEY.name),
+      ).not.toBeInTheDocument(),
     );
     expect(within(table).getByText(UNUSED_KEY.name)).toBeInTheDocument();
     expect(within(table).queryByText(OTHER_KEY.name)).not.toBeInTheDocument();
@@ -433,7 +436,9 @@ describe("ApiKeyUsageSectionLayout", () => {
         UNUSED_KEY.id,
       ),
     );
-    expect(await within(table).findByText("No calls found")).toBeInTheDocument();
+    expect(
+      await within(table).findByText("No calls found"),
+    ).toBeInTheDocument();
     expect(within(table).queryByText(SEEDED_KEY.name)).not.toBeInTheDocument();
     await settleRequests();
     expect(screen.queryByText("No API key activity")).not.toBeInTheDocument();
