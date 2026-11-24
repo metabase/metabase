@@ -104,7 +104,10 @@ export type SdkIframeEmbedNavigateToDataAppPathMessage = {
   data: {
     path: string;
 
-    /** Set by the React SDK `DataApp`, which counts its navigation requests to match them with path reports. */
+    /**
+     * A number that goes up with each request. The React SDK `DataApp` sets it. `embed.js` does not.
+     * The iframe sends it back in every later `dataAppPathChange`, so the host can tell which reports came before this request.
+     */
     navigationId?: number;
   };
 };
@@ -124,13 +127,24 @@ export type SdkIframeEmbedComponentTagMessage =
     }
   | SdkIframeEmbedTagDataAppPathChangeMessage;
 
-/** Sent when the page of a data app changes, except for navigation that the host requested. */
+/**
+ * Sent when the user moves to another page in a data app, so the host can show that page in its `path`.
+ * The iframe does not send it for navigation the host requested.
+ *
+ * @example
+ * { type: "metabase.embed.dataAppPathChange", data: { path: "boba-hq/orders?status=open", navigationId: 3 } }
+ */
 type SdkIframeEmbedTagDataAppPathChangeMessage = {
   type: "metabase.embed.dataAppPathChange";
   data: {
+    /** Uses the same format as the host's `path`: the app slug, the route, the query and the hash. The app root is the bare slug. */
     path: string;
 
-    /** The `navigationId` of the last `navigateToDataAppPath` request the iframe handled. */
+    /**
+     * The ID of the last `navigateToDataAppPath` request the iframe handled. It is absent until the iframe handles one.
+     * A host request and a user click can cross in flight. If the ID is not the ID of the host's latest request,
+     * the host drops the report, because the iframe has not yet handled that request and is about to leave this page.
+     */
     navigationId?: number;
   };
 };
