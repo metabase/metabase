@@ -432,9 +432,9 @@
   (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids]))
 
 (defn user-name-and-email
-  "The first name, last name, email, and active status of the active User with `user-id`, or nil."
+  "The first name, last name, and email of the active User with `user-id`, or nil."
   [user-id]
-  (t2/select-one [:model/User :first_name :last_name :email :is_active] :id [:auto/param user-id] :is_active true))
+  (t2/select-one [:model/User :first_name :last_name :email] :id [:auto/param user-id] :is_active true))
 
 (defn users-names-and-emails
   "The first names, last names, and emails of active Users within `user-ids`."
