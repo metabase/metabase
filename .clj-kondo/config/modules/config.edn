@@ -4513,6 +4513,7 @@
    :ns-prefix "metabase-enterprise.permission-debug"
    :api #{metabase-enterprise.permission-debug.api}
    :uses #{api
+           events
            lib
            lib.schema
            models
@@ -4525,7 +4526,7 @@
            users
            users.schema
            util}
-   :model-imports #{:model/Card :model/PermissionsGroupMembership :model/Table :model/Tenant :model/User}}
+   :model-imports #{:model/Card :model/PermissionsGroup :model/PermissionsGroupMembership :model/Table :model/Tenant :model/User}}
 
   enterprise/permissions.impersonation
   {:team "Security"

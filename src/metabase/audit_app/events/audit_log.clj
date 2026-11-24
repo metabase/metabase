@@ -392,6 +392,13 @@
             :model    :model/User
             :model-id user-id}))
 
+(events/derive! ::permission-preview-event ::event)
+(events/derive! :event/permission-preview-start ::permission-preview-event)
+
+(methodical/defmethod events/publish-event! ::permission-preview-event
+  [topic {:keys [user-id model model-id]}]
+  (record! topic {:user-id user-id, :model model, :model-id model-id}))
+
 (events/derive! ::install-event ::event)
 (events/derive! :event/install ::install-event)
 

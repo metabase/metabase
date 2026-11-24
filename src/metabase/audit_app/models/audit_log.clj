@@ -91,10 +91,11 @@
       :details           (stringify-keys (merge {} (:details params)))})))
 
 (mu/defn audit-row :- [:maybe :map]
-  "The Audit Log row that [[create-audit-logs!]] inserts for `topic` and `params`, or nil when it would insert none."
+  "The Audit Log row that [[create-audit-logs!]] inserts for `topic` and `params`, or nil when it would insert none,
+  which is always so while an admin previews the app as someone."
   [topic :- :keyword
    params :- ::event-params]
-  (when (premium-features/log-enabled?)
+  (when (and (premium-features/log-enabled?) (not api/*previewing-admin-id*))
     (let [{:keys [user-id model-name model-id details unqualified-topic]}
           (construct-event topic params api/*current-user-id*)]
       {:topic    unqualified-topic

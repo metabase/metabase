@@ -179,22 +179,27 @@
         (is (nil? (collection/user->personal-collection stand-in-id)))
         (is (not (t2/exists? :model/Collection :personal_owner_id stand-in-id)))))))
 
+(defn- audit-rows-but-starts
+  "The number of Activity log rows, not counting the one that each preview's start records."
+  []
+  (t2/count :model/AuditLog {:where [:not= :topic "permission-preview-start"]}))
+
 (deftest stand-in-writes-no-activity-log-rows-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
     (let [session-key  (admin-session-key)
-          rows-before  (t2/count :model/AuditLog)
+          rows-before  (audit-rows-but-starts)
           first-start  (start-group-preview! session-key group-id {"category" "2"})
           stand-in-id  (:id (stand-in-of (:id first-start)))]
       (testing "creating it, adding it to the group and writing its attributes record nothing"
-        (is (= rows-before (t2/count :model/AuditLog))))
+        (is (= rows-before (audit-rows-but-starts))))
       (testing "a later start, which writes its attributes again, records nothing either"
         (start-group-preview! session-key group-id {"category" "3"})
-        (is (= rows-before (t2/count :model/AuditLog))))
+        (is (= rows-before (audit-rows-but-starts))))
       (testing "guard: the same memberships of an ordinary user by an admin are recorded"
         (mt/with-temp [:model/User {user-id :id} {}]
           (mt/with-current-user (mt/user->id :crowberto)
             (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}]))
-          (is (< rows-before (t2/count :model/AuditLog)))
+          (is (< rows-before (audit-rows-but-starts)))
           (is (not= stand-in-id user-id)))))))
 
 (deftest start-writes-the-picked-values-to-the-stand-in-test
