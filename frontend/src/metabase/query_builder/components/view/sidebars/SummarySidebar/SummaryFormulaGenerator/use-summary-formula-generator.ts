@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -27,6 +27,7 @@ import {
 
 /**
  * Drafts formulas for the summary wells with AI.
+ * Callers should generate one formula at a time, checking `isGenerating`.
  * Requests still in flight when it unmounts are cancelled.
  */
 export function useSummaryFormulaGenerator({
@@ -52,6 +53,7 @@ export function useSummaryFormulaGenerator({
   const latest = useLatest({ query, stageIndex, database, onAdd });
   const pendingRequests = useRef(new Set<{ abort: () => void }>());
   const isUnmounted = useRef(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     const requests = pendingRequests.current;
@@ -81,11 +83,13 @@ export function useSummaryFormulaGenerator({
       metabot_id: getMetabotEntityId(),
     });
     pendingRequests.current.add(request);
+    setIsGenerating(true);
     const { data, error } = await request;
     pendingRequests.current.delete(request);
     if (isUnmounted.current) {
       return { status: "cancelled" };
     }
+    setIsGenerating(false);
     if (data == null) {
       return {
         status: "error",
@@ -116,7 +120,7 @@ export function useSummaryFormulaGenerator({
     return { status: "added" };
   };
 
-  return { access, generateBasedOnPrompt };
+  return { access, isGenerating, generateBasedOnPrompt };
 }
 
 function getAccess(

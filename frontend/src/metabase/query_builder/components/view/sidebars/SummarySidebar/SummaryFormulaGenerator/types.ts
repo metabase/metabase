@@ -19,6 +19,7 @@ export type SummaryFormulaAccess = "loading" | "available" | "unavailable";
 
 export type SummaryFormulaGenerator = {
   access: SummaryFormulaAccess;
+  isGenerating: boolean;
   generateBasedOnPrompt: (
     wellId: SummaryWellId,
     prompt: string,

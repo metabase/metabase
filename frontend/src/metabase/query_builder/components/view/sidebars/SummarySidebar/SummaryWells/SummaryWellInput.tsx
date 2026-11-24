@@ -98,16 +98,24 @@ export function SummaryWellInput({
     !prompt.startsWith("=");
   const isGenerateOptionShown =
     canGenerate && formulaGenerator.access === "available";
+  const isOtherWellGenerating =
+    !isGenerating && formulaGenerator?.isGenerating === true;
 
   const comboboxRef = useLatest(combobox);
   useEffect(() => {
     if (searchText.length > 0) {
       comboboxRef.current.selectFirstOption();
     }
-  }, [comboboxRef, matchingSections, searchText, isGenerateOptionShown]);
+  }, [
+    comboboxRef,
+    matchingSections,
+    searchText,
+    isGenerateOptionShown,
+    isOtherWellGenerating,
+  ]);
 
   const handleGenerate = async () => {
-    if (!formulaGenerator || isGenerating) {
+    if (!formulaGenerator || formulaGenerator.isGenerating) {
       return;
     }
     setGenerateState({ status: "loading" });
@@ -255,6 +263,7 @@ export function SummaryWellInput({
               prompt={prompt}
               state={generateState}
               access={formulaGenerator.access}
+              isBlocked={isOtherWellGenerating}
               fallback={<Combobox.Empty>{texts.noMatches}</Combobox.Empty>}
             />
           ) : (

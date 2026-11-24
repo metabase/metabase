@@ -246,7 +246,7 @@ describe("summary formula generator", () => {
     expect(onQueryChange).toHaveBeenCalledTimes(1);
   });
 
-  it("adds formulas from both wells when their requests overlap", async () => {
+  it("doesn't generate a formula in the other well while one is in flight", async () => {
     const valuesResponse = defer<GenerateCustomExpressionResponse>();
     const columnsResponse = defer<GenerateCustomExpressionResponse>();
     const responses = [valuesResponse.promise, columnsResponse.promise];
@@ -256,32 +256,42 @@ describe("summary formula generator", () => {
 
     await userEvent.type(getInput("values"), "revenue per customer");
     await userEvent.keyboard("{Enter}");
-    await userEvent.type(getInput("columns"), "the day after the order");
-    await userEvent.keyboard("{Enter}");
-    await waitFor(() =>
-      expect(fetchMock.callHistory.calls(GENERATE_ROUTE)).toHaveLength(2),
-    );
-
-    columnsResponse.resolve({
-      expression: 'datetimeAdd([Created At], 1, "day")',
-      name: "Next day",
-    });
-    await waitFor(() =>
-      expect(getLastQuery().dimensions).toEqual(["Next day: Month"]),
-    );
     expect(
-      screen.getByRole("option", {
+      await screen.findByRole("option", {
         name: /Generating “revenue per customer”…/,
       }),
     ).toBeInTheDocument();
+
+    await userEvent.type(getInput("columns"), "the day after the order");
+    const columnsOption = await findGenerateOption("the day after the order");
+    expect(columnsOption).toHaveAttribute("data-combobox-disabled", "true");
+    expect(columnsOption).toHaveTextContent(
+      "Wait for the other formula to finish generating",
+    );
+    await userEvent.keyboard("{Enter}");
+    await userEvent.click(columnsOption);
+    expect(fetchMock.callHistory.calls(GENERATE_ROUTE)).toHaveLength(1);
 
     valuesResponse.resolve({
       expression: "Average([Total])",
       name: "Average total",
     });
     await waitFor(() =>
+      expect(getLastQuery().values).toEqual(["Average total"]),
+    );
+
+    await userEvent.click(getInput("columns"));
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls(GENERATE_ROUTE)).toHaveLength(2),
+    );
+    columnsResponse.resolve({
+      expression: 'datetimeAdd([Created At], 1, "day")',
+      name: "Next day",
+    });
+    await waitFor(() =>
       expect(getLastQuery()).toEqual({
-        values: ["Count", "Average total"],
+        values: ["Average total"],
         dimensions: ["Next day: Month"],
         expressions: ["Next day"],
       }),

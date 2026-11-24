@@ -19,15 +19,20 @@ type GenerateFormulaOptionProps = {
   prompt: string;
   state: GenerateFormulaState;
   access: SummaryFormulaAccess;
+  isBlocked: boolean;
   fallback: ReactNode;
 };
 
-/** Offers to write a formula for `prompt` with AI, or shows `fallback` when the user can't use AI. */
+/**
+ * Offers to write a formula for `prompt` with AI, or shows `fallback` when the user can't use AI.
+ * The option is disabled while `isBlocked`, when another well is generating a formula.
+ */
 export function GenerateFormulaOption({
   wellId,
   prompt,
   state,
   access,
+  isBlocked,
   fallback,
 }: GenerateFormulaOptionProps) {
   if (access === "loading") {
@@ -43,16 +48,13 @@ export function GenerateFormulaOption({
 
   const isGenerating = state.status === "loading";
   const errorMessage = state.status === "error" ? state.message : null;
-  const hint =
-    wellId === "values"
-      ? t`Write it as an aggregation with AI`
-      : t`Write it as a custom column with AI`;
+  const hint = getHint(wellId, isBlocked);
 
   return (
     <Combobox.Group label={t`AI`}>
       <Combobox.Option
         value={GENERATE_OPTION_VALUE}
-        disabled={isGenerating}
+        disabled={isGenerating || isBlocked}
         aria-busy={isGenerating}
         className={S.generateOption}
       >
@@ -74,8 +76,17 @@ export function GenerateFormulaOption({
             {errorMessage ?? hint}
           </Text>
         </Box>
-        {!isGenerating && <Kbd>{"↵"}</Kbd>}
+        {!isGenerating && !isBlocked && <Kbd>{"↵"}</Kbd>}
       </Combobox.Option>
     </Combobox.Group>
   );
+}
+
+function getHint(wellId: SummaryWellId, isBlocked: boolean) {
+  if (isBlocked) {
+    return t`Wait for the other formula to finish generating`;
+  }
+  return wellId === "values"
+    ? t`Write it as an aggregation with AI`
+    : t`Write it as a custom column with AI`;
 }
