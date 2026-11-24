@@ -133,8 +133,9 @@ export function ConversationDetailPage() {
   }
 
   const {
-    total_tokens,
+    input_tokens,
     cache_read_tokens,
+    output_tokens,
     message_count,
     search_count,
     query_count,
@@ -161,18 +162,10 @@ export function ConversationDetailPage() {
           <Stack gap="xxl">
             <ConversationHeader conversation={conversation} />
 
-            <SimpleGrid cols={4}>
+            <SimpleGrid cols={3}>
               <StatCard
                 label={t`Messages`}
                 value={formatNumber(message_count)}
-              />
-              <StatCard
-                label={t`Total tokens`}
-                value={formatNumber(total_tokens)}
-                description={getCachedTokensDescription(
-                  total_tokens,
-                  cache_read_tokens,
-                )}
               />
               <StatCard
                 label={t`Queries run`}
@@ -181,6 +174,18 @@ export function ConversationDetailPage() {
               <StatCard
                 label={t`Searches`}
                 value={formatNumber(search_count)}
+              />
+              <StatCard
+                label={t`Input tokens`}
+                value={formatNumber(input_tokens)}
+              />
+              <StatCard
+                label={t`Cache read tokens`}
+                value={formatNumber(cache_read_tokens)}
+              />
+              <StatCard
+                label={t`Output tokens`}
+                value={formatNumber(output_tokens)}
               />
             </SimpleGrid>
 
@@ -256,28 +261,7 @@ export function ConversationDetailPage() {
   );
 }
 
-function getCachedTokensDescription(
-  totalTokens: number,
-  cachedTokens: number,
-): string | undefined {
-  if (totalTokens <= 0) {
-    return undefined;
-  }
-  // the two counts come from two tables, so the share is clamped at 100
-  const percent = Math.min(100, Math.round((cachedTokens / totalTokens) * 100));
-  const cached = formatNumber(cachedTokens);
-  return t`${cached} cached (${percent}%)`;
-}
-
-function StatCard({
-  label,
-  value,
-  description,
-}: {
-  label: string;
-  value: string;
-  description?: string;
-}) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <Card withBorder shadow="none" p="lg">
       <Text size="sm" c="text-secondary">
@@ -286,11 +270,6 @@ function StatCard({
       <Title order={2} mt="xxs">
         {value}
       </Title>
-      {description && (
-        <Text size="sm" c="text-secondary" mt="xxs">
-          {description}
-        </Text>
-      )}
     </Card>
   );
 }

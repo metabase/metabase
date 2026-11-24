@@ -23,8 +23,9 @@ export type ConversationSummary = {
   user_message_count: number;
   assistant_message_count: number;
   total_tokens: number;
+  input_tokens: number;
   cache_read_tokens: number;
-  uncached_tokens: number;
+  output_tokens: number;
   last_message_at: string | null;
   profile_id: MetabotProfileId | null;
   search_count: number;
@@ -43,8 +44,9 @@ export const CONVERSATION_SORT_COLUMNS = [
   "title",
   "message_count",
   "total_tokens",
+  "input_tokens",
   "cache_read_tokens",
-  "uncached_tokens",
+  "output_tokens",
   "user",
   "profile_id",
   "ip_address",
@@ -97,8 +99,9 @@ export type ConversationDetail = {
   user: MetabotUserInfo | null;
   message_count: number;
   total_tokens: number;
+  input_tokens: number;
   cache_read_tokens: number;
-  uncached_tokens: number;
+  output_tokens: number;
   profile_id: MetabotProfileId | null;
   slack_permalink: string | null;
   messages: ParentedMessage[];

@@ -92,8 +92,9 @@ function createConversation(
     user: null,
     message_count: 2,
     total_tokens: 30,
+    input_tokens: 20,
     cache_read_tokens: 0,
-    uncached_tokens: 30,
+    output_tokens: 10,
     profile_id: "internal",
     slack_permalink: null,
     messages,
@@ -148,28 +149,23 @@ describe("ConversationDetailPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the cached tokens and their share of the total tokens", async () => {
+  it("shows the input, cache read and output tokens, and no total", async () => {
     setup({
       ...createConversation([userMessage("u1", null, "hello")]),
       total_tokens: 12345,
+      input_tokens: 4321,
       cache_read_tokens: 6789,
-      uncached_tokens: 5556,
+      output_tokens: 1235,
     });
 
-    expect(await screen.findByText("12,345")).toBeInTheDocument();
-    expect(screen.getByText("6,789 cached (55%)")).toBeInTheDocument();
-  });
-
-  it("shows no cached share for a conversation without tokens", async () => {
-    setup({
-      ...createConversation([userMessage("u1", null, "hello")]),
-      total_tokens: 0,
-      cache_read_tokens: 0,
-      uncached_tokens: 0,
-    });
-
-    expect(await screen.findByText("Total tokens")).toBeInTheDocument();
-    expect(screen.queryByText(/cached/)).not.toBeInTheDocument();
+    expect(await screen.findByText("Input tokens")).toBeInTheDocument();
+    expect(screen.getByText("4,321")).toBeInTheDocument();
+    expect(screen.getByText("Cache read tokens")).toBeInTheDocument();
+    expect(screen.getByText("6,789")).toBeInTheDocument();
+    expect(screen.getByText("Output tokens")).toBeInTheDocument();
+    expect(screen.getByText("1,235")).toBeInTheDocument();
+    expect(screen.queryByText("Total tokens")).not.toBeInTheDocument();
+    expect(screen.queryByText("12,345")).not.toBeInTheDocument();
   });
 
   it("marks the fork boundary and links to the original conversation", async () => {

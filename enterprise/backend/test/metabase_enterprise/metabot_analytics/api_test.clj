@@ -41,16 +41,18 @@
             (contains? options :finished) (assoc :finished finished)))))
 
 (defn- insert-usage!
-  "Insert an `ai_usage_log` row for a conversation. `cache-read-tokens` may be
+  "Insert an `ai_usage_log` row for a conversation. `prompt-tokens` holds the
+   cache read tokens, as it does for every provider. `cache-read-tokens` may be
    omitted to seed a pre-cache-columns row (NULL in the table)."
-  [{:keys [conversation-id cache-read-tokens]}]
+  [{:keys [conversation-id prompt-tokens completion-tokens cache-read-tokens]
+    :or   {prompt-tokens 1 completion-tokens 1}}]
   (t2/insert! :model/AiUsageLog
               (cond-> {:conversation_id   conversation-id
                        :source            "agent"
                        :model             "anthropic/claude-sonnet-4-6"
-                       :prompt_tokens     1
-                       :completion_tokens 1
-                       :total_tokens      2}
+                       :prompt_tokens     prompt-tokens
+                       :completion_tokens completion-tokens
+                       :total_tokens      (+ prompt-tokens completion-tokens)}
                 cache-read-tokens (assoc :cache_read_tokens cache-read-tokens))))
 
 (defn- delete-conversations!
@@ -144,10 +146,10 @@
                             :deleted-at      jan-5})
           ;; convo-1 sums across usage rows; convo-2 also has a NULL-cache row
           ;; (predates the cache-token columns); convo-3 has no usage rows at all.
-          (insert-usage! {:conversation-id convo-1 :cache-read-tokens 100})
-          (insert-usage! {:conversation-id convo-1 :cache-read-tokens 25})
-          (insert-usage! {:conversation-id convo-2 :cache-read-tokens 40})
-          (insert-usage! {:conversation-id convo-2})
+          (insert-usage! {:conversation-id convo-1 :prompt-tokens 300 :cache-read-tokens 100 :completion-tokens 20})
+          (insert-usage! {:conversation-id convo-1 :prompt-tokens 50 :cache-read-tokens 25 :completion-tokens 7})
+          (insert-usage! {:conversation-id convo-2 :prompt-tokens 90 :cache-read-tokens 40 :completion-tokens 5})
+          (insert-usage! {:conversation-id convo-2 :prompt-tokens 10 :completion-tokens 3})
           (thunk {:test-user-id  test-user-id
                   :response-path response-path
                   :convo-1       convo-1
@@ -179,17 +181,19 @@
           (is (= 1 (:message_count convo-3-response)))
           (is (= 1 (:assistant_message_count convo-3-response)))
           (is (= 99 (:total_tokens convo-3-response)))
-          (is (= 0 (:cache_read_tokens convo-3-response)))
-          (is (= 99 (:uncached_tokens convo-3-response))))
+          (is (= [0 0 0]
+                 ((juxt :input_tokens :cache_read_tokens :output_tokens) convo-3-response))
+              "no usage rows: the token split is all zeros"))
         (is (= {:conversation_id         convo-1
                 :title                   "First conversation"
                 :message_count           2
                 :user_message_count      1
                 :assistant_message_count 1
                 :total_tokens            10
+                ;; prompt tokens 350 minus cache reads 125
+                :input_tokens            225
                 :cache_read_tokens       125
-                ;; more cache reads than message tokens: clamped, never negative
-                :uncached_tokens         0
+                :output_tokens           27
                 :profile_id              "nlq"
                 :user                    {:id         test-user-id
                                           :email      "metabot-analytics-list-test@metabase.com"
@@ -197,19 +201,21 @@
                                           :last_name  "Analytics"}}
                (-> (select-keys convo-1-response [:conversation_id :title :message_count
                                                   :user_message_count :assistant_message_count :total_tokens
-                                                  :cache_read_tokens :uncached_tokens :profile_id :user])
+                                                  :input_tokens :cache_read_tokens :output_tokens
+                                                  :profile_id :user])
                    (update :user select-keys [:id :email :first_name :last_name]))))
         (is (= {:conversation_id         convo-2
                 :message_count           3
                 :user_message_count      1
                 :assistant_message_count 2
                 :total_tokens            26
+                :input_tokens            60
                 :cache_read_tokens       40
-                :uncached_tokens         0
+                :output_tokens           8
                 :profile_id              "internal"}
                (select-keys convo-2-response [:conversation_id :message_count :user_message_count
-                                              :assistant_message_count :total_tokens :cache_read_tokens
-                                              :uncached_tokens :profile_id])))))))
+                                              :assistant_message_count :total_tokens :input_tokens
+                                              :cache_read_tokens :output_tokens :profile_id])))))))
 
 (deftest list-and-detail-agree-for-regenerated-conversation-test
   (mt/with-premium-features #{:audit-app}
@@ -244,9 +250,9 @@
                       :profile-id "internal"
                       :total-tokens 20
                       :data [{:type "text" :text "kept"}]})
-            (insert-usage! {:conversation-id conversation-id :cache-read-tokens 5})
-            (insert-usage! {:conversation-id conversation-id :cache-read-tokens 7})
-            (insert-usage! {:conversation-id conversation-id})
+            (insert-usage! {:conversation-id conversation-id :prompt-tokens 20 :cache-read-tokens 5 :completion-tokens 4})
+            (insert-usage! {:conversation-id conversation-id :prompt-tokens 30 :cache-read-tokens 7 :completion-tokens 5})
+            (insert-usage! {:conversation-id conversation-id :prompt-tokens 10 :completion-tokens 6})
             (let [summary (find-conversation
                            (:data (mt/user-http-request :crowberto :get 200
                                                         (str "ee/metabot-analytics/conversations?user_id=" owner-id)))
@@ -254,10 +260,13 @@
                   detail  (mt/user-http-request :crowberto :get 200
                                                 (format "ee/metabot-analytics/conversations/%s" conversation-id))]
               (is (some? summary))
-              (doseq [k [:message_count :total_tokens :cache_read_tokens :uncached_tokens :search_count :query_count]]
+              (doseq [k [:message_count :total_tokens :input_tokens :cache_read_tokens :output_tokens
+                         :search_count :query_count]]
                 (is (= (get detail k) (get summary k))))
-              (is (= [3 32 12 20 1]
-                     ((juxt :message_count :total_tokens :cache_read_tokens :uncached_tokens :search_count) detail))))
+              (is (= [3 32 48 12 15 1]
+                     ((juxt :message_count :total_tokens :input_tokens :cache_read_tokens :output_tokens
+                            :search_count)
+                      detail))))
             (finally
               (delete-conversations! [conversation-id]))))))))
 
@@ -293,8 +302,9 @@
      ip_address:        (z, m, a)   10.0.0.1 / 10.0.0.2 / 10.0.0.3
      message_count:     (m, z, a)   counts 1, 2, 3
      total_tokens:      (a, z, m)   tokens 10, 20, 30
+     input_tokens:      (m, z, a)   prompt tokens minus cache reads 5, 10, 20 (10+10)
      cache_read_tokens: (z, a, m)   cache reads 5, 15 (7+8), 25
-     uncached_tokens:   (a, m, z)   tokens minus cache reads 0 (clamped), 5, 15
+     output_tokens:     (a, m, z)   completion tokens 2 (1+1), 5, 9
      title:             (z, m, a)   Alpha request / Middle request / Zebra request
        (all six permutations of three handles are taken, so these
         necessarily repeat an earlier column's ordering)"
@@ -341,10 +351,10 @@
           (seed-msg! convo-m "3-profile" 30)
           (seed-msg! convo-z "1-profile" 10)
           (seed-msg! convo-z "1-profile" 10)
-          (insert-usage! {:conversation-id convo-a :cache-read-tokens 7})
-          (insert-usage! {:conversation-id convo-a :cache-read-tokens 8})
-          (insert-usage! {:conversation-id convo-m :cache-read-tokens 25})
-          (insert-usage! {:conversation-id convo-z :cache-read-tokens 5})
+          (insert-usage! {:conversation-id convo-a :prompt-tokens 17 :cache-read-tokens 7 :completion-tokens 1})
+          (insert-usage! {:conversation-id convo-a :prompt-tokens 18 :cache-read-tokens 8 :completion-tokens 1})
+          (insert-usage! {:conversation-id convo-m :prompt-tokens 30 :cache-read-tokens 25 :completion-tokens 5})
+          (insert-usage! {:conversation-id convo-z :prompt-tokens 15 :cache-read-tokens 5 :completion-tokens 9})
           (thunk {:response-path response-path
                   :convo-a       convo-a
                   :convo-m       convo-m
@@ -362,8 +372,9 @@
                ["ip_address"    [convo-z convo-m convo-a]]
                ["message_count" [convo-m convo-z convo-a]]
                ["total_tokens"  [convo-a convo-z convo-m]]
+               ["input_tokens"  [convo-m convo-z convo-a]]
                ["cache_read_tokens" [convo-z convo-a convo-m]]
-               ["uncached_tokens" [convo-a convo-m convo-z]]
+               ["output_tokens" [convo-a convo-m convo-z]]
                ["title"         [convo-z convo-m convo-a]]]]
         (testing (str "sort_by=" sort-by " &sort_dir=asc")
           (let [response (mt/user-http-request :crowberto :get 200
@@ -501,9 +512,9 @@
             (is (= "internal" (:profile_id response))
                 "profile_id comes from the first assistant message, ignoring user-message placeholders")
             (is (= 2 (:message_count response)))
-            (is (= [12 0 12]
-                   ((juxt :total_tokens :cache_read_tokens :uncached_tokens) response))
-                "no usage rows: no cache reads, every token is uncached")
+            (is (= [12 0 0 0]
+                   ((juxt :total_tokens :input_tokens :cache_read_tokens :output_tokens) response))
+                "no usage rows: the token split is all zeros")
             (is (= [] (:feedback response)))
             (is (= 2 (count (:messages response)))
                 "one user prompt + one assistant reply, as row-level messages")

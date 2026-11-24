@@ -53,8 +53,9 @@ function createSummary(
     user_message_count: 0,
     assistant_message_count: 0,
     total_tokens: 0,
+    input_tokens: 0,
     cache_read_tokens: 0,
-    uncached_tokens: 0,
+    output_tokens: 0,
     last_message_at: null,
     profile_id: null,
     search_count: 0,
@@ -77,8 +78,9 @@ const BOBBY_CONVERSATION = createSummary({
   ip_address: "10.0.0.1",
   message_count: 4,
   total_tokens: 12345,
+  input_tokens: 4321,
   cache_read_tokens: 6789,
-  uncached_tokens: 5556,
+  output_tokens: 1235,
   user: {
     id: BOBBY.id,
     first_name: BOBBY.first_name,
@@ -174,8 +176,9 @@ describe("ConversationsPage", () => {
         "Profile",
         "Date",
         "Messages",
-        "Uncached tokens",
-        "Cached tokens",
+        "Input tokens",
+        "Cache read tokens",
+        "Output tokens",
         "Queries",
         "Searches",
         "IP",
@@ -202,9 +205,10 @@ describe("ConversationsPage", () => {
       const table = (setup(), await findTable());
 
       expect(within(table).getByText("4")).toBeInTheDocument();
-      expect(within(table).getByText("5,556")).toBeInTheDocument();
-      expect(within(table).queryByText("12,345")).not.toBeInTheDocument();
+      expect(within(table).getByText("4,321")).toBeInTheDocument();
       expect(within(table).getByText("6,789")).toBeInTheDocument();
+      expect(within(table).getByText("1,235")).toBeInTheDocument();
+      expect(within(table).queryByText("12,345")).not.toBeInTheDocument();
     });
 
     it("shows an empty state when no conversations match", async () => {
@@ -252,8 +256,9 @@ describe("ConversationsPage", () => {
       { headerLabel: /^Profile\b/, sortBy: "profile_id" },
       { headerLabel: /^Date\b/, sortBy: "created_at" },
       { headerLabel: /^Messages\b/, sortBy: "message_count" },
-      { headerLabel: /^Uncached tokens\b/, sortBy: "uncached_tokens" },
-      { headerLabel: /^Cached tokens\b/, sortBy: "cache_read_tokens" },
+      { headerLabel: /^Input tokens\b/, sortBy: "input_tokens" },
+      { headerLabel: /^Cache read tokens\b/, sortBy: "cache_read_tokens" },
+      { headerLabel: /^Output tokens\b/, sortBy: "output_tokens" },
       { headerLabel: /^IP\b/, sortBy: "ip_address" },
     ])("sorts by $sortBy", async ({ headerLabel, sortBy }) => {
       setup();
