@@ -2075,6 +2075,24 @@
                                         :details [{:reason   "IAM_PERMISSION_DENIED"
                                                    :metadata {:resource "projects/my-project"}}]}}])))))))
 
+(deftest agent-loop-failed-finish-reason-error-part-test
+  (testing "a finish reason that reports a failure upstream of the provider tags the error part with its kind"
+    (is (= [:unavailable]
+           (map :provider-failure
+                (mt/as-admin (agent-loop-streamed-error-parts!
+                              "openrouter/anthropic/claude-haiku-4.5" (zai/zai->aisdk-chunks-xf)
+                              [{:id "msg-1" :choices [{:index 0 :delta {:content "Hi"}}]}
+                               {:id "msg-1" :choices [{:index 0 :delta {} :finish_reason "network_error"}]}]))))))
+  (testing "a plain `error` finish reason has no kind"
+    (is (= [nil]
+           (map :provider-failure
+                (mt/as-admin (agent-loop-streamed-error-parts!
+                              "openrouter/anthropic/claude-haiku-4.5"
+                              (chat-completions/chat-completions->aisdk-chunks-xf
+                               (assoc chat-completions/stop-reasons "error" "error"))
+                              [{:id "msg-1" :choices [{:index 0 :delta {:content "Hi"}}]}
+                               {:id "msg-1" :choices [{:index 0 :delta {} :finish_reason "error"}]}])))))))
+
 (deftest agent-loop-streamed-provider-failure-error-part-test
   (testing "a provider failure that OpenRouter streams after its 200 tags the error part with its kind"
     (are [kind error]

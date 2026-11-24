@@ -420,8 +420,14 @@
                                                                      (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
                                                                             :raw-finish-reason @stop-reason)))
               ;; An error in the stream, e.g. a failure partway through generation
+              ;; A dialect's own failure reason, such as Z.AI's `network_error`, goes on as the error code, so
+              ;; that the failure can be classified. A plain `error` reason says nothing more than the text.
               error-text                                       (-> (close!)
-                                                                   (rf (core/error-chunk error error-text)))))))))))
+                                                                   (rf (core/error-chunk
+                                                                        (or error
+                                                                            (when (not= "error" finish-reason)
+                                                                              {:code finish-reason}))
+                                                                        error-text)))))))))))
 
 ;;; Request body
 

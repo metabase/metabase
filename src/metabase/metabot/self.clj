@@ -435,6 +435,8 @@
    "not_found_error"      :not-found
    "model_not_found"      :not-found
    "server_error"         :unavailable
+   ;; Z.AI's finish reason for a failure upstream of it. https://docs.z.ai/api-reference/llm/chat-completion
+   "network_error"        :unavailable
    ;; The exception types that Bedrock's `InvokeModelWithResponseStream` streams after its 200.
    ;; https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ResponseStream.html
    "throttlingException"         :rate-limit
