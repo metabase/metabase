@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    [metabase-enterprise.tenants.permissions :as tenants.permissions]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
@@ -170,12 +171,11 @@
 
 (deftest moving-out-of-tenant-specific-copies-the-parent-permissions-test
   (testing "a Collection and its descendants get the permissions of their new parent"
-    (mt/with-temp [:model/PermissionsGroup {group-id :id}  {}
-                   :model/Collection       parent          {}
-                   :model/Collection       {coll-id :id
-                                            :as     coll}  {}
-                   :model/Collection       {child-id :id}  {:location (format "/%d/" coll-id)}]
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}          {}
+                   :model/Collection       parent                  {}
+                   :model/Collection       {coll-id :id, :as coll} {}
+                   :model/Collection       {child-id :id}          {:location (collection/children-location coll)}]
       (perms/grant-collection-read-permissions! group-id parent)
-      (#'tenants.permissions/grant-perms-when-moving-out-of-tenant-specific! coll (format "/%d/" (:id parent)))
+      (#'tenants.permissions/grant-perms-when-moving-out-of-tenant-specific! coll (collection/children-location parent))
       (doseq [id [coll-id child-id]]
         (is (t2/exists? :model/Permissions :group_id group-id :object (perms/collection-read-path id)))))))

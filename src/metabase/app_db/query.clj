@@ -247,21 +247,15 @@
   (transduce (map (comp write-fn vec)) + 0 (partition-all partition-size (sequence (distinct) ids))))
 
 (defn- grouped-updates
-  "The `[changes pks]` pairs of `updates` in the order the changes first appear, where `pk-fn` gives the primary key of
-  a row and `changes-fn` its columns to change. The rows of one primary key merge in order, so that the last value of
-  a column wins, and a key with no column to change is left out."
+  "The `[changes pks]` pairs of `updates`, in the order the changes first appear.
+  The primary key of a row is `(pk-fn row)`, and its columns to change are `(changes-fn row)`.
+  The rows of one primary key merge in order, so the last value of a column wins.
+  A key left with no column to change is left out."
   [updates pk-fn changes-fn]
   (let [pk->changes  (reduce (fn [m row] (update m (pk-fn row) merge (changes-fn row))) {} updates)
-        pks-in-order (distinct (map pk-fn updates))
-        pks          (reduce (fn [m pk]
-                               (let [changes (pk->changes pk)]
-                                 (cond-> m
-                                   (seq changes) (update changes (fnil conj []) pk))))
-                             {}
-                             pks-in-order)]
-    (into []
-          (comp (map pk->changes) (filter seq) (distinct) (map (fn [changes] [changes (pks changes)])))
-          pks-in-order)))
+        pks          (into [] (comp (map pk-fn) (distinct) (filter (comp seq pk->changes))) updates)
+        changes->pks (group-by pk->changes pks)]
+    (into [] (comp (map pk->changes) (distinct) (map (juxt identity changes->pks))) pks)))
 
 (defn update-grouped!
   "Apply each of `updates`, the primary key of a row of `model` and the columns to change, with one update through the
