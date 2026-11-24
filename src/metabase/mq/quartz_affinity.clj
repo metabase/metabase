@@ -18,9 +18,6 @@
    [metabase.util.log :as log])
   (:import
    (java.math BigDecimal)
-   (java.net URL)
-   (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)
    (java.sql Connection PreparedStatement ResultSet)
    (org.quartz TriggerKey)
    (org.quartz.impl.jdbcjobstore Constants StdJDBCConstants)))
@@ -130,23 +127,13 @@
     (catch ClassNotFoundException _ false)))
 
 (defn- compile-delegate! [ns-sym]
-  ;; Compile into a temp dir added to the (dynamic) classpath, so the gen-class is loadable by name. The dir is new
-  ;; for each compile: in a shared one, an `__init.class` newer than the source, left by another checkout, makes
-  ;; `compile` load it instead of compiling, so a gen-class file that has gone (OS temp cleaners remove files not
-  ;; read for days) is never written again.
-  (let [dir (.toFile (Files/createTempDirectory "mb-quartz-delegate" (make-array FileAttribute 0)))]
-    ;; Remove the dir when the JVM exits, files before the directories that hold them.
-    (.addShutdownHook (Runtime/getRuntime)
-                      (Thread. ^Runnable #(doseq [^java.io.File f (reverse (file-seq dir))] (.delete f))))
-    (classloader/add-url-to-classpath! ^URL (-> dir .toURI .toURL))
-    (binding [*compile-path* (str dir)]
-      (compile ns-sym))))
+  (classloader/compile-to-temp-dir! "mb-quartz-delegate" ns-sym))
 
 (defn ensure-delegate-loadable!
-  "Ensure the affinity `DriverDelegate` subclass for `db-type` is loadable — already AOT-compiled in
-  the uberjar, runtime-compiled into the classpath in dev — and return its class name. No global side
-  effects beyond adding the compiled class to the classpath (idempotent). Throws when the class still
-  cannot be loaded after compiling."
+  "Ensure the affinity `DriverDelegate` subclass for `db-type` is loadable, and return its class name.
+  The uberjar has it AOT-compiled; in dev it is compiled at runtime into a temp dir on the classpath, deleted when the
+  JVM exits.
+  Throws when the class still cannot be loaded after compiling."
   [db-type]
   (let [class-name (get delegate-class-name db-type default-delegate-class-name)]
     (when-not (class-loadable? class-name)

@@ -21,7 +21,10 @@
    [dynapath.util :as dynapath])
   (:import
    (clojure.lang DynamicClassLoader RT)
-   (java.net URL)))
+   (java.io File)
+   (java.net URL)
+   (java.nio.file Files)
+   (java.nio.file.attribute FileAttribute)))
 
 (set! *warn-on-reflection* true)
 
@@ -171,3 +174,18 @@
     (assert (dynapath/add-classpath-url (the-top-level-classloader) url))
     ;; don't i18n this or we will have circular refs
     (log/infof "Added URL %s to classpath" url)))
+
+(defn compile-to-temp-dir!
+  "Compile the namespace `ns-sym` into a new temp directory whose name starts with `prefix`, add that directory to the
+  classpath, and delete it when the JVM exits.
+  This makes a `gen-class` loadable by name through [[the-classloader]], which a plain `require` does not."
+  [prefix ns-sym]
+  ;; A new directory each time: in a shared one, an `__init.class` newer than the source, left by another checkout,
+  ;; makes `compile` load it instead of compiling, so a gen-class file that has gone (OS temp cleaners remove files not
+  ;; read for days) is never written again.
+  (let [dir (.toFile (Files/createTempDirectory prefix (make-array FileAttribute 0)))]
+    ;; Files go before the directories that hold them.
+    (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable #(doseq [^File f (reverse (file-seq dir))] (.delete f))))
+    (add-url-to-classpath! (-> dir .toURI .toURL))
+    (binding [*compile-path* (str dir)]
+      (compile ns-sym))))

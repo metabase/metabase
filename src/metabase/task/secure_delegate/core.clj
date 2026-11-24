@@ -19,9 +19,6 @@
    [metabase.util.deserialization-allowlist :as deserialization-allowlist]
    [metabase.util.log :as log])
   (:import
-   (java.net URL)
-   (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)
    (java.sql Blob ResultSet)))
 
 (set! *warn-on-reflection* true)
@@ -70,22 +67,13 @@
     (catch ClassNotFoundException _ false)))
 
 (defn- dev-compile-delegate!
-  "SOURCE-ONLY. Compile the gen-class `ns-sym` to a temp dir and add that dir to the classpath so
-  `the-classloader` can find the class by name. A plain `require` won't do — it defines the class into a
-  *child* of `the-classloader` that Quartz can't see. Asserts we're not in a jar, so this never compiles
-  bytecode or mutates the classpath in a shipped uberjar (there the class is AOT-compiled)."
+  "SOURCE-ONLY. Compile the gen-class `ns-sym` with [[classloader/compile-to-temp-dir!]], so that
+  `the-classloader`, and so Quartz, can find the class by name.
+  Asserts we're not in a jar, so this never compiles bytecode or mutates the classpath in a shipped uberjar (there the
+  class is AOT-compiled)."
   [ns-sym]
   (assert (not (config/jar?)) "dev-compile-delegate! must not run from a jar")
-  ;; The dir is new for each compile: in a shared one, an `__init.class` newer than the source, left by another
-  ;; checkout, makes `compile` load it instead of compiling, so a gen-class file that has gone (OS temp cleaners
-  ;; remove files not read for days) is never written again.
-  (let [dir (.toFile (Files/createTempDirectory "mb-quartz-secure-delegate" (make-array FileAttribute 0)))]
-    ;; Remove the dir when the JVM exits, files before the directories that hold them.
-    (.addShutdownHook (Runtime/getRuntime)
-                      (Thread. ^Runnable #(doseq [^java.io.File f (reverse (file-seq dir))] (.delete f))))
-    (classloader/add-url-to-classpath! ^URL (-> dir .toURI .toURL))
-    (binding [*compile-path* (str dir)]
-      (compile ns-sym))))
+  (classloader/compile-to-temp-dir! "mb-quartz-secure-delegate" ns-sym))
 
 (defn install!
   "Set Quartz's `driverDelegateClass` to the secure delegate for `db-type`. Must run before the
