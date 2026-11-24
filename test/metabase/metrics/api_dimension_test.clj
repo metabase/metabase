@@ -55,7 +55,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (let [hydrated-metric (t2/select-one :model/Card :id (:id metric))
             dim-id          (get-dimension-id hydrated-metric "PRICE")]
         (is (some? dim-id) "PRICE dimension should exist")
@@ -78,7 +78,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/values"))]
         (is (re-find #"Dimension not found" response))))))
@@ -94,7 +94,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (let [hydrated-metric (t2/select-one :model/Card :id (:id metric))
             dim-id          (get-dimension-id hydrated-metric "NAME")]
         (is (some? dim-id) "NAME dimension should exist")
@@ -117,7 +117,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/search")
                                            :query "test")]
@@ -134,7 +134,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (let [hydrated-metric (t2/select-one :model/Card :id (:id metric))
             dim-id          (get-dimension-id hydrated-metric "PRICE")]
         (is (some? dim-id) "PRICE dimension should exist")
@@ -157,7 +157,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/remapping")
                                            :value "1")]
@@ -170,7 +170,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (let [hydrated-metric (t2/select-one :model/Card :id (:id metric))
             dim-id          (get-dimension-id hydrated-metric "PRICE")]
         (is (some? dim-id) "PRICE dimension should exist")
@@ -235,7 +235,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
-     (metrics/sync-dimensions! :metadata/metric (:id metric#))
+     (metrics/sync-dimensions! :metadata/metric [(:id metric#)])
      (let [~binding metric#]
        ~@body)))
 
@@ -362,7 +362,7 @@
                                        :table_id      (mt/id :venues)
                                        :dataset_query (-> (lib/query mp (lib.metadata/card mp (:id model)))
                                                           (lib/aggregate (lib/count)))}]
-      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (mt/user-http-request :crowberto :post 200 (str "metric/" (:id metric) "/dimension/remove")
                             {:dimension_ids [(get-dimension-id (t2/select-one :model/Card :id (:id metric))
                                                                "Is Cheap")]})
@@ -434,7 +434,7 @@
                                            :database_id   (mt/id)
                                            :table_id      (mt/id :orders)
                                            :dataset_query (orders-metric-query)}]
-          (metrics/sync-dimensions! :metadata/metric (:id metric))
+          (metrics/sync-dimensions! :metadata/metric [(:id metric)])
           (let [response (mt/user-http-request :crowberto :get 200
                                                (str "metric/" (:id metric) "/dimension")
                                                :with-addable true)
@@ -484,7 +484,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :orders)
                                        :dataset_query (orders-metric-query)}]
-      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (let [created-at-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "CREATED_AT")
             path          (str "metric/" (:id metric) "/dimension/" created-at-id)
             topics        (atom [])
@@ -517,7 +517,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :orders)
                                        :dataset_query (orders-metric-query)}]
-      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (let [created-at-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "CREATED_AT")
             path          (str "metric/" (:id metric) "/dimension/" created-at-id)]
         (doseq [unit ["default" "millisecond" "not-a-unit"]]
@@ -528,7 +528,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :people)
                                        :dataset_query (people-metric-query)}]
-      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (let [birth-date-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "BIRTH_DATE")
             path          (str "metric/" (:id metric) "/dimension/" birth-date-id)]
         (doseq [unit ["hour" "year-of-era"]]
@@ -911,7 +911,7 @@
                 "produce `User - User - ID`.")
     (legacy-curated-metric!
      (fn [metric-id]
-       (metrics/sync-dimensions! :metadata/metric metric-id)
+       (metrics/sync-dimensions! :metadata/metric [metric-id])
        (let [names (display-name-by-field-id
                     (:dimensions (t2/select-one :model/Card :id metric-id)))]
          (is (= "User - ID" (names (mt/id :people :id)))
