@@ -26,6 +26,7 @@
    [malli.util :as mut]
    [metabase.api-scope.core :as api-scope]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.shared :as shared]
@@ -499,7 +500,8 @@
     coerced))
 
 (defn- call-tool
-  "Call `tool` with `args` and `ctx`, with the dynamic vars bound from `ctx`.
+  "Call `tool` with `args` and `ctx`, with the dynamic vars bound from `ctx` and one metadata provider cache for the
+  whole call, which inside a request is the request's own cache, so a chat turn shares one cache across its tool calls.
 
   `tools.core/call` is the whole of it: whether this tool does one item or several is its own
   business, and the orchestration for the batched case lives in `tools.core` where every consumer
@@ -512,7 +514,8 @@
   (binding [shared/*metabot*     metabot
             shared/*profile-id*  profile-id
             shared/*memory-atom* memory-atom]
-    (tools/call tool args ctx)))
+    (lib-be/with-metadata-provider-cache
+      (tools/call tool args ctx))))
 
 (defn- rendered-output
   "`result` with its `:output` rendered to a string.
