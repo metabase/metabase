@@ -849,11 +849,18 @@ describe("DataPickerModal > library", () => {
     });
   }
 
-  async function setupLibrary(value?: DataPickerValue) {
-    // Only the Data collection has items, so the library lists only tables
+  async function setupLibrary({
+    value,
+    hasMetric = false,
+  }: { value?: DataPickerValue; hasMetric?: boolean } = {}) {
+    // Without a metric only the Data collection has items, so the library
+    // lists only tables
     setupLibraryEndpoints({
       hasLibrary: true,
-      library: { id: LIBRARY_ID, below: ["table"] },
+      library: {
+        id: LIBRARY_ID,
+        below: hasMetric ? ["metric", "table"] : ["table"],
+      },
     });
     // the database endpoints also answer GET /api/table/:id with `collection`
     return setup({
@@ -887,13 +894,26 @@ describe("DataPickerModal > library", () => {
               location: METRICS_COLLECTION.location,
               is_library_root: true,
               model: "collection",
-              here: [],
+              here: hasMetric ? ["metric"] : [],
             }),
           ],
         },
         {
           collection: DATA_COLLECTION,
           items: [toTableItem(9, "Accounts"), toTableItem(ORDERS_ID, "Orders")],
+        },
+        {
+          collection: METRICS_COLLECTION,
+          items: hasMetric
+            ? [
+                createMockCollectionItem({
+                  id: 50,
+                  name: "Trusted Orders Metric",
+                  model: "metric",
+                  collection_id: METRICS_COLLECTION_ID,
+                }),
+              ]
+            : [],
         },
       ],
     });
@@ -917,7 +937,11 @@ describe("DataPickerModal > library", () => {
   });
 
   it("builds the path to a published table from the value", async () => {
-    await setupLibrary({ model: "table", id: ORDERS_ID, database_id: 1 });
+    // A metric in the Metrics collection, like in the e2e test this replaces
+    await setupLibrary({
+      value: { model: "table", id: ORDERS_ID, database_id: 1 },
+      hasMetric: true,
+    });
 
     expect(await findItem(2, "Orders")).toHaveAttribute("data-active", "true");
     expect(await findItem(2, "Accounts")).not.toHaveAttribute(
