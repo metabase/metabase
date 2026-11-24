@@ -3261,6 +3261,14 @@
           (let [refreshed (refresh-json! (assoc (legacy! v2-scope-set) :resource mcp-alias))]
             (is (=? {:resource [mcp-alias]} refreshed))
             (is (= [mcp-alias] (stored-resource refreshed)))))
+        (testing "a token stored with an empty resource counts as unbound"
+          (let [refreshed (refresh! client (legacy! v2-scope-set :resource []))]
+            (is (=? {:resource [(mcp-resource-uri)]} refreshed))
+            (is (= [(mcp-resource-uri)] (stored-resource refreshed)))))
+        (testing "a refresh that names an empty resource keeps the token's own"
+          (let [refreshed (refresh-json! (assoc (legacy! v2-scope-set :resource [mcp-alias]) :resource []))]
+            (is (=? {:resource [mcp-alias]} refreshed))
+            (is (= [mcp-alias] (stored-resource refreshed)))))
         (testing "a token holding a non-MCP scope stays unbound, so MCP and REST tokens stay separate"
           (let [not-mcp   (first-non-mcp-default-scope)
                 refreshed (refresh! client (legacy! #{not-mcp}))]

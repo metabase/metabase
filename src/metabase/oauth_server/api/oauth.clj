@@ -885,8 +885,13 @@
                                                              :scopes    (when (some? (:scope body))
                                                                           (or (scope-tokens (:scope body)) []))
                                                              :resource  (:resource body)})
+                                                           ;; oidc-provider would give the new tokens an empty
+                                                           ;; `resource` in place of the old token's, so it counts as none
                                                            (oidc/token-request provider
-                                                                               (with-refresh-scope-to-grant provider authorization-header body)
+                                                                               (with-refresh-scope-to-grant
+                                                                                 provider authorization-header
+                                                                                 (cond-> body
+                                                                                   (empty? (:resource body)) (dissoc :resource)))
                                                                                authorization-header))]
                                             {:status  200
                                              :headers {"Content-Type"  "application/json"
