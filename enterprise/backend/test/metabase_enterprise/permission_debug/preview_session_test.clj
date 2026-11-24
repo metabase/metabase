@@ -47,9 +47,10 @@
 (deftest start-preview-test
   (let [admin-session-key             (insert-admin-session!)
         session-rows-before           (t2/count :model/Session)
-        {:keys [id token expires_at]} (start-preview! admin-session-key (mt/user->id :rasta))]
-    (testing "the response carries the preview's id, its token and its expiry"
+        {:keys [id token expires_at user_id]} (start-preview! admin-session-key (mt/user->id :rasta))]
+    (testing "the response carries the preview's id, its token, its expiry and the person it runs as"
       (is (pos-int? id))
+      (is (= (mt/user->id :rasta) user_id))
       (is (re-matches #"mbpv_[0-9a-f-]{36}" token))
       (is (some? expires_at)))
     (testing "the preview is stored by the token's hash, with the person, the admin and the admin's session"

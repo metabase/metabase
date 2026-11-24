@@ -140,6 +140,8 @@
       (testing "a group's first preview creates its stand-in, an inactive user of its own type"
         (is (= {:type :permission-preview :is_active false :tenant_id nil}
                (select-keys stand-in [:type :is_active :tenant_id]))))
+      (testing "the response names the stand-in as the user the preview runs as"
+        (is (= (:id stand-in) (:user_id first-start))))
       (testing "a later preview of the group reuses the stand-in"
         (is (= (:id stand-in) (:id (stand-in-of (:id second-start)))))
         (is (= 1 (t2/count :model/User :email (:email stand-in)))))
