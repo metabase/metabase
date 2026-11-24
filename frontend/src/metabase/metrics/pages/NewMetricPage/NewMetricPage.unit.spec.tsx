@@ -23,6 +23,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { createMockEntitiesState } from "metabase/metadata-store";
 import { Route } from "metabase/router";
@@ -37,19 +38,23 @@ import {
   createMockCollectionItem,
   createMockColumn,
   createMockDataset,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PEOPLE_ID,
   SAMPLE_DB_ID,
   createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { isObject } from "metabase-types/guards";
 
 import { NewMetricPage } from "./NewMetricPage";
 
 registerVisualizations();
 
 const SAMPLE_DB = createSampleDatabase();
+const NEW_CARD_ID = 43;
 
 const CARD_TYPE_TO_MODEL = {
   question: "card",
@@ -280,6 +285,89 @@ describe("NewMetricPage", () => {
       "18,760",
     );
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1);
+  });
+
+  describe("save", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("saves a metric on a table found by search and tracks metric_created", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      setup();
+      setupSearchEndpoints([
+        createMockSearchResult({
+          id: PEOPLE_ID,
+          table_id: PEOPLE_ID,
+          name: "People",
+          model: "table",
+          database_id: SAMPLE_DB_ID,
+        }),
+        createMockSearchResult({
+          id: ORDERS_ID,
+          table_id: ORDERS_ID,
+          name: "Orders",
+          model: "table",
+          database_id: SAMPLE_DB_ID,
+        }),
+      ]);
+      fetchMock.post(
+        "path:/api/card",
+        async (call) => {
+          const body: unknown = await call.request?.json();
+          return createMockCard({
+            ...(isObject(body) ? body : {}),
+            id: NEW_CARD_ID,
+          });
+        },
+        { name: "card-create" },
+      );
+
+      await userEvent.type(
+        await screen.findByPlaceholderText(/Search for tables/),
+        "Orders",
+      );
+      const miniPicker = await screen.findByTestId("mini-picker");
+      const ordersItems = await within(miniPicker).findAllByRole("menuitem", {
+        name: /Orders/,
+      });
+      expect(
+        within(miniPicker).queryByRole("menuitem", { name: /People/ }),
+      ).not.toBeInTheDocument();
+      await userEvent.click(ordersItems[0]);
+
+      const editor = screen.getByTestId("metric-query-editor");
+      const saveButton = within(editor).getByRole("button", { name: "Save" });
+      await waitFor(() => expect(saveButton).toBeEnabled());
+      await userEvent.click(saveButton);
+      await userEvent.click(
+        within(await screen.findByRole("dialog")).getByRole("button", {
+          name: "Save",
+        }),
+      );
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.calls("card-create")).toHaveLength(1);
+      });
+      const requestBody: unknown = JSON.parse(
+        String(fetchMock.callHistory.lastCall("card-create")?.options.body),
+      );
+      expect(requestBody).toMatchObject({
+        type: "metric",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ "source-table": ORDERS_ID }],
+        },
+      });
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "metric_created",
+          triggered_from: "main_app",
+          result: "success",
+          target_id: NEW_CARD_ID,
+        });
+      });
+    });
   });
 
   describe("cancel", () => {
