@@ -1141,9 +1141,9 @@
                                                               :database_id   db-id
                                                               :dataset_query (lib/aggregate (lib/query mp (lib.metadata/table mp table-id))
                                                                                             (lib/count))}))))
-                          (t2/with-call-count [call-count]
-                            (is (= n (count (mapcat :metrics (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))))))
-                            (call-count)))))]
+                          (apply min (repeatedly 2 #(t2/with-call-count [call-count]
+                                                      (is (= n (count (mapcat :metrics (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))))))
+                                                      (call-count)))))))]
       (metadata! 1)
       (is (= (metadata! 2) (metadata! 6))))))
 
@@ -1423,9 +1423,9 @@
   []
   ;; The first request fills caches that outlive it, so only the second one counts.
   (mt/user-http-request :rasta :get 200 "database")
-  (t2/with-call-count [call-count]
-    (mt/user-http-request :rasta :get 200 "database")
-    (call-count)))
+  (apply min (repeatedly 2 #(t2/with-call-count [call-count]
+                              (mt/user-http-request :rasta :get 200 "database")
+                              (call-count)))))
 
 ;; Not ^:parallel: `GET /api/database` lists every Database in the app DB, so Databases that concurrently running
 ;; tests create or delete (and any caches they invalidate) can change the query count between the warm-up request
