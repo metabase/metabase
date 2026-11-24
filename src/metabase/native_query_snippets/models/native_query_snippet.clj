@@ -366,4 +366,4 @@
 
 (defmethod eid-translation/spec :model/NativeQuerySnippet [_model]
   {:names      [:snippet]
-   :structures [:template_tags]})
+   :structures [:content :template_tags]})
