@@ -259,9 +259,11 @@ describe("measures in the data model (enterprise)", () => {
       expect(
         await within(list).findByRole("listitem", { name: "Kept Measure" }),
       ).toBeInTheDocument();
-      expect(
-        within(list).queryByRole("listitem", { name: "Total Revenue" }),
-      ).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          within(list).queryByRole("listitem", { name: "Total Revenue" }),
+        ).not.toBeInTheDocument(),
+      );
     });
 
     it("shows the revision history and the dependency graph", async () => {

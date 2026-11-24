@@ -176,6 +176,9 @@ describe("measures of a published table", () => {
       expect(getPathname()).toBe(`${PUBLISHED_ORDERS_URL}/measures`),
     );
     expect(await screen.findByText("Kept Measure")).toBeInTheDocument();
-    expect(screen.queryByText("Total Revenue")).not.toBeInTheDocument();
+    // The list shows the cached table until the refetch after the removal.
+    await waitFor(() =>
+      expect(screen.queryByText("Total Revenue")).not.toBeInTheDocument(),
+    );
   });
 });
