@@ -14,6 +14,10 @@
   visibility: hidden;
 }
 
+.pill:hover {
+  background-color: var(--mb-color-background_surface-hover);
+}
+
 .pillLabel {
   gap: var(--mantine-spacing-xxs);
 }

@@ -114,7 +114,11 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
             onAuxClick={handleAuxClick}
             onClick={handleClick}
           >
-            <Pill classNames={{ label: S.pillLabel }} flex="0 1 auto" miw={0}>
+            <Pill
+              classNames={{ root: S.pill, label: S.pillLabel }}
+              flex="0 1 auto"
+              miw={0}
+            >
               <Icon
                 c="text-secondary"
                 flex="0 0 auto"
