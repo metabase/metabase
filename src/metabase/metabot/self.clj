@@ -466,7 +466,11 @@
   "Classify a provider failure as `:billing`, `:rate-limit`, `:auth`, `:not-found` or `:unavailable`, or nil when
   the provider rejected a request that Metabot made, such as a malformed, too long, flagged or refused one.
 
-  Reads the same `status` and `error` as [[provider-failure]], and the [[streamed-status]] when `status` is nil."
+  Reads the same `status` and `error` as [[provider-failure]], and the [[streamed-status]] when `status` is nil.
+
+  All rules read a status, a type or a code, with one exception: Anthropic sends a used-up credit balance as a plain
+  400 with no billing code, so `:billing` for it comes from the message text that [[provider-failure]] matches. When
+  Anthropic changes that text, the failure gets no kind."
   [status {error-type :type error-code :code :as error}]
   (let [status (or status (streamed-status error))]
     (when-not (and (= 403 status) (content-rejection? error))
