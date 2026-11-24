@@ -155,14 +155,16 @@
 
 (defn- check-group-manager-member
   "Throws a 400 when `membership` makes `member`, its User, a tenant user or an admin a group manager."
-  [{:keys [user_id is_group_manager]} member]
+  [{:keys [user_id group_id is_group_manager]} member]
   (when is_group_manager
     (when (:tenant_id member)
       (throw (ex-info (tru "Tenant users cannot be made group managers")
                       {:user-id user_id :status-code 400})))
     (when (:is_superuser member)
-      (throw (ex-info (tru "Admin cannot be a group manager.")
-                      {:user-id user_id :status-code 400})))))
+      ;; The group's name is read only here, on the way to the error.
+      (let [group-name (:name (first (permissions.db/groups-by-ids #{group_id})))]
+        (throw (ex-info (tru "Admin cannot be a group manager of {0}." group-name)
+                        {:user-id user_id, :group-id group_id, :status-code 400}))))))
 
 (defn- check-tenancy-matches
   "Throws a 400 when `membership` puts `member`, its User, a tenant user in a non-tenant group or a non-tenant user in a
