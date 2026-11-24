@@ -184,14 +184,15 @@
   once and the message of the first that breaks one:
 
   - a tenant user is not a group manager
-  - an admin is not a group manager, and a user that `memberships` adds to Administrators is not one of any other group
-  - a tenant user is in a tenant group, and a user outside every tenant in a group that is not one"
-  [memberships]
+  - an admin is not a group manager, and a user in `new-admins` is not one of any group other than Administrators
+  - a tenant user is in a tenant group, and a user outside every tenant in a group that is not one
+
+  The `new-admins` are the ids of the Users the whole write adds to Administrators, which a batch of it may not hold."
+  [memberships new-admins]
   (when (seq memberships)
     (let [members           (permissions.db/member-flags-by-user-ids (into #{} (map :user_id) memberships))
           group-id->tenant? (permissions.db/group-tenant-flags (into #{} (map :group_id) memberships))
-          admin-id          (:id (perms-group/admin))
-          new-admins        (into #{} (comp (filter #(= admin-id (:group_id %))) (map :user_id)) memberships)]
+          admin-id          (:id (perms-group/admin))]
       (doseq [membership memberships
               :let       [user-id (:user_id membership)
                           member  (cond-> (get members user-id)
@@ -283,11 +284,17 @@
 
   - none changes the members of All Users or All tenant users outside the scope that allows it
   - none adds to the Data Analysts group without the premium feature, see [[check-can-add-to-data-analyst-group]]
-  - the rules of [[check-members]]"
-  [memberships]
+  - the rules of [[check-members]], with `new-admins` the Users the whole write adds to Administrators"
+  [memberships new-admins]
   (check-magic-group-members-unchanged (map :group_id memberships))
   (check-can-add-to-data-analyst-group (map :group_id memberships))
-  (check-members memberships))
+  (check-members memberships new-admins))
+
+(defn- new-admin-ids
+  "The ids of the Users that `memberships` add to Administrators."
+  [memberships]
+  (let [admin-id (:id (perms-group/admin))]
+    (into #{} (comp (filter #(= admin-id (:group_id %))) (map :user_id)) memberships)))
 
 (defn- set-new-member-flags!
   "Set the flags that the `created` memberships imply on their Users, publishing the events of the writes with `opts`."
@@ -306,13 +313,17 @@
   ([pgms :- ::new-memberships
     opts :- :metabase.events.schema/write-opts]
    (when (seq pgms)
-     (app-db/create-batched! :model/PermissionsGroupMembership
-                             (missing-memberships (requested-memberships pgms))
-                             {:before-create check-new-memberships
-                              :after-create  (fn [created]
-                                               (events/publish-event! :event/group-membership-create
-                                                                      (events/create-event created opts))
-                                               (set-new-member-flags! created opts))}))
+     ;; The new admins come from every membership, since each batch is checked on its own and a user's Administrators
+     ;; row and group manager row can fall in different batches.
+     (let [memberships (missing-memberships (requested-memberships pgms))
+           new-admins  (new-admin-ids memberships)]
+       (app-db/create-batched! :model/PermissionsGroupMembership
+                               memberships
+                               {:before-create #(check-new-memberships % new-admins)
+                                :after-create  (fn [created]
+                                                 (events/publish-event! :event/group-membership-create
+                                                                        (events/create-event created opts))
+                                                 (set-new-member-flags! created opts))})))
    nil))
 
 (mu/defn remove-users-from-groups! :- :nil
