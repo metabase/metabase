@@ -1,6 +1,7 @@
 (ns metabase.queries-rest.api.card
   "/api/card endpoints."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
@@ -522,8 +523,13 @@
 (defn- maybe-update-analysis-query [{card-type :type :as card}]
   (if (= :product-analysis card-type)
     (let [mp (lib-be/application-database-metadata-provider (-> card :product_analysis
-                                                                :base_query :database))]
-      (assoc card :dataset_query (lib.analysis/raw->mbql mp (:product_analysis card))))
+                                                                :base_query :database))
+          analysis (-> (:product_analysis card)
+                       (set/rename-keys {:base_query :base-query})
+                       (update :kind keyword)
+                       (update :granularity keyword)
+                       (u/update-some :habit.values keyword))]
+      (assoc card :dataset_query (lib.analysis/raw->mbql mp analysis)))
     card))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

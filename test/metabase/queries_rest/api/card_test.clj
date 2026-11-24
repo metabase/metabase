@@ -951,11 +951,9 @@
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
     (is (=? {:errors {:name                   "value must be a non-blank string."
-                      :dataset_query          "value must be a valid MBQL query."
                       :display                "value must be a non-blank string."
                       :visualization_settings "Value must be a map."}
              :specific-errors {:name                   ["missing required key, received: nil"]
-                               :dataset_query          ["missing required key, received: nil"]
                                :display                ["missing required key, received: nil"]
                                :visualization_settings ["Value must be a map., received: \"ABC\""]}}
             (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))))
@@ -971,11 +969,9 @@
 (deftest ^:parallel create-card-validation-test-1b
   (testing "POST /api/card"
     (is (=? {:errors {:name          "value must be a non-blank string."
-                      :dataset_query "value must be a valid MBQL query."
                       :parameters    "nullable sequence of parameter must be a map with :id and :type keys"
                       :display       "value must be a non-blank string."}
              :specific-errors {:name          ["missing required key, received: nil"]
-                               :dataset_query ["missing required key, received: nil"]
                                :parameters    ["invalid type, received: \"abc\""]
                                :display       ["missing required key, received: nil"]}}
             (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}

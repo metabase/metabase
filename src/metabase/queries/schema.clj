@@ -249,7 +249,7 @@
    ::card.update
    [:name :description :display :type :dataset_query :visualization_settings :parameters :parameter_mappings :cache_ttl
     :result_metadata :card_schema :collection_id :dashboard_id :database_id :table_id :query_type :source_card_id
-    :archived :archived_directly :dataset_query_metrics_v2_migration_backup]])
+    :archived :archived_directly :dataset_query_metrics_v2_migration_backup :product_analysis]])
 
 (mr/def ::parameter-card.update
   "A ParameterCard by its `id` with the columns to change, each optional."
@@ -422,6 +422,6 @@
                           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
                           :card_schema :result_metadata :database_id :collection_id :dimensions :creator_id
                           :dataset_query :dimension_mappings :parameter_mappings :visualization_settings :parameters
-                          :dashboard_id :made_public_by_id :document_id]]
+                          :dashboard_id :made_public_by_id :document_id :product_analysis]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

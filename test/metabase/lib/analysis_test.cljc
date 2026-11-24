@@ -15,6 +15,8 @@
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel basic-habit-test
   (let [mp meta/metadata-provider
         table (lib.metadata/table mp (meta/id :orders))

@@ -1362,7 +1362,8 @@
                      lib.schema
                      lib.source-swap
                      lib.types}
-   :api  #{metabase.lib.core
+   :api  #{metabase.lib.analysis
+           metabase.lib.core
            metabase.lib.equality
            metabase.lib.expression
            metabase.lib.field.util
@@ -2435,6 +2436,7 @@
            events
            funnysql
            lib
+           lib.analysis
            lib.be
            lib.schema
            models

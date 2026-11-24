@@ -79,4 +79,4 @@
 (defn raw->mbql
   "Convert an analysis-state which contains a raw base query."
   [metadata-provider analysis-state]
-  (->mbql (update analysis-state :base_query (partial lib/query metadata-provider))))
+  (->mbql (update analysis-state :base-query (partial lib/query metadata-provider))))
