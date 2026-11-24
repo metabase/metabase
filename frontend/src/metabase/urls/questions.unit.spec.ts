@@ -18,9 +18,7 @@ const orders_raw_card = {
   display: "table",
   visualization_settings: {},
   can_write: true,
-  dataset_query: Lib.toLegacyQuery(
-    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
-  ),
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
 };
 
 describe("urls > questions", () => {
