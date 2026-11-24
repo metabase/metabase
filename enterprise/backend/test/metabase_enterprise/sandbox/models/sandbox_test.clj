@@ -84,7 +84,7 @@
                      :model/Sandbox          {sandbox-id :id} {:table_id (mt/id :venues) :group_id group-id :card_id card-id}]
         (let [checks (atom 0)]
           (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (let [f (mt/original-fn #'sandboxes/table-field-names->cols)]
-                                                                          (fn [table-id] (swap! checks inc) (f table-id)))]
+                                                                          (fn [database-id table-id] (swap! checks inc) (f database-id table-id)))]
             (sandboxes/update-sandboxes! [{:id sandbox-id :attribute_remappings {"cat" "CATEGORY_ID"}}])
             (is (= 0 @checks))
             (sandboxes/update-sandboxes! [{:id sandbox-id :card_id card-id}])
@@ -892,3 +892,147 @@
             (testing (str "delete of " n " sandboxes publishes one delete event")
               (is (= [:event/sandbox-delete]
                      (events.tu/published-topics! #(sandboxes/delete-sandboxes! ids)))))))))))
+
+(defn- create-sandboxes-row-by-row!
+  "Insert each of `rows` after taking native query access away from its group on the Database of its Table where the
+  group has it on that Table, one row after another."
+  [rows]
+  (doseq [{:keys [group_id table_id] :as row} rows]
+    (let [db-id (t2/select-one-fn :db_id :model/Table :id table_id)]
+      (when (= :query-builder-and-native
+               (get (perms/table-permissions-for-groups #{group_id} :perms/create-queries {table_id db-id}) table_id))
+        (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
+    (t2/insert! :model/Sandbox row)))
+
+(defn- stored-permissions-by-role
+  "The DataPermissions rows on the Databases with `db-ids` of each group of `role->group-id`, without ids, by role."
+  [role->group-id db-ids]
+  (let [group-id->role (zipmap (vals role->group-id) (keys role->group-id))]
+    (update-vals (group-by (comp group-id->role :group_id)
+                           (t2/select :model/DataPermissions
+                                      :group_id [:in (vals role->group-id)]
+                                      :db_id    [:in db-ids]))
+                 (fn [rows]
+                   (frequencies (map (juxt :perm_type :perm_value :db_id :table_id :schema_name) rows))))))
+
+(deftest create-sandboxes-matches-row-by-row-on-mixed-batch-test
+  (mt/with-temp [:model/Database {db-1 :id} {}
+                 :model/Database {db-2 :id} {}
+                 :model/Table    {a-1 :id}  {:db_id db-1 :schema "PUBLIC" :name "A1"}
+                 :model/Table    {a-2 :id}  {:db_id db-1 :schema "PUBLIC" :name "A2"}
+                 :model/Table    {b-1 :id}  {:db_id db-2 :schema "PUBLIC" :name "B1"}
+                 :model/Table    {b-2 :id}  {:db_id db-2 :schema "PUBLIC" :name "B2"}]
+    (mt/with-model-cleanup [:model/Sandbox :model/PermissionsGroup]
+      (let [roles        [:native-on-one-db :no-native :native-on-two-dbs :granular :native-sandboxed-on-two-dbs]
+            groups!      (fn [tag]
+                           (zipmap roles (t2/insert-returning-pks! :model/PermissionsGroup
+                                                                   (for [role roles] {:name (str "mixed " tag " " (name role))}))))
+            set-up!      (fn [{:keys [native-on-one-db no-native native-on-two-dbs granular native-sandboxed-on-two-dbs]}]
+                           (perms/set-database-permission! native-on-one-db db-1 :perms/create-queries :query-builder-and-native)
+                           (perms/set-database-permission! no-native db-1 :perms/create-queries :query-builder)
+                           (doseq [group-id [native-on-two-dbs native-sandboxed-on-two-dbs granular]]
+                             (perms/set-database-permission! group-id db-1 :perms/create-queries :query-builder-and-native))
+                           (doseq [group-id [native-on-two-dbs native-sandboxed-on-two-dbs]]
+                             (perms/set-database-permission! group-id db-2 :perms/create-queries :query-builder-and-native))
+                           (perms/set-table-permissions! granular :perms/create-queries {b-1 :query-builder b-2 :no}))
+            rows         (fn [{:keys [native-on-one-db no-native native-on-two-dbs granular native-sandboxed-on-two-dbs]}]
+                           [{:group_id native-on-one-db :table_id a-1}
+                            {:group_id no-native :table_id a-1}
+                            {:group_id native-sandboxed-on-two-dbs :table_id a-2}
+                            {:group_id native-on-one-db :table_id a-2}
+                            {:group_id granular :table_id b-2}
+                            {:group_id native-on-two-dbs :table_id b-1}
+                            {:group_id granular :table_id a-1}
+                            {:group_id native-sandboxed-on-two-dbs :table_id b-2}])
+            batch        (groups! "batch")
+            row-by-row (groups! "one at a time")]
+        (set-up! batch)
+        (set-up! row-by-row)
+        (sandboxes/create-sandboxes! (rows batch))
+        (create-sandboxes-row-by-row! (rows row-by-row))
+        (testing "every group holds the same permission rows as when its sandboxes are created one at a time"
+          (is (= (stored-permissions-by-role row-by-row [db-1 db-2])
+                 (stored-permissions-by-role batch [db-1 db-2]))))
+        (testing "native access is taken away only on the Databases of the new sandboxes where the group had it"
+          (let [value (fn [role table-id db-id]
+                        (get (perms/table-permissions-for-groups #{(batch role)} :perms/create-queries {table-id db-id})
+                             table-id))]
+            (is (= {:native-on-one-db            [:query-builder :query-builder]
+                    :no-native                   [:query-builder]
+                    :native-on-two-dbs           [:query-builder-and-native :query-builder]
+                    :granular                    [:query-builder :query-builder :no]
+                    :native-sandboxed-on-two-dbs [:query-builder :query-builder]}
+                   {:native-on-one-db            [(value :native-on-one-db a-1 db-1) (value :native-on-one-db a-2 db-1)]
+                    :no-native                   [(value :no-native a-1 db-1)]
+                    :native-on-two-dbs           [(value :native-on-two-dbs a-1 db-1) (value :native-on-two-dbs b-1 db-2)]
+                    :granular                    [(value :granular a-1 db-1) (value :granular b-1 db-2) (value :granular b-2 db-2)]
+                    :native-sandboxed-on-two-dbs [(value :native-sandboxed-on-two-dbs a-1 db-1)
+                                                  (value :native-sandboxed-on-two-dbs b-1 db-2)]}))))))))
+
+(deftest create-sandboxes-statement-count-does-not-grow-with-rows-test
+  (mt/with-premium-features #{:sandboxes}
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/with-model-cleanup [:model/Sandbox :model/PermissionsGroup]
+        (let [table-ids (vec (t2/insert-returning-pks! :model/Table (for [i (range 16)]
+                                                                      (merge (mt/with-temp-defaults :model/Table)
+                                                                             {:db_id db-id :schema "PUBLIC" :name (str "T" i)}))))
+              groups!   (fn [tag n]
+                          (vec (t2/insert-returning-pks! :model/PermissionsGroup
+                                                         (for [i (range n)] {:name (format "sandbox count %s %d %d" tag n i)}))))
+              native!   (fn [group-ids]
+                          (doseq [group-id group-ids]
+                            (perms/set-database-permission! group-id db-id :perms/create-queries :query-builder-and-native)))
+              counted   (fn [thunk] (t2/with-call-count [call-count] (thunk) (call-count)))]
+          (testing "one group with native access, n Tables"
+            (let [run (fn [n]
+                        (let [[group-id] (groups! "one group" n)]
+                          (native! [group-id])
+                          (counted #(sandboxes/create-sandboxes! (mapv (fn [table-id] {:group_id group-id :table_id table-id})
+                                                                       (take n table-ids))))))]
+              (run 2)
+              (is (= (run 4) (run 16)))))
+          (testing "n groups with native access, one Table each"
+            (let [run (fn [n]
+                        (let [group-ids (groups! "distinct groups" n)]
+                          (native! group-ids)
+                          (counted #(sandboxes/create-sandboxes! (mapv (fn [group-id table-id] {:group_id group-id :table_id table-id})
+                                                                       group-ids table-ids)))))]
+              (run 2)
+              (is (= (run 4) (run 16)))))
+          (testing "n new sandboxes of a permissions graph, one group"
+            (let [run (fn [n]
+                        (let [[group-id] (groups! "graph" n)]
+                          (native! [group-id])
+                          (counted #(sandboxes/upsert-sandboxes-for-graph! (mapv (fn [table-id] {:group_id group-id :table_id table-id})
+                                                                                 (take n table-ids))))))]
+              (run 2)
+              (is (= (run 4) (run 16))))))))))
+
+(deftest create-sandboxes-with-cards-statement-count-test
+  (testing "sandboxes with Cards on fresh Tables are checked against the Database of each Table in as many statements for 2 rows as for 6"
+    (mt/with-premium-features #{:sandboxes}
+      (let [mp    (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+        (mt/with-temp [:model/Database {db-id :id}   {}
+                       :model/Card     {card-id :id} {:dataset_query   query
+                                                      :result_metadata (qp.preprocess/query->expected-cols query)}]
+          (mt/with-model-cleanup [:model/Sandbox :model/PermissionsGroup :model/Table]
+            (let [checked (atom #{})
+                  run     (fn [n]
+                            (let [table-ids (vec (t2/insert-returning-pks! :model/Table
+                                                                           (for [i (range n)]
+                                                                             (merge (mt/with-temp-defaults :model/Table)
+                                                                                    {:db_id db-id :schema "PUBLIC" :name (format "S%d_%d" n i)}))))
+                                  group-ids (vec (t2/insert-returning-pks! :model/PermissionsGroup
+                                                                           (for [i (range n)] {:name (format "sandbox card count %d %d" n i)})))]
+                              (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (fn [database-id _table-id]
+                                                                                              (swap! checked conj database-id)
+                                                                                              {})]
+                                (t2/with-call-count [call-count]
+                                  (sandboxes/create-sandboxes! (mapv (fn [group-id table-id]
+                                                                       {:group_id group-id :table_id table-id :card_id card-id})
+                                                                     group-ids table-ids))
+                                  (call-count)))))]
+              (run 1)
+              (is (= (run 2) (run 6)))
+              (is (= #{db-id} @checked)))))))))

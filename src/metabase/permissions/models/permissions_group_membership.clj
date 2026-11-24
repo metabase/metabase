@@ -323,6 +323,19 @@
                           opts))
    nil))
 
+(mu/defn remove-memberships! :- :nil
+  "Remove each User from its group of the `[user-id group-id]` `pairs` as [[remove-users-from-groups!]] does, with the
+  memberships of all pairs read and deleted at once, publishing the events of the writes with `opts`."
+  [pairs :- [:sequential [:tuple pos-int? pos-int?]]
+   opts  :- :metabase.events.schema/write-opts]
+  (when (seq pairs)
+    (let [wanted (set pairs)]
+      (delete-memberships! (filterv (comp wanted (juxt :user_id :group_id))
+                                    (permissions.db/memberships-for-users-in-groups (vec (distinct (map first pairs)))
+                                                                                    (vec (distinct (map second pairs)))))
+                           opts)))
+  nil)
+
 (defn- check-membership-updates
   "Throws a 400 unless every row of `updates`, whose stored memberships `id->stored` holds, satisfies these rules, with
   the refusal of the first row that breaks one, in this order for each:

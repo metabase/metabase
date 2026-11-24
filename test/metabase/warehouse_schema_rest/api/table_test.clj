@@ -15,6 +15,7 @@
    [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
@@ -26,6 +27,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.api.table :as api.table]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent Executors)))
@@ -429,12 +431,12 @@
 
 (deftest query-metadata-transform-hydration-test
   (testing "GET /api/table/:id/query_metadata hydrates the source :transform based on transforms availability (GDGT-2523)"
-    (mt/with-temp [:model/Transform transform {:name   "My transform"
-                                               :source {:type  :query
-                                                        :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
-                                               :target {:type "table" :database (mt/id) :name "my_transform_table"}}
-                   :model/Table     {table-id :id} {:db_id        (mt/id)
-                                                    :transform_id (:id transform)}]
+    (mt/with-temp [:model/Table     {table-id :id} {:db_id (mt/id)}
+                   :model/Transform transform {:name            "My transform"
+                                               :source          {:type  :query
+                                                                 :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                               :target          {:type "table" :database (mt/id) :name "my_transform_table"}
+                                               :target_table_id table-id}]
       (testing "self-hosted (not hosted) without :transforms-basic still hydrates the source transform"
         (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
           (mt/with-premium-features #{}
@@ -1267,12 +1269,11 @@
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {table-1-id :id} {:db_id db-id
                                                     :name "table_1"
-                                                    :active true
-                                                    :is_published true}
+                                                    :active true}
+                     :model/TableUserSettings _ {:table_id table-1-id :is_published true}
                      :model/Table {table-2-id :id} {:db_id db-id
                                                     :name "table_2"
-                                                    :active true
-                                                    :is_published false}]
+                                                    :active true}]
         (testing "both tables returned without filter"
           (is (= #{table-1-id table-2-id}
                  (->> (mt/user-http-request :crowberto :get 200 "table")
@@ -1291,6 +1292,134 @@
                       (filter #(= (:db_id %) db-id))
                       (map :id)
                       set))))))))
+
+(defn- listed-tables
+  "The Tables of the Database with `db-id` that `GET /api/table` lists with query `params`."
+  [db-id & params]
+  (filter #(= (:db_id %) db-id)
+          (apply mt/user-http-request :crowberto :get 200 "table" params)))
+
+(defn- listed-table-ids
+  "The ids of the Tables of the Database with `db-id` that `GET /api/table` lists with query `params`."
+  [db-id & params]
+  (into #{} (map :id) (apply listed-tables db-id params)))
+
+(deftest present-tables-reads-collections-together-test
+  (mt/with-temp [:model/Collection {readable-id :id}   {}
+                 :model/Collection {unreadable-id :id} {}]
+    (perms/grant-collection-read-permissions! (perms-group/all-users) readable-id)
+    (mt/with-test-user :rasta
+      (let [collections! (fn [n]
+                           (vec (t2/insert-returning-instances! :model/Collection (repeat n {:name "published into"}))))
+            tables       (fn [collections]
+                           (mapv (fn [collection] {:id (:id collection) :schema nil :db {} :collection collection}) collections))
+            statements   (fn [collections]
+                           (let [tables (tables collections)]
+                             (t2/with-call-count [call-count] (schema.table/present-tables tables) (call-count))))
+            small        (collections! 3)
+            large        (collections! 10)]
+        (doseq [collection (concat small large)]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) (:id collection)))
+        (statements small)
+        (is (= (statements small) (statements (concat small large))))
+        (testing "a Collection the user cannot read is removed and one they can read is kept"
+          (let [[readable unreadable] (schema.table/present-tables
+                                       (tables [(t2/select-one :model/Collection :id readable-id)
+                                                (t2/select-one :model/Collection :id unreadable-id)]))]
+            (is (= readable-id (-> readable :collection :id)))
+            (is (nil? (:collection unreadable)))))))))
+
+(deftest published-only-skips-unpublished-settings-test
+  (testing "GET /api/table?published-only=true skips Table with unpublished settings"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {published :id} {:db_id db-id :name "table_1" :active true}
+                   :model/TableUserSettings _ {:table_id published :is_published true}
+                   :model/Table {unpublished :id} {:db_id db-id :name "table_2" :active true}
+                   :model/TableUserSettings _ {:table_id unpublished :is_published false}]
+      (is (= #{published unpublished} (listed-table-ids db-id)))
+      (is (= #{published} (listed-table-ids db-id :published-only true))))))
+
+(deftest published-only-with-term-filter-test
+  (testing "GET /api/table?published-only=true&term="
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {matching :id} {:db_id        db-id
+                                                :name         "ledger_entries"
+                                                :display_name "Ledger Entries"
+                                                :active       true}
+                   :model/TableUserSettings _ {:table_id     matching
+                                               :is_published true
+                                               :display_name "Bookkeeping"}
+                   :model/Table {other-name :id} {:db_id        db-id
+                                                  :name         "invoices"
+                                                  :display_name "Invoices"
+                                                  :active       true}
+                   :model/TableUserSettings _ {:table_id other-name :is_published true}
+                   :model/Table {unpublished :id} {:db_id        db-id
+                                                   :name         "ledger_accounts"
+                                                   :display_name "Ledger Accounts"
+                                                   :active       true}]
+      (testing "term alone matches published and unpublished Tables"
+        (is (= #{matching unpublished} (listed-table-ids db-id :term "ledger"))))
+      (testing "term matches name of published Table, which comes back with its own names"
+        (is (=? [{:id matching :name "ledger_entries" :display_name "Ledger Entries"}]
+                (listed-tables db-id :published-only true :term "ledger_e"))))
+      (testing "term matches display name of published Table"
+        (is (= #{matching} (listed-table-ids db-id :published-only true :term "Ledger")))
+        (is (= #{matching} (listed-table-ids db-id :published-only true :term "Entr"))))
+      (testing "term does not match display name of settings"
+        (is (= #{} (listed-table-ids db-id :published-only true :term "Bookkeeping")))))))
+
+(deftest owner-filters-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/User {user-id :id} {:email "table-owner@example.com"}
+                 :model/User {other-user-id :id} {:email "other-table-owner@example.com"}
+                 :model/Table {by-user :id} {:db_id db-id :name "table_1" :active true :owner_user_id user-id}
+                 :model/Table {by-other-user :id} {:db_id db-id :name "table_2" :active true
+                                                   :owner_user_id other-user-id}
+                 :model/Table {by-email :id} {:db_id db-id :name "table_3" :active true
+                                              :owner_email "table-owner@example.com"}
+                 :model/Table {by-other-email :id} {:db_id db-id :name "table_4" :active true
+                                                    :owner_email "other-table-owner@example.com"}
+                 :model/Table _ {:db_id db-id :name "table_5" :active true}]
+    (testing "GET /api/table?owner-user-id="
+      (is (= #{by-user} (listed-table-ids db-id :owner-user-id user-id)))
+      (is (= #{by-other-user} (listed-table-ids db-id :owner-user-id other-user-id))))
+    (testing "GET /api/table?owner-email="
+      (is (= #{by-email} (listed-table-ids db-id :owner-email "table-owner@example.com")))
+      (is (= #{by-other-email} (listed-table-ids db-id :owner-email "other-table-owner@example.com"))))))
+
+(deftest visibility-type-filter-test
+  (testing "GET /api/table?visibility-type="
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {hidden :id} {:db_id db-id :name "table_1" :active true :visibility_type :hidden}
+                   :model/Table {technical :id} {:db_id db-id :name "table_2" :active true
+                                                 :visibility_type :technical}
+                   :model/Table {visible :id} {:db_id db-id :name "table_3" :active true}]
+      (is (= #{hidden technical visible} (listed-table-ids db-id)))
+      (is (= #{hidden} (listed-table-ids db-id :visibility-type "hidden")))
+      (is (= #{technical} (listed-table-ids db-id :visibility-type "technical"))))))
+
+(deftest data-source-filter-test
+  (testing "GET /api/table?data-source="
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {ingested :id} {:db_id db-id :name "table_1" :active true :data_source :ingested}
+                   :model/Table {uploaded :id} {:db_id db-id :name "table_2" :active true :data_source :upload}
+                   :model/Table {unset :id} {:db_id db-id :name "table_3" :active true}]
+      (is (= #{ingested uploaded unset} (listed-table-ids db-id)))
+      (is (= #{ingested} (listed-table-ids db-id :data-source "ingested")))
+      (is (= #{uploaded} (listed-table-ids db-id :data-source "upload"))))))
+
+(deftest include-transform-targets-filter-test
+  (testing "GET /api/table?include-transform-targets=true"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {active :id} {:db_id db-id :name "table_1" :active true}
+                   :model/Table {target :id} {:db_id db-id :name "table_2" :active false :transform_target true}
+                   :model/Table _ {:db_id db-id :name "table_3" :active false}]
+      (testing "inactive transform target is not listed by default"
+        (is (= #{active} (listed-table-ids db-id)))
+        (is (= #{active} (listed-table-ids db-id :include-transform-targets false))))
+      (testing "inactive transform target is listed with option, other inactive Table is not"
+        (is (= #{active target} (listed-table-ids db-id :include-transform-targets true)))))))
 
 (deftest no-fks-for-missing-tables-test
   (testing "Check that we don't return foreign keys for missing/inactive tables"
@@ -1387,22 +1516,24 @@
 (deftest bulk-update-tables-collection-id-persists-test
   (testing "PUT /api/table with an ids vector moves every listed published table to collection_id"
     (mt/with-temp [:model/Collection {coll-id :id} {:type collections/library-data-collection-type}
-                   :model/Table      {t1 :id}      {:db_id (mt/id) :is_published true}
-                   :model/Table      {t2 :id}      {:db_id (mt/id) :is_published true}]
+                   :model/Table      {t1 :id}      {:db_id (mt/id)}
+                   :model/TableUserSettings _      {:table_id t1 :is_published true}
+                   :model/Table      {t2 :id}      {:db_id (mt/id)}
+                   :model/TableUserSettings _      {:table_id t2 :is_published true}]
       (mt/user-http-request :crowberto :put 200 "table"
                             {:ids [t1 t2] :collection_id coll-id})
       (is (= [coll-id coll-id]
-             (map #(user-table-fn :collection_id %) [t1 t2])))
+             (map #(t2/select-one-fn :collection_id :model/TableUserSettings :table_id %) [t1 t2])))
       (testing "and leaves is_published as it was, as PUT /api/table/:id does"
         (is (= [true true]
-               (map #(user-table-fn :is_published %) [t1 t2])))))))
+               (map #(t2/select-one-fn :is_published :model/TableUserSettings :table_id %) [t1 t2])))))))
 
 (deftest update-unpublished-table-collection-id-test
   (testing "PUT /api/table/:id with collection_id refuses an unpublished table"
     (mt/with-temp [:model/Collection {coll-id :id} {:type collections/library-data-collection-type}
                    :model/Table      {table-id :id} {:db_id (mt/id)}]
       (mt/user-http-request :crowberto :put 400 (format "table/%d" table-id) {:collection_id coll-id})
-      (is (nil? (user-table-fn :collection_id table-id))))))
+      (is (nil? (t2/select-one-fn :collection_id :model/TableUserSettings :table_id table-id))))))
 
 (deftest update-table-data-source-metabase-transform-test
   (testing "PUT /api/table/:id does not accept metabase-transform as data_source"
@@ -1422,7 +1553,7 @@
         (mt/user-http-request user :put status "table"
                               {:ids [t1 t2] :collection_id coll-id})
         (is (= [nil nil]
-               (map #(user-table-fn :collection_id %) [t1 t2])))))))
+               (map #(t2/select-one-fn :collection_id :model/TableUserSettings :table_id %) [t1 t2])))))))
 
 (deftest bulk-update-tables-field-order-persists-test
   (testing "PUT /api/table with an ids vector sets field_order on every listed table"
@@ -1511,3 +1642,81 @@
         (is (= 23 (:card_schema (t2/query-one {:select [:card_schema]
                                                :from   [:report_card]
                                                :where  [:= :id metric-id]}))))))))
+
+(defn- insert-fk-star!
+  "Inserts a Database with a center Table and `n` other Tables, each other Table with an FK Field to the center's PK
+  and the center with an FK Field to each other Table's PK, gives All Users nothing on it and the group with
+  `group-id` full query access, and returns `{:db-id :center-id :pk-id}`."
+  [n group-id]
+  (let [db-id    (first (t2/insert-returning-pks! :model/Database
+                                                  [(merge (mt/with-temp-defaults :model/Database)
+                                                          {:engine :h2 :details {:db "mem:statement-count-test"}})]))
+        table!   (fn [] (first (t2/insert-returning-pks! :model/Table [(merge (mt/with-temp-defaults :model/Table)
+                                                                              {:db_id db-id :active true})])))
+        pk!      (fn [table-id] (first (t2/insert-returning-pks! :model/Field
+                                                                 [(merge (mt/with-temp-defaults :model/Field)
+                                                                         {:table_id table-id :name "ID"
+                                                                          :semantic_type :type/PK})])))
+        fk!      (fn [table-id target-id name]
+                   (t2/insert! :model/Field (merge (mt/with-temp-defaults :model/Field)
+                                                   {:table_id table-id :name name :semantic_type :type/FK
+                                                    :fk_target_field_id target-id})))
+        center   (table!)
+        pk-id    (pk! center)]
+    (doseq [i (range n)]
+      (let [other    (table!)
+            other-pk (pk! other)]
+        (fk! other pk-id "CENTER_ID")
+        (fk! center other-pk (str "OTHER_" i))))
+    (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :blocked)
+    (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :no)
+    (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+    (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder)
+    {:db-id db-id :center-id center :pk-id pk-id}))
+
+(defn- request-statement-count
+  "The number of statements the request `args` of rasta costs."
+  [& args]
+  (t2/with-call-count [call-count]
+    (apply mt/user-http-request :rasta args)
+    (call-count)))
+
+(deftest fks-statement-count-test
+  (testing "GET /api/table/:id/fks costs as many statements for 8 FKs as for 2, and loads each destination with its Table"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (let [counts (fn [n]
+                       (let [{:keys [center-id pk-id]} (insert-fk-star! n group-id)
+                             path                      (format "table/%d/fks" center-id)
+                             fks                       (mt/user-http-request :rasta :get 200 path)]
+                         (is (= n (count fks)))
+                         (is (every? #(and (= pk-id (get-in % [:destination :id]))
+                                           (= center-id (get-in % [:destination :table :id])))
+                                     fks))
+                         (request-statement-count :get 200 path)))]
+          (is (= (counts 2) (counts 8))))))))
+
+(deftest related-statement-count-test
+  (testing "GET /api/table/:id/related costs as many statements for 28 linked Tables as for 14"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (let [counts (fn [n]
+                       (let [{:keys [center-id]} (insert-fk-star! n group-id)
+                             path                (format "table/%d/related" center-id)
+                             related             (mt/user-http-request :rasta :get 200 path)]
+                         (is (= (min n 5) (count (:linked-from related)) (count (:linking-to related))))
+                         (request-statement-count :get 200 path)))]
+          (is (= (counts 14) (counts 28))))))))
+
+(deftest ^:synchronized table-list-statement-count-test
+  (testing "GET /api/table costs as many statements for Tables in 6 Databases as in 2"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (dotimes [_ 2] (insert-fk-star! 0 group-id))
+        (mt/user-http-request :rasta :get 200 "table")
+        (let [small (request-statement-count :get 200 "table")]
+          (dotimes [_ 4] (insert-fk-star! 0 group-id))
+          (is (= small (request-statement-count :get 200 "table"))))))))

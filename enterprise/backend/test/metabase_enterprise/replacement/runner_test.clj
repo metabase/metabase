@@ -14,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-user-settings]
    [toucan2.core :as t2]))
@@ -340,3 +341,33 @@
         (is (some? fus))
         (is (= "Product ID" (:display_name fus)))
         (is (= "The product identifier" (:description fus)))))))
+
+(deftest copy-model-metadata-overrides!-statement-count-test
+  (testing "copying the overrides of 10 model columns costs as many statements as of 40, half the Fields with settings"
+    (let [mp     (lib-be/application-database-metadata-provider (mt/id))
+          query  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          copied (fn [n]
+                   (mt/with-temp [:model/Table {table-id :id} {:name "transform_output" :db_id (mt/id) :active true}
+                                  :model/Card  {card-id :id}  {:type :model :database_id (mt/id) :dataset_query query}]
+                     (let [field-ids (t2/insert-returning-pks! :model/Field
+                                                               (for [i (range n)]
+                                                                 {:table_id table-id :name (str "C" i) :base_type :type/Text
+                                                                  :database_type "VARCHAR"}))]
+                       (t2/insert! :model/FieldUserSettings (for [id (take-nth 2 field-ids)]
+                                                              {:field_id id :description "old" :description_set true}))
+                       (t2/query-one {:update :report_card
+                                      :set    {:result_metadata
+                                               (json/encode (for [i (range n)]
+                                                              {:name         (str "C" i)
+                                                               :display_name "Column"
+                                                               :description  "Copied"
+                                                               :base_type    "type/Text"}))}
+                                      :where  [:= :id card-id]})
+                       (u/prog1 (t2/with-call-count [call-count]
+                                  (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
+                                  (call-count))
+                         (is (= (repeat n ["Column" "Copied"])
+                                (map (juxt :display_name :description)
+                                     (t2/select :model/FieldUserSettings :field_id [:in field-ids]))))))))]
+      (copied 2)
+      (is (= (copied 10) (copied 40))))))

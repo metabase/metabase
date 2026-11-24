@@ -21,6 +21,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -3380,12 +3381,14 @@
   in."
   [cards-or-card-ids]
   (when (seq cards-or-card-ids)
-    (let [cards               (t2/select [:model/Card :collection_id] :id [:in (map u/the-id cards-or-card-ids)])
-          collection-ids      (set (filter identity (map :collection_id cards)))
+    (let [card-ids            (map u/the-id cards-or-card-ids)
+          card-id->collection (t2/select-pk->fn :collection_id :model/Card :id [:in card-ids])
+          collection-ids      (set (filter identity (vals card-id->collection)))
           collection-id->name (when (seq collection-ids)
                                 (t2/select-pk->fn :name :model/Collection :id [:in collection-ids]))]
-      (for [card cards]
-        (get collection-id->name (:collection_id card))))))
+      (for [card-id card-ids
+            :when   (contains? card-id->collection card-id)]
+        (get collection-id->name (card-id->collection card-id))))))
 
 (defn- POST-card-collections!
   "Update the Collection of `cards-or-card-ids` via the `POST /api/card/collections` endpoint using `username`; return
@@ -3624,6 +3627,139 @@
                                                    {:collection_id to-id, :card_ids card-ids}))
                            @calls)))]
       (is (= 1 (hydrations 2) (hydrations 8))))))
+
+(deftest bulk-move-from-many-collections-refuses-one-unwritable-collection-test
+  (testing "POST /api/card/collections moves nothing when one of the collections the cards leave is not writable"
+    (mt/with-temp [:model/Collection {dest-id :id}     {:name "Destination Collection"}
+                   :model/Collection {writable-1 :id}  {:name "Writable Collection 1"}
+                   :model/Collection {writable-2 :id}  {:name "Writable Collection 2"}
+                   :model/Collection {read-only :id}   {:name "Read Only Collection"}
+                   :model/Card       card-1            {:collection_id writable-1}
+                   :model/Card       card-2            {:collection_id writable-2}
+                   :model/Card       card-3            {:collection_id read-only}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-id)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-1)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-2)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) read-only)
+      (is (= {:response    "You don't have permissions to do that."
+              :collections ["Writable Collection 1" "Writable Collection 2" "Read Only Collection"]}
+             (POST-card-collections! :rasta 403 dest-id [card-1 card-2 card-3])))
+      (is (= {:response    {:status "ok"}
+              :collections ["Destination Collection" "Destination Collection"]}
+             (POST-card-collections! :rasta 200 dest-id [card-1 card-2]))))))
+
+(deftest bulk-move-pinned-cards-to-collection-without-pinned-cards-test
+  (testing "POST /api/card/collections puts pinned cards first in a collection that has none"
+    (mt/with-temp [:model/Collection {from-id :id} {:name "Old Collection"}
+                   :model/Collection {to-id :id}   {:name "New Collection"}
+                   :model/Card       card-a        {:name "a" :collection_id from-id :collection_position 1}
+                   :model/Card       _             {:name "b" :collection_id from-id :collection_position 2}
+                   :model/Card       card-c        {:name "c" :collection_id from-id :collection_position 3}
+                   :model/Card       _             {:name "d" :collection_id from-id :collection_position 4}
+                   :model/Card       _             {:name "e" :collection_id to-id}]
+      (is (= {:status "ok"}
+             (:response (POST-card-collections! :crowberto 200 to-id [card-c card-a]))))
+      (is (= {"a" 1 "c" 2 "e" nil}
+             (t2/select-fn->fn :name :collection_position :model/Card :collection_id to-id)))
+      (is (= {"b" 1 "d" 2}
+             (t2/select-fn->fn :name :collection_position :model/Card :collection_id from-id))))))
+
+(defn- position-by-name
+  "The `collection_position` by name of the Cards, Dashboards, Pulses and Documents in the Collection `collection-id`."
+  [collection-id]
+  (into {}
+        (mapcat #(t2/select-fn->fn :name :collection_position % :collection_id collection-id))
+        [:model/Card :model/Dashboard :model/Pulse :model/Document]))
+
+(deftest bulk-move-pinned-cards-from-many-collections-test
+  (testing "POST /api/card/collections closes the gaps of each old Collection and appends in the order of the positions"
+    (mt/with-temp [:model/Collection {from-1 :id} {}
+                   :model/Collection {from-2 :id} {}
+                   :model/Collection {to-id :id}  {}
+                   :model/Card       a1 {:name "a1" :collection_id from-1 :collection_position 1}
+                   :model/Card       _  {:name "a2" :collection_id from-1 :collection_position 2}
+                   :model/Card       a3 {:name "a3" :collection_id from-1 :collection_position 3}
+                   :model/Card       b1 {:name "b1" :collection_id from-2 :collection_position 1}
+                   :model/Card       _  {:name "b2" :collection_id from-2 :collection_position 2}
+                   :model/Card       _  {:name "n"  :collection_id from-2}]
+      (is (= {:status "ok"}
+             (:response (POST-card-collections! :crowberto 200 to-id [a3 b1 a1]))))
+      (is (= {"a2" 1} (position-by-name from-1)))
+      (is (= {"b2" 1 "n" nil} (position-by-name from-2)))
+      (let [dest (position-by-name to-id)]
+        (is (= 3 (get dest "a3")))
+        (is (= #{1 2} (set (map dest ["a1" "b1"]))))))))
+
+(deftest bulk-move-pinned-cards-statement-count-test
+  (testing "POST /api/card/collections takes no more statements for many pinned Cards than for few beyond those of giving each Card its position, permission checks included"
+    (mt/with-temp [:model/Collection {to-id :id} {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+      (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Pulse :model/Document :model/Collection]
+        (let [pinned!   (fn [n]
+                          (let [from-id (t2/insert-returning-pk! :model/Collection
+                                                                 (merge (mt/with-temp-defaults :model/Collection)
+                                                                        {:name (str "from " (random-uuid))}))]
+                            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-id)
+                            {:from-id from-id
+                             :ids     (mapv (fn [i]
+                                              (t2/insert-returning-pk! :model/Card
+                                                                       (merge (mt/with-temp-defaults :model/Card)
+                                                                              {:name (str "pinned " i) :collection_id from-id :collection_position (inc i)})))
+                                            (range n))}))
+              move!     (fn [n]
+                          (let [{:keys [from-id ids]} (pinned! n)]
+                            (doseq [[offset model] (map-indexed vector [:model/Dashboard :model/Pulse :model/Document])]
+                              (t2/insert! model (merge (mt/with-temp-defaults model)
+                                                       {:collection_id from-id :collection_position (+ n offset 1)})))
+                            (events.tu/real-statement-count!
+                             #(mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id}))))
+              position! (fn [n]
+                          (let [updates (vec (map-indexed (fn [i id] {:id id :collection_position (+ n i 1)})
+                                                          (:ids (pinned! n))))]
+                            (mt/with-test-user :rasta
+                              (events.tu/real-statement-count! #(card/update-cards! updates)))))]
+          (move! 2)
+          (position! 2)
+          (let [few  (min (move! 10) (move! 10))
+                many (min (move! 40) (move! 40))]
+            (is (<= (- many few) (- (position! 40) (position! 10))))))))))
+
+(deftest bulk-move-pinned-cards-refuses-unwritable-collection-test
+  (testing "POST /api/card/collections moves nothing and keeps the positions when one pinned Card is in a Collection that is not writable"
+    (mt/with-temp [:model/Collection {writable :id}  {}
+                   :model/Collection {read-only :id} {}
+                   :model/Collection {to-id :id}     {}
+                   :model/Card       a {:name "a" :collection_id writable :collection_position 1}
+                   :model/Card       _ {:name "b" :collection_id writable :collection_position 2}
+                   :model/Card       c {:name "c" :collection_id read-only :collection_position 1}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) read-only)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+      (is (= "You don't have permissions to do that."
+             (:response (POST-card-collections! :rasta 403 to-id [a c]))))
+      (is (= {"a" 1 "b" 2} (position-by-name writable)))
+      (is (= {"c" 1} (position-by-name read-only)))
+      (is (= {} (position-by-name to-id))))))
+
+(deftest bulk-move-from-many-collections-statement-count-test
+  (testing "POST /api/card/collections takes as many statements for cards of many collections as for few, permission checks included"
+    (mt/with-temp [:model/Collection {to-id :id} {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (let [move! (fn [n]
+                      (let [ids (mapv (fn [i]
+                                        (let [{from-id :id} (first (collection/create-collections! [{:name (str "source " i " " (random-uuid)) :location "/"}]))]
+                                          (t2/insert-returning-pk! :model/Card
+                                                                   (merge (mt/with-temp-defaults :model/Card)
+                                                                          {:name (str "moving " i) :collection_id from-id}))))
+                                      (range n))]
+                        (events.tu/real-statement-count!
+                         #(mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id}))))
+              measure (fn [n] (min (move! n) (move! n)))]
+          (move! 2)
+          (let [few  (measure 10)
+                many (measure 40)]
+            (is (= few many))))))))
 
 (deftest moving-a-card-without-a-collection-position-keeps-the-collection-position-nil
   (mt/with-temp [:model/Collection  {coll-id-1 :id}      {:name "Old Collection"}
@@ -4440,6 +4576,53 @@
         (let [response (mt/user-http-request :rasta :get 200
                                              (format "card/%d" (:id field-filter-card)))]
           (is (every? empty? (vals (:param_fields response)))))))))
+
+(defn- field-filters-card
+  "Card attributes for a native Card with one field filter parameter on each Field of `field-ids`."
+  [field-ids]
+  (let [mp    (mt/metadata-provider)
+        names (mapv #(str "tag" %) (range (count field-ids)))]
+    {:dataset_query (-> (lib/native-query mp (str "SELECT 1 WHERE " (str/join " AND " (map #(str "{{" % "}}") names))))
+                        (lib/with-template-tags (into {}
+                                                      (map (fn [tag-name field-id]
+                                                             [tag-name {:id           tag-name
+                                                                        :name         tag-name
+                                                                        :display-name tag-name
+                                                                        :type         :dimension
+                                                                        :field-id     field-id
+                                                                        :widget-type  :string/=}])
+                                                           names field-ids))))
+     :parameters    (mapv (fn [tag-name]
+                            {:id     tag-name
+                             :type   :string/=
+                             :target [:dimension [:template-tag tag-name]]
+                             :name   tag-name
+                             :slug   tag-name})
+                          names)}))
+
+(deftest param-fields-keep-only-viewable-tables-test
+  (testing "param_fields keep the Fields of Tables the user may view and drop those of the others, from one read"
+    (mt/with-temp [:model/Card {card-id :id} (field-filters-card [(mt/id :venues :name) (mt/id :categories :name)])]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/view-data :blocked)
+        (is (= {:tag0 [(mt/id :venues :name)]
+                :tag1 []}
+               (update-vals (:param_fields (mt/user-http-request :rasta :get 200 (format "card/%d" card-id)))
+                            #(mapv :id %))))))))
+
+(deftest param-fields-statement-count-test
+  (testing "GET /api/card/:id reads the view permissions of the Tables of param_fields in as many statements for 2 Tables as for 6"
+    (let [field-ids [(mt/id :venues :name) (mt/id :categories :name) (mt/id :users :name)
+                     (mt/id :people :name) (mt/id :products :title) (mt/id :orders :total)]
+          counted   (fn [n]
+                      (mt/with-temp [:model/Card {card-id :id} (field-filters-card (take n field-ids))]
+                        (mt/user-http-request :rasta :get 200 (format "card/%d" card-id))
+                        (t2/with-call-count [call-count]
+                          (is (= n (count (:param_fields (mt/user-http-request :rasta :get 200 (format "card/%d" card-id))))))
+                          (call-count))))]
+      (is (= (counted 2) (counted 6))))))
 
 (deftest parameters-with-field-to-field-remapping-test
   (let [param-key "id/param"]
@@ -6217,4 +6400,74 @@
                           (mt/user-http-request :rasta :post 200 "card/collections" {:card_ids ids :collection_id to-id})
                           (call-count))))]
           (move! 1)
-          (is (= (move! 2) (move! 6))))))))
+          (is (= (min (move! 2) (move! 2)) (min (move! 6) (move! 6)))))))))
+
+(defn- per-card-refusal
+  "What the walk over `card-changes` that asks [[mi/can-update?]] of each card in turn, stopping at the first refusal,
+  answers: the id of the first card it refuses, or the status and message of the exception it throws."
+  [card-changes]
+  (try
+    (some (fn [[card changes]] (when-not (mi/can-update? card changes) (:id card))) card-changes)
+    (catch clojure.lang.ExceptionInfo e
+      [(:status-code (ex-data e)) (ex-message e)])))
+
+(defn- bulk-refusal
+  "What [[card/first-update-refused]] answers for `card-changes`, in the shape of [[per-card-refusal]]."
+  [card-changes]
+  (try
+    (some-> (card/first-update-refused card-changes) first :id)
+    (catch clojure.lang.ExceptionInfo e
+      [(:status-code (ex-data e)) (ex-message e)])))
+
+(deftest first-update-refused-matches-walk-over-cards-test
+  (testing "the first Card that a bulk read refuses is the one that asking each Card refuses, whatever kind of refusal"
+    (mt/with-temp [:model/Collection {open-id :id}    {}
+                   :model/Collection {target-id :id}  {}
+                   :model/Collection {closed-id :id}  {}
+                   :model/Card       good-1           {:collection_id open-id}
+                   :model/Card       good-2           {:collection_id open-id}
+                   :model/Card       good-3           {:collection_id open-id}
+                   :model/Card       locked           {:collection_id closed-id}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) open-id)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) target-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) closed-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [pair      (fn [card changes] [(t2/hydrate card :can_write) changes])
+              move      {:collection_id target-id}
+              to-closed {:collection_id closed-id}
+              missing   {:collection_id Integer/MAX_VALUE}
+              cases     {"forbidden first"            [(pair locked move) (pair good-1 move) (pair good-2 move)]
+                         "forbidden in the middle"    [(pair good-1 move) (pair locked move) (pair good-2 move)]
+                         "forbidden last"             [(pair good-1 move) (pair good-2 move) (pair locked move)]
+                         "forbidden target after ok"  [(pair good-1 move) (pair good-2 to-closed) (pair locked move)]
+                         "refused write, no move"     [(pair good-1 {:name "a"}) (pair locked {:name "b"}) (pair good-2 move)]
+                         "missing target first"       [(pair good-1 missing) (pair locked move)]
+                         "refused before missing"     [(pair locked move) (pair good-1 missing)]
+                         "missing after refused write" [(pair good-1 move) (pair locked {:name "b"}) (pair good-2 missing)]
+                         "none refused"               [(pair good-1 move) (pair good-2 move) (pair good-3 move)]}]
+          (doseq [[label card-changes] cases]
+            (testing label
+              (is (= (per-card-refusal card-changes) (bulk-refusal card-changes))))))))))
+
+(deftest move-cards-to-collection-refusal-statement-count-test
+  (testing "POST /api/card/collections refuses a Card that the user may not write with as many statements for many Cards as for few"
+    (mt/with-temp [:model/Collection {from-id :id}   {}
+                   :model/Collection {to-id :id}     {}
+                   :model/Collection {closed-id :id} {}
+                   :model/Card       {locked-id :id} {:collection_id closed-id}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) from-id)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) to-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) closed-id)
+      (mt/with-model-cleanup [:model/Card]
+        (let [refuse! (fn [n]
+                        (let [ids (mapv (fn [i]
+                                          (t2/insert-returning-pk! :model/Card
+                                                                   (merge (mt/with-temp-defaults :model/Card)
+                                                                          {:name (str "refused " i) :collection_id from-id})))
+                                        (range n))]
+                          (t2/with-call-count [call-count]
+                            (mt/user-http-request :rasta :post 403 "card/collections"
+                                                  {:card_ids (conj ids locked-id) :collection_id to-id})
+                            (call-count))))]
+          (refuse! 1)
+          (is (= (refuse! 2) (refuse! 6))))))))

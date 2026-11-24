@@ -4,10 +4,8 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
-   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.explorations.schema :as explorations.schema]
-   [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -20,9 +18,10 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(methodical/defmethod t2/simple-hydrate [:model/ExplorationPage :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (explorations.db/block-thread-id-row (:exploration_block_id instance)) (t2/hydrate :can_read) mi/can-read?))))
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationPage :can_read]
+  "Add whether the current user can read each ExplorationPage, which is whether they can read its parent."
+  [_model k instances]
+  (exploration/hydrate-can-read-from-parents k instances :exploration_block_id :model/ExplorationBlock))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationPage :can_write]
   "Add whether the current user can write each ExplorationPage, which is whether they can write its parent."

@@ -2662,7 +2662,8 @@
                                                       :visualization_settings {}
                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
                                                       :collection_id parent-coll :name "OSS Test Card"}])]
-            (mt/with-temp [:model/Table {table-id :id} {:name "OSS Published Table" :is_published true :collection_id parent-coll}]
+            (mt/with-temp [:model/Table {table-id :id} {:name "OSS Published Table"}
+                           :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id parent-coll}]
               (testing "Collection-filtered search should NOT include published tables in OSS"
                 (let [result-ids (into #{} (map :id) (:data (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)))]
                   (is (contains? result-ids card-id)
@@ -2792,7 +2793,8 @@
   (search.tu/with-temp-index-table-if-supported
     (testing "the internal is_published permission signal never carries a value in search API responses"
       (let [table-name (mt/random-name)]
-        (mt/with-temp [:model/Table _ {:name table-name :is_published true}]
+        (mt/with-temp [:model/Table {table-id :id} {:name table-name}
+                       :model/TableUserSettings _ {:table_id table-id :is_published true}]
           (testing "in-place engine"
             (let [rows (:data (mt/user-http-request :crowberto :get 200 "search"
                                                     :q table-name :models "table" :search_engine "in-place"))]

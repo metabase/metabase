@@ -135,9 +135,8 @@
         id->ns     (when (seq root-colls)
                      (cd.db/collection-namespaces-by-id root-colls))
         ;; str realizes the label NOW, in the job's (site) locale
-        root-label (memoize (fn [collection-namespace]
-                              (str (:name (collection/root-collection-with-ui-details
-                                           collection-namespace)))))]
+        root-label (fn [collection-namespace]
+                     (str (:name (collection/root-collection-with-ui-details collection-namespace))))]
     (mapv (fn [{:keys [scope-collection-id entity-type entity-id] :as finding}]
             (assoc finding :entity-collection-name
                    (if scope-collection-id

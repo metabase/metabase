@@ -7,7 +7,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
-   [metabase.app-db.query :as app-db.query]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.documents.models.document :as document]
@@ -142,6 +141,6 @@
                                 (t2/insert-returning-pk! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
                                                                             :collection_id coll-id))))
                 findings (mapv #(mk-finding! :card %) card-ids)]
-            (with-redefs [app-db.query/delete-partition-size 2]
+            (mt/with-partition-size 2
               (card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids)))
             (is (every? invalidated? findings))))))))

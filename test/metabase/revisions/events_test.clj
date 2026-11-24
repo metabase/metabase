@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.app-db.query :as app-db.query]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.events.test-util :as events.tu]
@@ -35,7 +34,7 @@
   (testing "the revisions of every row of an event are recorded when the event holds more rows than one batch"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-model-cleanup [:model/Card]
-        (with-redefs [app-db.query/create-partition-size 2]
+        (mt/with-partition-size 2
           (let [rows (mapv (fn [_] {:creator_id (mt/user->id :rasta) :database_id (mt/id)
                                     :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
                                     :display :table :name (mt/random-name) :visualization_settings {}})

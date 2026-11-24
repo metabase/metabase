@@ -2,6 +2,7 @@
   "Application database queries for the SSO module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -22,11 +23,12 @@
   [user-id            :- ::lib.schema.id/user
    group-ids          :- [:set ms/PositiveInt]
    excluded-group-ids :- [:set ms/PositiveInt]]
-  (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                    {:where [:and
-                             [:= :user_id user-id]
-                             [:in :group_id group-ids]
-                             [:not-in :group_id excluded-group-ids]]}))
+  (mdb/select-batched-set #(t2/select-fn-set :group_id :model/PermissionsGroupMembership
+                                             {:where [:and
+                                                      [:= :user_id user-id]
+                                                      [:in :group_id %]
+                                                      [:not-in :group_id excluded-group-ids]]})
+                          group-ids))
 
 (mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity for `provider`."

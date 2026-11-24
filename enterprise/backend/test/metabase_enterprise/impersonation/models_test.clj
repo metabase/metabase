@@ -1,6 +1,7 @@
 (ns metabase-enterprise.impersonation.models-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.impersonation.db :as impersonation.db]
    [metabase-enterprise.impersonation.models :as impersonation.models]
    [metabase-enterprise.impersonation.schema :as impersonation.schema]
    [metabase.events.test-util :as events.tu]
@@ -65,3 +66,18 @@
         (is (= {db-id ["last_role"] other-id ["other_role"]}
                (update-vals (group-by :db_id (t2/select :model/ConnectionImpersonation :group_id group-id))
                             #(mapv :attribute %))))))))
+
+(deftest group-ids-for-user-statement-count-does-not-grow-without-user-test
+  (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                 :model/User                       {user-id :id}  {}
+                 :model/PermissionsGroupMembership _              {:group_id group-id :user_id user-id}]
+    (let [statements (fn [n id]
+                       (t2/with-call-count [call-count]
+                         (dotimes [_ n] (impersonation.db/group-ids-for-user id))
+                         (call-count)))]
+      (testing "lookups without user cost the same statements however many run"
+        (is (nil? (impersonation.db/group-ids-for-user nil)))
+        (is (= (statements 2 nil) (statements 8 nil))))
+      (testing "lookup with user still reads its groups"
+        (is (contains? (impersonation.db/group-ids-for-user user-id) group-id))
+        (is (< (statements 2 user-id) (statements 8 user-id)))))))

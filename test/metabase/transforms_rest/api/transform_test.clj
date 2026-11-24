@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -19,15 +20,15 @@
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
-   [metabase.transforms.test-util :refer [get-test-schema
-                                          parse-instant
-                                          seconds-from-now-ns
-                                          table-rows
-                                          transform-run-timeout-seconds
-                                          utc-timestamp
-                                          wait-for-table
-                                          with-transform-cleanup!
-                                          with-transforms-api-users!]]
+   [metabase.transforms.test-util :as transforms.tu :refer [get-test-schema
+                                                            parse-instant
+                                                            seconds-from-now-ns
+                                                            table-rows
+                                                            transform-run-timeout-seconds
+                                                            utc-timestamp
+                                                            wait-for-table
+                                                            with-transform-cleanup!
+                                                            with-transforms-api-users!]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -2337,6 +2338,59 @@
           (mt/user-http-request :rasta :delete 204 url)
           (is (false? (t2/exists? :model/Collection :id [:in [folder-id subfolder-id]]))))))))
 
+(defn- transforms-folder!
+  "Insert a transforms folder with `n` subfolders, give All Users write on each, and return the folder's id and the
+  subfolders' ids."
+  [n prefix]
+  (let [folder-id     (t2/insert-returning-pk! :model/Collection {:name (str prefix " folder") :namespace :transforms})
+        subfolder-ids (t2/insert-returning-pks! :model/Collection (for [i (range n)]
+                                                                    {:name      (str prefix " subfolder " i)
+                                                                     :namespace :transforms
+                                                                     :location  (format "/%d/" folder-id)}))]
+    (doseq [collection-id (cons folder-id subfolder-ids)]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id))
+    [folder-id subfolder-ids]))
+
+(deftest delete-transforms-folder-statement-count-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-model-cleanup [:model/Collection]
+      (let [statements (fn [n]
+                         (let [[folder-id subfolder-ids] (transforms-folder! n (str "Statements " n))]
+                           (t2/with-call-count [call-count]
+                             (mt/user-http-request :rasta :delete 204 (format "transform/collection/%d" folder-id))
+                             (u/prog1 (call-count)
+                               (is (false? (t2/exists? :model/Collection :id [:in (cons folder-id subfolder-ids)])))))))]
+        (statements 2)
+        (testing "DELETE /api/transform/collection/:id costs as many statements for 10 subfolders as for 40"
+          (is (= (statements 10) (statements 40))))
+        (testing "a folder with one subfolder user can only view is not deleted"
+          (let [[folder-id subfolder-ids] (transforms-folder! 3 "Refused")]
+            (perms/revoke-collection-permissions! (perms-group/all-users) (second subfolder-ids))
+            (perms/grant-collection-read-permissions! (perms-group/all-users) (second subfolder-ids))
+            (mt/user-http-request :rasta :delete 403 (format "transform/collection/%d" folder-id))
+            (is (= 4 (t2/count :model/Collection :id [:in (cons folder-id subfolder-ids)])))))))))
+
+(mt/when-ee-evailable
+ (deftest delete-transforms-folder-with-transforms-statement-count-test
+   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+     (mt/with-model-cleanup [:model/Collection :model/Transform]
+       (mt/with-data-analyst-role! (mt/user->id :lucky)
+         (with-transform-db-perms!
+           (let [statements (fn [n]
+                              (let [[folder-id] (transforms-folder! 0 (str "Transforms " n))
+                                    ids         (t2/insert-returning-pks! :model/Transform
+                                                                          (for [i (range n)]
+                                                                            (assoc (mt/with-temp-defaults :model/Transform)
+                                                                                   :name          (str "Transform " n " " i)
+                                                                                   :collection_id folder-id)))]
+                                (t2/with-call-count [call-count]
+                                  (mt/user-http-request :lucky :delete 204 (format "transform/collection/%d" folder-id))
+                                  (u/prog1 (call-count)
+                                    (is (false? (t2/exists? :model/Transform :id [:in ids])))))))]
+             (statements 2)
+             (testing "DELETE /api/transform/collection/:id costs as many statements for 10 transforms as for 40"
+               (is (= (statements 10) (statements 40)))))))))))
+
 (deftest delete-transforms-folder-blocked-by-transform-without-premium-feature-test
   (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
                  :model/Transform  {transform-id :id} {:collection_id folder-id}]
@@ -2425,3 +2479,75 @@
                                     {:entity "transform" :id id :revision_id legacy-id})
               (is (=? {:name "Edited" :last_checkpoint_value "9" :target_table_id table-id}
                       (t2/select-one :model/Transform :id id))))))))))
+
+(deftest list-transforms-statement-count-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-model-cleanup [:model/Transform]
+        (with-transforms-api-users! [user]
+          (with-transform-db-perms!
+            (let [[few many] (transforms.tu/statements-at-two-sizes
+                              (fn [n]
+                                (transforms.tu/create-count-test-transforms! n)
+                                #(mt/user-http-request user :get 200 "transform")))]
+              (is (= few many)))))))))
+
+(deftest list-transforms-different-queries-statement-count-test
+  (testing "GET /api/transform runs as many statements for 3 transforms of different SQL as for 9"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-model-cleanup [:model/Transform]
+          (with-transforms-api-users! [user]
+            (with-transform-db-perms!
+              (let [[few many] (transforms.tu/statements-at-two-sizes
+                                (fn [n]
+                                  (mt/with-current-user (mt/user->id :crowberto)
+                                    (transform.model/create-transforms!
+                                     (vec (transforms.tu/count-test-transform-rows
+                                           n (lib/native-query (mt/metadata-provider) "SELECT 1 AS num")
+                                           (fn [i] {:source {:type  :query
+                                                             :query (lib/native-query (mt/metadata-provider)
+                                                                                      (str "SELECT " i " AS num"))}})))))
+                                  #(mt/user-http-request user :get 200 "transform")))]
+                (is (= few many))))))))))
+
+(deftest list-transforms-source-readable-matches-single-answer-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-model-cleanup [:model/Transform]
+        (with-transforms-api-users! [user]
+          (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2}]
+            (with-transform-db-perms!
+              (mt/with-db-perms-for-group! (perms-group/all-users) other-db-id {:perms/view-data      :blocked
+                                                                                :perms/create-queries :no}
+                (let [readable-query  (lib/native-query (mt/metadata-provider) "SELECT 1 AS num")
+                      forbidden-query (lib/native-query (lib.metadata.jvm/application-database-metadata-provider other-db-id)
+                                                        "SELECT 1 AS num")
+                      [readable-ids forbidden-ids]
+                      (mt/with-current-user (mt/user->id :crowberto)
+                        (let [created (transform.model/create-transforms!
+                                       (vec (concat (transforms.tu/count-test-transform-rows 2 readable-query nil)
+                                                    (map #(update-in % [:target :name] str "_other")
+                                                         (transforms.tu/count-test-transform-rows 1 forbidden-query nil)))))]
+                          [(into #{} (map :id) (take 2 created)) (into #{} (map :id) (drop 2 created))]))
+                      listed          (into {} (map (juxt :id :source_readable))
+                                            (mt/user-http-request user :get 200 "transform"))]
+                  (is (every? #(true? (get listed %)) readable-ids))
+                  (is (every? #(= (= user :crowberto) (get listed %)) forbidden-ids)
+                      "a superuser reads every source and a data analyst without access to the database does not"))))))))))
+
+(mt/when-ee-evailable
+ (deftest dag-transforms-statement-count-test
+   (mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-python :hosting}
+     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+       (mt/with-model-cleanup [:model/Transform]
+         (with-transforms-api-users! [user]
+           (with-transform-db-perms!
+             (let [[few many] (transforms.tu/statements-at-two-sizes
+                               (fn [n]
+                                 (let [seed-id (first (transforms.tu/create-count-test-transforms!
+                                                       n {:source {:type :python :source-tables [] :body "pass"}}))]
+                                   #(mt/user-http-request user :get 200 (format "transform/%d/dag-transforms" seed-id)
+                                                          :direction "downstream")))
+                               #(t2/update! (t2/table-name :model/Transform) {:table_dependencies nil}))]
+               (is (= few many))))))))))

@@ -1280,7 +1280,9 @@
 (deftest collection-items-available-models-library-test
   (testing "GET /api/collection/:id/items"
     (mt/with-temp [:model/Collection collection {:type "library-data"}
-                   :model/Table      _          {:collection_id (u/the-id collection)
+                   :model/Table      {table-id :id} {}
+                   :model/TableUserSettings _   {:table_id      table-id
+                                                 :collection_id (u/the-id collection)
                                                  :is_published  true}]
       (letfn [(fetch []
                 (mt/user-http-request :crowberto :get 200
@@ -1301,7 +1303,9 @@
   (testing "GET /api/collection/:id/items includes whether the current user can write each published table"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection collection    {:type "library-data"}
-                     :model/Table      {table-id :id} {:collection_id (u/the-id collection)
+                     :model/Table      {table-id :id} {}
+                     :model/TableUserSettings _       {:table_id      table-id
+                                                       :collection_id (u/the-id collection)
                                                        :is_published  true}]
         (is (=? [{:id table-id, :model "table", :can_write true}]
                 (:data (mt/user-http-request :crowberto :get 200
@@ -2674,6 +2678,36 @@
         (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card-id)))
         (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
         (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))
+
+(deftest move-dashboard-question-candidates-statement-count-test
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates takes as many statements for many Cards as for few"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (mt/with-model-cleanup [:model/Card :model/Dashboard]
+        (let [insert-dashboard! #(t2/insert-returning-pk! :model/Dashboard
+                                                          (merge (mt/with-temp-defaults :model/Dashboard)
+                                                                 {:collection_id coll-id}))
+              move!             (fn [n]
+                                  (let [dashboard-ids (repeatedly 2 insert-dashboard!)
+                                        card-ids      (mapv (fn [i]
+                                                              (let [card-id (t2/insert-returning-pk! :model/Card
+                                                                                                     (merge (mt/with-temp-defaults :model/Card)
+                                                                                                            {:name (str "candidate " i) :collection_id coll-id}))]
+                                                                (t2/insert! :model/DashboardCard
+                                                                            (merge (mt/with-temp-defaults :model/DashboardCard)
+                                                                                   {:card_id card-id :dashboard_id (nth dashboard-ids (mod i 2))}))
+                                                                card-id))
+                                                            (range n))]
+                                    (t2/with-call-count [call-count]
+                                      (let [{:keys [moved]} (mt/user-http-request :crowberto :post 200
+                                                                                  (format "collection/%d/move-dashboard-question-candidates" coll-id)
+                                                                                  {:card_ids card-ids})]
+                                        (is (= (set card-ids) (set moved)))
+                                        (is (every? some? (t2/select-fn-vec :dashboard_id :model/Card :id [:in card-ids]))))
+                                      (call-count))))]
+          (move! 2)
+          (let [few  (move! 10)
+                many (move! 40)]
+            (is (= few many))))))))
 
 (deftest ^:parallel post-move-dashboard-question-candidates-root-collection
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
@@ -4186,9 +4220,10 @@
                      :model/Card {card-id :id} {:collection_id coll-id :name "Test Card"}
                      :model/Collection {data-coll-id :id} {:name "Data Collection"
                                                            :type collection/library-data-collection-type}
-                     :model/Table {table-id :id} {:collection_id data-coll-id
-                                                  :is_published  true
-                                                  :name          "Published Table"}]
+                     :model/Table {table-id :id} {:name "Published Table"}
+                     :model/TableUserSettings _ {:table_id      table-id
+                                                 :collection_id data-coll-id
+                                                 :is_published  true}]
         (let [items (:data (mt/user-http-request :crowberto :get 200
                                                  (str "collection/" coll-id "/items")))
               data-items (:data (mt/user-http-request :crowberto :get 200
@@ -4201,9 +4236,10 @@
                 "Published table should NOT be in collection items in OSS"))))))
   (testing "In OSS (without :library feature), published tables should NOT appear in root collection items"
     (mt/with-premium-features #{}
-      (mt/with-temp [:model/Table {table-id :id} {:collection_id nil
-                                                  :is_published  true
-                                                  :name          "Root Published Table"}]
+      (mt/with-temp [:model/Table {table-id :id} {:name "Root Published Table"}
+                     :model/TableUserSettings _ {:table_id      table-id
+                                                 :collection_id nil
+                                                 :is_published  true}]
         (let [items (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
           (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) items))
               "Published table should NOT be in root collection items in OSS"))))))

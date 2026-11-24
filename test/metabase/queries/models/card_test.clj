@@ -6,7 +6,6 @@
    [java-time.api :as t]
    [metabase.actions.models :as actions.models]
    [metabase.api.common :as api]
-   [metabase.app-db.query :as app-db.query]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -20,7 +19,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
+   [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.card-schema :as card-schema]
@@ -1204,7 +1205,7 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection collection {}
                      :model/Card       card       {:collection_id (:id collection)}]
-        (mt/with-dynamic-fn-redefs [audit/default-audit-collection (constantly collection)]
+        (mt/with-dynamic-fn-redefs [audit/audit-collection-ids (constantly {:audit-collection-id (:id collection)})]
           (mt/with-test-user :rasta
             (is (false? (mi/can-read? (t2/hydrate card :can_read))))
             (is (false? (mi/can-write? (t2/hydrate card :can_write)))))
@@ -2449,9 +2450,7 @@
   (testing "a create, update and delete that cross the partition size write every Card and publish one event each"
     (mt/with-temp [:model/Collection {coll-id :id} {}]
       (mt/with-model-cleanup [:model/Card]
-        (with-redefs [app-db.query/create-partition-size 2
-                      app-db.query/update-partition-size 2
-                      app-db.query/delete-partition-size 2]
+        (mt/with-partition-size 2
           (let [ids    (atom [])
                 topics (events.tu/published-topics!
                         (fn []
@@ -2708,3 +2707,117 @@
                           (events.tu/statement-count! #(card/place-new-dashboard-questions! cards rows))))]
         (counted 1)
         (is (= (counted 2) (counted 6)))))))
+
+(defn- do-with-three-alerted-cards!
+  "Call `f` with the ids of 3 Cards that each have an alert emailing Rasta."
+  [f]
+  (notification.tu/with-channel-fixtures [:channel/email]
+    (let [handlers [{:channel_type :channel/email
+                     :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}]]
+      (notification.tu/with-card-notification
+        [n1 {:card {:name "Alerted one" :display :line} :handlers handlers}]
+        (notification.tu/with-card-notification
+          [n2 {:card {:name "Alerted two" :display :line} :handlers handlers}]
+          (notification.tu/with-card-notification
+            [n3 {:card {:name "Alerted three" :display :line} :handlers handlers}]
+            (f (mapv #(-> % :payload :card_id) [n1 n2 n3]))))))))
+
+(deftest archive-cards-with-alerts-one-event-test
+  (testing "archiving 3 Cards with alerts publishes one event holding all 3 Cards"
+    (do-with-three-alerted-cards!
+     (fn [card-ids]
+       (let [events (atom [])]
+         (mt/with-test-user :crowberto
+           (with-redefs [events/publish-event! (fn [topic event]
+                                                 (when (= :event/card-update.notification-deleted.card-archived topic)
+                                                   (swap! events conj event)))]
+             (card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids))))
+         (is (= 1 (count @events)))
+         (is (= (set card-ids) (set (map (comp :id :card) (:objects (first @events)))))))))))
+
+(deftest archive-cards-with-alerts-one-email-each-test
+  (testing "archiving 3 Cards with alerts emails the recipients once for each Card"
+    (do-with-three-alerted-cards!
+     (fn [card-ids]
+       (let [emails (notification.tu/with-mock-inbox-email!
+                      (api.notification-test/with-send-messages-sync!
+                        (mt/with-test-user :crowberto
+                          (card/update-cards! (mapv (fn [id] {:id id :archived true}) card-ids)))))]
+         (is (= 3 (count emails)))
+         (is (every? #(= "One of your alerts has stopped working" (:subject %)) emails)))))))
+
+(defn- hydrated-values
+  "The number of statements hydrating `k` on `cards` takes and what `f` reads from each hydrated card."
+  [cards k f]
+  (t2/with-call-count [call-count]
+    (let [hydrated (doall (t2/hydrate (vec cards) k))]
+      {:statements (call-count)
+       :values     (mapv f hydrated)})))
+
+(deftest document-card-can-read-statements-do-not-grow-with-cards-test
+  (let [creator (mt/user->id :crowberto)]
+    (mt/with-temp [:model/Collection {open :id}       {}
+                   :model/Collection {closed :id}     {}
+                   :model/Document   {open-doc :id}   {:name "Open" :creator_id creator :collection_id open}
+                   :model/Document   {closed-doc :id} {:name "Closed" :creator_id creator :collection_id closed}
+                   :model/Card       {c1 :id}         {:collection_id open :document_id open-doc}
+                   :model/Card       {c2 :id}         {:collection_id closed :document_id closed-doc}
+                   :model/Card       {c3 :id}         {:collection_id open :document_id open-doc}
+                   :model/Card       {c4 :id}         {:collection_id closed :document_id closed-doc}
+                   :model/Card       {c5 :id}         {:collection_id open :document_id open-doc}
+                   :model/Card       {c6 :id}         {:collection_id closed :document_id closed-doc}]
+      (mt/with-non-admin-groups-no-collection-perms open
+        (mt/with-non-admin-groups-no-collection-perms closed
+          (perms/grant-collection-read-permissions! (perms-group/all-users) open)
+          (mt/with-test-user :rasta
+            (let [cards (mapv #(t2/select-one :model/Card :id %) [c1 c2 c3 c4 c5 c6])]
+              (hydrated-values (take 1 cards) :can_read mi/can-read?)
+              (is (= (:statements (hydrated-values (take 2 cards) :can_read mi/can-read?))
+                     (:statements (hydrated-values cards :can_read mi/can-read?))))
+              (is (= [true false true false true false] (:values (hydrated-values cards :can_read mi/can-read?))))
+              (testing "each card gets the answer it gets alone"
+                (is (= (mapv #(mi/can-read? (t2/hydrate % :can_read)) cards)
+                       (:values (hydrated-values cards :can_read mi/can-read?))))))))))))
+
+(defn- per-card-can-manage-db?
+  "The answer the per-card `:can_manage_db` hydration gave: the permission of the current user on the Database of
+  `card` asked alone."
+  [card]
+  (data-perms/user-has-permission-for-databases? (data-perms/user-info api/*current-user-id*)
+                                                 :perms/manage-database :yes [(:database_id card)]))
+
+(deftest can-manage-db-statements-do-not-grow-with-cards-test
+  (mt/with-temp [:model/Database                   {other-db :id} {}
+                 :model/PermissionsGroup           {group-id :id} {}
+                 :model/PermissionsGroupMembership _              {:user_id (mt/user->id :rasta) :group_id group-id}]
+    (mt/with-restored-data-perms!
+      (data-perms/set-database-permission! group-id (mt/id) :perms/manage-database :yes)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [cards (mapv #(t2/instance :model/Card {:id % :database_id (if (even? %) (mt/id) other-db)}) (range 6))]
+          (hydrated-values (take 1 cards) :can_manage_db :can_manage_db)
+          (is (= (:statements (hydrated-values (take 2 cards) :can_manage_db :can_manage_db))
+                 (:statements (hydrated-values cards :can_manage_db :can_manage_db))))
+          (is (= [true false true false true false] (:values (hydrated-values cards :can_manage_db :can_manage_db))))
+          (is (= (mapv per-card-can-manage-db? cards)
+                 (:values (hydrated-values cards :can_manage_db :can_manage_db)))))))))
+
+(deftest can-query-needs-query-permissions-on-dataset-query-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Collection {readable :id}   {}
+                     :model/Collection {unreadable :id} {}
+                     :model/Card       card             {:collection_id readable
+                                                         :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                     :model/Card       hidden           {:collection_id unreadable
+                                                         :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
+        (mt/with-test-user :rasta
+          (testing "readable card without native query permissions"
+            (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                          :perms/create-queries :query-builder}
+              (is (true? (mi/can-read? (t2/hydrate card :can_read))))
+              (is (= [false false] (mapv mi/can-query? (t2/hydrate [card hidden] :can_query))))))
+          (testing "native query permissions: only readable card"
+            (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                          :perms/create-queries :query-builder-and-native}
+              (is (= [true false] (mapv mi/can-query? (t2/hydrate [card hidden] :can_query)))))))))))

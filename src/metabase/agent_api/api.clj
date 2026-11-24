@@ -1407,6 +1407,7 @@
         ;; collision/reflow purposes they count as first-tab cards.
         effective-tab  (fn [dashcard] (or (:dashboard_tab_id dashcard) default-tab-id))
         on-tab         (fn [placed tab-id] (filterv #(= (effective-tab %) tab-id) placed))
+        id->current    (u/index-by :id current)
         add-cards      (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids
                                                     (into [] (comp (filter (comp #{"add"} :action))
                                                                    (keep :card_id)
@@ -1417,16 +1418,16 @@
                               :added   []
                               :removed []
                               :next-id -1})]
+    ;; A card placed on a shared dashboard exposes its selected timeline events, so the same read check the REST
+    ;; writer applies runs here too.
+    (queries/check-newly-exposed-dashcards-timeline-permissions!
+     dashboard current (into [] (comp (filter (comp #{"add"} :action)) (map #(select-keys % [:card_id]))) mutations))
     (doseq [[mutation-index {:keys [action card_id dashcard_id display_size position text tab_id] :as mutation}]
             (map-indexed vector mutations)]
       (try
         (case action
           "add"
           (let [card    (api/read-check (add-cards card_id))
-                ;; A card placed on a shared dashboard exposes its selected timeline events, so the
-                ;; same read check the REST writer applies runs here too.
-                _       (queries/check-newly-exposed-dashcards-timeline-permissions!
-                         dashboard current [{:card_id card_id}])
                 ;; A card internal to a different dashboard (a dashboard question) can't be added
                 ;; here — mirrors the REST dashcard-creation gate.
                 _       (api/check (or (nil? (:dashboard_id card))
@@ -1458,8 +1459,7 @@
                                   {:visualization_settings (dashboard-card/virtual-card-settings "text" {:text text})}))
 
           "update_text"
-          (let [existing (api/check-404
-                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
+          (let [existing (api/check-404 (id->current dashcard_id))
                 vs       (:visualization_settings existing)
                 display  (some-> (get-in vs [:virtual_card :display]) name)]
             (api/check (or (contains? #{"heading" "text"} display)
@@ -1476,15 +1476,13 @@
                                                 cards))))
 
           "remove"
-          (let [existing (api/check-404
-                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
+          (let [existing (api/check-404 (id->current dashcard_id))]
             (swap! state #(-> %
                               (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
                               (update :removed conj existing))))
 
           "move"
-          (let [existing  (api/check-404
-                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
+          (let [existing  (api/check-404 (id->current dashcard_id))
                 ;; A move only makes sense relative to the moved card's own tab: collision checks
                 ;; and the move-to-top reflow must not touch cards on other tabs. Compared via
                 ;; `effective-tab` so nil-tab dashcards group with the first tab they render on.

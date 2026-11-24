@@ -5,6 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- extract-one [model-name entity]
@@ -47,3 +48,21 @@
         (is (=? {:source {:query {:database (mt/id)}}
                  :target {:database (mt/id)}}
                 row))))))
+
+(deftest import-same-change-of-model-without-update-fn-query-count-test
+  (testing "importing one change to many Glossary rows takes as many queries as to few"
+    (mt/with-model-cleanup [:model/Glossary]
+      (let [import-changed! (fn [n]
+                              (let [rows     (t2/insert-returning-instances!
+                                              :model/Glossary
+                                              (for [i (range n)]
+                                                {:term (str "serdes glossary " n " " i) :definition "original"
+                                                 :creator_id (mt/user->id :rasta)}))
+                                    exported (mapv #(assoc (extract-one :model/Glossary %) :definition "changed") rows)]
+                                (u/prog1 (t2/with-call-count [call-count]
+                                           (serialization/load :model/Glossary exported)
+                                           (call-count))
+                                  (is (= #{"changed"}
+                                         (t2/select-fn-set :definition :model/Glossary :id [:in (map :id rows)]))))))]
+        (import-changed! 1)
+        (is (= (import-changed! 4) (import-changed! 12)))))))

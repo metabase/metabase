@@ -725,6 +725,27 @@
                   (is (= user-id model_id))
                   (is (= revoked (:count details))))))))))))
 
+(deftest revoke-audit-statement-count-test
+  (mt/with-additional-premium-features #{:audit-app}
+    (mt/with-model-cleanup [:model/AuditLog :model/User]
+      (let [statements (fn [n]
+                         (let [user-ids    (t2/insert-returning-pks! :model/User
+                                                                     (for [i (range n)]
+                                                                       {:first_name "Test"
+                                                                        :last_name  "User"
+                                                                        :email      (format "revoke-%d-%d@example.com" n i)
+                                                                        :password   "password"}))
+                               session-ids (mapv insert-session! user-ids)]
+                           (t2/with-call-count [call-count]
+                             (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:ids session-ids})
+                             (u/prog1 (call-count)
+                               (is (= (set user-ids)
+                                      (t2/select-fn-set :model_id :model/AuditLog
+                                                        :topic "session-revoked" :model_id [:in user-ids])))))))]
+        (statements 2)
+        (testing "POST /api/ee/session-management/revoke costs as many statements for 10 users as for 40"
+          (is (= (statements 10) (statements 40))))))))
+
 (deftest revoke-logs-without-audit-feature-test
   (testing "the revoke is logged even when the audit log is not being written"
     (mt/with-premium-features #{:session-management}

@@ -60,7 +60,7 @@
   [model  :- :keyword
    active :- ActivePredicate
    ids    :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :id model {:where [:and [:in :id ids] (active-clause active)]}))
+  (mdb/select-batched-set #(t2/select-fn-set :id model {:where [:and [:in :id %] (active-clause active)]}) ids))
 
 (mu/defn lock-active-stale-rows
   "The `model` rows matching `active` and any one of `stale`, locked for update."

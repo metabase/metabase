@@ -530,9 +530,11 @@
   (testing "Migration 5 sweeps only active published/authoritative tables, sorted into the two id lists it
             backfills — others are implicitly not curated (table curation never uses root_collection_type)"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {pub :id}      {:db_id db-id :active true  :is_published true :data_layer :final}
+                   :model/Table {pub :id}      {:db_id db-id :active true :data_layer :final}
+                   :model/TableUserSettings _ {:table_id pub :is_published true}
                    :model/Table {auth :id}     {:db_id db-id :active true  :data_authority :authoritative}
-                   :model/Table {inactive :id} {:db_id db-id :active false :is_published true :data_layer :final}
+                   :model/Table {inactive :id} {:db_id db-id :active false :data_layer :final}
+                   :model/TableUserSettings _ {:table_id inactive :is_published true}
                    :model/Table {plain :id}    {:db_id db-id :active true}]
       (let [{:keys [authoritative published]} (#'semantic.db.migration.impl/candidate-table-ids)
             authoritative (set authoritative)

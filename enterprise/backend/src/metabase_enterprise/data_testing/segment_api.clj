@@ -126,7 +126,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [segment-test (api/read-check :model/SegmentTest id)]
-    (api/check-403 (data-testing.models.segment-test/can-run? segment-test))
+    (api/check-403 (mi/can-query? (t2/hydrate segment-test :can_query)))
     (refusing #(data-testing.runner/run-test! :segment
                                               (data-testing.models.segment-test/testable-segment
                                                (:segment_id segment-test))

@@ -109,12 +109,11 @@
   "Turn the tool's flat recipient list — user ids and raw email addresses — into the
    `{:id user-id}` / `{:email address}` maps a pulse channel stores."
   [recipients]
-  (mapv (fn [recipient]
-          (let [[kind value] (mcp.recipients/classify recipient)]
-            (case kind
-              :user  {:id value}
-              :email {:email value})))
-        recipients))
+  (mapv (fn [[kind value]]
+          (case kind
+            :user  {:id value}
+            :email {:email value}))
+        (mcp.recipients/classify-all recipients)))
 
 (defn- slack-details
   "The `details` map for a Slack channel: the cached channel's display name, which is what the
