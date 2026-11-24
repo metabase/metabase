@@ -207,7 +207,7 @@ export function SettingsOIDCForm() {
     : undefined;
   const isLocked = lockedEnvName != null;
   const lockedFieldProps = isLocked
-    ? { readOnly: true, variant: "read-only" }
+    ? { readOnly: true, variant: "read-only" as const }
     : {};
   const isEnabled = existingProvider?.enabled ?? false;
 

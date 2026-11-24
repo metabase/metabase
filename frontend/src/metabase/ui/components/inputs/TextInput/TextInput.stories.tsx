@@ -453,6 +453,17 @@ export const ReadOnlyMd = {
   },
 };
 
+export const ReadOnlyVariantMd = {
+  name: "Read-only variant, md",
+  args: {
+    defaultValue: sampleArgs.value,
+    label: sampleArgs.label,
+    description: sampleArgs.description,
+    readOnly: true,
+    variant: "read-only",
+  },
+};
+
 export const EmptyXs = {
   render: VariantTemplate,
   name: "Empty, xs",
