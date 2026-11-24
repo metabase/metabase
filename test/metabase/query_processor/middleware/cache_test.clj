@@ -568,10 +568,7 @@
                   result)))))))
 
 (deftest array-query-can-be-cached-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/arrays)
-                         ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-                         #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-                         :sqlite) ;; Disabling until issue #57301 is resolved
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/arrays)
     (with-mock-cache! [save-chan]
       (mt/with-temporary-setting-values [enable-query-caching true]
         (mt/with-clock #t "2025-02-06T00:00:00.000Z[UTC]"
