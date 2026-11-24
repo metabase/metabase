@@ -160,8 +160,7 @@
     #{}))
 
 (defn handle-broken-subscriptions!
-  "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard, and email each
-  one's creator and the dashboard's creator.
+  "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard, and email affected users
   Must run after the update: it compares the dashboard's current resolved params against each pulse's stored params.
   Takes the dashboard's `:resolved-params` from before the update as `original-dashboard-params`.
   Returns what [[archived-subscription]] describes for each archived subscription, in archive order."

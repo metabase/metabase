@@ -5056,17 +5056,17 @@
               (email-pulse-email-received? "yo@broken.sub"))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
+  (testing "When a subscriptions is broken, archive it and notify affected users (#30100)"
     (test-handle-broken-subscription-notification!
      {:disable-links?            false
       :email-body-pattern        "#my-channel"
       :match-email-body-pattern? true}))
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) with email links when disable_links: false"
+  (testing "When a subscriptions is broken, archive it and notify affected users (#30100) with email links when disable_links: false"
     (test-handle-broken-subscription-notification!
      {:disable-links?            false
       :email-body-pattern        "href="
       :match-email-body-pattern? true}))
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) without email links when disable_links: true"
+  (testing "When a subscriptions is broken, archive it and notify affected users (#30100) without email links when disable_links: true"
     (test-handle-broken-subscription-notification!
      {:disable-links?            true
       :email-body-pattern        "href="
