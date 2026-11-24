@@ -875,9 +875,10 @@
         authorization-header (get-in request [:headers "authorization"])
         client-id            (or (:client-id (oidc.token-endpoint/parse-basic-auth authorization-header))
                                  (:client_id body))
-        ;; oidc-provider would give the new tokens an empty `resource` in place of the old token's, so it counts as none
+        ;; oidc-provider would give the new tokens an empty `resource` in place of the old token's, so it counts as
+        ;; none. An empty string stays, for [[check-resource-indicators!]] to refuse.
         body                 (cond-> body
-                               (empty? (:resource body)) (dissoc :resource))]
+                               (and (sequential? (:resource body)) (empty? (:resource body))) (dissoc :resource))]
     (try
       (do-with-token-throttling ip-address client-id
                                 (fn []

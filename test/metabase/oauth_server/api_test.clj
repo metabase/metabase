@@ -2242,7 +2242,8 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [{:keys [client_id client_secret]} (create-test-client!)]
-          (doseq [resource malformed-resources]
+          ;; an empty `resource` list counts as none, but an empty string is a malformed indicator
+          (doseq [resource (conj malformed-resources "")]
             (testing (pr-str resource)
               (is (= {:error             "invalid_target"
                       :error_description invalid-target-description}
