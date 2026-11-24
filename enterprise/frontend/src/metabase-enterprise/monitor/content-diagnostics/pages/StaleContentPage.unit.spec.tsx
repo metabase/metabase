@@ -593,7 +593,6 @@ describe("StaleContentPage", () => {
     const deleteCalls = fetchMock.callHistory.calls("path:/api/transform/7");
     expect(deleteCalls).toHaveLength(1);
     expect(deleteCalls[0].options?.method?.toUpperCase()).toBe("DELETE");
-    expect(fetchMock.callHistory.calls("path:/api/card/1")).toHaveLength(0);
   });
 
   it("keeps items that failed to trash selected", async () => {

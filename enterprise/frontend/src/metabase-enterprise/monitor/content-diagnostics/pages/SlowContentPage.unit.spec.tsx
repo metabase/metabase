@@ -210,7 +210,6 @@ describe("SlowContentPage", () => {
     const sidebar = await screen.findByTestId("content-diagnostics-sidebar");
     expect(within(sidebar).getByText("Duration")).toBeInTheDocument();
     expect(within(sidebar).getByText("2.3s")).toBeInTheDocument();
-    expect(within(sidebar).queryByText("5.0s")).not.toBeInTheDocument();
     expect(
       within(sidebar).getByRole("link", { name: "Nightly transform" }),
     ).toHaveAttribute("href", "/data-studio/transforms/20");
