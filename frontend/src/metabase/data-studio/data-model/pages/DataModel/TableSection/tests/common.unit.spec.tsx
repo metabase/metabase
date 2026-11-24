@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import {
   createMockDatabase,
   createMockSegment,
   createMockTable,
+  createMockTransform,
 } from "metabase-types/api/mocks";
 import { createOrdersQuantityField } from "metabase-types/api/mocks/presets";
 
@@ -204,6 +205,39 @@ describe("TableSection", () => {
       expect(
         screen.getByPlaceholderText("Give this field a name"),
       ).toBeEnabled();
+    });
+  });
+
+  describe("table created by a transform (metabase#69904)", () => {
+    it("says the transform does not exist anymore when it was deleted", () => {
+      setup({
+        table: createMockTable({
+          data_source: "metabase-transform",
+          transform: null,
+        }),
+      });
+
+      expect(
+        within(screen.getByTestId("table-section")).getByText(
+          "Transform does not exist anymore",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("links to the transform when it still exists", () => {
+      setup({
+        table: createMockTable({
+          data_source: "metabase-transform",
+          transform: createMockTransform({ id: 12, name: "Orders transform" }),
+        }),
+      });
+
+      expect(
+        screen.getByRole("link", { name: /Orders transform/ }),
+      ).toHaveAttribute("href", "/data-studio/transforms/12");
+      expect(
+        screen.queryByText("Transform does not exist anymore"),
+      ).not.toBeInTheDocument();
     });
   });
 });
