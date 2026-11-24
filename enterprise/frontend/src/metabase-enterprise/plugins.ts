@@ -97,6 +97,7 @@ export function initializePlugins() {
   initializeMonitorDependencyDiagnostics();
   initializeMonitorSessionManagement();
   initializeMultiFactorAuth();
+  initializePermissionPreview();
   initializeRemoteSync();
   initializeReplacement();
   initializeResourceDownloads();
@@ -110,8 +111,6 @@ export function initializePlugins() {
   initializeSupport();
   initializeTableEditing();
   initializeTenants?.();
-  // After tenants: both extend the permissions tabs routes, and the later wraps the earlier.
-  initializePermissionPreview();
   initializeTools();
   initializeTransforms();
   initializeTransformsInspector();

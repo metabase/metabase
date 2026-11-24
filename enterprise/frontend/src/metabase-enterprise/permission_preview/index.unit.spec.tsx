@@ -1,5 +1,5 @@
 import { mockSettings } from "__support__/settings";
-import { PLUGIN_ADMIN_PERMISSIONS_TABS, reinitialize } from "metabase/plugins";
+import { PLUGIN_APPLICATION_PERMISSIONS, reinitialize } from "metabase/plugins";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { initializePlugin } from "./index";
@@ -21,16 +21,16 @@ describe("permission preview plugin", () => {
   it("adds the Preview access tab and its route with advanced permissions", () => {
     setup({ hasFeature: true });
 
-    expect(PLUGIN_ADMIN_PERMISSIONS_TABS.tabs).toEqual([
+    expect(PLUGIN_APPLICATION_PERMISSIONS.tabs).toEqual([
       { name: "Preview access", value: "preview-access" },
     ]);
-    expect(PLUGIN_ADMIN_PERMISSIONS_TABS.getRoutes()).not.toBeNull();
+    expect(PLUGIN_APPLICATION_PERMISSIONS.getRoutes()).not.toBeNull();
   });
 
   it("adds nothing without advanced permissions", () => {
     setup({ hasFeature: false });
 
-    expect(PLUGIN_ADMIN_PERMISSIONS_TABS.tabs).toEqual([]);
-    expect(PLUGIN_ADMIN_PERMISSIONS_TABS.getRoutes()).toBeNull();
+    expect(PLUGIN_APPLICATION_PERMISSIONS.tabs).toEqual([]);
+    expect(PLUGIN_APPLICATION_PERMISSIONS.getRoutes()).toBeNull();
   });
 });
