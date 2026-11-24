@@ -158,6 +158,26 @@ describe("MetabaseUIProvider", () => {
     target.remove();
   });
 
+  it("keeps the default tooltip portal when a theme callback supplies defaults", async () => {
+    render(
+      <MetabaseUIProvider
+        theme={{
+          components: {
+            Tooltip: { defaultProps: () => ({ zIndex: 11000 }) },
+          },
+        }}
+      >
+        <Tooltip label="Tip" opened>
+          <span>Target</span>
+        </Tooltip>
+      </MetabaseUIProvider>,
+    );
+
+    // eslint-disable-next-line testing-library/no-node-access -- the portal has no role
+    const container = document.getElementById(PORTAL_CONTAINER_ID);
+    expect(container).toContainElement(await screen.findByText("Tip"));
+  });
+
   it.each(["light", "dark"] as const)(
     "returns the theme color in %s with an object-form primaryShade",
     (colorScheme) => {

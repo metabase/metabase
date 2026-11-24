@@ -13,15 +13,37 @@ import {
   Text,
   Tooltip,
   color,
+  useColorScheme,
 } from "@metabase/ui";
 import { useState } from "react";
 
-const colorScheme =
+const initialColorScheme =
   new URLSearchParams(window.location.search).get("scheme") === "dark"
     ? "dark"
     : "light";
 
+const ColorSchemeControls = () => {
+  const { resolvedColorScheme, setColorScheme, toggleColorScheme } =
+    useColorScheme();
+  return (
+    <Group>
+      <output aria-label="Resolved color scheme">{resolvedColorScheme}</output>
+      <Button
+        onClick={() => {
+          setColorScheme("dark");
+          toggleColorScheme();
+        }}
+      >
+        Try changing scheme through the hook
+      </Button>
+    </Group>
+  );
+};
+
 export const App = () => {
+  const [colorScheme, setColorScheme] = useState<"light" | "dark">(
+    initialColorScheme,
+  );
   const [modalOpened, setModalOpened] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
@@ -41,6 +63,11 @@ export const App = () => {
   return (
     <MetabaseUIProvider
       colorScheme={colorScheme}
+      fontFamily={
+        colorScheme === "dark"
+          ? (params.get("dark-font") ?? undefined)
+          : undefined
+      }
       theme={
         highOverlay
           ? {
@@ -64,6 +91,21 @@ export const App = () => {
           </Button>
           <Icon name="table" size={24} data-testid="icon-table" />
         </Group>
+
+        {params.has("theme-controls") && (
+          <Group>
+            <Button
+              onClick={() =>
+                setColorScheme((scheme) =>
+                  scheme === "light" ? "dark" : "light",
+                )
+              }
+            >
+              Change provider scheme
+            </Button>
+            <ColorSchemeControls />
+          </Group>
+        )}
 
         <Text data-testid="brand-color" style={{ color: color("core-brand") }}>
           {color("core-brand")}
@@ -100,6 +142,9 @@ export const App = () => {
           title="Modal title"
         >
           <Text>Modal body</Text>
+          {highOverlay && (
+            <Select label="Modal select" data={["Alpha", "Beta"]} />
+          )}
           {highOverlay && (
             <Tooltip.Floating label="Floating tooltip">
               <Button>Floating tooltip target</Button>

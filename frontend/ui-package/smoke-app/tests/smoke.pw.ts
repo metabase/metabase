@@ -219,6 +219,13 @@ for (const scheme of SCHEMES) {
       }
     });
 
+    test(`the table icon renders an SVG path (${scheme})`, async ({ page }) => {
+      await openPage(page, scheme);
+      const icon = page.getByTestId("icon-table");
+      await expect(icon).toBeVisible();
+      await expect(icon.locator("path").first()).toHaveAttribute("d", /\S/);
+    });
+
     test(`color() returns the brand variable (${scheme})`, async ({ page }) => {
       await openPage(page, scheme);
       await expect(page.getByTestId("brand-color")).toHaveText(
@@ -237,6 +244,20 @@ for (const scheme of SCHEMES) {
     });
   });
 }
+
+test("a portalled Select can be used inside a custom modal layer", async ({
+  page,
+}) => {
+  await page.goto("/?high-overlay");
+  await page.getByTestId("open-modal").click();
+  const select = page.getByLabel("Modal select");
+  await select.click();
+  const option = page.getByRole("option", { name: "Beta" });
+  await expect(option).toBeVisible();
+  await expect.poll(() => isOnTop(option)).toBe(true);
+  await option.click();
+  await expect(select).toHaveValue("Beta");
+});
 
 test("a tooltip stays above a modal with a custom overlay z-index", async ({
   page,
@@ -264,9 +285,14 @@ test("preserves tooltip defaults returned by a theme callback", async ({
 }) => {
   await page.goto("/?high-overlay&tooltip-callback");
   await page.getByTestId("open-modal").click();
-  await expect(
-    page.getByTestId("callback-tooltip").filter({ hasText: "Modal tooltip" }),
-  ).toHaveCSS("z-index", "11000");
+  const tooltip = page
+    .getByTestId("callback-tooltip")
+    .filter({ hasText: "Modal tooltip" });
+  await expect(tooltip).toHaveCSS("z-index", "11000");
+  await expect(tooltip).toHaveCSS(
+    "background-color",
+    await resolveColorVar(page, "--mb-color-tooltip-background"),
+  );
 });
 
 test("a floating tooltip stays above a custom modal layer", async ({
@@ -281,13 +307,36 @@ test("a floating tooltip stays above a custom modal layer", async ({
 });
 
 test("@release light and dark resolve different colors", async ({ page }) => {
-  const resolved: string[] = [];
-  for (const scheme of SCHEMES) {
-    await openPage(page, scheme);
-    resolved.push(
-      await resolveColorVar(page, "--mb-color-background_page-secondary"),
-    );
-  }
-  expect(resolved[0]).not.toBe("");
-  expect(resolved[0]).not.toBe(resolved[1]);
+  await page.goto("/?theme-controls&dark-font=Georgia%2Cserif");
+  const scheme = page.getByLabel("Resolved color scheme");
+  const switchScheme = page.getByRole("button", {
+    name: "Change provider scheme",
+  });
+  const light = await resolveColorVar(
+    page,
+    "--mb-color-background_page-secondary",
+  );
+  await expectScheme(page, "light");
+  await page
+    .getByRole("button", { name: "Try changing scheme through the hook" })
+    .click();
+  await expect(scheme).toHaveText("light");
+  await expectScheme(page, "light");
+
+  await switchScheme.click();
+  await expectScheme(page, "dark");
+  await expect(scheme).toHaveText("dark");
+  await expect(page.locator("body")).not.toHaveCSS("background-color", light);
+  await expect(page.locator("body")).toHaveCSS("font-family", "Georgia, serif");
+  await page.getByTestId("open-modal").click();
+  const modal = page.getByRole("dialog");
+  await expect(modal).toHaveCSS("font-family", "Georgia, serif");
+  await modal.getByRole("button", { name: "Close" }).click();
+  await expect(modal).toBeHidden();
+
+  await switchScheme.click();
+  await expectScheme(page, "light");
+  await expect(scheme).toHaveText("light");
+  await expect(page.locator("body")).toHaveCSS("background-color", light);
+  await expect(page.locator("body")).toHaveCSS("font-family", /Lato/);
 });

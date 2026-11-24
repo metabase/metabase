@@ -11,12 +11,14 @@ import { createPortal } from "react-dom";
 import { deriveFullMetabaseTheme } from "../../src/metabase/ui/colors";
 import { OVERLAY_Z_INDEX } from "../../src/metabase/ui/component-theme";
 import { PortalContainer } from "../../src/metabase/ui/components/overlays/PortalContainer";
+import { tooltipOverrides } from "../../src/metabase/ui/components/overlays/Tooltip/Tooltip.config";
 import { OverlayStackProvider } from "../../src/metabase/ui/components/overlays/overlay-stack";
 import {
   ColorSchemeContext,
   type ColorSchemeContextType,
 } from "../../src/metabase/ui/components/theme/ColorSchemeProvider";
 import { ThemeProvider } from "../../src/metabase/ui/components/theme/ThemeProvider";
+import { deepMerge } from "../../src/metabase/utils/deep-merge";
 
 const DEFAULT_FONT_FAMILY = '"Lato", Arial, sans-serif';
 
@@ -55,14 +57,16 @@ const getThemeOverride = (
   const overlayZIndex = readOverlayZIndex(otherRest.popover);
   const popoverLayer = getDefaultZIndex("popover");
   const components = { ...rest.components };
-  if (overlayZIndex >= popoverLayer + 1) {
-    components.Tooltip = withTooltipLayer(
+  const raiseTooltip = overlayZIndex >= popoverLayer + 1;
+  if (raiseTooltip || typeof components.Tooltip?.defaultProps === "function") {
+    components.Tooltip = withTooltipDefaults(
       components.Tooltip,
-      overlayZIndex + 1,
+      raiseTooltip ? overlayZIndex + 1 : undefined,
+      tooltipOverrides?.Tooltip?.defaultProps,
     );
   }
   if (overlayZIndex >= popoverLayer) {
-    components.TooltipFloating = withTooltipLayer(
+    components.TooltipFloating = withTooltipDefaults(
       components.TooltipFloating,
       overlayZIndex + 1,
     );
@@ -70,25 +74,31 @@ const getThemeOverride = (
   return { ...rest, other: otherRest, components };
 };
 
-function withTooltipLayer(
+function withTooltipDefaults(
   component: MantineThemeComponent | undefined,
-  zIndex: number,
+  zIndex: number | undefined,
+  baseDefaults?: unknown,
 ): MantineThemeComponent {
   const defaults: unknown = component?.defaultProps;
-  const withFallback = (props: unknown) => {
-    const overrides = props && typeof props === "object" ? props : {};
-    return {
-      ...overrides,
-      zIndex: "zIndex" in overrides ? (overrides.zIndex ?? zIndex) : zIndex,
-    };
+  const withLayer = (props: unknown) => {
+    const overrides = readDefaults(props);
+    return zIndex !== undefined && overrides.zIndex == null
+      ? { ...overrides, zIndex }
+      : overrides;
   };
   return {
     ...component,
     defaultProps:
       typeof defaults === "function"
-        ? (theme: MantineTheme) => withFallback(defaults(theme))
-        : withFallback(defaults),
+        ? (theme: MantineTheme) =>
+            // ThemeProvider merges objects, but a callback replaces the base defaults.
+            deepMerge(readDefaults(baseDefaults), withLayer(defaults(theme)))
+        : withLayer(defaults),
   };
+}
+
+function readDefaults(props: unknown): Record<string, unknown> {
+  return props && typeof props === "object" ? { ...props } : {};
 }
 
 function readOverlayZIndex(popover: unknown) {
