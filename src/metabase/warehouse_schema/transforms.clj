@@ -40,7 +40,7 @@
 
 (defn- keyword-transform
   "A transform for `column` holding a keyword that `valid?` accepts. Writing a keyword or string it rejects throws a
-  400 with the message `(invalid-message k)` and `extra-data`; reading one logs and returns `fallback`."
+  400; reading one logs and returns `fallback`."
   [column valid? invalid-message extra-data fallback]
   {:in  (fn [v]
           (when-let [k (some-> v keyword)]
@@ -150,10 +150,9 @@
     (throw-invalid-value column v (schema-message column schema v))))
 
 (def ^{:arglists '([row])} check-table-values
-  "Throws a 400 when `row`, a Table or its user settings, holds an `scd_type` that is not an integer from 0 to 7."
+  "Throws a 400 when `row`, a Table or its user settings, holds an `scd_type` that fails its schema."
   (partial check-values {:scd_type ::warehouse-schema.schema/scd-type}))
 
 (def ^{:arglists '([row])} check-field-values
-  "Throws a 400 when `row`, a Field or its user settings, holds an `attribute_scd_type` that is not an integer from 0
-  to 3."
+  "Throws a 400 when `row`, a Field or its user settings, holds an `attribute_scd_type` that fails its schema."
   (partial check-values {:attribute_scd_type ::warehouse-schema.schema/attribute-scd-type}))

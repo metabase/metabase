@@ -128,9 +128,9 @@
     wildcard-definition-table         (conj [:wildcard-definition-table (:name wildcard-definition-table)])))
 
 (defn- check-table!
-  "Classify the inserted `table`, save the translated values through the models, and check that they read back
-  unchanged. Returns its `:table-name`, its `:saved` values read back (history and EAV IDs replaced by names, plus
-  `:fields`, field name to its values read back), and its `:mismatches`, the [[table-mismatches]]."
+  "Classify the inserted `table`, save the translated values through the models, and check they read back unchanged.
+  Returns `:table-name`, `:saved` (the values read back, with history and EAV IDs as names and `:fields` keyed by field
+  name) and `:mismatches`."
   [{table-name :name, table-id :id, :as table} schema-tables id->name]
   (let [outputs (classify table schema-tables)
         {table-changes :table, field-changes :fields, :keys [leftovers]} (translate outputs)]
@@ -156,8 +156,8 @@
          :mismatches (table-mismatches outputs id->name)}))))
 
 (defn- run-design-check!
-  "Insert `fixture` and run [[check-table!]] on each of its tables, in fixture order. Returns `:saved`, table name to
-  its saved values, and `:mismatches`, table name to its [[table-mismatches]] when it has any."
+  "Insert `fixture` and run [[check-table!]] on each of its tables. Returns `:saved`, table name to its saved values,
+  and `:mismatches`, table name to its [[table-mismatches]] when it has any."
   [fixture]
   (mt/with-temp [:model/Database {db-id :id} {}]
     (let [tables        (fixtures/insert-fixture! db-id fixture)
