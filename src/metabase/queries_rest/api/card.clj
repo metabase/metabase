@@ -740,8 +740,7 @@
 
 (defn- collection-position-updates
   "The updates that add the Cards that had a position in their previous Collection to the end of the new one, in the
-  order of their old positions, ties between Cards of several old Collections falling in the order the database
-  returned them."
+  order of `sorted-cards`."
   [new-collection-id-or-nil sorted-cards]
   (let [max-position      (:max_position (queries-rest.db/max-collection-position new-collection-id-or-nil))
         ;; collection_position for the next card in the collection
@@ -774,7 +773,9 @@
         (t2/with-transaction [_conn]
           ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
           ;; are gone and update the position in the new collection
-          (let [with-position (sort-by :collection_position (filter :collection_position cards))]
+          ;; Cards from several old Collections can share a position, so the id breaks the tie: the cards arrive in no
+          ;; fixed order.
+          (let [with-position (sort-by (juxt :collection_position :id) (filter :collection_position cards))]
             (queries.card/update-cards! (into (collection-position-updates new-collection-id-or-nil with-position)
                                               (comp (remove :collection_position)
                                                     (map (fn [card] {:id (u/the-id card) :collection_id new-collection-id-or-nil})))
