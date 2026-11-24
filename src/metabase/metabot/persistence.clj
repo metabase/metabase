@@ -584,8 +584,12 @@
   "Whether the assistant `row` can hold text that the agent added after the results of its last step, `last-step`.
 
   [[metabase.metabot.agent.core/ended-loop-state]] adds such text in two cases. For a terminal error it adds the error
-  message, and `last-step` holds a failed call. At the step limit it can add a notice, and the row stores the finish
-  reason `tool-calls`, unless the last call was cut short."
+  message, and `last-step` holds a failed call. At the step limit, a profile that requires a tool call can add a
+  notice, and the row stores the finish reason `tool-calls`, unless the last call was cut short.
+
+  The test is true for more rows than these two cases. A failed call can also be a recoverable one, in a step that a
+  successful terminal tool ended. Every profile stores `tool-calls` at the step limit, and a profile that does not
+  require a tool call adds no notice there. In these rows, the text after the results can be the model's own."
   [row last-step]
   (boolean (or (= "tool-calls" (:finish_reason row))
                (some #(= "output-error" (:state %)) last-step))))
@@ -594,8 +598,13 @@
   "The LLM history messages for `parts`, the last step of the assistant `row`.
 
   The step replays as [[step->llm-messages]] replays it. When [[agent-text-after-results?]] is true, the last text part
-  that follows the last tool part replays after the results instead. In both cases of that function, this part is the
-  text that the agent added. No request of the turn sent that text, so the move keeps the prefix that the turn sent."
+  that follows the last tool part replays after the results instead. Usually this part is the text that the agent
+  added. No request of the turn sent that text, so the move keeps the prefix that the turn sent.
+
+  The part can also be text that the model wrote after a call, before it saw the results (see
+  [[agent-text-after-results?]]). No request of the turn sent that step, so the prefix still holds. Only the order that
+  the model reads in the next turn changes: its own text comes after results that it had not seen. The stored row has
+  no mark that tells the two kinds of text apart. A later change adds that mark; it is tracked in Linear."
   [row parts]
   (let [index-of   (fn [pred] (last (keep-indexed #(when (pred %2) %1) parts)))
         text-index (index-of schema.v2/text-part?)
