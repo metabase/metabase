@@ -170,12 +170,25 @@
                (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id normal-user-id)))))))
 
 (deftest moving-out-of-tenant-specific-copies-the-parent-permissions-test
-  (testing "a Collection and its descendants get the permissions of their new parent"
-    (mt/with-temp [:model/PermissionsGroup {group-id :id}          {}
-                   :model/Collection       parent                  {}
-                   :model/Collection       {coll-id :id, :as coll} {}
-                   :model/Collection       {child-id :id}          {:location (collection/children-location coll)}]
+  (testing "a Collection and all its descendants, grandchildren included, get the permissions of their new parent"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}            {}
+                   :model/Collection       parent                    {}
+                   :model/Collection       {coll-id :id, :as coll}   {}
+                   :model/Collection       {child-id :id, :as child} {:location (collection/children-location coll)}
+                   :model/Collection       {grandchild-id :id}       {:location (collection/children-location child)}]
       (perms/grant-collection-read-permissions! group-id parent)
       (#'tenants.permissions/grant-perms-when-moving-out-of-tenant-specific! coll (collection/children-location parent))
-      (doseq [id [coll-id child-id]]
+      (doseq [id [coll-id child-id grandchild-id]]
         (is (t2/exists? :model/Permissions :group_id group-id :object (perms/collection-read-path id)))))))
+
+(deftest moving-into-tenant-specific-revokes-the-permissions-test
+  (testing "a Collection and all its descendants, grandchildren included, lose their permissions"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}            {}
+                   :model/Collection       {coll-id :id, :as coll}   {}
+                   :model/Collection       {child-id :id, :as child} {:location (collection/children-location coll)}
+                   :model/Collection       {grandchild-id :id}       {:location (collection/children-location child)}]
+      (doseq [id [coll-id child-id grandchild-id]]
+        (perms/grant-collection-read-permissions! group-id id))
+      (#'tenants.permissions/revoke-perms-when-moving-into-tenant-specific! coll)
+      (doseq [id [coll-id child-id grandchild-id]]
+        (is (not (t2/exists? :model/Permissions :group_id group-id :object (perms/collection-read-path id))))))))
