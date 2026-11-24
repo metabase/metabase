@@ -71,7 +71,7 @@ export function ExplainAccess({
           <Flex gap="sm" align="flex-start" wrap="nowrap">
             {explained && <Icon name={ITEM_ICONS[explained.type]} mt="xs" />}
             <Text fw="bold" size="lg" style={{ overflowWrap: "anywhere" }}>
-              {explained ? t`Access to “${name ?? ""}”` : t`Explain access`}
+              {explained && name ? t`Access to “${name}”` : t`Explain access`}
             </Text>
           </Flex>
           <Text c="text-secondary">{t`as ${getSubject(target)}`}</Text>
@@ -132,15 +132,15 @@ function ExplainedAccess({ target, userId, explained }: ExplainedAccessProps) {
       loading={isLoading}
       error={error ? t`Couldn't explain this access.` : null}
     >
-      {read.data && (
+      {read.currentData && (
         <ExplainAccessBody
           key={`${type}/${id}`}
           itemType={type}
           target={target}
           answers={{
-            read: read.data,
-            query: query.data,
-            download: download.data,
+            read: read.currentData,
+            query: query.currentData,
+            download: download.currentData,
           }}
         />
       )}
@@ -160,10 +160,10 @@ function useItemName(explained: ExplainedItem | null) {
   );
   switch (explained?.type) {
     case "question":
-      return card.data?.name;
+      return card.currentData?.name;
     case "dashboard":
-      return dashboard.data?.name;
+      return dashboard.currentData?.name;
     case "collection":
-      return collection.data?.name;
+      return collection.currentData?.name;
   }
 }

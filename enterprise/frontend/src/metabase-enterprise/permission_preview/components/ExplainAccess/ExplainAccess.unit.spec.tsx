@@ -79,10 +79,18 @@ function setup({
   );
 
   const onClose = jest.fn();
-  renderWithProviders(
-    <ExplainAccess target={target} userId={2} item={item} onClose={onClose} />,
+  const renderItem = (itemToExplain: string) => (
+    <ExplainAccess
+      target={target}
+      userId={2}
+      item={itemToExplain}
+      onClose={onClose}
+    />
   );
-  return { onClose };
+  const { rerender } = renderWithProviders(renderItem(item));
+  const showItem = (itemToExplain: string) =>
+    rerender(renderItem(itemToExplain));
+  return { onClose, showItem };
 }
 
 describe("ExplainAccess", () => {
@@ -664,5 +672,74 @@ describe("ExplainAccess", () => {
       await screen.findByText("Sandy Sales can open this collection."),
     ).toBeInTheDocument();
     expect(screen.getByText("Collection access")).toBeInTheDocument();
+  });
+
+  describe("moving from one item to another", () => {
+    const withTables: Answers = {
+      "card/query": createAnswer({
+        reasons: { collection: createCollection(), tables: [createTable()] },
+      }),
+    };
+
+    it("shows a collection's own answer after a question, with no download sentence", async () => {
+      const { showItem } = setup({ answers: withTables });
+      expect(
+        await screen.findByText("They can download the full result."),
+      ).toBeInTheDocument();
+
+      showItem("collection/5");
+
+      expect(
+        await screen.findByText("Sandy Sales can open this collection."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Sandy Sales can see this question."),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("They can download the full result."),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Access to “Sales reports”")).toBeInTheDocument();
+    });
+
+    it("gives a dashboard no download sentence after a question", async () => {
+      const { showItem } = setup({ answers: withTables });
+      expect(
+        await screen.findByText("They can download the full result."),
+      ).toBeInTheDocument();
+
+      showItem("dashboard/3");
+
+      expect(
+        await screen.findByText("Access to “Sales overview”"),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByText("Sandy Sales can see this dashboard."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("They can download the full result."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("drops the previous question's name and answers for a question that is missing", async () => {
+      fetchMock.get("path:/api/card/99", 404);
+      fetchMock.get({
+        url: "path:/api/ee/permission_debug",
+        query: { model_id: "99" },
+        response: 404,
+      });
+      const { showItem } = setup();
+      expect(
+        await screen.findByText("Access to “Orders by state”"),
+      ).toBeInTheDocument();
+
+      showItem("question/99");
+
+      expect(
+        await screen.findByText("Couldn't explain this access."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Access to “Orders by state”"),
+      ).not.toBeInTheDocument();
+    });
   });
 });
