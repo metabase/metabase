@@ -16,15 +16,20 @@
   the same model wherever they are, such as `:field_id`, are replaced. An id whose row is missing stays as it is. All
   the refs of a body are found with one query per model.
 
-  Ids inside a structure column, such as a Card's query or a dashcard's visualization settings, are left as they are:
-  the walk does not enter the columns whose serialization transform names no model."
+  The walk does not enter a structure column, one whose serialization transform names no model. The structure columns
+  with ids inside that a model's [[metabase.eid-translation.spec/spec]] names in `:structures`, such as a Card's query
+  or a dashcard's visualization settings, are given as serialization exports them, each model's column a batch at a
+  time. A value that fails to export, and every other structure column, stays as it is."
   (:require
    [metabase.api.common :as api]
    [metabase.eid-translation.spec :as eid-translation.spec]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [metabase.serialization.resolve :as serialization.resolve]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
+  (:import
+   (java.util IdentityHashMap)))
 
 (set! *warn-on-reflection* true)
 
@@ -39,22 +44,28 @@
       (isa? model :hook/entity-id)))
 
 (defn- model-columns
-  "For `model`, `{:references {column model-of-the-rows-it-names} :structures #{column}}`: the columns holding the ids
-  of rows with refs, and the columns holding structures, whose ids the walk leaves alone."
+  "For `model`, `{:references {column model-of-the-rows-it-names} :structures #{column} :exports {column export-fn}}`:
+  the columns holding the ids of rows with refs; the columns holding structures, which the walk does not enter; and,
+  of those, the ones the `:structures` of its eid-translation spec names, with the `:export` fn of their serialization
+  transforms."
   [model]
   (let [spec       (serialization/spec model)
+        eid-spec   (eid-translation.spec/spec model)
         references (into {}
                          (filter (fn [[_column target]] (ref-model? target)))
                          (concat (keep (fn [[column transform]] (some->> (:model transform) (vector column)))
                                        (:transform spec))
                                  (when-let [{parent :model column :key} (:parent spec)]
                                    [[column parent]])
-                                 (:references (eid-translation.spec/spec model))))]
+                                 (:references eid-spec)))]
     {:references references
      :structures (into #{}
                        (comp (remove (fn [[column transform]] (or (:model transform) (contains? references column))))
                              (map key))
-                       (:transform spec))}))
+                       (:transform spec))
+     :exports    (into {}
+                       (keep (fn [column] (some->> (get-in spec [:transform column :export]) (vector column))))
+                       (:structures eid-spec))}))
 
 (def ^:private item-models
   "The model of each `:model` that [[api/model->db-model]] names, of plain maps in lists of items."
@@ -62,7 +73,8 @@
 
 (def ^:private keyed-models
   "The model of a plain map under these keys, which no column of its holder names."
-  {:last-edit-info :model/User})
+  {:last-edit-info    :model/User
+   :parent_collection :model/Collection})
 
 (def ^:private plain-map-references
   "The reference columns of a plain map of unknown model: the columns that name rows of the same model wherever they
@@ -115,8 +127,10 @@
       :else                     (merge row replacements))))
 
 (defn- walker
-  "A walk for [[serialization.resolve/walk-in-bulk]] of a response body, with `columns` the memoized [[model-columns]]."
-  [columns]
+  "A walk for [[serialization.resolve/walk-in-bulk]] of a response body, with `columns` the memoized [[model-columns]]
+  and `export` a fn of a model, a column, the row of the body holding it and its value, returning the value the walk
+  gives the column, for the columns of the `:exports` of the model."
+  [columns export]
   (fn walk [visit body]
     (letfn [(row-model [holder-references k m]
               (let [model (t2/model m)]
@@ -132,18 +146,19 @@
             (visit-x [holder-references k x]
               (cond
                 (map? x)
-                (let [model                           (row-model holder-references k x)
-                      {:keys [references structures]} (cond
-                                                        model                 (columns model)
-                                                        (nil? (t2/model x))   {:references plain-map-references}
-                                                        :else                 nil)
-                      x                               (reduce-kv (fn [m k' v]
-                                                                   (let [v' (if (contains? structures k')
-                                                                              v
-                                                                              (visit-x references k' v))]
-                                                                     (if (identical? v v') m (assoc m k' v'))))
-                                                                 x
-                                                                 x)]
+                (let [model                                   (row-model holder-references k x)
+                      {:keys [references structures exports]} (cond
+                                                                model               (columns model)
+                                                                (nil? (t2/model x)) {:references plain-map-references}
+                                                                :else               nil)
+                      x                                       (reduce-kv (fn [m k' v]
+                                                                           (let [v' (cond
+                                                                                      (contains? exports k')    (export model k' x v)
+                                                                                      (contains? structures k') v
+                                                                                      :else                     (visit-x references k' v))]
+                                                                             (if (identical? v v') m (assoc m k' v'))))
+                                                                         x
+                                                                         x)]
                   (if (or model (seq references))
                     (rewrite-row model references x visit)
                     x))
@@ -154,12 +169,60 @@
                 :else           x))]
       (visit-x nil nil body))))
 
+(defn- distinct-by-identity
+  "`xs` without the repeats of an object, which a body holding the same row twice has."
+  [xs]
+  (let [seen (IdentityHashMap.)]
+    (into [] (filter #(nil? (.put seen % true))) xs)))
+
+(defn- export-values
+  "The values of `column` of `rows` of `model` exported by `export-fn`, a serialization `:export` fn, as a vector in
+  the order of `rows`, with `::failed` for each value that fails to export. A failing batch is exported again one row
+  at a time, so that one value that fails, such as a broken query, does not fail the others."
+  [model column export-fn rows]
+  (let [export (fn [rows] (export-fn serialization/app-db-store rows (mapv #(get % column) rows) {}))]
+    (try
+      (vec (export rows))
+      (catch Throwable _
+        (mapv (fn [row]
+                (try
+                  (first (export [row]))
+                  (catch Throwable e
+                    (log/debugf e "Failed to export %s %s of a response" model column)
+                    ::failed)))
+              rows)))))
+
+(defn- exported-structures
+  "The map from each row of `body` holding a column of its model's `:exports` (see [[model-columns]]), by identity, to
+  the map from that column to its value exported, with the values of each model and column exported a batch at a
+  time."
+  [body columns]
+  (let [rows    (volatile! {})
+        collect (fn [model column row v]
+                  (when (some? v)
+                    (vswap! rows update [model column] (fnil conj []) row))
+                  v)
+        result  (IdentityHashMap.)]
+    ((walker columns collect) (fn [_model id] id) body)
+    (doseq [[[model column] rows]  @rows
+            :let                   [export-fn (get-in (columns model) [:exports column])]
+            batch                  (partition-all serialization/batch-size (distinct-by-identity rows))
+            [row v]                (map vector batch (export-values model column export-fn (vec batch)))
+            :when                  (not= ::failed v)]
+      (.put result row (assoc (.get result row) column v)))
+    result))
+
 (defn ->entity-ids
   "`body`, an API response body, with each numeric id of a row with a ref, and each such id a row references, replaced
-  by that row's ref."
+  by that row's ref, and each structure column of its model's `:exports` given as serialization exports it."
   [body]
-  (let [columns (memoize model-columns)
-        walk    (walker columns)]
+  (let [columns  (memoize model-columns)
+        exported (exported-structures body columns)
+        walk     (walker columns (fn [_model column row v]
+                                   (let [row-exports (.get ^IdentityHashMap exported row)]
+                                     (if (contains? row-exports column)
+                                       (get row-exports column)
+                                       v))))]
     (first (serialization.resolve/walk-in-bulk
             [body]
             (fn [visit form]

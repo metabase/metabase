@@ -298,4 +298,5 @@
 
 (defmethod eid-translation/spec :model/Measure [_model]
   {:names      [:measure]
-   :references {:table_id :model/Table}})
+   :references {:table_id :model/Table}
+   :structures [:definition]})

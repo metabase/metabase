@@ -857,4 +857,5 @@
 
 (defmethod eid-translation/spec :model/Document [_model]
   {:names      [:document]
-   :references {:made_public_by_id :model/User}})
+   :references {:made_public_by_id :model/User}
+   :structures [:document]})

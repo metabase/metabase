@@ -788,4 +788,5 @@
 
 (defmethod eid-translation/spec :model/Transform [_model]
   {:names      [:transform]
-   :references {:target_db_id :model/Database :target_table_id :model/Table}})
+   :references {:target_db_id :model/Database :target_table_id :model/Table}
+   :structures [:source :target]})

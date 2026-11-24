@@ -518,4 +518,5 @@
   {:synced-filter-clause dashboards.db/synced-dashcards-clause})
 
 (defmethod eid-translation/spec :model/DashboardCard [_model]
-  {:names [:dashboard-card]})
+  {:names      [:dashboard-card]
+   :structures [:parameter_mappings :visualization_settings]})

@@ -1106,7 +1106,8 @@
              :hydrate actions.collection-items/hydrate}})
 
 (defmethod eid-translation/spec :model/Action [_model]
-  {:names [:action]})
+  {:names      [:action]
+   :structures [:parameters :parameter_mappings :visualization_settings]})
 
 (defmethod app-db-copy/spec :model/QueryAction [_model]
   {:skip?    false

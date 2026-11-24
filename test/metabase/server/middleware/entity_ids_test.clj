@@ -142,16 +142,32 @@
           (is (= (client/client :get 200 (str "public/card/" uuid))
                  (client/client :get 200 (str "public/card/" uuid) entity-ids))))))))
 
-(deftest embedded-structures-test
-  (testing "ids inside a structure column, such as a link card's visualization settings, are left as they are"
-    (mt/with-temp [:model/Card          {card-id :id} {:dataset_query (venues-query)}
-                   :model/Dashboard     {dash-id :id} {}
-                   :model/DashboardCard _             {:dashboard_id           dash-id
-                                                       :card_id                nil
-                                                       :visualization_settings {:link {:entity {:model "card"
-                                                                                                :id    card-id}}}}]
-      (is (=? {:dashcards [{:visualization_settings {:link {:entity {:id card-id}}}}]}
-              (get-with-entity-ids :crowberto (str "dashboard/" dash-id)))))))
+(deftest structures-test
+  (testing "the ids inside a structure column, such as a query, are refs, as serialization exports the column"
+    (let [price-ref (field-ref (mt/id :venues :price))]
+      (mt/with-temp [:model/Card          {card-id :id card-eid :entity_id} {:dataset_query (venues-query)}
+                     :model/Dashboard     {dash-id :id}                     {:parameters [{:id   "p1"
+                                                                                           :slug "price"
+                                                                                           :name "Price"
+                                                                                           :type "category"}]}
+                     :model/DashboardCard _                                 {:dashboard_id       dash-id
+                                                                             :card_id            card-id
+                                                                             :parameter_mappings [{:parameter_id "p1"
+                                                                                                   :card_id      card-id
+                                                                                                   :target       [:dimension [:field (mt/id :venues :price) nil]]}]}
+                     :model/DashboardCard _                                 {:dashboard_id           dash-id
+                                                                             :card_id                nil
+                                                                             :visualization_settings {:link {:entity {:model "card"
+                                                                                                                      :id    card-id}}}}]
+        (testing "a Card's query"
+          (is (=? {:dataset_query {:database (:name (mt/db))
+                                   :stages   [{:source-table (table-ref (mt/id :venues))}]}}
+                  (get-with-entity-ids :crowberto (str "card/" card-id)))))
+        (testing "a dashcard's parameter mappings and visualization settings"
+          (is (=? {:dashcards [{:parameter_mappings [{:card_id card-eid
+                                                      :target  ["dimension" ["field" price-ref nil]]}]}
+                               {:visualization_settings {:link {:entity {:id card-eid}}}}]}
+                  (get-with-entity-ids :crowberto (str "dashboard/" dash-id)))))))))
 
 (deftest failed-rewrite-test
   (testing "a failure to rewrite a response is an API error, formatted as the others are"
@@ -222,9 +238,10 @@
 
 (deftest recents-test
   (testing "a recent item, whose model is a keyword, names itself and its references by entity ids and natural keys"
-    (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {:dataset_query (venues-query)}]
+    (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {}
+                   :model/Card       {card-id :id card-eid :entity_id} {:collection_id coll-id :dataset_query (venues-query)}]
       (mt/user-http-request :crowberto :post 204 "activity/recents" {:context :selection :model "card" :model_id card-id})
-      (is (=? {:id card-eid :database_id (:name (mt/db))}
+      (is (=? {:id card-eid :database_id (:name (mt/db)) :parent_collection {:id coll-eid}}
               (m/find-first #(= card-eid (:entity_id %))
                             (:recents (get-with-entity-ids :crowberto "activity/recents" :context "selections"))))))))
 
@@ -258,8 +275,6 @@
 (deftest restored-instance-test
   (testing "the responses of an instance and of its restore, whose rows have new numeric ids, are the same but for
             their timestamps"
-    ;; The restore is to the same instance, so the warehouse ids inside a Card's query and result metadata, which the
-    ;; responses keep, are the same too.
     (mt/with-model-cleanup [:model/Collection :model/Card :model/Dashboard]
       (let [coll   (t2/insert-returning-instance! :model/Collection {:name "eid restore"})
             card   (mt/user-http-request :crowberto :post 200 "card" {:name                   "eid restore card"

@@ -296,7 +296,8 @@
 
 (defmethod eid-translation/spec :model/Segment [_model]
   {:names      [:segment]
-   :references {:table_id :model/Table}})
+   :references {:table_id :model/Table}
+   :structures [:definition]})
 
 (defmethod xrays/spec :model/Segment [_model]
   {:related    segments.xrays/related
