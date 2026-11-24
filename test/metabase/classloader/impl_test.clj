@@ -1,9 +1,11 @@
 (ns metabase.classloader.impl-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.classloader.impl :as classloader])
   (:import
-   (clojure.lang DynamicClassLoader)))
+   (clojure.lang DynamicClassLoader)
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -38,3 +40,19 @@
       (classloader/the-classloader)
       (is (= descendant-classloader
              (.getContextClassLoader (Thread/currentThread)))))))
+
+(deftest compile-to-temp-dir!-writes-the-gen-class-into-a-new-dir-test
+  (testing "the gen-class file goes into a dir that did not exist before, and the class then loads by name"
+    ;; A fixed, shared dir let a stale `__init.class` from another checkout stop the compile, so the gen-class file
+    ;; was never written again.
+    (let [compile!  #(classloader/compile-to-temp-dir! "mb-classloader-test" 'metabase.classloader.gen-class-fixture)
+          tmp       (io/file (System/getProperty "java.io.tmpdir"))
+          before    (set (.list tmp))
+          ^File dir (compile!)]
+      (is (= tmp (.getParentFile dir)))
+      (is (not (contains? before (.getName dir))))
+      (is (.exists (io/file dir "metabase" "classloader" "GenClassFixture.class")))
+      (is (= "metabase.classloader.GenClassFixture"
+             (.getName (Class/forName "metabase.classloader.GenClassFixture" false (classloader/the-classloader)))))
+      (testing "and the next compile gets a dir of its own"
+        (is (not= dir (compile!)))))))
