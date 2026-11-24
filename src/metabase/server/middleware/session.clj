@@ -303,9 +303,10 @@
 (defn- preview-credentials
   "The user info of a request that carries a preview token, and nothing else of the request's own credentials: a token
   that doesn't resolve to a live preview refuses the request (see [[metabase.server.middleware.preview]]) rather than
-  falling back to a session, which would answer as the admin. Nil when the request carries no preview token."
+  falling back to a session, which would answer as the admin. Nil when the request carries no preview token header; a
+  header with an empty value counts as a token, and is refused."
   [{{preview-token preview-token-header} :headers}]
-  (when (seq preview-token)
+  (when (some? preview-token)
     (or (when (init-status/complete?)
           (session/preview-user-info preview-token))
         {:preview-token-refused? true})))
