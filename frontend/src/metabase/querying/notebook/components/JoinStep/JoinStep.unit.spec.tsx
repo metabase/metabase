@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
+  setupCardEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupDatabasesEndpoints,
@@ -37,6 +39,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
@@ -219,11 +222,13 @@ function setup({
   readOnly = false,
   recentItems = [],
   searchItems = [],
+  storeState = STATE,
 }: {
   step?: NotebookStep;
   readOnly?: boolean;
   recentItems?: RecentItem[];
   searchItems?: CollectionItem[];
+  storeState?: typeof STATE;
 } = {}) {
   const updateQuery = jest.fn();
   const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
@@ -272,7 +277,7 @@ function setup({
   const { rerender } = renderWithProviders(
     <Wrapper sourceQuery={step.query} />,
     {
-      storeInitialState: STATE,
+      storeInitialState: storeState,
     },
   );
 
@@ -1958,6 +1963,151 @@ describe("Notebook Editor > Join Step", () => {
       const rhsButton = screen.getByLabelText("Right column");
       expect(lhsButton).toHaveTextContent("Product ID");
       expect(rhsButton).toHaveTextContent("Custom expression");
+    });
+  });
+
+  describe("saved question sources", () => {
+    const Q1 = createMockCard({
+      id: 401,
+      name: "Q1",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts: [{ type: "column", name: "CATEGORY" }],
+          },
+        ],
+      }),
+    });
+    const Q2 = createMockCard({
+      id: 402,
+      name: "Q2",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "PRICE" }],
+              },
+            ],
+            breakouts: [{ type: "column", name: "CATEGORY" }],
+          },
+        ],
+      }),
+    });
+    const Q3 = createMockCard({
+      id: 403,
+      name: "Q3",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "avg",
+                args: [{ type: "column", name: "RATING" }],
+              },
+            ],
+            breakouts: [{ type: "column", name: "CATEGORY" }],
+          },
+        ],
+      }),
+    });
+    const CARDS = [Q1, Q2, Q3];
+    const cardsMetadata = createMockMetadata({
+      databases: DATABASES,
+      questions: CARDS,
+    });
+    const cardsProvider = createMetadataProvider({ metadata: cardsMetadata });
+    const CARDS_STATE = createMockState({
+      entities: createMockEntitiesState({
+        databases: DATABASES,
+        questions: CARDS,
+      }),
+    });
+
+    function getQ1JoinQ2Query() {
+      return Lib.createTestQuery(cardsProvider, {
+        stages: [
+          {
+            source: { type: "card", id: Q1.id },
+            joins: [
+              {
+                source: { type: "card", id: Q2.id },
+                strategy: "left-join",
+                conditions: [
+                  {
+                    operator: "=",
+                    left: { type: "column", name: "CATEGORY" },
+                    right: { type: "column", name: "CATEGORY" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    }
+
+    it("should show all columns when using the join column selector (metabase#19894)", async () => {
+      setupCardEndpoints(Q3);
+      setupCardQueryMetadataEndpoint(
+        Q3,
+        createMockCardQueryMetadata({ databases: [SAMPLE_DATABASE] }),
+      );
+      setup({
+        step: createMockNotebookStep({
+          type: "join",
+          query: getQ1JoinQ2Query(),
+          itemIndex: 1,
+        }),
+        storeState: CARDS_STATE,
+        searchItems: CARDS.map((card) =>
+          createMockCollectionItem({
+            ...card,
+            model: "card",
+            database_id: SAMPLE_DATABASE.id,
+          }),
+        ),
+      });
+
+      const rightTableInput = within(
+        screen.getByLabelText("Right table"),
+      ).getByRole("textbox");
+      await userEvent.click(rightTableInput);
+      await userEvent.type(rightTableInput, "Q3");
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Q3/ }),
+      );
+
+      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+      expect(
+        await within(lhsColumnPicker).findByText("Category"),
+      ).toBeInTheDocument();
+      expect(within(lhsColumnPicker).getByText("Count")).toBeInTheDocument();
+
+      await userEvent.click(within(lhsColumnPicker).getByText("Q1"));
+      await userEvent.click(within(lhsColumnPicker).getByText("Q2"));
+
+      expect(
+        within(lhsColumnPicker).getByText("Q2 - Category → Category"),
+      ).toBeInTheDocument();
+      expect(
+        within(lhsColumnPicker).getByText("Q2 - Category → Sum of Price"),
+      ).toBeInTheDocument();
+      expect(
+        within(lhsColumnPicker).queryByText("Count"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(within(lhsColumnPicker).getByText("Q1"));
+
+      expect(within(lhsColumnPicker).getByText("Category")).toBeInTheDocument();
+      expect(within(lhsColumnPicker).getByText("Count")).toBeInTheDocument();
     });
   });
 
