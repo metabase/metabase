@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
@@ -14,6 +16,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -28,6 +31,7 @@ import type {
 import {
   createMockCollection,
   createMockDatabase,
+  createMockRequestableIndexes,
   createMockTableIndexEntry,
   createMockTableIndexRequest,
   createMockTokenFeatures,
@@ -103,6 +107,113 @@ function setup({
 }
 
 describe("TransformIndexesPage", () => {
+  it("lists pending and removing index requests sorted by name, and toggles the sort from the Name header", async () => {
+    setup({
+      transform: createMockTransform({
+        id: 1,
+        name: "Indexes list transform",
+        source: QUERY_SOURCE,
+        requestable_indexes: createMockRequestableIndexes(),
+      }),
+      users: [
+        createMockUserListResult({ id: 1, common_name: "Bobby Tables" }),
+        createMockUserListResult({ id: 2, common_name: "Ed Winters" }),
+      ],
+      // The response is in reverse name order, so the default sort must reorder it.
+      indexes: [
+        createMockTableIndexEntry({
+          name: "idx_animal_score",
+          kind: "btree",
+          metabase_managed: true,
+          present_in_warehouse: false,
+          key_columns: ["score", "name"],
+          request: createMockTableIndexRequest({
+            id: 2,
+            index_name: "idx_animal_score",
+            status: "delete-pending",
+            created_by: 2,
+            last_executed_at: "2024-03-05T10:00:00Z",
+          }),
+        }),
+        createMockTableIndexEntry({
+          name: "idx_animal_name",
+          kind: "btree",
+          metabase_managed: true,
+          present_in_warehouse: false,
+          key_columns: ["name"],
+          request: createMockTableIndexRequest({
+            id: 1,
+            index_name: "idx_animal_name",
+            status: "create-pending",
+            created_by: 1,
+            last_executed_at: null,
+          }),
+        }),
+      ],
+    });
+    await waitForLoaderToBeRemoved();
+
+    const table = screen.getByRole("treegrid", { name: "Transform indexes" });
+    for (const header of [
+      "Name",
+      "Type",
+      "Columns",
+      "Source",
+      "Status",
+      "Last modified by",
+      "Last run",
+    ]) {
+      expect(
+        within(table).getByRole("columnheader", {
+          name: new RegExp(`^${header}`),
+        }),
+      ).toBeInTheDocument();
+    }
+
+    const getRowNames = () =>
+      within(table)
+        .getAllByRole("row")
+        .map((row) =>
+          row.textContent?.includes("idx_animal_name")
+            ? "idx_animal_name"
+            : row.textContent?.includes("idx_animal_score")
+              ? "idx_animal_score"
+              : row.textContent,
+        );
+
+    expect(getRowNames()).toEqual(["idx_animal_name", "idx_animal_score"]);
+
+    const pendingRow = within(table).getByRole("row", {
+      name: /idx_animal_name/,
+    });
+    expect(within(pendingRow).getByText("idx_animal_name")).toBeInTheDocument();
+    expect(within(pendingRow).getByText("B-Tree")).toBeInTheDocument();
+    expect(within(pendingRow).getByText("name")).toBeInTheDocument();
+    expect(within(pendingRow).getByText("Managed")).toBeInTheDocument();
+    expect(within(pendingRow).getByText("Pending")).toBeInTheDocument();
+    expect(
+      await within(pendingRow).findByText("Bobby Tables"),
+    ).toBeInTheDocument();
+    expect(within(pendingRow).getByText("Never")).toBeInTheDocument();
+
+    const removingRow = within(table).getByRole("row", {
+      name: /idx_animal_score/,
+    });
+    expect(within(removingRow).getByText("score, name")).toBeInTheDocument();
+    expect(within(removingRow).getByText("Removing")).toBeInTheDocument();
+    expect(within(removingRow).queryByText("Never")).not.toBeInTheDocument();
+
+    const nameHeader = within(table).getByRole("columnheader", {
+      name: /^Name/,
+    });
+    expect(nameHeader).toHaveAttribute("aria-sort", "ascending");
+    await userEvent.click(nameHeader);
+    expect(
+      within(table).getByRole("columnheader", { name: /^Name/ }),
+    ).toHaveAttribute("aria-sort", "descending");
+    expect(getRowNames()).toEqual(["idx_animal_score", "idx_animal_name"]);
+  });
+
   it("renders the empty state when there are no indexes", async () => {
     setup({ indexes: [] });
     await waitForLoaderToBeRemoved();
