@@ -38,7 +38,8 @@ export type PermissionsPageTab =
   | "collections"
   | "application"
   | "tenant-collections"
-  | "tenant-specific-collections";
+  | "tenant-specific-collections"
+  | "preview-access";
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;

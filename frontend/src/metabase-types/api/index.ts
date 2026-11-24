@@ -58,6 +58,7 @@ export * from "./oauth";
 export * from "./pagination";
 export * from "./parameters";
 export * from "./performance";
+export * from "./permission-preview";
 export * from "./permissions";
 export * from "./persist";
 export * from "./public-link";

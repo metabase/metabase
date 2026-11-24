@@ -1,0 +1,13 @@
+.row {
+  width: 100%;
+  text-align: left;
+}
+
+.row:hover {
+  background-color: var(--mb-color-background_surface-hover);
+}
+
+.selected,
+.selected:hover {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}
