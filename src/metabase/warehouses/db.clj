@@ -24,10 +24,11 @@
 (mu/defn lock-databases! :- :nil
   "Lock the Database rows with `database-ids` for update until the transaction ends."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/query {:select [:id]
-             :from   [(t2/table-name :model/Database)]
-             :where  [:in :id [:auto/param database-ids]]
-             :for    [:update]})
+  (run! #(t2/query {:select [:id]
+                    :from   [(t2/table-name :model/Database)]
+                    :where  [:in :id [:auto/param %]]
+                    :for    [:update]})
+        (mdb/select-partitions database-ids))
   nil)
 
 (mu/defn database

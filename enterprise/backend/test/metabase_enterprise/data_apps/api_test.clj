@@ -554,6 +554,30 @@
                                :queries    {:venueList (venues-definition "VenueList123456789012" {})
                                             :VenueList (venues-definition "VenueList223456789012" {})}})))))
 
+(deftest generate-queries-statement-count-test
+  (testing "POST /api/ee/apps/generate/queries runs as many statements for 6 definitions on distinct Tables as for 2"
+    (mt/with-premium-features #{:data-apps}
+      (let [tables [:venues :checkins :users :categories :orders :people]]
+        (data-apps.tu/with-published-tables! (mapv mt/id tables)
+          (let [statements (fn [table-keys]
+                             (let [queries (into {}
+                                                 (map-indexed
+                                                  (fn [i table]
+                                                    [(keyword (str (name table) i))
+                                                     {:entityId (format "Table%016d" i)
+                                                      :query    {:stages [{:source {:type "table"
+                                                                                    :id   (mt/id table)
+                                                                                    :name (t2/select-one-fn :display_name :model/Table
+                                                                                                            :id (mt/id table))}}]}}]))
+                                                 table-keys)]
+                               (t2/with-call-count [call-count]
+                                 (mt/user-http-request :crowberto :post 200 "ee/apps/generate/queries"
+                                                       {:collection collection-entity-id
+                                                        :queries    queries})
+                                 (call-count))))]
+            (statements (take 2 tables))
+            (is (= (statements (take 2 tables)) (statements tables)))))))))
+
 (deftest generate-actions-refuses-invalid-definitions-test
   (mt/with-premium-features #{:data-apps}
     (testing "a definition that doesn't match its schema"

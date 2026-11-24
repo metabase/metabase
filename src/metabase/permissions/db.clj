@@ -705,37 +705,39 @@
                           group-ids))
 
 (mu/defn groups-by-ids
-  "The ID, name, magic type, and tenant flag of the requested groups, ordered by name."
+  "The ID, name, magic type, and tenant flag of the requested groups, ordered by name within each partition of
+  [[mdb/select-partition-size]] ids."
   [group-ids :- [:set ms/PositiveInt]]
-  (if (seq group-ids)
-    (t2/select [:model/PermissionsGroup :id :name :magic_group_type :is_tenant_group]
-               :id [:in group-ids]
-               {:order-by [:%lower.name]})
-    []))
+  (mdb/select-batched #(t2/select [:model/PermissionsGroup :id :name :magic_group_type :is_tenant_group]
+                                  :id [:in [:auto/param %]]
+                                  {:order-by [:%lower.name]})
+                      group-ids))
 
 (mu/defn group-members
-  "The active Users in the PermissionsGroups with `group-ids`. When `include-group-manager?` is true each row also
-  carries the membership's `:is_group_manager` flag."
+  "The active Users in the PermissionsGroups with `group-ids`, ordered by name within each group, each with the
+  membership's `:is_group_manager` flag when `include-group-manager?`."
   [group-ids              :- [:sequential ms/PositiveInt]
    include-group-manager? :- :boolean]
-  (t2/select :model/User {:select    (cond-> [:u.id
-                                              [:u.id :user_id]
-                                              :u.first_name
-                                              :u.last_name
-                                              :u.email
-                                              :u.is_superuser
-                                              :u.type
-                                              :pgm.group_id
-                                              [:pgm.id :membership_id]]
-                                       include-group-manager?
-                                       (conj [:pgm.is_group_manager :is_group_manager]))
-                          :from      [[:core_user :u]]
-                          :left-join [[:permissions_group_membership :pgm] [:= :u.id :pgm.user_id]]
-                          :where     [:and
-                                      [:= :u.is_active true]
-                                      [:in :pgm.group_id group-ids]]
-                          :order-by  [[[:lower :u.first_name] :asc]
-                                      [[:lower :u.last_name] :asc]]}))
+  (mdb/select-batched
+   #(t2/select :model/User {:select    (cond-> [:u.id
+                                                [:u.id :user_id]
+                                                :u.first_name
+                                                :u.last_name
+                                                :u.email
+                                                :u.is_superuser
+                                                :u.type
+                                                :pgm.group_id
+                                                [:pgm.id :membership_id]]
+                                         include-group-manager?
+                                         (conj [:pgm.is_group_manager :is_group_manager]))
+                            :from      [[:core_user :u]]
+                            :left-join [[:permissions_group_membership :pgm] [:= :u.id :pgm.user_id]]
+                            :where     [:and
+                                        [:= :u.is_active true]
+                                        [:in :pgm.group_id [:auto/param %]]]
+                            :order-by  [[[:lower :u.first_name] :asc]
+                                        [[:lower :u.last_name] :asc]]})
+   group-ids))
 
 (mu/defn group-member-counts
   "A map of PermissionsGroup ID to number of active members in the group. Groups with no active members have no
