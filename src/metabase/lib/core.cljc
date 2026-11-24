@@ -412,7 +412,19 @@
   split-part
   collate
   integer
-  float])
+  float
+  window
+  row-number
+  rank
+  dense-rank
+  percent-rank
+  cume-dist
+  ntile
+  lag
+  lead
+  first-value
+  last-value
+  nth-value])
 
 ;;; ## Aggregations
 ;;; Aggregations are either "canned" aggregate functions like `Count`, `Sum` and `Max`, or a custom expression written

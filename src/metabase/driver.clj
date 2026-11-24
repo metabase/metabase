@@ -1008,6 +1008,27 @@
     ;; functions)
     :window-functions/offset
     ;;
+    ;; Does this driver support the general `:window` expression clause -- an OVER(...) that wraps either an
+    ;; aggregate or a window-only call (row_number, rank, lag, lead, ...)? (default: false)
+    :window-functions
+    ;;
+    ;; Does this driver support explicit window frames (`ROWS`/`RANGE`/`GROUPS`) inside `:window`?
+    ;; (default: the value of `:window-functions`)
+    :window-functions/frames
+    ;;
+    ;; Does this driver support `NTILE(n)` inside `:window`? (default: the value of `:window-functions`)
+    :window-functions/ntile
+    ;;
+    ;; Does this driver support `NTH_VALUE(col, n)` inside `:window`? (default: the value of `:window-functions`)
+    :window-functions/nth-value
+    ;;
+    ;; Does this driver support the `EXCLUDE` clause on a window frame (Postgres, Oracle, SQLite)? (default: false)
+    :window-functions/exclude
+    ;;
+    ;; Does this driver accept an `:interval` MBQL clause as the offset of a `:range` frame bound (e.g.
+    ;; `RANGE BETWEEN INTERVAL '7 day' PRECEDING AND CURRENT ROW`)? (default: false)
+    :window-functions/interval-frame-offsets
+    ;;
     ;; Does this driver support parameterized sql, eg. in prepared statements?
     :parameterized-sql
     ;;
@@ -1235,6 +1256,13 @@
 (defmethod database-supports? [::driver :stage-ctes/nested]
   [driver _feature database]
   (database-supports? driver :stage-ctes database))
+
+;; `:window-functions/{frames,ntile,nth-value}` default to the value of `:window-functions`. Drivers that
+;; advertise windows but lack any of these specifics can opt out explicitly.
+(doseq [sub-feature [:window-functions/frames :window-functions/ntile :window-functions/nth-value]]
+  (defmethod database-supports? [::driver sub-feature]
+    [driver _feature database]
+    (database-supports? driver :window-functions database)))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for

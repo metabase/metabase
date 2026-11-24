@@ -1249,6 +1249,110 @@
      (-> [f expr-hsql [:inline n]]
          (h2x/with-database-type-info (h2x/database-type expr-hsql))))))
 
+(defmulti window-frame-interval-honeysql
+  "Return a HoneySQL form for an interval literal used as a `:range` window-frame offset, e.g. the
+   interval in `RANGE BETWEEN INTERVAL '7' day PRECEDING AND CURRENT ROW`. Default emits the
+   SQL-standard `INTERVAL '<n>' <unit>` form."
+  {:added "0.66.0", :arglists '([driver amount unit])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod window-frame-interval-honeysql :sql
+  [_driver amount unit]
+  (check-interval-unit unit)
+  (when-not (number? amount)
+    (throw (ex-info (tru "Interval amount must be a number, got: {0}" (pr-str amount))
+                    {:type driver-api/qp.error-type.invalid-query
+                     :amount amount})))
+  [:raw (format "INTERVAL '%s' %s" amount (name unit))])
+
+(defn- frame-boundary->honeysql
+  "MBQL `[:preceding n]` -> HoneySQL `[<offset> :preceding]`. Numeric offsets are inlined; `:interval`
+   clauses (for `:range` frames over temporal order keys) emit an engine-specific interval literal."
+  [driver boundary]
+  (if (vector? boundary)
+    (let [[dir offset] boundary
+          offset-hsql  (cond
+                         (number? offset)
+                         [:inline offset]
+
+                         (driver-api/is-clause? :interval offset)
+                         (let [[_tag _opts n unit] offset]
+                           (window-frame-interval-honeysql driver n unit)))]
+      [offset-hsql dir])
+    boundary))
+
+(def ^:private exclude->honeysql
+  {:no-others   :exclude-no-others
+   :current-row :exclude-current-row
+   :group       :exclude-group
+   :ties        :exclude-ties})
+
+(defn- frame->honeysql
+  [driver {frame-type :type :keys [start end exclude]}]
+  (cond-> [frame-type :between
+           (frame-boundary->honeysql driver start)
+           (frame-boundary->honeysql driver end)]
+    exclude (conj (exclude->honeysql exclude))))
+
+(def ^:private window-only-honeysql-fn
+  "HoneySQL function keyword for each window-only MBQL tag."
+  {:row-number   :row_number
+   :rank         :rank
+   :dense-rank   :dense_rank
+   :percent-rank :percent_rank
+   :cume-dist    :cume_dist
+   :ntile        :ntile
+   :lag          :lag
+   :lead         :lead
+   :first-value  :first_value
+   :last-value   :last_value
+   :nth-value    :nth_value})
+
+(defn- compile-window-only-call [driver [tag _opts & args]]
+  (let [hsql-fn (window-only-honeysql-fn tag)]
+    (case tag
+      (:row-number :rank :dense-rank :percent-rank :cume-dist)
+      [hsql-fn]
+
+      :ntile
+      [hsql-fn [:inline (first args)]]
+
+      (:lag :lead)
+      (let [[expr n default] args]
+        (cond-> [hsql-fn (->honeysql driver expr)]
+          n       (conj [:inline n])
+          default (conj (->honeysql driver default))))
+
+      (:first-value :last-value)
+      [hsql-fn (->honeysql driver (first args))]
+
+      :nth-value
+      [hsql-fn (->honeysql driver (first args)) [:inline (second args)]])))
+
+(defn- window-only-call? [[tag]]
+  (contains? #{:row-number :rank :dense-rank :percent-rank :cume-dist
+               :ntile :lag :lead :first-value :last-value :nth-value}
+             tag))
+
+(defn- compile-window-inner [driver inner]
+  (if (window-only-call? inner)
+    (compile-window-only-call driver inner)
+    (->honeysql driver inner)))
+
+(defn- window-spec->honeysql [driver {:keys [partition-by order-by frame]}]
+  (cond-> {}
+    (seq partition-by) (assoc :partition-by (mapv (fn [expr] [(->honeysql driver expr)]) partition-by))
+    (seq order-by)     (assoc :order-by (mapv (fn [[expr dir]] [(->honeysql driver expr) dir]) order-by))
+    frame              (assoc :frame (frame->honeysql driver frame))))
+
+(defmethod ->honeysql [:sql :window]
+  [driver [_window _opts inner spec]]
+  (let [inner-hsql (compile-window-inner driver inner)
+        over-map   (window-spec->honeysql driver spec)]
+    (-> [:over [inner-hsql over-map]]
+        (h2x/with-database-type-info (h2x/database-type inner-hsql)))))
+
 (defn- interval? [expr]
   (driver-api/is-clause? :interval expr))
 

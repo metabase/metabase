@@ -75,45 +75,45 @@
 (doseq [[feature supported?] {;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the
                               ;; server and the columns themselves. Since this isn't something we can really change in
                               ;; the query itself don't present the option to the users in the UI
-                              :case-sensitivity-string-filter-options false
-                              :connection-impersonation               true
-                              :connection-impersonation-requires-role true
-                              :describe-fields                        true
-                              :convert-timezone                       true
-                              :datetime-diff                          true
-                              :full-join                              false
+                              :case-sensitivity-string-filter-options  false
+                              :connection-impersonation                true
+                              :connection-impersonation-requires-role  true
+                              :describe-fields                         true
+                              :convert-timezone                        true
+                              :datetime-diff                           true
+                              :full-join                               false
                               ;; Index sync is turned off across the application as it is not used ATM.
-                              :index-info                             false
-                              :index/fetch                            true
-                              :index/standalone-create                true
-                              :now                                    true
-                              :percentile-aggregations                false
-                              :persist-models                         true
-                              :schemas                                false
-                              :uploads                                true
-                              :identifiers-with-spaces                true
-                              :rename                                 true
-                              :atomic-renames                         true
-                              :expressions/integer                    true
-                              :expressions/float                      true
-                              :expressions/date                       true
-                              :expressions/text                       true
-                              :split-part                             true
+                              :index-info                              false
+                              :index/fetch                             true
+                              :index/standalone-create                 true
+                              :now                                     true
+                              :percentile-aggregations                 false
+                              :persist-models                          true
+                              :schemas                                 false
+                              :uploads                                 true
+                              :identifiers-with-spaces                 true
+                              :rename                                  true
+                              :atomic-renames                          true
+                              :expressions/integer                     true
+                              :expressions/float                       true
+                              :expressions/date                        true
+                              :expressions/text                        true
+                              :split-part                              true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
-                              :window-functions/offset                false
-                              :expression-literals                    true
-                              :database-routing                       true
-                              :metadata/table-existence-check         true
-                              :transforms/python                      true
-                              :transforms/table                       true
-                              :transforms/testing                     true
-                              :transforms/index-ddl                   true
-                              :describe-default-expr                  true
-                              :describe-is-nullable                   true
-                              :describe-is-generated                  true
-                              :workspace                              true}]
+                              :window-functions/offset                 false
+                              :expression-literals                     true
+                              :database-routing                        true
+                              :metadata/table-existence-check          true
+                              :transforms/python                       true
+                              :transforms/table                        true
+                              :transforms/testing                      true
+                              :transforms/index-ddl                    true
+                              :describe-default-expr                   true
+                              :describe-is-nullable                    true
+                              :describe-is-generated                   true
+                              :workspace                               true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :mysql
@@ -196,6 +196,11 @@
   [driver _feat db]
   (and (= driver :mysql)
        (not (mariadb? db))))
+
+;; MySQL 8+ accepts `RANGE BETWEEN INTERVAL n unit PRECEDING AND CURRENT ROW`; MariaDB rejects it.
+(defmethod driver/database-supports? [:mysql :window-functions/interval-frame-offsets]
+  [_driver _feat db]
+  (not (mariadb? db)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -316,6 +321,13 @@
 (defmethod sql.qp/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
+
+(defmethod sql.qp/window-frame-interval-honeysql :mysql
+  [_driver amount unit]
+  (sql.qp/check-interval-unit unit)
+  (when-not (integer? amount)
+    (throw (ex-info "Interval amount must be an integer" {:amount amount})))
+  [:raw (format "INTERVAL %d %s" amount (name unit))])
 
 (defmethod driver/database-supports? [:mysql :stage-ctes]
   [_driver _feature db]

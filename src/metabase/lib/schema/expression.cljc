@@ -246,8 +246,11 @@
     {:error/message "non-aggregation expression"}
     #(letfn [(agg-tag? [tag]
                (lib.hierarchy/isa? tag :metabase.lib.schema.aggregation/aggregation-clause-tag))
+             (barrier-tag? [tag]
+               (lib.hierarchy/isa? tag :metabase.lib.schema.aggregation/aggregation-barrier-tag))
              (agg-expr? [expr]
                (and (vector? expr)
+                    (not (barrier-tag? (first expr)))
                     (or (agg-tag? (first expr))
                         (some agg-expr? (nnext expr)))))]
        (not (agg-expr? %)))]])

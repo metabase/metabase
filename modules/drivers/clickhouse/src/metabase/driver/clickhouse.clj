@@ -110,6 +110,7 @@
                               :transforms/table                 true
                               :transforms/testing               true
                               :upload-with-auto-pk              false
+                              :window-functions/ntile           false
                               :window-functions/cumulative      (not driver-api/is-test?)
                               :window-functions/offset          true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))

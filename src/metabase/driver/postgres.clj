@@ -85,39 +85,41 @@
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift
-(doseq [[feature supported?] {:atomic-renames                 true
-                              :connection-impersonation       true
-                              :convert-timezone               true
-                              :database-routing               true
-                              :datetime-diff                  true
-                              :describe-default-expr          true
-                              :describe-fields                true
-                              :describe-indexes               true
-                              :describe-is-generated          true
-                              :describe-is-nullable           true
-                              :expression-literals            true
-                              :expressions/date               true
-                              :expressions/float              true
-                              :expressions/integer            true
-                              :expressions/text               true
-                              :identifiers-with-spaces        true
-                              :index/fetch                    true
-                              :index/standalone-create        true
-                              :metadata/table-existence-check true
-                              :native-pivot-tables            true
-                              :now                            true
-                              :persist-models                 true
-                              :rename                         true
-                              :schemas                        true
-                              :split-part                     true
-                              :stage-ctes                     true
-                              :transforms/index-ddl           true
-                              :transforms/python              true
-                              :transforms/table               true
-                              :transforms/testing             true
-                              :uploads                        true
-                              :uuid-type                      true
-                              :workspace                      true}]
+(doseq [[feature supported?] {:atomic-renames                          true
+                              :connection-impersonation                true
+                              :convert-timezone                        true
+                              :database-routing                        true
+                              :datetime-diff                           true
+                              :describe-default-expr                   true
+                              :describe-fields                         true
+                              :describe-indexes                        true
+                              :describe-is-generated                   true
+                              :describe-is-nullable                    true
+                              :expression-literals                     true
+                              :expressions/date                        true
+                              :expressions/float                       true
+                              :expressions/integer                     true
+                              :expressions/text                        true
+                              :identifiers-with-spaces                 true
+                              :index/fetch                             true
+                              :index/standalone-create                 true
+                              :metadata/table-existence-check          true
+                              :native-pivot-tables                     true
+                              :now                                     true
+                              :persist-models                          true
+                              :rename                                  true
+                              :schemas                                 true
+                              :split-part                              true
+                              :stage-ctes                              true
+                              :window-functions/exclude                true
+                              :window-functions/interval-frame-offsets true
+                              :transforms/index-ddl                    true
+                              :transforms/python                       true
+                              :transforms/table                        true
+                              :transforms/testing                      true
+                              :uploads                                 true
+                              :uuid-type                               true
+                              :workspace                               true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
