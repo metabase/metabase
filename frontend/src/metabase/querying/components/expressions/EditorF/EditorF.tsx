@@ -53,6 +53,7 @@ import { useColumnHover } from "./column-hover";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
+import { useFunctionHover } from "./function-hover";
 import { showErrors as showErrorMarks } from "./language";
 import { useEditorSidebar } from "./use-editor-sidebar";
 import { useGenerateExpression } from "./use-generate-expression";
@@ -271,6 +272,12 @@ export function EditorF(props: EditorFProps) {
     availableColumns,
   });
 
+  const [functionHover, functionHoverCard] = useFunctionHover({
+    database,
+    reportTimezone,
+    expressionMode,
+  });
+
   const [customTooltip, portal] = useCustomTooltip({
     getPosition: getTooltipPosition,
     render: (props) => (
@@ -320,7 +327,12 @@ export function EditorF(props: EditorFProps) {
     isDocsOpen: stableExtensions.isDocsOpen,
     // Cmd+Enter saves, so Enter and Tab can pick the first suggestion.
     highlightFirstSuggestion: true,
-    extensions: [customTooltip, columnHover, stableExtensions.prefix],
+    extensions: [
+      customTooltip,
+      columnHover,
+      functionHover,
+      stableExtensions.prefix,
+    ],
   });
 
   const sourceRef = useRef(source);
@@ -767,6 +779,7 @@ export function EditorF(props: EditorFProps) {
         {/* The help popup would cover the diff controls and the prompt. */}
         {!isProposing && !isAiMode && portal}
         {columnHoverCard}
+        {functionHoverCard}
       </LayoutMain>
 
       {openSidebar != null &&
