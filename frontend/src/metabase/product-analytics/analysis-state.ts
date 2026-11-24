@@ -70,6 +70,6 @@ export function getAnalysisState<K extends ProductAnalyticsKind>({
     "columns.timestamp": Lib.columnUniqueKey(timestampColumn),
     granularity: settings.granularity,
     "habit.active": readEventDefinition(settings["habit.active"]),
-    "habit.values": "count",
+    "habit.values": settings["habit.values"],
   };
 }

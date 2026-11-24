@@ -48,6 +48,7 @@ const HABIT_DEFAULTS = {
   counting: "person",
   granularity: "day",
   "habit.active": null,
+  "habit.values": "count",
 };
 
 describe("computeAnalysisSettings", () => {
@@ -65,6 +66,7 @@ describe("computeAnalysisSettings", () => {
         counting: "person",
         granularity: "week",
         "habit.active": EVENT,
+        "habit.values": "percent",
       }),
     ).toEqual({
       base_query: Lib.toJsQuery(FILTERED_QUERY),
@@ -72,6 +74,7 @@ describe("computeAnalysisSettings", () => {
       counting: "person",
       granularity: "week",
       "habit.active": EVENT,
+      "habit.values": "percent",
     });
   });
 
@@ -157,6 +160,7 @@ describe("computeAnalysisSettings", () => {
       { "habit.active": { ...EVENT, conditions: [] } },
     ],
     ["an active event that isn't an object", { "habit.active": "signup" }],
+    ["values Habit doesn't offer", { "habit.values": "ratio" }],
   ])("falls back to the default for %s", (_description, stored) => {
     expect(computeAnalysisSettings("habit", CONTEXT, stored)).toEqual(
       HABIT_DEFAULTS,

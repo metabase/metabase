@@ -22,6 +22,7 @@ const SETTINGS: HabitSettings = {
   counting: "person",
   granularity: "week",
   "habit.active": null,
+  "habit.values": "count",
 };
 
 const getStoredEvent = (minimumTotal: number) =>
@@ -173,6 +174,22 @@ describe("getAnalysisState", () => {
         buildQuery(getStoredEvent(100)),
         buildQuery(getStoredEvent(200)),
       ),
+    ).toBe(false);
+  });
+
+  it("builds a query that depends on the values", () => {
+    const buildQuery = (values: HabitSettings["habit.values"]) =>
+      Lib.toJsQuery(
+        Lib.buildProductAnalyticsQuery(
+          setup({ settings: { ...SETTINGS, "habit.values": values } }),
+        ),
+      );
+
+    expect(
+      Lib.areLegacyQueriesEqual(buildQuery("percent"), buildQuery("percent")),
+    ).toBe(true);
+    expect(
+      Lib.areLegacyQueriesEqual(buildQuery("count"), buildQuery("percent")),
     ).toBe(false);
   });
 

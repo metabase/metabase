@@ -672,6 +672,27 @@ describe("NewAnalysisPage", () => {
       await waitFor(() => expect(getRunRequests()).toHaveLength(2));
     });
 
+    it("reruns the analysis with percent values, and keeps them in the URL", async () => {
+      const { router } = setup({ initialRoute: SET_UP_TABLE_ROUTE });
+      await waitFor(() => expect(getRunRequests()).toHaveLength(1));
+      const values = await screen.findByRole("radiogroup", {
+        name: "What value do you want to see?",
+      });
+      expect(
+        within(values).getByRole("radio", { name: "People" }),
+      ).toBeChecked();
+
+      await userEvent.click(
+        within(values).getByRole("radio", { name: "Percent of total" }),
+      );
+
+      expect(
+        within(values).getByRole("radio", { name: "Percent of total" }),
+      ).toBeChecked();
+      expect(getStoredSettings(router)["habit.values"]).toBe("percent");
+      await waitFor(() => expect(getRunRequests()).toHaveLength(2));
+    });
+
     it("closes, and reopens from the toolbar", async () => {
       setup({ initialRoute: SET_UP_TABLE_ROUTE });
       const panel = await screen.findByRole("region", { name: "Setup" });

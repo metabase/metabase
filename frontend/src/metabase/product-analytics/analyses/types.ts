@@ -45,9 +45,13 @@ export type CommonSettingsOptions = {
   granularities: readonly [Granularity, ...Granularity[]];
 };
 
+/** How Habit shows how many people showed up in each number of periods. */
+export type HabitValues = "count" | "percent";
+
 export type HabitSettings = CommonSettings & {
   /** The event that counts as showing up. `null` when every event counts. */
   "habit.active": JsEventDefinition | null;
+  "habit.values": HabitValues;
 };
 
 export type AnalysisSettingsByKind = {

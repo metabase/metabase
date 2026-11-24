@@ -17,7 +17,7 @@ export type AnalysisState = {
   "columns.timestamp": string;
   granularity: DateTimeAbsoluteUnit;
   "habit.active": AnalysisEvent | null;
-  "habit.values": "count";
+  "habit.values": "count" | "percent";
 };
 
 /**
