@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import {
   setupCardQueryMetadataEndpoint,
+  setupFieldValuesEndpoint,
   setupCardsEndpoints,
   setupCollectionItemsEndpoint,
   setupLastDownloadFormatEndpoints,
@@ -48,6 +49,8 @@ import {
   PEOPLE_ID,
   PRODUCTS,
   PRODUCTS_ID,
+  PRODUCT_CATEGORY_VALUES,
+  PRODUCT_VENDOR_VALUES,
   createOrdersCreatedAtDatasetColumn,
   createOrdersIdDatasetColumn,
   createPeopleStateDatasetColumn,
@@ -723,6 +726,102 @@ describe("QueryBuilder", () => {
           },
         ],
       });
+    });
+  });
+
+  describe("filtering from the header and going back", () => {
+    const PRODUCTS_CARD = createMockUnsavedCard({
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+        }),
+      ),
+    });
+
+    afterEach(() => {
+      window.history.replaceState(null, "", "/");
+    });
+
+    it("focuses the filter search and shows the running query after going back (metabase#54817, metabase#57398)", async () => {
+      setupFieldValuesEndpoint(PRODUCT_CATEGORY_VALUES);
+      setupFieldValuesEndpoint({
+        ...PRODUCT_VENDOR_VALUES,
+        has_more_values: false,
+      });
+      const { router } = await setup({
+        card: PRODUCTS_CARD,
+        syncWindowLocation: true,
+      });
+
+      await userEvent.click(
+        await screen.findByTestId("question-filter-header"),
+      );
+      const popover = await screen.findByRole("dialog");
+      expect(within(popover).getByPlaceholderText("Find...")).toHaveFocus();
+
+      await userEvent.click(within(popover).getByText("Category"));
+      await userEvent.click(await within(popover).findByText("Widget"));
+      await userEvent.click(
+        within(popover).getByLabelText("Add another filter"),
+      );
+
+      await userEvent.click(await within(popover).findByText("Vendor"));
+      await userEvent.click(await within(popover).findByText("Vendor 3"));
+      await userEvent.click(
+        within(popover).getByLabelText("Add another filter"),
+      );
+
+      const filtersPanel = await screen.findByTestId("qb-filters-panel");
+      expect(
+        await within(filtersPanel).findByText("Vendor is Vendor 3"),
+      ).toBeInTheDocument();
+
+      const response = defer<Dataset>();
+      fetchMock.modifyRoute("dataset-post", {
+        response: () => response.promise,
+      });
+      const requestCountBeforeBack = fetchMock.callHistory.calls(
+        "path:/api/dataset",
+        { method: "POST" },
+      ).length;
+
+      act(() => router.back());
+
+      expect(
+        await within(
+          await screen.findByTestId("query-builder-main"),
+        ).findByTestId("loading-indicator"),
+      ).toBeInTheDocument();
+      const panelAfterBack = await screen.findByTestId("qb-filters-panel");
+      expect(
+        within(panelAfterBack).getByText("Category is Widget"),
+      ).toBeInTheDocument();
+      expect(
+        within(panelAfterBack).queryByText("Vendor is Vendor 3"),
+      ).not.toBeInTheDocument();
+
+      const runCalls = fetchMock.callHistory.calls("path:/api/dataset", {
+        method: "POST",
+      });
+      expect(runCalls.length).toBe(requestCountBeforeBack + 1);
+      const runBody: unknown = JSON.parse(
+        String(runCalls[runCalls.length - 1].options.body),
+      );
+      expect(runBody).toMatchObject({
+        stages: [
+          {
+            "source-table": PRODUCTS_ID,
+            filters: [["=", expect.anything(), expect.anything(), "Widget"]],
+          },
+        ],
+      });
+
+      response.resolve(createMockDataset());
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("loading-indicator"),
+        ).not.toBeInTheDocument(),
+      );
     });
   });
 
