@@ -15,6 +15,8 @@ import "metabase/auth/plugins";
 // If EE isn't enabled, it loads an empty file.
 // Set CSP nonce for dynamic style injection (e.g. CodeMirror)
 import "metabase/utils/csp-setup";
+// PROTOTYPE: lets Leva (font playground) inject its styles under the CSP
+import "metabase/font-prototype/leva-csp";
 import { type Middleware, isAction } from "@reduxjs/toolkit";
 import { useLayoutEffect } from "react";
 import { DragDropContextProvider } from "react-dnd";
@@ -30,6 +32,7 @@ import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend"
 import { getUserId } from "metabase/current-user";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
+import { FontPrototype } from "metabase/font-prototype/FontPrototype";
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
@@ -137,6 +140,8 @@ async function _init(
           <OverlayStackProvider>
             <AppThemeProvider>
               <GlobalStyles />
+              {/* PROTOTYPE: font playground (Leva panel) */}
+              <FontPrototype />
               {createPortal(<PortalContainer />, document.body)}
               <MetabotProvider>
                 <RouterProvider
