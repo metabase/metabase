@@ -823,8 +823,6 @@ describe("QueryBuilder", () => {
   });
 
   describe("sorting in the raw table mode (metabase#42723)", () => {
-    setupCanvasTextMeasurement();
-
     const LINE_CARD = createMockCard({
       id: 42723,
       name: "Products by month and category",
@@ -957,8 +955,6 @@ describe("QueryBuilder", () => {
   });
 
   describe("new column shortcuts in the data view", () => {
-    setupCanvasTextMeasurement();
-
     const SERIES_COLOR = "#F2A86F";
     const LINE_CARD = createMockCard({
       id: 3,
