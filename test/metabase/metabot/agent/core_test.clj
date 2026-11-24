@@ -1996,8 +1996,8 @@
 
 (defn- agent-loop-streamed-error-parts!
   "The `:error` parts of an agent loop on OpenRouter whose stream sends the raw Chat Completions `chunks`.
-  With `model-ref` and `xf`, the loop runs on that OpenRouter, OpenAI or Google model, and its stream sends `chunks`
-  through `xf`."
+  With `model-ref` and `xf`, the loop runs on that OpenRouter, OpenAI, Google or Claude model, and its stream sends
+  `chunks` through `xf`."
   ([chunks]
    (agent-loop-streamed-error-parts! "openrouter/anthropic/claude-haiku-4.5"
                                      (openrouter/openrouter->aisdk-chunks-xf) chunks))
@@ -2054,13 +2054,12 @@
 
 (deftest agent-loop-error-part-without-a-message-test
   (testing "an exception with no message gets the generic text, and no provider failure kind"
-    (is (=? [{:type  :error
-              :error {:message "Something went wrong." :type "class java.lang.NullPointerException"}}]
-            (mt/as-admin (agent-loop-error-parts! "openrouter/anthropic/claude-haiku-4.5"
-                                                  (NullPointerException.)))))
-    (is (= [nil] (map :provider-failure
-                      (mt/as-admin (agent-loop-error-parts! "openrouter/anthropic/claude-haiku-4.5"
-                                                            (NullPointerException.))))))))
+    (let [parts (mt/as-admin (agent-loop-error-parts! "openrouter/anthropic/claude-haiku-4.5"
+                                                      (NullPointerException.)))]
+      (is (=? [{:type  :error
+                :error {:message "Something went wrong." :type "class java.lang.NullPointerException"}}]
+              parts))
+      (is (= [nil] (map :provider-failure parts))))))
 
 (deftest agent-loop-provider-failure-error-part-test
   (testing "a provider call that throws for a provider failure tags the error part with its kind"

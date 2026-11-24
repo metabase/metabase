@@ -3302,26 +3302,19 @@
 
 (deftest call-failure-openrouter-403-test
   (testing "an OpenRouter 403 for the content of the exchange has no kind, and one for a permission is `:auth`"
-    (are [kind provider status body]
-         (= kind (self/call-failure (provider-api-error! provider status body)))
+    (are [kind error]
+         (= kind (self/call-failure (provider-api-error! "openrouter" 403 {:error (assoc error :code 403)})))
       ;; https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors
-      nil          "openrouter" 403 {:error {:code     403
-                                             :message  "anthropic/claude-haiku-4.5 requires moderation"
-                                             :metadata {:reasons       ["harassment"]
-                                                        :flagged_input "..."
-                                                        :provider_name "Anthropic"
-                                                        :model_slug    "anthropic/claude-haiku-4.5"}}}
+      nil   {:message  "anthropic/claude-haiku-4.5 requires moderation"
+             :metadata {:reasons       ["harassment"]
+                        :flagged_input "..."
+                        :provider_name "Anthropic"
+                        :model_slug    "anthropic/claude-haiku-4.5"}}
       ;; https://openrouter.ai/docs/api_reference/errors-and-debugging ("Typed error codes")
-      nil          "openrouter" 403 {:error {:code     403
-                                             :message  "The model refused the request"
-                                             :metadata {:error_type "refusal"}}}
-      nil          "openrouter" 403 {:error {:code     403
-                                             :message  "The content was flagged"
-                                             :metadata {:error_type "content_policy_violation"}}}
+      nil   {:message "The model refused the request" :metadata {:error_type "refusal"}}
+      nil   {:message "The content was flagged" :metadata {:error_type "content_policy_violation"}}
       ;; the key lacks a permission, or a guardrail blocked the request
-      :auth        "openrouter" 403 {:error {:code     403
-                                             :message  "Permission denied"
-                                             :metadata {:error_type "permission_denied"}}})))
+      :auth {:message "Permission denied" :metadata {:error_type "permission_denied"}})))
 
 (deftest call-failure-test
   (testing "classifies a provider's HTTP error by the kind of provider failure"

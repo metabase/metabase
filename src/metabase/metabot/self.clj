@@ -419,8 +419,8 @@
   (or (:error body) body))
 
 (def ^:private kind-only-failures
-  "The kind of provider failure for each HTTP status, and each error type or code that Anthropic, OpenAI, Z.AI and
-  Bedrock send, that has no user-facing message in [[provider-error]]."
+  "The kind of provider failure for each HTTP status, and each error type or code of a provider, that has no
+  user-facing message in [[provider-error]]."
   ;; A 403 gets a kind and no message: its cause can be a blocked region, which the `:auth` message does not describe.
   {403                           :auth
    404                           :not-found
