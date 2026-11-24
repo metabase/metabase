@@ -621,22 +621,43 @@ describe("McpAnalyticsSectionLayout", () => {
       });
     };
 
+    // How many times the errors-only count probe has been answered, so a test can wait
+    // for its result before asserting what it shows or hides.
+    let errorsProbeAnswers = 0;
+
+    beforeEach(() => {
+      errorsProbeAnswers = 0;
+    });
+
     const handlerWithErrorCount =
       (errorCount: number) =>
       (stage: McpMbqlStage): Dataset => {
         if (stage.page != null) {
           return eventsDataset(stage);
         }
+        if (isCountProbe(stage) && isErrorsOnly(stage)) {
+          errorsProbeAnswers += 1;
+          return countDataset(errorCount);
+        }
         if (isCountProbe(stage)) {
-          return countDataset(isErrorsOnly(stage) ? errorCount : 2);
+          return countDataset(2);
         }
         return datasetResponse;
       };
+
+    /** Wait until the errors-only count has been answered and its result rendered. */
+    const waitForErrorsProbe = async () => {
+      await waitFor(() => expect(errorsProbeAnswers).toBeGreaterThan(0), {
+        timeout: 3000,
+      });
+      await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    };
 
     it("shows the Errors section on the Usage tab when there are failed calls", async () => {
       setup({ datasetHandler: handlerWithErrorCount(1) });
 
       expect(await screen.findByText("Calls by tool")).toBeInTheDocument();
+      await waitForErrorsProbe();
       expect(
         await screen.findByRole("heading", { name: "Errors" }),
       ).toBeInTheDocument();
@@ -647,16 +668,7 @@ describe("McpAnalyticsSectionLayout", () => {
       setup({ datasetHandler: handlerWithErrorCount(0) });
 
       expect(await screen.findByText("Calls by tool")).toBeInTheDocument();
-      await waitFor(() => {
-        expect(
-          eventsDatasetStages().filter(
-            (stage) => isCountProbe(stage) && isErrorsOnly(stage),
-          ),
-        ).not.toHaveLength(0);
-      });
-      // Let the errors-only count response land and render before asserting the absence.
-      await fetchMock.callHistory.flush(true);
-      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+      await waitForErrorsProbe();
 
       expect(
         screen.queryByRole("heading", { name: "Errors" }),
