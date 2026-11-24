@@ -259,7 +259,7 @@
                     (:series (u/find-first-map (:dashcards result) [:id] (:id dc)))))))))))
 
 (deftest archived-subscriptions-effect-test
-  (testing "a save that archives subscriptions returns them, marked by whether the user can read each one"
+  (testing "a save that archives subscriptions returns readable ones in full and unreadable ones as a bare flag"
     (mt/with-fake-inbox
       (mt/with-temp [:model/Dashboard dash        {:name       "Sales"
                                                    :parameters [{:id   "gone"
