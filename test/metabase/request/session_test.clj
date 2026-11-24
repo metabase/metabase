@@ -49,3 +49,16 @@
                                               :login_attributes {"cat" "50"}}]
       (request/with-current-user user-id
         (is (= {} (:attributes @*current-user*)))))))
+
+(deftest ^:parallel previewing-admin-id-test
+  (testing "the previewing admin is bound for a request that carries one"
+    (request/do-with-current-user
+     {:metabase-user-id (mt/user->id :rasta), :previewing-admin-id (mt/user->id :crowberto)}
+     (fn []
+       (is (= (mt/user->id :crowberto) api/*previewing-admin-id*))
+       (testing "and stays bound under as-admin"
+         (request/as-admin
+           (is (= (mt/user->id :crowberto) api/*previewing-admin-id*)))))))
+  (testing "a request without one has no previewing admin"
+    (request/with-current-user (mt/user->id :rasta)
+      (is (nil? api/*previewing-admin-id*)))))

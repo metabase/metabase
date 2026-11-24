@@ -4669,6 +4669,7 @@
            permissions
            query-processor
            request
+           session
            util}
    :model-imports #{:model/Card
                     :model/Database

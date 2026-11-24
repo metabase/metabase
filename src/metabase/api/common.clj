@@ -137,6 +137,12 @@
 
 ;;; TODO -- move this to [[metabase.request.current]]
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *previewing-admin-id*
+  "The id of the admin previewing the app as the current user, or `nil` when no preview is running."
+  nil)
+
+;;; TODO -- move this to [[metabase.request.current]]
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn current-user-info
   "The current user as the permission functions take one: their id, nil without a user, and whether they are a
   superuser and a data analyst."
