@@ -63,17 +63,28 @@
                  400 {:message    (tru "This tenant user can''t sign in, so can''t be previewed.")
                       :error-code "preview-target-tenant-unavailable"}))))
 
+(mu/defn- check-stand-in!
+  "Throw a 400 unless the User `user-id` is a stand-in user."
+  [user-id :- ::lib.schema.id/user]
+  (api/check (= :permission-preview (some-> (session.db/previewable-user user-id) :type keyword))
+             400 {:message    (tru "Only a stand-in user can be previewed this way.")
+                  :error-code "preview-target-not-a-stand-in"}))
+
 (mu/defn start-preview! :- [:map {:closed true}
                             [:id         ms/PositiveInt]
                             [:token      :string]
                             [:expires_at ms/TemporalInstant]]
   "Start a preview as the User `user-id` for the admin `admin-user-id`, whose live Session has the hashed key
-  `admin-session-key-hash`, and return it with its token, which is shown only here."
-  [{:keys [user-id admin-user-id admin-session-key-hash]} :- [:map {:closed true}
-                                                              [:user-id                ::lib.schema.id/user]
-                                                              [:admin-user-id          ::lib.schema.id/user]
-                                                              [:admin-session-key-hash :string]]]
-  (check-previewable-user! user-id)
+  `admin-session-key-hash`, and return it with its token, which is shown only here. With `stand-in?` the User must be
+  a stand-in user, and without it a person."
+  [{:keys [user-id admin-user-id admin-session-key-hash stand-in?]} :- [:map {:closed true}
+                                                                        [:user-id                ::lib.schema.id/user]
+                                                                        [:admin-user-id          ::lib.schema.id/user]
+                                                                        [:admin-session-key-hash :string]
+                                                                        [:stand-in?              {:optional true} :boolean]]]
+  (if stand-in?
+    (check-stand-in! user-id)
+    (check-previewable-user! user-id))
   (let [admin-session-id (api/check-404 (session.db/live-session-id admin-session-key-hash
                                                                     (session.query/liveness-params)))
         token            (generate-token)

@@ -4667,14 +4667,20 @@
            lib.schema
            models
            permissions
+           premium-features
            query-processor
            request
            session
+           settings
+           users
+           users.schema
            util}
    :model-imports #{:model/Card
                     :model/Database
                     :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
                     :model/Table
+                    :model/Tenant
                     :model/User}}
 
   enterprise/permissions.impersonation

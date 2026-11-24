@@ -7,6 +7,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn user-superuser?
@@ -59,3 +60,25 @@
    permissions-granting :- ::permissions.schema/permission-mapping]
   (mdb/select-batched #(t2/query (blocked-tables-select user-id [:in :blocked.id %] permissions-blocking permissions-granting))
                       table-ids))
+
+(mu/defn stand-in
+  "The id and tenant id of the stand-in user with `email`, or nil."
+  [email :- :string]
+  (t2/select-one [:model/User :id :tenant_id] :email email :type :permission-preview))
+
+(mu/defn most-common-tenant-id
+  "The id of the active Tenant that most of the active personal Users in the PermissionsGroup with `group-id` belong
+  to, the lowest id among equals, or nil when no member belongs to one."
+  [group-id :- ms/PositiveInt]
+  (:tenant_id (t2/query-one {:select    [[:u.tenant_id :tenant_id]]
+                             :from      [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                             :join      [[(t2/table-name :model/User) :u]   [:= :u.id :pgm.user_id]
+                                         [(t2/table-name :model/Tenant) :t] [:= :t.id :u.tenant_id]]
+                             :where     [:and
+                                         [:= :pgm.group_id group-id]
+                                         [:= :u.is_active true]
+                                         [:= :u.type "personal"]
+                                         [:= :t.is_active true]]
+                             :group-by  [:u.tenant_id]
+                             :order-by  [[[:count :*] :desc] [:u.tenant_id :asc]]
+                             :limit     1})))
