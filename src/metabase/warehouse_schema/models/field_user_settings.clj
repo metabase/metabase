@@ -40,6 +40,7 @@
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?))
 
 (defn- with-set-flags

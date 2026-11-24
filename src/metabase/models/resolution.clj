@@ -29,6 +29,8 @@
     :model/Card                              metabase.queries.models.card
     :model/CardTest                          metabase-enterprise.data-testing.models.card-test
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
+    :model/CardFavorite                      metabase.queries.models.report-cardfavorite
+    :model/CardLabel                         metabase.queries.models.card-label
     :model/ChangeLog                         metabase.change-log.models.change-log
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
@@ -47,6 +49,7 @@
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card
     :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
+    :model/DashboardFavorite                 metabase.dashboards.models.dashboard-favorite
     :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/DataTestRun                       metabase-enterprise.data-testing.models.data-test-run
@@ -130,6 +133,8 @@
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
+    :model/RemoteSyncWorktree                metabase-enterprise.remote-sync.models.remote-sync-worktree
+    :model/RemoteSyncWorktreeUser            metabase-enterprise.remote-sync.models.remote-sync-worktree-user
     :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/ResultMetadataStatus              metabase-enterprise.dependencies.models.result-metadata-status
     :model/Revision                          metabase.revisions.models.revision

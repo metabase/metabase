@@ -27,6 +27,7 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -615,6 +616,29 @@
     (methodical/prefer-method! #'t2.before-insert/before-insert hook trait))
   (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
     (methodical/prefer-method! #'t2.before-update/before-update hook trait)))
+
+(defn- add-worktree-id
+  "`row` in the worktree it is inserted in."
+  [row]
+  (assoc row :worktree_id mdb/default-worktree-id))
+
+(t2/define-before-insert :hook/worktree-id
+  [row]
+  (add-worktree-id row))
+
+(t2/define-before-update :hook/worktree-id
+  [row]
+  (when (contains? (t2/changes row) :worktree_id)
+    (throw (ex-info (tru "A row cannot move to another worktree.") {:status-code 400})))
+  row)
+
+(prefer-hook-trait! :hook/worktree-id)
+
+(methodical/defmethod t2.pipeline/results-transform :around [:toucan.result-type/instances :hook/worktree-id]
+  "Leaves `worktree_id` out of the rows of a model with `:hook/worktree-id` before its after-select hooks see them."
+  [query-type model]
+  (comp (map #(dissoc % :worktree_id))
+        (next-method query-type model)))
 
 (defn- check-hook-runs-no-statement
   "Calls `thunk`, the `phase` hook of `model`, and throws when it ran an app-DB statement through Toucan."

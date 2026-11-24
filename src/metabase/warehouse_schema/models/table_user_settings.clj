@@ -49,6 +49,7 @@
 
 (doto :model/TableUserSettings
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?)
   (derive :search/indexed))
 

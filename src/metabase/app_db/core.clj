@@ -23,6 +23,7 @@
    [metabase.app-db.query-cancelation]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.global-system.mutable-component :as mc]
    [potemkin :as p]))
@@ -57,6 +58,8 @@
   broken-out-details->DataSource]
  [mdb.env
   db-file]
+ [mdb.worktree
+  default-worktree-id]
  [mdb.jdbc-protocols
   clob->str]
  [mdb.encryption

@@ -55,10 +55,12 @@
    we load instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before
    `Fields`."
   (concat
-   [:model/Channel
+   [:remote_sync_worktree
+    :model/Channel
     :model/ChannelTemplate
     :model/Database
     :model/User
+    :remote_sync_worktree_user
     :model/Setting
     :model/EmbeddingTheme
     :model/Table
@@ -225,8 +227,10 @@
 
 (def ^:private table-specs
   "The copy specs of the [[entities]] named by table, which have no model on some edition."
-  {:metabot_permissions {:skip?  false
-                         :select metabot-permissions-select}})
+  {:metabot_permissions       {:skip?  false
+                               :select metabot-permissions-select}
+   :remote_sync_worktree      {:skip? false}
+   :remote_sync_worktree_user {:skip? false}})
 
 (defn- entity-spec
   "The copy spec of an entry of [[entities]]."

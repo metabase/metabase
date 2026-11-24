@@ -21,11 +21,17 @@
 (methodical/defmethod t2/table-name :model/ExplorationBookmark [_model] :exploration_bookmark)
 
 (derive :model/CardBookmark :metabase/model)
+(derive :model/CardBookmark :hook/worktree-id)
 (derive :model/DashboardBookmark :metabase/model)
+(derive :model/DashboardBookmark :hook/worktree-id)
 (derive :model/CollectionBookmark :metabase/model)
+(derive :model/CollectionBookmark :hook/worktree-id)
 (derive :model/BookmarkOrdering :metabase/model)
+(derive :model/BookmarkOrdering :hook/worktree-id)
 (derive :model/DocumentBookmark :metabase/model)
+(derive :model/DocumentBookmark :hook/worktree-id)
 (derive :model/ExplorationBookmark :metabase/model)
+(derive :model/ExplorationBookmark :hook/worktree-id)
 
 ;;; ---------------------------------------------------- Bookmarks ---------------------------------------------------
 
