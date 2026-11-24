@@ -1,4 +1,8 @@
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NODATA_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import type { TableId } from "metabase-types/api";
@@ -763,6 +767,44 @@ describe("scenarios > data studio > datamodel > table editing", () => {
     H.selectHasValue("Entity type", "Person");
     H.selectHasValue("Source", "Ingested");
   });
+
+  it(
+    "transform-created table should have link and disabled source edit",
+    { tags: ["@external"] },
+    () => {
+      H.restore("postgres-writable");
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
+      H.resetTestTable({ type: "postgres", table: "many_schemas" });
+
+      const SOURCE_TABLE = "Animals";
+      const TARGET_TABLE = "transform_table";
+      const TARGET_SCHEMA = "Schema A";
+      const TRANSFORM_TABLE_DISPLAY_NAME = "Transform Table";
+      const TRANSFORM_NAME = "Test transform for animals";
+
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+
+      // Create and run a transform to create a table
+      H.createAndRunMbqlTransform({
+        sourceTable: SOURCE_TABLE,
+        targetTable: TARGET_TABLE,
+        targetSchema: TARGET_SCHEMA,
+        name: TRANSFORM_NAME,
+      }).then(() => {
+        H.DataModel.visitDataStudio();
+        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getSchema(TARGET_SCHEMA).click();
+        TablePicker.getTable(TRANSFORM_TABLE_DISPLAY_NAME).click();
+
+        cy.findByRole("link", { name: new RegExp(TRANSFORM_NAME) }).should(
+          "be.visible",
+        );
+
+        H.selectIsDisabled("Source");
+      });
+    },
+  );
 
   describe("with remote sync enabled", () => {
     it(
