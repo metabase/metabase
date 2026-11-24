@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
@@ -40,6 +41,88 @@ describe("QuestionSettingsSidebar", () => {
       expect(
         await screen.findByText("When to get new results"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("question caching form", () => {
+    const card = createMockCard({ id: 12, name: "Orders" });
+
+    const getCacheStrategySelect = () =>
+      screen.getByTestId("cache-strategy-select");
+
+    const getCachingSheet = () =>
+      screen.getByRole("dialog", { name: /Caching settings/ });
+
+    const cancelDiscarding = async () => {
+      const dialog = await screen.findByRole("dialog", {
+        name: "Discard your changes?",
+      });
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("dialog", { name: "Discard your changes?" }),
+        ).not.toBeInTheDocument();
+      });
+      // Both sheets and the unsaved edit are still there
+      expect(
+        screen.getByRole("dialog", { name: "Question settings" }),
+      ).toBeInTheDocument();
+      expect(getCachingSheet()).toBeInTheDocument();
+      expect(getCacheStrategySelect()).toHaveValue("Duration");
+    };
+
+    it("asks before discarding unsaved edits on every way of closing the form", async () => {
+      const { router } = await setupEnterprise(
+        { card },
+        { cache_granular_controls: true },
+      );
+      // Give the browser history an entry to go back to
+      act(() => router.navigate(`/question/${card.id}`));
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "When to get new results" }),
+      );
+      expect(await screen.findByText("Caching settings")).toBeInTheDocument();
+      await userEvent.click(getCacheStrategySelect());
+      await userEvent.click(
+        await screen.findByRole("option", { name: /^Duration/ }),
+      );
+
+      // 1. The close (×) button
+      await userEvent.click(
+        within(getCachingSheet()).getByRole("button", { name: "Close" }),
+      );
+      await cancelDiscarding();
+
+      // 2. Escape
+      await userEvent.keyboard("{Escape}");
+      await cancelDiscarding();
+
+      // 3. A click outside the sheet, on its overlay. Both sheets have one:
+      // the caching sheet's is the transparent one on top
+      const cachingSheetOverlay = checkNotNull(
+        screen
+          .getAllByTestId("modal-overlay")
+          .find((overlay) => overlay.style.background === "transparent"),
+      );
+      await userEvent.click(cachingSheetOverlay);
+      await cancelDiscarding();
+
+      // 4. The browser back button
+      act(() => router.back());
+      await cancelDiscarding();
+      expect(router.location.pathname).toBe(`/question/${card.id}`);
+
+      // Positive control: confirming lets the navigation through
+      act(() => router.back());
+      await userEvent.click(
+        within(
+          await screen.findByRole("dialog", { name: "Discard your changes?" }),
+        ).getByRole("button", { name: "Discard" }),
+      );
+      await waitFor(() => expect(router.location.pathname).toBe("/"));
     });
   });
 
