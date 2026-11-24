@@ -403,6 +403,20 @@ describe("PreviewAccessPage", () => {
       expect(screen.getByRole("button", { name: /state TX/ })).toBeVisible();
     });
 
+    it("explains the access again with the picked value, not from the answer kept for the same question", async () => {
+      setup({ attributes: ["state"] });
+      await previewSales();
+      await openExplainAccessOnQuestion();
+      await screen.findByText("Access to “Orders by state”");
+      const answersBefore = debuggedUserIds().length;
+
+      await pickValue("state", "TX");
+
+      await waitFor(() =>
+        expect(debuggedUserIds().length).toBeGreaterThan(answersBefore),
+      );
+    });
+
     it("drops the picked values when another group is picked", async () => {
       setup({ attributes: ["state"] });
       await previewSales();

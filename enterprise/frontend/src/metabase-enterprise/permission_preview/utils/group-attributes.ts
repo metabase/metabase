@@ -54,7 +54,10 @@ export function getGroupAttributes({
     databases.map((database) => [database.id, database.name]),
   );
 
-  for (const policy of policies) {
+  // the endpoint lists every group's policies when it is asked for a group only
+  for (const policy of policies.filter(
+    ({ group_id }) => group_id === groupId,
+  )) {
     const tableName = tableNames.get(policy.table_id);
     for (const name of Object.keys(policy.attribute_remappings)) {
       addUse(name, { kind: "sandbox", names: tableName ? [tableName] : [] });

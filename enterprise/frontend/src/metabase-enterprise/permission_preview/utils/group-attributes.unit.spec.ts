@@ -79,10 +79,13 @@ describe("getGroupAttributes", () => {
     ]);
   });
 
-  it("leaves out Metabase's own attributes and other groups' impersonation", () => {
+  it("leaves out other groups' policies, Metabase's own attributes and other groups' impersonation", () => {
     const attributes = getGroupAttributes({
       groupId: SALES,
-      policies: [policy(10, ["@tenant.slug"])],
+      policies: [
+        policy(10, ["@tenant.slug"]),
+        { ...policy(11, ["state"]), group_id: 99 },
+      ],
       impersonations: [{ db_id: 2, group_id: 99, attribute: "role" }],
       databases: [databases[1]],
     });

@@ -72,9 +72,10 @@ function UserCard({ user }: { user: User }) {
     .map((membership) => groups.find((group) => group.id === membership.id))
     .filter((group) => group != null)
     .map((group) => group.name);
-  const attributes = Object.entries(details?.attributes ?? {}).filter(
-    ([name]) => !name.startsWith("@"),
-  );
+  // the person's attributes as Metabase applies them, tenant ones included
+  const attributes = Object.entries(details?.structured_attributes ?? {})
+    .filter(([name]) => !name.startsWith("@"))
+    .map(([name, attribute]) => [name, attribute.value] as const);
 
   return (
     <Stack gap="xs">

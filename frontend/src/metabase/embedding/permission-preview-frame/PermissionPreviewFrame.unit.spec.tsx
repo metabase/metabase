@@ -59,7 +59,7 @@ describe("PermissionPreviewFrame", () => {
 
     expect(
       screen.getByText(
-        "Start a preview from Admin > Permissions > Preview access.",
+        "Open this preview from the Preview access tab in the permissions settings.",
       ),
     ).toBeInTheDocument();
   });
