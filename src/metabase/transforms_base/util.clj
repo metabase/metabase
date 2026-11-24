@@ -8,7 +8,6 @@
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.database-routing.core :as database-routing]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -41,6 +40,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.schema :as warehouses.schema]
    [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2])
   (:import
@@ -51,7 +52,8 @@
 
 (set! *warn-on-reflection* true)
 
-(events/derive! :event/transform-run-complete :metabase/event)
+(events/derive! ::transform-run-complete :metabase/event)
+(events/derive! :event/transform-run-complete ::transform-run-complete)
 
 ;;; ------------------------------------------------- Constants -------------------------------------------------
 
@@ -73,7 +75,7 @@
   "A driver's connection spec: an opaque JDBC spec or data source."
   [:or
    [:map {:closed true} [:datasource (ms/InstanceOfClass DataSource)]]
-   ms/DatabaseDetails])
+   ::warehouses.schema/database.connection-details])
 
 (mr/def ::checkpoint-value
   "A parsed checkpoint value: a number or a temporal."
@@ -313,12 +315,31 @@
       (some? lo-value)           (assoc :transform/checkpoint-lo (encode-checkpoint-value lo-value))
       (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
 
-(mu/defn save-watermark! :- :int
+(defmulti record-run-changes!
+  "Apply `changes` that running a Transform records to the row of `model` with `id`: the watermark or target Table of
+  a Transform, the checkpoint range a TransformRun reads. The model, whose namespace requires this one, implements it
+  with its own write function."
+  {:arglists '([model id changes])}
+  (fn [model _id _changes] model))
+
+(defn- record-run-changes-of!
+  "Call [[record-run-changes!]] for `model`, after loading it."
+  [model id changes]
+  (t2/resolve-model model)
+  (record-run-changes! model id changes))
+
+(defn- update-transform!
+  "Apply `changes` to the Transform with `transform-id` through the write function of its model."
+  [transform-id changes]
+  (record-run-changes-of! :model/Transform transform-id changes))
+
+(mu/defn save-watermark! :- :nil
   "Commits the incremental transforms :hi watermark value to the appdb."
   [transform-id        :- ::lib.schema.id/transform
    source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
   (let [hi-value (:value (:hi source-range-params))]
-    (transforms-base.db/update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
+    (update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})
+    nil))
 
 (mu/defn save-run-checkpoint-range! :- [:maybe :int]
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -327,10 +348,10 @@
    source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
   (when (and run-id source-range-params)
     (let [{:keys [checkpoint-filter-field-id lo hi]} source-range-params]
-      (transforms-base.db/update-transform-run! run-id
-                                                (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
-                                                  lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
-                                                  hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
+      (record-run-changes-of! :model/TransformRun run-id
+                              (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
+                                lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
+                                hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
 
 (mu/defn- coerce-to-local-datetime :- ::transforms-base.schema/temporal
   "Coerce a temporal value to LocalDateTime, stripping any timezone information."
@@ -549,8 +570,9 @@
       (catch Exception e
         (qp.catch-exceptions/exception-response e)))))
 
-(mu/defn compile-source :- ::qp.compile/compiled
-  "Compile the source query of a transform to SQL, applying incremental filtering if required."
+(mu/defn preprocess-source :- :metabase.lib.schema/query
+  "The source query of `transform`, filtered to `source-range-params` when they are given, with remaps and the
+  default row limit turned off, preprocessed."
   [{:keys [source] :as transform} :- ::transforms-base.schema/transform
    source-range-params            :- [:maybe ::transforms-base.schema/source-range-params]]
   (let [{:keys [query]} source]
@@ -558,7 +580,13 @@
     (-> query
         (preprocess-incremental-query source-range-params)
         massage-sql-query
-        qp.compile/compile)))
+        qp.preprocess/preprocess)))
+
+(mu/defn compile-source :- ::qp.compile/compiled
+  "Compile the source query of a transform to SQL, applying incremental filtering if required."
+  [transform           :- ::transforms-base.schema/transform
+   source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
+  (qp.compile/compile-preprocessed (preprocess-source transform source-range-params)))
 
 ;;; ------------------------------------------------- Target Table Management -------------------------------------------------
 
@@ -581,11 +609,36 @@
 (defn planned-target-table-exists?
   "Test if the table `transform` would write to already exists. For a transform that hasn't
    been resolved for execution yet: on a workspaced database it writes to the workspace's
-   remapped copy of its target, so that is the table checked, not the canonical one."
+   remapped copy of its target, so that is the table checked, not the canonical one. Throws a
+   400 on a workspace instance when the target database has no workspace schema."
   [transform]
   (if-let [db-id (transforms-base.i/target-db-id transform)]
     (target-table-exists? (update transform :target #(transforms-base.workspace-hooks/workspace-transform-target db-id %)))
     (target-table-exists? transform)))
+
+(mu/defn resolve-workspace-target :- ::transforms-base.schema/transform
+  "Rewrite `transform`'s `:target` to the table it writes to. On a workspaced database that is the
+  workspace's copy, and the canonical target is kept as `:workspace-canonical-target` so
+  [[record-workspace-target-remapping!]] can record the remapping once the run's write returns. Records
+  nothing itself. Unchanged off-workspace, or when the transform has no target database. Throws a
+  400 on a workspace instance when the target database has no workspace schema."
+  [transform :- ::transforms-base.schema/transform]
+  (if-let [db-id (transforms-base.i/target-db-id transform)]
+    (let [canonical (:target transform)
+          rewritten (transforms-base.workspace-hooks/workspace-transform-target db-id canonical)]
+      (cond-> (assoc transform :target rewritten)
+        (not= rewritten canonical) (assoc :workspace-canonical-target canonical)))
+    transform))
+
+(mu/defn record-workspace-target-remapping! :- :nil
+  "Record the workspace `TableRemapping` for a transform whose target [[resolve-workspace-target]]
+  rewrote to a workspace copy. The post-run sync in [[complete-execution!]] syncs the canonical table, and
+  reads the workspace copy's metadata through it. A no-op for a transform that wasn't rewritten."
+  [transform :- ::transforms-base.schema/transform]
+  (when-let [canonical (:workspace-canonical-target transform)]
+    (transforms-base.workspace-hooks/record-workspace-target-remapping!
+     (transforms-base.i/target-db-id transform) canonical))
+  nil)
 
 (defn- canonicalize-target
   "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the
@@ -621,7 +674,7 @@
        ;; the driver's default schema. If so, fix the Table record before syncing.
        (let [table (if (nil? (:schema table))
                      (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                       (do (transforms-base.db/update-table! (:id table) {:schema actual-schema})
+                       (do (table/update-tables! [{:id (:id table) :schema actual-schema}])
                            (-> (transforms-base.db/table (:id table))
                                (t2/hydrate :db)))
                        table)
@@ -639,7 +692,7 @@
                                                 :is_writable false)
                                 {:create? true})]
     (when-not (:active table)
-      (transforms-base.db/update-table! (:id table) {:active true}))
+      (table/update-tables! [{:id (:id table) :active true}]))
     table))
 
 (mu/defn sync-target!
@@ -650,53 +703,76 @@
   (log/info "Syncing target" (pr-str target) "for transform")
   (activate-table-and-mark-computed! database target))
 
-(mu/defn deactivate-table!
+(mu/defn deactivate-table! :- :nil
   "Deactivate table for `target` in `database` in the app db."
   [database :- ::lib.schema.metadata/database
    target   :- ::transforms-base.schema/transform-target]
   (when-let [table (sync-table! database target)]
-    ;; TODO this should probably be a function in the sync module
-    (transforms-base.db/update-table! (:id table) {:active false})))
+    (table/update-tables! [{:id (:id table) :active false}])
+    nil))
 
 (defn- isolated-drop-target
   "Resolve `target` to the physical warehouse table to drop.
 
-  On a workspace child the canonical target is backed by an isolation-namespace copy recorded
-  in `table_remapping`; the workspace user can only DROP inside its isolation namespace, so the
-  drop must hit that copy — not the canonical table. Looks the copy up via the general
-  canonical→isolated workspace hook (symmetric with [[canonicalize-target]], which uses the
-  inverse). The isolated namespace lives in `:schema` for schema-based drivers and in `:db` for
-  MySQL; collapse to the single `:schema` slot the driver drop path qualifies on. Off-workspace
-  the hook returns nil and `target` is dropped unchanged."
-  [db-id target]
-  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
-    (if-let [{:keys [db schema name]} (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)]
-      (assoc target :schema (or schema db) :name name)
-      target)))
+  A `table_remapping` row for the target decides the table whenever one exists, in workspace mode
+  or outside it: the drop names the copy the row records, the table reads of the target go to. The
+  hook is then not called.
 
-(mu/defn delete-target-table! :- [:maybe :int]
+  With no row, [[transforms-base.workspace-hooks/workspace-transform-target]] decides. For a
+  database with a workspace schema it returns the copy the transform would write to (a transform
+  whose runs all failed has no row, but may have left a copy behind). The workspace user can only
+  DROP inside the workspace schema, so the drop must name the copy. The hook throws a 409 when
+  another target's row already holds that copy name, and nothing is dropped. For a database with
+  no workspace schema (outside workspace mode, or not in the workspace config) it returns `target`
+  unchanged when workspace mode is off, and the drop names the canonical table. When workspace mode
+  is on, it throws a 400 and nothing is dropped.
+
+  The workspace schema is in `:schema` for schema-based drivers and in `:db` for MySQL; collapse
+  to the single `:schema` slot the driver drop path qualifies on."
+  [db-id target]
+  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}
+        copy        (or (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)
+                        (transforms-base.workspace-hooks/workspace-transform-target db-id target))]
+    (if (= copy target)
+      target
+      (assoc target :schema (or (:schema copy) (:db copy)) :name (:name copy)))))
+
+(mu/defn delete-target-table! :- :nil
   "Drop a transform's output table and deactivate its app-db Table row.
 
-  In workspace-isolation mode the transform writes to an isolation-namespace copy, so the drop
-  resolves the canonical `:target` to that copy (see [[isolated-drop-target]]); dropping the
-  canonical name would fail (the workspace user is read-only there) or hit the wrong table. The
-  app-db Table row that gets deactivated is always the canonical `:target`, since that is what
-  sync surfaces. Off-workspace the two are identical."
+  [[isolated-drop-target]] resolves the canonical `:target` to the table to drop. A
+  `table_remapping` row for the target decides it whenever one exists, in workspace mode or
+  outside it. With no row, the drop names the workspace copy for a database with a workspace
+  schema, and throws a 409 when another target's row already holds that copy name. For a database
+  with no workspace schema (outside workspace mode, or not in the workspace config), it names the
+  canonical table when workspace mode is off, and throws a 400 when workspace mode is on. A throw
+  leaves the warehouse and the app-db Table row unchanged.
+
+  The app-db Table row to deactivate is the canonical `:target`, since that is what sync
+  surfaces. It is deactivated when the drop names the canonical table, and when a
+  `table_remapping` row records the copy the row stands in for. With no such row (every run
+  failed), for a database with a workspace schema, the Table row is the live canonical warehouse
+  table, which the drop did not touch, so it stays active."
   [{:keys [id target], :as transform} :- ::transforms-base.schema/transform]
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]
       (when database-id
         (if-let [{driver :engine :as database} (when (transforms-base.db/database-exists? database-id)
                                                  (driver.u/lib-database database-id))]
-          (let [drop-target (->> (update target :type keyword)
-                                 (isolated-drop-target database-id))]
+          (let [target      (update target :type keyword)
+                drop-target (isolated-drop-target database-id target)]
             (driver/drop-transform-target! driver database drop-target)
-            (log/info "Deactivating  target " (pr-str target) "for transform" id)
-            (deactivate-table! database target))
+            (if (or (= drop-target target)
+                    (ws.table-remapping/workspace-remap-schema+name
+                     database-id {:db (:db target) :schema (:schema target) :name (:name target)}))
+              (do (log/info "Deactivating  target " (pr-str target) "for transform" id)
+                  (deactivate-table! database target))
+              (log/infof "Not deactivating target %s for transform %d: no remapping records a workspace copy behind it"
+                         (pr-str target) id)))
           (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
                      (pr-str target) id database-id))))))
 
-(mu/defn delete-target-table-by-id! :- [:maybe :int]
+(mu/defn delete-target-table-by-id! :- :nil
   "Delete the target table of the transform specified by `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (delete-target-table! (transforms-base.db/transform transform-id)))
@@ -766,7 +842,7 @@
    index        :- ::indexes.schema/index-structured
    t            :- (ms/InstanceOfClass Throwable)]
   (when transform-id
-    (transforms-base.db/mark-table-index-failed! transform-id (reconcile/index-name index) (ex-message t))))
+    (table-index/mark-table-index-failed! transform-id (reconcile/index-name index) (ex-message t))))
 
 (mu/defn- apply-standalone-indexes!
   "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
@@ -807,8 +883,8 @@
   [by-outcome :- [:map-of [:enum :succeeded :failed :delete-pending :delete-row] [:sequential ::indexes.schema/table-index]]]
   (doseq [[status rows] by-outcome]
     (if (= :delete-row status)
-      (transforms-base.db/delete-table-indexes! (map :id rows))
-      (transforms-base.db/update-table-indexes! (map :id rows)
+      (table-index/delete-table-indexes! (map :id rows))
+      (table-index/mark-table-indexes-executed! (map :id rows)
                                                 (cond-> {:status status}
                                                   (= status :succeeded)
                                                   (assoc :error_message nil)
@@ -849,12 +925,25 @@
             (apply-index-outcomes!
              (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))))))))
 
+(defn- canonical-sync-target
+  "The target [[complete-execution!]] syncs. For a workspace-rewritten transform that is the canonical target the run
+   recorded at its start. The remap row maps the written copy back to the canonical table in `:model/Table` row
+   vocabulary (nil `:db` and `:schema` on MySQL, whose Table rows carry neither). When the row is gone, the recorded
+   canonical target is used as it is, and the written copy is never synced."
+  [db-id {:keys [target] canonical :workspace-canonical-target}]
+  (if canonical
+    (let [row-target (canonicalize-target db-id target)]
+      (if (= row-target target)
+        canonical
+        (merge canonical (select-keys row-target [:db :schema :name]))))
+    target))
+
 (mu/defn complete-execution! :- :nil
   "Post-processing steps after a transform has been executed successfully.
 
    Performs:
    - Sync target table to AppDB
-   - Set `transform_id` on the target table
+   - Set `target_table_id` on the transform
    - Publish Metabase events (unless `:publish-events?` is false)
 
    This is called after the core execution completes. Callers that use
@@ -868,11 +957,12 @@
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (driver.u/lib-database db-id)
-        table (sync-target! target database)]
-    ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
+        ;; Sync the canonical target the run recorded at its start, not the workspace copy mapped back through the
+        ;; remap row: a schema change may have deleted that row since the run recorded it.
+        table (sync-target! (canonical-sync-target db-id transform) database)]
+    ;; Sync target table and set target_table_id on transform
     (when table
-      (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
-      (transforms-base.db/update-table! (:id table) {:transform_id (:id transform)}))
+      (update-transform! (:id transform) {:target_table_id (:id table)}))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
     ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.
     (try
@@ -882,9 +972,9 @@
         (log/warnf "refresh-table-stats! failed for %s.%s: %s" (:schema target) (:name target) (ex-message t))))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
-      (dependencies.hooks/after-transform-run (:id transform) (:id table))
       (events/publish-event! :event/transform-run-complete
                              {:object {:db-id          db-id
+                                       :table-id       (:id table)
                                        :transform-id   (:id transform)
                                        :transform-type (keyword (:type target))
                                        :output-schema  (:schema target)
@@ -892,7 +982,7 @@
     nil))
 
 (mu/defn output-table :- [:maybe :metabase.warehouse-schema.schema/table]
-  "Return the output table created by a transform, looked up via `transform_id`."
+  "Return the output table created by a transform, looked up via its stored `target_table_id`."
   [transform :- ::transforms-base.schema/transform]
   (transforms-base.db/table-for-transform (:id transform)))
 
@@ -954,10 +1044,10 @@
   `:database_id`/`:schema`/`:table` (looked up to fill in `:table_id`), so only `:alias` is required."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:alias :string]
-   [:database_id {:optional true} [:maybe ::lib.schema.id/database]]
+   [:database_id {:optional true} [:maybe ::lib.schema.id/database-or-older-export-id]]
    [:schema {:optional true} [:maybe :string]]
    [:table {:optional true} :string]
-   [:table_id {:optional true} [:maybe ::lib.schema.id/table]]])
+   [:table_id {:optional true} [:maybe ::lib.schema.id/table-or-older-export-id]]])
 
 (mu/defn normalize-source-tables :- [:sequential ::source-table-entry]
   "Normalize source-table entries by enriching them with full metadata.

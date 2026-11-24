@@ -187,13 +187,6 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       cy.wait(300);
       cy.realPress(["Escape"]);
     },
-    selectCompletion(name: string) {
-      helpers.completions().should("be.visible");
-
-      // Avoid flakiness with CodeMirror not accepting the suggestion immediately
-      cy.wait(300);
-      helpers.completion(name).click();
-    },
     paste(content: string) {
       helpers.textbox().then((el) => {
         const clipboardData = new DataTransfer();

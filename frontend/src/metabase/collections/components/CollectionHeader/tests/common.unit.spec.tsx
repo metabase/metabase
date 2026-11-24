@@ -198,6 +198,40 @@ describe("CollectionHeader", () => {
       const button = screen.getByLabelText("calendar icon");
       expect(button).toBeInTheDocument();
     });
+
+    it("should link read-only users to the root collection timelines", () => {
+      setup({ collection: { id: "root", can_write: false } });
+
+      expect(
+        screen.getByRole("link", { name: "calendar icon" }),
+      ).toHaveAttribute("href", "/collection/root/timelines");
+    });
+
+    it.each([
+      {
+        collection: { id: 9, name: "1st collection" },
+        href: "/collection/9-1st-collection/timelines",
+      },
+      {
+        collection: {
+          id: 2,
+          name: "Bobby Tables's Personal Collection",
+          personal_owner_id: 1,
+          is_personal: true,
+          can_write: false,
+        },
+        href: "/collection/2-bobby-tables-s-personal-collection/timelines",
+      },
+    ])(
+      "should link to the timelines of collection $collection.id",
+      ({ collection, href }) => {
+        setup({ collection });
+
+        expect(
+          screen.getByRole("link", { name: "calendar icon" }),
+        ).toHaveAttribute("href", href);
+      },
+    );
   });
 
   describe("collection bookmark", () => {
@@ -258,6 +292,74 @@ describe("CollectionHeader", () => {
       expect(await screen.findByText("Move")).toBeInTheDocument();
       expect(screen.getByText("Move to trash")).toBeInTheDocument();
     });
+  });
+
+  describe("root and personal collections", () => {
+    const PERSONAL_COLLECTION = {
+      name: "Robert Tableton's Personal Collection",
+      personal_owner_id: 1,
+      is_personal: true,
+      can_write: true,
+    };
+
+    it("should only offer to edit permissions of the root collection to admins", async () => {
+      setup({
+        collection: {
+          id: ROOT_COLLECTION.id,
+          name: ROOT_COLLECTION.name,
+          can_write: true,
+        },
+        isAdmin: true,
+      });
+
+      expect(screen.getByTestId("collection-name-heading")).toHaveValue(
+        "Our analytics",
+      );
+      await userEvent.click(screen.getByLabelText("ellipsis icon"));
+      expect(
+        await screen.findByRole("menuitem", { name: /Edit permissions/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /Move/ }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+    });
+
+    it("should not offer a collection menu for the root collection to non-admins with curate access", async () => {
+      setup({
+        collection: {
+          id: ROOT_COLLECTION.id,
+          name: ROOT_COLLECTION.name,
+          can_write: true,
+        },
+        isAdmin: false,
+      });
+
+      expect(screen.getByTestId("collection-name-heading")).toHaveValue(
+        "Our analytics",
+      );
+      expect(
+        await screen.findByRole("button", { name: "More info" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    });
+
+    it.each([true, false])(
+      "should not offer a collection menu for a personal collection (isAdmin: %s)",
+      async (isAdmin) => {
+        setup({ collection: PERSONAL_COLLECTION, isAdmin });
+
+        expect(screen.getByTestId("collection-name-heading")).toHaveValue(
+          PERSONAL_COLLECTION.name,
+        );
+        expect(
+          await screen.findByRole("button", { name: "More info" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByLabelText("ellipsis icon"),
+        ).not.toBeInTheDocument();
+      },
+    );
   });
 
   describe("new collection button", () => {

@@ -3,14 +3,11 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.revisions.impl.transform]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]))
 
-(comment metabase.revisions.impl.transform/keep-me)
-
 (deftest transform-serialize-instance-test
-  (testing "serialize-instance for :model/Transform excludes the correct columns"
+  (testing "snapshot of :model/Transform excludes the correct columns"
     (let [transform {:id 1
                      :entity_id "wyQv6yHnXS-IqPrYm1osQ"
                      :created_at "2025-09-30T00:00:00Z"
@@ -20,10 +17,10 @@
                      :source {:type :query
                               :query (lib/query (mt/metadata-provider)
                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
-                     :target {:type :table
+                     :target {:type "table"
                               :name "transformed_table"
                               :schema "public"
                               :database 1}}
           exp-serialized (dissoc transform :id :entity_id :created_at :updated_at)]
-      (is (= (revision/serialize-instance :model/Transform nil transform)
+      (is (= (revision/snapshot :model/Transform transform)
              exp-serialized)))))

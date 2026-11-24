@@ -602,7 +602,14 @@
             ;; only the thread whose swap removed the pool closes it
             :when (identical? pool-spec (get-in old-state [:pools cache-key]))]
       (log/warnf "Could not acquire a connection for database %d; closing its empty connection pool" db-id)
-      (destroy-pool! db-id pool-spec))))
+      (destroy-pool! db-id pool-spec))
+    ;; swapped pools live in their own cache; its removal listener destroys the pool. Remove the entry only if it
+    ;; still holds this pool, so that a newer pool that another thread put in the cache stays there.
+    (doseq [[cache-key pool-spec] (.asMap ^Cache (swapped-connection-pools))
+            :when (identical? (:datasource pool-spec) data-source)]
+      (log/warnf "Could not acquire a connection for database %d; closing its empty swapped connection pool"
+                 (first cache-key))
+      (.remove (.asMap ^Cache (swapped-connection-pools)) cache-key pool-spec))))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
   (log/warn (u/format-color :red "ssh tunnel for database %s looks closed; marking pool invalid to reopen it" db-id))
@@ -812,8 +819,10 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn do-with-connection-spec-for-testing-connection
-  "Impl for [[with-connection-spec-for-testing-connection]]."
+(defn do-with-unpooled-connection-spec
+  "Calls `f` with a JDBC spec built from `details` as given, outside the connection pools, and returns what `f`
+  returns. The spec is valid only inside `f`: an SSH tunnel closes when `f` returns. Throws when `details` hold a
+  connection parameter that Metabase does not allow."
   [driver details f]
   (driver.u/validate-connection-parameters! driver details)
   (let [details (-> details
@@ -827,6 +836,11 @@
             _                 (driver.u/validate-connection-parameters! driver details-with-auth)
             spec              (connection-details->spec driver details-with-auth)]
         (f spec)))))
+
+(defn do-with-connection-spec-for-testing-connection
+  "Impl for [[with-connection-spec-for-testing-connection]]."
+  [driver details f]
+  (do-with-unpooled-connection-spec driver details f))
 
 (defmacro with-connection-spec-for-testing-connection
   "Execute `body` with an appropriate [[clojure.java.jdbc]] connection spec based on connection `details`. Handles SSH

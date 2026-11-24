@@ -172,13 +172,14 @@
 
 ;;; --------------------------------------------------- handlers ---------------------------------------------------
 
-(defn- email-recipient
-  "One email-handler recipient: an integer is a Metabase user, a string is a bare email address."
-  [recipient]
-  (let [[kind value] (mcp.recipients/classify recipient)]
-    (case kind
-      :user  {:type :notification-recipient/user :user_id value}
-      :email {:type :notification-recipient/raw-value :details {:value value}})))
+(defn- email-recipients
+  "The email-handler recipients of `recipients`: an integer is a Metabase user, a string is a bare email address."
+  [recipients]
+  (mapv (fn [[kind value]]
+          (case kind
+            :user  {:type :notification-recipient/user :user_id value}
+            :email {:type :notification-recipient/raw-value :details {:value value}}))
+        (mcp.recipients/classify-all recipients)))
 
 (defn- slack-recipient
   "The single raw-value recipient a slack handler carries: the channel's display name plus its
@@ -244,7 +245,7 @@
         (assoc base
                :channel_type :channel/email
                :recipients   (cond
-                               (seq recipients)         (mapv email-recipient recipients)
+                               (seq recipients)         (email-recipients recipients)
                                (seq (:recipients base)) (:recipients base)
                                :else [{:type    :notification-recipient/user
                                        :user_id api/*current-user-id*}]))))))
@@ -324,7 +325,7 @@
   (when-not (int? id)
     (common/throw-teaching-error (message/msg ["Alerts take a numeric id — they have no entity_id."])))
   (let [notification (mcp.db/notification-by-payload-type id :notification/card)]
-    (when-not (and notification (mi/can-read? notification) (mi/can-write? notification))
+    (when-not (and notification (mi/can-read? (t2/hydrate notification :can_read)) (mi/can-write? (t2/hydrate notification :can_write)))
       (common/throw-not-found :alert id))
     (notification.api/get-notification id)))
 

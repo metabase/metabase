@@ -86,7 +86,7 @@ function MetricQueryPageBody({
   );
 
   const isDirty = useMemo(() => {
-    return !Lib.areLegacyQueriesEqual(datasetQuery, card.dataset_query);
+    return !Lib.areQueriesEqual(datasetQuery, card.dataset_query);
   }, [datasetQuery, card.dataset_query]);
 
   const handleChangeQuery = (query: Lib.Query) => {

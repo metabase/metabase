@@ -350,7 +350,7 @@
                 field-ref)))
           ;; broken legacy field refs in results medtadata should never have `:effective-type`
           (lib.options/update-options dissoc :effective-type)
-          lib.convert/->legacy-MBQL
+          lib.convert/->legacy-MBQL-ref
           (->> (fe-friendly-expression-ref col))))))
 
 ;; For unambiguous columns we should use broken legacy refs to maintain backward compatibility with legacy viz

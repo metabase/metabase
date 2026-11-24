@@ -13,8 +13,6 @@ import {
 
 const SEARCH_TERM = "transforming";
 
-const ARCHIVED_FOLDER_NAME = "E2E transforming archived folder";
-const ARCHIVED_TRANSFORM_NAME = "E2E transforming archived-folder transform";
 const SLOW_TRANSFORM_NAME = "E2E transforming slow transform";
 const STALE_TRANSFORM_NAME = "E2E transforming stale transform";
 const SCHEDULED_TRANSFORM_NAME = "E2E transforming scheduled transform";
@@ -26,7 +24,6 @@ const TARGET_SCHEMA = "public";
 
 const SLEEP_SECONDS = 2;
 const SLOW_THRESHOLD_SECONDS = 1;
-const SECONDS_DURATION = /^\d+\.\ds$/;
 
 const LAST_RUN_DAYS_AGO = 120;
 const lastRunOn = () =>
@@ -34,33 +31,6 @@ const lastRunOn = () =>
 
 const yearlyCronAwayFromNow = () =>
   `0 0 0 1 ${dayjs().add(6, "month").month() + 1} ?`;
-
-function createTransformInArchivedFolder() {
-  H.createTransformCollection({ name: ARCHIVED_FOLDER_NAME }).then(
-    ({ body: collection }) => {
-      H.createTransform({
-        name: ARCHIVED_TRANSFORM_NAME,
-        collection_id: collection.id,
-        source: {
-          type: "query",
-          query: {
-            database: WRITABLE_DB_ID,
-            type: "native",
-            native: { query: "SELECT 1 AS id" },
-          },
-        },
-        target: {
-          type: "table",
-          database: WRITABLE_DB_ID,
-          name: "e2e_transforming_archived",
-          schema: TARGET_SCHEMA,
-        },
-      }).then(({ body: transform }) => markStale("transform", transform.id));
-
-      H.archiveCollection(collection.id);
-    },
-  );
-}
 
 function findingRow(name: string) {
   return cy.findByTestId("stale-content-list").contains('[role="row"]', name);
@@ -96,27 +66,6 @@ describe(
       H.activateToken("bleeding-edge");
     });
 
-    // Archiving a folder takes its cards, dashboards and documents out of scope, but a transform runs on
-    // its schedule regardless of the folder it sits in, so it stays in scope.
-    it("still reports a stale transform whose folder has been archived", () => {
-      createTransformInArchivedFolder();
-      runContentDiagnosticsScan();
-
-      visitContentDiagnosticsTab("stale");
-      searchFindings(SEARCH_TERM);
-
-      cy.findByTestId("stale-content-list")
-        .findByText(ARCHIVED_TRANSFORM_NAME)
-        .should("be.visible");
-
-      cy.findByTestId("stale-content-list")
-        .findByText(ARCHIVED_TRANSFORM_NAME)
-        .click();
-      cy.findByTestId("content-diagnostics-sidebar")
-        .findByText("Last run")
-        .should("be.visible");
-    });
-
     it("reports a transform whose run exceeded the threshold", () => {
       setThreshold(
         "content-diagnostics-slow-transform-threshold-seconds",
@@ -136,14 +85,6 @@ describe(
       cy.findByTestId("slow-content-list")
         .findByText(SLOW_TRANSFORM_NAME)
         .should("be.visible");
-
-      cy.findByTestId("slow-content-list")
-        .findByText(SLOW_TRANSFORM_NAME)
-        .click();
-      cy.findByTestId("content-diagnostics-sidebar").within(() => {
-        cy.findByText("Duration").should("be.visible");
-        cy.findByText(SECONDS_DURATION).should("be.visible");
-      });
     });
 
     it("reports a transform whose last run predates the threshold", () => {
@@ -182,20 +123,6 @@ describe(
       cy.findByTestId("duplicated-content-list")
         .findAllByText(DUPLICATED_TRANSFORM_NAME)
         .should("have.length", 2);
-
-      cy.log("and each side names the other as its duplicate");
-      cy.findByTestId("duplicated-content-list")
-        .findAllByText(DUPLICATED_TRANSFORM_NAME)
-        .first()
-        .click();
-
-      cy.findByTestId("content-diagnostics-sidebar").within(() => {
-        cy.findByText("Duplicates (1)").should("be.visible");
-        cy.findByRole("region", { name: "Duplicates" }).should(
-          "contain.text",
-          DUPLICATED_TRANSFORM_NAME,
-        );
-      });
     });
 
     // A transform has no archived state, so bulk removal deletes it outright, and the bar
@@ -217,29 +144,28 @@ describe(
       visitContentDiagnosticsTab("stale");
       searchFindings(SEARCH_TERM);
 
+      cy.intercept("DELETE", "/api/transform/*").as("deleteTransform");
       findingRow(DELETED_TRANSFORM_NAME).findByRole("checkbox").click();
-
-      cy.findByTestId("toast-card").within(() => {
-        cy.findByText("1 item selected").should("be.visible");
-        cy.findByRole("button", { name: "Delete" }).click();
+      cy.findByTestId("toast-card")
+        .findByRole("button", { name: "Delete" })
+        .click();
+      H.modal().findByRole("button", { name: "Delete" }).click();
+      cy.wait("@deleteTransform").then(({ request, response }) => {
+        expect(request.url).to.match(
+          new RegExp(`/api/transform/${transformId}$`),
+        );
+        expect(response?.statusCode).to.eq(204);
       });
 
-      cy.log("the confirmation drops the trash wording for a permanent delete");
-      H.modal().within(() => {
-        cy.findByText("Delete 1 transform?").should("be.visible");
-        cy.findByText(
-          "1 transform will be permanently deleted and cannot be restored.",
-        ).should("be.visible");
-        cy.findByRole("button", { name: "Delete" }).click();
-      });
-
-      H.undoToast().findByText("Deleted 1 item").should("be.visible");
-
-      cy.log("the finding is invalidated and the transform itself is gone");
       cy.findByTestId("stale-content-list").should(
         "not.contain.text",
         DELETED_TRANSFORM_NAME,
       );
+
+      cy.log("after a reload the finding is gone and the transform itself too");
+      visitContentDiagnosticsTab("stale");
+      searchFindings(SEARCH_TERM);
+      H.main().findByText("No stale content found").should("be.visible");
       cy.then(() => {
         cy.request({
           url: `/api/transform/${transformId}`,

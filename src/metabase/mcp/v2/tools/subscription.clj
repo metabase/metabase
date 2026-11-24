@@ -57,7 +57,7 @@
    :schedule_frame (message/raw "only a monthly schedule sends on a frame of the month")})
 
 (defn- check-ignored-schedule-fields!
-  "Reject a schedule field the caller's `schedule_type` doesn't read. `create-pulse-channel!`
+  "Reject a schedule field the caller's `schedule_type` doesn't read. `create-pulse-channels!`
    nils such a field out silently, so the subscription would deliver on a schedule nobody asked
    for while the call reports success — `{hourly, schedule_hour 9}` sends 24 times a day, not once
    at nine. Only a non-nil value counts: the strict-client transform lists every property as
@@ -77,7 +77,7 @@
 
 (defn- check-schedule!
   "Reject a schedule the pulse channel would reject or mis-encode: one missing a field its type
-   needs, or one carrying a field its type doesn't read. `create-pulse-channel!`'s validation is an
+   needs, or one carrying a field its type doesn't read. `create-pulse-channels!`'s validation is an
    assertion, so an incomplete schedule would otherwise surface as a generic internal error
    instead of a sentence naming the missing field, and it drops a surplus field silently. Kept in
    step with `alert_write`'s check of the same vocabulary, so an agent that has learned one tool's
@@ -109,12 +109,11 @@
   "Turn the tool's flat recipient list — user ids and raw email addresses — into the
    `{:id user-id}` / `{:email address}` maps a pulse channel stores."
   [recipients]
-  (mapv (fn [recipient]
-          (let [[kind value] (mcp.recipients/classify recipient)]
-            (case kind
-              :user  {:id value}
-              :email {:email value})))
-        recipients))
+  (mapv (fn [[kind value]]
+          (case kind
+            :user  {:id value}
+            :email {:email value}))
+        (mcp.recipients/classify-all recipients)))
 
 (defn- slack-details
   "The `details` map for a Slack channel: the cached channel's display name, which is what the
@@ -168,7 +167,7 @@
   "Merge the caller's delivery arguments onto `existing` (the subscription's current channel of
    this type, or nil when there isn't one yet). Only the arguments actually present change, so a
    caller who sends just a schedule keeps the channel's recipients — and its row, since the
-   preserved `:id` makes [[metabase.pulse.core/update-pulse!]] update rather than recreate it.
+   preserved `:id` makes [[metabase.pulse.core/update-pulses!]] update rather than recreate it.
 
    `enabled?` must be the negation of the subscription's resulting `archived` state. A Pulse
    encodes \"archived\" by disabling every one of its channels, and the channel write lands after
@@ -275,19 +274,20 @@
    teaching error.
 
    This list does not decide what a send renders — the dashboard payload re-executes the whole
-   dashboard by id. It exists because [[metabase.pulse.core/create-pulse!]] requires at least one
+   dashboard by id. It exists because [[metabase.pulse.models.pulse/create-pulses!]] requires at least one
    card ref, and because `dashboard_card_id` is what the email channel matches per-card attachment
    flags against for visualizer dashcards."
   [dashboard]
-  (let [cards (for [{dashcard-id :id :keys [card]} (sort-by (juxt #(or (:row %) 0) #(or (:col %) 0))
-                                                            (:dashcards dashboard))
-                    :when (int? (:id card))]
-                (-> (api/read-check card)
-                    (select-keys [:id :name :collection_id :description :display :parameter_mappings])
-                    (assoc :dashboard_card_id dashcard-id
-                           :dashboard_id      (:id dashboard)
-                           :include_csv       false
-                           :include_xls       false)))]
+  (let [dashcards (into []
+                        (filter #(int? (:id (:card %))))
+                        (sort-by (juxt #(or (:row %) 0) #(or (:col %) 0)) (:dashcards dashboard)))
+        cards     (for [[{dashcard-id :id} card] (map vector dashcards (t2/hydrate (mapv :card dashcards) :can_read))]
+                    (-> (api/read-check card)
+                        (select-keys [:id :name :collection_id :description :display :parameter_mappings])
+                        (assoc :dashboard_card_id dashcard-id
+                               :dashboard_id      (:id dashboard)
+                               :include_csv       false
+                               :include_xls       false)))]
     (when (empty? cards)
       (common/throw-teaching-error
        (message/msg [(str "This dashboard has no cards to send — a subscription needs at "
@@ -375,20 +375,20 @@
 (def ^:private schedule-schema
   [:map {:closed true
          :description "When to deliver. Metabase sends at the top of the hour, in the instance's report time zone."}
-   [:schedule_type
-    [:enum {:description "How often to send."} "hourly" "daily" "weekly" "monthly"]]
-   [:schedule_hour {:optional true}
-    [:maybe [:int {:min 0 :max 23
-                   :description "Hour of the day to send, 0-23. Required for daily, weekly, and monthly."}]]]
-   [:schedule_day {:optional true}
-    [:maybe [:enum {:description (str "Day of the week. Required for weekly; with a monthly "
-                                      "schedule_frame of \"first\" or \"last\" it picks that weekday "
-                                      "of the month.")}
-             "mon" "tue" "wed" "thu" "fri" "sat" "sun"]]]
-   [:schedule_frame {:optional true}
-    [:maybe [:enum {:description (str "Which part of the month to send on. Required for monthly. "
-                                      "\"mid\" is the 15th and takes no schedule_day.")}
-             "first" "mid" "last"]]]])
+   [:schedule_type {:description "How often to send."}
+    :metabase.pulse.schema/pulse-channel.schedule-type-name]
+   [:schedule_hour {:optional true
+                    :description "Hour of the day to send, 0-23. Required for daily, weekly, and monthly."}
+    [:maybe :metabase.pulse.schema/pulse-channel.schedule-hour]]
+   [:schedule_day {:optional true
+                   :description (str "Day of the week. Required for weekly; with a monthly "
+                                     "schedule_frame of \"first\" or \"last\" it picks that weekday "
+                                     "of the month.")}
+    [:maybe :metabase.pulse.schema/pulse-channel.schedule-day]]
+   [:schedule_frame {:optional true
+                     :description (str "Which part of the month to send on. Required for monthly. "
+                                       "\"mid\" is the 15th and takes no schedule_day.")}
+    [:maybe :metabase.pulse.schema/pulse-channel.schedule-frame-name]]])
 
 (def ^:private subscription-write-args-schema
   [:map {:closed true}

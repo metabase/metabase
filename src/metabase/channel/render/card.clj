@@ -147,7 +147,9 @@
 
         (and (some? maybe-dashcard)
              (= false (render.util/is-visualizer-dashcard? maybe-dashcard))
-             (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
+             (if (contains? maybe-dashcard :series-results)
+               (seq (:series-results maybe-dashcard))
+               (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard)))))
         (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above

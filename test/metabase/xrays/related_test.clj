@@ -4,7 +4,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -85,10 +84,8 @@
                                                       :type          :metric
                                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
                                                                                             :breakout    [$category_id]})}
-                 :model/Segment {segment-id-a :id} {:table_id (mt/id :venues)
-                                                    :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :category_id) nil)}
-                 :model/Segment {segment-id-b :id} {:table_id (mt/id :venues)
-                                                    :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :name) nil)}
+                 :model/Segment {segment-id-a :id} {:definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :category_id) nil)}
+                 :model/Segment {segment-id-b :id} {:definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :name) nil)}
                  :model/Card       {card-id-a :id} {:table_id      (mt/id :venues)
                                                     :dataset_query (mt/mbql-query venues
                                                                      {:aggregation [[:sum $price]]
@@ -189,9 +186,30 @@
                                                      :object   {}}
                  :model/DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
                  :model/DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
-    (binding [api/*current-user-id*              (mt/user->id :rasta)
-              api/*current-user-permissions-set* (atom #{"/"})]
+    (mt/with-test-user :crowberto
       (is (=? [{:id dash-id}]
               ;; filter out dashboards unrelated to this test
               (filter #(= (:id %) dash-id)
                       (#'related/recommended-dashboards [card-1 card-2 card-3])))))))
+
+(deftest cards-sharing-dashboard-statement-count-test
+  (testing "cards-sharing-dashboard costs as many statements for 12 other Cards on the Dashboard as for 6"
+    (mt/with-temp [:model/Card      {card-id :id}      {}
+                   :model/Dashboard {dashboard-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id}]
+      (mt/with-model-cleanup [:model/Card]
+        (let [add-cards! (fn [n]
+                           (doseq [other-id (t2/insert-returning-pks! :model/Card
+                                                                      (repeatedly n #(mt/with-temp-defaults :model/Card)))]
+                             (t2/insert! :model/DashboardCard (merge (mt/with-temp-defaults :model/DashboardCard)
+                                                                     {:dashboard_id dashboard-id :card_id other-id}))))
+              counts     (fn []
+                           (mt/with-test-user :rasta
+                             (related/cards-sharing-dashboard {:id card-id})
+                             (t2/with-call-count [call-count]
+                               (is (= 5 (count (related/cards-sharing-dashboard {:id card-id}))))
+                               (call-count))))]
+          (add-cards! 6)
+          (let [small (counts)]
+            (add-cards! 6)
+            (is (= small (counts)))))))))

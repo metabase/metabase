@@ -38,7 +38,7 @@
   "Get returned columns for a SQL query using the test metadata provider."
   [sql]
   (let [driver (:engine (lib.metadata/database (mt/metadata-provider)))]
-    (sql-tools/returned-columns-impl :sqlglot driver (make-query sql))))
+    (sql-tools/returned-columns-impl (sql-tools/sqlglot-backend) driver (make-query sql))))
 
 ;;; Basic SELECT Tests
 

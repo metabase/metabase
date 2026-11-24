@@ -89,6 +89,7 @@
  [metabase.settings.models.setting
   admin-writable-site-wide-settings
   can-read-setting?
+  csv-string-entries
   current-user-readable-visibilities
   custom-disabled-reasons!
   db-stored-value
@@ -114,6 +115,7 @@
   resolve-setting
   set!
   set-many!
+  set-string!
   set-value-of-type!
   setting-env-map-name
   string->boolean
@@ -121,8 +123,11 @@
   user-facing-value
   user-readable-values-map
   uuid-nonce-base
+  validate-driver-feature-for-db
   validate-settings-formatting!
-  validate-settable-for-db!
+  validate-settable
+  validate-settable-for-db
+  warn-about-ignored-csv-lines!
   writable-settings]
  [metabase.settings.models.setting.cache
   cache-update-check-interval-ms

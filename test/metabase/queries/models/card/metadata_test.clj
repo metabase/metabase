@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.queries.models.card :as card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor :as qp]
@@ -140,7 +141,7 @@
                        (:result_metadata (t2/select-one [:model/Card :result_metadata :card_schema] :id card-id)))
             typed        (metadata typed-id)
             unresolvable (metadata unresolvable-id)]
-        (card.metadata/backfill-untyped-model-metadata! (mt/id))
+        (card/backfill-untyped-model-metadata! (mt/id))
         (testing "an untyped model gets its inferred types and field ids, keeping its overrides"
           (is (=? [{:name "ID"}
                    {:name "NAME" :base_type :type/Text :id (mt/id :venues :name) :display_name "Venue Name"}
@@ -170,3 +171,28 @@
       (testing "other failures still log at error"
         (is (= #{:error}
                (logs (query "SELECT * FROM no_such_table" {}))))))))
+
+(deftest model-metadata-supplied-by-writer-is-kept-test
+  (testing "a model written with column metadata keeps that metadata whoever writes it"
+    (let [mp        (mt/metadata-provider)
+          native    (fn [sql] (lib/native-query mp sql))
+          metadata  [{:name "ONE" :display_name "Mine" :base_type :type/Integer :semantic_type :type/Quantity}]
+          stored    #(:result_metadata (t2/select-one [:model/Card :result_metadata :card_schema] :id %))
+          summarize #(mapv (juxt :name :display_name :base_type :semantic_type) %)]
+      (mt/with-temp [:model/Card {card-id :id} {:type            :model
+                                                :dataset_query   (native "SELECT 1 AS ONE")
+                                                :result_metadata metadata}]
+        (testing "on insert"
+          (is (= (summarize metadata) (summarize (stored card-id)))))
+        (testing "on an update of the query and the metadata together"
+          (let [edited [{:name "TWO" :display_name "Edited" :base_type :type/Integer :semantic_type :type/Score}]]
+            (t2/update! :model/Card :id card-id {:dataset_query   (native "SELECT 2 AS TWO")
+                                                 :result_metadata edited})
+            (is (= (summarize edited) (summarize (stored card-id)))))))
+      (testing "an MBQL model whose supplied metadata has no field ids"
+        (let [query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+          (mt/with-temp [:model/Card {card-id :id} {:type            :model
+                                                    :dataset_query   query
+                                                    :result_metadata [{:name "NAME" :display_name "Venue Name" :base_type :type/Text}]}]
+            (is (= [["NAME" "Venue Name" :type/Text]]
+                   (mapv (juxt :name :display_name :base_type) (stored card-id))))))))))

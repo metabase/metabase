@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import type { Dispatch } from "@reduxjs/toolkit";
 
+import { recordSdkPageMark } from "embedding-sdk-bundle/analytics/sdk-first-component-performance/event";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -30,7 +32,11 @@ export const initAuth = createAsyncThunk(
     authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
     { dispatch },
   ) => {
-    return await PLUGIN_EMBEDDING_SDK_AUTH.initAuth(authConfig, { dispatch });
+    const bootstrapAuthStartMs =
+      getWindow()?.METABASE_EMBEDDING_SDK_AUTH_STATE?.startedAtMs;
+    recordSdkPageMark("init_start", bootstrapAuthStartMs ?? performance.now());
+    await PLUGIN_EMBEDDING_SDK_AUTH.initAuth(authConfig, { dispatch });
+    recordSdkPageMark("init_end");
   },
 );
 

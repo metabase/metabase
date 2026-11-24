@@ -12,6 +12,7 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [toucan2.core :as t2]))
@@ -23,11 +24,15 @@
                         (thunk))))
 
 (defmacro mock-external-calls!
-  "Mock external calls around migration creation."
+  "Mock external calls around a `body` that starts one migration, and wait until the API's future has called the
+  mocked `migrate!`, so that the real one never runs after the redefinitions end."
   [& body]
-  `(with-redefs [cloud-migration/get-store-migration (constantly {:external_id 1 :upload_url "https://up.loady"})
-                 cloud-migration/migrate! identity]
-     ~@body))
+  `(let [migrate-called# (promise)]
+     (with-redefs [cloud-migration/get-store-migration (constantly {:external_id 1 :upload_url "https://up.loady"})
+                   cloud-migration/migrate!            (fn [migration#] (deliver migrate-called# migration#))]
+       (u/prog1 (do ~@body)
+         (is (not= ::timeout (deref migrate-called# 10000 ::timeout))
+             "the API's future calls the mocked migrate! before the redefinitions end")))))
 
 (defn- start-migration!
   "Starts a cloud migration through the API, with external calls mocked, after ending the ones other tests left
@@ -62,15 +67,11 @@
                                  :dump   []
                                  :upload []
                                  :done   []})
-        orig-set-progress (mt/original-fn #'cloud-migration/set-progress)]
-    ;; The redefs below are read on the test thread before the scheduler stops/starts;
-    ;; if a future change dispatches `cluster?` or `set-progress` through a quartz worker
-    ;; (which doesn't inherit `*local-redefs*`), revert that site to `with-redefs` per
-    ;; the docstring of `with-dynamic-fn-redefs`.
+        orig-set-progress (mt/original-fn #'cloud-migration/set-cloud-migration-progress!)]
     (mt/with-dynamic-fn-redefs [cloud-migration/cluster?     (constantly false)
-                                cloud-migration/set-progress (fn [id state n]
-                                                               (swap! progress-calls update state conj n)
-                                                               (orig-set-progress id state n))]
+                                cloud-migration/set-cloud-migration-progress! (fn [id state n]
+                                                                                (swap! progress-calls update state conj n)
+                                                                                (orig-set-progress id state n))]
       (http-fake/with-fake-routes-in-isolation (fake-upload-route-handler migration)
         (testing "works"
           (try
@@ -137,7 +138,7 @@
         collection-count (t2/count :model/Collection)]
     (mt/with-temporary-setting-values [read-only-mode true]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read-only"
-                            (t2/insert! :model/User {:email email :first_name "New" :last_name "User"})))
+                            (user/create-users! [{:email email :first_name "New" :last_name "User"}])))
       (is (not (t2/exists? :model/User :email email)))
       (is (= collection-count (t2/count :model/Collection))))))
 
@@ -260,8 +261,12 @@
            :model/MetabotGroupLimit
            :model/MetabotInstanceLimit
            :model/Sandbox
+           :model/SegmentTest
            :model/TableRemapping
            :model/Tenant
+           :model/TestSuite
+           :model/TestSuiteMember
+           :model/TestSuiteRun
            :model/TransformTest
            :model/Workspace
            :model/WorkspaceDatabase])))

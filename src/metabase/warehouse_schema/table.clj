@@ -14,7 +14,7 @@
 
 (defn- nil-if-unreadable
   [instance]
-  (when (and instance (mi/can-read? instance))
+  (when (and instance (mi/can-read? (t2/hydrate instance :can_read)))
     instance))
 
 (defn present-table
@@ -24,6 +24,20 @@
       (update :db dissoc :router_database_id)
       (m/update-existing :collection nil-if-unreadable)
       (update :schema str)))
+
+(defn present-tables
+  "Given tables, shape each for the API like [[present-table]], reading the readability of all their Collections at
+  once."
+  [tables]
+  (let [readable-ids (into #{}
+                           (comp (filter mi/can-read?) (map :id))
+                           (t2/hydrate (into [] (comp (keep :collection) (distinct)) tables) :can_read))]
+    (mapv (fn [table]
+            (-> table
+                (update :db dissoc :router_database_id)
+                (m/update-existing :collection #(when (contains? readable-ids (:id %)) %))
+                (update :schema str)))
+          tables)))
 
 (defn- format-fields-for-response [resp]
   (update resp :fields
@@ -51,7 +65,7 @@
   Uses can-read? which checks data permissions, metadata management permissions,
   and collection permissions for published tables."
   [table]
-  (mi/can-read? table))
+  (mi/can-read? (t2/hydrate table :can_read)))
 
 (defn sensitive-fields-table-ids
   "IDs of the `tables` whose sensitive fields to list: none unless `include-sensitive-fields?`, and then only those the
@@ -90,19 +104,20 @@
   "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`.
   Options:
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
-      user can edit the data model of (default false)"
+      user can edit the data model of (default false)
+    - `include-hidden-fields?` - if true, includes fields with visibility_type :hidden (default false)."
   ([ids]
    (batch-fetch-query-metadatas* ids nil))
-  ([ids {:keys [include-sensitive-fields?]}]
+  ([ids {:keys [include-sensitive-fields? include-hidden-fields?]}]
    (when (seq ids)
-     (let [tables (warehouse-schema.db/tables ids)
-           _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                                  :table-ids (into #{} (map :id) tables)})
+     (let [tables (t2/hydrate (warehouse-schema.db/tables ids) :can_read)
            tables (filter can-access-table-for-query-metadata? tables)
            sensitive-table-ids (sensitive-fields-table-ids include-sensitive-fields? tables)
            tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)]
        (for [table tables
-             :let [excluded-visibility-types (cond-> #{:hidden}
+             :let [excluded-visibility-types (cond-> #{}
+                                               (not include-hidden-fields?)
+                                               (conj :hidden)
                                                (not (contains? sensitive-table-ids (:id table)))
                                                (conj :sensitive))]]
          (-> table
@@ -122,7 +137,8 @@
   "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
   Options:
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
-      user can edit the data model of (default false)"
+      user can edit the data model of (default false)
+    - `include-hidden-fields?` - if true, includes fields with visibility_type :hidden (default false)."
   metabase-enterprise.sandbox.api.table
   [ids opts]
   (batch-fetch-query-metadatas* ids opts))
@@ -168,11 +184,23 @@
   [database-id schema-name]
   (or
    (contains? #{:query-builder :query-builder-and-native}
-              (perms/schema-permission-for-user api/*current-user-id*
-                                                :perms/create-queries
-                                                database-id
-                                                schema-name))
+              (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/create-queries database-id schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
+
+(defn readable-schemas
+  "The `[database-id schema-name]` pairs among `schemas` of the schemas the current user can know exist, as
+  [[can-read-schema?]] answers for each, in a number of queries that does not grow with the schemas of a Database."
+  [schemas]
+  (let [schemas   (vec (distinct schemas))
+        values    (perms/some-table-in-schemas-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                    :perms/create-queries schemas)
+        queryable (into #{} (filter #(contains? #{:query-builder :query-builder-and-native} (get values %))) schemas)]
+    (into queryable
+          (map (juxt :db_id :schema))
+          (filter-schema-by-data-model-perms (into []
+                                                   (comp (remove queryable)
+                                                         (map (fn [[db-id schema]] {:db_id db-id :schema schema})))
+                                                   schemas)))))
 
 (defn browsable-databases-honeysql-filter
   "The `:where` predicate selecting the databases a user may browse: excludes stubs (placeholder
@@ -204,12 +232,12 @@
                                 (map (fn [s] {:db_id id :schema s}))
                                 filter-schema-by-data-model-perms
                                 (map :schema))
-                           (filter (partial can-read-schema? id) schemas)))
+                           (let [readable (readable-schemas (map (fn [schema] [id schema]) schemas))]
+                             (filter #(contains? readable [id %]) schemas))))
         filter-schemas-by-tables (fn [schemas]
                                    (if can-query?
                                      (let [tables (warehouse-schema.db/active-tables-for-database id)
-                                           _ (perms/prime-table-perms-cache {:db-ids #{id}})
-                                           filtered-tables (filter mi/can-query? tables)
+                                           filtered-tables (filter mi/can-query? (t2/hydrate tables :can_query))
                                            allowed-schemas (set (map :schema filtered-tables))]
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
@@ -235,14 +263,13 @@
    (let [candidate-tables (if include-hidden?
                             (warehouse-schema.db/active-tables-in-schema db-id schema)
                             (warehouse-schema.db/active-visible-tables-in-schema db-id schema))
-         _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (filter-tables-by-data-model-perms candidate-tables)
-                                     (filter mi/can-read? candidate-tables))
+                                     (mi/readable candidate-tables))
+                            can-query? (#(t2/hydrate % :can_query))
                             can-query? (filter mi/can-query?))
-         hydration-keys   (cond-> []
+         hydration-keys   (cond-> [:collection]
                             (premium-features/any-transforms-enabled?)   (conj :transform)
                             include-measures? (conj :measures))]
-     (if (seq hydration-keys)
-       (apply t2/hydrate filtered-tables hydration-keys)
-       filtered-tables))))
+     (map #(update % :collection nil-if-unreadable)
+          (apply t2/hydrate filtered-tables hydration-keys)))))

@@ -123,8 +123,13 @@
           result  (#'data-perms.graph/add-implications {} 1 1 :perms/create-queries entries)]
       (is (= {10 {:perm_value :unrestricted :schema_name "PUBLIC"}}
              (get result [1 1 :perms/view-data])))
-      (is (nil? (get result [1 1 :perms/transforms]))
-          "No transforms implication at table level")))
+      (is (= {nil {:perm_value :no :schema_name nil}}
+             (get result [1 1 :perms/transforms]))
+          "Table-level create-queries revokes transforms on the whole database")))
+  (testing "Table-level create-queries all native keeps transforms"
+    (let [result (#'data-perms.graph/add-implications {} 1 1 :perms/create-queries
+                                                      {10 {:perm_value :query-builder-and-native :schema_name "PUBLIC"}})]
+      (is (nil? (get result [1 1 :perms/transforms])))))
   (testing "Table-level view-data :blocked implies create-queries :no and download :no for those tables"
     (let [entries {10 {:perm_value :blocked :schema_name "PUBLIC"}
                    11 {:perm_value :unrestricted :schema_name "PUBLIC"}}
@@ -132,7 +137,9 @@
       (is (= {10 {:perm_value :no :schema_name "PUBLIC"}}
              (get result [1 1 :perms/create-queries])))
       (is (= {10 {:perm_value :no :schema_name "PUBLIC"}}
-             (get result [1 1 :perms/download-results]))))))
+             (get result [1 1 :perms/download-results])))
+      (is (= {nil {:perm_value :no :schema_name nil}}
+             (get result [1 1 :perms/transforms]))))))
 
 (deftest add-implications-override-behavior-test
   (testing "Implications override existing entries (later perm-type side effects take precedence)"
@@ -363,15 +370,18 @@
                               :download       {:schemas :full}
                               :data-model     {:schemas {"s1" {t3a :all t3b :none}
                                                          "s2" {t3d :all t3e :none}}}}}}
-              ;; Run the update and count queries.
-              ;; Expected: 1 select tables + 1 select current perms + 1 bulk delete + 1 bulk insert = 4
-              ;; If this grows to 5 or 6, that's okay, but more should be very suspicious - it's very likely an N+1
-              ;; query in one of these dimensions!
-              query-count (t2/with-call-count [call-count]
-                            (data-perms.graph/update-data-perms-graph!* graph)
-                            (call-count))]
-          (is (<= query-count 4)
-              (format "Expected constant query count but got %d — possible N+1 regression" query-count)))
+              counted (fn [graph]
+                        (t2/with-call-count [call-count]
+                          (data-perms.graph/update-data-perms-graph!* graph)
+                          (call-count)))
+              tables  (fn [n value]
+                        {g2 {db1 {:download {:schemas (update-vals (group-by #(if (contains? #{t1a t1b t1c} %) "s1" "s2")
+                                                                             (take n [t1a t1d t1b t1e t1c t1f]))
+                                                                   #(zipmap % (repeat value)))}}}})]
+          (counted (tables 1 :full))
+          (testing "table-level permissions on more tables add no queries"
+            (is (= (counted (tables 2 :none)) (counted (tables 6 :limited)))))
+          (data-perms.graph/update-data-perms-graph!* graph))
         ;; Verify the permissions actually took effect by spot-checking a few values
         (let [result (data-perms.graph/data-permissions-graph :group-ids [g1 g2 g3])]
           (testing "g1/db1 db-level perms applied"

@@ -23,6 +23,8 @@
                               meta/metadata-provider)]
       (-> (lib.query/query metadata-provider query)
           (#'expand-macros/expand-macros)
+          ;; existing usage -- do not use going forward
+          #_{:clj-kondo/ignore [:deprecated-var]}
           lib.convert/->legacy-MBQL))
     (#'expand-macros/expand-macros query)))
 
@@ -138,6 +140,8 @@
                                 "Segment"]]
                               {:default "Other"}]}}}
               (expand-macros
+               ;; existing usage -- do not use going forward
+               #_{:clj-kondo/ignore [:deprecated-var]}
                (lib.convert/->legacy-MBQL
                 (-> (lib/query mock-metadata-provider (meta/table-metadata :venues))
                     (lib/expression "CC" (lib/case [[(lib/segment 1) "Segment"]] "Other"))))))))))

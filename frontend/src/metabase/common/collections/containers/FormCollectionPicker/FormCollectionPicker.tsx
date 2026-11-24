@@ -166,12 +166,11 @@ function FormCollectionPicker({
         {...rest}
       >
         <Button
-          size="lg"
           data-testid="collection-picker-button"
           id={id}
           onClick={() => setIsPickerOpen(true)}
           fullWidth
-          rightSection={<Icon name="ellipsis" />}
+          rightSection={<Icon name="chevronright" size={12} />}
           styles={{
             inner: {
               justifyContent: "space-between",

@@ -11,7 +11,7 @@ import type { CollectionId, CollectionItem, Table } from "metabase-types/api";
 
 export type TableModalTable =
   | Pick<CollectionItem, "id" | "database_id" | "collection_id">
-  | Pick<Table, "id" | "db_id" | "collection_id">;
+  | Pick<Table, "id" | "db_id" | "collection">;
 
 type MoveTableModalState = {
   type: "move";
@@ -70,11 +70,14 @@ function MoveTableModal({ table, onClose }: TableModalContentProps) {
     onClose();
   };
 
+  const collectionId =
+    "db_id" in table ? table.collection?.id : table.collection_id;
+
   return (
     <CollectionPickerModal
       title={t`Move table to…`}
       value={{
-        id: table.collection_id ?? "root",
+        id: collectionId ?? "root",
         model: "collection",
       }}
       onChange={handleMove}

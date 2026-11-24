@@ -41,7 +41,7 @@ export type Transform = {
   source_readable: boolean;
   can_read?: boolean;
   can_write?: boolean;
-  can_execute?: boolean;
+  can_query?: boolean;
 
   source_database_id?: DatabaseId;
 
@@ -272,6 +272,7 @@ export type TransformJob = {
   tag_ids?: TransformTagId[];
   last_run?: TransformRun | null;
   next_run?: { start_time: string } | null;
+  can_query?: boolean;
 };
 
 export type CreateTransformRequest = {
@@ -295,6 +296,11 @@ export type UpdateTransformRequest = {
   collection_id?: number | null;
   owner_user_id?: UserId | null;
   owner_email?: string | null;
+};
+
+export type DeleteTransformsFolderRequest = {
+  id: CollectionId;
+  "delete-tables"?: boolean;
 };
 
 export type CreateTransformJobRequest = {

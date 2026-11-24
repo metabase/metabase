@@ -197,7 +197,7 @@ export const getDarkTheme = (
     "icon-secondary-inverse": baseColors.orionAlpha[60], // Matches text-secondary-inverse
     "illustration-secondary-brand": brand[80],
     "illustration-tertiary-brand": brand[90],
-    "input-background": baseColors.orionAlphaInverse[10],
+    "input-background": baseColors.orion[95], // Matches background_surface-primary
     "input-focus": baseColors.blue[70],
     "modal-border": baseColors.orionAlphaInverse[30], // Matches border-neutral-strong
     "modal-overlay": baseColors.blackAlpha[35],

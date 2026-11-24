@@ -6,7 +6,6 @@
    [better-cond.core :as b]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
-   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.sandbox.models.sandbox :as sandbox]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
@@ -25,6 +24,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -240,7 +240,7 @@
                 ;; `cols` come from running the Card's own query, not from the caller, so this is a server-side write
                 ;; and must not trip the guard that refuses non-admin edits to a sandbox's result metadata.
                 (request/as-admin
-                  (sandbox.db/set-card-result-metadata! card-id cols)))
+                  (queries.card/update-cards! [{:id card-id :result_metadata cols}] {:writer :sync})))
               (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 

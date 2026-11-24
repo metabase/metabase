@@ -130,18 +130,11 @@ describe("SdkThemeProvider", () => {
 
     // We need to check what was actually injected into page, thus
     // direct query (unlike other tests that use SdkCssVariablesTester).
-    // Read the parsed rules off each sheet, falling back to `textContent` when a sheet has none.
-    const styleTagText = (element: HTMLStyleElement) => {
-      const rules = element.sheet?.cssRules;
-      if (rules && rules.length > 0) {
-        return [...rules].map((rule) => rule.cssText).join("\n");
-      }
-      return element.textContent ?? "";
-    };
-
     const emittedStyles = () =>
       // eslint-disable-next-line testing-library/no-node-access -- the style sheets live in <style> tags; there is no Testing Library query for them
-      [...document.querySelectorAll("style")].map(styleTagText).join("\n");
+      [...document.querySelectorAll("style")]
+        .map((element) => element.textContent ?? "")
+        .join("\n");
 
     const setup = async (
       theme: MetabaseEmbeddingTheme | undefined,

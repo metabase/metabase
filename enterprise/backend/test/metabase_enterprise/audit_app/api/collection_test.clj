@@ -69,30 +69,31 @@
         (audit-test/with-audit-db-restoration!
           (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
                 crowberto-root (t2/select-one :model/Collection :personal_owner_id admin-user-id)]
-            (mt/with-temp [:model/Collection collection          {}
-                           :model/Collection {collection-id :id} {:name "Collection with Items"}
-                           :model/Collection _                   {:name            "subcollection"
-                                                                  :location        (format "/%d/" collection-id)
-                                                                  :authority_level "official"}
-                           :model/Collection _                   {:name     "Crowberto's Child Collection"
-                                                                  :location (collection/location-path crowberto-root)}]
-              (let [public-collection-names  #{"Our analytics"
-                                               (:name collection)
-                                               "Collection with Items"
-                                               "subcollection"}
-                    luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))
-                    crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
-                    crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))]
-                (is (= (into #{}
-                             (concat (instance-analytics-collection-names)
-                                     public-collection-names
-                                     (t2/select-fn-set :name :model/Collection {:where [:and [:= :type nil] [:= :archived false]]})))
-                       crowbertos))
-                (is (= (into #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"}
-                             (concat (instance-analytics-collection-names) public-collection-names))
-                       crowbertos-with-excludes))
-                (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
-                (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
-                (is (= (conj public-collection-names (:name collection) "Lucky Pigeon's Personal Collection")
-                       luckys))
-                (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))))))
+            (mt/with-model-cleanup [:model/Collection]
+              (let [[collection {collection-id :id}] (collection/create-collections! [{:name (mt/random-name)}
+                                                                                      {:name "Collection with Items"}])]
+                (collection/create-collections! [{:name            "subcollection"
+                                                  :location        (format "/%d/" collection-id)
+                                                  :authority_level "official"}])
+                (mt/with-temp [:model/Collection _ {:name     "Crowberto's Child Collection"
+                                                    :location (collection/location-path crowberto-root)}]
+                  (let [public-collection-names  #{"Our analytics"
+                                                   (:name collection)
+                                                   "Collection with Items"
+                                                   "subcollection"}
+                        luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))
+                        crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
+                        crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))]
+                    (is (= (into #{}
+                                 (concat (instance-analytics-collection-names)
+                                         public-collection-names
+                                         (t2/select-fn-set :name :model/Collection {:where [:and [:= :type nil] [:= :archived false]]})))
+                           crowbertos))
+                    (is (= (into #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"}
+                                 (concat (instance-analytics-collection-names) public-collection-names))
+                           crowbertos-with-excludes))
+                    (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
+                    (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
+                    (is (= (conj public-collection-names (:name collection) "Lucky Pigeon's Personal Collection")
+                           luckys))
+                    (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))))))))

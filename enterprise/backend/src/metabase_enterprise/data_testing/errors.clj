@@ -26,18 +26,22 @@
    ::unremapped-reference       400  ; A real table survived the rewrite into the test's SQL.
    ::no-expectations            400  ; The test checks nothing.
    ::unknown-placeholder        400  ; Expectation SQL writes a `{{...}}` that is not the output token.
+   ::missing-input-columns      400  ; A rows input lacks a column the query under test reads.
+   ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
 
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).
    ::unsupported-driver         422  ; The database does not support testing.
    ::uncompilable-subject       422  ; The subject's query does not compile to SQL.
+   ::archived-subject           422  ; The subject is archived.
    ::query-failed               422  ; The query under test would not run.
    ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.
 
    ;; 501 — not built yet
-   ::unsupported-format         501}); The expectation asks for a form that is not implemented.
+   ::unsupported-format         501  ; The expectation is of a type the schema knows and no `build` method handles.
+   ::now-on-native-sql          501}); The test sets `now` on SQL written by hand; pinning the clock there is not built.
 
 (def all
   "Every declared `:error-type`."

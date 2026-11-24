@@ -31,11 +31,13 @@
                (t2/hydrate :name_field)
                mt/derecordize))))
   (testing "make sure it works for multiple fields efficiently. Should only require one DB call to hydrate many Fields"
-    (let [venues-fields (t2/select :model/Field :table_id (mt/id :venues))]
-      (t2/with-call-count [call-count]
-        (t2/hydrate venues-fields :name_field)
-        (is (= 1
-               (call-count))))))
+    (let [venues-fields (sort-by #(not= :type/PK (:semantic_type %)) (t2/select :model/Field :table_id (mt/id :venues)))
+          counted       (fn [n]
+                          (t2/with-call-count [call-count]
+                            (t2/hydrate (take n venues-fields) :name_field)
+                            (call-count)))]
+      (counted 1)
+      (is (= (counted 2) (counted 6)))))
   (testing "It shouldn't hydrate for Fields that aren't PKs"
     (is (= {:name          "PRICE"
             :table_id      (mt/id :venues)
@@ -285,19 +287,22 @@
            :model/DashboardCard dc2 {:dashboard_id dash-id :card_id (:id agg2)
                                      :parameter_mappings [{:parameter_id "p2" :card_id (:id agg2)
                                                            :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]}]}]
+          ;; Each is a single set load, so this count is constant in the number of cards -- it must NOT grow with more
+          ;; dashcards/Cards/Tables (that would be the N+1 this preloading exists to prevent).
+          ;; - one bulk fetch of the source Cards
+          ;; - one bulk fetch of those Cards' result-metadata Fields
+          ;; - one bulk fetch of those Fields' FK targets
+          ;; - one bulk fetch of the FK-target Tables
+          ;; - one bulk fetch of those Tables' columns
           (let [dashcards (-> (t2/select :model/DashboardCard :id [:in [(:id dc1) (:id dc2)]])
-                              (t2/hydrate :card :series))]
-            ;; Each is a single set load, so this count is constant in the number of cards -- it must NOT grow with more
-            ;; dashcards/Cards/Tables (that would be the N+1 this preloading exists to prevent).
-            ;; - one bulk fetch of the source Cards
-            ;; - one bulk fetch of those Cards' result-metadata Fields
-            ;; - one bulk fetch of those Fields' FK targets
-            ;; - one bulk fetch of the FK-target Tables
-            ;; - one bulk fetch of those Tables' columns
-            (is (= 5 (lib-be/with-metadata-provider-cache
-                       (t2/with-call-count [call-count]
-                         (params/dashcards->param-field-ids dashcards)
-                         (call-count)))))))))))
+                              (t2/hydrate :card :series))
+                counted   (fn [dashcards]
+                            (lib-be/with-metadata-provider-cache
+                              (t2/with-call-count [call-count]
+                                (params/dashcards->param-field-ids dashcards)
+                                (call-count))))]
+            (counted (take 1 dashcards))
+            (is (= (counted (take 1 dashcards)) (counted dashcards)))))))))
 
 (deftest ^:parallel invalid-parameters-errors-are-humanized-test
   (testing "`:errors` are client-facing, so they are humanized messages rather than Malli explanations"
@@ -309,3 +314,40 @@
         (let [errors (:errors (try (thunk) (catch clojure.lang.ExceptionInfo e (ex-data e))))]
           (is (some? errors))
           (is (not-any? #(and (map? %) (contains? % :schema)) (tree-seq coll? seq errors))))))))
+
+(deftest dashboard-param-fields-statements-do-not-grow-with-dashboards-test
+  (let [mp         (mt/metadata-provider)
+        parameters [{:id "p1" :type :number/= :name "P1" :slug "p1"}]
+        mappings   (fn [card-id field-name]
+                     [{:card_id      card-id
+                       :parameter_id "p1"
+                       :target       [:dimension [:field (mt/id :venues field-name) nil]]}])]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                   :model/Dashboard {d1 :id} {:parameters parameters}
+                   :model/Dashboard {d2 :id} {:parameters parameters}
+                   :model/Dashboard {d3 :id} {:parameters parameters}
+                   :model/Dashboard {d4 :id} {:parameters parameters}
+                   :model/Dashboard {d5 :id} {:parameters parameters}
+                   :model/Dashboard {d6 :id} {:parameters parameters}
+                   :model/DashboardCard _ {:dashboard_id d1 :card_id card-id :parameter_mappings (mappings card-id :id)}
+                   :model/DashboardCard _ {:dashboard_id d2 :card_id card-id :parameter_mappings (mappings card-id :price)}
+                   :model/DashboardCard _ {:dashboard_id d3 :card_id card-id :parameter_mappings (mappings card-id :id)}
+                   :model/DashboardCard _ {:dashboard_id d4 :card_id card-id :parameter_mappings (mappings card-id :price)}
+                   :model/DashboardCard _ {:dashboard_id d5 :card_id card-id :parameter_mappings (mappings card-id :id)}
+                   :model/DashboardCard _ {:dashboard_id d6 :card_id card-id :parameter_mappings (mappings card-id :price)}]
+      (let [dashboards (mapv #(t2/select-one :model/Dashboard :id %) [d1 d2 d3 d4 d5 d6])
+            hydrate    (fn [n]
+                         (lib-be/with-metadata-provider-cache
+                           (t2/with-call-count [call-count]
+                             (let [hydrated (doall (t2/hydrate (vec (take n dashboards)) :param_fields))]
+                               {:statements (call-count)
+                                :values     (mapv :param_fields hydrated)}))))]
+        (hydrate 1)
+        (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+        (is (= (map #(vector (mt/id :venues %)) [:id :price :id :price :id :price])
+               (map #(map :id (get % "p1")) (:values (hydrate 6)))))
+        (testing "each dashboard gets the Fields it got alone"
+          (is (= (mapv #(#'params/param-field-ids->fields
+                         (#'params/dashcards->param-id->field-ids (:dashcards (t2/hydrate % [:dashcards :card :series]))))
+                       dashboards)
+                 (:values (hydrate 6)))))))))

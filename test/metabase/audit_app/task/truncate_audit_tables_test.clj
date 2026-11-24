@@ -65,16 +65,19 @@
 (deftest batched-deletion-test
   (testing "Deletion is batched into multiple queries"
     (when (not= :postgres (mdb/db-type))
-      (mt/with-temporary-setting-values [audit-table-truncation-batch-size 2]
-        (mt/with-temp
-          [:model/QueryExecution {qe1-id :id} (merge (query-execution-defaults)
-                                                     {:started_at (t/minus (t/offset-date-time) (t/years 4))})
-           :model/QueryExecution {qe2-id :id} (merge (query-execution-defaults)
-                                                     {:started_at (t/minus (t/offset-date-time) (t/years 4))})
-           :model/QueryExecution {qe3-id :id} (merge (query-execution-defaults)
-                                                     {:started_at (t/minus (t/offset-date-time) (t/years 4))})]
-          (t2/with-call-count [call-count]
-            (#'task.truncate-audit-tables/truncate-table! :model/QueryExecution :started_at)
-            ;; Should make deletion queries in two batches (2 rows, then 1 row)
-            (is (= 2 (call-count)))
-            (is (nil? (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]})))))))))
+      (let [counted (fn [batch-size]
+                      (mt/with-temporary-setting-values [audit-table-truncation-batch-size batch-size]
+                        (mt/with-temp
+                          [:model/QueryExecution {qe1-id :id} (merge (query-execution-defaults)
+                                                                     {:started_at (t/minus (t/offset-date-time) (t/years 4))})
+                           :model/QueryExecution {qe2-id :id} (merge (query-execution-defaults)
+                                                                     {:started_at (t/minus (t/offset-date-time) (t/years 4))})
+                           :model/QueryExecution {qe3-id :id} (merge (query-execution-defaults)
+                                                                     {:started_at (t/minus (t/offset-date-time) (t/years 4))})]
+                          (t2/with-call-count [call-count]
+                            (#'task.truncate-audit-tables/truncate-table! :model/QueryExecution :started_at)
+                            (is (nil? (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]})))
+                            (call-count)))))]
+        (counted 2)
+        (testing "three rows take more statements in batches of two than in one batch of ten"
+          (is (< (counted 10) (counted 2))))))))

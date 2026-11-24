@@ -1,16 +1,35 @@
 (ns metabase.documents.schema
   (:require
+   [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.collections.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::document.id
   "Valid Document ID"
   pos-int?)
+
+(def DocumentName
+  "The name of a Document: a non-blank string of at most 254 characters."
+  (mu/with-api-error-message
+   [:and
+    {:error/message "invalid document name"
+     :json-schema   {:type "string" :minLength 1 :maxLength 254}}
+    [:string {:min 1 :max 254}]
+    [:fn
+     {:error/message "invalid document name"}
+     (complement str/blank?)]]
+   (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
+
+(mr/def ::document.name
+  DocumentName)
 
 (mr/def ::document.document
   "The `:document` column of a Document, decoded."
@@ -22,7 +41,7 @@
   [:merge
    ::document.update
    [:map {:closed true}
-    [:id                  ms/PositiveInt]
+    [:id                  {:optional true} ms/PositiveInt]
     [:creator             {:optional true} [:maybe :metabase.users.schema/user]]
     [:collection          {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
     [:can_write           {:optional true} :boolean]
@@ -30,27 +49,41 @@
     [:can_restore         {:optional true} :boolean]
     [:is_remote_synced    {:optional true} :boolean]]])
 
+(mr/def ::document.revision
+  "A Document as a Revision stores it: its tracked columns."
+  [:select-keys ::document
+   [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]])
+
 (mr/def ::document.update
-  "What an update (or insert) of a Document accepts: every column of `:document` except `id`, all optional."
+  "A Document by its `id` with the columns to change, each optional."
   [:map {:closed true}
-   [:name                {:optional true} [:maybe :string]]
-   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:id                  ms/PositiveInt]
+   [:name                {:optional true} ::document.name]
    [:document            {:optional true} [:maybe ::document.document]]
    [:content_type        {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
-   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:collection_id       {:optional true} [:maybe ::lib.schema.id/collection]]
    [:archived            {:optional true} [:maybe :boolean]]
    [:archived_directly   {:optional true} [:maybe :boolean]]
    [:entity_id           {:optional true} [:maybe :string]]
-   [:last_viewed_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:view_count          {:optional true} [:maybe :int]]
    [:collection_position {:optional true} [:maybe :int]]
    [:public_uuid         {:optional true} [:maybe :string]]
    [:made_public_by_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:public_uuid_prefix  {:optional true} [:maybe :string]]
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
-   [:is_placeholder      {:optional true} [:maybe :boolean]]])
+   [:is_placeholder      {:optional true} [:maybe :boolean]]
+   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_viewed_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:view_count          {:optional true} [:maybe :int]]
+   [:public_uuid_prefix  {:optional true} [:maybe :string]]])
+
+(mr/def ::document.create
+  "What creating a Document takes: the columns of an update without the `:id` and the columns the product sets, as the
+  public uuid prefix, which follows from the public uuid, and the name."
+  [:merge
+   (reduce mut/dissoc ::document.update [:id :created_at :updated_at :last_viewed_at :view_count :public_uuid_prefix])
+   [:map {:closed true}
+    [:name ::document.name]]])
 
 (mr/def ::external-path
   "An entity as a serialized document names it: its containers, outermost first, then the entity itself."

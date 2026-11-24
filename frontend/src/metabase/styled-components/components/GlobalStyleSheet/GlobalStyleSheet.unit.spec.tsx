@@ -10,6 +10,10 @@ const getSheets = () =>
   );
 
 describe("GlobalStyleSheet", () => {
+  afterEach(() => {
+    setNonce("");
+  });
+
   it("should append the styles to the document head with the CSP nonce", () => {
     setNonce("2726c7f26c");
     render(<GlobalStyleSheet styles=":root { --mb-color-brand: #509ee3; }" />);
@@ -18,6 +22,12 @@ describe("GlobalStyleSheet", () => {
     expect(sheets).toHaveLength(1);
     expect(sheets[0]).toHaveTextContent(":root { --mb-color-brand: #509ee3; }");
     expect(sheets[0]).toHaveAttribute("nonce", "2726c7f26c");
+  });
+
+  it("should not set a nonce attribute without a CSP nonce", () => {
+    render(<GlobalStyleSheet styles="body { color-scheme: light; }" />);
+
+    expect(getSheets()[0]).not.toHaveAttribute("nonce");
   });
 
   it("should update the same element so it keeps its place in the head", () => {

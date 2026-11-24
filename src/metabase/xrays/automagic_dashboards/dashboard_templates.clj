@@ -7,7 +7,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.dashboards.constants :as dashboards.constants]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.query-processor.util :as qp.util]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -178,7 +178,7 @@
                                           (if (string? x)
                                             x
                                             (u/qualified-name x)))}]
-   [:* ::lib.schema.visualization-settings/visualization-settings]])
+   [:* ::lib.schema.visualization/visualization-settings]])
 
 (def ^:private Width
   [:int {:min 1, :max populate/grid-width}])
@@ -249,19 +249,15 @@
   [k cards]
   (mapcat (comp k val first) cards))
 
-(def ^:private DimensionForm
-  [:cat
-   [:and
-    [:or :string :keyword]
-    [:fn
-     {:error/message ":dimension"}
-     (comp #{:dimension} qp.util/normalize-token)]]
-   :string
-   [:* :map]])
-
-(def ^{:arglists '([form])} dimension-form?
-  "Does form denote a dimension reference?"
-  (mr/validator DimensionForm))
+(defn dimension-form?
+  "Does form denote a dimension reference: `dimension`, the name of a dimension, then any number of option maps?"
+  [form]
+  (and (sequential? form)
+       (let [[tag dimension & options] form]
+         (and (or (string? tag) (keyword? tag))
+              (= :dimension (qp.util/normalize-token tag))
+              (string? dimension)
+              (every? map? options)))))
 
 (defn collect-dimensions
   "Return all dimension references in form."

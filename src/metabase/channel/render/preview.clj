@@ -42,13 +42,13 @@
 
 (defn- render-csv-for-dashcard
   [part]
-  (-> part
-      (assoc-in [:card :include_csv] true)
-      (email.result-attachment/result-attachment api/*current-user-id*)
-      first
-      :content
-      slurp
-      csv-to-html-table))
+  (let [part (assoc-in part [:card :include_csv] true)]
+    (-> part
+        (email.result-attachment/result-attachment (first (email.result-attachment/download-levels [part] api/*current-user-id*)))
+        first
+        :content
+        slurp
+        csv-to-html-table)))
 
 (defn- render-one-dashcard
   [{:keys [card dashcard result] :as dashboard-result}]

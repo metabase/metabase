@@ -57,6 +57,8 @@ If you disable user provisioning, users without accounts or with deactivated acc
 
 If you manage user provisioning with [SCIM](./user-provisioning.md), you can't turn on SAML user provisioning.
 
+On self-hosted Metabases, you can also turn SAML user provisioning on or off with the [`MB_SAML_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_saml_user_provisioning_enabled) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## Identity provider (IdP) configuration
 
 The top portion of the SAML form in Metabase has the information you'll need to fill out your IdP's SAML form, with buttons to make copying the information easy.
@@ -93,6 +95,8 @@ Metabase shows the values for **User's email attribute**, **User's first name at
 
 > If you allow people to edit their email addresses: make sure to update the corresponding account emails in Metabase. Keeping email addresses in sync will protect people from losing access to their accounts.
 
+On self-hosted Metabases, you can also set these attribute names with the environment variables [`MB_SAML_ATTRIBUTE_EMAIL`](../configuring-metabase/environment-variables.md#mb_saml_attribute_email), [`MB_SAML_ATTRIBUTE_FIRSTNAME`](../configuring-metabase/environment-variables.md#mb_saml_attribute_firstname), and [`MB_SAML_ATTRIBUTE_LASTNAME`](../configuring-metabase/environment-variables.md#mb_saml_attribute_lastname), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## Identity provider info
 
 Metabase will now need to know some things about your IdP. Here's a breakdown of each of the settings:
@@ -109,6 +113,8 @@ Different IdPs use different names for the Identity Provider URL. Here are some 
 | [Okta](saml-okta.md)   | Identity Provider Single-Sign On URL |
 | OneLogin               | SAML 2.0 Endpoint (HTTP)             |
 
+On self-hosted Metabases, you can also set the identity provider URL with the [`MB_SAML_IDENTITY_PROVIDER_URI`](../configuring-metabase/environment-variables.md#mb_saml_identity_provider_uri) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ### SAML identity provider certificate
 
 The SAML identity provider certificate is an encoded certificate that Metabase will use when connecting to the IdP URI. The certificate will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important!
@@ -123,9 +129,11 @@ Note that your certificate text may include header and footer comments that look
 | [Okta](saml-okta.md)   | X.509 Certificate   |
 | OneLogin               | X.509 Certificate   |
 
+On self-hosted Metabases, you can also set the certificate with the [`MB_SAML_IDENTITY_PROVIDER_CERTIFICATE`](../configuring-metabase/environment-variables.md#mb_saml_identity_provider_certificate) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ### SAML application name
 
-Metabase uses the application name in requests to your IdP. The default is `Metabase`.
+Metabase uses the application name in requests to your IdP. The default is `Metabase`. On self-hosted Metabases, you can also set it with the [`MB_SAML_APPLICATION_NAME`](../configuring-metabase/environment-variables.md#mb_saml_application_name) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ### SAML identity provider issuer
 
@@ -136,6 +144,8 @@ The SAML identity provider issuer is a required unique identifier for the IdP. Y
 | [Auth0](saml-auth0.md) | Identity Provider Login URL |
 | [Okta](saml-okta.md)   | Identity Provider Issuer    |
 | OneLogin               | Issuer URL                  |
+
+On self-hosted Metabases, you can also set the issuer with the [`MB_SAML_IDENTITY_PROVIDER_ISSUER`](../configuring-metabase/environment-variables.md#mb_saml_identity_provider_issuer) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ### Sign SSO requests
 
@@ -148,6 +158,8 @@ If your IdP encrypts SAML responses, you'll need to ensure this section is fille
 - **SAML keystore path:** the absolute path to the keystore file to use for signing SAML requests.
 - **SAML keystore password:** the magic spell that will open the keystore.
 - **SAML keystore alias:** the alias for the key that Metabase should use for signing SAML requests.
+
+On self-hosted Metabases, you can also set the keystore password and alias with the environment variables [`MB_SAML_KEYSTORE_PASSWORD`](../configuring-metabase/environment-variables.md#mb_saml_keystore_password) and [`MB_SAML_KEYSTORE_ALIAS`](../configuring-metabase/environment-variables.md#mb_saml_keystore_alias).
 
 ## SAML Single logout (SLO)
 
@@ -166,7 +178,7 @@ https://metabase.example.com/auth/sso/handle_slo
 SLO isn’t configurable from the Metabase interface. To enable it, you’ll need to set the following options using environment variables or your Metabase configuration file:
 
 - [`MB_SAML_SLO_ENABLED`](../configuring-metabase/environment-variables.md#mb_saml_slo_enabled) to `true`;
-- [`MB_SAML_IDENTITY_PROVIDER_URI`](../configuring-metabase/environment-variables.md#mb_saml_identity_provider_uri) to your IdP’s SLO endpoint;
+- [`MB_SAML_IDENTITY_PROVIDER_SLO_URI`](../configuring-metabase/environment-variables.md#mb_saml_identity_provider_slo_uri) to your IdP’s SLO endpoint;
 - [`MB_SESSION_COOKIE_SAMESITE`](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite) to `none`.
 
 For the `MB_SESSION_COOKIE_SAMESITE` setting to work with `none`, Metabase must be served over HTTPS. Browsers like Chrome will block cookies in cross-site requests if SSL is not enabled. Without HTTPS, logout requests from your IdP (such as Okta) won’t include the session cookie, which means Metabase won’t be able to end the session properly.
@@ -193,6 +205,8 @@ After you set up the group attribute in your IdP, configure group mappings:
 **Group attribute name** is required. Until you set it, Metabase assigns no groups.
 
 Metabase saves each mapping as soon as you add, edit, or remove it. To edit a mapping, hover over it and click the pencil icon.
+
+On self-hosted Metabases, you can also set the group attribute name, the group mapping toggle, and the mappings themselves with the environment variables [`MB_SAML_ATTRIBUTE_GROUP`](../configuring-metabase/environment-variables.md#mb_saml_attribute_group), [`MB_SAML_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_saml_group_sync), and [`MB_SAML_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_saml_group_mappings).
 
 ![Group mapping](images/saml-okta-groups.png)
 
@@ -229,6 +243,8 @@ To require people to log in with SSO, go to **Admin** > **Settings** > **Authent
 ## New account notification emails
 
 When people log in to Metabase for the first time via SSO, Metabase will automatically create an account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, go to **Admin** > **Settings** > **Authentication** > **User provisioning**, and toggle off **"Notify admins of new users provisioned from SSO"**
+
+On self-hosted Metabases, you can also turn these notifications on or off with the [`MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`](../configuring-metabase/environment-variables.md#mb_send_new_sso_user_admin_email) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ## Example code using SAML
 

@@ -11,6 +11,7 @@
    [metabase.api.common :as api]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
+   [metabase.documents.models.document :as document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
@@ -27,7 +28,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -72,7 +74,7 @@
 
 (defn- smart-link-readable?
   "Whether the current user is allowed to see `row`'s display name. Every model but `user` has
-  a [[mi/can-read?]] implementation to defer to; user rows are pre-filtered by
+  a [[mi/can-read?]] implementation to defer to, read off `:can_read` hydrated on the row; user rows are pre-filtered by
   [[visible-user-rows]], and a sandboxed or impersonated caller resolves nobody but themselves."
   [model row]
   (if (= "user" model)
@@ -112,20 +114,22 @@
   (into {}
         (mapcat (fn [[model model-links]]
                   (let [db-model (prose-mirror/smart-link-model->db-model model)
-                        ids      (distinct (map #(get-in % [:attrs "entityId"]) model-links))
+                        ids      (distinct (map #(get-in % [:attrs :entityId]) model-links))
                         rows     (when db-model
                                    (try
-                                     (filterv #(and (not (v2.resolve/hidden? db-model %))
-                                                    (smart-link-readable? model %))
+                                     (filterv #(smart-link-readable? model %)
                                               (if (= "user" model)
-                                                (visible-user-rows ids)
-                                                (mcp.db/select-by-ids db-model ids)))
+                                                (remove #(v2.resolve/hidden? db-model %) (visible-user-rows ids))
+                                                (t2/hydrate (into []
+                                                                  (remove #(v2.resolve/hidden? db-model %))
+                                                                  (mcp.db/select-by-ids db-model ids))
+                                                            :can_read)))
                                      (catch Exception e
                                        (log/warnf e "smart link lookup failed for %s" model)
                                        nil)))]
                     (for [row rows]
                       [[model (:id row)] row]))))
-        (group-by #(get-in % [:attrs "model"]) links)))
+        (group-by #(get-in % [:attrs :model]) links)))
 
 (defn- stored-smart-link-attrs
   "`{[model entityId] attrs}` for every already-labelled smartLink in `ast`."
@@ -133,7 +137,7 @@
   (into {}
         (keep (fn [node]
                 (when (and (map? node) (= "smartLink" (:type node)))
-                  (let [{:strs [entityId model label] :as attrs} (:attrs node)]
+                  (let [{:keys [entityId model label] :as attrs} (:attrs node)]
                     (when label
                       [[model entityId] attrs])))))
         (tree-seq :content :content ast)))
@@ -162,14 +166,14 @@
             stored (some-> previous-ast stored-smart-link-attrs)]
         (match/replace-all ast
           {:type "smartLink"}
-          (let [{:strs [entityId model]} (:attrs &match)
+          (let [{:keys [entityId model]} (:attrs &match)
                 k                        [model entityId]]
             (if-let [row (get rows k)]
               (update &match :attrs assoc
-                      "label" (smart-link-label row)
-                      "href" (smart-link-href model row))
+                      :label (smart-link-label row)
+                      :href (smart-link-href model row))
               (if-let [prior (get stored k)]
-                (update &match :attrs assoc "label" (get prior "label") "href" (get prior "href"))
+                (update &match :attrs assoc :label (:label prior) :href (:href prior))
                 (do
                   (when (prose-mirror/smart-link-model->db-model model)
                     (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
@@ -178,14 +182,14 @@
 (defn- ast-id-set
   [ast]
   (set (prose-mirror/collect-ast {:document ast :content_type prose-mirror/prose-mirror-content-type}
-                                 (comp #(get % "_id") :attrs))))
+                                 (comp :_id :attrs))))
 
 (defn- ast-id->type
   [ast]
   (into {} (prose-mirror/collect-ast
             {:document ast :content_type prose-mirror/prose-mirror-content-type}
             (fn [{:keys [type attrs]}]
-              (when-let [id (get attrs "_id")]
+              (when-let [id (:_id attrs)]
                 [id type])))))
 
 (defn- changed-blocks
@@ -194,7 +198,7 @@
     (->> (prose-mirror/collect-ast
           {:document before :content_type prose-mirror/prose-mirror-content-type}
           (fn [{:keys [type attrs]}]
-            (when-let [id (get attrs "_id")]
+            (when-let [id (:_id attrs)]
               [id type])))
          (keep (fn [[id old-type]]
                  (let [new-type (get after-types id)]
@@ -213,7 +217,7 @@
   (let [ids (distinct (prose-mirror/card-ids {:document     ast
                                               :content_type prose-mirror/prose-mirror-content-type}))]
     (when (seq ids)
-      (let [cards (into {} (map (juxt :id identity)) (mcp.db/select-by-ids :model/Card ids))]
+      (let [cards (into {} (map (juxt :id identity)) (t2/hydrate (mcp.db/select-by-ids :model/Card ids) :can_read))]
         (doseq [id ids]
           (let [card (get cards id)]
             (when-not (and card
@@ -406,10 +410,13 @@
     (api/create-check :model/Document {:collection_id collection-id})
     (let [ast (resolve-smart-links! (documents/parse content_markdown) nil)]
       (check-card-embeds! ast nil)
-      (let [created (documents/create-document! {:name                name
-                                                 :document            ast
-                                                 :collection_id       collection-id
-                                                 :collection_position collection_position})]
+      (document/check-creating-document-cards {:document ast :collection_id collection-id})
+      (let [created (t2/with-transaction [_conn]
+                      (documents/get-document
+                       (document/create-document-with-cards! {:name                name
+                                                              :document            ast
+                                                              :collection_id       collection-id
+                                                              :collection_position collection_position})))]
         (document-response created [] [])))))
 
 ;;; ------------------------------------------------------ Update --------------------------------------------------
@@ -428,12 +435,12 @@
                                                    (fn [document-id] (documents/get-document document-id)))]
     (when-not (contains? args :archived)
       (api/check-not-archived existing))
-    (api/write-check existing)
     (let [collection-id (when (contains? args :collection_id)
-                          (v2.resolve/resolve-collection-id (:collection_id args)))]
-      (when (and (contains? args :collection_id)
-                 (not= collection-id (:collection_id existing)))
-        (documents/validate-collection-move-permissions (:collection_id existing) collection-id))
+                          (v2.resolve/resolve-collection-id (:collection_id args)))
+          move          (cond-> {}
+                          (contains? args :collection_id) (assoc :collection_id collection-id)
+                          (contains? args :archived)      (assoc :archived (:archived args)))]
+      (api/update-check existing move)
       (let [old-ids (ast-id-set (:document existing))
             ;; `edits: []` is the metadata-only escape hatch: no new AST, and the document
             ;; column is left entirely alone below.
@@ -456,7 +463,8 @@
                       (contains? args :collection_id)       (assoc :collection_id collection-id)
                       (contains? args :collection_position) (assoc :collection_position collection_position)
                       (contains? args :archived)            (assoc :archived (boolean archived)))
-            updated (documents/update-document! existing body)
+            _       (document/check-updating-document-cards existing body)
+            updated (document/update-document-with-cards! existing body)
             removed (when new-ast
                       (set/difference old-ids (ast-id-set (:document updated))))
             changed (if (seq edits)

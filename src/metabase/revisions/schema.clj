@@ -1,6 +1,7 @@
 (ns metabase.revisions.schema
   "Malli schemas for the revisions module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -9,16 +10,10 @@
   "The `:object` column of a Revision, decoded."
   :map)
 
-(mr/def ::revision
-  "A Revision as selected from the app DB: every column of `:revision`."
-  [:merge
-   ::revision.update
-   [:map {:closed true}
-    [:id               ms/PositiveInt]]])
-
 (mr/def ::revision.update
-  "What an update (or insert) of a Revision accepts: every column of `:revision` except `id`, all optional."
+  "A Revision by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id               ms/PositiveInt]
    [:model            {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id         {:optional true} [:maybe :int]]
    [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]
@@ -29,6 +24,23 @@
    [:message          {:optional true} [:maybe :string]]
    [:most_recent      {:optional true} [:maybe :boolean]]
    [:metabase_version {:optional true} [:maybe :string]]])
+
+(mr/def ::revision.create
+  "What a caller gives to create a Revision: the columns of an update without the `:id` and the columns set when a
+  Revision is stored, the entity it records, its editor, and the stored state of the entity."
+  [:merge
+   (reduce mut/dissoc ::revision.update [:id :timestamp :most_recent :metabase_version])
+   [:map {:closed true}
+    [:model        :string]
+    [:model_id     ms/PositiveInt]
+    [:user_id      ::lib.schema.id/user]
+    [:object       ::revision.object]
+    [:is_creation  :boolean]
+    [:is_reversion :boolean]]])
+
+(mr/def ::revision
+  "A Revision as selected from the app DB: every column of `:revision`."
+  ::revision.update)
 
 ;; these are all maybes as sometimes revisions don't exist, or users might be missing the names, etc
 (mr/def ::last-edit-info

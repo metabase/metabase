@@ -15,11 +15,11 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- count-metric-query
-  "Legacy MBQL for a `count` aggregation over the given table — a minimal valid metric query."
+  "A `count` aggregation query over the given table — a minimal valid metric query."
   [table-kw]
   (let [mp (mt/metadata-provider)]
-    (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
-                           (lib/aggregate (lib/count))))))
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+        (lib/aggregate (lib/count)))))
 
 (defn- do-with-sample-metrics-archived [thunk]
   (let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)
@@ -103,12 +103,11 @@
                                   (assert (= n (count mine))
                                           (str "expected " n " of our metrics, got " (count mine)))
                                   (qc))))))))
+            _    (run-with 1)
             few  (run-with 2)
             many (run-with 12)]
         (testing (str "queries for 2 metrics = " few ", for 12 metrics = " many)
-          ;; 10 extra metrics would have meant ~20 extra queries pre-fix; allow generous slack
-          ;; for incidental per-row variation while still proving it is not per-metric.
-          (is (< (- many few) 6)))))))
+          (is (= few many)))))))
 
 ;;; ----------------------------------- research-candidates / research-groups -----------------------------------
 

@@ -101,10 +101,13 @@ export function TagMultiSelect({
   return (
     <>
       <MultiSelect
-        classNames={{ option: S.option }}
         value={tagIds.map(getValue)}
         data={getOptions(tags, trimmedSearchValue, requireTransformWriteAccess)}
         placeholder={readOnly ? t`Tags are read-only` : t`Add tags`}
+        classNames={{
+          empty:
+            trimmedSearchValue.length === 0 ? S.emptyWithoutIcon : undefined,
+        }}
         searchValue={searchValue}
         searchable
         rightSection={
@@ -172,7 +175,7 @@ function NewTagSelectItem({
   };
 
   return (
-    <SelectItem selected={selected} mih="2.25rem" onClick={handleClick}>
+    <SelectItem selected={selected} onClick={handleClick}>
       <Text c="inherit" lh="inherit">
         {jt`Create ${<strong key="value">{trimmedSearchValue}</strong>}`}
       </Text>
@@ -212,7 +215,6 @@ function ExistingTagSelectItem({
     <SelectItem
       className={cx(S.selectItem, { [S.editable]: tag.can_run })}
       selected={selected}
-      py="xxs"
     >
       <Text c="inherit" lh="inherit" flex={1}>
         {tag.name}
@@ -220,7 +222,12 @@ function ExistingTagSelectItem({
           <Tooltip
             label={t`This tag contains a transform you don't have permission to run.`}
           >
-            <Icon name="lock_filled" size={14} ml="xxs" />
+            <Icon
+              className={S.lockIcon}
+              name="lock_filled"
+              size={14}
+              ml="xxs"
+            />
           </Tooltip>
         )}
       </Text>

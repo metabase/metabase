@@ -11,7 +11,8 @@
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [toucan2.core :as t2]))
 
 (def audit-db-view-names
   "Used for giving granular permissions into the audit db. Instead of granting permissions to
@@ -45,29 +46,25 @@
       - native queries
       - queries that include tables that are not audit views"
   :feature :audit-app
-  [{query-type :type, database-id :database, query :query :as outer-query}]
+  [{database-id :database :as query}]
   ;; Each refusal has a QP error type, so that agents (Metabot, MCP, the Agent API) tell the caller why the query
   ;; failed. They show the message of the invalid-query refusals. For the permissions refusal, some agents (Metabot
   ;; `run_query`, Slackbot) show their own permission message.
   ;; The query goes under `:query`, because its own `:type` key would take the place of the error type.
   ;; Check if the user has access to the analytics collection, since this should be coupled with access to the
   ;; audit database in general.
-  (when-not (mi/can-read? (audit/default-audit-collection))
-    (throw (query-perms/perms-exception (tru "You do not have access to the audit database") nil {:query outer-query})))
-  ;; query->source-table-ids returns a set of table IDs or a map with the key `:native?`
-  (when (= query-type :native)
-    (throw (ex-info (tru "Native queries are not allowed on the audit database")
-                    {:type qp.error-type/invalid-query, :query outer-query})))
+  (when-not (some-> (audit/default-audit-collection) (t2/hydrate :can_read) mi/can-read?)
+    (throw (query-perms/perms-exception (tru "You do not have access to the audit database") nil {:query query})))
   (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)]
     (when native?
       (throw (ex-info (tru "Native queries are not allowed on the audit database")
-                      {:type qp.error-type/invalid-query, :query outer-query})))
+                      {:type qp.error-type/invalid-query, :query query})))
     (qp.store/with-metadata-provider database-id
       (doseq [table-id table-ids]
         (when-not (audit-db-view-names
                    (u/lower-case-en (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
           (throw (ex-info (tru "Audit queries are only allowed on audit views")
-                          {:type qp.error-type/invalid-query, :query outer-query})))))))
+                          {:type qp.error-type/invalid-query, :query query})))))))
 
 (defenterprise update-audit-collection-permissions!
   "Updates audit db (AppDB) permissions when the instance analytics collection permissions change, and downgrades

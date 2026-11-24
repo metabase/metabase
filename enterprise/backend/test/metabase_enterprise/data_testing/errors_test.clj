@@ -40,14 +40,18 @@
    ::errors/unremapped-reference       400
    ::errors/no-expectations            400
    ::errors/unknown-placeholder        400
+   ::errors/missing-input-columns      400
+   ::errors/colliding-columns          400
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
    ::errors/uncompilable-subject       422
+   ::errors/archived-subject           422
    ::errors/query-failed               422
    ::errors/duplicate-output-columns   422
    ::errors/setup-failed               422
    ::errors/expectation-failed         422
-   ::errors/unsupported-format         501})
+   ::errors/unsupported-format         501
+   ::errors/now-on-native-sql          501})
 
 (defn- types-with-status
   "The members of `all` that `status-code` maps to `status`."
@@ -71,19 +75,22 @@
              ::errors/unparseable-source
              ::errors/unremapped-reference
              ::errors/no-expectations
-             ::errors/unknown-placeholder}
+             ::errors/unknown-placeholder
+             ::errors/missing-input-columns
+             ::errors/colliding-columns}
            (types-with-status 400))))
   (testing "environment errors — the subject or its database prevents a run here — are 422"
     (is (= #{::errors/unsupported-transform
              ::errors/unsupported-driver
              ::errors/uncompilable-subject
+             ::errors/archived-subject
              ::errors/query-failed
              ::errors/duplicate-output-columns
              ::errors/setup-failed
              ::errors/expectation-failed}
            (types-with-status 422))))
-  (testing "a form that is not built yet is 501"
-    (is (= #{::errors/unsupported-format}
+  (testing "what is not built yet is 501"
+    (is (= #{::errors/unsupported-format ::errors/now-on-native-sql}
            (types-with-status 501))))
   (testing "nothing is declared 500"
     ;; `api-exception-response` structures a body only for a non-500 status carrying `:error-code`,
@@ -111,6 +118,9 @@
    ::errors/unremapped-reference       "transform-test.unremapped-reference"
    ::errors/no-expectations            "transform-test.no-expectations"
    ::errors/unknown-placeholder        "transform-test.unknown-placeholder"
+   ::errors/missing-input-columns      "transform-test.missing-input-columns"
+   ::errors/colliding-columns          "transform-test.colliding-columns"
+   ::errors/archived-subject           "transform-test.archived-subject"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"
    ::errors/uncompilable-subject       "transform-test.uncompilable-subject"
@@ -118,7 +128,8 @@
    ::errors/duplicate-output-columns   "transform-test.duplicate-output-columns"
    ::errors/setup-failed               "transform-test.setup-failed"
    ::errors/expectation-failed         "transform-test.expectation-failed"
-   ::errors/unsupported-format         "transform-test.unsupported-format"})
+   ::errors/unsupported-format         "transform-test.unsupported-format"
+   ::errors/now-on-native-sql          "transform-test.now-on-native-sql"})
 
 (deftest code-is-exhaustive-over-all-test
   (testing "every declared error type has a pinned wire spelling, and no stale entry lingers here"
