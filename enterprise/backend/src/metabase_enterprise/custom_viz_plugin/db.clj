@@ -41,6 +41,11 @@
              :identifier [:in [:auto/param (vec identifiers)]]
              {:order-by [[:id :asc]]}))
 
+(mu/defn enabled-non-blob-plugin-by-identifier
+  "The active, enabled CustomVizPlugin with `identifier` without its bundle, or nil."
+  [identifier :- :string]
+  (t2/select-one non-blob-columns :identifier identifier :status :active :enabled true))
+
 (mu/defn plugin-identifier-exists?
   "Whether a CustomVizPlugin with `identifier` exists."
   [identifier :- :string]
