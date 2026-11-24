@@ -78,6 +78,7 @@
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/t2-implicit-pk                                   {:level :warning}
   :metabase/change-log-raw-write                             {:level :warning}
+  :metabase/foreign-model-write                              {:level :warning}
   ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
   ;; `:column value` pairs rather than a map. Off by default and enabled per namespace under
   ;; `:config-in-ns`; flip it on globally once every `db.clj` has been converted.
@@ -993,6 +994,7 @@
     ;; `:metabase/prefer-with-dynamic-fn-redefs` already covers.
     :metabase/discourage-dynamic-vars                    {:level :off}
     :metabase/t2-query-namespace                         {:level :off}
+    :metabase/foreign-model-write                        {:level :off}
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
 
     :discouraged-var
@@ -1001,7 +1003,8 @@
      metabase.lib.core/->legacy-MBQL    {:level :off}}}}
 
   app-db-namespaces
-  {:linters {:metabase/t2-query-namespace {:level :off}}}
+  {:linters {:metabase/t2-query-namespace {:level :off}
+             :metabase/foreign-model-write {:level :off}}}
 
   agent-message-namespaces
   {:linters {:metabase/agent-message-lines {:level :warning}}}

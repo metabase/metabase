@@ -3,8 +3,10 @@
   session creation that track authentication provider usage."
   (:require
    [metabase.auth-identity.db :as auth-identity.db]
+   [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.login-history.core :as login-history]
    [metabase.request.core :as request]
+   [metabase.session.models.session :as models.session]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -22,7 +24,8 @@
   key to `core_session`, so a concurrent session delete (e.g. a password change, which invalidates the user's sessions)
   must not be able to remove the freshly-created session between the two inserts and break that reference.
 
-  `opts` carries provider-specific extras for the session row; see [[auth-identity.db/insert-session!]]."
+  `opts` carries provider-specific extras for the session row: the `:saml-*` keys come from a SAML login assertion and
+  are stored so single logout can name the session and subject the IdP knows."
   ([user :- ::users.schema/user
     device-info :- [:maybe request/DeviceInfo]
     provider :- :keyword
@@ -38,11 +41,19 @@
          session-key (str (random-uuid))
          session-id (string/random-string 12)
          session (t2/with-transaction [_]
-                   (u/prog1 (auth-identity.db/insert-session! session-id user-id auth-identity-id session-key
-                                                              (:expires_at auth-identity) mfa-auth-identity-id opts)
+                   (u/prog1 (models.session/create-session!
+                             {:id                   session-id
+                              :user_id              user-id
+                              :auth_identity_id     auth-identity-id
+                              :session_key          session-key
+                              :expires_at           (:expires_at auth-identity)
+                              :mfa_auth_identity_id mfa-auth-identity-id
+                              :saml_session_index   (:saml-session-index opts)
+                              :saml_name_id         (:saml-name-id opts)
+                              :saml_name_id_format  (:saml-name-id-format opts)})
                      (when provider-str
                        (log/debugf "Updating last_used_at for user %s with provider %s" user-id provider-str)
-                       (auth-identity.db/touch-auth-identity! auth-identity-id))
+                       (auth-identity/touch-auth-identity! auth-identity-id))
                      (when device-info
                        (login-history/record-login-history! session-id user device-info))))]
      (assoc session

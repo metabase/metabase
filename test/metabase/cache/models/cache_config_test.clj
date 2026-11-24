@@ -1,12 +1,19 @@
 (ns metabase.cache.models.cache-config-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.cache.db :as cache.db]
+   [metabase.cache.models.cache-config :as cache-config]
    [metabase.cache.schema :as cache.schema]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (defn- status-code
@@ -36,7 +43,7 @@
   "The `:status-code` normalizing `row` by the CacheConfig schema throws, or nil when it throws none."
   [row]
   (try
-    (lib/normalize ::cache.schema/cache-config.update row {:throw? true})
+    (lib/normalize ::cache.schema/cache-config.update (assoc row :id 1) {:throw? true})
     nil
     (catch clojure.lang.ExceptionInfo e
       (:status-code (ex-data e)))))
@@ -76,13 +83,13 @@
 (deftest delete-card-deletes-its-cache-config-test
   (mt/with-temp [:model/Card        {card-id :id}   {}
                  :model/CacheConfig {config-id :id} {:model "question" :model_id card-id}]
-    (t2/delete! :model/Card :id card-id)
+    (card/delete-cards! [card-id])
     (is (not (t2/exists? :model/CacheConfig :id config-id)))))
 
 (deftest delete-dashboard-deletes-its-cache-config-test
   (mt/with-temp [:model/Dashboard   {dashboard-id :id} {}
                  :model/CacheConfig {config-id :id}    {:model "dashboard" :model_id dashboard-id}]
-    (t2/delete! :model/Dashboard :id dashboard-id)
+    (dashboard/delete-dashboards! [dashboard-id])
     (is (not (t2/exists? :model/CacheConfig :id config-id)))))
 
 (deftest delete-database-deletes-cache-configs-of-database-and-its-cards-test
@@ -92,7 +99,7 @@
                  :model/CacheConfig {db-config-id :id}   {:model "database" :model_id db-id}
                  :model/CacheConfig {card-config-id :id} {:model "question" :model_id card-id}
                  :model/CacheConfig {other-config-id :id} {:model "question" :model_id other-card-id}]
-    (t2/delete! :model/Database :id db-id)
+    (database/delete-databases! [db-id])
     (is (not (t2/exists? :model/CacheConfig :id db-config-id)))
     (is (not (t2/exists? :model/CacheConfig :id card-config-id)))
     (is (t2/exists? :model/CacheConfig :id other-config-id))))
@@ -165,3 +172,88 @@
                (map :can_set_cache_policy (t2/hydrate [open-card closed-card] :can_set_cache_policy))))
         (is (= [false]
                (map :can_set_cache_policy (t2/hydrate [closed-dashboard] :can_set_cache_policy))))))))
+
+(deftest concurrent-first-saves-both-succeed-test
+  (testing "a first save that finds the row inserted by another between its read and its insert retries as an update"
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (let [reads  (atom 0)
+            read   (mt/original-fn #'cache.db/lock-cache-config)
+            config (fn [ttl] {:model "question" :model_id card-id :strategy {:type :ttl :multiplier ttl :min_duration_ms 1}})]
+        (cache-config/save-cache-config! (config 1))
+        (t2/delete! :model/CacheConfig :model "question" :model_id card-id)
+        (mt/with-dynamic-fn-redefs [cache.db/lock-cache-config (fn [model model-id]
+                                                                 (if (= 1 (swap! reads inc))
+                                                                   (do (cache-config/save-cache-config! (config 2))
+                                                                       nil)
+                                                                   (read model model-id)))]
+          (is (pos-int? (cache-config/save-cache-config! (config 3)))))
+        (is (= 1 (t2/count :model/CacheConfig :model "question" :model_id card-id)))
+        (is (= 3 (get-in (t2/select-one :model/CacheConfig :model "question" :model_id card-id) [:config :multiplier])))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/CacheConfig]
+    (let [next-id (atom 1000000)
+          create! (fn [n]
+                    (vec (for [_ (range n)]
+                           (cache-config/save-cache-config! {:model    "question"
+                                                             :model_id (swap! next-id inc)
+                                                             :strategy {:type :ttl :multiplier 1 :min_duration_ms 1}}))))
+          configs (fn [ids] (t2/select :model/CacheConfig :id [:in ids]))]
+      (testing "updating configs, half of them due at that time already"
+        (let [next-run (t/offset-date-time 2030 1 1)
+              now      (t/offset-date-time 2029 1 1)
+              update!  #(cache-config/update-cache-configs! (mapv (fn [id] {:id id :next_run_at next-run :invalidated_at now}) %))
+              counted  (fn [n]
+                         (let [ids (create! n)]
+                           (update! (take-nth 2 ids))
+                           (events.tu/statement-count! #(update! ids))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6)))))
+      (testing "deleting the configs of questions, half of them without one"
+        (let [counted (fn [n]
+                        (let [model-ids (mapv :model_id (configs (create! n)))]
+                          (events.tu/statement-count!
+                           #(cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" (into model-ids (map (partial * 10)) model-ids))
+                                                                {:context {:details {}}}))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6)))))
+      (testing "deleting the configs of deleted questions"
+        (let [counted (fn [n]
+                        (let [model-ids (mapv :model_id (configs (create! n)))]
+                          (events.tu/statement-count! #(cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" model-ids)))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6))))))))
+
+(deftest delete-cache-configs-publishes-one-event-test
+  (testing "deleting the configs of n questions publishes one delete event, at 2 and at 6"
+    (mt/with-model-cleanup [:model/CacheConfig]
+      (let [next-id   (atom 2000000)
+            published (fn [n]
+                        (let [model-ids (vec (for [_ (range n)]
+                                               (let [model-id (swap! next-id inc)]
+                                                 (cache-config/save-cache-config! {:model    "question"
+                                                                                   :model_id model-id
+                                                                                   :strategy {:type :ttl :multiplier 1 :min_duration_ms 1}})
+                                                 model-id)))
+                              ids       (cache-config/cache-config-ids-for-targets "question" model-ids)]
+                          (is (= n (count ids)))
+                          (events.tu/published-topics! #(cache-config/delete-cache-configs! ids {:context {:details {}}}))))]
+        (is (= [:event/cache-config-delete] (published 2)))
+        (is (= (published 2) (published 6)))))))
+
+(deftest delete-cache-configs-records-deleted-config-in-audit-log-test
+  (testing "each deleted config gets an audit row with the change from it to none, as when one event was published per config"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-model-cleanup [:model/CacheConfig :model/AuditLog]
+        (let [model-id 2100001]
+          (cache-config/save-cache-config! {:model "question" :model_id model-id
+                                            :strategy {:type :ttl :multiplier 2 :min_duration_ms 3}})
+          (mt/with-test-user :crowberto
+            (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" [model-id])
+                                                {:context {:details {}}}))
+          (is (=? {:model     "question"
+                   :model-id  model-id
+                   :old-value {:strategy "ttl" :config {:multiplier 2 :min_duration_ms 3}}
+                   :new-value nil}
+                  (:details (t2/select-one :model/AuditLog :topic "cache-config-update"
+                                           {:order-by [[:id :desc]]})))))))))

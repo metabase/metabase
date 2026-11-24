@@ -37,7 +37,7 @@
 
 (deftest survive-fk-errors
   (testing "Make sure we survive FK sync failing"
-    (sync-survives-crash?! sync-fks/mark-fk!)))
+    (sync-survives-crash?! sync-fks/mark-fks!)))
 
 (deftest metadata-fetch-failure-aborts-initial-sync-test
   (testing "When fetching DB metadata throws (e.g. Athena lacking glue:GetDatabases, GHY-3534),"

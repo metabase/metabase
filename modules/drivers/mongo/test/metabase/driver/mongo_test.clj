@@ -28,6 +28,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.match :as match]
+   [metabase.warehouses.models.database :as database]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2])
@@ -825,7 +826,7 @@
               (log/infof "Inserted %d rows into %s collection %s."
                          (count row-maps) (pr-str database-name) (pr-str collection-name))))
           ;; now sync the Database.
-          (let [db (first (t2/insert-returning-instances! :model/Database {:name database-name, :engine "mongo", :details details}))]
+          (let [db (first (database/create-databases! [{:name database-name, :engine :mongo, :details details}]))]
             (sync/sync-database! (:id db))
             db)))))
 

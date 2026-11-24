@@ -84,11 +84,5 @@
               refs))
       (select-by-parent-pks [_ model _parent-pks _columns]
         (throw (ex-info "No stub for children" {:model model})))
-      (insert-rows! [_ model _rows]
-        (throw (ex-info "No stub for inserts" {:model model})))
-      (update-row! [_ model _pk _changes]
-        (throw (ex-info "No stub for updates" {:model model})))
-      (delete-rows! [_ model _pks]
-        (throw (ex-info "No stub for deletes" {:model model})))
       (transact [_ _opts f]
         (f)))))

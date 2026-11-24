@@ -3,7 +3,6 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [malli.util :as mut]
-   [metabase-enterprise.impersonation.models.impersonation-query-cache :as impersonation-query-cache]
    [metabase-enterprise.impersonation.schema :as impersonation.schema]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -57,21 +56,24 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/ConnectionImpersonation :db_id database-id))
 
-(mu/defn insert-impersonation!
-  "Insert `impersonation` and return the new instance."
-  [impersonation :- (mut/select-keys ::impersonation.schema/connection-impersonation.update [:db_id :group_id :attribute])]
-  (first (t2/insert-returning-instances! :model/ConnectionImpersonation impersonation)))
+(mu/defn insert-impersonations!
+  "Insert `impersonations` and return the new instances in their order."
+  [impersonations :- [:sequential (mut/select-keys ::impersonation.schema/connection-impersonation.update
+                                                   [:db_id :group_id :attribute])]]
+  (app-db/insert-returning-instances! :model/ConnectionImpersonation impersonations))
 
-(mu/defn delete-impersonation!
-  "Delete the ConnectionImpersonation with `impersonation-id`."
-  [impersonation-id :- ms/PositiveInt]
-  (t2/delete! :model/ConnectionImpersonation :id impersonation-id))
-
-(mu/defn delete-impersonations-for-group-and-database!
-  "Delete the ConnectionImpersonations of the group with `group-id` on the Database with `database-id`."
-  [group-id    :- ms/PositiveInt
-   database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/ConnectionImpersonation :group_id group-id :db_id database-id))
+(mu/defn impersonation-ids-for-groups-and-databases :- [:sequential ms/PositiveInt]
+  "The ids of the ConnectionImpersonations of each `[group-id database-id]` pair of `pairs`, read
+  `app-db/update-partition-size` pairs at a time."
+  [pairs :- [:sequential [:tuple ms/PositiveInt ::lib.schema.id/database]]]
+  (into []
+        (mapcat (fn [batch]
+                  (t2/select-pks-vec :model/ConnectionImpersonation
+                                     {:where (into [:or]
+                                                   (map (fn [[group-id database-id]]
+                                                          [:and [:= :group_id [:auto/param group-id]] [:= :db_id [:auto/param database-id]]]))
+                                                   batch)})))
+        (partition-all app-db/update-partition-size (distinct pairs))))
 
 (mu/defn view-data-permission-values
   "The set of database-level view-data permission values `group-ids` hold on the Database with `database-id`."
@@ -91,33 +93,26 @@
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
 
 (mu/defn query-cache :- [:maybe ::impersonation.schema/impersonation-query-cache]
-  "The ImpersonationQueryCache with the lookup key of `input`, or nil."
-  [{:keys [input_query input_engine input_allow_write input_admin input_version]}
-   :- ::impersonation.schema/impersonation-query-cache.update]
+  "The ImpersonationQueryCache with the lookup key `lookup`, or nil."
+  [{:keys [input_query_hash input_engine input_allow_write input_admin input_version]}
+   :- ::impersonation.schema/impersonation-query-cache.lookup]
   (t2/select-one :model/ImpersonationQueryCache
-                 :input_query_hash  (impersonation-query-cache/query-hash input_query)
+                 :input_query_hash  input_query_hash
                  :input_engine      input_engine
                  :input_allow_write input_allow_write
                  :input_admin       input_admin
                  :input_version     input_version))
 
 (mu/defn update-or-insert-query-cache! :- ms/PositiveInt
-  "Update the ImpersonationQueryCache with the lookup key of `row` to `row`, or insert `row` when there is none."
-  [{:keys [input_query input_engine input_allow_write input_admin input_version] :as row}
-   :- ::impersonation.schema/impersonation-query-cache.update]
-  (app-db/update-or-insert! :model/ImpersonationQueryCache
-                            {:input_query_hash  (impersonation-query-cache/query-hash input_query)
-                             :input_engine      input_engine
-                             :input_allow_write input_allow_write
-                             :input_admin       input_admin
-                             :input_version     input_version}
-                            (constantly row)))
+  "Update the ImpersonationQueryCache with the lookup key `lookup` to `row`, or insert `row` when there is none."
+  [lookup :- ::impersonation.schema/impersonation-query-cache.lookup
+   row    :- ::impersonation.schema/impersonation-query-cache.create]
+  (app-db/update-or-insert! :model/ImpersonationQueryCache lookup (constantly row)))
 
-(mu/defn delete-outdated-query-caches! :- :int
-  "Delete the ImpersonationQueryCaches cached by a Metabase version other than `version` or before `cutoff`,
-  returning the number deleted."
+(mu/defn outdated-query-cache-ids :- [:sequential ms/PositiveInt]
+  "The ids of the ImpersonationQueryCaches cached by a Metabase version other than `version` or before `cutoff`."
   [version :- :string
    cutoff  :- (ms/InstanceOfClass java.time.OffsetDateTime)]
-  (t2/delete! :model/ImpersonationQueryCache {:where [:or
-                                                      [:not= :input_version version]
-                                                      [:< :created_at cutoff]]}))
+  (vec (t2/select-pks-vec :model/ImpersonationQueryCache {:where [:or
+                                                                  [:not= :input_version version]
+                                                                  [:< :created_at cutoff]]})))

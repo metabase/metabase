@@ -57,9 +57,7 @@ function ParameterValueWidgetTriggerInner(
         align="center"
         pos="relative"
         w="100%"
-        className={cx(S.TriggerContainer, {
-          [S.hasValue]: hasValue,
-        })}
+        className={S.TriggerContainer}
         aria-label={ariaLabel}
         {...htmlProps}
         {...attributes}

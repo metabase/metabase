@@ -105,9 +105,10 @@
                           (t2/with-call-count [call-count]
                             (perms/collection-permissions-for-user (user-info :rasta) ids {:root-namespace nil})
                             (call-count)))]
+            (queries [a])
             (is (= (queries [a b]) (queries [a b c])))
-            (testing "the root costs one more"
-              (is (= (inc (queries [a b])) (queries [a b nil]))))))))))
+            (testing "and so it is with the root among them"
+              (is (= (queries [a b nil]) (queries [a b c nil]))))))))))
 
 (deftest some-collection-permission-for-user-test
   (mt/with-non-admin-groups-no-root-collection-perms

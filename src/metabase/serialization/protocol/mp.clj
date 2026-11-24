@@ -792,12 +792,6 @@
             refs))
     (select-by-parent-pks [_ model _parent-pks _columns]
       (not-implemented! (keyword (str "children-" (name model)))))
-    (insert-rows! [_ model _rows]
-      (not-implemented! (keyword (str "insert-" (name model)))))
-    (update-row! [_ model _pk _changes]
-      (not-implemented! (keyword (str "update-" (name model)))))
-    (delete-rows! [_ model _pks]
-      (not-implemented! (keyword (str "delete-" (name model)))))
     (transact [_ _opts f]
       (f))))
 

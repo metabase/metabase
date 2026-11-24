@@ -856,6 +856,21 @@ Maximum number of fields per table to fingerprint. If a table has more eligible 
 
 Have we sent a follow up email to the instance admin?
 
+### `MB_GEOJSON_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Controls which networks Metabase may connect to for custom map GeoJSON files.
+Options:
+- external-only (only globally reachable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+Defaults to external-only on Metabase Cloud and allow-private when self-hosted.
+
+Set this when custom maps must load GeoJSON from a server on this machine (allow-all), or to restrict them to public hosts (external-only). Defaults to external-only on Metabase Cloud and allow-private when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies.
+
 ### `MB_GOOGLE_AUTH_AUTO_CREATE_ACCOUNTS_DOMAIN`
 
 - Type: string
@@ -1928,7 +1943,7 @@ Custom CORS origins for self-hosted MCP clients, space-separated.
 - Default: `[]`
 - [Configuration file name](./config-file.md): `mcp-apps-cors-enabled-clients`
 
-Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
+MCP clients whose MCP Apps may call Metabase across origins, as comma-separated keys: claude, chatgpt, and cursor-vscode (for both Cursor and VS Code).
 
 ### `MB_METABOT_ADVANCED_PERMISSIONS`
 

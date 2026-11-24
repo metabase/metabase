@@ -1,10 +1,13 @@
 (ns metabase.queries.models.stored-result-use-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.core :as queries]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.models.stored-result :as stored-result]
+   [metabase.queries.models.stored-result-use :as stored-result-use]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -154,3 +157,49 @@
                                          :dataset_query (venues-count-query)}]
     (is (= [:denied nil] (gate-verdict! (:id card) :rasta))
         "a card with no paired snapshots has no cached result to serve")))
+
+(deftest create-stored-result-uses!-rows-with-different-columns-test
+  (testing "uses of a Card and of an Exploration, which give different columns, are all stored, and their ids come back in order"
+    (mt/with-temp [:model/User        u    {}
+                   :model/Card        card {}
+                   :model/Exploration expl {:name "sru-test" :creator_id (:id u)}]
+      (let [sr-id (stored-result!)
+            ids   (stored-result-use/create-stored-result-uses! [{:stored_result_id sr-id :card_id (:id card)}
+                                                                 {:stored_result_id sr-id :exploration_id (:id expl)}])]
+        (is (=? [{:card_id (:id card) :exploration_id nil}
+                 {:card_id nil :exploration_id (:id expl)}]
+                (map #(t2/select-one :model/StoredResultUse :id %) ids)))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/StoredResultUse :model/StoredResult :model/Card]
+    (let [mp       (mt/metadata-provider)
+          results  (fn [n]
+                     (mapv (fn [_] {:result_data   (byte-array [1 2 3])
+                                    :database_id   (mt/id)
+                                    :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))})
+                           (range n)))
+          fresh!   (fn [n] (stored-result/create-stored-results! (results n)))
+          uses     (fn [n]
+                     (let [result-ids (fresh! n)]
+                       (mapv (fn [result-id]
+                               {:stored_result_id result-id
+                                :card_id          (t2/insert-returning-pk! :model/Card (mt/with-temp-defaults :model/Card))})
+                             result-ids)))
+          counted  (fn [f]
+                     (f 1)
+                     (is (= (f 2) (f 6))))]
+      (testing "creating stored results"
+        (counted (fn [n] (let [rows (results n)] (events.tu/statement-count! #(stored-result/create-stored-results! rows))))))
+      (testing "deleting stored results"
+        (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(stored-result/delete-stored-results! ids))))))
+      (testing "creating stored result uses"
+        (counted (fn [n] (let [rows (uses n)] (events.tu/statement-count! #(stored-result-use/create-stored-result-uses! rows))))))
+      (testing "carrying pairings onto the cards of a document"
+        (mt/with-temp [:model/Document {document-id :id} {}]
+          (counted (fn [n]
+                     (let [source   (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :document_id document-id))
+                           result-ids (fresh! n)
+                           _        (stored-result-use/create-stored-result-uses! (mapv (fn [id] {:stored_result_id id :card_id source}) result-ids))
+                           pairs    (mapv (fn [id] [(t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :document_id document-id)) id])
+                                          result-ids)]
+                       (events.tu/statement-count! #(stored-result-use/carry-pairings-for-document! document-id pairs))))))))))

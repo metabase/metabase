@@ -12,7 +12,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as permissions-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -272,7 +275,7 @@
       (when (scim.db/user-email-exists? email)
         (throw-scim-error 409 "Email address is already in use"))
       (let [new-user (t2/with-transaction [_]
-                       (scim.db/insert-user! mb-user)
+                       (user/create-users! [mb-user])
                        (-> (scim.db/scim-user-by-email email)
                            mb-user->scim))]
         (scim-response new-user 201)))))
@@ -295,7 +298,7 @@
         (throw-scim-error 400 "You may not update the email of an existing user.")
         (try
           (t2/with-transaction [_conn]
-            (scim.db/update-user! (u/the-id current-user) updates)
+            (user/update-users! [(assoc updates :id (u/the-id current-user))])
             (let [user (-> (scim.db/scim-user-by-entity-id id)
                            mb-user->scim)]
               (scim-response user)))
@@ -358,7 +361,7 @@
                            (= (u/lower-case-en op) "replace") (patch->user-updates path value))))
                      {}
                      (:Operations patch-ops))]
-        (scim.db/update-user! (u/the-id user) updates)
+        (user/update-users! [(assoc updates :id (u/the-id user))])
         (-> (get-user-by-entity-id id)
             mb-user->scim
             scim-response)))))
@@ -464,10 +467,9 @@
       (log/warnf "SCIM group %d membership push named %d member(s), none of them known users; leaving membership alone"
                  group-id (count user-entity-ids))
       (do
-        (doseq [user-id (set/difference current-ids desired-ids)]
-          (perms/remove-user-from-group! user-id group-id))
-        (perms/add-users-to-groups! (for [user-id (set/difference desired-ids current-ids)]
-                                      {:group group-id :user user-id}))))))
+        (perms-group-membership/remove-users-from-groups! (vec (set/difference current-ids desired-ids)) [group-id])
+        (perms-group-membership/add-users-to-groups! (for [user-id (set/difference desired-ids current-ids)]
+                                                       {:group group-id :user user-id}))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -484,7 +486,7 @@
       (when (scim.db/group-name-exists? group-name)
         (throw-scim-error 409 "A group with that name already exists"))
       (t2/with-transaction [_conn]
-        (let [new-group (scim.db/insert-group! {:name group-name})]
+        (let [[new-group] (permissions-group/create-permissions-groups! [{:name group-name}])]
           (when (seq entity-ids)
             (update-group-membership (:id new-group) entity-ids))
           (-> new-group
@@ -507,7 +509,7 @@
           entity-ids (map :value (:members scim-group))]
       (t2/with-transaction [_conn]
         (let [group (get-group-by-entity-id id)]
-          (scim.db/update-group! (u/the-id group) {:name group-name})
+          (permissions-group/update-permissions-groups! [{:id (u/the-id group) :name group-name}])
           (when (seq entity-ids)
             (update-group-membership (u/the-id group) entity-ids))
           (-> (get-group-by-entity-id id)
@@ -525,5 +527,5 @@
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
-      (scim.db/delete-group! (u/the-id group))
+      (permissions-group/delete-permissions-groups! [(u/the-id group)])
       (scim-response nil 204))))

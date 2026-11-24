@@ -25,7 +25,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.notification.api.notification :as notification-api]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
@@ -424,12 +423,11 @@
   ;; publish side effects for. (The endpoint schema also enforces `:min 1`.)
   (if (empty? ids)
     []
-    (events/with-batched-events
-      (let [before (-> (notification.db/card-notifications ids)
-                       models.notification/hydrate-notification
-                       vec)]
-        (notification.db/update-card-notifications! ids update-map)
-        before))))
+    (let [before (-> (notification.db/card-notifications ids)
+                     models.notification/hydrate-notification
+                     vec)]
+      (models.notification/update-notifications! (mapv #(assoc update-map :id (:id %)) before))
+      before)))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
   "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes

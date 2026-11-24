@@ -13,11 +13,9 @@ describe("NewMetricPage query selectors", () => {
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [createSampleDatabase()] }),
   });
-  const datasetQuery = Lib.toLegacyQuery(
-    Lib.createTestQuery(SAMPLE_PROVIDER, {
-      stages: [{ source: { type: "table", id: ORDERS_ID } }],
-    }),
-  );
+  const datasetQuery = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  });
 
   // Each call builds a fresh Question, so without memoisation these would
   // hand `useSelector` a new query on every store action.
