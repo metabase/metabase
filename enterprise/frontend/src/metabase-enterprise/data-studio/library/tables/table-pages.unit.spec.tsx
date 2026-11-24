@@ -110,8 +110,7 @@ const QUESTION_NODE = createMockCardDependencyNode({
 
 function createTable(): Table {
   return createOrdersTable({
-    collection_id: DATA_COLLECTION.id,
-    is_published: true,
+    collection: DATA_COLLECTION,
     description: ORDERS_DESCRIPTION,
     data_source: "ingested",
     owner_email: null,

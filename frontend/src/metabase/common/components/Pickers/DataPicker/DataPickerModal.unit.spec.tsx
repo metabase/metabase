@@ -829,17 +829,14 @@ describe("DataPickerModal > library", () => {
     db_id: 1,
     schema: "PUBLIC",
     display_name: "Accounts",
-    collection_id: DATA_COLLECTION.id,
-    is_published: true,
+    collection: DATA_COLLECTION,
   });
   const ORDERS = createMockTable({
     id: ORDERS_ID,
     db_id: 1,
     schema: "PUBLIC",
     display_name: "Orders",
-    collection_id: DATA_COLLECTION.id,
     collection: DATA_COLLECTION,
-    is_published: true,
   });
 
   function toTableItem(id: number, name: string) {
