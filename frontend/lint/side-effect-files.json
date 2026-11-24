@@ -25,7 +25,6 @@
     "enterprise/frontend/src/embedding-sdk-package/bin/*.ts": "entry",
     "enterprise/frontend/src/embedding-sdk-package/cli/**": "self",
     "frontend/src/metabase/static-viz/components/**": "global",
-    "**/*.styled.tsx": "self",
     "**/*.schema.ts": "self",
     "enterprise/frontend/src/custom-viz/scripts/check-package-versions.ts": "entry",
     "enterprise/frontend/src/custom-viz/src/cli.integration.spec.ts": "self",

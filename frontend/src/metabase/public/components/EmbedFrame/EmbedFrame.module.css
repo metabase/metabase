@@ -28,10 +28,7 @@
   * the legacy Popover however, has the role "tooltip", but with data-theme="popover",
   * so we need to target exactly just tooltips.
   */
-[role="tooltip"]:is(
-  [data-theme~="tooltip"],
-  :global(.emotion-Tooltip-tooltip)
-) {
+[role="tooltip"][data-theme~="tooltip"] {
   --mb-color-text-primary: color-mix(
     in srgb,
     var(--mb-color-text-primary-inverse) 90%,
