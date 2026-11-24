@@ -127,9 +127,10 @@
       [{:type   :tool-output
         :id     (:tool_call_id msg)
         :result (cond-> {:output (tool-result-content content)}
-                  ;; The adapters mark a result with `:error` as failed. History keeps only that the call
-                  ;; failed, not the class and code of the failure. In a later turn the model can try
-                  ;; again, so the failure is recoverable.
+                  ;; The Claude and Gemini adapters mark a result with `:error` as failed. The OpenAI
+                  ;; Responses and Chat Completions adapters send only its text. History keeps only that
+                  ;; the call failed, not the class and code of the failure. In a later turn the model can
+                  ;; try again, so the failure is recoverable.
                   (:is_error msg) (assoc :error {:class :recoverable :code ::replayed-failure}))}]
 
       ;; system — pass through as-is (not really an AISDK part, but adapters
