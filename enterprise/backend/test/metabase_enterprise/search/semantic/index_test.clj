@@ -806,29 +806,49 @@
         (testing "handles empty input"
           (is (= [] (#'semantic.index/filter-read-permitted []))))))))
 
-(deftest remove-hidden-analytics-cards-test
-  (mt/with-temp [:model/Collection {analytics :id} {:namespace "analytics"}
-                 :model/Collection {plain :id}     {}]
-    (let [docs [{:id 1, :model "card",      :collection_id analytics}
-                {:id 2, :model "dataset",   :collection_id analytics}
-                {:id 3, :model "metric",    :collection_id analytics}
-                {:id 4, :model "dashboard", :collection_id analytics}
-                {:id 5, :model "card",      :collection_id plain}
-                {:id 6, :model "card",      :collection_id nil}]
-          kept (fn [context docs]
-                 (map :id (#'semantic.index/remove-hidden-analytics-cards {:context context} docs)))]
-      (mt/with-premium-features #{:audit-app}
-        (testing "Broad search keeps cards in the analytics namespace"
-          (is (= [1 2 3 4 5 6] (kept :command-palette docs))))
-        (testing "Other contexts, and searches without one, drop them and keep everything else"
-          (doseq [context [:data-picker :embedding-setup nil]]
-            (testing context
-              (is (= [4 5 6] (kept context docs))))))
-        (testing "Cards outside the analytics namespace pass when no doc is in it"
-          (is (= [5 6] (kept :data-picker (drop 4 docs))))))
-      (mt/with-premium-features #{}
-        (testing "Without the audit app, broad search drops them too"
-          (is (= [4 5 6] (kept :command-palette docs))))))))
+(deftest ^:synchronized analytics-cards-filter-test
+  (testing "Cards in the audit app's collections are dropped in SQL, so they cannot take the slots under the results limit"
+    (mt/with-premium-features #{:semantic-search :audit-app}
+      (with-open [_ (semantic.tu/open-temp-index!)]
+        ;; The audit card matches "puppy" exactly, so it ranks above the other card and takes the only slot unless
+        ;; the query drops it. The filter-first strategy shows that; the default HNSW one post-filters its candidates
+        ;; for every structural filter alike.
+        (semantic.tu/with-mock-embeddings {"Puppy Guide"        (get semantic.tu/mock-embeddings "puppy")
+                                           "Dog Training Guide" [0.12 -0.34 0.56 -0.78]}
+          (let [card  (first (semantic.tu/mock-documents))
+                found (fn [context]
+                        (->> (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
+                                                         semantic.tu/mock-index
+                                                         {:search-string          "puppy"
+                                                          :context                context
+                                                          :vector-search-strategy :brute-force})
+                             :results
+                             (map :id)))]
+            (semantic.tu/upsert-index!
+             [(assoc card
+                     :id                   1
+                     :name                 "Puppy Guide"
+                     :searchable_text      "Puppy Guide"
+                     :embeddable_text      "Puppy Guide"
+                     :legacy_input         (assoc (:legacy_input card) :id 1)
+                     :root_collection_type collection/instance-analytics-collection-type)
+              (assoc card :id 2 :legacy_input (assoc (:legacy_input card) :id 2))])
+            ;; Every row is readable, so only the index query decides what comes back.
+            (mt/with-dynamic-fn-redefs [semantic.index/filter-read-permitted identity]
+              (mt/with-temporary-setting-values [semantic-search-results-limit 1]
+                (testing "Broad search returns the audit card first"
+                  (is (= [1] (found :command-palette))))
+                (testing "Other contexts, and searches without one, return the other card"
+                  (doseq [context [:data-picker :embedding-setup nil]]
+                    (testing context
+                      (is (= [2] (found context))))))
+                (mt/with-premium-features #{:semantic-search}
+                  (testing "Without the audit app, broad search drops it too"
+                    (is (= [2] (found :command-palette)))))
+                (testing "Diagnose names the filter that drops it"
+                  (is (=? {:type :filtered, :details {:excluded-by :analytics-cards}}
+                          (semantic.index/diagnose-row (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
+                                                       {:context :data-picker} "card" 1))))))))))))
 
 (deftest filter-read-permitted-document-scoped-cards-test
   (mt/with-premium-features #{:semantic-search}

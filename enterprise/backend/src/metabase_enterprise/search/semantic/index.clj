@@ -633,6 +633,19 @@
      [:is :personal_owner_id nil]
      [:= :personal_owner_id current-user-id]]))
 
+(defn- analytics-cards-filter
+  "WHERE condition dropping the audit app's questions, models and metrics, or nil when the context of `search-context`
+  returns them (see [[search.config/analytics-card-contexts]]) and the audit app is enabled. The appdb and in-place
+  engines check the `analytics` namespace of the card's collection; this index has no namespace column, so it checks the
+  type of the root collection, which the audit app gives every collection in that namespace."
+  [{:keys [context]}]
+  (when-not (and (premium-features/enable-audit-app?)
+                 (search.config/analytics-cards-allowed? context))
+    [:or
+     [:not-in :model search.config/card-models]
+     [:= :root_collection_type nil]
+     [:not= :root_collection_type collection/instance-analytics-collection-type]]))
+
 (defn- filter-conditions
   "Ordered `[filter-key where-condition]` pairs for the structural filters implied by `search-context`. The
   search query ANDs these together (see [[search-filters]]); the search debug API uses the keys to attribute
@@ -642,6 +655,7 @@
   (keep
    (fn [[k clause]] (when clause [k clause]))
    [[:personal-collection (personal-collection-filter search-context)]
+    [:analytics-cards     (analytics-cards-filter search-context)]
     [:archived?           (when (some? archived?) [:= :archived archived?])]
     [:verified            (when (some? verified) [:= :verified verified])]
     ;; "Verified or curated content" — precomputed flag (collections.curation/curated?)
@@ -1004,18 +1018,6 @@
     (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
     result))
 
-(defn- remove-hidden-analytics-cards
-  "Drops the `docs` that are cards in the audit app's `analytics` namespace, unless the audit app is enabled and the
-  context of `search-context` returns them. The appdb and in-place engines apply the same rule in their query."
-  [search-context docs]
-  (if (and (premium-features/enable-audit-app?)
-           (search.config/analytics-cards-allowed? (:context search-context)))
-    docs
-    (let [card-model?   (set search.config/card-models)
-          card-doc?     #(card-model? (:model %))
-          analytics-ids (collection/analytics-collection-ids (keep :collection_id (filter card-doc? docs)))]
-      (into [] (remove #(and (card-doc? %) (contains? analytics-ids (:collection_id %)))) docs))))
-
 (defn- filter-by-collection-id
   "Filter documents by collection and all descendant collections."
   [docs collection-id]
@@ -1262,7 +1264,6 @@
                                  {:search.semantic/raw-count (count raw-results)}
                                  (->> raw-results
                                       filter-read-permitted
-                                      (remove-hidden-analytics-cards search-context)
                                       (apply-collection-id-filter search-context)
                                       (mapv search/collapse-id)))
               filter-time-ms (u/since-ms filter-timer)
@@ -1331,8 +1332,7 @@
                                      {:select [:model :model_id :legacy_input]
                                       :from   [table]
                                       :where  [:and [:= :model model] [:= :model_id (str id)]]})
-                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-        docs  (when row [(:legacy_input (decode-legacy-input row))])]
+                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     (cond
       (nil? row)
       {:type :missing-from-index :details {:table (:table-name index)}}
@@ -1340,15 +1340,8 @@
       :else
       ;; Check access control before structural filters so a not-permitted row is reported as such even when a
       ;; query filter would also drop it (matches the appdb engine, where the permission layers come first).
-      (cond
-        (empty? (filter-read-permitted docs))
+      (if (empty? (filter-read-permitted [(:legacy_input (decode-legacy-input row))]))
         {:type :filtered :details {:excluded-by :permissions}}
-
-        ;; Reported under the key the appdb engine gives the same rule, which it applies in its collection clause.
-        (empty? (remove-hidden-analytics-cards search-context docs))
-        {:type :filtered :details {:excluded-by :collection-permissions}}
-
-        :else
         (if-let [excluded-by (some (fn [[k clause]] (when-not (row-present? db table model id clause) k))
                                    (filter-conditions search-context))]
           {:type :filtered :details {:excluded-by excluded-by}}

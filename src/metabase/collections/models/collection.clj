@@ -2059,11 +2059,6 @@
   decisions, so a new placement namespace isn't indexed by accident."
   #{nil :analytics :shared-tenant-collection :tenant-specific})
 
-(defn analytics-collection-ids
-  "The subset of `collection-ids` whose Collections are in the audit app's `analytics` namespace."
-  [collection-ids]
-  (collections.db/collection-ids-in-namespace "analytics" (vec (distinct collection-ids))))
-
 (defn searchable-namespace-clause
   "HoneySQL clause matching rows whose `namespace-column` holds one of the [[searchable-namespaces]].
   The appdb and in-place engines also hide `analytics` content at query time unless the audit app is enabled."
