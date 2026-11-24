@@ -14,7 +14,6 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
-   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -2471,12 +2470,6 @@
 ;;; |                                        Card updates that impact alerts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- do-with-after-commit-now
-  "Calls `thunk` with the work that waits for a commit run at once, since the transaction of a test never commits."
-  [thunk]
-  (mt/with-dynamic-fn-redefs [mdb/do-after-commit (fn [after-commit] (after-commit))]
-    (thunk)))
-
 (defn- test-alert-deletion! [{:keys [message card deleted? disable-links? expected-email-re should-re-not-match? f]}]
   (testing message
     (notification.tu/with-channel-fixtures [:channel/email]
@@ -2493,7 +2486,7 @@
                          :notification-card {:disable_links (boolean disable-links?)}}]
           (when deleted?
             (let [[email] (notification.tu/with-mock-inbox-email!
-                            (do-with-after-commit-now
+                            (notification.tu/do-with-after-commit-now
                              #(f (t2/select-one :model/Card :id (-> notification :payload :card_id)))))]
               (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
                        :subject "One of your alerts has stopped working"
@@ -2629,7 +2622,7 @@
      (fn [card-id notification-id]
        (mt/with-test-user :crowberto
          (is (empty? (notification.tu/with-mock-inbox-email!
-                       (do-with-after-commit-now
+                       (notification.tu/do-with-after-commit-now
                         #(card/update-cards! [{:id card-id, :archived false}]))))))
        (is (t2/exists? :model/Notification :id notification-id))))))
 

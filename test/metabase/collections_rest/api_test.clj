@@ -3482,9 +3482,8 @@
                                                        {:type    :notification-recipient/raw-value
                                                         :details {:value "ngoc@metabase.com"}}]}]}]
               (let [[email] (notification.tu/with-mock-inbox-email!
-                              ;; The transaction of a test never commits, so run the work that waits for the commit now.
-                              (mt/with-dynamic-fn-redefs [mdb/do-after-commit (fn [after-commit] (after-commit))]
-                                (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id)
+                              (notification.tu/do-with-after-commit-now
+                               #(mt/user-http-request :crowberto :put 200 (str "collection/" coll-id)
                                                       {:name "My Beautiful Collection", :archived true})))]
                 (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
                          :subject "One of your alerts has stopped working"
