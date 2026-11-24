@@ -111,7 +111,6 @@
                               :schemas                        true
                               :split-part                     true
                               :stage-ctes                     true
-                              :stage-ctes/nest-single-row-aggregation true
                               :transforms/index-ddl           true
                               :transforms/python              true
                               :transforms/table               true
@@ -132,7 +131,8 @@
                  :table-privileges
                  ;; Index sync is turned off across the application as it is not used ATM.
                  #_:index-info
-                 :database-replication]]
+                 :database-replication
+                 :stage-ctes/nest-single-row-aggregation]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
