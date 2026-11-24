@@ -74,7 +74,8 @@
   Turning it into plain data means redesigning that queue, not restructuring a caller."
   [search-model :- :string
    where-clause :- [:maybe vector?]]
-  (let [rows (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause))]
+  (let [query (ingestion.query/spec-index-query-where search-model where-clause)
+        rows  (mdb/streaming-reducible-query query)]
     (if (= :mysql (mdb/db-type))
       (eduction (map coerce-booleans) rows)
       rows)))
