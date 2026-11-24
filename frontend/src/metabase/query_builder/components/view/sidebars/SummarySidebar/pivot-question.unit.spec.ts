@@ -1,10 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
 import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/sync-viz-settings";
+import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   FieldRefColumnSplitSetting,
+  TestAggregationSpec,
   TestBreakoutSpec,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -20,6 +22,8 @@ import {
   getPivotColumnSplit,
   getSummaryQuestion,
 } from "./pivot-question";
+
+registerVisualizations();
 
 const STAGE_INDEX = -1;
 
@@ -61,6 +65,85 @@ function createQuestion(
 }
 
 describe("getSummaryQuestion", () => {
+  describe("adding a grouping to a saved chart", () => {
+    const category: TestBreakoutSpec = {
+      type: "column",
+      sourceFieldId: ORDERS.PRODUCT_ID,
+      name: "CATEGORY",
+    };
+    const count: TestAggregationSpec = { type: "operator", operator: "count" };
+    const sum: TestAggregationSpec = {
+      type: "operator",
+      operator: "sum",
+      args: [{ type: "column", name: "TOTAL" }],
+    };
+
+    it.each([
+      {
+        name: "lets the chart choose dimensions for a second grouping",
+        expected: undefined,
+      },
+      {
+        name: "keeps a custom X-axis",
+        dimensions: ["count"],
+        expected: ["count"],
+      },
+      {
+        name: "keeps the axis for multiple aggregations",
+        aggregations: [count, sum],
+        expected: ["CREATED_AT"],
+      },
+      {
+        name: "keeps selected dimensions for a third grouping",
+        breakouts: [ORDERS_CREATED_AT, PRODUCTS_CREATED_AT, category],
+        dimensions: ["CREATED_AT", "CREATED_AT_2"],
+        expected: ["CREATED_AT", "CREATED_AT_2"],
+      },
+      {
+        name: "keeps the axis for a single-dimension chart",
+        singleDimension: true,
+        expected: ["CREATED_AT"],
+      },
+    ])(
+      "$name",
+      ({
+        dimensions = ["CREATED_AT"],
+        aggregations = [count],
+        breakouts = [ORDERS_CREATED_AT, category],
+        singleDimension,
+        expected,
+      }) => {
+        const nextQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations,
+              breakouts,
+            },
+          ],
+        });
+        const addedGrouping = Lib.breakouts(nextQuery, STAGE_INDEX)[
+          breakouts.length - 1
+        ];
+        const query = Lib.removeClause(nextQuery, STAGE_INDEX, addedGrouping);
+        const question = createQuestion({
+          display: singleDimension ? "waterfall" : "line",
+          displayIsLocked: true,
+          dataset_query: Lib.toJsQuery(query),
+          visualization_settings: {
+            "graph.dimensions": dimensions,
+            "graph.metrics": ["count"],
+          },
+        });
+
+        const result = getSummaryQuestion(question, nextQuery);
+
+        expect(result.setting("graph.dimensions")).toEqual(expected);
+        expect(result.setting("graph.metrics")).toEqual(["count"]);
+      },
+    );
+  });
+
   it("shows a locked pivot table with the column split", () => {
     const question = createQuestion({ display: "line" });
     const columnSplit = {

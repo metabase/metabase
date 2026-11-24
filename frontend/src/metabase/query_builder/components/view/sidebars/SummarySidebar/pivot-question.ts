@@ -1,4 +1,7 @@
+import _ from "underscore";
+
 import { isNotNull } from "metabase/utils/types";
+import { getMaxDimensionsSupported, isCartesianChart } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isColumnNameColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
@@ -136,6 +139,32 @@ export function getPivotColumnSplit(
   return { rows: [...rows, ...missingNames], columns, values };
 }
 
+function resetDefaultGraphDimensions(
+  question: Question,
+  nextQuestion: Question,
+) {
+  const settings = nextQuestion.settings();
+  const dimensions = settings["graph.dimensions"];
+  const query = nextQuestion.query();
+  const display = nextQuestion.display();
+  if (
+    dimensions?.length !== 1 ||
+    !isCartesianChart(display) ||
+    getMaxDimensionsSupported(display) < 2 ||
+    Lib.breakouts(query, STAGE_INDEX).length !== 2 ||
+    Lib.aggregations(query, STAGE_INDEX).length !== 1
+  ) {
+    return nextQuestion;
+  }
+
+  const { breakoutNames } = getResultColumnNames(question.query(), STAGE_INDEX);
+  if (!_.isEqual(dimensions, breakoutNames)) {
+    return nextQuestion;
+  }
+
+  return nextQuestion.setSettings(_.omit(settings, "graph.dimensions"));
+}
+
 export function getSummaryQuestion(
   question: Question,
   nextQuery: Lib.Query,
@@ -157,5 +186,8 @@ export function getSummaryQuestion(
   if (pivotChange?.type === "hide") {
     return nextQuestion.setDisplayIsLocked(false).setDefaultDisplay();
   }
-  return nextQuestion.setDefaultDisplay();
+  return resetDefaultGraphDimensions(
+    question,
+    nextQuestion.setDefaultDisplay(),
+  );
 }
