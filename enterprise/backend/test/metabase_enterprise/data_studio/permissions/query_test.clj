@@ -203,17 +203,21 @@
                                                                     (format "field/%d/search/%d?limit=3" (mt/id :venues :name) (mt/id :venues :name))))))))))
 
 (deftest published-table-remap-to-unpublished-target-permission-error-test
-  ;; venues is published; categories (the FK-remap target) is deliberately left unpublished/blocked
-  (do-with-published-venues! {:db-view-data :blocked}
-                             (fn [user-id _collection-id]
-                               (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :venues :category_id)
-                                                                  :human_readable_field_id (mt/id :categories :name)
-                                                                  :type                    :external}]
-                                 (testing "querying venues (whose FK-remap target is unpublished) surfaces a permission error"
-                                   (is (=? {:status "failed"}
-                                           (mt/with-current-user user-id
-                                             (mt/user-http-request user-id :post 403 "dataset"
-                                                                   (mt/mbql-query venues {:limit 1}))))))))))
+  ;; venues is published; categories (the FK-remap target) is deliberately left unpublished.
+  ;; With db view-data `:unrestricted`, categories is denied only by `create-queries :no`.
+  (doseq [db-view-data [:blocked :unrestricted]]
+    (testing (format "with db view-data %s" db-view-data)
+      (do-with-published-venues! {:db-view-data db-view-data}
+                                 (fn [user-id _collection-id]
+                                   (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :venues :category_id)
+                                                                      :human_readable_field_id (mt/id :categories :name)
+                                                                      :type                    :external}]
+                                     (testing "querying venues (whose FK-remap target is unpublished) surfaces a permission error"
+                                       (is (=? {:status     "failed"
+                                                :error_type "missing-required-permissions"}
+                                               (mt/with-current-user user-id
+                                                 (mt/user-http-request user-id :post 403 "dataset"
+                                                                       (mt/mbql-query venues {:limit 1}))))))))))))
 
 (deftest published-sandboxed-table-query-reflects-sandbox-not-full-access-test
   (mt/with-additional-premium-features #{:library}
