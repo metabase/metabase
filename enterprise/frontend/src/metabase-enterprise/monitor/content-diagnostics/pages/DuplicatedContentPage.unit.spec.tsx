@@ -400,9 +400,11 @@ describe("DuplicatedContentPage", () => {
       name: "Duplicates",
     });
     expect(within(duplicates).getByText("Duplicates (1)")).toBeInTheDocument();
-    expect(
-      within(duplicates).getByRole("link", { name: `${name}, Transform` }),
-    ).toHaveAttribute("href", "/data-studio/transforms/10");
+    const peerLink = within(duplicates).getByRole("link", {
+      name: `${name}, Transform`,
+    });
+    expect(peerLink).toHaveAttribute("href", "/data-studio/transforms/10");
+    expect(peerLink).toHaveTextContent(name);
   });
 
   it("reports duplicates that aren't visible to the user", async () => {
