@@ -348,6 +348,7 @@ databaseChangeLog:
       id: 0hsxh4
       author: metatyb
       comment: Add facets to metabase_field
+      validCheckSum: 9:6b2c6cde03d5e4ee4a606c96340bf4f1
       changes:
         - addColumn:
             tableName: metabase_field
@@ -355,7 +356,7 @@ databaseChangeLog:
               - column:
                   name: facets
                   type: ${text.type}
-                  remarks: "JSON object of facet name to type/* keyword: the roles the field plays besides its semantic type"
+                  remarks: "JSON object of facet key to type/* keyword: the roles the field plays besides its semantic type"
 
   - changeSet:
       id: hebsk5
