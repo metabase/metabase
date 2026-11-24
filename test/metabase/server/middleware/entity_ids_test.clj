@@ -552,3 +552,37 @@
               (let [created (mt/user-http-request :crowberto :post 200 "action" entity-ids
                                                   (assoc body :name "eid created action"))]
                 (is (= model-id (t2/select-one-fn :model_id :model/Action :entity_id (:entity_id created))))))))))))
+
+(deftest query-action-test
+  (testing "a query Action names its Database by name, and gives its query as serialization exports it"
+    (mt/with-actions-enabled
+      (mt/with-model-cleanup [:model/Card :model/Action]
+        (let [model    (mt/user-http-request :crowberto :post 200 "card" {:name                   "eid query action model"
+                                                                          :type                   :model
+                                                                          :display                :table
+                                                                          :dataset_query          (venues-query)
+                                                                          :visualization_settings {}})
+              action   (mt/user-http-request :crowberto :post 200 "action"
+                                             {:name          "eid query action"
+                                              :type          "query"
+                                              :model_id      (:id model)
+                                              :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                               "UPDATE venues SET name = {{name}}")
+                                              :parameters    [{:id "name" :slug "name" :type "string/="
+                                                               :target [:variable [:template-tag "name"]]}]})
+              response (get-with-entity-ids :crowberto (str "action/" (:id action)))]
+          (is (=? {:database_id   (:name (mt/db))
+                   :dataset_query {:database (:name (mt/db))}}
+                  response))
+          (is (= [] (int-paths (select-keys response [:database_id :dataset_query :table_id])))))))))
+
+(deftest implicit-table-action-test
+  (testing "an implicit Action on a Table names it by `[db-name schema table-name]`"
+    (mt/with-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (let [action (mt/user-http-request :crowberto :post 200 "action"
+                                           {:name "eid table action" :type "implicit" :kind "row/create"
+                                            :table_id (mt/id :venues)})]
+          (is (=? {:table_id    (table-ref (mt/id :venues))
+                   :database_id (:name (mt/db))}
+                  (get-with-entity-ids :crowberto (str "action/" (:id action))))))))))
