@@ -9,6 +9,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.llm.provider :as llm.provider]
+   [metabase.llm.settings :as llm.settings]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.persistence :as persistence]
    [metabase.metabot.schema.v2 :as schema.v2]
@@ -1616,6 +1617,18 @@
                {:type "finish" :finishReason "error"
                 :messageMetadata {:errorCode "ai_usage_limit_reached"}}]
               events))))
+  (testing "a provider failure's kind rides finish.messageMetadata, beside the error code"
+    (is (=? {:type            "finish"
+             :finishReason    "error"
+             :messageMetadata {:errorCode "ai_provider_rate_limit" :providerFailure "rate_limit"}}
+            (last (sse-events [{:type             :error
+                                :error            {:message "Too many requests." :error-code "ai_provider_rate_limit"}
+                                :provider-failure :rate-limit}]))))
+    (is (=? {:messageMetadata {:providerFailure "request_failed"}}
+            (last (sse-events [{:type :error :error {:message "boom"} :provider-failure :request-failed}])))))
+  (testing "an error that is not a provider failure has no providerFailure"
+    (is (not (contains? (:messageMetadata (last (sse-events [{:type :error :error {:message "boom"}}])))
+                        :providerFailure))))
   (testing "accumulated usage and a typed error code share one finish.messageMetadata"
     (let [parts  [{:type :start :id "m"}
                   {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
@@ -1926,6 +1939,23 @@
             (is (re-find #"content policy violation" (ex-message e))
                 "the provider error message is surfaced, not hidden behind 'no tool call'")
             (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
+
+(deftest call-llm-structured-provider-error-keeps-only-the-message-test
+  (testing "a streamed provider error is thrown with its message, not its `details`, which can name a GCP project"
+    (llm.tu/with-default-connections
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (test-util/mock-llm-response
+                                                          [{:type      :error
+                                                            :errorText "Permission denied."
+                                                            :error     {:code    403
+                                                                        :message "Permission denied."
+                                                                        :details [{:metadata {:resource "projects/my-project"}}]}}]))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [e (structured-call-error)]
+            (is (= "Permission denied." (ex-message e)))
+            (is (= {:message "Permission denied."} (:error (ex-data e))))
+            (is (not (re-find #"my-project" (pr-str (ex-data e)))))))))))
 
 (deftest call-llm-structured-text-reply-test
   (llm.tu/with-default-connections
@@ -3054,7 +3084,38 @@
                :exception-class "java.net.SocketTimeoutException"}
               (ex-data ex)))
       (is (identical? boom (ex-cause ex))
-          "the raw socket exception is preserved as the cause"))))
+          "the raw socket exception is preserved as the cause")))
+  (testing "an exception that the consumer's rf throws comes out as it is, without the provider tag"
+    (let [boom     (NullPointerException. "Metabot bug")
+          messages (atom [])
+          ;; a wrapper between the provider stream and this one, such as `debug/capture-stream`
+          inner    (reify clojure.lang.IReduceInit
+                     (reduce [_ rf init]
+                       (try
+                         (reduce rf init [1 2])
+                         (catch Exception e
+                           (swap! messages conj (ex-message e))
+                           (throw e)))))
+          ex       (caught #(reduce (fn [_ _] (throw boom))
+                                    nil
+                                    (self.core/reducible-with-api-errors inner "anthropic" (constantly "unused"))))]
+      (is (identical? boom ex))
+      (is (nil? (self/call-failure ex))
+          "it is not a provider failure")
+      (is (= ["Metabot bug"] @messages)
+          "a wrapper inside sees the real error's message")))
+  (testing "also when a wrapper inside translates the exception, as the IO guard of an adapter does"
+    (let [boom  (java.io.IOException. "Metabot bug")
+          inner (reify clojure.lang.IReduceInit
+                  (reduce [_ rf init]
+                    (try
+                      (reduce rf init [1 2])
+                      (catch java.io.IOException e
+                        (throw (ex-info "The server is unreachable" {:api-error true} e))))))]
+      (is (identical? boom (caught #(reduce (fn [_ _] (throw boom))
+                                            nil
+                                            (self.core/reducible-with-api-errors
+                                             inner "ollama" (constantly "unused")))))))))
 
 (deftest rethrow-api-error!-input-stream-test
   (testing "InputStream JSON bodies are decoded and structured-extracted"
@@ -3255,6 +3316,79 @@
                     (self/provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))
         (is (=? {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems.*"}
                 (mt/as-admin (self/provider-error (provider-api-error! "anthropic" 529 {})))))))))
+
+(deftest call-failure-openrouter-403-test
+  (testing "an OpenRouter 403 for the content of the exchange has no kind, and one for a permission is `:auth`"
+    (are [kind error]
+         (= kind (self/call-failure (provider-api-error! "openrouter" 403 {:error (assoc error :code 403)})))
+      ;; https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors
+      nil   {:message  "anthropic/claude-haiku-4.5 requires moderation"
+             :metadata {:reasons       ["harassment"]
+                        :flagged_input "..."
+                        :provider_name "Anthropic"
+                        :model_slug    "anthropic/claude-haiku-4.5"}}
+      ;; https://openrouter.ai/docs/api_reference/errors-and-debugging ("Typed error codes")
+      nil   {:message "The model refused the request" :metadata {:error_type "refusal"}}
+      nil   {:message "The content was flagged" :metadata {:error_type "content_policy_violation"}}
+      ;; the key lacks a permission, or a guardrail blocked the request
+      :auth {:message "Permission denied" :metadata {:error_type "permission_denied"}})))
+
+(deftest call-failure-test
+  (testing "classifies a provider's HTTP error by the kind of provider failure"
+    (are [kind provider status body]
+         (= kind (self/call-failure (provider-api-error! provider status body)))
+      :billing     "anthropic"  400 anthropic-credit-balance-body
+      :billing     "openrouter" 402 {:error {:code 402 :message "Insufficient credits"}}
+      :rate-limit  "openrouter" 429 {:error {:code 429 :message "Rate limit exceeded"}}
+      :auth        "anthropic"  401 {:error {:type "authentication_error" :message "invalid x-api-key"}}
+      :auth        "google"     403 {:error {:code 403 :message "Permission denied" :status "PERMISSION_DENIED"}}
+      :not-found   "openai"     404 {:error {:code "model_not_found" :message "The model `gpt-9` does not exist"}}
+      :not-found   "google"     404 {:error {:code 404 :message "Publisher Model was not found" :status "NOT_FOUND"}}
+      ;; https://docs.mistral.ai/resources/error-glossary
+      :not-found   "mistral"    400 {:object "error" :type "invalid_model" :code "1500" :message "Invalid model: m"}
+      ;; https://docs.z.ai/api-reference/api-code
+      :not-found   "zai"        400 {:error {:code "1211" :message "Unknown Model, please check the model code."}}
+      :not-found   "zai"        400 {:error {:code 1211 :message "Unknown Model, please check the model code."}}
+      ;; OpenRouter sends no code for a wrong model ID, only this text (probed 2026-11-24)
+      :not-found   "openrouter" 400 {:error {:code 400 :message "does-not-exist-123 is not a valid model ID"}
+                                     :user_id "org_1"}
+      :unavailable "anthropic"  529 {:error {:type "overloaded_error" :message "Overloaded"}}
+      :unavailable "openai"     503 {:error {:message "The server is overloaded or not ready yet."}}
+      nil          "anthropic"  400 {:error {:type    "invalid_request_error"
+                                             :message "max_tokens: Input should be greater than 0"}}
+      nil          "mistral"    400 {:object "error" :message "Prompt 1000015 > 262144 maximum context length"}))
+  (testing "is the same on the managed provider, where the user is told no provider error"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+      (let [e (provider-api-error! "anthropic" 429 {:error {:type "rate_limit_error" :message "Too many requests."}})]
+        (is (nil? (mt/as-admin (self/provider-error e))))
+        (is (= :rate-limit (self/call-failure e))))))
+  (testing "a request that got no response from the provider"
+    (is (= :request-failed
+           (self/call-failure (mt/with-log-level [metabase.metabot.self.core :fatal]
+                                (caught #(self.core/rethrow-api-error! "anthropic"
+                                                                       (constantly "API error")
+                                                                       (java.net.SocketTimeoutException.
+                                                                        "Read timed out"))))))))
+  (testing "a transport failure that an adapter reports with its own error code"
+    (is (= :request-failed
+           (self/call-failure (ex-info "Ollama did not answer" {:api-error true :error-code :ollama-timeout})))))
+  (testing "an exception that Metabot throws before it sends a request"
+    (are [data] (= :not-configured (self/call-failure (ex-info "boom" (assoc data :api-error true))))
+      {:error-code :invalid-region :status-code 400}
+      {:error-code :credentials-unavailable :status-code 403}
+      ;; `metabase.llm.provider.settings/url-not-allowed-ex` has `:status`, but no provider answered
+      {:error-code :llm-host-not-allowed :status-code 400 :status 400 :llm-host "10.0.0.1"}))
+  (testing "a provider connection with an absent setting"
+    (is (= :not-configured (self/call-failure (self.core/missing-api-key-ex "Anthropic"))))
+    (mt/with-dynamic-fn-redefs [llm.settings/llm-proxy-base-url (constantly nil)]
+      (is (= :not-configured
+             (self/call-failure (caught #(self.core/resolve-auth "anthropic" "Anthropic" nil true))))))
+    (is (= :not-configured
+           (self/call-failure (caught #(#'self/parse-provider-model "nonexistent/some-model"))))))
+  (testing "a failure that is not a provider API error"
+    (is (nil? (self/call-failure (ex-info "boom" {:status 429}))))
+    (is (nil? (self/call-failure (Exception. "boom"))))))
 
 (defn- openrouter-relayed-error-body
   "OpenRouter's 400 body when every upstream refused the request with the JSON string `raw`.

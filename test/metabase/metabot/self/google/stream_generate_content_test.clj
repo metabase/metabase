@@ -863,7 +863,7 @@
                   {:error {:code 503 :message "The model is overloaded." :status "UNAVAILABLE"}}]]
       (is (=? [{:type :start}
                {:type :text :text "partial"}
-               {:type :error :error {:message "The model is overloaded."}}]
+               {:type :error :error {:message "The model is overloaded." :code 503 :status "UNAVAILABLE"}}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
 (deftest ^:parallel in-stream-error-without-a-message-test
