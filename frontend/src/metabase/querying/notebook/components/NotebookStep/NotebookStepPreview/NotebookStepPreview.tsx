@@ -9,7 +9,7 @@ import {
   type DraftQuestionBuilder,
   useQuestionFromOptsBuilder,
 } from "metabase/metadata-store";
-import { Box, Button, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
 import { checkNotNull } from "metabase/utils/types";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -18,9 +18,12 @@ import type { Dataset } from "metabase-types/api";
 
 import type { NotebookStep } from "../../../types";
 
+import { FocusedPreview } from "./FocusedPreview";
 import S from "./NotebookStepPreview.module.css";
 import type { QuestionResultLoaderChildrenProps } from "./QuestionResultLoader";
 import { QuestionResultLoader } from "./QuestionResultLoader";
+import { hasFocusedPreview } from "./focused-preview";
+import PlayIcon from "./play.svg?component";
 
 const PREVIEW_ROWS_LIMIT = 10;
 
@@ -95,31 +98,45 @@ export const NotebookStepPreview = ({
           />
         </Flex>
       </Flex>
-      {isDirty ? (
-        <Flex
-          align="center"
-          justify="center"
-          className={cx(
-            CS.bordered,
-            CS.shadowed,
-            CS.rounded,
-            CS.bgWhite,
-            CS.p4,
-          )}
-        >
-          <Button onClick={refresh}>{t`Refresh`}</Button>
-        </Flex>
-      ) : (
-        <QuestionResultLoader question={activeQuestion}>
-          {({ rawSeries, result, error }) => (
-            <VisualizationPreview
-              rawSeries={rawSeries}
-              result={result}
-              error={error}
-            />
-          )}
-        </QuestionResultLoader>
-      )}
+      {/* An outdated preview keeps its rows, faded, with a button on them
+          that runs it again, so that the layout does not shift. */}
+      <div className={cx(S.preview, { [S.outdated]: isDirty })}>
+        <div className={S.body} inert={isDirty}>
+          <FocusedPreview
+            // Custom column, filter and summarize steps show what their
+            // expressions use and give, as the inline editor's preview did.
+            query={hasFocusedPreview(step.type) ? activeQuestion.query() : null}
+            stageIndex={step.stageIndex}
+            type={step.type}
+            fallback={
+              <QuestionResultLoader question={activeQuestion}>
+                {({ rawSeries, result, error }) => (
+                  <VisualizationPreview
+                    rawSeries={rawSeries}
+                    result={result}
+                    error={error}
+                  />
+                )}
+              </QuestionResultLoader>
+            }
+          />
+        </div>
+        {isDirty && (
+          <Tooltip label={t`Refresh`}>
+            <ActionIcon
+              className={S.runButton}
+              variant="filled"
+              color="brand"
+              size="lg"
+              radius="xl"
+              aria-label={t`Refresh`}
+              onClick={refresh}
+            >
+              <PlayIcon />
+            </ActionIcon>
+          </Tooltip>
+        )}
+      </div>
     </Box>
   );
 };

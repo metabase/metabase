@@ -46,12 +46,7 @@
   }
 }
 
-/* A column that tells what the row is about. The expression does not use it. */
-.context .bodyCell {
-  color: var(--mb-color-text-secondary);
-}
-
-/* The result of the expression, after a dashed line. */
+/* The first result column, after a dashed line. */
 .result {
   position: relative;
 
@@ -70,8 +65,13 @@
   }
 }
 
-/* The rest of the width, after the result, so that a right-aligned result
-   stays next to the other columns. It has the row lines of the cells. */
+/* Whether the row passes all the filters. */
+.total .bodyCell {
+  font-weight: bold;
+}
+
+/* The rest of the width, after the last column, so that a right-aligned
+   column stays next to the others. It has the row lines of the cells. */
 .filler {
   width: 100%;
   padding: 0;
