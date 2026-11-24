@@ -1,11 +1,21 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, screen, within } from "__support__/ui";
 import { format } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { TestStageSpec } from "metabase-types/api";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import type { Card, TestBreakoutSpec, TestStageSpec } from "metabase-types/api";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  createOrdersCreatedAtDatasetColumn,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import {
   STAGE_INDEX,
@@ -20,6 +30,75 @@ import {
   startDrag,
 } from "./tests/setup";
 import { getDimensionItems, getValueItems } from "./utils";
+
+const CREATED_AT_BY_MONTH: TestBreakoutSpec = {
+  type: "column",
+  name: "CREATED_AT",
+  unit: "month",
+};
+
+const ALL_DATE_UNITS = [
+  "Minute",
+  "Hour",
+  "Day",
+  "Week",
+  "Month",
+  "Quarter",
+  "Year",
+  "Minute of hour",
+  "Hour of day",
+  "Day of week",
+  "Day of month",
+  "Day of year",
+  "Week of year",
+  "Month of year",
+  "Quarter of year",
+  "Don't bin",
+];
+
+const SAVED_QUESTION = createMockCard({
+  id: 2,
+  name: "Orders question",
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  result_metadata: [createOrdersCreatedAtDatasetColumn()],
+});
+
+const SAVED_SQL_QUESTION = createMockCard({
+  id: 3,
+  name: "SQL orders",
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "select created_at from orders",
+  }),
+  result_metadata: [
+    createMockColumn({
+      id: undefined,
+      table_id: undefined,
+      name: "CREATED_AT",
+      display_name: "Created At",
+      base_type: "type/DateTime",
+      effective_type: "type/DateTime",
+      field_ref: ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+    }),
+  ],
+});
+
+function createQueryByMonthOf(card: Card) {
+  const provider = createMetadataProvider({
+    metadata: createMockMetadata({
+      databases: [createSampleDatabase()],
+      questions: [card],
+    }),
+  });
+  return Lib.createTestQuery(provider, {
+    stages: [
+      {
+        source: { type: "card", id: card.id },
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts: [CREATED_AT_BY_MONTH],
+      },
+    ],
+  });
+}
 
 const NOTEBOOK_VALUES = [
   ["Average order", "Sum([Total]) / Count()"],
@@ -422,6 +501,113 @@ describe("SummarySidebar", () => {
       ).getByLabelText("check icon"),
     ).toBeInTheDocument();
   });
+
+  it("keeps the sort of a grouping, with its direction, when its unit changes (metabase#16770)", async () => {
+    const { onQueryChange, getLastQuery } = setup({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [CREATED_AT_BY_MONTH],
+            orderBys: [{ ...CREATED_AT_BY_MONTH, direction: "desc" }],
+          },
+        ],
+      }),
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Change how Created At: Month is grouped",
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Year" }),
+    );
+
+    expect(onQueryChange).toHaveBeenCalledTimes(1);
+    expect(getLastQuery().dimensions).toEqual(["Created At: Year"]);
+    const [[nextQuery]] = onQueryChange.mock.calls;
+    expect(
+      Lib.orderBys(nextQuery, STAGE_INDEX).map((orderBy) => {
+        const { displayName, direction } = Lib.displayInfo(
+          nextQuery,
+          STAGE_INDEX,
+          orderBy,
+        );
+        return [displayName, direction];
+      }),
+    ).toEqual([["Created At: Year", "desc"]]);
+  });
+
+  it.each<[string, Card]>([
+    ["a saved question", SAVED_QUESTION],
+    ["a saved SQL question", SAVED_SQL_QUESTION],
+  ])(
+    "offers every date unit for a column of %s (metabase#10441, metabase#11439)",
+    async (_source, card) => {
+      const { getLastQuery } = setup({ query: createQueryByMonthOf(card) });
+
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: "Change how Created At: Month is grouped",
+        }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "More…" }),
+      );
+
+      expect(
+        screen.getAllByRole("menuitem").map((item) => item.textContent),
+      ).toEqual(ALL_DATE_UNITS);
+
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: "Hour of day" }),
+      );
+
+      expect(getLastQuery()).toEqual({
+        values: ["Count"],
+        dimensions: ["Created At: Hour of day"],
+      });
+    },
+  );
+
+  it.each<{
+    place: string;
+    breakouts: TestBreakoutSpec[];
+    dimensions: string[];
+  }>([
+    { place: "alone", breakouts: [], dimensions: [] },
+    {
+      place: "next to a grouping",
+      breakouts: [CREATED_AT_BY_MONTH],
+      dimensions: ["Created At: Month"],
+    },
+  ])(
+    "removes the last value when it is $place, and doesn't count the rows again (metabase#48033)",
+    async ({ breakouts, dimensions }) => {
+      const { onQueryChange, getLastQuery } = setup({
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts,
+            },
+          ],
+        }),
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove Count" }),
+      );
+
+      expect(onQueryChange).toHaveBeenCalledTimes(1);
+      expect(getLastQuery()).toEqual({ values: [], dimensions });
+      expect(getChipLabels("values")).toEqual([]);
+      expect(getChipLabels("columns")).toEqual(dimensions);
+    },
+  );
 
   describe("values made in the notebook", () => {
     it("shows custom expressions, a median and a percentile as chips, with a function menu for the median only", async () => {

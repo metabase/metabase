@@ -1,3 +1,5 @@
+import { moveDnDKitElementByAlias } from "./e2e-ui-elements-helpers";
+
 type SummaryWellId = "values" | "columns" | "rows";
 
 export function summarySidebar() {
@@ -45,6 +47,40 @@ export function clickSummaryField(
   { section, add = false }: { section?: string; add?: boolean } = {},
 ) {
   summaryField(name, { section }).click({ altKey: add });
+}
+
+function dragToWell(alias: string, wellId: SummaryWellId) {
+  summaryWell(wellId).then(([well]) => {
+    cy.get(alias).then(([dragged]) => {
+      const wellRect = well.getBoundingClientRect();
+      const draggedRect = dragged.getBoundingClientRect();
+      moveDnDKitElementByAlias(alias, {
+        horizontal: wellRect.left + wellRect.width / 2 - draggedRect.left,
+        vertical: wellRect.top + wellRect.height / 2 - draggedRect.top,
+        useMouseEvents: true,
+      });
+    });
+  });
+}
+
+/** Drags a field from the list with the mouse and drops it in the middle of a well. */
+export function dragSummaryFieldToWell(
+  name: string,
+  wellId: SummaryWellId,
+  { section }: { section?: string } = {},
+) {
+  summaryField(name, { section }).as("draggedSummaryField");
+  dragToWell("@draggedSummaryField", wellId);
+}
+
+/** Drags a chip with the mouse from its well and drops it in the middle of another one. */
+export function dragSummaryItemToWell(
+  wellId: SummaryWellId,
+  name: string,
+  targetWellId: SummaryWellId,
+) {
+  summaryWellItem(wellId, name).as("draggedSummaryItem");
+  dragToWell("@draggedSummaryItem", targetWellId);
 }
 
 /** A closed typeahead keeps its options in the page, so the option is looked for among the visible ones. */

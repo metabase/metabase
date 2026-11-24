@@ -29,8 +29,8 @@ describe("scenarios > question > summarize sidebar > building a summary", () => 
     H.assertSummaryWellItems("columns", []);
     cy.button("Clear all").should("be.disabled");
 
-    cy.log("a column as a value");
-    H.addSummaryValue("Subtotal");
+    cy.log("a column dragged onto Summarize by");
+    H.dragSummaryFieldToWell("Subtotal", "values", { section: "Orders" });
     cy.wait("@summaryQuery").then(({ request, response }) => {
       expect(request.body.stages[0].aggregation[0][0]).to.eq("sum");
       expect(response?.body.data.rows).to.have.length(1);
@@ -72,9 +72,15 @@ describe("scenarios > question > summarize sidebar > building a summary", () => 
 
     cy.log("number bins");
     H.changeSummaryGroupingBucket("Total: Auto binned", "10 bins");
-    cy.wait("@summaryQuery")
-      .its("request.body.stages.0.breakout.0.1.binning")
-      .should("include", { strategy: "num-bins", "num-bins": 10 });
+    cy.wait("@summaryQuery").then(({ request, response }) => {
+      expect(request.body.stages[0].breakout[0][1].binning).to.include({
+        strategy: "num-bins",
+        "num-bins": 10,
+      });
+      const rows: [number, ...unknown[]][] = response?.body.data.rows ?? [];
+      const totalBins = new Set(rows.map(([total]) => total));
+      expect(totalBins.size).to.be.within(2, 10);
+    });
     H.assertSummaryWellItems("columns", [
       "Total: 10 bins",
       "Created At: Month",
@@ -246,6 +252,325 @@ describe("scenarios > question > summarize sidebar > sidebar and notebook", () =
     H.summarySidebar().should("not.exist");
     H.openNotebook();
     assertNotebookSummary({ values, groupings });
+  });
+});
+
+describe("scenarios > question > summarize sidebar > pivot rows", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("renames a formula chip in Rows, shows the new name in the pivot table and keeps it across a reload", () => {
+    const formulaName = "year(Created At)";
+    const newName = "Order year";
+
+    H.openOrdersTable();
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotQuery");
+    H.summarize();
+    H.addSummaryValue("Subtotal");
+    cy.button("Pivot into rows and columns").click();
+    H.summaryWell("rows").findByLabelText("Add a row by name").type("=");
+    H.codeMirrorHelpers("formula-editor", {}).type("year([Created At])");
+    cy.findByTestId("formula-editor").button("Add").click();
+    cy.wait("@pivotQuery");
+    H.assertSummaryWellItems("rows", [formulaName]);
+    cy.findByTestId("pivot-table").findByText(formulaName).should("be.visible");
+
+    cy.log("rename");
+    H.summaryWellItem("rows", formulaName).findByText(formulaName).dblclick();
+    H.summarySidebar()
+      .findByLabelText(`Rename ${formulaName}`)
+      .clear()
+      .type(`${newName}{enter}`);
+    cy.wait("@pivotQuery").then(({ response }) => {
+      expect(response?.body.error).to.eq(undefined);
+    });
+    H.assertSummaryWellItems("rows", [newName]);
+    H.assertSummaryWellItems("columns", []);
+    H.assertSummaryWellItems("values", ["Sum of Subtotal"]);
+    cy.findByTestId("pivot-table").within(() => {
+      cy.findByText(newName).should("be.visible");
+      cy.findByText(formulaName).should("not.exist");
+    });
+
+    cy.log("a reload keeps the name and the chip in Rows");
+    cy.reload();
+    cy.wait("@pivotQuery");
+    cy.findByTestId("pivot-table").findByText(newName).should("be.visible");
+    H.summarize();
+    H.assertSummaryWellItems("rows", [newName]);
+    H.assertSummaryWellItems("columns", []);
+    H.assertSummaryWellItems("values", ["Sum of Subtotal"]);
+  });
+});
+
+describe("scenarios > question > summarize sidebar > pivot and other visualizations", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("moves the Rows groupings to Group by under another visualization, back to Rows with the pivot table, and keeps them across a reload", () => {
+    H.openOrdersTable();
+    cy.intercept("POST", "/api/dataset").as("summaryQuery");
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotQuery");
+    H.summarize();
+    H.addSummaryValue("Subtotal");
+    cy.wait("@summaryQuery");
+    cy.button("Pivot into rows and columns").click();
+    H.addSummaryRow("Category");
+    cy.wait("@pivotQuery");
+    H.clickSummaryField("Created At", { section: "Orders" });
+    cy.wait("@pivotQuery");
+    assertPivotWells();
+    cy.findByTestId("pivot-table").should("be.visible");
+
+    cy.log("another visualization");
+    showVisualization("Table");
+    cy.wait("@summaryQuery");
+    H.tableInteractive().should("be.visible");
+    H.summarize();
+    H.summaryWell("rows").should("not.exist");
+    H.assertSummaryWellItems("columns", [
+      "Product → Category",
+      "Created At: Month",
+    ]);
+    H.assertSummaryWellItems("values", ["Sum of Subtotal"]);
+
+    cy.log("the pivot table again");
+    showVisualization("Pivot Table");
+    cy.wait("@pivotQuery");
+    cy.findByTestId("pivot-table").should("be.visible");
+    H.summarize();
+    assertPivotWells();
+
+    cy.log("a reload keeps the wells");
+    cy.reload();
+    cy.wait("@pivotQuery");
+    cy.findByTestId("pivot-table").should("be.visible");
+    H.summarize();
+    assertPivotWells();
+  });
+});
+
+function assertPivotWells() {
+  H.assertSummaryWellItems("rows", ["Product → Category"]);
+  H.assertSummaryWellItems("columns", ["Created At: Month"]);
+  H.assertSummaryWellItems("values", ["Sum of Subtotal"]);
+}
+
+function showVisualization(name: "Table" | "Pivot Table") {
+  H.summarize();
+  H.summarySidebar().should("not.exist");
+  H.openVizTypeSidebar();
+  H.vizTypeSidebar().findByTestId(`${name}-button`).click();
+  H.vizTypeSidebar().button("Done").click();
+}
+
+describe("scenarios > question > summarize sidebar > formulas", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("keeps formulas from the table and from the wells, one renamed and one edited from its chip, across a save and a reload", () => {
+    const tableColumn = "Total * 2";
+    const valueFormula = "Sum([Total * 2]) / Count()";
+    const valueFormulaName = "Sum(Total * 2) / Count()";
+    const valueName = "Average double";
+    const groupingFormula = "month([Created At])";
+    const groupingName = "month(Created At)";
+    const assertFormulaWells = () => {
+      H.assertSummaryWellItems("values", [valueName]);
+      H.assertSummaryWellItems("columns", [groupingName]);
+    };
+
+    H.openOrdersTable();
+    cy.intercept("POST", "/api/dataset").as("summaryQuery");
+
+    cy.log("a custom column from the table");
+    cy.button("Add column").click();
+    formulaEditor().type("[Total] * 2");
+    cy.findByTestId("formula-editor").button("Add column").click();
+    cy.wait("@summaryQuery")
+      .its("response.body.data.cols")
+      .should((cols: { display_name: string }[]) => {
+        expect(cols.map((col) => col.display_name)).to.include(tableColumn);
+      });
+
+    cy.log("a formula in Summarize by");
+    H.summarize();
+    H.summaryWell("values").findByLabelText("Add a value by name").type("=");
+    formulaEditor().type(valueFormula);
+    cy.findByTestId("formula-editor").button("Add").click();
+    cy.wait("@summaryQuery");
+    H.assertSummaryWellItems("values", [valueFormulaName]);
+
+    cy.log("a formula in Group by");
+    H.summaryWell("columns")
+      .findByLabelText("Add a grouping by name")
+      .type("=");
+    formulaEditor().type("year([Created At])");
+    cy.findByTestId("formula-editor").button("Add").click();
+    cy.wait("@summaryQuery");
+    H.assertSummaryWellItems("columns", ["year(Created At)"]);
+
+    cy.log("the value renamed from its chip");
+    H.summaryWellItem("values", valueFormulaName)
+      .findByText(valueFormulaName)
+      .dblclick();
+    H.summarySidebar()
+      .findByLabelText(`Rename ${valueFormulaName}`)
+      .clear()
+      .type(`${valueName}{enter}`);
+    cy.wait("@summaryQuery");
+    H.assertSummaryWellItems("values", [valueName]);
+
+    cy.log("the grouping edited from its chip");
+    formulaChip("year(Created At)").click();
+    formulaEditor().value().should("eq", "year([Created At])");
+    formulaEditor().clear().type(groupingFormula);
+    cy.findByTestId("formula-editor").button("Update").click();
+    cy.wait("@summaryQuery").then(({ response }) => {
+      expect(response?.body.error).to.eq(undefined);
+      const result = getResult(response?.body);
+      expect(result.cols).to.deep.equal([groupingName, valueName]);
+      expect(result.rows).to.have.length(12);
+      cy.wrap(result).as("result");
+    });
+    cy.findByTestId("formula-editor").should("not.exist");
+    assertFormulaWells();
+
+    cy.log("save");
+    H.summarize();
+    H.summarySidebar().should("not.exist");
+    H.saveQuestionToCollection("Formulas round trip");
+    cy.location("pathname").should("match", /^\/question\/\d+-/);
+
+    cy.log("the saved question opens with the same results and wells");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.reload();
+    cy.wait("@cardQuery").then(({ response }) => {
+      expect(response?.body.error).to.eq(undefined);
+      cy.get("@result").should("deep.equal", getResult(response?.body));
+    });
+    H.queryBuilderHeader().button("Save").should("not.exist");
+    H.summarize();
+    assertFormulaWells();
+
+    cy.log("the chips still open their formulas");
+    formulaChip(groupingName).click();
+    formulaEditor().value().should("eq", groupingFormula);
+    cy.realPress("Escape");
+    cy.findByTestId("formula-editor").should("not.exist");
+    formulaChip(valueName).click();
+    formulaEditor().value().should("eq", valueFormula);
+    cy.realPress("Escape");
+    cy.findByTestId("formula-editor").should("not.exist");
+
+    cy.log("the notebook has the table's column and the grouping's one");
+    H.summarize();
+    H.summarySidebar().should("not.exist");
+    H.openNotebook();
+    H.getNotebookStep("expression").within(() => {
+      cy.findByText(tableColumn).should("be.visible");
+      cy.findByText(groupingName).should("be.visible");
+    });
+  });
+});
+
+function formulaEditor() {
+  return H.codeMirrorHelpers("formula-editor", {});
+}
+
+function formulaChip(name: string) {
+  return H.summarySidebar().findByRole("button", {
+    name: `Edit the formula of ${name}`,
+  });
+}
+
+function getResult(body: {
+  data: { cols: { display_name: string }[]; rows: unknown[][] };
+}) {
+  return {
+    cols: body.data.cols.map((col) => col.display_name),
+    rows: body.data.rows,
+  };
+}
+
+describe("scenarios > question > summarize sidebar > pivot round trip", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("builds a pivot table in the wells, moves a chip from Rows to Columns, and keeps the table and the wells across a save and a reload", () => {
+    const source = "User → Source";
+    const category = "Product → Category";
+    const createdAt = "Created At: Year";
+    const categoryValue = "Doohickey";
+    const pivotTable = () => cy.findByTestId("pivot-table");
+    const pivotTopHeader = () => cy.findByLabelText("pivot-table-top-header");
+    // a grouping that the question's layout doesn't have falls back to Rows, so the final
+    // layout keeps two groupings in Columns, in an order that the query doesn't have
+    const assertPivot = () => {
+      H.assertSummaryWellItems("values", ["Count"]);
+      H.assertSummaryWellItems("rows", [source]);
+      H.assertSummaryWellItems("columns", [createdAt, category]);
+      pivotTable().findByText(source).should("be.visible");
+      pivotTopHeader()
+        .findAllByText(categoryValue)
+        .should("have.length.greaterThan", 0);
+    };
+
+    H.openOrdersTable();
+    cy.intercept("POST", "/api/dataset").as("summaryQuery");
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotQuery");
+    H.summarize();
+    H.addSummaryValue("Count of rows");
+    cy.wait("@summaryQuery");
+
+    cy.log("two groupings in Rows and one in Columns");
+    cy.button("Pivot into rows and columns").click();
+    H.addSummaryRow("Source");
+    cy.wait("@pivotQuery");
+    H.addSummaryRow("Category");
+    cy.wait("@pivotQuery");
+    H.clickSummaryField("Created At", { section: "Orders" });
+    cy.wait("@pivotQuery");
+    H.changeSummaryGroupingBucket("Created At: Month", "Year");
+    cy.wait("@pivotQuery").then(({ request }) => {
+      expect(request.body.pivot_rows).to.have.length(2);
+      expect(request.body.pivot_cols).to.have.length(1);
+    });
+    H.assertSummaryWellItems("rows", [source, category]);
+    H.assertSummaryWellItems("columns", [createdAt]);
+    pivotTable().findByText(category).should("be.visible");
+    pivotTopHeader().findByText(categoryValue).should("not.exist");
+
+    cy.log("a Rows chip dragged to Columns");
+    H.dragSummaryItemToWell("rows", category, "columns");
+    cy.wait("@pivotQuery").then(({ request, response }) => {
+      expect(request.body.pivot_rows).to.have.length(1);
+      expect(request.body.pivot_cols).to.have.length(2);
+      expect(response?.body.error).to.eq(undefined);
+    });
+    assertPivot();
+
+    cy.log("save");
+    H.summarize();
+    H.summarySidebar().should("not.exist");
+    H.saveQuestionToCollection("Pivot round trip");
+    cy.location("pathname").should("match", /^\/question\/\d+-/);
+
+    cy.log("the saved question opens with the same pivot table and wells");
+    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
+    cy.reload();
+    cy.wait("@cardPivotQuery").its("response.body.error").should("not.exist");
+    H.queryBuilderHeader().button("Save").should("not.exist");
+    H.summarize();
+    assertPivot();
   });
 });
 
