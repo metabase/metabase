@@ -3086,7 +3086,19 @@
       (is (nil? (self/call-failure ex))
           "it is not a provider failure")
       (is (= ["Metabot bug"] @messages)
-          "a wrapper inside sees the real error's message"))))
+          "a wrapper inside sees the real error's message")))
+  (testing "also when a wrapper inside translates the exception, as the IO guard of an adapter does"
+    (let [boom  (java.io.IOException. "Metabot bug")
+          inner (reify clojure.lang.IReduceInit
+                  (reduce [_ rf init]
+                    (try
+                      (reduce rf init [1 2])
+                      (catch java.io.IOException e
+                        (throw (ex-info "The server is unreachable" {:api-error true} e))))))]
+      (is (identical? boom (caught #(reduce (fn [_ _] (throw boom))
+                                            nil
+                                            (self.core/reducible-with-api-errors
+                                             inner "ollama" (constantly "unused")))))))))
 
 (deftest rethrow-api-error!-input-stream-test
   (testing "InputStream JSON bodies are decoded and structured-extracted"

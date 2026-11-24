@@ -1416,20 +1416,18 @@
   [reducible provider res->message]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
-      (let [downstream (Object.)
+      (let [downstream (volatile! nil)
             guarded-rf (fn [acc x]
                          (try
                            (rf acc x)
                            (catch Exception e
-                             ;; The cause's message, so that a wrapper between here and the provider stream,
-                             ;; such as `debug/capture-stream`, records the real error.
-                             (throw (ex-info (ex-message e) {::downstream downstream} e)))))]
+                             (vreset! downstream e)
+                             (throw e))))]
         (try
           (reduce guarded-rf init reducible)
           (catch Exception e
-            (if (identical? downstream (::downstream (ex-data e)))
-              (throw (ex-cause e))
-              (rethrow-api-error! provider res->message e))))))))
+            ;; A wrapper between here and the provider stream may have translated the exception, so check the record.
+            (throw (or @downstream (rethrow-api-error! provider res->message e)))))))))
 
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."
