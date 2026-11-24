@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { MeasuredSkeleton } from "metabase/common/components/Skeletons";
 import { isReturningToDataStudio } from "metabase/common/data-studio/utils/return-to";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
 import {
@@ -12,6 +13,7 @@ import {
   setSidebar,
 } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { useDashboardSketch } from "metabase/dashboard/dashboard-sketch";
 import {
   getIsAdditionalInfoVisible,
   getIsDirty,
@@ -25,6 +27,7 @@ import { getSetting } from "metabase/settings";
 import type { Dashboard } from "metabase-types/api";
 
 import { SIDEBAR_NAME } from "../../constants";
+import { DashboardHeaderSample } from "../DashboardSketchSamples";
 
 import { DashboardHeaderSkeleton } from "./DashboardHeaderSkeleton";
 import { DashboardHeaderView } from "./DashboardHeaderView";
@@ -156,12 +159,21 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
 
 export const DashboardHeader = () => {
   const { dashboard, dashboardId, titled } = useDashboardContext();
+  const sketch = useDashboardSketch(dashboardId);
 
-  if (!dashboard) {
-    return (
-      <DashboardHeaderSkeleton dashboardId={dashboardId} titled={titled} />
-    );
-  }
-
-  return <DashboardHeaderInner dashboard={dashboard} />;
+  return (
+    <MeasuredSkeleton
+      loading={!dashboard}
+      alwaysFromSample
+      classic={
+        <DashboardHeaderSkeleton dashboardId={dashboardId} titled={titled} />
+      }
+    >
+      {dashboard ? (
+        <DashboardHeaderInner dashboard={dashboard} />
+      ) : (
+        <DashboardHeaderSample sketch={sketch} titled={titled} />
+      )}
+    </MeasuredSkeleton>
+  );
 };

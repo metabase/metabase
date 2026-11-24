@@ -1,7 +1,9 @@
 import cx from "classnames";
 import { useRef } from "react";
 
+import { MeasuredSkeleton } from "metabase/common/components/Skeletons";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { useDashboardSketch } from "metabase/dashboard/dashboard-sketch";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -14,6 +16,10 @@ import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/visuali
 import DashboardS from "../Dashboard/Dashboard.module.css";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
 import { ParametersList } from "../Dashboard/components";
+import {
+  DashboardParametersSample,
+  getSketchVisibleParameters,
+} from "../DashboardSketchSamples";
 
 import S from "./DashboardParameterPanel.module.css";
 import { DashboardParameterPanelSkeleton } from "./DashboardParameterPanelSkeleton";
@@ -23,6 +29,7 @@ export function DashboardParameterPanel() {
 
   const { dashboard, dashboardId, hideParameters, isEditing } =
     useDashboardContext();
+  const sketch = useDashboardSketch(dashboardId);
 
   const visibleParameters = getVisibleParameters(parameters, hideParameters);
   const hasVisibleParameters = visibleParameters.length > 0;
@@ -37,11 +44,26 @@ export function DashboardParameterPanel() {
   });
 
   if (!dashboard) {
-    return (
+    const classicSkeleton = (
       <DashboardParameterPanelSkeleton
         dashboardId={dashboardId}
         hideParameters={hideParameters}
       />
+    );
+
+    // Skullet draws the filters while loading, but doesn't stay around them
+    // to crossfade them in: its wrapper would bound the panel's sticky
+    // positioning to the panel's own height.
+    return sketch &&
+      getSketchVisibleParameters(sketch, hideParameters).length > 0 ? (
+      <MeasuredSkeleton loading alwaysFromSample classic={classicSkeleton}>
+        <DashboardParametersSample
+          sketch={sketch}
+          hideParameters={hideParameters}
+        />
+      </MeasuredSkeleton>
+    ) : (
+      classicSkeleton
     );
   }
 

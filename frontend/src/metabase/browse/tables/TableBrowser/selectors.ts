@@ -6,7 +6,11 @@ import * as Urls from "metabase/urls";
 import { type Table, isConcreteTableId } from "metabase-types/api";
 
 export const getTableUrl = createSelector(
-  [selectQuestionFromOptsBuilder, (_state: State, table: Table) => table],
+  [
+    selectQuestionFromOptsBuilder,
+    (_state: State, table: Pick<Table, "id" | "db_id" | "display_name">) =>
+      table,
+  ],
   (buildDraftQuestion, table): string => {
     // The Saved Questions virtual database exposes cards as "tables" with
     // virtual ids (e.g. card__17). Those have no /table/:slug route, so fall

@@ -8,7 +8,8 @@ const HEADER_ACTIONS_COUNT = 4;
 const ITEM_ROWS_COUNT = 8;
 const ROW_HEIGHT = "3.5rem";
 
-const ItemsTableSkeleton = () => (
+/** The collection items table while its items load. */
+export const CollectionItemsTableSkeleton = () => (
   <Box
     bd="1px solid var(--mb-color-border-neutral)"
     bdrs="0.5rem"
@@ -56,7 +57,7 @@ export const CollectionContentSkeleton = () => (
           ))}
         </Flex>
       </Flex>
-      <ItemsTableSkeleton />
+      <CollectionItemsTableSkeleton />
     </LoadingSkeleton>
   </Box>
 );

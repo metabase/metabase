@@ -29,8 +29,19 @@ import S from "./TableBrowser.module.css";
 import { getTableUrl } from "./selectors";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
+/** The table fields the browser draws a card from. */
+export type TableBrowserTable = Pick<
+  Table,
+  | "id"
+  | "db_id"
+  | "name"
+  | "display_name"
+  | "initial_sync_status"
+  | "is_writable"
+>;
+
 type TableBrowserProps = {
-  tables: Table[];
+  tables: TableBrowserTable[];
   dbId: DatabaseId;
   schemaName?: string;
   xraysEnabled?: boolean;
@@ -82,7 +93,7 @@ export const TableBrowserInner = ({
 };
 
 type TableBrowserItemProps = {
-  table: Table;
+  table: TableBrowserTable;
   dbId: DatabaseId;
   xraysEnabled?: boolean;
   canEditTables?: boolean;

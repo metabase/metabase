@@ -11,6 +11,10 @@ import { TableBrowser } from "metabase/browse/tables/TableBrowser";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  LoadingSkeleton,
+  MeasuredSkeleton,
+} from "metabase/common/components/Skeletons";
 import { findDatabaseByName } from "metabase/common/utils/database";
 import CS from "metabase/css/core/index.css";
 import { useParams } from "metabase/router";
@@ -22,23 +26,37 @@ import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
-import { BrowsePageSkeleton } from "../components/BrowseSkeletons";
+import {
+  BrowseCardsSkeleton,
+  BrowsePageSkeleton,
+} from "../components/BrowseSkeletons";
 import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 type Schema = { id: string; name: string };
 
-const SCHEMA_CARDS_SKELETON_COUNT = 6;
+// Typical schema names, so a first visit's skeleton has realistic line
+// lengths. Later visits draw the grid's shape as last shown.
+const SAMPLE_SCHEMAS: Schema[] = [
+  "public",
+  "analytics",
+  "staging",
+  "marketing",
+  "finance",
+  "product_events",
+].map((name) => ({ id: name, name }));
 
 const BrowseSchemasContainer = ({
   schemas,
+  isLoading,
   dbId,
   params,
 }: {
   schemas: Schema[];
+  isLoading: boolean;
   dbId: DatabaseId;
-  params: any;
+  params: { slug: string };
 }) => {
-  const isSingleSchema = schemas.length === 1;
+  const isSingleSchema = !isLoading && schemas.length === 1;
   const { data: database } = useGetDatabaseQuery(
     isSingleSchema ? skipToken : { id: dbId },
   );
@@ -55,49 +73,59 @@ const BrowseSchemasContainer = ({
       <BrowseDataHeader />
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
         <Flex maw="64rem" mx="auto" w="100%" direction="column">
-          {isSingleSchema ? (
-            <TableBrowser
-              params={params}
-              dbId={dbId}
-              schemaName={schemas[0].name}
-              // hide the schema since there's only one
-              showSchemaInHeader={false}
-            />
-          ) : (
-            <>
-              <Flex
-                align="center"
-                justify="space-between"
-                pt="lg"
-                pr="sm"
-                pb="sm"
-              >
-                <BrowserCrumbs
-                  crumbs={[
-                    { title: t`Databases`, to: "/browse/databases" },
-                    { title: database?.name ?? "" },
-                  ]}
-                />
-                <DatabaseQuickLinksMenu databaseId={dbId} />
-              </Flex>
-              {schemas.length === 0 ? (
-                <h2
-                  className={cx(CS.full, CS.textCentered, CS.textMedium)}
-                >{t`This database doesn't have any tables.`}</h2>
-              ) : (
-                <BrowseGrid pt="xl">
-                  {schemas.map((schema) => (
-                    <BrowseCard
-                      key={schema.id}
-                      title={schema.name}
-                      icon="folder"
-                      to={Urls.browseSchemaBySlug(params.slug, schema.name)}
-                    />
-                  ))}
-                </BrowseGrid>
-              )}
-            </>
-          )}
+          <MeasuredSkeleton
+            loading={isLoading}
+            id={`browse-schemas-${dbId}`}
+            classic={
+              <LoadingSkeleton>
+                <BrowseCardsSkeleton cards={SAMPLE_SCHEMAS.length} withCrumbs />
+              </LoadingSkeleton>
+            }
+          >
+            {isSingleSchema ? (
+              <TableBrowser
+                params={params}
+                dbId={dbId}
+                schemaName={schemas[0].name}
+                // hide the schema since there's only one
+                showSchemaInHeader={false}
+              />
+            ) : (
+              <>
+                <Flex
+                  align="center"
+                  justify="space-between"
+                  pt="lg"
+                  pr="sm"
+                  pb="sm"
+                >
+                  <BrowserCrumbs
+                    crumbs={[
+                      { title: t`Databases`, to: "/browse/databases" },
+                      { title: database?.name ?? "" },
+                    ]}
+                  />
+                  <DatabaseQuickLinksMenu databaseId={dbId} />
+                </Flex>
+                {schemas.length === 0 ? (
+                  <h2
+                    className={cx(CS.full, CS.textCentered, CS.textMedium)}
+                  >{t`This database doesn't have any tables.`}</h2>
+                ) : (
+                  <BrowseGrid pt="xl">
+                    {schemas.map((schema) => (
+                      <BrowseCard
+                        key={schema.id}
+                        title={schema.name}
+                        icon="folder"
+                        to={Urls.browseSchemaBySlug(params.slug, schema.name)}
+                      />
+                    ))}
+                  </BrowseGrid>
+                )}
+              </>
+            )}
+          </MeasuredSkeleton>
         </Flex>
       </Flex>
     </Flex>
@@ -119,9 +147,7 @@ const BrowseSchemasByDatabaseName = ({
   }
 
   if (isLoading) {
-    return (
-      <BrowsePageSkeleton cards={SCHEMA_CARDS_SKELETON_COUNT} withCrumbs />
-    );
+    return <BrowsePageSkeleton cards={SAMPLE_SCHEMAS.length} withCrumbs />;
   }
 
   if (!database) {
@@ -156,15 +182,16 @@ const BrowseSchemasForDatabase = ({
     return <LoadingAndErrorWrapper error={error} />;
   }
 
-  if (isLoading) {
-    return (
-      <BrowsePageSkeleton cards={SCHEMA_CARDS_SKELETON_COUNT} withCrumbs />
-    );
-  }
-
-  const schemas: Schema[] = (data ?? []).map((name) => ({ id: name, name }));
+  const schemas: Schema[] = isLoading
+    ? SAMPLE_SCHEMAS
+    : (data ?? []).map((name) => ({ id: name, name }));
 
   return (
-    <BrowseSchemasContainer schemas={schemas} dbId={dbId} params={params} />
+    <BrowseSchemasContainer
+      schemas={schemas}
+      isLoading={isLoading}
+      dbId={dbId}
+      params={params}
+    />
   );
 };

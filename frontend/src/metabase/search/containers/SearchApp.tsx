@@ -6,8 +6,10 @@ import { useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { SAMPLE_SEARCH_RESULTS } from "metabase/common/components/SearchResult/sample-search-results";
 import {
   LoadingSkeleton,
+  MeasuredSkeleton,
   getSkeletonLineWidth,
 } from "metabase/common/components/Skeletons";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
@@ -37,7 +39,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
-import type { SearchRequest } from "metabase-types/api";
+import type { SearchRequest, SearchResult } from "metabase-types/api";
 
 import S from "./SearchApp.module.css";
 
@@ -130,8 +132,6 @@ export function SearchApp() {
         <Box flex={1}>
           {!!error && <LoadingAndErrorWrapper error={error} />}
 
-          {!error && isLoading && <SearchResultSectionSkeleton />}
-
           {!error && !isLoading && list.length === 0 && (
             <Paper shadow="lg" p="2rem">
               <EmptyState
@@ -142,35 +142,83 @@ export function SearchApp() {
             </Paper>
           )}
 
-          {!error && !isLoading && list.length > 0 && (
-            <Box>
-              <SearchResultSection
-                totalResults={data?.total ?? 0}
-                results={list}
-                searchEngine={data?.engine}
-                searchRequestId={requestId}
-                searchTerm={searchText}
-                page={page}
-                pageSize={PAGE_SIZE}
-              />
-              <Group justify="flex-end" align="center" my="1rem">
-                <PaginationControls
-                  showTotal
-                  pageSize={PAGE_SIZE}
-                  page={page}
-                  itemsLength={list.length}
+          {!error && (isLoading || list.length > 0) && (
+            <MeasuredSkeleton
+              loading={isLoading}
+              id="search-page"
+              classic={<SearchResultSectionSkeleton />}
+            >
+              {isLoading ? (
+                <SearchResultsPage
+                  results={SAMPLE_SEARCH_RESULTS}
+                  total={SAMPLE_SEARCH_RESULTS.length}
+                  page={0}
+                />
+              ) : (
+                <SearchResultsPage
+                  results={list}
                   total={data?.total ?? 0}
+                  searchEngine={data?.engine}
+                  searchRequestId={requestId}
+                  searchTerm={searchText}
+                  page={page}
                   onNextPage={() => advancePage(1)}
                   onPreviousPage={() => advancePage(-1)}
                 />
-              </Group>
-            </Box>
+              )}
+            </MeasuredSkeleton>
           )}
         </Box>
       </Flex>
     </Flex>
   );
 }
+
+type SearchResultsPageProps = {
+  results: SearchResult[];
+  total: number;
+  searchEngine?: string;
+  searchRequestId?: string;
+  searchTerm?: string;
+  page: number;
+  onNextPage?: () => void;
+  onPreviousPage?: () => void;
+};
+
+/** A page of results and the controls to page through them. */
+const SearchResultsPage = ({
+  results,
+  total,
+  searchEngine,
+  searchRequestId,
+  searchTerm,
+  page,
+  onNextPage,
+  onPreviousPage,
+}: SearchResultsPageProps) => (
+  <Box>
+    <SearchResultSection
+      totalResults={total}
+      results={results}
+      searchEngine={searchEngine}
+      searchRequestId={searchRequestId}
+      searchTerm={searchTerm}
+      page={page}
+      pageSize={PAGE_SIZE}
+    />
+    <Group justify="flex-end" align="center" my="1rem">
+      <PaginationControls
+        showTotal
+        pageSize={PAGE_SIZE}
+        page={page}
+        itemsLength={results.length}
+        total={total}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
+      />
+    </Group>
+  </Box>
+);
 
 const SearchResultSectionSkeleton = () => (
   <Paper px="sm" py="lg">

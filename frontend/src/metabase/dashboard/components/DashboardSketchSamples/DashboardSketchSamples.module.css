@@ -1,0 +1,39 @@
+/*
+ * Skullet draws any element with a surface (a background or a border on all
+ * sides) and at most one line of text as a single block. A card with only a
+ * title would become one block over its chart skeleton, so the sample card
+ * itself has no surface: its frame is painted, with the chart skeleton, in a
+ * layer skullet leaves as is.
+ */
+.frameless.frameless {
+  overflow: visible;
+  background: none;
+  border: none;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--mb-color-bg-dashboard-card);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.75rem;
+}
+
+.title {
+  position: relative;
+  padding: 0.625rem var(--mantine-spacing-sm) var(--mantine-spacing-xs);
+}
+
+/* Holds the title's place in the frame, unseen */
+.titleSpacer {
+  visibility: hidden;
+}
+
+/* The title's text box, the height EditableText gives it, without its border */
+.headerTitle {
+  padding: calc(0.25rem + 1px);
+  line-height: 1.57;
+}

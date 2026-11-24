@@ -6,9 +6,11 @@ import { t } from "ttag";
 import { skipToken, useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
+import { SAMPLE_SEARCH_RESULTS } from "metabase/common/components/SearchResult/sample-search-results";
 import {
   LoadingSkeleton,
   type LoadingSkeletonProps,
+  MeasuredSkeleton,
   getSkeletonLineWidth,
 } from "metabase/common/components/Skeletons";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
@@ -52,6 +54,12 @@ export type SearchResultsProps = {
 };
 
 const SEARCH_RESULTS_SKELETON_ROWS = 6;
+
+// As many sample rows as the hand-drawn skeleton draws.
+const SAMPLE_DROPDOWN_RESULTS = SAMPLE_SEARCH_RESULTS.slice(
+  0,
+  SEARCH_RESULTS_SKELETON_ROWS,
+);
 
 /** Search or recents result rows: an icon, a title, and a secondary line. */
 export const SearchResultsSkeleton = ({
@@ -170,42 +178,47 @@ export const SearchResults = ({
     reset();
   }, [searchText, reset]);
 
-  if (isLoading || isWaitingForDebounce) {
-    return <SearchResultsSkeleton p="sm" />;
+  const isLoadingResults = isLoading || isWaitingForDebounce;
+
+  if (!isLoadingResults && !hasResults) {
+    return (
+      <EmptyStateContainer data-testid="search-results-empty-state">
+        <EmptyState message={t`Didn't find anything`} icon="search" />
+      </EmptyStateContainer>
+    );
   }
 
-  return hasResults ? (
+  return (
     <Stack
       className={S.searchResultsList}
-      data-testid="search-results-list"
+      data-testid={isLoadingResults ? undefined : "search-results-list"}
       gap={0}
     >
-      <Box component="ul" p="sm" className={S.resultsContainer}>
-        {list.map((item, index) => {
-          const isIndexedEntity = item.model === "indexed-entity";
-          const onClick =
-            onEntitySelect && (isIndexedEntity || forceEntitySelect)
-              ? onEntitySelect
-              : undefined;
-          const ref = getRef(item);
-
-          return (
-            <li key={`${item.model}:${item.id}`} ref={ref}>
-              <SearchResult
-                result={item}
-                compact={true}
-                showDescription={true}
-                isSelected={cursorIndex === index}
-                onClick={onClick}
-                index={index}
-                context={context}
-                searchTerm={searchText}
-              />
-            </li>
-          );
-        })}
+      <Box p="sm" className={S.resultsContainer}>
+        <MeasuredSkeleton
+          loading={isLoadingResults}
+          id="search-results"
+          classic={<SearchResultsSkeleton />}
+        >
+          {isLoadingResults ? (
+            <SearchResultsList
+              results={SAMPLE_DROPDOWN_RESULTS}
+              context={context}
+            />
+          ) : (
+            <SearchResultsList
+              results={list}
+              context={context}
+              searchTerm={searchText}
+              cursorIndex={cursorIndex}
+              getRef={getRef}
+              onEntitySelect={onEntitySelect}
+              forceEntitySelect={forceEntitySelect}
+            />
+          )}
+        </MeasuredSkeleton>
       </Box>
-      {showFooter && (
+      {!isLoadingResults && showFooter && (
         <Box ref={getRef(footerComponent)}>
           {footerComponent({
             metadata,
@@ -214,9 +227,52 @@ export const SearchResults = ({
         </Box>
       )}
     </Stack>
-  ) : (
-    <EmptyStateContainer data-testid="search-results-empty-state">
-      <EmptyState message={t`Didn't find anything`} icon="search" />
-    </EmptyStateContainer>
   );
 };
+
+type SearchResultsListProps = {
+  results: SearchResultType[];
+  context: SearchContext;
+  searchTerm?: string;
+  cursorIndex?: number | null;
+  getRef?: (
+    item: SearchResultType,
+  ) => ((element: HTMLElement | null) => void) | undefined;
+  onEntitySelect?: (result: SearchResultType) => void;
+  forceEntitySelect?: boolean;
+};
+
+const SearchResultsList = ({
+  results,
+  context,
+  searchTerm,
+  cursorIndex,
+  getRef,
+  onEntitySelect,
+  forceEntitySelect = false,
+}: SearchResultsListProps) => (
+  <Box component="ul">
+    {results.map((item, index) => {
+      const isIndexedEntity = item.model === "indexed-entity";
+      const onClick =
+        onEntitySelect && (isIndexedEntity || forceEntitySelect)
+          ? onEntitySelect
+          : undefined;
+
+      return (
+        <li key={`${item.model}:${item.id}`} ref={getRef?.(item)}>
+          <SearchResult
+            result={item}
+            compact={true}
+            showDescription={true}
+            isSelected={cursorIndex === index}
+            onClick={onClick}
+            index={index}
+            context={context}
+            searchTerm={searchTerm}
+          />
+        </li>
+      );
+    })}
+  </Box>
+);

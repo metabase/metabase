@@ -16,6 +16,11 @@ import {
   useListCollectionItemsQuery,
 } from "metabase/api";
 import {
+  toCollectionSketchItems,
+  updateCollectionSketch,
+  useCollectionSketch,
+} from "metabase/collections/collection-sketch";
+import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,
   type CollectionContentTableColumn,
@@ -33,6 +38,10 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { ItemsTable } from "metabase/common/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import {
+  LoadingSkeleton,
+  MeasuredSkeleton,
+} from "metabase/common/components/Skeletons";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
@@ -51,6 +60,8 @@ import type {
   SortingOptions,
 } from "metabase-types/api";
 
+import { getCollectionSample } from "./CollectionContentSample";
+import { CollectionItemsTableSkeleton } from "./CollectionContentSkeleton";
 import { CollectionItemsToolbar } from "./CollectionItemsToolbar";
 
 const shouldDebounceSearchText = (
@@ -315,6 +326,7 @@ const CollectionItemsTableContent = ({
   bookmarks,
   clear,
   collection,
+  collectionId,
   createBookmark,
   databases,
   deleteBookmark,
@@ -341,9 +353,13 @@ const CollectionItemsTableContent = ({
   onSelectedFiltersChange,
   onItemsSortingChange,
 }: CollectionItemsTableContentProps) => {
-  const { data, isFetching } = useListCollectionItemsQuery(itemsQuery);
+  const { data, isFetching, isLoading } =
+    useListCollectionItemsQuery(itemsQuery);
 
-  const items = data?.data ?? [];
+  const sketch = useCollectionSketch(collectionId);
+  const items = isLoading
+    ? getCollectionSample(sketch).items
+    : (data?.data ?? []);
   const totalMatchingItems = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
@@ -370,16 +386,22 @@ const CollectionItemsTableContent = ({
   const isSearching = isFetching && hasSearchQuery;
   const isEmpty = !isFetching && items.length === 0 && !hasActiveFilters;
 
-  if (isEmpty) {
-    return <EmptyContentComponent collection={collection} />;
-  }
-
   const showNoResults = !isFetching && hasActiveFilters && items.length === 0;
-  const showTable = !showNoResults;
+
+  // The first page as shown unfiltered, for the next visit's skeleton
+  const loadedItems = data?.data;
+  const isFirstUnfilteredPage = page === 0 && !hasActiveFilters;
+  useEffect(() => {
+    if (collectionId != null && loadedItems && isFirstUnfilteredPage) {
+      updateCollectionSketch(collectionId, {
+        items: toCollectionSketchItems(loadedItems),
+      });
+    }
+  }, [collectionId, loadedItems, isFirstUnfilteredPage]);
 
   return (
     <>
-      {showToolbar && (
+      {showToolbar && !isEmpty && (
         <CollectionItemsToolbar
           searchText={searchText}
           availableModels={availableModels}
@@ -389,52 +411,65 @@ const CollectionItemsTableContent = ({
           isSearching={isSearching}
         />
       )}
-      {showNoResults && <CollectionNoResults hasSearchText={hasSearchText} />}
-      {showTable && (
-        <Box data-testid="collection-table">
-          <ItemsTable
-            databases={databases}
-            bookmarks={bookmarks}
-            createBookmark={createBookmark}
-            deleteBookmark={deleteBookmark}
-            items={items}
-            collection={collection}
-            sortingOptions={itemsSorting}
-            onSortingOptionsChange={onItemsSortingChange}
-            selectedItems={selected}
-            hasUnselected={hasUnselected}
-            getIsSelected={getIsSelected}
-            onToggleSelected={toggleItem}
-            onDrop={clear}
-            onMove={handleMove}
-            onCopy={handleCopy}
-            onSelectAll={handleSelectAll}
-            onSelectNone={clear}
-            onClick={onClick}
-            visibleColumnsMap={visibleColumnsMap}
-          />
-          <div
-            className={cx(
-              CS.flex,
-              CS.justifyEnd,
-              CS.my3,
-              CS.syncStatusAwarePagination,
-            )}
-          >
-            {hasPagination && (
-              <PaginationControls
-                showTotal
-                page={page}
-                pageSize={pageSize}
-                total={totalMatchingItems}
-                itemsLength={items.length}
-                onNextPage={onNextPage}
-                onPreviousPage={onPreviousPage}
-              />
-            )}
-          </div>
-        </Box>
-      )}
+      <MeasuredSkeleton
+        loading={isLoading}
+        alwaysFromSample
+        classic={
+          <LoadingSkeleton>
+            <CollectionItemsTableSkeleton />
+          </LoadingSkeleton>
+        }
+      >
+        {isEmpty ? (
+          <EmptyContentComponent collection={collection} />
+        ) : showNoResults ? (
+          <CollectionNoResults hasSearchText={hasSearchText} />
+        ) : (
+          <Box data-testid="collection-table">
+            <ItemsTable
+              databases={databases}
+              bookmarks={bookmarks}
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
+              items={items}
+              collection={collection}
+              sortingOptions={itemsSorting}
+              onSortingOptionsChange={onItemsSortingChange}
+              selectedItems={selected}
+              hasUnselected={hasUnselected}
+              getIsSelected={getIsSelected}
+              onToggleSelected={toggleItem}
+              onDrop={clear}
+              onMove={handleMove}
+              onCopy={handleCopy}
+              onSelectAll={handleSelectAll}
+              onSelectNone={clear}
+              onClick={onClick}
+              visibleColumnsMap={visibleColumnsMap}
+            />
+            <div
+              className={cx(
+                CS.flex,
+                CS.justifyEnd,
+                CS.my3,
+                CS.syncStatusAwarePagination,
+              )}
+            >
+              {hasPagination && (
+                <PaginationControls
+                  showTotal
+                  page={page}
+                  pageSize={pageSize}
+                  total={totalMatchingItems}
+                  itemsLength={items.length}
+                  onNextPage={onNextPage}
+                  onPreviousPage={onPreviousPage}
+                />
+              )}
+            </div>
+          </Box>
+        )}
+      </MeasuredSkeleton>
     </>
   );
 };

@@ -11,9 +11,11 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { MeasuredSkeleton } from "metabase/common/components/Skeletons";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { dayjs } from "metabase/dayjs";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Box, Flex, Icon, Text } from "metabase/ui";
@@ -30,6 +32,48 @@ import { ACTIVE_STATUS, type ActiveStatus } from "../constants";
 import { PeopleListRow } from "./PeopleListRow";
 
 const defaultUsersValue: User[] = [];
+
+// Typical names and addresses, so a first visit's skeleton has realistic line
+// lengths. Later visits draw the list's shape as last shown.
+const SAMPLE_USERS: User[] = [
+  { first_name: "Maria", last_name: "Chen", email: "maria.chen@example.com" },
+  { first_name: "James", last_name: "Okafor", email: "jokafor@example.com" },
+  { first_name: "Priya", last_name: "Raman", email: "priya@example.com" },
+  { first_name: "Lucas", last_name: "Fernández", email: "lucas@example.com" },
+  { first_name: "Hannah", last_name: "Schmidt", email: "hschmidt@example.com" },
+].map(({ first_name, last_name, email }, index) => {
+  // An hour to ten days ago, so "Last Login" reads naturally.
+  const lastLogin = dayjs()
+    .subtract(4 ** index, "hours")
+    .toISOString();
+  return {
+    id: -(index + 1),
+    first_name,
+    last_name,
+    common_name: `${first_name} ${last_name}`,
+    email,
+    locale: null,
+    is_active: true,
+    is_qbnewb: false,
+    is_superuser: false,
+    is_data_analyst: false,
+    date_joined: lastLogin,
+    first_login: lastLogin,
+    last_login: lastLogin,
+    updated_at: lastLogin,
+    tenant_id: null,
+    attributes: null,
+    login_attributes: null,
+    is_installer: false,
+    has_invited_second_user: false,
+    has_question_and_dashboard: false,
+    can_write_any_collection: false,
+    personal_collection_id: null,
+    tenant_collection_id: null,
+    sso_source: null,
+    custom_homepage: null,
+  };
+});
 
 interface PeopleListQueryProps {
   query: {
@@ -71,9 +115,10 @@ export const PeopleList = ({
     tenancy: query.tenancy,
   });
 
-  const users = data?.data || defaultUsersValue;
+  // While loading, the list renders sample users under the skeleton.
+  const users = isLoading ? SAMPLE_USERS : (data?.data ?? defaultUsersValue);
 
-  const total = data?.total ?? 0;
+  const total = isLoading ? SAMPLE_USERS.length : (data?.total ?? 0);
 
   const dispatch = useDispatch();
 
@@ -169,8 +214,16 @@ export const PeopleList = ({
     return createMembership({ group_id: groupId, user_id: userId }).unwrap();
   };
 
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} noWrapper />;
+  }
+
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+    <MeasuredSkeleton
+      loading={isLoading}
+      id={`admin-people-list-${external ? "external" : "internal"}-${status}`}
+      classic={<LoadingAndErrorWrapper loading noWrapper />}
+    >
       <Box component="section">
         <table
           data-testid="admin-people-list-table"
@@ -266,6 +319,6 @@ export const PeopleList = ({
 
         {modalContent}
       </Box>
-    </LoadingAndErrorWrapper>
+    </MeasuredSkeleton>
   );
 };

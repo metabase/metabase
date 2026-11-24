@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import { useListApiKeysQuery } from "metabase/admin/settings/api/api-key";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { MeasuredSkeleton } from "metabase/common/components/Skeletons";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Box,
@@ -71,6 +72,41 @@ type InnerProps = ApiKeyUsageFilters & {
 
 const TABLE_HEIGHT = 500;
 
+const SKELETON_ID = "monitor-api-key-activity";
+
+const CLASSIC_SKELETON_COLUMN_WIDTHS = [1 / 3, 1 / 3, 1 / 3];
+
+// Typical keys, so a first visit's skeleton has realistic line lengths.
+// Later visits draw the table's shape as last shown.
+const SAMPLE_ROWS: ApiKeyActivityRow[] = [
+  {
+    name: "Production ETL",
+    group: "Administrators",
+    lastUsedAt: "2026-11-24T09:12:00Z",
+  },
+  {
+    name: "Slack reporting bot",
+    group: "Marketing",
+    lastUsedAt: "2026-11-23T17:45:00Z",
+  },
+  {
+    name: "dbt Cloud sync",
+    group: "Data team",
+    lastUsedAt: "2026-11-20T06:00:00Z",
+  },
+  { name: "Embedding service", group: "All Users", lastUsedAt: null },
+].map(({ name, group, lastUsedAt }, index) => ({
+  id: -(index + 1),
+  name,
+  group: { id: -(index + 1), name: group },
+  creator_id: -1,
+  masked_key: "mb_x7Rk****",
+  created_at: "2026-10-14T16:32:00Z",
+  updated_at: "2026-10-14T16:32:00Z",
+  updated_by: { id: -1, common_name: "Maria Chen" },
+  last_used_at: lastUsedAt,
+}));
+
 /**
  * Per-key activity table: name, group, and most recent activity for every API key matching the
  * page's API key/user/group filters, most recently active first. Which keys appear is decided by
@@ -87,7 +123,13 @@ export function ApiKeyActivityTable({
   ...filters
 }: Props) {
   if (!provider || !table || !groupMembersTable) {
-    return <Skeleton h={h} />;
+    return (
+      <MeasuredSkeleton loading id={SKELETON_ID} classic={<Skeleton h={h} />}>
+        <ApiKeyActivityCard title={filters.title} h={h} isLoading>
+          <ApiKeyActivityTreeTable rows={SAMPLE_ROWS} />
+        </ApiKeyActivityCard>
+      </MeasuredSkeleton>
+    );
   }
   return (
     <ApiKeyActivityTableInner
@@ -172,6 +214,63 @@ function ApiKeyActivityTableInner({
     [apiKeys, apiKeyId, userId, groupId, lastActivityByKeyId],
   );
 
+  const isLoading = isLoadingKeys || (isFetchingActivity && !activityData);
+  const error = keysError ?? activityError;
+
+  return (
+    <MeasuredSkeleton
+      loading={isLoading && !error}
+      id={SKELETON_ID}
+      classic={
+        <ApiKeyActivityCard title={title} h={h} isLoading>
+          <TreeTableSkeleton columnWidths={CLASSIC_SKELETON_COLUMN_WIDTHS} />
+        </ApiKeyActivityCard>
+      }
+    >
+      <ApiKeyActivityCard title={title} h={h} isLoading={isLoading}>
+        {error ? (
+          <Flex mih="60%" align="center" justify="center">
+            <LoadingAndErrorWrapper loading={false} error={error} />
+          </Flex>
+        ) : (
+          <ApiKeyActivityTreeTable
+            rows={isLoading ? SAMPLE_ROWS : (rows ?? [])}
+          />
+        )}
+      </ApiKeyActivityCard>
+    </MeasuredSkeleton>
+  );
+}
+
+function ApiKeyActivityCard({
+  title,
+  h,
+  isLoading,
+  children,
+}: {
+  title: string;
+  h: number;
+  isLoading: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Card withBorder shadow="none" px="xl" pt="lg" pb="lg" h={h}>
+      <Text fw="bold" mb="lg">
+        {title}
+      </Text>
+      <Box
+        h="calc(100% - 2rem)"
+        style={{ overflow: "auto" }}
+        data-testid="api-key-activity-table"
+        aria-busy={isLoading}
+      >
+        {children}
+      </Box>
+    </Card>
+  );
+}
+
+function ApiKeyActivityTreeTable({ rows }: { rows: ApiKeyActivityRow[] }) {
   const columns = useMemo<TreeTableColumnDef<ApiKeyActivityRow>[]>(
     () => [
       {
@@ -208,42 +307,17 @@ function ApiKeyActivityTableInner({
   );
 
   const treeTableInstance = useTreeTableInstance<ApiKeyActivityRow>({
-    data: rows ?? [],
+    data: rows,
     columns,
     getNodeId,
   });
 
-  const isLoading = isLoadingKeys || (isFetchingActivity && !activityData);
-  const error = keysError ?? activityError;
-
   return (
-    <Card withBorder shadow="none" px="xl" pt="lg" pb="lg" h={h}>
-      <Text fw="bold" mb="lg">
-        {title}
-      </Text>
-      <Box
-        h="calc(100% - 2rem)"
-        style={{ overflow: "auto" }}
-        data-testid="api-key-activity-table"
-        aria-busy={isLoading}
-      >
-        {error ? (
-          <Flex mih="60%" align="center" justify="center">
-            <LoadingAndErrorWrapper loading={false} error={error} />
-          </Flex>
-        ) : isLoading ? (
-          <TreeTableSkeleton
-            columnWidths={columns.map(() => 1 / columns.length)}
-          />
-        ) : (
-          <TreeTable
-            instance={treeTableInstance}
-            hierarchical={false}
-            ariaLabel={t`API keys`}
-            emptyState={<MonitorEmptyState label={t`No key activity`} />}
-          />
-        )}
-      </Box>
-    </Card>
+    <TreeTable
+      instance={treeTableInstance}
+      hierarchical={false}
+      ariaLabel={t`API keys`}
+      emptyState={<MonitorEmptyState label={t`No key activity`} />}
+    />
   );
 }

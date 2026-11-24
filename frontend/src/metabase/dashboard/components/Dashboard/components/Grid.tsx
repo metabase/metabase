@@ -1,9 +1,16 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
+import { MeasuredSkeleton } from "metabase/common/components/Skeletons";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/current-user";
+import {
+  getSketchLandingCards,
+  saveDashboardSketch,
+  useDashboardSketch,
+} from "metabase/dashboard/dashboard-sketch";
+import { getDashboardHeaderParameters } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/redux";
 import type { DashboardCard } from "metabase-types/api";
 
@@ -13,6 +20,7 @@ import {
   type DashboardGridProps,
 } from "../../DashboardGrid";
 import { DashboardGridSkeleton } from "../../DashboardGridSkeleton";
+import { DashboardGridSample } from "../../DashboardSketchSamples";
 import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
@@ -74,26 +82,53 @@ export const Grid = ({
   // A refetch of a dashboard that's already open keeps its cards on screen,
   // but shouldn't flash the empty state while it might be gaining cards.
   const isRefetchingWhileEmpty = isLoadingWithoutCards && isEmpty;
+  const isLoading = !dashboard || isRefetchingWhileEmpty;
 
-  if (!dashboard || isRefetchingWhileEmpty) {
-    return <DashboardGridSkeleton dashboardId={dashboardId} />;
+  const headerParameters = useSelector(getDashboardHeaderParameters);
+  const sketch = useDashboardSketch(dashboardId);
+  const hasSketchCards =
+    sketch != null && getSketchLandingCards(sketch).length > 0;
+
+  useEffect(() => {
+    if (dashboard && !isLoading && !isEditing) {
+      saveDashboardSketch({
+        dashboard,
+        selectedTabId,
+        tabDashcards: currentTabDashcards,
+        headerParameters,
+      });
+    }
+  }, [
+    dashboard,
+    isLoading,
+    isEditing,
+    selectedTabId,
+    currentTabDashcards,
+    headerParameters,
+  ]);
+
+  const classicSkeleton = <DashboardGridSkeleton dashboardId={dashboardId} />;
+
+  // A dashboard never shown before has no layout to draw yet
+  if (isLoading && !hasSketchCards) {
+    return classicSkeleton;
   }
 
-  if (isEmpty) {
-    if (!dashboardHasCards) {
-      return isEditableDashboard ? (
-        <DashboardEmptyState
-          canCreateQuestions={canCreateQuestions}
-          addQuestion={handleAddQuestion}
-          isDashboardEmpty={true}
-          isEditing={isEditing}
-        />
-      ) : (
-        <DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={true} />
-      );
-    }
+  const renderContent = () => {
+    if (isEmpty) {
+      if (!dashboardHasCards) {
+        return isEditableDashboard ? (
+          <DashboardEmptyState
+            canCreateQuestions={canCreateQuestions}
+            addQuestion={handleAddQuestion}
+            isDashboardEmpty={true}
+            isEditing={isEditing}
+          />
+        ) : (
+          <DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={true} />
+        );
+      }
 
-    if (dashboardHasCards && !tabHasCards) {
       return isEditableDashboard ? (
         <DashboardEmptyState
           canCreateQuestions={canCreateQuestions}
@@ -105,14 +140,28 @@ export const Grid = ({
         <DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={false} />
       );
     }
-  }
+
+    return (
+      <DashboardGridConnected
+        handleSetEditing={handleSetEditing}
+        className={className}
+        style={style}
+        p={p}
+      />
+    );
+  };
 
   return (
-    <DashboardGridConnected
-      handleSetEditing={handleSetEditing}
-      className={className}
-      style={style}
-      p={p}
-    />
+    <MeasuredSkeleton
+      loading={isLoading}
+      alwaysFromSample
+      classic={classicSkeleton}
+    >
+      {isLoading && sketch ? (
+        <DashboardGridSample sketch={sketch} />
+      ) : (
+        renderContent()
+      )}
+    </MeasuredSkeleton>
   );
 };

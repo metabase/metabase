@@ -29,6 +29,7 @@ import {
   HomeRecentSection,
   recentsFilter,
 } from "../HomeRecentSection";
+import { HomeSectionSkeleton } from "../HomeSectionSkeleton";
 import { HomeXraySection } from "../HomeXraySection";
 
 // Typical titles, so a first visit's skeleton has realistic line lengths.
@@ -79,7 +80,11 @@ export const HomeContent = (): JSX.Element | null => {
   const isSectionLoading = !isContentReady || !user;
 
   return (
-    <MeasuredSkeleton loading={isSectionLoading} id="home-content">
+    <MeasuredSkeleton
+      loading={isSectionLoading}
+      id="home-content"
+      classic={<HomeSectionSkeleton />}
+    >
       {isSectionLoading ? (
         <HomeRecentItems cards={SAMPLE_RECENT_CARDS} />
       ) : (

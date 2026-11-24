@@ -7,7 +7,10 @@ import { useListDatabasesQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { MeasuredSkeleton } from "metabase/common/components/Skeletons";
+import {
+  LoadingSkeleton,
+  MeasuredSkeleton,
+} from "metabase/common/components/Skeletons";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { getEngineLogo } from "metabase/databases/utils/engine";
@@ -21,6 +24,7 @@ import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
+import { BrowseCardsSkeleton } from "../components/BrowseSkeletons";
 import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 import DB from "./BrowseDatabases.module.css";
@@ -97,6 +101,14 @@ export const BrowseDatabases = () => {
           <MeasuredSkeleton
             loading={databaseCards == null}
             id="browse-databases"
+            classic={
+              <LoadingSkeleton>
+                <BrowseCardsSkeleton
+                  cards={SAMPLE_DATABASE_CARDS.length}
+                  size="lg"
+                />
+              </LoadingSkeleton>
+            }
           >
             <DatabaseGrid
               databaseCards={databaseCards ?? SAMPLE_DATABASE_CARDS}

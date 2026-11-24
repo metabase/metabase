@@ -8,7 +8,7 @@ interface SetupOpts {
 
 const setup = ({ loading }: SetupOpts) =>
   render(
-    <MeasuredSkeleton loading={loading} id="test-skeleton">
+    <MeasuredSkeleton loading={loading} id="test-skeleton" classic={null}>
       <button>{loading ? "Sample action" : "Real action"}</button>
     </MeasuredSkeleton>,
   );
@@ -26,7 +26,7 @@ describe("MeasuredSkeleton", () => {
     const { rerender } = setup({ loading: true });
 
     rerender(
-      <MeasuredSkeleton loading={false} id="test-skeleton">
+      <MeasuredSkeleton loading={false} id="test-skeleton" classic={null}>
         <button>Real action</button>
       </MeasuredSkeleton>,
     );

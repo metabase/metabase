@@ -1,0 +1,14 @@
+/*
+ * Skullet wraps the card's body in its own elements: a reveal, holding a pane
+ * per state, holding the hand-drawn skeleton in an [skullet-own] wrapper.
+ * Each fills the card below its title, like the body it wraps.
+ */
+.root,
+.root > [skullet-pane],
+.root > [skullet-pane] > [skullet-own] {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+}

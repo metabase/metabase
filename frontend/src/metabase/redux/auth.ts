@@ -3,7 +3,6 @@ import {
   createAction,
   createReducer,
 } from "@reduxjs/toolkit";
-import { forgetShapes } from "skullet";
 
 import { Api } from "metabase/api";
 import {
@@ -13,6 +12,7 @@ import {
   isMfaEnrollment,
   sessionApi,
 } from "metabase/api/session";
+import { forgetRememberedSkeletons } from "metabase/common/components/Skeletons/remembered-skeletons";
 import { getUser, refetchCurrentUser } from "metabase/current-user";
 import { openNavbar } from "metabase/redux/app";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -142,8 +142,8 @@ export const logout = createAsyncThunk(
       const state = getState();
       const user = getUser(state);
 
-      // Skeleton shapes remembered from this user's pages
-      forgetShapes();
+      // Skeleton shapes and layouts remembered from this user's pages
+      forgetRememberedSkeletons();
 
       if (user?.sso_source === "saml") {
         const { "saml-logout-url": samlLogoutUrl } =

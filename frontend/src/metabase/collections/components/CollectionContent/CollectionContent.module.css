@@ -5,3 +5,11 @@
 .main {
   overflow-y: auto;
 }
+
+/* The page scrolls within its own height, so the measured skeleton's reveal
+   and panes, which wrap it, pass that height through. */
+.page,
+.page > * > [skullet-reveal],
+.page > * > [skullet-reveal] > [skullet-pane] {
+  height: 100%;
+}
