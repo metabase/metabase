@@ -1,5 +1,6 @@
 (ns metabase.types.core-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing are]]
    [metabase.types.coercion-hierarchies :as coercion-hierarchies]
    [metabase.types.core :as types]))
@@ -89,11 +90,14 @@
     ;; a random type descendant of type/* should not have this coercion
     (is (= nil (types/coercion-possibilities :type/DruidHyperUnique)))))
 
+(defn- hierarchy-keywords [h]
+  (into (set (keys (:parents h)))
+        (mapcat val)
+        (:parents h)))
+
 (defn- keywords-in-namespace [keyword-namespace]
-  (->> #?(:clj (var-get #'clojure.core/global-hierarchy)
-          :cljs @(#'clojure.core/get-global-hierarchy))
-       :parents
-       keys
+  (->> (hierarchy-keywords #?(:clj (var-get #'clojure.core/global-hierarchy)
+                              :cljs @(#'clojure.core/get-global-hierarchy)))
        (filter keyword?)
        (filter #(= (namespace %) (name keyword-namespace)))))
 
@@ -135,8 +139,139 @@
    {:required   [:Coercion/*]
     :disallowed [:type/* :Semantic/* :Relation/* :entity/*]}))
 
-(deftest ^:parallel entity-types-test
-  (test-keywords-in-namespace-derived-from
-   "entity"
-   {:required   [:entity/*]
-    :disallowed [:type/* :Semantic/* :Relation/* :Coercion/*]}))
+(deftest ^:parallel entity-hierarchy-test
+  (testing "every entity type derives from :entity/* and lives outside the global hierarchy"
+    (doseq [t (disj (hierarchy-keywords types/entity-hierarchy) :entity/*)]
+      (testing t
+        (is (= "entity" (namespace t)))
+        (is (isa? types/entity-hierarchy t :entity/GenericTable))
+        (is (not (isa? t :entity/*))))))
+  (testing "the subjects"
+    (is (set/subset? #{:entity/GenericTable
+                       :entity/PersonTable :entity/UserTable :entity/ContactTable :entity/EmployeeTable :entity/CustomerTable
+                       :entity/CompanyTable :entity/OrganizationTable :entity/TransactionTable :entity/LineItemTable
+                       :entity/ProductTable :entity/SubscriptionTable :entity/EventTable :entity/MessageTable
+                       :entity/SessionTable :entity/CampaignTable :entity/OpportunityTable :entity/TicketTable
+                       :entity/ProjectTable :entity/LocationTable :entity/DeviceTable :entity/CalendarTable}
+                     (hierarchy-keywords types/entity-hierarchy))))
+  (testing "people subjects share a parent"
+    (doseq [t [:entity/ContactTable :entity/EmployeeTable :entity/CustomerTable]]
+      (is (isa? types/entity-hierarchy t :entity/PersonTable))))
+  (testing "UserTable keeps GenericTable as its parent, so x-ray template specificity does not change"
+    (is (= #{:entity/GenericTable} (parents types/entity-hierarchy :entity/UserTable)))))
+
+(deftest ^:parallel table-role-hierarchy-test
+  (let [roles (disj (hierarchy-keywords types/table-role-hierarchy) :role/*)]
+    (testing "every role derives from :role/* and lives outside the global and entity hierarchies"
+      (doseq [role roles]
+        (testing role
+          (is (= "role" (namespace role)))
+          (is (isa? types/table-role-hierarchy role :role/*))
+          (is (not (isa? role :role/*)))
+          (is (not (isa? types/entity-hierarchy role :entity/*))))))
+    (testing "the roles"
+      (is (set/subset? #{:role/Fact :role/TransactionFact :role/EventFact :role/ActivityStream
+                         :role/PeriodicSnapshotFact :role/UserDayFact :role/CohortSnapshot
+                         :role/AccumulatingSnapshotFact :role/FactlessFact :role/AggregateFact :role/SessionFact
+                         :role/Dimension :role/EntityDimension :role/DateDimension :role/TimeDimension
+                         :role/LookupDimension :role/HistoryDimension :role/MiniDimension :role/JunkDimension
+                         :role/OutriggerDimension :role/Bridge :role/HierarchyBridge :role/ArrayChild
+                         :role/CustomPropertyTable :role/TranslationTable :role/ConfigurationTable
+                         :role/SystemTable :role/OneBigTable :role/Hub :role/Link :role/Satellite
+                         :role/PointInTime :role/Anchor :role/Attribute :role/Tie :role/Knot}
+                       roles)))
+    (testing "role parents"
+      (are [role parent] (isa? types/table-role-hierarchy role parent)
+        :role/TransactionFact          :role/Fact
+        :role/ActivityStream           :role/EventFact
+        :role/SessionFact              :role/AggregateFact
+        :role/UserDayFact              :role/PeriodicSnapshotFact
+        :role/CohortSnapshot           :role/PeriodicSnapshotFact
+        :role/HistoryDimension         :role/Dimension
+        :role/LookupDimension          :role/Dimension
+        :role/HierarchyBridge          :role/Bridge
+        :role/ArrayChild               :role/Bridge))
+    (testing "bridges and dimensions are not facts"
+      (is (not (isa? types/table-role-hierarchy :role/ArrayChild :role/Fact)))
+      (is (not (isa? types/table-role-hierarchy :role/HistoryDimension :role/Fact))))))
+
+(deftest ^:parallel semantic-layer-types-test
+  (testing "semantic-layer types derive from the type consumers check with isa?"
+    (are [t parent] (isa? t parent)
+      ;; keys and identity
+      :type/SurrogateKey          :Semantic/*
+      :type/HashKey               :type/SurrogateKey
+      :type/NaturalKey            :Semantic/*
+      :type/DurableKey            :type/NaturalKey
+      :type/ExternalID            :type/NaturalKey
+      :type/DegenerateDimension   :type/NaturalKey
+      :type/TenantKey             :Semantic/*
+      :type/ParentKey             :Semantic/*
+      :type/PolymorphicKey        :Semantic/*
+      :type/RoleKey               :Semantic/*
+      :type/TypeDiscriminator     :type/Category
+      :type/ArrayIndex            :Semantic/*
+      :type/Version               :Semantic/*
+      ;; time roles
+      :type/EventTimestamp        :type/DateTime
+      :type/MilestoneTimestamp    :type/DateTime
+      :type/StartTimestamp        :type/MilestoneTimestamp
+      :type/EndTimestamp          :type/MilestoneTimestamp
+      :type/ValidFrom             :type/DateTime
+      :type/ValidTo               :type/DateTime
+      :type/PeriodKey             :Semantic/*
+      :type/LoadTimestamp         :type/DateTime
+      :type/LastActivityTimestamp :type/DateTime
+      :type/TimeZone              :type/Category
+      ;; measures
+      :type/Balance               :type/Number
+      :type/Rate                  :type/Share
+      :type/UnitPrice             :type/Price
+      :type/UnitPrice             :type/Currency
+      :type/Count                 :type/Number
+      :type/Weight                :type/Share
+      :type/RangeBound            :type/Number
+      :type/Bytes                 :type/Quantity
+      :type/CurrencyCode          :type/Category
+      :type/UnitOfMeasure         :type/Category
+      ;; categories and enums
+      :type/Status                :type/Category
+      :type/Priority              :type/Category
+      :type/Reason                :type/Category
+      :type/Kind                  :type/Category
+      :type/Channel               :type/Source
+      :type/Locale                :type/Category
+      :type/Color                 :type/Category
+      :type/Tags                  :Semantic/*
+      :type/Flag                  :Semantic/*
+      :type/SoftDeleteFlag        :type/Flag
+      :type/CurrentRowFlag        :type/Flag
+      :type/TestDataFlag          :type/Flag
+      :type/PrimaryFlag           :type/Flag
+      ;; identity and contact text
+      :type/Phone                 :type/Text
+      :type/UserAgent             :type/Text
+      :type/FilePath              :type/Text
+      :type/Hash                  :type/Text
+      ;; structure and lineage
+      :type/SystemColumn          :Semantic/*
+      :type/RowHash               :type/SystemColumn
+      :type/CustomProperty        :Semantic/*
+      :type/SourceSystem          :type/Category
+      :type/HierarchyLevel        :Semantic/*
+      :type/HierarchyPath         :type/Text
+      :type/SortOrder             :Semantic/*)))
+
+(deftest ^:parallel semantic-layer-key-types-test
+  (testing "key types are semantic types, not relations, so code that checks `:type/PK` or `:type/FK` ignores them"
+    (doseq [t [:type/SurrogateKey :type/HashKey :type/TenantKey :type/ParentKey :type/PolymorphicKey :type/RoleKey
+               :type/NaturalKey]]
+      (testing t
+        (is (isa? t :Semantic/*))
+        (is (not (isa? t :Relation/*)))))))
+
+(deftest ^:parallel semantic-layer-types-without-data-type-test
+  (testing "types stored in more than one data type have no data type parent"
+    (doseq [t [:type/Flag :type/Tags :type/PeriodKey]]
+      (testing t
+        (is (not (isa? t :type/*)))))))
