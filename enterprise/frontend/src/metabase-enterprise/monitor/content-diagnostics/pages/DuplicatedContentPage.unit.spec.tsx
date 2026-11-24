@@ -317,9 +317,7 @@ describe("DuplicatedContentPage", () => {
     expect(await within(list).findAllByText(NAME)).toHaveLength(2);
     expect(within(list).getAllByText("Twin dashboard")).toHaveLength(2);
     expect(within(list).getAllByText("Twin document")).toHaveLength(2);
-    expect(
-      within(list).getByRole("img", { name: "Question" }),
-    ).toBeInTheDocument();
+    expect(within(list).getByRole("img", { name: "Question" })).toBeVisible();
 
     const modelRow = within(list)
       .getAllByRole("row", { name: new RegExp(NAME) })
@@ -333,10 +331,15 @@ describe("DuplicatedContentPage", () => {
     const duplicates = within(sidebarRegion).getByRole("region", {
       name: "Duplicates",
     });
-    expect(within(duplicates).getByText("Duplicates (1)")).toBeInTheDocument();
-    expect(
-      within(duplicates).getByRole("link", { name: `${NAME}, Question` }),
-    ).toHaveAttribute("href", expect.stringContaining("/question/101"));
+    expect(within(duplicates).getByText("Duplicates (1)")).toBeVisible();
+    const peerLink = within(duplicates).getByRole("link", {
+      name: `${NAME}, Question`,
+    });
+    expect(peerLink).toBeVisible();
+    expect(peerLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("/question/101"),
+    );
   });
 
   it("reports duplicates that aren't visible to the user", async () => {

@@ -434,8 +434,8 @@ describe("ImbalancedContentPage", () => {
             name: `Details for ${name}`,
           });
           const info = within(sidebar).getByRole("region", { name: "Info" });
-          expect(within(info).getByText("Content count")).toBeInTheDocument();
-          expect(within(info).getByText(label)).toBeInTheDocument();
+          expect(within(info).getByText("Content count")).toBeVisible();
+          expect(within(info).getByText(label)).toBeVisible();
         }
       },
     );

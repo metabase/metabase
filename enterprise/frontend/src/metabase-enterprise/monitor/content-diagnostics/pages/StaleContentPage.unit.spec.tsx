@@ -663,8 +663,8 @@ describe("StaleContentPage", () => {
         name: `Details for ${name}`,
       });
       const info = within(sidebar).getByRole("region", { name: "Info" });
-      expect(within(info).getByText(label)).toBeInTheDocument();
-      expect(within(info).getByText(LAST_ACTIVE_DISPLAY)).toBeInTheDocument();
+      expect(within(info).getByText(label)).toBeVisible();
+      expect(within(info).getByText(LAST_ACTIVE_DISPLAY)).toBeVisible();
     }
   });
 
