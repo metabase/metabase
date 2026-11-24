@@ -4984,9 +4984,9 @@
                                                      :details      {:emails ["yo@broken.sub"]}
                                                      :enabled      true}
          :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                         :user_id          (mt/user->id :lucky)}
-         :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                          :user_id          (mt/user->id :crowberto)}
+         :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                         :user_id          (mt/user->id :trashbird)}
          ;; Broken slack pulse
          :model/Pulse {bad-slack-pulse-id :id} {:name          "Bad Slack Pulse"
                                                 :dashboard_id  dash-id
@@ -5011,9 +5011,9 @@
                                                           :pulse_id     good-pulse-id
                                                           :enabled      true}
          :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
-                                         :user_id          (mt/user->id :lucky)}
+                                         :user_id          (mt/user->id :crowberto)}
          :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
-                                         :user_id          (mt/user->id :crowberto)}]
+                                         :user_id          (mt/user->id :trashbird)}]
         (testing "The pulses are active"
           (is (false? (t2/select-one-fn :archived :model/Pulse :id bad-pulse-id)))
           (is (false? (t2/select-one-fn :archived :model/Pulse :id bad-slack-pulse-id)))
@@ -5056,9 +5056,9 @@
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify affected users (#30100)"
     (let [params {:dash-creator-id (mt/user->id :rasta)
-                  :pulse-creator-id (mt/user->id :trashbird)
-                  :expected-email-pulse-recipients #{"trashbird@metabase.com" "rasta@metabase.com" "crowberto@metabase.com" "lucky@metabase.com" "yo@broken.sub"}
-                  :expected-slack-pulse-recipients #{"trashbird@metabase.com" "rasta@metabase.com"}}]
+                  :pulse-creator-id (mt/user->id :lucky)
+                  :expected-email-pulse-recipients #{"rasta@metabase.com" "lucky@metabase.com" "crowberto@metabase.com" "yo@broken.sub"}
+                  :expected-slack-pulse-recipients #{"rasta@metabase.com" "lucky@metabase.com"}}]
       (testing "Send emails links when disable_links: false"
         (test-handle-broken-subscription-notification! (assoc params :disable-links? false)))
       (testing "Do not include linsk in emails when disable_links: true"

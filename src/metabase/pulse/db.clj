@@ -437,9 +437,9 @@
   (t2/select-one [:model/User :first_name :last_name :email] :id [:auto/param user-id]))
 
 (defn users-names-and-emails
-  "The first names, last names, and emails of the Users with `user-ids`."
+  "The first names, last names, and emails of active Users within `user-ids`."
   [user-ids]
-  (t2/select [:model/User :first_name :last_name :email] :id [:in user-ids]))
+  (t2/select [:model/User :first_name :last_name :email] :id [:in user-ids] :is_active true))
 
 (defn pulse-channel-kinds-for-pulse
   "The id, channel type, and details of the PulseChannels of the Pulse with `pulse-id`."
