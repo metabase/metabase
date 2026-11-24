@@ -449,6 +449,13 @@
                   "a user who can read the series card is told")
               (is (not (contains? (call :rasta) :dropped_connections))))))))))
 
+(def ^:private gone-filter
+  "The dashboard filter the archived-subscription tests remove."
+  {:id   "gone"
+   :name "Gone"
+   :slug "gone"
+   :type "category"})
+
 (defn- remove-gone-filter!
   "The `dashboard_write` result of `user`, holding `scopes`, removing the filter `gone` from `dash`."
   [user scopes dash]
@@ -460,10 +467,7 @@
 (deftest remove-parameter-reports-archived-subscriptions-test
   (mt/with-fake-inbox
     (mt/with-temp [:model/Dashboard             dash             {:name       "Sales"
-                                                                  :parameters [{:id   "gone"
-                                                                                :name "Gone"
-                                                                                :slug "gone"
-                                                                                :type "category"}]}
+                                                                  :parameters [gone-filter]}
                    :model/Pulse                 {pulse-id :id}   {:dashboard_id (:id dash)
                                                                   :creator_id   (mt/user->id :rasta)
                                                                   ;; Saved before the filter was renamed "Gone".
@@ -488,10 +492,7 @@
   (testing "a subscription the caller can't read adds to the count and is left out of the list"
     (mt/with-fake-inbox
       (mt/with-temp [:model/Dashboard    dash        {:name       "Sales"
-                                                      :parameters [{:id   "gone"
-                                                                    :name "Gone"
-                                                                    :slug "gone"
-                                                                    :type "category"}]}
+                                                      :parameters [gone-filter]}
                      :model/Pulse        {own :id}   {:dashboard_id (:id dash)
                                                       :creator_id   (mt/user->id :rasta)
                                                       :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
@@ -510,7 +511,7 @@
   (testing "when the caller can read none of the archived subscriptions, the result has only their count"
     (mt/with-fake-inbox
       (mt/with-temp [:model/Dashboard dash {:name       "Sales"
-                                            :parameters [{:id "gone", :name "Gone", :slug "gone", :type "category"}]}
+                                            :parameters [gone-filter]}
                      :model/Pulse     _    {:dashboard_id (:id dash)
                                             :creator_id   (mt/user->id :crowberto)
                                             :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
@@ -522,7 +523,7 @@
   (testing "a token that can't read the dashboard back learns how many subscriptions the save archived"
     (mt/with-fake-inbox
       (mt/with-temp [:model/Dashboard dash {:name       "Sales"
-                                            :parameters [{:id "gone", :name "Gone", :slug "gone", :type "category"}]}
+                                            :parameters [gone-filter]}
                      :model/Pulse     _    {:dashboard_id (:id dash)
                                             :creator_id   (mt/user->id :rasta)
                                             :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
