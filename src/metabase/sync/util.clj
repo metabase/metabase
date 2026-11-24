@@ -272,8 +272,8 @@
          (throw e))))))
 
 (defn rethrow-fatal
-  "Throw `result` when it is a Throwable with an Error or an interrupt in its chain, which no sync step retries past;
-  else return it."
+  "Throw `result` when it is a Throwable with an Error or an interrupt in its chain, which no sync step retries past,
+  and return it otherwise."
   [result]
   (if (and (instance? Throwable result)
            (some #(or (instance? Error %) (instance? InterruptedException %)) (u/full-exception-chain result)))

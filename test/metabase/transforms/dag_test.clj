@@ -166,7 +166,8 @@
           (t2/delete! :model/TransformDagRun :id run-id))))))
 
 (defn- cancel-statement-count!
-  "Cancel a DAG run that has `n` active member runs, and return the statements that took and the member run ids."
+  "Cancel a DAG run that has `n` active member runs, and return the number of statements that took and the member run
+  ids."
   [n]
   (mt/with-temp [:model/Transform {seed :id} {:name "seed"}]
     (let [transform-ids (t2/insert-returning-pks! :model/Transform

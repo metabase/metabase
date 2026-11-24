@@ -35,7 +35,7 @@
    :source_entity_type mi/transform-keyword})
 
 (mr/def ::error-input
-  "Schema for error input maps passed to replace-errors-for-entities!"
+  "Schema for error input maps passed to [[replace-errors-for-entities!]]."
   [:map {:closed true}
    [:error-type         ::lib.schema.validate/validate-error-type]
    [:error-detail       {:optional true} [:maybe :string]]

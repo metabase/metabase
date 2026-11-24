@@ -433,7 +433,7 @@
         (is (mi/can-read? (t2/hydrate tenant-app :can_read)))))))
 
 (defn- add-groups-statement-count!
-  "POST `n` new groups to a new app and return the statements that took and the ids of the groups."
+  "POST `n` new groups to a new app and return the number of statements that took and the ids of the groups."
   [n]
   (mt/with-temp [:model/Collection {app-coll-id :id} {:namespace :data-apps}
                  :model/DataApp app {:resource_collection_id app-coll-id}]

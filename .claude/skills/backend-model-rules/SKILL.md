@@ -405,6 +405,7 @@ number of statements, whatever its length.
     change when rows of one call get different changes;
   - a nested tree loaded or written one layer at a time: a statement per level (collection depth, a dependency
     chain), never per node;
+  - one permission query per 100 users when collection permissions are read for many users;
   - a single-row entry point called n times by its caller, and the per-row work of a scheduled job.
 - A hydration never runs a statement per row: a key that reads the app DB is a batched hydration
   (`mi/define-batched-hydration-method`) that reads for all rows together; a simple, per-row hydration only computes
@@ -435,8 +436,8 @@ fixed enum, a page, or a list the code itself bounds needs nothing.
   once and returns the rows of every partition in one vector.
 - The other shapes have their own helper: `app-db/select-batched-map` for a map, `app-db/select-batched-set` for a
   set (nil when empty, as Toucan's set selects), `app-db/select-batched-reducible` for a reducible,
-  `app-db/select-batched-by-keys` for a map of several lists, and `app-db/sum-batched` for the row count of a
-  partitioned write.
+  `app-db/select-batched-by-keys` for a read that takes a map with a list under several keys, and
+  `app-db/sum-batched` for the row count of a partitioned write.
 - A read that needs the partitions themselves (`some` for an `exists?`, pairs of two lists) takes them from
   `app-db/select-partitions`.
 - A count is the sum of the partitions' counts only when no row can match two partitions.

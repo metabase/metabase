@@ -231,8 +231,8 @@
 
 (defn- user-settings-fields!
   "Inserts into the Table with `table-id` the Fields the upsert tests write: one without settings, one with settings,
-  a foreign key with a user-set target and an external remapping, and an integer Field with an internal remapping;
-  returns their ids by name."
+  a foreign key with a user-set target and an external remapping, and an integer Field with an internal remapping,
+  and returns their ids by name."
   [table-id]
   (let [[target-id] (mapv :id (field/create-fields! [{:table_id table-id :name "TARGET" :base_type :type/Integer
                                                       :database_type "INTEGER"}]))
