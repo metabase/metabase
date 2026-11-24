@@ -1,0 +1,6 @@
+.separator {
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  font-style: italic;
+  user-select: none;
+}

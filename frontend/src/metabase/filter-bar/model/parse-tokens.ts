@@ -2,12 +2,13 @@ import { match } from "ts-pattern";
 
 import type { FilterTree } from "../types";
 
-import type {
-  NodeType,
-  ParseError,
-  ParseErrorCode,
-  ParseResult,
-  Token,
+import {
+  type NodeType,
+  type ParseError,
+  type ParseErrorCode,
+  type ParseResult,
+  type Token,
+  isOpenToken,
 } from "./types";
 import {
   PRECEDENCE,
@@ -86,7 +87,7 @@ const parseSegment = <F>(tokens: readonly Token<F>[]): SegmentResult<F> => {
       })
       .with({ type: "close" }, () => {
         const previous = tokens[index - 1];
-        if (previous?.type === "open") {
+        if (isOpenToken(previous)) {
           return failure("empty-parentheses", index - 1, index);
         }
         if (expectsOperand) {
@@ -122,18 +123,20 @@ const parseSegment = <F>(tokens: readonly Token<F>[]): SegmentResult<F> => {
 
 export const parseTokens = <F>(tokens: readonly Token<F>[]): ParseResult<F> => {
   const stages: FilterTree<F>[] = [];
-  let offset = 0;
 
   for (const segment of splitByThen(tokens)) {
-    const result = parseSegment(segment);
+    const result = parseSegment(segment.tokens);
     if (result.type === "error") {
       return {
         ...result,
-        indexes: result.indexes.map((index) => index + offset),
+        indexes: result.indexes.map((index) => index + segment.offset),
       };
     }
+    // Stages without filters have no `then` of their own (see `ThenToken`).
+    while (stages.length < segment.stage) {
+      stages.push(emptyTree());
+    }
     stages.push(result.tree);
-    offset += segment.length + 1;
   }
 
   return { type: "ok", stages: dropTrailingEmpty(stages, isEmptyTree) };

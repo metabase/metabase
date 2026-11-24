@@ -4,7 +4,8 @@ import {
   OPEN,
   OR,
   TEST_ADAPTER,
-  THEN,
+  THEN_1,
+  THEN_2,
   and,
   createTestPill,
   leaf,
@@ -56,11 +57,15 @@ describe("stagesToTokens", () => {
     [
       "then splits the whole expression",
       [or(leaf("A"), leaf("B")), leaf("C")],
-      [A, OR, B, THEN, C],
+      [A, OR, B, THEN_1, C],
     ],
-    ["no row filters", [and(), leaf("C")], [THEN, C]],
+    ["no row filters", [and(), leaf("C")], [THEN_1, C]],
+    [
+      "a filter on the second summary only",
+      [and(), and(), leaf("C")],
+      [THEN_2, C],
+    ],
     ["trailing empty stages are dropped", [leaf("A"), and(), and()], [A]],
-    ["no filters in any stage", [and(), and()], []],
   ])("%s", (_, stages, expected) => {
     expect(stagesToTokens(stages, TEST_ADAPTER)).toEqual(expected);
   });
@@ -74,12 +79,13 @@ describe("stagesToTokens", () => {
       }),
     };
 
-    const tokens = stagesToTokens([leaf("A"), and(), leaf("C")], adapter);
+    const stages: FilterStages<string> = [leaf("A"), and(), leaf("C")];
+
+    const tokens = stagesToTokens(stages, adapter);
 
     expect(tokens).toEqual([
       { type: "pill", filter: "A", content: createTestPill("A@0") },
-      THEN,
-      THEN,
+      THEN_2,
       { type: "pill", filter: "C", content: createTestPill("C@2") },
     ]);
   });

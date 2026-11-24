@@ -2,8 +2,10 @@ import type { ReactNode } from "react";
 
 import type { IconName } from "metabase-types/api";
 
+export type LeafTree<F> = { type: "leaf"; filter: F };
+
 export type FilterTree<F> =
-  | { type: "leaf"; filter: F }
+  | LeafTree<F>
   | { type: "and"; children: readonly FilterTree<F>[] }
   | { type: "or"; children: readonly FilterTree<F>[] };
 
@@ -29,9 +31,18 @@ export type FilterParts = {
   values: readonly unknown[];
 };
 
+export type PartsPillContent = { type: "parts"; parts: FilterParts };
+export type OpaquePillContent = {
+  type: "opaque";
+  displayName: string;
+  icon: IconName;
+};
+export type ExpressionPillContent = { type: "expression"; expression: string };
+
 export type PillContent =
-  | { type: "parts"; parts: FilterParts }
-  | { type: "opaque"; displayName: string; icon: IconName };
+  | PartsPillContent
+  | OpaquePillContent
+  | ExpressionPillContent;
 
 export type ColumnItem<F> =
   | { type: "column"; column: FilterColumn; stage?: number }
@@ -75,3 +86,18 @@ export type FilterBarProps<F> = {
   onChange: (stages: FilterStages<F>) => void;
   adapter: FilterBarAdapter<F>;
 };
+
+export const isLeafTree = <F>(tree: FilterTree<F>): tree is LeafTree<F> =>
+  tree.type === "leaf";
+
+export const isPartsPillContent = (
+  content: PillContent,
+): content is PartsPillContent => content.type === "parts";
+
+export const isOpaquePillContent = (
+  content: PillContent,
+): content is OpaquePillContent => content.type === "opaque";
+
+export const isExpressionPillContent = (
+  content: PillContent,
+): content is ExpressionPillContent => content.type === "expression";

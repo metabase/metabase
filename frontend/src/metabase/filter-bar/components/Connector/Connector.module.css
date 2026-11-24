@@ -1,0 +1,25 @@
+.connector {
+  background-color: var(--mb-color-background_surface-secondary);
+  cursor: pointer;
+  transition: background-color 120ms;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-secondary-hover);
+  }
+}
+
+.connector:hover .label {
+  visibility: hidden;
+}
+
+.removeIcon {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.connector:hover .removeIcon {
+  display: flex;
+}

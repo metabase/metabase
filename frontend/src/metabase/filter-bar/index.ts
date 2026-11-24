@@ -1,3 +1,5 @@
+export { FilterBar } from "./components/FilterBar/FilterBar";
+export { FilterBarDevPage } from "./dev/FilterBarDevPage";
 export type {
   ColumnGroup,
   ColumnItem,

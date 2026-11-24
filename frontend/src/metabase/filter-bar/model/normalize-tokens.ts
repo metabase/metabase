@@ -1,8 +1,16 @@
 import { match } from "ts-pattern";
 
 import { parseTokens } from "./parse-tokens";
-import type { ParseError, Token } from "./types";
-import { dropTrailingEmpty, joinTokens, splitByThen } from "./utils";
+import {
+  type ParseError,
+  type Token,
+  isAndToken,
+  isCloseToken,
+  isOpenToken,
+  isOrToken,
+  isThenToken,
+} from "./types";
+import { closeToken, connectorToken } from "./utils";
 
 const removeAt = <F>(
   tokens: readonly Token<F>[],
@@ -14,7 +22,7 @@ const insertAndAt = <F>(
   index: number,
 ): Token<F>[] => [
   ...tokens.slice(0, index),
-  { type: "and" },
+  connectorToken("and"),
   ...tokens.slice(index),
 ];
 
@@ -23,24 +31,24 @@ const closeGroups = <F>(
   openIndex: number,
 ): Token<F>[] | null => {
   const thenIndex = tokens.findIndex(
-    (token, index) => index > openIndex && token.type === "then",
+    (token, index) => index > openIndex && isThenToken(token),
   );
   const end = thenIndex === -1 ? tokens.length : thenIndex;
 
   const groups: { hasAnd: boolean; hasOr: boolean; isAfterAnd: boolean }[] = [];
   tokens.slice(openIndex, end).forEach((token, offset) => {
     const group = groups.at(-1);
-    if (token.type === "open") {
-      const isAfterAnd = tokens[openIndex + offset - 1]?.type === "and";
+    if (isOpenToken(token)) {
+      const isAfterAnd = isAndToken(tokens[openIndex + offset - 1]);
       groups.push({ hasAnd: false, hasOr: false, isAfterAnd });
     }
-    if (token.type === "close") {
+    if (isCloseToken(token)) {
       groups.pop();
     }
-    if (token.type === "and" && group) {
+    if (isAndToken(token) && group) {
       group.hasAnd = true;
     }
-    if (token.type === "or" && group) {
+    if (isOrToken(token) && group) {
       group.hasOr = true;
     }
   });
@@ -54,7 +62,7 @@ const closeGroups = <F>(
 
   return [
     ...tokens.slice(0, end),
-    ...groups.map((): Token<F> => ({ type: "close" })),
+    ...groups.map(() => closeToken<F>()),
     ...tokens.slice(end),
   ];
 };
@@ -72,18 +80,19 @@ const fixError = <F>(
     .with("unexpected-closing-parenthesis", () => null)
     .exhaustive();
 
-const dropTrailingThens = <F>(tokens: readonly Token<F>[]): Token<F>[] =>
-  joinTokens(
-    dropTrailingEmpty(splitByThen(tokens), (segment) => segment.length === 0),
-    { type: "then" },
-  );
+const dropDanglingThens = <F>(tokens: readonly Token<F>[]): Token<F>[] =>
+  tokens.filter((token, index) => {
+    const next = tokens[index + 1];
+    const isEmptyStage = next === undefined || isThenToken(next);
+    return !isThenToken(token) || !isEmptyStage;
+  });
 
 export const normalizeTokens = <F>(
   tokens: readonly Token<F>[],
 ): readonly Token<F>[] => {
   const result = parseTokens(tokens);
   if (result.type === "ok") {
-    return dropTrailingThens(tokens);
+    return dropDanglingThens(tokens);
   }
   const fixed = fixError(tokens, result);
   return fixed ? normalizeTokens(fixed) : tokens;

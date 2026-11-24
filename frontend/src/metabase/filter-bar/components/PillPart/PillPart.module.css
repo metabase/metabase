@@ -1,0 +1,12 @@
+.part {
+  border-radius: var(--mantine-radius-xxxs);
+
+  &:not(:last-child) {
+    margin-right: -2px;
+  }
+}
+
+.column {
+  border-radius: var(--mantine-radius-sm) var(--mantine-radius-xxxs)
+    var(--mantine-radius-xxxs) var(--mantine-radius-sm);
+}

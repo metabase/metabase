@@ -1,4 +1,4 @@
-import { AND, CLOSE, OPEN, OR, THEN, pill } from "../test-utils";
+import { AND, CLOSE, OPEN, OR, THEN_1, THEN_2, pill } from "../test-utils";
 
 import { normalizeTokens } from "./normalize-tokens";
 import { parseTokens } from "./parse-tokens";
@@ -14,8 +14,8 @@ describe("normalizeTokens", () => {
     ["nothing", [], []],
     [
       "a valid expression stays as it is",
-      [A, AND, OPEN, B, OR, C, CLOSE, THEN, D],
-      [A, AND, OPEN, B, OR, C, CLOSE, THEN, D],
+      [A, AND, OPEN, B, OR, C, CLOSE, THEN_1, D],
+      [A, AND, OPEN, B, OR, C, CLOSE, THEN_1, D],
     ],
     ["adds and between pills", [A, B], [A, AND, B]],
     [
@@ -38,12 +38,11 @@ describe("normalizeTokens", () => {
     ],
     ["drops nested empty parentheses", [OPEN, OPEN, CLOSE, CLOSE], []],
     ["drops an open parenthesis at the end", [A, AND, OPEN], [A]],
-    ["drops a connector before then", [A, AND, THEN, B], [A, THEN, B]],
-    ["drops a connector in a later stage", [A, THEN, B, AND], [A, THEN, B]],
-    ["drops trailing empty stages", [A, THEN, THEN], [A]],
-    ["keeps a leading then", [THEN, C], [THEN, C]],
-    ["keeps an empty stage between", [A, THEN, THEN, C], [A, THEN, THEN, C]],
-    ["drops a lone then", [THEN], []],
+    ["drops a connector before then", [A, AND, THEN_1, B], [A, THEN_1, B]],
+    ["drops a connector in a later stage", [A, THEN_1, B, AND], [A, THEN_1, B]],
+    ["drops trailing empty stages", [A, THEN_1, THEN_2], [A]],
+    ["keeps a leading then", [THEN_1, C], [THEN_1, C]],
+    ["drops an empty stage between", [A, THEN_1, THEN_2, C], [A, THEN_2, C]],
   ])("%s", (_, tokens, expected) => {
     expect(normalizeTokens(tokens)).toEqual(expected);
   });
@@ -86,7 +85,11 @@ describe("normalizeTokens", () => {
         [OPEN, A, AND, OPEN, B, OR, C, CLOSE, AND, D],
         [OPEN, A, AND, OPEN, B, OR, C, CLOSE, AND, D, CLOSE],
       ],
-      ["a group before then", [OPEN, A, THEN, B], [OPEN, A, CLOSE, THEN, B]],
+      [
+        "a group before then",
+        [OPEN, A, THEN_1, B],
+        [OPEN, A, CLOSE, THEN_1, B],
+      ],
     ])("is added when there is one reading: %s", (_, tokens, expected) => {
       expect(normalizeTokens(tokens)).toEqual(expected);
     });

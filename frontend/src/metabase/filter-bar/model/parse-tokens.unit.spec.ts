@@ -4,7 +4,8 @@ import {
   OPEN,
   OR,
   TEST_ADAPTER,
-  THEN,
+  THEN_1,
+  THEN_2,
   and,
   leaf,
   or,
@@ -54,17 +55,16 @@ describe("parseTokens", () => {
     ],
     [
       "then splits the whole expression",
-      [A, OR, B, THEN, C],
+      [A, OR, B, THEN_1, C],
       [or(leaf("A"), leaf("B")), leaf("C")],
     ],
-    ["no row filters", [THEN, C], [and(), leaf("C")]],
+    ["no row filters", [THEN_1, C], [and(), leaf("C")]],
     [
-      "a stage without filters",
-      [A, THEN, THEN, C],
-      [leaf("A"), and(), leaf("C")],
+      "a filter on the second summary only",
+      [THEN_2, C],
+      [and(), and(), leaf("C")],
     ],
-    ["a trailing then", [A, THEN], [leaf("A")]],
-    ["only then", [THEN], []],
+    ["a trailing then", [A, THEN_1], [leaf("A")]],
   ])("parses %s", (_, tokens, expected) => {
     expect(parseTokens(tokens)).toEqual({ type: "ok", stages: expected });
   });
@@ -113,14 +113,14 @@ describe("parseTokens", () => {
     ],
     [
       "then inside parentheses",
-      [OPEN, A, THEN, B, CLOSE],
+      [OPEN, A, THEN_1, B, CLOSE],
       "missing-closing-parenthesis",
       [0],
     ],
-    ["an error in a later stage", [A, THEN, B, AND], "missing-filter", [3]],
+    ["an error in a later stage", [A, THEN_1, B, AND], "missing-filter", [3]],
     [
       "only the first error of two stages",
-      [A, OR, THEN, B, AND],
+      [A, OR, THEN_1, B, AND],
       "missing-filter",
       [1],
     ],
@@ -135,11 +135,6 @@ describe("parseTokens", () => {
       [and(leaf("A"), or(leaf("B"), and(leaf("C"), or(leaf("D"), leaf("E")))))],
     ],
     ["two stages", [and(leaf("A"), or(leaf("B"), leaf("C"))), leaf("D")]],
-    [
-      "an empty stage between",
-      [or(leaf("A"), leaf("B")), and(), or(leaf("C"), leaf("D"))],
-    ],
-    ["no row filters", [and(), leaf("C")]],
   ])("reads back the tokens of stages: %s", (_, stages) => {
     expect(parseTokens(stagesToTokens(stages, TEST_ADAPTER))).toEqual({
       type: "ok",
