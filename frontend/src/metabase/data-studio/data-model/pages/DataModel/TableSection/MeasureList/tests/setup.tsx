@@ -7,6 +7,7 @@ import type { State } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import type { EnterpriseSettings, Measure, Table } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockTable,
   createMockTokenFeatures,
   createMockUser,
@@ -34,7 +35,7 @@ export function setup({
     db_id: 1,
     schema: "PUBLIC",
     measures,
-    is_published: true,
+    collection: createMockCollection(),
     ...table,
   });
 

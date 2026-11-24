@@ -337,7 +337,7 @@ describe("QueryBuilder", () => {
         urlSearchParams instanceof URLSearchParams
           ? JSON.parse(urlSearchParams.get("query") ?? "{}")
           : {};
-      expect(query?.native.query).toEqual("SELECT 1");
+      expect(query).toMatchObject({ stages: [{ native: "SELECT 1" }] });
     });
   });
 

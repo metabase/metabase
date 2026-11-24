@@ -9,12 +9,6 @@ import type {
 } from "metabase/ui/theme";
 import type { ColorSettings } from "metabase-types/api/settings";
 
-interface _EmotionCompatibilityTheme {
-  fn: {
-    themeColor: (colorName: string) => string;
-  };
-}
-
 declare module "@mantine/core" {
   /**
    * Add more theme options to Mantine's `theme.other` field using this type.
@@ -27,8 +21,11 @@ declare module "@mantine/core" {
     updateColorSettings: (settings: ColorSettings) => void;
   }
 
-  // eslint-disable-next-line typescript-js/no-empty-object-type -- module augment
-  export interface MantineTheme extends _EmotionCompatibilityTheme {}
+  export interface MantineTheme {
+    fn: {
+      themeColor: (colorName: string) => string;
+    };
+  }
 
   export interface MantineThemeColorsOverride {
     colors: Record<

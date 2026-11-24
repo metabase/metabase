@@ -183,14 +183,16 @@
                                          :collection_id new-collection-id)))
                             cards-to-copy)]
     (m.document/check-clone-cards cards-to-copy sources)
-    (reduce (fn [accum [card source]]
-              (let [new-card (m.document/clone-card! source @api/*current-user*)]
-                (when (or (:archived card) (:archived_directly card))
-                  (queries.card/update-cards! [{:id (:id new-card) :archived          (boolean (:archived card))
-                                                :archived_directly (boolean (:archived_directly card))}]))
-                (assoc accum (:id card) (:id new-card))))
-            {}
-            (map vector cards-to-copy sources))))
+    (let [new-cards (m.document/clone-cards! sources @api/*current-user*)]
+      (queries.card/update-cards!
+       (into []
+             (keep (fn [[card new-card]]
+                     (when (or (:archived card) (:archived_directly card))
+                       {:id                new-card
+                        :archived          (boolean (:archived card))
+                        :archived_directly (boolean (:archived_directly card))})))
+             (map vector cards-to-copy (map :id new-cards))))
+      (zipmap (map :id cards-to-copy) (map :id new-cards)))))
 
 (defn copy-document!
   "Copies the document with `from-document-id` into `:collection_id` (nil is the root) along with the questions saved
@@ -256,6 +258,7 @@
     (if-let [existing-uuid (documents.db/document-public-uuid document-id)]
       {:uuid existing-uuid}
       (do
+        (public-sharing.validation/check-public-link-allowed! :model/Document document-id)
         (m.document/update-documents! [{:id document-id :public_uuid       (str (random-uuid))
                                         :made_public_by_id api/*current-user-id*}])
         {:uuid (documents.db/document-public-uuid document-id)}))))

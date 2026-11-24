@@ -8,6 +8,7 @@
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.actions.models :as action]
    [metabase.collections.models.collection :as collection]
@@ -129,7 +130,8 @@
   "Run analysis for a specific card to detect broken references.
    Must be called within lib-be/with-metadata-provider-cache."
   [card-id]
-  (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Card :id card-id)))
+  (models.analysis-finding/upsert-analyses!
+   :card {card-id (:analysis (deps.analysis-finding/analyze-entity (t2/select-one :model/Card :id card-id)))}))
 
 (deftest graph-test
   (testing "GET /api/ee/dependencies/graph"
@@ -3083,6 +3085,50 @@
                   (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
                     (is (not (contains? (unreferenced-transform-ids) transform-id)))))))))))))
 
+(deftest graph-transform-permission-filtering-test
+  (testing "the graph endpoints show a transform only to users who can read it"
+    (mt/with-premium-features #{:advanced-permissions :data-studio :dependencies :transforms-basic :hosting}
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (doseq [table [:orders :products]]
+            (perms/set-table-permission! (perms/all-users-group) (mt/id table) :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms/all-users-group) (mt/id table) :perms/create-queries :query-builder))
+          (let [mp    (mt/metadata-provider)
+                query (lib/join (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                 [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                         (lib.metadata/field mp (mt/id :products :id)))]))]
+            (mt/with-temp [:model/Transform {transform-id :id} {:name   "Transform - permissionfiltertest"
+                                                                :source {:type :query :query query}
+                                                                :target {:type   "table"
+                                                                         :schema "PUBLIC"
+                                                                         :name   "permission_filter_transform_table"}}]
+              (deps.test/synchronously-run-dependency-job!)
+              (letfn [(dependent-transform? [user]
+                        (contains? (set (map (juxt :type :id)
+                                             (mt/user-http-request user :get 200 "ee/dependencies/graph/dependents"
+                                                                   :id (mt/id :products)
+                                                                   :type "table"
+                                                                   :dependent-types "transform")))
+                                   ["transform" transform-id]))
+                      (transform-graph [user status]
+                        (mt/user-http-request user :get status "ee/dependencies/graph"
+                                              :id transform-id
+                                              :type "transform"))]
+                (mt/with-data-analyst-role! (mt/user->id :lucky)
+                  (testing "a superuser sees the transform"
+                    (is (dependent-transform? :crowberto))
+                    (is (map? (transform-graph :crowberto 200))))
+                  (testing "a data analyst who may query every source table sees the transform"
+                    (is (dependent-transform? :lucky))
+                    (is (map? (transform-graph :lucky 200))))
+                  (testing "a user who is no data analyst does not see the transform"
+                    (is (not (dependent-transform? :rasta)))
+                    (is (= "You don't have permissions to do that." (transform-graph :rasta 403))))
+                  (testing "a data analyst who may not query one source table cannot open the transform's graph"
+                    (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/create-queries :no)
+                    (is (= "You don't have permissions to do that." (transform-graph :lucky 403)))))))))))))
+
 (defn- delete-venue-query []
   (lib/native-query (mt/metadata-provider) "DELETE FROM venues WHERE id = {{id}}"))
 
@@ -3288,3 +3334,97 @@
           (testing endpoint
             (is (= [] (deps.test/data-app-bundle-reads
                        #(mt/user-http-request :crowberto :get 200 endpoint :id app-id :type "data-app"))))))))))
+
+(defn- cards-in-own-collections!
+  "Inserts `n` Cards named after `card-name`, each in its own Collection, that All Users can read when `readable?`, and
+  returns their ids."
+  [n card-name readable?]
+  (let [collection-ids (t2/insert-returning-pks! :model/Collection
+                                                 (for [i (range n)]
+                                                   (assoc (mt/with-temp-defaults :model/Collection)
+                                                          :name (str card-name " collection " i))))]
+    (when readable?
+      (doseq [collection-id collection-ids]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)))
+    (vec (t2/insert-returning-pks! :model/Card
+                                   (map-indexed (fn [i collection-id]
+                                                  (assoc (basic-card (str card-name " " i) :venues)
+                                                         :collection_id collection-id
+                                                         :creator_id    (mt/user->id :crowberto)))
+                                                collection-ids)))))
+
+(defn- card-dependencies!
+  "Inserts a Dependency of the Card `from-id` on the Card `to-id` for each pair of `pairs`."
+  [pairs]
+  (t2/insert! :model/Dependency (for [[from-id to-id] pairs]
+                                  {:from_entity_type :card :from_entity_id from-id
+                                   :to_entity_type   :card :to_entity_id   to-id})))
+
+(defn- warm-statement-count
+  "The lower number of app DB statements of two more GETs of `url` with `params` as `user` after a first one."
+  [user url & params]
+  (apply mt/user-http-request user :get 200 url params)
+  (let [measure #(t2/with-call-count [call-count]
+                   (apply mt/user-http-request user :get 200 url params)
+                   (call-count))]
+    (min (measure) (measure))))
+
+(deftest ^:synchronized graph-endpoints-statement-count-test
+  (testing "the graph endpoints cost as many statements for 10 cards as for 40, each in its own collection"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (doseq [user [:crowberto :rasta]]
+          (testing user
+            (let [counts (fn [n]
+                           (mt/with-model-cleanup [:model/Dependency :model/AnalysisFindingError :model/Card :model/Collection]
+                             (let [card-name (str "depstmt" n)
+                                   [x & others] (cards-in-own-collections! (inc n) card-name true)
+                                   unreferenced (warm-statement-count user "ee/dependencies/graph/unreferenced"
+                                                                      :types "card" :query card-name :limit 50)
+                                   _            (card-dependencies! (for [other others] [x other]))
+                                   graph        (warm-statement-count user "ee/dependencies/graph" :type "card" :id x)
+                                   y            (first (cards-in-own-collections! 1 (str card-name " target") true))
+                                   _            (card-dependencies! (for [other others] [other y]))
+                                   dependents   (warm-statement-count user "ee/dependencies/graph/dependents"
+                                                                      :type "card" :id y)]
+                               {:unreferenced unreferenced :graph graph :dependents dependents})))]
+              (is (= (counts 10) (counts 40))))))))))
+
+(deftest ^:synchronized graph-breaking-statement-count-test
+  (testing "GET /api/ee/dependencies/graph/breaking costs as many statements for 10 sources as for 40"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [breaking! (fn [n card-name readable?]
+                          (let [sources    (cards-in-own-collections! n (str card-name " source") readable?)
+                                dependents (cards-in-own-collections! n (str card-name " dependent") true)]
+                            (card-dependencies! (map vector dependents sources))
+                            (t2/insert! :model/AnalysisFindingError
+                                        (map (fn [dependent source]
+                                               {:analyzed_entity_type "card" :analyzed_entity_id dependent
+                                                :source_entity_type   "card" :source_entity_id   source
+                                                :error_type           "missing-column" :error_detail "total"})
+                                             dependents sources))
+                            sources))]
+          (doseq [user [:crowberto :rasta]]
+            (testing user
+              (let [counts (fn [n]
+                             (mt/with-model-cleanup [:model/Dependency :model/AnalysisFindingError :model/Card :model/Collection]
+                               (let [card-name (str "depbreaking" n)
+                                     sources   (breaking! n card-name true)
+                                     response  (mt/user-http-request user :get 200 "ee/dependencies/graph/breaking"
+                                                                     :types "card" :query card-name :limit 50)]
+                                 (is (= (set sources) (set (map :id (:data response)))))
+                                 (warm-statement-count user "ee/dependencies/graph/breaking"
+                                                       :types "card" :query card-name :limit 50))))]
+                (is (= (counts 10) (counts 40))))))
+          (testing "a source in a collection the user cannot read is left out of a page with readable ones"
+            (mt/with-model-cleanup [:model/Dependency :model/AnalysisFindingError :model/Card :model/Collection]
+              (let [readable   (breaking! 3 "depbreakingmix" true)
+                    unreadable (breaking! 1 "depbreakingmix hidden" false)
+                    ids        (fn [user]
+                                 (->> (mt/user-http-request user :get 200 "ee/dependencies/graph/breaking"
+                                                            :types "card" :query "depbreakingmix" :limit 50)
+                                      :data
+                                      (into #{} (map :id))))]
+                (is (= (set readable) (ids :rasta)))
+                (is (= (into (set readable) unreadable) (ids :crowberto)))))))))))

@@ -1,5 +1,3 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
-import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { recordSdkPageMark } from "embedding-sdk-bundle/analytics/sdk-first-component-performance/event";
@@ -24,14 +22,15 @@ import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import type { MetabaseProviderPropsStoreInternalProps } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
-import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
+import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
 import { getSetting } from "metabase/settings";
+import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
-import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
+import { getSaveDomImageStyles } from "metabase/viz-core";
 import { initializePlugins } from "sdk-ee-plugins";
 
 import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
@@ -145,45 +144,49 @@ export const ComponentProviderInternal = (
   // calls the OSS no-op, and its deps don't re-fire when the EE fn lands.
   const pluginsReady = useArePluginsReady();
 
+  const saveDomImageStyles = getSaveDomImageStyles(
+    isEmbeddingSdk(),
+    ".mb-wrapper",
+  );
+
   return (
-    <EmotionCacheProvider>
-      <OverlayStackProvider>
-        <SdkThemeProvider theme={theme}>
-          <EnsureSingleInstance
-            groupId="component-providers"
-            instanceId={ensureSingleInstanceId}
-          >
-            {({ isInstanceToRender }) => (
-              <>
-                <LocaleProvider locale={locale || instanceLocale}>
-                  {children}
+    <OverlayStackProvider>
+      <SdkThemeProvider theme={theme}>
+        <EnsureSingleInstance
+          groupId="component-providers"
+          instanceId={ensureSingleInstanceId}
+        >
+          {({ isInstanceToRender }) => (
+            <>
+              <LocaleProvider locale={locale || instanceLocale}>
+                {children}
 
-                  {isInstanceToRender && pluginsReady && (
-                    <ContentTranslationsProvider />
-                  )}
-                </LocaleProvider>
-
-                {isInstanceToRender && (
-                  <>
-                    <Global styles={SCOPED_CSS_RESET} />
-
-                    <SdkFontsGlobalStyles />
-
-                    <SdkUsageProblemDisplay
-                      authConfig={authConfig}
-                      allowConsoleLog={allowConsoleLog}
-                      isLocalHost={isLocalHost}
-                    />
-
-                    <PortalContainer />
-                  </>
+                {isInstanceToRender && pluginsReady && (
+                  <ContentTranslationsProvider />
                 )}
-              </>
-            )}
-          </EnsureSingleInstance>
-        </SdkThemeProvider>
-      </OverlayStackProvider>
-    </EmotionCacheProvider>
+              </LocaleProvider>
+
+              {isInstanceToRender && (
+                <>
+                  <GlobalStyleSheet styles={SCOPED_CSS_RESET} />
+                  <GlobalStyleSheet styles={saveDomImageStyles} />
+
+                  <SdkFontsGlobalStyles />
+
+                  <SdkUsageProblemDisplay
+                    authConfig={authConfig}
+                    allowConsoleLog={allowConsoleLog}
+                    isLocalHost={isLocalHost}
+                  />
+
+                  <PortalContainer />
+                </>
+              )}
+            </>
+          )}
+        </EnsureSingleInstance>
+      </SdkThemeProvider>
+    </OverlayStackProvider>
   );
 };
 

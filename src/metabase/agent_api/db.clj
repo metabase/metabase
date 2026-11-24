@@ -2,6 +2,7 @@
   "Application database queries for the agent API module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -22,9 +23,7 @@
 (mu/defn cards-with-ids
   "The Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (if (seq card-ids)
-    (t2/select :model/Card :id [:in card-ids])
-    []))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %]) card-ids))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
@@ -50,12 +49,6 @@
   "The DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select :model/DashboardCard :dashboard_id dashboard-id))
-
-(mu/defn dashcard-in-dashboard
-  "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
-  [dashcard-id  :- ::lib.schema.id/dashcard
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
 
 (mu/defn active-user-by-email
   "The active User with `email`, compared case-insensitively, or nil."

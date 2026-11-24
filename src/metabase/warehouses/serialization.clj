@@ -34,14 +34,15 @@
   "Imports the `:settings` of Databases normalized by their schema, keeping the [[instance-local-settings]] of the
   Databases they update, and the raw ciphertext of settings the model could not decrypt as it is."
   [_store entities values _opts]
-  (mapv (fn [{db-name :name} settings]
-          (let [settings (lib/normalize [:maybe ::warehouses.schema/database.settings] settings)
-                target   (warehouses.db/database-settings-by-name db-name)
-                kept     (when (map? target) (select-keys target instance-local-settings))]
-            (if (map? settings)
-              (not-empty (merge (apply dissoc settings instance-local-settings) kept))
-              settings)))
-        entities values))
+  (let [name->target (warehouses.db/database-settings-by-name (into [] (keep :name) entities))]
+    (mapv (fn [{db-name :name} settings]
+            (let [settings (lib/normalize [:maybe ::warehouses.schema/database.settings] settings)
+                  target   (name->target db-name)
+                  kept     (when (map? target) (select-keys target instance-local-settings))]
+              (if (map? settings)
+                (not-empty (merge (apply dissoc settings instance-local-settings) kept))
+                settings)))
+          entities values)))
 
 (def settings-transform
   "The serialization transform of the `:settings` of Databases, which leaves out [[instance-local-settings]]."

@@ -51,7 +51,7 @@
     :description (message/raw
                   (str "Dashboard parameters: add_parameter types, wire_parameter target grammar, autowire, "
                        "linked filters, value sources, inline parameters. "
-                       "Read before your first add_parameter or wire_parameter."))
+                       "Read before your first add_parameter, remove_parameter or wire_parameter."))
     :references  []}
    {:name        "dashboard-layout"
     :description (message/raw

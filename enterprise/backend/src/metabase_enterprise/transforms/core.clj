@@ -14,15 +14,21 @@
    [metabase.util.log :as log]))
 
 (defenterprise persist-table-dependencies!
-  "Best-effort write-back of `:uncached` deps from `transform-ordering` into the
-  `transform.table_dependencies` column, keyed by transform id."
+  "Best-effort write-back of `:uncached` deps from `transform-ordering` into the `transform.table_dependencies` column,
+  keyed by transform id, for all transforms at once or, when that fails, for each one on its own."
   :feature :none
   [id->raw-deps]
-  (doseq [[id raw-deps] id->raw-deps]
+  (when (seq id->raw-deps)
     (try
-      (transform/set-table-dependencies! id (json/encode (vec raw-deps)))
+      (transform/set-table-dependencies! (update-vals id->raw-deps #(json/encode (vec %))))
       (catch Throwable e
-        (log/warnf "Failed to cache table-dependencies for transform %s: %s" id (ex-message e))))))
+        (log/warnf "Failed to cache table-dependencies for %d transforms, caching them one by one: %s"
+                   (count id->raw-deps) (ex-message e))
+        (doseq [[id raw-deps] id->raw-deps]
+          (try
+            (transform/set-table-dependencies! {id (json/encode (vec raw-deps))})
+            (catch Throwable e
+              (log/warnf "Failed to cache table-dependencies for transform %s: %s" id (ex-message e)))))))))
 
 (defenterprise transform-metered-as
   "Return the meter bucket a new transform run of the given source-type counts toward,

@@ -12,15 +12,15 @@
 
 (set! *warn-on-reflection* true)
 
-(defn classify
-  "Classify one entry of a tool's `recipients` list as `[:user user-id]` or `[:email address]`.
-   Throws a teaching error for anything else, including an id no active user has — that one would
-   otherwise surface as a foreign key violation at insert time."
-  [recipient]
+(defn- classify
+  "Classify one entry of a tool's `recipients` list as `[:user user-id]` or `[:email address]`, where
+  `active-user-ids` holds the active users among the list's ids, throwing a teaching error for anything else, an id of
+  no active user included."
+  [active-user-ids recipient]
   (cond
     (int? recipient)
     (do
-      (when-not (mcp.db/active-user-exists? recipient)
+      (when-not (contains? active-user-ids recipient)
         (common/throw-teaching-error
          (message/msg ["No active user with id %d — pass a user id from the people list, or an email address."]
                       recipient)))
@@ -32,3 +32,10 @@
     :else
     (common/throw-teaching-error
      (message/msg ["Recipient %s is neither a user id nor an email address."] recipient))))
+
+(defn classify-all
+  "Classify each entry of a tool's `recipients` list as `[:user user-id]` or `[:email address]`, reading the active
+   users among its ids once, and throw the teaching error of the first entry in order that is neither."
+  [recipients]
+  (let [user-ids (filterv int? recipients)]
+    (mapv (partial classify (if (seq user-ids) (mcp.db/active-user-ids user-ids) #{})) recipients)))

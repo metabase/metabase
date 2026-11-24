@@ -295,12 +295,12 @@
     (do-with-plain-native-card!
      (fn [card]
        (is (= [] (card-results (lint-report) card)))
-       (let [upsert-analysis! (mt/original-fn #'models.analysis-finding/upsert-analysis!)]
-         (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analysis!
-                                     (fn [entity-type entity-id result details]
-                                       (if (and (= (:id card) entity-id) (not result))
+       (let [upsert-analyses! (mt/original-fn #'models.analysis-finding/upsert-analyses!)]
+         (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analyses!
+                                     (fn [entity-type id->analysis]
+                                       (if (false? (get-in id->analysis [(:id card) :result]))
                                          (throw (ex-info "Finding write broke" {}))
-                                         (upsert-analysis! entity-type entity-id result details)))]
+                                         (upsert-analyses! entity-type id->analysis)))]
            (give-up-on-dependencies! card)))
        (is (= given-up-results (map #(dissoc % :entity_id) (card-results (lint-report) card))))))))
 

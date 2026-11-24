@@ -11,8 +11,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field :as field])
+   [metabase.util.log :as log])
   (:import
    (java.sql Connection)))
 
@@ -107,16 +106,15 @@
               role)))))))
 
 (defenterprise hash-input-for-impersonation
-  "Returns a hash-key for FieldValues if the current user uses impersonation for the database.
-  The role is nil while the `:advanced-permissions` feature is unavailable."
+  "The hash input for the FieldValues of the Database with `db-id` when the current user is impersonated there,
+  holding the role so that each role caches its own values, with a nil role while the `:advanced-permissions` feature
+  is unavailable."
   :feature :none
-  [field]
-  ;; Include the role in the hash key, so that we can cache the results of the query for each role.
-  (let [db-id (field/field-id->database-id (u/the-id field))]
-    (when-let [role (and api/*current-user-id*
-                         (impersonation.db/impersonation-exists-for-database? db-id)
-                         (connection-impersonation-role db-id))]
-      {:impersonation-role (when (premium-features/has-feature? :advanced-permissions) role)})))
+  [db-id]
+  (when-let [role (and api/*current-user-id*
+                       (impersonation.db/impersonation-exists-for-database? db-id)
+                       (connection-impersonation-role db-id))]
+    {:impersonation-role (when (premium-features/has-feature? :advanced-permissions) role)}))
 
 (defenterprise impersonation-token-for-db
   "Connection-impersonation fingerprint for the current user on `db-id` (the resolved database

@@ -71,12 +71,30 @@
     (update-vals (metabot.db/collection-curation-info-by-id coll-ids)
                  #(select-keys % [:authority_level :location :type]))))
 
+(defn- root-id-of
+  "The id of the top-level ancestor in `location`, or nil for a top-level Collection."
+  [location]
+  (when (and location (not= "/" location))
+    (first (collection/location-path->ids location))))
+
+(defn- root-collection-types
+  "The type of the top-level ancestors of the Collections of `coll-id->info`, by ancestor id, read together."
+  [coll-id->info]
+  (let [root-ids (into #{} (keep (comp root-id-of :location)) (vals coll-id->info))]
+    (if (seq root-ids)
+      (into {}
+            (keep (fn [[id {:keys [location type]}]] (when (= "/" location) [id type])))
+            (metabot.db/collection-curation-info-by-id root-ids))
+      {})))
+
 (defn- root-collection-type-of
-  [coll-id->info coll-id]
-  (let [{:keys [location type]} (get coll-id->info coll-id)]
-    (collection/root-collection-type {:collection_id       coll-id
-                                      :collection_location location
-                                      :collection_type     type})))
+  "The `:type` of the top-level ancestor of the Collection with `coll-id`, which is its own type when it is top-level."
+  [coll-id->info root-id->type coll-id]
+  (when coll-id
+    (let [{:keys [location type]} (get coll-id->info coll-id)]
+      (if-let [root-id (root-id-of location)]
+        (get root-id->type root-id)
+        type))))
 
 (defn- moderatable-curation-signals
   "`[id signal-map]` pairs for collection-housed, moderatable models (report_card-backed and dashboards). An archived
@@ -88,6 +106,7 @@
                         :model/Dashboard (metabot.db/dashboard-curation-rows ids))
                       (remove #(or (:archived %) (:document_id %))))
         coll     (collection-info (into #{} (keep :collection_id) rows))
+        roots    (if library? (root-collection-types coll) {})
         verified (if verified? (verified-item-ids (mapv :id rows) item-type) #{})]
     (for [{:keys [id collection_id]} rows]
       [id {:model                search-model
@@ -95,7 +114,7 @@
            ;; authority_level is keyword-transformed on read (collection :type is not — it stays a string,
            ;; which is what curated? and library-root-collection-types expect)
            :official_collection  (and official? (= :official (:authority_level (get coll collection_id))))
-           :root_collection_type (when library? (root-collection-type-of coll collection_id))}])))
+           :root_collection_type (when library? (root-collection-type-of coll roots collection_id))}])))
 
 (defn- table-curation-signals
   "`[id signal-map]` pairs for tables, whose curation comes from is_published, data_layer, and data_authority. An
@@ -103,8 +122,8 @@
   returns it, so it isn't curated.
   root_collection_type is intentionally omitted: the table search spec joins the collection only for
   published tables, and for a published table is_published already decides curation, so the root type never
-  changes a table's verdict. Omitting it avoids re-deriving from a possibly-stale collection_id, and lets
-  curated? coerce is_published consistently (only true/1 count)."
+  changes a table's verdict. Omitting it avoids re-deriving from a possibly-stale collection_id; is_published is
+  coerced to a boolean here, so a Table without settings counts as unpublished."
   [ids]
   (let [{:keys [library?]} (feature-gates)
         rows          (metabot.db/table-curation-rows ids)
@@ -116,7 +135,7 @@
                      (not (contains? destinations db_id))
                      (not= db_id audit-app/audit-db-id))]
       [id {:model          "table"
-           :is_published   (and library? is_published)
+           :is_published   (boolean (and library? is_published))
            :data_layer     data_layer
            :data_authority data_authority}])))
 

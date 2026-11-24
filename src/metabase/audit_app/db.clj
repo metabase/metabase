@@ -19,6 +19,11 @@
   [entity-id :- :string]
   (t2/select-one :model/Collection :entity_id entity-id))
 
+(mu/defn collection-ids-by-entity-id :- [:map-of :string ::lib.schema.id/collection]
+  "The ids of the Collections with `entity-ids`, by entity id."
+  [entity-ids :- [:sequential :string]]
+  (app-db/select-batched-map #(t2/select-fn->pk :entity_id :model/Collection :entity_id [:in [:auto/param %]]) entity-ids))
+
 (mu/defn dashboard-with-entity-id
   "The Dashboard with `entity-id`, or nil."
   [entity-id :- :string]
@@ -28,8 +33,7 @@
   "The Cards with `card-ids`, each with its `:name` and `:description`."
   [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
   (if-let [ids (not-empty (into [] (comp (remove nil?) (distinct)) card-ids))]
-    (into [] (mapcat #(t2/select [:model/Card :id :name :description] :id [:in (vec %)]))
-          (partition-all app-db/delete-partition-size ids))
+    (app-db/select-batched #(t2/select [:model/Card :id :name :description] :id [:in %]) ids)
     []))
 
 (mu/defn table-database-id

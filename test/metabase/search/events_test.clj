@@ -7,7 +7,6 @@
    [java-time.api :as t]
    [metabase.actions.models :as action]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as app-db.query]
    [metabase.collections.models.collection :as collection]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.events.core :as events]
@@ -931,7 +930,7 @@
 (deftest handle-rows-across-partitions-test
   (testing "an event with more rows than one batch has every row handed to the index"
     (let [batches (atom [])]
-      (with-redefs [app-db.query/create-partition-size 2]
+      (mt/with-partition-size 2
         (mt/with-dynamic-fn-redefs [search/bulk-update! (fn [instances] (swap! batches conj (count instances)))]
           (#'search.events/handle! (mapv (fn [i] {:model :model/Card :operation :create :object {:id i}}) (range 1 6)) nil)))
       (is (= [2 2 1] @batches)))))

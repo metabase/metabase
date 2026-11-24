@@ -51,7 +51,7 @@
 (mu/defn collections-for-content-checks
   "A map of ID to the ID, namespace, type and `archived` flag of the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity [:model/Collection :id :namespace :type :archived] :id [:in %]) collection-ids))
 
 (mu/defn collection-of-type
   "The ::collections.schema/collection of `type`, or nil."
@@ -88,47 +88,45 @@
   "The id, type, namespace and `is_remote_synced` of the Collections with `collection-ids`, which tell whether remote
   sync syncs each."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :type :namespace :is_remote_synced] :id [:in collection-ids]))
+  (app-db/select-batched #(t2/select [:model/Collection :id :type :namespace :is_remote_synced] :id [:in %]) collection-ids))
 
 (mu/defn collection-locations :- [:map-of ::lib.schema.id/collection :string]
   "The map from id to location of the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-fn->fn :id :location :model/Collection :id [:in [:auto/param collection-ids]]))
+  (app-db/select-batched-map #(t2/select-fn->fn :id :location :model/Collection :id [:in [:auto/param %]]) collection-ids))
 
 (defn collection-location-columns
   "The location, id, and type of the Collection with `collection-id`, or nil."
   [collection-id]
   (t2/select-one [:model/Collection :location :id :type :namespace :is_remote_synced] :id collection-id))
 
-(mu/defn root-collection-type-by-id
-  "The type of the top-level Collection with `collection-id`, or nil if it is not top-level."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :type :model/Collection :id collection-id :location "/"))
+(mu/defn root-collection-types-by-ids :- [:map-of ::lib.schema.id/collection [:maybe :string]]
+  "The type of each of the top-level Collections among those with `collection-ids`, by id."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (app-db/select-batched-map #(t2/select-pk->fn :type :model/Collection :id [:in [:auto/param %]] :location "/") collection-ids))
 
 ;;; ---------------------------------------------- ::collections.schema/collection sets ----------------------------------------------
 
 (mu/defn collections-by-ids
   "A map of ID to ::collections.schema/collection for `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in %]) collection-ids))
 
 (mu/defn collection-columns-by-ids
   "A map of ID to the `columns` of the Collections with `collection-ids`."
   [columns        :- [:sequential :keyword]
    collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity (into [:model/Collection] columns) :id [:in collection-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity (into [:model/Collection] columns) :id [:in %]) collection-ids))
 
 (mu/defn collection-archived-flags
   "A map of ID to `:archived` for `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn :archived :model/Collection :id [:in collection-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn :archived :model/Collection :id [:in %]) collection-ids))
 
 (mu/defn archived-collection-ids-among
   "The IDs among `collection-ids` of the Collections that are archived."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (if (seq collection-ids)
-    (set (t2/select-pks-set :model/Collection :id [:in collection-ids] :archived true))
-    #{}))
+  (into #{} (app-db/select-batched #(t2/select-pks-set :model/Collection :id [:in %] :archived true) collection-ids)))
 
 (mu/defn collection-archived?
   "Whether the Collection with `collection-id` is archived, which the root, nil, never is."
@@ -144,12 +142,7 @@
 (mu/defn archived-collections-in-operations
   "The archived Collections belonging to the archive operations with `archive-operation-ids`."
   [archive-operation-ids :- [:sequential :string]]
-  (t2/select :model/Collection :archive_operation_id [:in archive-operation-ids] :archived true))
-
-(mu/defn ancestor-summaries
-  "The name, ID, and owner of the Collections with `collection-ids`, ordered by location."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :name :id :personal_owner_id] :id [:in collection-ids] {:order-by [:location]}))
+  (app-db/select-batched #(t2/select :model/Collection :archive_operation_id [:in %] :archived true) archive-operation-ids))
 
 (mu/defn descendant-summaries
   "The name, ID, location, and description of the descendant Collections of the ::collections.schema/collection at
@@ -178,10 +171,13 @@
   (compared with SQL `LIKE`), excluding personal Collections that don't belong to `current-user-id`."
   [location-prefixes :- [:sequential :string]
    current-user-id   :- [:maybe ::lib.schema.id/user]]
-  (t2/select [:model/Collection :name :id :location :description :type]
-             {:where [:and
-                      (into [:or] (map (fn [prefix] [:like :location prefix])) location-prefixes)
-                      [:or [:= :personal_owner_id nil] [:= :personal_owner_id current-user-id]]]}))
+  (into []
+        (distinct)
+        (app-db/select-batched #(t2/select [:model/Collection :name :id :location :description :type]
+                                           {:where [:and
+                                                    (into [:or] (map (fn [prefix] [:like :location prefix])) %)
+                                                    [:or [:= :personal_owner_id nil] [:= :personal_owner_id current-user-id]]]})
+                               location-prefixes)))
 
 (mu/defn effective-children
   "The ID, name, description, and type of the Collections matching `effective-children-clause`, a
@@ -211,7 +207,7 @@
 (mu/defn collection-ids-with-location-like-any
   "The IDs of the Collections whose location matches any of the SQL `patterns`."
   [patterns :- [:sequential {:min 1} :string]]
-  (t2/select-pks-set :model/Collection {:where (into [:or] (map (fn [pattern] [:like :location pattern])) patterns)}))
+  (app-db/select-batched-set #(t2/select-pks-set :model/Collection {:where (into [:or] (map (fn [pattern] [:like :location pattern])) %)}) patterns))
 
 (mu/defn unarchived-collection-ids-with-location-like
   "The IDs of the unarchived Collections whose location matches the SQL `pattern`."
@@ -232,7 +228,7 @@
   "The IDs of the Collections among `collection-ids` of `type`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    type           :- :string]
-  (t2/select-pks-set :model/Collection :id [:in collection-ids] :type type))
+  (app-db/select-batched-set #(t2/select-pks-set :model/Collection :id [:in %] :type type) collection-ids))
 
 (mu/defn personal-collection-ids
   "The IDs of every personal ::collections.schema/collection."
@@ -242,7 +238,7 @@
 (mu/defn personal-collection-ids-by-owner
   "A map of owner User ID to personal ::collections.schema/collection ID for `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-fn->pk :personal_owner_id :model/Collection :personal_owner_id [:in user-ids]))
+  (app-db/select-batched-map #(t2/select-fn->pk :personal_owner_id :model/Collection :personal_owner_id [:in %]) user-ids))
 
 (defn other-users-personal-collection-ids
   "The IDs of the personal Collections owned by Users other than `user-id`."
@@ -260,24 +256,25 @@
 (mu/defn collections-outside-content-rules :- [:sequential :map]
   "The id, namespace, type and `archived` flag of the Collections among `collection-ids` that are archived, in a
   namespace outside `allowed-namespaces`, keywords where nil is the default namespace, or of a type among
-  `blocked-types`, strings: the Collections that a check of the content put in them has to look at, in one query."
+  `blocked-types`, strings: the Collections that a check of the content put in them has to look at."
   [collection-ids     :- [:sequential ms/PositiveInt]
    allowed-namespaces :- [:set [:maybe :keyword]]
    blocked-types      :- [:sequential :string]]
   (let [named      (mapv name (remove nil? allowed-namespaces))
         namespaced [:not= :namespace nil]]
-    (t2/select [:model/Collection :id :namespace :type :archived]
-               {:where [:and
-                        [:in :id collection-ids]
-                        (into [:or [:= :archived true]]
-                              (concat
-                               (when-not (contains? allowed-namespaces nil)
-                                 [[:= :namespace nil]])
-                               [(if (seq named)
-                                  [:and namespaced [:not-in :namespace named]]
-                                  namespaced)]
-                               (when (seq blocked-types)
-                                 [[:in :type blocked-types]])))]})))
+    (app-db/select-batched #(t2/select [:model/Collection :id :namespace :type :archived]
+                                       {:where [:and
+                                                [:in :id %]
+                                                (into [:or [:= :archived true]]
+                                                      (concat
+                                                       (when-not (contains? allowed-namespaces nil)
+                                                         [[:= :namespace nil]])
+                                                       [(if (seq named)
+                                                          [:and namespaced [:not-in :namespace named]]
+                                                          namespaced)]
+                                                       (when (seq blocked-types)
+                                                         [[:in :type blocked-types]])))]})
+                           collection-ids)))
 
 ;;; ---------------------------------------------- Collection writes ----------------------------------------------
 
@@ -293,7 +290,7 @@
   "Apply `changes` to the Collections with `collection-ids`, returning the number updated."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    changes        :- (mut/select-keys ::collections.schema/collection collection-write-keys)]
-  (t2/update! :model/Collection :id [:in collection-ids] changes))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/Collection :id [:in %] changes) collection-ids))
 
 (mu/defn update-collections-by-columns!
   "Apply the columns of each of `id+columns`, a pair of the id of a Collection and the columns to write to it, with one
@@ -306,7 +303,7 @@
 (mu/defn delete-collections!
   "Delete the Collections with `collection-ids`, returning the number deleted."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Collection :id [:in collection-ids]))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/Collection :id [:in %]) collection-ids))
 
 (defn- location-below
   "The condition that the location matches the prefix `children-location`, that of a Collection's descendants."
@@ -316,31 +313,34 @@
 (mu/defn collections-below
   "The ID and location of the Collections under any of `children-locations`, those of their parents."
   [children-locations :- [:sequential :string]]
-  (if (seq children-locations)
-    (t2/select [:model/Collection :id :location] {:where (into [:or] (map location-below) children-locations)})
-    []))
+  (into []
+        (distinct)
+        (app-db/select-batched #(t2/select [:model/Collection :id :location] {:where (into [:or] (map location-below) %)})
+                               children-locations)))
 
 (mu/defn unarchived-collections-below
   "The unarchived Collections under any of `children-locations`, those of their parents."
   [children-locations :- [:sequential :string]]
-  (if (seq children-locations)
-    (t2/select :model/Collection
-               {:where [:and [:= :archived false] (into [:or] (map location-below) children-locations)]})
-    []))
+  (into []
+        (distinct)
+        (app-db/select-batched #(t2/select :model/Collection
+                                           {:where [:and [:= :archived false] (into [:or] (map location-below) %)]})
+                               children-locations)))
 
 (mu/defn restorable-collections-below
   "The archived Collections of the archive operation `operation-id` under `children-location`, for each
   `[children-location operation-id]` of `locations+operations`."
   [locations+operations :- [:sequential [:tuple :string :string]]]
-  (if (seq locations+operations)
-    (t2/select :model/Collection
-               {:where [:and
-                        [:= :archived true]
-                        (into [:or]
-                              (map (fn [[children-location operation-id]]
-                                     [:and (location-below children-location) [:= :archive_operation_id operation-id]]))
-                              locations+operations)]})
-    []))
+  (into []
+        (distinct)
+        (app-db/select-batched #(t2/select :model/Collection
+                                           {:where [:and
+                                                    [:= :archived true]
+                                                    (into [:or]
+                                                          (map (fn [[children-location operation-id]]
+                                                                 [:and (location-below children-location) [:= :archive_operation_id operation-id]]))
+                                                          %)]})
+                               locations+operations)))
 
 (mu/defn move-descendant-collections!
   "Move the Collections under the old children locations of `moves`, each `{:old-location :new-location
@@ -367,20 +367,27 @@
   "The `:id` of each of the `model` rows with `ids` and the `:is_remote_synced` of its Collection, as stored."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (t2/select [model :id [:c.is_remote_synced :is_remote_synced]]
-             {:where [:in (keyword (str (name (t2/table-name model)) ".id")) ids]
-              :join  [[:collection :c] [:= :collection_id :c.id]]}))
+  (app-db/select-batched #(t2/select [model :id [:c.is_remote_synced :is_remote_synced]]
+                                     {:where [:in (keyword (str (name (t2/table-name model)) ".id")) %]
+                                      :join  [[:collection :c] [:= :collection_id :c.id]]})
+                         ids))
 
 (mu/defn subtree-locations-to-flag :- [:sequential [:map [:id ::lib.schema.id/collection] [:location :string]]]
-  "The `:id` and `:location` of the ::collections.schema/collection with `collection-id` and of the Collections whose
-  location starts with `children-location`, among those whose `:is_remote_synced` is not `remote-synced?`."
-  [collection-id     :- ::lib.schema.id/collection
-   children-location :- :string
-   remote-synced?    :- :boolean]
-  (t2/select [:model/Collection :id :location]
-             {:where [:and
-                      [:not= :is_remote_synced remote-synced?]
-                      [:or [:= :id collection-id] [:like :location (str children-location "%")]]]}))
+  "The `:id` and `:location` of the Collections with `collection-ids` and of those whose location starts with one of
+  `children-locations`, among those whose `:is_remote_synced` is not `remote-synced?`."
+  [collection-ids     :- [:sequential ::lib.schema.id/collection]
+   children-locations :- [:sequential :string]
+   remote-synced?     :- :boolean]
+  (let [select-where (fn [clause]
+                       (t2/select [:model/Collection :id :location]
+                                  {:where [:and [:not= :is_remote_synced remote-synced?] clause]}))]
+    (into []
+          (distinct)
+          (concat (app-db/select-batched #(select-where [:in :id [:auto/param %]]) collection-ids)
+                  (app-db/select-batched #(select-where (into [:or]
+                                                              (map (fn [location] [:like :location [:auto/param (str location "%")]]))
+                                                              %))
+                                         children-locations)))))
 
 (mu/defn remote-synced-collection-locations :- [:sequential [:map [:id ::lib.schema.id/collection] [:location :string]]]
   "The `:id` and `:location` of every remote-synced ::collections.schema/collection."
@@ -393,9 +400,10 @@
   "A map of ID to the namespace of the ::collections.schema/collection holding each instance of `model` with `ids`."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :namespace [model :id [:c.namespace :namespace]]
-                    {:where [:in (keyword (str (name (t2/table-name model)) ".id")) ids]
-                     :join  [[:collection :c] [:= :collection_id :c.id]]}))
+  (app-db/select-batched-map #(t2/select-pk->fn :namespace [model :id [:c.namespace :namespace]]
+                                                {:where [:in (keyword (str (name (t2/table-name model)) ".id")) %]
+                                                 :join  [[:collection :c] [:= :collection_id :c.id]]})
+                             ids))
 
 (defn- archivable-conditions
   "The key-value conditions of the rows in the Collections with `collection-ids` that archiving them archives."
@@ -407,13 +415,13 @@
   them."
   [model          :- :keyword
    collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (apply t2/select model (archivable-conditions collection-ids)))
+  (app-db/select-batched #(apply t2/select model (archivable-conditions %)) collection-ids))
 
 (mu/defn item-ids-archived-with-collections
   "The IDs of the rows of [[items-archived-with-collections]]."
   [model          :- :keyword
    collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (apply t2/select-pks-vec model (archivable-conditions collection-ids)))
+  (not-empty (app-db/select-batched #(apply t2/select-pks-vec model (archivable-conditions %)) collection-ids)))
 
 (defn- archived-parent-exists
   "The condition that the `parent-table` row that `child-column` names is archived."
@@ -443,115 +451,134 @@
   Document or Exploration they belong to is still archived, which restoring them restores along with them."
   [model          :- :keyword
    collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select model {:where (restorable-where model collection-ids)}))
+  (app-db/select-batched #(t2/select model {:where (restorable-where model %)}) collection-ids))
 
 (mu/defn item-ids-restored-with-collections
   "The IDs of the rows of [[items-restored-with-collections]]."
   [model          :- :keyword
    collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pks-vec model {:where (restorable-where model collection-ids)}))
+  (not-empty (app-db/select-batched #(t2/select-pks-vec model {:where (restorable-where model %)}) collection-ids)))
 
 (mu/defn pulse-ids-archived-with-collections
   "The IDs of the unarchived Pulses in the Collections with `collection-ids`, which archiving them archives along with
   them, leaving out dashboard subscriptions, which follow their Dashboard's `archived` flag."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pks-vec :model/Pulse :collection_id [:in collection-ids], :dashboard_id nil, :archived false))
+  (not-empty (app-db/select-batched #(t2/select-pks-vec :model/Pulse :collection_id [:in %], :dashboard_id nil, :archived false) collection-ids)))
 
 (mu/defn pulse-ids-restored-with-collections
   "The IDs of the Pulses in the Collections with `collection-ids` that were archived along with them, leaving out
   dashboard subscriptions as [[pulse-ids-archived-with-collections]] does."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pks-vec :model/Pulse :collection_id [:in collection-ids], :dashboard_id nil, :archived true
-                     :archived_directly false))
+  (not-empty (app-db/select-batched #(t2/select-pks-vec :model/Pulse :collection_id [:in %], :dashboard_id nil, :archived true
+                                                        :archived_directly false)
+                                    collection-ids)))
 
 (mu/defn card-ids-in-collections
   "The IDs of the Cards in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pks-vec :model/Card :collection_id [:in collection-ids]))
+  (not-empty (app-db/select-batched #(t2/select-pks-vec :model/Card :collection_id [:in %]) collection-ids)))
 
 (mu/defn dashboard-ids-in-collections
   "The IDs of the Dashboards in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pks-vec :model/Dashboard :collection_id [:in collection-ids]))
+  (not-empty (app-db/select-batched #(t2/select-pks-vec :model/Dashboard :collection_id [:in %]) collection-ids)))
 
 (mu/defn pulse-ids-in-collections
   "The IDs of the Pulses in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pks-vec :model/Pulse :collection_id [:in collection-ids]))
+  (not-empty (app-db/select-batched #(t2/select-pks-vec :model/Pulse :collection_id [:in %]) collection-ids)))
 
 (mu/defn published-table-ids-in-collections
   "The IDs of the published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (set (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true)))
+  (into #{}
+        (app-db/select-batched #(t2/select-fn-set :table_id [:model/TableUserSettings :table_id]
+                                                  :collection_id [:in %]
+                                                  :is_published true)
+                               collection-ids)))
 
 (defn cards-in-collection
   "The Cards in the Collection with `collection-id`."
   [collection-id]
   (t2/select :model/Card :collection_id collection-id))
 
+(mu/defn published-table-collection-ids :- [:map-of ::lib.schema.id/table [:maybe ::lib.schema.id/collection]]
+  "The Collection id of each published Table among `table-ids`, as `{table-id collection-id}`."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (app-db/select-batched-map #(t2/select-fn->fn :table_id :collection_id [:model/TableUserSettings :table_id :collection_id]
+                                                :table_id [:in %]
+                                                :is_published true)
+                             table-ids))
+
 (mu/defn dashboard-ids-with-cards
   "The `:dashboard_id` rows of the Dashboards among `dashboard-ids` holding an unarchived dashboard question."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
-  (t2/query {:select-distinct [:dashboard_id]
-             :from            :report_card
-             :where           [:and
-                               [:= :archived false]
-                               [:in :dashboard_id dashboard-ids]
-                               [:exists ^:allow-subquery {:select 1
-                                                          :from   :report_dashboardcard
-                                                          :where  [:and
-                                                                   [:= :report_dashboardcard.card_id :report_card.id]
-                                                                   [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
+  (app-db/select-batched #(t2/query {:select-distinct [:dashboard_id]
+                                     :from            :report_card
+                                     :where           [:and
+                                                       [:= :archived false]
+                                                       [:in :dashboard_id %]
+                                                       [:exists ^:allow-subquery {:select 1
+                                                                                  :from   :report_dashboardcard
+                                                                                  :where  [:and
+                                                                                           [:= :report_dashboardcard.card_id :report_card.id]
+                                                                                           [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]})
+                         dashboard-ids))
 
 (defn unarchived-card-collection-types-in-reducible
   "A reducible of the distinct Collection ID and type of the unarchived Cards in the Collections with
   `collection-ids`, leaving out dashboard questions when `exclude-dashboard-questions?`."
   [collection-ids exclude-dashboard-questions?]
-  (t2/reducible-query {:select-distinct [:collection_id :type]
-                       :from            [:report_card]
-                       :where           [:and
-                                         (when exclude-dashboard-questions?
-                                           [:= :dashboard_id nil])
-                                         [:= :archived false]
-                                         [:in :collection_id collection-ids]]}))
+  (app-db/select-batched-reducible #(t2/reducible-query {:select-distinct [:collection_id :type]
+                                                         :from            [:report_card]
+                                                         :where           [:and
+                                                                           (when exclude-dashboard-questions?
+                                                                             [:= :dashboard_id nil])
+                                                                           [:= :archived false]
+                                                                           [:in :collection_id %]]}) collection-ids))
 
 (defn published-table-collection-ids-in
   "The distinct `:collection_id`s of the published, unarchived Tables in the Collections with `collection-ids`."
   [collection-ids]
-  (t2/query {:select-distinct [:collection_id]
-             :from            [(t2/table-name :model/Table)]
-             :where           [:and
-                               [:= :is_published true]
-                               [:= :archived_at nil]
-                               [:in :collection_id collection-ids]]}))
+  (app-db/select-batched #(t2/query {:select-distinct [:s.collection_id]
+                                     :from            [[(t2/table-name :model/TableUserSettings) :s]]
+                                     :join            [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
+                                     :where           [:and
+                                                       [:= :s.is_published true]
+                                                       [:= :t.archived_at nil]
+                                                       [:in :s.collection_id %]]})
+                         collection-ids))
 
 (defn transform-collection-ids-in
   "The distinct `:collection_id`s of the Transforms with one of `source-types` in the Collections with
   `collection-ids`."
   [collection-ids source-types]
-  (t2/query {:select-distinct [:collection_id]
-             :from            :transform
-             :where           [:and
-                               [:in :collection_id collection-ids]
-                               [:in :source_type source-types]]}))
+  (app-db/select-batched #(t2/query {:select-distinct [:collection_id]
+                                     :from            :transform
+                                     :where           [:and
+                                                       [:in :collection_id %]
+                                                       [:in :source_type source-types]]})
+                         collection-ids))
 
 (defn unarchived-action-collection-ids-in
   "The distinct `:collection_id`s of the unarchived Actions in the Collections with `collection-ids`."
   [collection-ids]
-  (t2/query {:select-distinct [:collection_id]
-             :from            :action
-             :where           [:and
-                               [:= :archived false]
-                               [:in :collection_id collection-ids]]}))
+  (app-db/select-batched #(t2/query {:select-distinct [:collection_id]
+                                     :from            :action
+                                     :where           [:and
+                                                       [:= :archived false]
+                                                       [:in :collection_id %]]})
+                         collection-ids))
 
 (defn unarchived-dashboard-collection-ids-in
   "The distinct `:collection_id`s of the unarchived Dashboards in the Collections with `collection-ids`."
   [collection-ids]
-  (t2/query {:select-distinct [:collection_id]
-             :from            :report_dashboard
-             :where           [:and
-                               [:= :archived false]
-                               [:in :collection_id collection-ids]]}))
+  (app-db/select-batched #(t2/query {:select-distinct [:collection_id]
+                                     :from            :report_dashboard
+                                     :where           [:and
+                                                       [:= :archived false]
+                                                       [:in :collection_id %]]})
+                         collection-ids))
 
 (defn collection-children-rows
   "The rows matching the collection-children Honey SQL `query`, built by `metabase.collection-items.core` from the
@@ -572,11 +599,9 @@
 (mu/defn group-ids-by-permission-object :- [:map-of :string [:set ms/PositiveInt]]
   "A map of each of `objects` that a Permissions row exists for to the set of the IDs of the groups holding it."
   [objects :- [:sequential :string]]
-  (if (seq objects)
-    (reduce (fn [m {:keys [object group_id]}] (update m object (fnil conj #{}) group_id))
-            {}
-            (t2/select [:model/Permissions :object :group_id] :object [:in objects]))
-    {}))
+  (reduce (fn [m {:keys [object group_id]}] (update m object (fnil conj #{}) group_id))
+          {}
+          (app-db/select-batched #(t2/select [:model/Permissions :object :group_id] :object [:in %]) objects)))
 
 ;;; ---------------------------------------------------- Users ----------------------------------------------------
 
@@ -588,29 +613,27 @@
 (mu/defn user-name-parts-by-id
   "A map of ID to the first name, last name, and email of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :first_name :last_name :email :id] :id [:in user-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity [:model/User :first_name :last_name :email :id] :id [:in %]) user-ids))
 
 (mu/defn api-key-user-ids
   "The IDs of the Users among `user-ids` that are API key users."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (set (t2/select-pks-set :model/User :id [:in user-ids] :type :api-key)))
+  (into #{} (app-db/select-batched #(t2/select-pks-set :model/User :id [:in %] :type :api-key) user-ids)))
 
 (mu/defn personal-collection-ids-among
   "The IDs of the personal Collections among `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (if (seq collection-ids)
-    (set (t2/select-pks-set :model/Collection :id [:in collection-ids] :personal_owner_id [:not= nil]))
-    #{}))
+  (into #{} (app-db/select-batched #(t2/select-pks-set :model/Collection :id [:in %] :personal_owner_id [:not= nil]) collection-ids)))
 
 (mu/defn non-api-key-user-ids
   "The IDs of the Users among `user-ids` that are not API key users."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pks-set :model/User :id [:in user-ids] :type [:not= :api-key]))
+  (app-db/select-batched-set #(t2/select-pks-set :model/User :id [:in %] :type [:not= :api-key]) user-ids))
 
 (mu/defn synced-collection-items :- [:sequential ::collections.schema/collection]
   "The Collections with `ids`, with their ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
-  (-> (t2/select [:model/Collection :id :name :type :location] :id [:in ids])
+  (-> (app-db/select-batched #(t2/select [:model/Collection :id :name :type :location] :id [:in %]) ids)
       (t2/hydrate :effective_ancestors)))
 
 (mu/defn personal-root-collection-ids :- [:sequential ::lib.schema.id/collection]

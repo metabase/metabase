@@ -142,13 +142,15 @@
                [:database-id         {:optional true} [:maybe ms/PositiveInt]]]]]
   (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id)]
-      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
-           (into []
-                 (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
-                       (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
-                       (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
-                       (map transforms.u/add-source-readable)))))))
+    (let [transforms   (transforms.db/transforms-of-source-types enabled-types database-id)
+          filtered     (into []
+                             (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
+                                   (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
+                                   (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids))
+                             (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner))
+          models-cache (transforms.u/prefetch-source-models filtered)]
+      (-> (transform.model/assoc-permissions filtered models-cache [:can_read :can_write :can_query])
+          (transforms.u/add-source-readable models-cache)))))
 
 (mu/defn requestable-indexes :- [:maybe ::transforms.schema/requestable-indexes]
   "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
@@ -169,7 +171,7 @@
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms-base.u/target-table (transforms-base.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
+        (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_query)
         (assoc :table target-table)
         transforms.u/add-source-readable)))
 
@@ -197,7 +199,7 @@
                                                             :owner_user_id owner-user-id)
                                                (seq tag-ids) (assoc :tag_ids tag-ids))]))]
                         ;; Return with hydrated tag_ids
-                        (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
+                        (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_query)))]
      transform)))
 
 (mr/def ::update-body
@@ -227,7 +229,7 @@
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409
                                  (deferred-tru "A table with that name already exists.")))
-                    (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
+                    (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_query))]
     (-> transform
         transforms.u/add-source-readable)))
 
@@ -250,10 +252,10 @@
         folders        (transforms.db/collections-by-ids collection-ids)
         transforms     (transforms.db/transforms-in-collections collection-ids)]
     ;; The delete removes every subfolder, so it needs write permission on each of them, as an archive does.
-    (run! api/write-check folders)
+    (run! api/write-check (t2/hydrate folders :can_write))
     ;; Write permission on the folder does not cover its Transforms: theirs comes from the databases they read and
     ;; write, and from the premium feature of their type.
-    (run! api/write-check transforms)
+    (run! api/write-check (t2/hydrate transforms :can_write))
     ;; Drop the tables before the transaction, in the order of the single delete in the frontend (table, then
     ;; transform). A failed drop stops the delete with every Transform row in place, so the user can retry; the tables
     ;; dropped before it stay dropped. `delete-target-table!` needs the Transform row to find its target.

@@ -65,9 +65,9 @@
   [model rows]
   (if-let [f (:update! (serialization.spec/spec model))]
     (vec (f (vec rows)))
-    (let [pk (serialization.spec/primary-key model)]
-      (doseq [row rows]
-        (serialization.db/update-row! model pk (get row pk) (dissoc row pk)))
+    (do
+      (run! #(serialization.db/update-rows! model (vec %))
+            (partition-all serialization.util/batch-size rows))
       (vec rows))))
 
 (defn delete!

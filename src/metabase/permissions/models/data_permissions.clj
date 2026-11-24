@@ -108,34 +108,13 @@
           (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
                           {:status-code 400})))))))
 
-;; Memoized per application DB. Destination status is immutable after creation, so the cache can't go stale.
-
-(defonce ^:private destination-db-ids-cache
-  (atom {}))
-
-(defn- destination-db-id?-fn
-  "A predicate answering whether each of `db-ids` is a destination database, one with `router_database_id` set, from a
-  cache per application DB that the ids not cached yet join with one read."
-  [db-ids]
-  (let [app-db-id (mdb/unique-identifier)
-        cached    (get @destination-db-ids-cache app-db-id {})
-        uncached  (into [] (comp (remove #(contains? cached %)) (distinct)) db-ids)
-        answers   (if (seq uncached)
-                    (let [destinations (permissions.db/destination-database-ids uncached)]
-                      (get (swap! destination-db-ids-cache update app-db-id merge
-                                  (into {} (map (juxt identity (partial contains? destinations))) uncached))
-                           app-db-id))
-                    cached)]
-    (fn [db-id] (get answers db-id))))
-
 (defn assert-no-destination-db-permissions!
   "Throws if any row in `perm-rows` targets a destination database — one with `router_database_id`
   set. Destinations are reachable only through their router and must never carry `data_permissions`
   rows."
   [perm-rows]
-  (let [db-ids            (into [] (keep :db_id) perm-rows)
-        destination-db-id? (destination-db-id?-fn db-ids)]
-    (when-let [dest-ids (seq (into #{} (filter destination-db-id?) db-ids))]
+  (let [db-ids (into [] (comp (keep :db_id) (distinct)) perm-rows)]
+    (when-let [dest-ids (seq (when (seq db-ids) (permissions.db/destination-database-ids db-ids)))]
       (throw (ex-info (tru "Cannot grant permissions on a destination database.")
                       {:status-code 400 :destination-db-ids dest-ids})))))
 

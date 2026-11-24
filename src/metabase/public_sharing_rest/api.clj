@@ -8,8 +8,10 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :as routes.common]
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.database-routing.core :as database-routing]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -23,6 +25,7 @@
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.public-sharing-rest.api.refusal]
    [metabase.public-sharing-rest.db :as public-sharing-rest.db]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -75,11 +78,12 @@
   "Replace the contents of `query` with a blank query of the same type, so the query contents themselves (SQL,
   filters, aggregations, template tags, etc.) are never exposed to the general public. MBQL queries keep only their
   source table or source card, plus a placeholder `:count` aggregation per original aggregation, so the frontend can
-  still tell MBQL and native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs."
-  [query]
+  still tell MBQL and native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs, a
+  source table being looked up in `id->table`, a map of table ids to their metadata."
+  [query id->table]
   (if (lib/native? query)
     (lib/native-query query "-")
-    (if-let [source (or (some->> (lib/primary-source-table-id query) (lib.metadata/table query))
+    (if-let [source (or (some->> (lib/primary-source-table-id query) (get id->table))
                         (some->> (lib/primary-source-card-id query) (lib.metadata/card query)))]
       (reduce lib/aggregate
               (lib/query query source)
@@ -94,26 +98,43 @@
   (m/update-existing card-or-dashboard :param_fields
                      #(select-keys % (into #{} (map :id) (:parameters card-or-dashboard)))))
 
+(defn- table-metadata-by-id
+  "A map of table ids to their metadata for the source tables of the queries of `cards`, loaded once per database."
+  [cards]
+  (into {}
+        (mapcat (fn [[_database-id queries]]
+                  (let [table-ids (into #{} (keep lib/primary-source-table-id) queries)]
+                    (when (seq table-ids)
+                      (map (juxt :id identity) (lib.metadata/bulk-metadata (first queries) :metadata/table table-ids))))))
+        (group-by lib/database-id
+                  (into []
+                        (comp (keep :dataset_query) (filter seq) (remove lib/native?))
+                        cards))))
+
 (defn remove-card-non-public-columns
   "Remove everything from public `card` that shouldn't be visible to the general public.
 
-  The `:dataset_query` is replaced with a blank query of the same type via [[blank-dataset-query]].
+  The `:dataset_query` is replaced with a blank query of the same type via [[blank-dataset-query]], whose source tables
+  come from `id->table`, a map of table ids to their metadata, loaded for the card alone when not given.
 
   This function is used by both OSS (for public cards) and EE (for cards in public documents) to ensure
   consistent filtering of sensitive fields across all public sharing endpoints."
-  [card]
-  ;; We need to check this to resolve params - we set `request/as-admin` there
-  (if qp.perms/*param-values-query*
-    card
-    (mi/instance
-     :model/Card
-     (-> card
-         (select-keys [:id :name :description :display :visualization_settings :parameters :param_fields :entity_id
-                       :dataset_query])
-         (update :dataset_query (fn [query]
-                                  (cond-> query
-                                    (seq query) blank-dataset-query)))
-         params/remove-param-fields-non-public-columns))))
+  ([card]
+   (remove-card-non-public-columns card nil))
+  ([card id->table]
+   ;; We need to check this to resolve params - we set `request/as-admin` there
+   (if qp.perms/*param-values-query*
+     card
+     (mi/instance
+      :model/Card
+      (-> card
+          (select-keys [:id :name :description :display :visualization_settings :parameters :param_fields :entity_id
+                        :dataset_query])
+          (update :dataset_query (fn [query]
+                                   (cond-> query
+                                     (seq query) (blank-dataset-query (or id->table
+                                                                          (table-metadata-by-id [card]))))))
+          params/remove-param-fields-non-public-columns)))))
 
 (defn public-card
   "Return the public Card with the given `card-id`, removing all columns that should not be visible to the general
@@ -351,15 +372,16 @@
 
 (defn- public-dashcards
   [dashcards]
-  (let [events (public-timeline-events (into #{} (mapcat public-dashcard-timeline-ids) dashcards))]
+  (let [events    (public-timeline-events (into #{} (mapcat public-dashcard-timeline-ids) dashcards))
+        id->table (table-metadata-by-id (mapcat (fn [dashcard] (cons (:card dashcard) (:series dashcard))) dashcards))]
     (for [dashcard dashcards]
       (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x :dashboard_tab_id
                                  :size_y :parameter_mappings :visualization_settings :action :inline_parameters])
           (assoc :timeline_events (public-dashcard-timeline-events dashcard events))
-          (update :card remove-card-non-public-columns)
+          (update :card remove-card-non-public-columns id->table)
           (update :series (fn [series]
                             (for [series series]
-                              (remove-card-non-public-columns series))))
+                              (remove-card-non-public-columns series id->table))))
           (m/update-existing :action public-action)))))
 
 (mu/defn public-dashboard :- ::dashboards.schema/dashboard
@@ -965,7 +987,28 @@
 ;; TODO - a smart person would probably just parse the UUIDs automatically in middleware as appropriate for
 ;;`/dashboard` vs `/card`
 
+;;; A public link has no user attributes to route by, so public queries use the router database when it grants anonymous
+;;; access.
+
+(defn- enforce-anonymous-database-routing
+  "Ring middleware that runs a public request with database routing resolved for anonymous access (see above)."
+  [handler]
+  (fn [request respond raise]
+    (database-routing/with-database-routing-off-if-granted
+      (handler request respond raise))))
+
+(def ^:private ^{:arglists '([handler])} +anonymous-database-routing
+  (routes.common/wrap-middleware-for-open-api-spec-generation enforce-anonymous-database-routing))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/public` routes. Enforces public-sharing-enabled check via middleware, in addition to
-  per-endpoint checks."
-  (api.macros/ns-handler *ns* public-sharing.validation/+public-sharing-enabled))
+  per-endpoint checks, and resolves database routing for anonymous access (see above)."
+  (api.macros/ns-handler *ns*
+                         public-sharing.validation/+public-sharing-enabled
+                         +anonymous-database-routing))
+
+(comment metabase.public-sharing-rest.api.refusal/keep-me)
+
+(def ^{:arglists '([request respond raise])} refusal-routes
+  "`/api/public-link-refusal` routes."
+  (api.macros/ns-handler 'metabase.public-sharing-rest.api.refusal api/+check-superuser))

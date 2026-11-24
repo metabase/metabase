@@ -64,7 +64,7 @@
   [ids      :- [:sequential {:min 1} :string]
    reason   :- ::session.schema/end-reason
    ended-by :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
-  (t2/update! :model/Session :id [:in [:auto/param (vec ids)]] :ended_at nil (session-ending reason ended-by)))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/Session :id [:in [:auto/param %]] :ended_at nil (session-ending reason ended-by)) ids))
 
 (mu/defn end-sessions-for-users! :- ms/IntGreaterThanOrEqualToZero
   "Record that every live Session of the Users with `user-ids` has ended with `reason`, ended by `ended-by`, clearing
@@ -72,7 +72,8 @@
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]
    reason   :- ::session.schema/end-reason
    ended-by :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
-  (t2/update! :model/Session :user_id [:in [:auto/param (vec user-ids)]] :ended_at nil (session-ending reason ended-by)))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/Session :user_id [:in [:auto/param %]] :ended_at nil
+                                                          (session-ending reason ended-by)) user-ids))
 
 (mu/defn end-session-for-key! :- ms/IntGreaterThanOrEqualToZero
   "Record that the live Session with `key-hashed` has ended with `reason`, ended by `ended-by`, clearing its key, and

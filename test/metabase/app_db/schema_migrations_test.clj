@@ -4572,6 +4572,94 @@
       (migrate!)
       (is (thrown? Exception (t2/select :data_app_group_assignment))))))
 
+(deftest db-router-anonymous-access-granted-backfill-test
+  (testing "migration 6m7im9: routers with published guest embeds are granted anonymous access"
+    (impl/test-migrations ["3i2jpz" "6m7im9"] [migrate!]
+      (let [user-id  (t2/insert-returning-pk! :core_user {:first_name  "Router"
+                                                          :last_name   "Owner"
+                                                          :email       "router-owner@metabase.com"
+                                                          :password    "superstrong"
+                                                          :entity_id   (u/generate-nano-id)
+                                                          :date_joined :%now})
+            db!      (fn [db-name]
+                       (t2/insert-returning-pk! :metabase_database {:details    "{}"
+                                                                    :created_at :%now
+                                                                    :updated_at :%now
+                                                                    :engine     "h2"
+                                                                    :is_sample  false
+                                                                    :name       db-name}))
+            router!  (fn [db-id]
+                       (t2/insert-returning-pk! :db_router {:database_id    db-id
+                                                            :user_attribute "tenant"}))
+            card!    (fn [db-id & {:keys [enable-embedding public-uuid]}]
+                       (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                              :entity_id              (u/generate-nano-id)
+                                                              :type                   "question"
+                                                              :display                "table"
+                                                              :dataset_query          "{}"
+                                                              :visualization_settings "{}"
+                                                              :creator_id             user-id
+                                                              :database_id            db-id
+                                                              :enable_embedding       (boolean enable-embedding)
+                                                              :public_uuid            public-uuid
+                                                              :archived               false
+                                                              :created_at             :%now
+                                                              :updated_at             :%now}))
+            dash!    (fn [& {:keys [enable-embedding]}]
+                       (t2/insert-returning-pk! :report_dashboard {:name             "Dash"
+                                                                   :creator_id       user-id
+                                                                   :parameters       "[]"
+                                                                   :entity_id        (u/generate-nano-id)
+                                                                   :enable_embedding (boolean enable-embedding)
+                                                                   :created_at       :%now
+                                                                   :updated_at       :%now}))
+            dashcard! (fn [dash-id card-id]
+                        (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
+                                                                        :card_id                card-id
+                                                                        :parameter_mappings     "[]"
+                                                                        :visualization_settings "{}"
+                                                                        :entity_id              (u/generate-nano-id)
+                                                                        :size_x                 4
+                                                                        :size_y                 4
+                                                                        :row                    0
+                                                                        :col                    0
+                                                                        :created_at             :%now
+                                                                        :updated_at             :%now}))
+            series!  (fn [dashcard-id card-id]
+                       (t2/insert! :dashboardcard_series {:dashboardcard_id dashcard-id
+                                                          :card_id          card-id
+                                                          :position         0}))
+            granted? (fn [router-id]
+                       (boolean (t2/select-one-fn :anonymous_access_granted :db_router :id router-id)))
+            embedded-card-db     (db! "embedded-card-router")
+            embedded-card-router (router! embedded-card-db)
+            _                    (card! embedded-card-db :enable-embedding true)
+            dashcard-db     (db! "dashcard-router")
+            dashcard-router (router! dashcard-db)
+            _               (dashcard! (dash! :enable-embedding true) (card! dashcard-db))
+            series-db       (db! "series-router")
+            series-router   (router! series-db)
+            series-dashcard (dashcard! (dash! :enable-embedding true) (card! (db! "series-unrelated")))
+            _               (series! series-dashcard (card! series-db))
+            public-db       (db! "public-link-router")
+            public-router   (router! public-db)
+            _               (card! public-db :public-uuid (str (random-uuid)))
+            elsewhere-db     (db! "elsewhere-router")
+            elsewhere-router (router! elsewhere-db)
+            _                (dashcard! (dash! :enable-embedding true) (card! (db! "elsewhere-other")))
+            plain-db        (db! "plain-db")
+            _               (card! plain-db :enable-embedding true)]
+        (migrate!)
+        (testing "granted"
+          (is (true? (granted? embedded-card-router)))
+          (is (true? (granted? dashcard-router)))
+          (is (true? (granted? series-router))))
+        (testing "left ungranted"
+          (is (false? (granted? public-router)))
+          (is (false? (granted? elsewhere-router))))
+        (testing "a non-routed database gets no router"
+          (is (not (t2/exists? :db_router :database_id plain-db))))))))
+
 (deftest deactivate-unused-builtin-transform-jobs-test
   (testing "pyz33j deactivates the built-in jobs that no transform uses"
     (impl/test-migrations ["pyz33j"] [migrate!]
@@ -5472,3 +5560,97 @@
           (testing (name table)
             (is (= [true false false]
                    (mapv #(t2/select-one-fn :archived_directly table :id %) ids)))))))))
+
+(deftest drop-table-transform-id-test
+  (impl/test-migrations ["nqeyec" "p7c3vn"] [migrate!]
+    (let [user-id    (t2/insert-returning-pk! :core_user {:first_name  "Test"
+                                                          :last_name   "User"
+                                                          :email       "user@example.com"
+                                                          :entity_id   (u/generate-nano-id)
+                                                          :password    "superstrong"
+                                                          :date_joined :%now})
+          db-id      (t2/insert-returning-pk! :metabase_database {:name       "Transform Targets DB"
+                                                                  :engine     "h2"
+                                                                  :created_at :%now
+                                                                  :updated_at :%now
+                                                                  :details    "{}"})
+          transform! (fn []
+                       (t2/insert-returning-pk! :transform {:name        (mt/random-name)
+                                                            :source      "{}"
+                                                            :target      "{}"
+                                                            :source_type "native"
+                                                            :creator_id  user-id
+                                                            :entity_id   (u/generate-nano-id)
+                                                            :created_at  :%now
+                                                            :updated_at  :%now}))
+          table!     (fn [transform-id]
+                       (t2/insert-returning-pk! :metabase_table {:active       true
+                                                                 :db_id        db-id
+                                                                 :name         (mt/random-name)
+                                                                 :transform_id transform-id
+                                                                 :created_at   :%now
+                                                                 :updated_at   :%now}))
+          target     (fn [transform-id]
+                       (t2/select-one-fn :target_table_id :transform :id transform-id))
+          unlinked   (transform!)
+          linked     (transform!)
+          no-table   (transform!)
+          old-table  (table! linked)
+          new-table  (table! linked)
+          only-table (table! unlinked)
+          plain      (table! nil)]
+      (t2/update! :transform :id linked {:target_table_id new-table})
+      (migrate!)
+      (testing "transform without target table takes the table that named it"
+        (is (= only-table (target unlinked))))
+      (testing "transform with target table keeps it"
+        (is (= new-table (target linked))))
+      (testing "transform named by no table stays without target table"
+        (is (nil? (target no-table))))
+      (testing "column is gone"
+        (is (not (contains? (t2/select-one :metabase_table :id only-table) :transform_id))))
+      (testing "rollback restores column from target tables"
+        (migrate! :down 64)
+        (is (= {only-table unlinked, new-table linked, old-table nil, plain nil}
+               (t2/select-pk->fn :transform_id :metabase_table :id [:in [only-table new-table old-table plain]])))))))
+
+(deftest drop-table-collection-id-and-is-published-test
+  (impl/test-migrations ["t5r8wm" "m6d9fx"] [migrate!]
+    (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "Published Tables DB"
+                                                                     :engine     "h2"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+          collection-id (t2/insert-returning-pk! :collection {:name      "Data"
+                                                              :slug      "data"
+                                                              :location  "/"
+                                                              :entity_id (u/generate-nano-id)})
+          table!        (fn [values]
+                          (t2/insert-returning-pk! :metabase_table (merge {:active     true
+                                                                           :db_id      db-id
+                                                                           :name       (mt/random-name)
+                                                                           :created_at :%now
+                                                                           :updated_at :%now}
+                                                                          values)))
+          settings!     (fn [table-id values]
+                          (t2/insert! :metabase_table_user_settings (merge {:table_id   table-id
+                                                                            :created_at :%now
+                                                                            :updated_at :%now}
+                                                                           values)))
+          published     (table! {:is_published true, :collection_id collection-id})
+          unpublished   (table! {})
+          plain         (table! {})]
+      (settings! published {:is_published true, :collection_id collection-id})
+      (settings! unpublished {:is_published false})
+      (migrate!)
+      (testing "columns are gone"
+        (is (not-any? #{:is_published :collection_id} (keys (t2/select-one :metabase_table :id published)))))
+      (testing "settings keep publication"
+        (is (= {published [true collection-id], unpublished [false nil]}
+               (t2/select-fn->fn :table_id (juxt :is_published :collection_id) :metabase_table_user_settings
+                                 :table_id [:in [published unpublished plain]]))))
+      (testing "rollback restores columns from settings"
+        (migrate! :down 64)
+        (is (= {published [true collection-id], unpublished [false nil], plain [false nil]}
+               (t2/select-pk->fn (juxt :is_published :collection_id) :metabase_table
+                                 :id [:in [published unpublished plain]])))))))

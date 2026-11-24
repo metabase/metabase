@@ -300,9 +300,7 @@ describe("Notebook", () => {
       );
       // The first column starts as the first column of the stage. The default
       // separator depends on the type of the first column.
-      await userEvent.click(
-        screen.getByRole("button", { name: /^Created At chevrondown/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: "Created At" }));
       await userEvent.click(await screen.findByText("User"));
       await userEvent.click(await screen.findByText("Email"));
 

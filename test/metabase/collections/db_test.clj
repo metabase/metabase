@@ -27,3 +27,29 @@
                (outside #{:snippets} []))))
       (testing "the Collections that pass are not returned"
         (is (not (contains? (outside #{nil} []) default)))))))
+
+(deftest partitioned-reads-match-whole-reads-test
+  (mt/with-temp [:model/Collection {a :id}                 {}
+                 :model/Collection {b :id}                 {:location (format "/%d/" a)}
+                 :model/Collection {c :id}                 {:location (format "/%d/%d/" a b)}
+                 :model/Collection {d :id}                 {:archived true}
+                 :model/Collection {e :id}                 {}
+                 :model/Collection {f :id}                 {:location (format "/%d/" e)}]
+    (let [ids        [a b c d e f]
+          locations  [(format "/%d/" a) (format "/%d/%d/" a b) (format "/%d/" e) (format "/%d/" d) "/999999/"]
+          patterns   (mapv #(str % "%") locations)
+          reads      {:map-by-ids       #(collections.db/collections-by-ids ids)
+                      :set-of-archived  #(collections.db/archived-collection-ids-among (set ids))
+                      :set-by-patterns  #(collections.db/collection-ids-with-location-like-any patterns)
+                      :vector-below     #(set (collections.db/collections-below locations))
+                      :flagged-subtree  #(set (collections.db/subtree-locations-to-flag ids locations true))}]
+      (doseq [[read-name read-fn] reads]
+        (testing read-name
+          (let [whole (read-fn)]
+            (is (seq whole))
+            (is (= whole (mt/with-partition-size 2
+                           (read-fn))))))))))
+
+(deftest set-reads-answer-nil-for-no-rows-test
+  (is (nil? (collections.db/collection-ids-of-type [Integer/MAX_VALUE] "instance-analytics")))
+  (is (nil? (collections.db/collection-ids-with-location-like-any ["/no-such-location/%"]))))
