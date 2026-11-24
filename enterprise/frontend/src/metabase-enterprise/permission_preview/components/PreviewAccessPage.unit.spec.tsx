@@ -148,13 +148,32 @@ function setup({
   });
 }
 
-async function getFrame() {
-  const frame = await screen.findByTitle(/^What .* sees$/);
+async function getFrame(title: string | RegExp = /^What .* sees$/) {
+  const frame = await screen.findByTitle(title);
 
   if (!(frame instanceof HTMLIFrameElement)) {
     throw new Error("the preview is not in an iframe");
   }
   return frame;
+}
+
+// jsdom loads no document into the frame and has no `innerText`, which the preview reads
+// to tell a frame that has painted its content from one still showing its loader
+function loadFrame(frame: HTMLIFrameElement) {
+  const frameBody = document.createElement("body");
+  Object.defineProperty(frameBody, "innerText", {
+    get: () => frameBody.textContent ?? "",
+  });
+  Object.defineProperty(frame, "contentDocument", {
+    value: { body: frameBody },
+  });
+  fireEvent.load(frame);
+}
+
+function showFrameContent(frame: HTMLIFrameElement, text: string) {
+  act(() => {
+    frame.contentDocument?.body.append(text);
+  });
 }
 
 function findBand() {
@@ -341,20 +360,54 @@ describe("PreviewAccessPage", () => {
     expect(screen.queryByText(/Loading .* view/)).not.toBeInTheDocument();
   });
 
-  it("covers the frame with a loading caption until the frame has loaded", async () => {
+  it("covers the frame with a loading caption until the frame shows its content", async () => {
     setup();
 
     await userEvent.click(await screen.findByText("Sandy Sales"));
     const frame = await getFrame();
 
     expect(screen.getByText("Loading Sandy Sales's view…")).toBeVisible();
-    fireEvent.load(frame);
+    loadFrame(frame);
+    expect(screen.getByText("Loading Sandy Sales's view…")).toBeVisible();
+    showFrameContent(frame, "All collections");
 
     await waitFor(() =>
       expect(
         screen.queryByText("Loading Sandy Sales's view…"),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("covers the frame with the new person's loading caption from one person to the next, until the new frame shows its content", async () => {
+    setup();
+    await userEvent.click(await screen.findByText("Sandy Sales"));
+    const sandyFrame = await getFrame();
+    loadFrame(sandyFrame);
+    showFrameContent(sandyFrame, "All collections");
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Loading Sandy Sales's view…"),
+      ).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(screen.getByText("Tina Tenant"));
+    const tinaFrame = await getFrame("What Tina Tenant sees");
+    expect(
+      await screen.findByText("Loading Tina Tenant's view…"),
+    ).toBeVisible();
+    loadFrame(tinaFrame);
+
+    expect(screen.getByText("Loading Tina Tenant's view…")).toBeVisible();
+    showFrameContent(tinaFrame, "All collections");
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Loading Tina Tenant's view…"),
+      ).not.toBeInTheDocument(),
+    );
+    expect(startedBodies()).toEqual([
+      JSON.stringify({ user_id: 2 }),
+      JSON.stringify({ user_id: 3 }),
+    ]);
   });
 
   it("keeps the open item in the frame when another person is picked", async () => {

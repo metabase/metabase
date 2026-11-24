@@ -217,7 +217,7 @@ function Preview({ target }: PreviewProps) {
               token={session.token}
               name={name}
               initialItem={frameItem}
-              onLoad={() => setLoadedFrame(frameKey)}
+              onContentShown={() => setLoadedFrame(frameKey)}
               onLocationChange={handleLocationChange}
             />
           )}
