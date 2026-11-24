@@ -2326,20 +2326,30 @@
   [hsql stage]
   (cte-binding (::cte-name stage) hsql (get-in stage [:lib/stage-metadata :columns])))
 
+(defn- first-compiled-stage-index
+  "The index of the last stage that reads a persisted model cache, or 0. That stage does not read the stages before
+  it, so they do not have to be compiled."
+  [stages]
+  (or (last (keep-indexed (fn [idx stage] (when (:persisted-info/native stage) idx)) stages))
+      0))
+
 (defn- stages->honeysql-ctes
   "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from."
   [driver stages]
-  (let [stages   (vec stages)
-        last-idx (dec (count stages))
-        cte-body (fn [idx]
-                   (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver (::cte-name (stages (dec idx)))))]
-                     (stage->honeysql driver prev-from (stages idx))))
-        ctes     (mapv #(stage-cte (cte-body %) (stages %)) (range last-idx))]
+  (let [stages    (vec stages)
+        first-idx (first-compiled-stage-index stages)
+        last-idx  (dec (count stages))
+        cte-body  (fn [idx]
+                    (let [prev-from (if (= idx first-idx)
+                                      {}
+                                      (cte-stage-source-form driver (::cte-name (stages (dec idx)))))]
+                      (stage->honeysql driver prev-from (stages idx))))
+        ctes      (mapv #(stage-cte (cte-body %) (stages %)) (range first-idx last-idx))]
     (update (cte-body last-idx) :with #(into ctes %))))
 
 (defn- stages->honeysql*
   [driver stages]
-  (if (::cte-name (first stages))
+  (if (some ::cte-name stages)
     (stages->honeysql-ctes driver stages)
     (stages->honeysql-subselects driver stages)))
 
@@ -2363,7 +2373,8 @@
       (and (map? hsql) (seq @ctes)) (assoc :with @ctes))))
 
 (defn- assign-cte-names
-  "Gives each stage that compiles to a CTE, i.e. every stage but the last of a query or join, a unique `::cte-name`."
+  "Gives each stage that compiles to a CTE a unique `::cte-name`. These are the stages of a query or join from the one
+  that [[first-compiled-stage-index]] returns, except the last one."
   [stages]
   (let [n (volatile! 0)]
     (letfn [(name-stage [stage]
@@ -2371,7 +2382,11 @@
                 (vswap! n inc)
                 (assoc stage ::cte-name cte-name)))
             (name-stages [stages]
-              (into (mapv name-stage (butlast stages)) (take-last 1 stages)))]
+              (let [first-idx (first-compiled-stage-index stages)
+                    last-idx  (max first-idx (dec (count stages)))]
+                (-> (subvec stages 0 first-idx)
+                    (into (map name-stage) (subvec stages first-idx last-idx))
+                    (into (subvec stages last-idx)))))]
       (:stages (perf/postwalk (fn [form]
                                 (cond-> form
                                   (and (map? form) (vector? (:stages form))) (update :stages name-stages)))
