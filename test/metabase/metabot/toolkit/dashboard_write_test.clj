@@ -261,17 +261,17 @@
 (deftest archived-subscriptions-effect-test
   (testing "a save that archives subscriptions returns readable ones in full and unreadable ones as a bare flag"
     (mt/with-fake-inbox
-      (mt/with-temp [:model/Dashboard dash        {:name       "Sales"
-                                                   :parameters [{:id   "gone"
-                                                                 :name "Gone"
-                                                                 :slug "gone"
-                                                                 :type "category"}]}
-                     :model/Pulse     {own :id}   {:dashboard_id (:id dash)
-                                                   :creator_id   (mt/user->id :rasta)
-                                                   :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
-                     :model/Pulse     _           {:dashboard_id (:id dash)
-                                                   :creator_id   (mt/user->id :crowberto)
-                                                   :parameters   [{:id "gone", :name "Gone", :value ["b"]}]}]
+      (mt/with-temp [:model/Dashboard dash      {:name       "Sales"
+                                                 :parameters [{:id   "gone"
+                                                               :name "Gone"
+                                                               :slug "gone"
+                                                               :type "category"}]}
+                     :model/Pulse     {own :id} {:dashboard_id (:id dash)
+                                                 :creator_id   (mt/user->id :rasta)
+                                                 :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
+                     :model/Pulse     _         {:dashboard_id (:id dash)
+                                                 :creator_id   (mt/user->id :crowberto)
+                                                 :parameters   [{:id "gone", :name "Gone", :value ["b"]}]}]
         (mt/with-current-user (mt/user->id :rasta)
           (let [archived (-> (dashboard-write/write! {:dashboard (hydrated (:id dash))
                                                       :ops       [{:op "remove_parameter", :parameter_id "gone"}]})
