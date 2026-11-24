@@ -18,6 +18,7 @@ export type SummaryFormula = {
 export type SummaryFormulaBarOptions = {
   query: Lib.Query;
   stageIndex: number;
+  isPivotMode: boolean;
   onAdd: (query: Lib.Query, wellId: SummaryWellId) => void;
   onEdit: (query: Lib.Query, options: SummaryQueryChangeOptions) => void;
 };

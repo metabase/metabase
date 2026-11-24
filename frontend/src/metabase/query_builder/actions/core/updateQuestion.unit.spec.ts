@@ -19,7 +19,13 @@ import {
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { Card, TestTemplateTag, UnsavedCard } from "metabase-types/api";
+import type {
+  Card,
+  Dataset,
+  TestQuerySpec,
+  TestTemplateTag,
+  UnsavedCard,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -51,6 +57,7 @@ type TestCard = Card | UnsavedCard;
 type SetupOpts = {
   card: TestCard;
   originalCard?: Card;
+  queryResult?: Dataset;
   run?: boolean;
   shouldUpdateUrl?: boolean;
   shouldStartAdHocQuestion?: boolean;
@@ -208,6 +215,7 @@ function addReviewsJoin<T extends TestCard>(card: T): T {
 async function setup({
   card,
   originalCard = getDefaultOriginalQuestion(card),
+  queryResult: lastQueryResult,
   queryBuilderMode = "view",
   isShowingTemplateTagsEditor = false,
   run,
@@ -252,7 +260,7 @@ async function setup({
 
   const qbState = createMockQueryBuilderState({
     card: originalCard,
-    queryResults: [queryResult],
+    queryResults: [lastQueryResult ?? queryResult],
     uiControls: createMockQueryBuilderUIControlsState({
       queryBuilderMode,
       isShowingTemplateTagsEditor,
@@ -280,30 +288,28 @@ async function setup({
   return { question, dispatch, result };
 }
 
+const PIVOT_TABLE_STAGE: TestQuerySpec["stages"][0] = {
+  source: { type: "table", id: ORDERS_ID },
+  aggregations: [{ type: "operator", operator: "count", args: [] }],
+  breakouts: [
+    { type: "column", name: "CREATED_AT", unit: "year" },
+    {
+      type: "column",
+      name: "SOURCE",
+      sourceFieldId: ORDERS.USER_ID,
+    },
+    {
+      type: "column",
+      name: "CATEGORY",
+      sourceFieldId: ORDERS.PRODUCT_ID,
+    },
+  ],
+};
+
 const PIVOT_TABLE_QUESTION: UnsavedCard = {
   display: "pivot",
   dataset_query: Lib.toJsQuery(
-    Lib.createTestQuery(SAMPLE_PROVIDER, {
-      stages: [
-        {
-          source: { type: "table", id: ORDERS_ID },
-          aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [
-            { type: "column", name: "CREATED_AT", unit: "year" },
-            {
-              type: "column",
-              name: "SOURCE",
-              sourceFieldId: ORDERS.USER_ID,
-            },
-            {
-              type: "column",
-              name: "CATEGORY",
-              sourceFieldId: ORDERS.PRODUCT_ID,
-            },
-          ],
-        },
-      ],
-    }),
+    Lib.createTestQuery(SAMPLE_PROVIDER, { stages: [PIVOT_TABLE_STAGE] }),
   ),
   visualization_settings: {
     "pivot_table.column_split": {
@@ -848,7 +854,7 @@ describe("QB Actions > updateQuestion", () => {
 
       const { result } = await setup({
         card: card,
-        originalCard: getDefaultOriginalQuestion(card),
+        originalCard: { ...card, visualization_settings: {} },
         run: false,
       });
 
@@ -856,6 +862,62 @@ describe("QB Actions > updateQuestion", () => {
       expect(pivotTableSettings).not.toEqual(
         result.card.visualization_settings["pivot_table.column_split"],
       );
+    });
+
+    it("keeps the pivot table viz settings when the results are of another query", async () => {
+      jest.spyOn(Question.prototype, "canAutoRun").mockReturnValue(true);
+      const runQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+
+      const { result } = await setup({
+        card: card,
+        originalCard: getDefaultOriginalQuestion(card),
+        run: true,
+      });
+
+      expect(runQuerySpy).toHaveBeenCalledTimes(1);
+      expect(
+        result.card.visualization_settings["pivot_table.column_split"],
+      ).toEqual(card.visualization_settings["pivot_table.column_split"]);
+    });
+
+    it("runs a changed query when asked, even if the pivot table viz settings stay the same", async () => {
+      jest.spyOn(Question.prototype, "canAutoRun").mockReturnValue(true);
+      const runQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+      const filteredQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            ...PIVOT_TABLE_STAGE,
+            filters: [
+              {
+                type: "operator",
+                operator: ">",
+                args: [
+                  { type: "column", name: "TAX" },
+                  { type: "literal", value: 5 },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      await setup({
+        card: { ...card, dataset_query: Lib.toJsQuery(filteredQuery) },
+        originalCard: card,
+        queryResult: createMockDataset({
+          data: {
+            cols: [
+              createMockColumn({ name: "CREATED_AT", source: "breakout" }),
+              createMockColumn({ name: "SOURCE", source: "breakout" }),
+              createMockColumn({ name: "CATEGORY", source: "breakout" }),
+              createMockColumn({ name: "count", source: "aggregation" }),
+            ],
+          },
+        }),
+        run: true,
+      });
+
+      expect(runQuerySpy).toHaveBeenCalledTimes(1);
     });
 
     it("forces query run if switching to pivot table visualization", async () => {

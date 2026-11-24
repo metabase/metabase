@@ -97,7 +97,7 @@ export function getWellFieldSections(
   const [valueSections, columnSections] = _.partition(sections, (section) =>
     VALUE_SECTION_KEYS.includes(section.key),
   );
-  if (wellId === "columns") {
+  if (wellId !== "values") {
     return columnSections;
   }
   const countSection: SummaryFieldSection = {
@@ -205,7 +205,7 @@ function getColumnAggregation(
     : null;
 }
 
-function getResultColumnNames(query: Lib.Query, stageIndex: number) {
+export function getResultColumnNames(query: Lib.Query, stageIndex: number) {
   const infos = Lib.returnedColumns(query, stageIndex).map((column) =>
     Lib.displayInfo(query, stageIndex, column),
   );
@@ -540,7 +540,7 @@ export function addField(
   wellId: SummaryWellId,
   field: SummaryField,
 ): Lib.Query {
-  if (wellId === "columns") {
+  if (wellId !== "values") {
     const column =
       field.kind === "column"
         ? findBreakoutableColumn(query, stageIndex, field.column)
@@ -580,33 +580,46 @@ export function addField(
   }
 }
 
+function getWellClauses(
+  query: Lib.Query,
+  stageIndex: number,
+  wellId: SummaryWellId,
+  rowKeys: string[],
+): (Lib.AggregationClause | Lib.BreakoutClause)[] {
+  if (wellId === "values") {
+    return Lib.aggregations(query, stageIndex);
+  }
+  const { breakoutNames } = getResultColumnNames(query, stageIndex);
+  return Lib.breakouts(query, stageIndex).filter(
+    (_clause, index) =>
+      rowKeys.includes(breakoutNames[index]) === (wellId === "rows"),
+  );
+}
+
+/** `rowKeys` are the keys of the groupings in Rows. Without them, Columns holds every grouping. */
 export function clearWell(
   query: Lib.Query,
   stageIndex: number,
   wellId: SummaryWellId,
+  rowKeys: string[] = [],
 ): Lib.Query {
-  const clauses =
-    wellId === "values"
-      ? Lib.aggregations(query, stageIndex)
-      : Lib.breakouts(query, stageIndex);
-  return clauses.reduce(
+  return getWellClauses(query, stageIndex, wellId, rowKeys).reduce(
     (query, clause) => Lib.removeClause(query, stageIndex, clause),
     query,
   );
 }
 
+/** Returns `query` itself when the field can't be added, so the well keeps its content. */
 export function replaceWellWithField(
   query: Lib.Query,
   stageIndex: number,
   wellId: SummaryWellId,
   field: SummaryField,
+  rowKeys: string[] = [],
 ): Lib.Query {
-  return addField(
-    clearWell(query, stageIndex, wellId),
-    stageIndex,
-    wellId,
-    field,
-  );
+  const clearedQuery = clearWell(query, stageIndex, wellId, rowKeys);
+  const nextQuery = addField(clearedQuery, stageIndex, wellId, field);
+  return nextQuery !== clearedQuery ? nextQuery : query;
 }
 
 export function getDragItem(data: unknown): SummaryDragItem | null {
@@ -647,7 +660,7 @@ function getDragSourceWellId(drag: SummaryDragItem): SummaryWellId | null {
     case "value":
       return "values";
     case "dimension":
-      return "columns";
+      return drag.wellId;
   }
 }
 
@@ -672,7 +685,13 @@ export function dropOnWell(
   wellId: SummaryWellId,
 ): Lib.Query {
   const field = getDragField(query, stageIndex, drag);
-  if (field == null || !canDropOnWell(query, stageIndex, drag, wellId)) {
+  const isMoveBetweenGroupingWells =
+    drag.kind === "dimension" && wellId !== "values";
+  if (
+    field == null ||
+    isMoveBetweenGroupingWells ||
+    !canDropOnWell(query, stageIndex, drag, wellId)
+  ) {
     return query;
   }
   const withoutSource =

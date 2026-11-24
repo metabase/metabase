@@ -12,6 +12,7 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TestQuerySpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
+import { NO_PIVOT_LAYOUT, getPivotLayout, getWellItems } from "../pivot-layout";
 import type {
   SummaryField,
   SummaryQueryChangeOptions,
@@ -42,18 +43,35 @@ const SUMMARIZED_QUERY: TestQuerySpec = {
 
 type SetupOpts = {
   spec?: TestQuerySpec;
+  isPivotMode?: boolean;
+  rowKeys?: string[];
 };
 
-function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
+function setup({
+  spec = SUMMARIZED_QUERY,
+  isPivotMode = false,
+  rowKeys = [],
+}: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, spec);
   const onPick = jest.fn<void, [SummaryWellId, SummaryField]>();
   const onChange = jest.fn<void, [Lib.Query, SummaryQueryChangeOptions?]>();
+  const { valueItems, columnItems, rowItems } = getWellItems(
+    query,
+    STAGE_INDEX,
+    getPivotLayout(query, STAGE_INDEX, { ...NO_PIVOT_LAYOUT, rows: rowKeys }),
+  );
   renderWithProviders(
     <SummaryWells
       query={query}
       stageIndex={STAGE_INDEX}
       sections={getFieldSections(query, STAGE_INDEX)}
       draggedItem={null}
+      canPivot
+      isPivotMode={isPivotMode}
+      valueItems={valueItems}
+      columnItems={columnItems}
+      rowItems={rowItems}
+      onPivotToggle={jest.fn<void, []>()}
       onPick={onPick}
       onChange={onChange}
     />,
@@ -518,6 +536,49 @@ describe("SummaryWells", () => {
     });
 
     expect(getChipLabels("columns")).toEqual(["Product → Category"]);
+  });
+
+  describe("pivot mode", () => {
+    const PIVOT_QUERY: TestQuerySpec = {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count" }],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "month" },
+            {
+              type: "column",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+              name: "CATEGORY",
+            },
+          ],
+        },
+      ],
+    };
+    const getRowsField = () => screen.getByLabelText("Add a row by name");
+
+    it("splits the groupings between Columns and Rows", () => {
+      setup({ spec: PIVOT_QUERY, isPivotMode: true, rowKeys: ["CATEGORY"] });
+
+      expect(getChipLabels("columns")).toEqual(["Created At: Month"]);
+      expect(getChipLabels("rows")).toEqual(["Product → Category"]);
+    });
+
+    it("takes off the last chip of the well on Backspace in an empty field", async () => {
+      const { getLastChange } = setup({
+        spec: PIVOT_QUERY,
+        isPivotMode: true,
+        rowKeys: ["CREATED_AT"],
+      });
+
+      await userEvent.click(getGroupingField());
+      await userEvent.keyboard("{Backspace}");
+      expect(getLastChange().dimensions).toEqual(["Created At: Month"]);
+
+      await userEvent.click(getRowsField());
+      await userEvent.keyboard("{Backspace}");
+      expect(getLastChange().dimensions).toEqual(["Product → Category"]);
+    });
   });
 
   describe("renaming", () => {

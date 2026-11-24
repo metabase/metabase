@@ -1,231 +1,23 @@
-import type * as DndKit from "@dnd-kit/core";
-import type { Active, ClientRect, DndContextProps, Over } from "@dnd-kit/core";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
 
-import { createMockMetadata } from "__support__/metadata";
-import {
-  act,
-  fireEvent,
-  renderWithProviders,
-  screen,
-  within,
-} from "__support__/ui";
+import { fireEvent, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+
 import {
-  DEFAULT_TEST_QUERY,
-  SAMPLE_PROVIDER,
-  createMetadataProvider,
-} from "metabase-lib/test-helpers";
-import { createMockCard } from "metabase-types/api/mocks";
-import {
-  ORDERS,
-  ORDERS_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
-
-import { SummarySidebar } from "./SummarySidebar";
-import type { SummaryDragItem, SummaryWellId } from "./types";
-import { getDimensionItems, getFieldSections, getValueItems } from "./utils";
-
-const STAGE_INDEX = -1;
-
-const mockDnd: Pick<
-  DndContextProps,
-  "onDragStart" | "onDragEnd" | "onDragCancel"
-> = {};
-
-jest.mock("@dnd-kit/core", () => {
-  const actual = jest.requireActual<typeof DndKit>("@dnd-kit/core");
-  return {
-    ...actual,
-    DndContext: ({
-      children,
-      onDragStart,
-      onDragEnd,
-      onDragCancel,
-    }: DndContextProps) => {
-      Object.assign(mockDnd, { onDragStart, onDragEnd, onDragCancel });
-      return children;
-    },
-    DragOverlay: ({ children }: DndKit.DragOverlayProps) => children,
-  };
-});
-
-const EMPTY_RECT: ClientRect = {
-  width: 0,
-  height: 0,
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-};
-
-function createActive(item: SummaryDragItem): Active {
-  return {
-    id: "dragged",
-    data: { current: item },
-    rect: { current: { initial: null, translated: null } },
-  };
-}
-
-function createOver(wellId: SummaryWellId): Over {
-  return {
-    id: `well:${wellId}`,
-    data: { current: { wellId } },
-    rect: EMPTY_RECT,
-    disabled: false,
-  };
-}
-
-let dragged: Active | null = null;
-
-function startDrag(item: SummaryDragItem) {
-  dragged = createActive(item);
-  const active = dragged;
-  act(() => mockDnd.onDragStart?.({ active }));
-}
-
-function endDrag(wellId: SummaryWellId | null) {
-  if (dragged == null) {
-    throw new Error("No drag to end");
-  }
-  const active = dragged;
-  dragged = null;
-  act(() =>
-    mockDnd.onDragEnd?.({
-      active,
-      activatorEvent: new Event("pointerup"),
-      collisions: null,
-      delta: { x: 0, y: 0 },
-      over: wellId && createOver(wellId),
-    }),
-  );
-}
-
-function drop(item: SummaryDragItem, wellId: SummaryWellId | null) {
-  startDrag(item);
-  endDrag(wellId);
-}
-
-function getFieldDrag(
-  query: Lib.Query,
-  sectionName: string,
-  name: string,
-): SummaryDragItem {
-  const section = getFieldSections(query, STAGE_INDEX).find(
-    (section) => section.name === sectionName,
-  );
-  const item = section?.items.find((item) => item.name === name);
-  if (item == null) {
-    throw new Error(`No field ${name} in ${sectionName}`);
-  }
-  return { kind: "field", field: item.field, label: item.name };
-}
-
-const SUMMARIZED_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
-  stages: [
-    {
-      source: { type: "table", id: ORDERS_ID },
-      aggregations: [
-        { type: "operator", operator: "count" },
-        {
-          type: "operator",
-          operator: "sum",
-          args: [{ type: "column", name: "TOTAL" }],
-        },
-      ],
-      breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
-    },
-  ],
-});
-
-type SetupOpts = {
-  query?: Lib.Query;
-};
-
-function setup({
-  query: initialQuery = Lib.createTestQuery(
-    SAMPLE_PROVIDER,
-    DEFAULT_TEST_QUERY,
-  ),
-}: SetupOpts = {}) {
-  const onQueryChange = jest.fn<void, [Lib.Query]>();
-
-  function Wrapper() {
-    const [query, setQuery] = useState(initialQuery);
-    return (
-      <SummarySidebar
-        query={query}
-        stageIndex={STAGE_INDEX}
-        onQueryChange={(nextQuery) => {
-          setQuery(nextQuery);
-          onQueryChange(nextQuery);
-        }}
-      />
-    );
-  }
-
-  renderWithProviders(<Wrapper />);
-
-  function getLastQuery() {
-    const [lastCall] = onQueryChange.mock.calls.slice(-1);
-    const [nextQuery] = lastCall;
-    return {
-      values: getValueItems(nextQuery, STAGE_INDEX).map(({ label }) => label),
-      dimensions: getDimensionItems(nextQuery, STAGE_INDEX).map(
-        ({ label }) => label,
-      ),
-    };
-  }
-
-  return { onQueryChange, getLastQuery };
-}
-
-function createQueryWithMetric() {
-  const metric = createMockCard({
-    id: 1,
-    name: "Revenue",
-    type: "metric",
-    table_id: ORDERS_ID,
-    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
-      stages: [
-        {
-          source: { type: "table", id: ORDERS_ID },
-          aggregations: [
-            {
-              type: "operator",
-              operator: "sum",
-              args: [{ type: "column", fieldId: ORDERS.SUBTOTAL }],
-            },
-          ],
-        },
-      ],
-    }),
-  });
-  const provider = createMetadataProvider({
-    metadata: createMockMetadata({
-      databases: [createSampleDatabase()],
-      questions: [metric],
-    }),
-  });
-  return Lib.createTestQuery(provider, {
-    stages: [{ source: { type: "table", id: ORDERS_ID } }],
-  });
-}
-
-function getChipLabels(wellId: SummaryWellId) {
-  return within(screen.getByTestId(`summary-well-${wellId}`))
-    .queryAllByTestId("summary-well-item")
-    .map((chip) => chip.textContent);
-}
-
-function getFieldButton(sectionName: string, name: string) {
-  return within(screen.getByRole("region", { name: sectionName })).getByRole(
-    "button",
-    { name },
-  );
-}
+  STAGE_INDEX,
+  SUMMARIZED_QUERY,
+  createQueryWithMetric,
+  drop,
+  endDrag,
+  getChipLabels,
+  getFieldButton,
+  getFieldDrag,
+  setup,
+  startDrag,
+} from "./tests/setup";
+import { getDimensionItems, getValueItems } from "./utils";
 
 describe("SummarySidebar", () => {
   it("opens a bare query empty", () => {
@@ -426,26 +218,6 @@ describe("SummarySidebar", () => {
     expect(getChipLabels("values")).toEqual(["Revenue"]);
   });
 
-  it("clears every well at once", async () => {
-    const { getLastQuery } = setup({
-      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
-        stages: [
-          {
-            source: { type: "table", id: ORDERS_ID },
-            aggregations: [{ type: "operator", operator: "count" }],
-            breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
-          },
-        ],
-      }),
-    });
-
-    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
-
-    expect(getLastQuery()).toEqual({ values: [], dimensions: [] });
-    expect(getChipLabels("values")).toEqual([]);
-    expect(screen.getByRole("button", { name: "Clear all" })).toBeDisabled();
-  });
-
   describe("drag and drop", () => {
     it("adds a dragged field to the well it's dropped on", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
@@ -502,7 +274,7 @@ describe("SummarySidebar", () => {
       const { getLastQuery } = setup({ query: SUMMARIZED_QUERY });
       const [item] = getDimensionItems(SUMMARIZED_QUERY, STAGE_INDEX);
 
-      drop({ kind: "dimension", item }, "values");
+      drop({ kind: "dimension", item, wellId: "columns" }, "values");
 
       expect(getLastQuery()).toEqual({
         values: ["Count", "Sum of Total", "Distinct values of Created At"],
@@ -555,7 +327,7 @@ describe("SummarySidebar", () => {
       const { onQueryChange } = setup({ query });
       const [item] = getDimensionItems(query, STAGE_INDEX);
 
-      drop({ kind: "dimension", item }, "columns");
+      drop({ kind: "dimension", item, wellId: "columns" }, "columns");
 
       expect(onQueryChange).not.toHaveBeenCalled();
     });

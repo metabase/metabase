@@ -44,6 +44,13 @@ export function getFieldTexts(wellId: SummaryWellId, hasItems: boolean) {
       noMatches: t`No matching metrics or columns`,
     };
   }
+  if (wellId === "rows") {
+    return {
+      label: t`Add a row by name`,
+      placeholder: hasItems ? t`Add a column…` : t`Drag or type a column`,
+      noMatches: t`No matching columns`,
+    };
+  }
   return {
     label: t`Add a grouping by name`,
     placeholder: hasItems ? t`Add a column…` : t`Type a column`,

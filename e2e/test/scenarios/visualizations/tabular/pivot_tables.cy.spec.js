@@ -1441,7 +1441,7 @@ WHERE NOT (
       // Now, add in another column to the pivot table
       cy.button(/Summarize/).click();
 
-      H.clickSummaryField("Category", { section: "Product", add: true });
+      H.addSummaryRow("Category");
 
       // Wait for the pivot call to return
       cy.wait("@pivot");
