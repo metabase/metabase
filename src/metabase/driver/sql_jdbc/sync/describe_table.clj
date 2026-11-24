@@ -796,11 +796,18 @@
            (describe-table-fields-xf driver table))
           (table-fields-for-json-unfolding driver conn database table))))
 
-(defn- sample-json-row-honey-sql
-  "Return a honeysql query used to get row sample to describe json columns.
+(defmulti sample-json-row-honey-sql
+  "Return a HoneySQL query that selects a sample of rows of `table-identifier`, to find the nested field columns of
+  the JSON fields `json-field-identifiers`. Each JSON value must come back as JSON text. `pk-identifiers` are the
+  identifiers of the table's PKs, or nil if it has none.
 
-  If the table has PKs, try to fetch both first and last rows (see #25744).
-  Else fetch the first n rows only."
+  The default fetches both the first and the last rows if the table has PKs (see #25744), and the first rows if not."
+  {:added    "0.66.0"
+   :arglists '([driver table-identifier json-field-identifiers pk-identifiers])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod sample-json-row-honey-sql :sql-jdbc
   [driver table-identifier json-field-identifiers pk-identifiers]
   (let [pks-expr         (mapv vector pk-identifiers)
         table-expr       [table-identifier]
