@@ -435,6 +435,10 @@
    :dialect "spark",
    :sql "SELECT * FROM a LATERAL VIEW EXPLODE(a.xs) t AS x",
    :expected {:status "unsupported", :reason "unsupported-join"}}
+  {:name "a DuckDB POSITIONAL join is refused, since it pairs rows by position",
+   :dialect "duckdb",
+   :sql "SELECT * FROM a POSITIONAL JOIN b",
+   :expected {:status "unsupported", :reason "unsupported-join"}}
   {:name "an ASOF join is counted as written",
    :dialect "duckdb",
    :sql "SELECT * FROM a ASOF JOIN b ON a.id = b.id AND a.t >= b.t",

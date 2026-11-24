@@ -368,6 +368,10 @@
       (some #(seq (ast/find-all % Expressions$TableSample)) kept)
       "unsupported-source"
 
+      ;; DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
+      (some #(= "POSITIONAL" (upper-arg % "method")) joins)
+      "unsupported-join"
+
       ;; The step queries leave WHERE out, so they would count the whole cross product of a comma join whose condition
       ;; is there.
       (and (seq commas)

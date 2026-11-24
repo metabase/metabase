@@ -725,6 +725,9 @@ def _statement_refusal(stmt, with_, dialect):
         return "unsupported-source"
     # The step queries leave WHERE out, so they would count the whole cross product of a comma join whose condition is
     # there.
+    # DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
+    if any((join.method or "").upper() == "POSITIONAL" for join in joins):
+        return "unsupported-join"
     where = stmt.args.get("where")
     comma_joins = [join for join in joins if _comma_join(join, dialect)]
     if (
