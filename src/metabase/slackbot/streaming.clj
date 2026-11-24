@@ -10,6 +10,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.agent.streaming :as agent.streaming]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
@@ -384,7 +385,7 @@
         ;; UPDATE the placeholder with whatever parts we collected, even if the
         ;; pipeline threw. Raw native parts (not the lossy AI-SDK-message
         ;; round-trip) preserve tool-output :structured-output for analytics.
-        (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)]
+        (let [combined-parts (into [] (agent.streaming/combine-text-parts-xf) @parts-atom)]
           (metabot.persistence/finalize-assistant-turn!
            assistant-msg-id
            combined-parts

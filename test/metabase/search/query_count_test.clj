@@ -2,17 +2,27 @@
   "The number of app-DB queries a search runs does not grow with the number of results it returns."
   (:require
    [clojure.test :refer :all]
+   [metabase.actions.models :as action]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.models.document :as document]
+   [metabase.explorations.models.exploration :as exploration]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.lib.core :as lib]
+   [metabase.measures.models.measure :as measure]
    [metabase.permissions.core :as perms]
+   [metabase.queries.models.card :as card]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
@@ -24,21 +34,34 @@
   "How many rows the batch search finds, against the single row of the solo search."
   10)
 
+(def ^:private create-rows
+  "The write function [[insert-rows]] creates the rows of each model with."
+  {:model/Card        #(card/create-cards! %)
+   :model/Document    document/create-documents!
+   :model/Exploration exploration/create-explorations!
+   :model/Action      action/create-actions!})
+
 (defn- insert-rows
-  "Returns a row factory, `(fn [collection names row-attrs])`, that inserts a `model` row per name. A row takes the
+  "Returns a row factory, `(fn [collection names row-attrs])`, that creates a `model` row per name. A row takes the
   `with-temp` defaults of `model`, then `(collection-attrs collection)`, then `row-attrs`, such as `{:archived true}`."
   ([model] (insert-rows model (constantly {})))
   ([model collection-attrs]
    (fn [collection names row-attrs]
-     (doseq [n names]
-       (t2/insert! model (merge (mt/with-temp-defaults model) (collection-attrs collection) row-attrs {:name n}))))))
+     ((create-rows model)
+      (vec (for [n names]
+             (merge (cond-> (dissoc (mt/with-temp-defaults model) :created_at :updated_at)
+                      (= :model/Card model) (assoc :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")))
+                    (collection-attrs collection)
+                    row-attrs
+                    {:name n})))))))
 
 (defn- insert-model!
   "Inserts a model (a Card of type `:model`) in `collection`, for the rows that belong to one, and returns it."
   [collection]
-  (t2/insert-returning-instance! :model/Card (assoc (mt/with-temp-defaults :model/Card)
-                                                    :collection_id (:id collection)
-                                                    :type :model)))
+  (first (card/create-cards! [(assoc (mt/with-temp-defaults :model/Card)
+                                     :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                     :collection_id (:id collection)
+                                     :type :model)])))
 
 (defn- in-collection
   "A `collection-attrs` function for [[insert-rows]] that puts the rows in the collection, on top of `attrs`."
@@ -48,33 +71,67 @@
 (def ^:private search-row-factories
   "Per search model, a function of the collection to put rows in, the names of the rows to make and the extra
   attributes of those rows. A factory that cannot use the attributes names that argument `_row-attrs`."
-  {"collection"     (insert-rows :model/Collection (fn [c] {:location (collection/children-location c)}))
-   "dashboard"      (insert-rows :model/Dashboard (in-collection {}))
+  {"collection"     (fn [c names row-attrs]
+                      (collection/create-collections!
+                       (vec (for [n names]
+                              (merge (mt/with-temp-defaults :model/Collection)
+                                     {:location (collection/children-location c)}
+                                     row-attrs
+                                     {:name n})))))
+   "dashboard"      (fn [c names row-attrs]
+                      (dashboard/create-dashboards!
+                       (vec (for [n names]
+                              (merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at)
+                                     {:collection_id (:id c)}
+                                     row-attrs
+                                     {:name n})))))
    "card"           (insert-rows :model/Card (in-collection {:type :question}))
    "dataset"        (insert-rows :model/Card (in-collection {:type :model}))
    "metric"         (insert-rows :model/Card (in-collection {:type :metric}))
    "document"       (insert-rows :model/Document (in-collection {}))
    "exploration"    (insert-rows :model/Exploration)
-   "segment"        (insert-rows :model/Segment (fn [_] {:table_id (mt/id :venues)}))
-   "measure"        (insert-rows :model/Measure (fn [_] {:table_id (mt/id :venues)}))
-   "table"          (insert-rows :model/Table (fn [_] {:db_id (mt/id)}))
-   "database"       (insert-rows :model/Database)
+   "segment"        (fn [_collection names row-attrs]
+                      (segment/create-segments!
+                       (vec (for [n names]
+                              (merge (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id)
+                                     row-attrs
+                                     {:name n})))))
+   "measure"        (fn [_collection names row-attrs]
+                      (measure/create-measures!
+                       (vec (for [n names]
+                              (merge (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id)
+                                     row-attrs
+                                     {:name n})))))
+   "table"          (fn [_collection names row-attrs]
+                      (table/create-tables!
+                       (vec (for [n names]
+                              (merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at)
+                                     {:db_id (mt/id)}
+                                     row-attrs
+                                     {:name n})))))
+   "database"       (fn [_collection names row-attrs]
+                      (database/create-databases!
+                       (vec (for [n names]
+                              (merge (mt/with-temp-defaults :model/Database) row-attrs {:name n})))))
    "action"         (fn [collection names row-attrs]
                       (let [model   (insert-model! collection)
-                            action! (insert-rows :model/Action (fn [_] {:model_id (:id model), :type :query}))]
+                            action! (insert-rows :model/Action (fn [_] {:model_id      (:id model)
+                                                                        :type          :query
+                                                                        :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}))]
                         (action! collection names row-attrs)))
    "data-app"       (fn [_collection names _row-attrs]
                       (doseq [n names]
                         (let [defaults (mt/with-temp-defaults :model/DataApp)
-                              app      (t2/insert-returning-instance! :model/DataApp (assoc defaults :name n))]
+                              create!  (requiring-resolve 'metabase-enterprise.data-apps.models.data-app/create-data-apps!)
+                              app      (first (create! [(assoc defaults :name n)]))]
                           (perms/grant-collection-read-permissions! (perms/all-users-group)
                                                                     (:resource_collection_id app)))))
    "indexed-entity" (fn [collection names _row-attrs]
                       (let [model (insert-model! collection)
-                            index (model-index/create (mt/$ids {:model-id   (:id model)
-                                                                :pk-ref     $venues.id
-                                                                :value-ref  $venues.name
-                                                                :creator-id (mt/user->id :rasta)}))
+                            index (first (model-index/create-model-indexes! [(mt/$ids {:model-id   (:id model)
+                                                                                       :pk-ref     $venues.id
+                                                                                       :value-ref  $venues.name
+                                                                                       :creator-id (mt/user->id :rasta)})]))
                             values  (fn [] (t2/reducible-select :model/ModelIndexValue :model_index_id (:id index)))]
                         (doseq [[i n] (map-indexed vector names)]
                           (t2/insert! :model/ModelIndexValue {:model_index_id (:id index), :model_pk i, :name n}))

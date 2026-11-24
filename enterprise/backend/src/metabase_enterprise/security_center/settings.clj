@@ -75,6 +75,32 @@
   :include-in-list?   false
   :can-read-from-env? false)
 
+(defsetting security-center-last-sync-attempted-at
+  "Timestamp of the last Security Center advisory sync attempt, successful or not."
+  :type               :timestamp
+  :default            nil
+  :encryption         :no
+  :feature            :admin-security-center
+  :visibility         :internal
+  :export?            false
+  :doc                false
+  :audit              :never
+  :include-in-list?   false
+  :can-read-from-env? false)
+
+(defsetting security-center-last-sync-error
+  "Error message of the last Security Center advisory sync, or nil if it succeeded."
+  :type               :string
+  :default            nil
+  :encryption         :no
+  :feature            :admin-security-center
+  :visibility         :internal
+  :export?            false
+  :doc                false
+  :audit              :never
+  :include-in-list?   false
+  :can-read-from-env? false)
+
 (defsetting security-center-health-check-results
   "The last result of each background health check, keyed by check id: what its refresh returned, and when."
   :type               :json

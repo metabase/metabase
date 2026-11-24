@@ -7,15 +7,15 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
-   [metabase.sync.util :as sync-util]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -23,6 +23,7 @@
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouses.models.database :as database]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
 
@@ -433,8 +434,8 @@
                 ;; 3. sync the metadata for each table
                 (if (= "for entire DB" message)
                   (let [tables-updated (atom nil)
-                        original-set-initial-table-sync-complete-for-db! (mt/original-fn #'sync-util/set-initial-table-sync-complete-for-db!)]
-                    (mt/with-dynamic-fn-redefs [sync-util/set-initial-table-sync-complete-for-db!
+                        original-set-initial-table-sync-complete-for-db! (mt/original-fn #'sync.updates/set-initial-table-sync-complete-for-db!)]
+                    (mt/with-dynamic-fn-redefs [sync.updates/set-initial-table-sync-complete-for-db!
                                                 (fn [& args]
                                                   (let [r (apply original-set-initial-table-sync-complete-for-db! args)]
                                                     (reset! tables-updated r)
@@ -465,45 +466,57 @@
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-columns ["l"]}}]
-      (sync-metadata/sync-db-metadata! (:id db))
-      (is (= [["details" :details-only]]
-             (->> (db->fields db)
-                  (filter #(= :details-only (:visibility_type %)))
-                  (mapv (juxt :name :visibility_type))))))))
+      (try
+        (sync-metadata/sync-db-metadata! (:id db))
+        (is (= [["details" :details-only]]
+               (->> (db->fields db)
+                    (filter #(= :details-only (:visibility_type %)))
+                    (mapv (juxt :name :visibility_type)))))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
 (deftest auto-cruft-all-fields-and-they-stay-crufted-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-columns [".*"]}}]
-      (sync-metadata/sync-db-metadata! (:id db))
-      (is (= {:details-only 12}
-             (->> (db->fields db)
-                  (mapv :visibility_type)
-                  frequencies)))
-      ;; remove cruft column directive:
-      (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns []}})
-      (sync-metadata/sync-db-metadata! (:id db))
-      (is (= {:details-only 12}
-             (->> (db->fields db)
-                  (mapv :visibility_type)
-                  frequencies))))))
+      (try
+        (sync-metadata/sync-db-metadata! (:id db))
+        (is (= {:details-only 12}
+               (->> (db->fields db)
+                    (mapv :visibility_type)
+                    frequencies)))
+        ;; remove cruft column directive:
+        (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns []}})
+        (sync-metadata/sync-db-metadata! (:id db))
+        (is (= {:details-only 12}
+               (->> (db->fields db)
+                    (mapv :visibility_type)
+                    frequencies)))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
 (deftest auto-cruft-sets-preview-display-false-test
   (testing "When a field becomes crufty via auto-cruft settings, preview_display should be set to false (#10851)"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-      (sync-metadata/sync-db-metadata! (:id db))
-      (let [details-field (t2/select-one :model/Field :name "details"
-                                         :table_id [:in (map :id (t2/select :model/Table :db_id (u/the-id db)))])]
-        (is (=? {:visibility_type :normal
-                 :preview_display true}
-                details-field)
-            "before auto-cruft: field has default visibility and preview_display")
-        (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
-        (sync-metadata/sync-db-metadata! (:id (t2/select-one :model/Database :id (u/the-id db))))
-        (is (=? {:visibility_type :details-only
-                 :preview_display false}
-                (t2/select-one :model/Field :id (:id details-field)))
-            "after auto-cruft: field should have visibility_type=details-only AND preview_display=false")))))
+      (try
+        (sync-metadata/sync-db-metadata! (:id db))
+        (let [details-field (t2/select-one :model/Field :name "details"
+                                           :table_id [:in (map :id (t2/select :model/Table :db_id (u/the-id db)))])]
+          (is (=? {:visibility_type :normal
+                   :preview_display true}
+                  details-field)
+              "before auto-cruft: field has default visibility and preview_display")
+          (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
+          (sync-metadata/sync-db-metadata! (:id (t2/select-one :model/Database :id (u/the-id db))))
+          (is (=? {:visibility_type :details-only
+                   :preview_display false}
+                  (t2/select-one :model/Field :id (:id details-field)))
+              "after auto-cruft: field should have visibility_type=details-only AND preview_display=false"))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
 (deftest sync-fields-resilient-to-non-existence-test
   (testing "[[sync-fields/sync-fields-for-table!]] doesn't crash on a non-existent table (SEM-39)"
@@ -604,7 +617,8 @@
                    :model/Field    {fk-id :id :as fk-field} {:table_id fk-table :name "pk_id" :has_field_values :auto-list}]
       (field-user-settings/upsert-field-user-settings! {:id pk-id} {:semantic_type :type/PK})
       (field-user-settings/upsert-field-user-settings! fk-field {:has_field_values :auto-list})
-      (is (= 1 (sync.db/mark-fk! db-id "s" "fk_table" "pk_id" "s" "pk_table" "id")))
+      (is (= 1 (#'sync-fks/mark-fks! (driver.u/lib-database db-id) [{:fk-table-schema "s" :fk-table-name "fk_table" :fk-column-name "pk_id"
+                                                                     :pk-table-schema "s" :pk-table-name "pk_table" :pk-column-name "id"}])))
       (is (=? {:fk_target_field_id pk-id :semantic_type :type/FK :has_field_values :auto-list}
               (t2/select-one :model/Field :id fk-id))))))
 

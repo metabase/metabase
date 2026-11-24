@@ -2,6 +2,8 @@
   "Helpers shared across the module."
   (:require
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -39,3 +41,10 @@
                                 :motherduck true
                                 :redshift   true}]
   (defmethod column-names-ignore-case? driver [_driver] ignores-case?))
+
+(mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
+  "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
+  way out."
+  [schema :- :keyword]
+  {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
+   :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})

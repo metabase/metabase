@@ -40,13 +40,16 @@
 
 (defn- keyword-transform
   "A transform for `column` holding a keyword that `valid?` accepts. Writing a keyword or string it rejects throws a
-  400; reading one logs and returns `fallback`."
+  400; reading one logs and returns `fallback`. A HoneySQL expression, a vector, is written untouched, since a
+  before-update hook writes derived types as one."
   [column valid? invalid-message extra-data fallback]
   {:in  (fn [v]
-          (when-let [k (some-> v keyword)]
-            (when-not (valid? k)
-              (throw-invalid-value column k (invalid-message k) extra-data))
-            (u/qualified-name k)))
+          (if (vector? v)
+            v
+            (when-let [k (some-> v keyword)]
+              (when-not (valid? k)
+                (throw-invalid-value column k (invalid-message k) extra-data))
+              (u/qualified-name k))))
    :out (fn [s]
           (when (seq s)
             (let [k (keyword s)]

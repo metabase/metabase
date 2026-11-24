@@ -219,3 +219,11 @@
    [:process_uuid    {:optional true} [:maybe :string]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::task-run.create
+  "What starting a TaskRun takes: the kind of run, the entity it runs for, and the notification it runs for, if any."
+  [:map {:closed true}
+   [:run_type                         [:enum :subscription :alert :sync :fingerprint]]
+   [:entity_type                      [:enum :database :card :dashboard]]
+   [:entity_id                        ms/PositiveInt]
+   [:notification_id {:optional true} [:maybe ms/PositiveInt]]])

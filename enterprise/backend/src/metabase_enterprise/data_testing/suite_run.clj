@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.models.test-suite-run :as data-testing.models.test-suite-run]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
@@ -68,7 +69,7 @@
             status   (if (every? #(= :passed (:status %)) outcomes) :passed :failed)
             status   (if (pos? (data-testing.run-tracking/finish-suite-run! run-id status stored))
                        status
-                       (do (data-testing.db/add-members-to-ended-suite-run! run-id stored)
+                       (do (data-testing.models.test-suite-run/add-members-to-ended-test-suite-run! run-id stored)
                            :timeout))]
         (vreset! finished? true)
         {:id       run-id

@@ -15,6 +15,13 @@
 
 (derive :model/TransformRunCancelation :metabase/model)
 
+(mu/defn reducible-canceled-local-runs
+  "Return a reducible sequence of local canceled runs."
+  []
+  (transforms.db/cancelations-reducible))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
 (mu/defn mark-cancel-started-run! :- :nil
   "Mark a started run for cancelation."
   [run-id :- ms/PositiveInt]
@@ -27,11 +34,6 @@
     (catch Throwable t
       (analytics/inc! :metabase-transforms/cancelation-requests {:status "error"})
       (throw t))))
-
-(mu/defn reducible-canceled-local-runs
-  "Return a reducible sequence of local canceled runs."
-  []
-  (transforms.db/cancelations-reducible))
 
 (mu/defn delete-cancelation!
   "Delete a cancelation once it has been handled."

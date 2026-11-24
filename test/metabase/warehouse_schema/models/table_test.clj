@@ -2,11 +2,13 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.serialization.core :as serialization]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -14,6 +16,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
@@ -116,26 +119,26 @@
           (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
           (data-perms/set-table-permission! group-id table-id-2 :perms/download-results :one-million-rows)
           (data-perms/set-table-permission! group-id table-id-2 :perms/manage-table-metadata :yes)
-          (mt/with-temp [:model/Table {table-id-3 :id} {:db_id  db-id
-                                                        :schema "PUBLIC"}]
-            (is (partial=
-                 {group-id
-                  {db-id
-                   {:perms/view-data             :unrestricted
-                    :perms/create-queries        {"PUBLIC"
-                                                  {table-id-1 :no
-                                                   table-id-2 :query-builder
-                                                   table-id-3 :no}}
-                    :perms/download-results      {"PUBLIC"
-                                                  {table-id-1 :no
-                                                   table-id-2 :one-million-rows
-                                                   table-id-3 :no}}
-                    :perms/manage-table-metadata {"PUBLIC"
-                                                  {table-id-1 :no
-                                                   table-id-2 :yes
-                                                   table-id-3 :no}}
-                    :perms/manage-database       :no}}}
-                 (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))))))))
+          (mt/with-model-cleanup [:model/Table]
+            (let [[{table-id-3 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+              (is (partial=
+                   {group-id
+                    {db-id
+                     {:perms/view-data             :unrestricted
+                      :perms/create-queries        {"PUBLIC"
+                                                    {table-id-1 :no
+                                                     table-id-2 :query-builder
+                                                     table-id-3 :no}}
+                      :perms/download-results      {"PUBLIC"
+                                                    {table-id-1 :no
+                                                     table-id-2 :one-million-rows
+                                                     table-id-3 :no}}
+                      :perms/manage-table-metadata {"PUBLIC"
+                                                    {table-id-1 :no
+                                                     table-id-2 :yes
+                                                     table-id-3 :no}}
+                      :perms/manage-database       :no}}}
+                   (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id))))))))))
 
 (deftest cleanup-permissions-after-delete-table-test
   (mt/with-temp
@@ -207,7 +210,7 @@
                      :model/Table            {table-2 :id}  {:db_id db-id :name "Table2"}
                      :model/Table            {table-3 :id}  {:db_id db-id :name "Table3"}
                      :model/PermissionsGroup pg             {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
         (t2/delete! :model/DataPermissions :db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -226,7 +229,7 @@
                      :model/Table            {table-2 :id}     {:db_id db-id :name "Table2"}
                      :model/Table            {table-blocked :id} {:db_id db-id :name "Table3"}
                      :model/PermissionsGroup pg                {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
         (t2/delete! :model/DataPermissions :db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -250,7 +253,7 @@
                      :model/Table            {table-1 :id} {:db_id db-id :name "Table1"}
                      :model/Table            {table-2 :id} {:db_id db-id :name "Table2"}
                      :model/PermissionsGroup pg            {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
         (t2/delete! :model/DataPermissions :db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -272,7 +275,7 @@
                      :model/Table            {table-1 :id} {:db_id db-id :name "Table1"}
                      :model/Table            {table-2 :id} {:db_id db-id :name "Table2"}
                      :model/PermissionsGroup pg            {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
         (t2/delete! :model/DataPermissions :db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -295,7 +298,7 @@
                      :model/Table            {table-2 :id}     {:db_id db-id :name "Table2"}
                      :model/Table            {table-blocked :id} {:db_id db-id :name "Table3"}
                      :model/PermissionsGroup pg                {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
         (t2/delete! :model/DataPermissions :db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -321,7 +324,7 @@
                      :model/Table            {table-blocked :id} {:db_id db-id :name "Table3"}
                      :model/Table            {table-legacy :id}  {:db_id db-id :name "Table4"}
                      :model/PermissionsGroup pg                {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
         (t2/delete! :model/DataPermissions :db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -349,7 +352,7 @@
                      :model/Table            {table-blocked :id} {:db_id db-id :name "Table3"}
                      :model/Table            {table-legacy :id}  {:db_id db-id :name "Table4"}
                      :model/PermissionsGroup pg                {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
         (t2/delete! :model/DataPermissions :db_id db-id)
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
         (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -377,8 +380,8 @@
                      :model/Table            {table-legacy :id}  {:db_id db-id :name "Table4"}
                      :model/PermissionsGroup pg1               {}
                      :model/PermissionsGroup pg2               {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
-        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg1}])
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg2}])
         (t2/delete! :model/DataPermissions :db_id db-id)
         ;; pg1 has legacy-no-self-service for table-legacy
         (data-perms/set-database-permission! pg1 db-id :perms/view-data :blocked)
@@ -539,7 +542,7 @@
     (mt/with-temp [:model/Table {table-id :id} {:field_order :database}
                    :model/Field {f-b :id} {:table_id table-id :name "b" :database_position 0 :position 0}
                    :model/Field {f-a :id} {:table_id table-id :name "a" :database_position 1 :position 1}]
-      (t2/update! :model/Table :id table-id {:field_order :alphabetical})
+      (table/update-tables! [{:id table-id :field_order :alphabetical}])
       (is (= {f-a 0, f-b 1} (t2/select-pk->fn :position :model/Field :table_id table-id))))))
 
 (deftest is-published-and-collection-id-test
@@ -560,7 +563,7 @@
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                    :model/Table {table-1-id :id} {:is_published true :collection_id coll-id}
                    :model/Table {table-2-id :id} {:is_published true :collection_id coll-id}]
-      (t2/delete! :model/Collection :id coll-id)
+      (collection/delete-collections! [coll-id])
       (is (= #{[false nil]} (t2/select-fn-set (juxt :is_published :collection_id) :model/Table
                                               :id [:in [table-1-id table-2-id]]))))))
 
@@ -604,7 +607,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
@@ -617,7 +620,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -630,7 +633,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -643,7 +646,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -657,7 +660,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -675,7 +678,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -690,7 +693,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table table {:db_id db-id}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)

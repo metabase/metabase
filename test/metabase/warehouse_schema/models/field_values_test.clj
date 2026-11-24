@@ -196,14 +196,14 @@
     (is (= {:values [[1] [2] [3] [4] [5]]}
            (distinct-field-values (mt/id :reviews :rating))))))
 
-(deftest clear-field-values-for-field!-test
+(deftest delete-field-values-of-fields-test
   (mt/with-temp [:model/Database    {database-id :id} {}
                  :model/Table       {table-id :id} {:db_id database-id}
                  :model/Field       {field-id :id} {:table_id table-id}
                  :model/FieldValues _              {:field_id field-id :values "[1, 2, 3]"}]
     (is (= [1 2 3]
            (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))
-    (field-values/clear-field-values-for-field! field-id)
+    (field-values/delete-field-values! (field-values/ids-of-fields [field-id]))
     (is (= nil
            (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))))
 
@@ -502,8 +502,8 @@
 
 (deftest field-values-schema-test
   (testing "the FieldValues schema takes human-readable values only as a list of strings or nils"
-    (is (not (mr/validate ::warehouse-schema.schema/field-values.update {:human_readable_values {"1" "A", "2" "B"}})))
-    (is (mr/validate ::warehouse-schema.schema/field-values.update {:human_readable_values ["a" nil "c"]}))))
+    (is (not (mr/validate ::warehouse-schema.schema/field-values.update {:id 1, :human_readable_values {"1" "A", "2" "B"}})))
+    (is (mr/validate ::warehouse-schema.schema/field-values.update {:id 1, :human_readable_values ["a" nil "c"]}))))
 
 (deftest human-readable-values-cover-values-schema-test
   (let [bad {:values [1 2 3], :human_readable_values ["a" "b"]}]
@@ -514,10 +514,10 @@
       (is (thrown-with-msg? ExceptionInfo #"must be specified for all field values"
                             (lib/normalize ::warehouse-schema.schema/external-field-values bad {:throw? true}))))
     (testing "a body with only one of the columns passes"
-      (is (= {:values [1 2 3]}
-             (lib/normalize ::warehouse-schema.schema/field-values.update {:values [1 2 3]} {:throw? true})))
-      (is (= {:human_readable_values ["a" "b"]}
-             (lib/normalize ::warehouse-schema.schema/field-values.update {:human_readable_values ["a" "b"]}
+      (is (= {:id 1, :values [1 2 3]}
+             (lib/normalize ::warehouse-schema.schema/field-values.update {:id 1, :values [1 2 3]} {:throw? true})))
+      (is (= {:id 1, :human_readable_values ["a" "b"]}
+             (lib/normalize ::warehouse-schema.schema/field-values.update {:id 1, :human_readable_values ["a" "b"]}
                             {:throw? true}))))))
 
 (deftest human-readable-values-cover-values-test
@@ -638,7 +638,7 @@
     (mt/with-temp [:model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                   :type     :sandbox
                                                   :hash_key "random-hash"}]
-      (t2/insert! :model/FieldValues (cond-> {:field_id (mt/id :venues :id)} explicitly-full? (assoc :type :full)))
+      (field-values/create-field-values! [(cond-> {:field_id (mt/id :venues :id)} explicitly-full? (assoc :type :full))])
       (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))))
 
 (deftest update-full-field-values-should-remove-all-cached-field-values
@@ -647,7 +647,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues :id (:id fv) {:values [1 2 3]})
+    (field-values/update-field-values! [{:id (:id fv) :values [1 2 3]}])
     (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-without-values-should-remove-not-all-cached-field-values
@@ -656,8 +656,34 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues :id (:id fv) {:updated_at (t/zoned-date-time)})
+    (field-values/update-field-values! [{:id (:id fv) :has_more_values true}])
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
+
+(defn- field-values-write-call-counts!
+  "The number of app-DB calls creating and then updating full FieldValues for `n` Fields of a new Table of a new
+  Database takes, so that nothing of the driver's test dataset is involved."
+  [n]
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table    {table-id :id} {:db_id db-id}]
+    (let [field-ids (vec (for [i (range n)]
+                           (t2/insert-returning-pk! :model/Field {:table_id      table-id
+                                                                  :name          (str "F" i)
+                                                                  :base_type     :type/Text
+                                                                  :database_type "TEXT"})))
+          ids       (mapv :id (field-values/create-field-values! (mapv #(hash-map :field_id % :values ["a"]) field-ids)))]
+      [(t2/with-call-count [call-count]
+         (field-values/create-field-values! (mapv #(hash-map :field_id % :type :sandbox :hash_key "h" :values ["a"])
+                                                  field-ids))
+         (call-count))
+       (t2/with-call-count [call-count]
+         (field-values/update-field-values! (for [id ids] {:id id :values ["b"]}))
+         (call-count))])))
+
+(deftest bulk-field-values-writes-call-count-test
+  (testing "creating and updating FieldValues takes the same number of statements for 2 and 6 rows"
+    (field-values-write-call-counts! 1)
+    (is (= (field-values-write-call-counts! 2)
+           (field-values-write-call-counts! 6)))))
 
 (deftest select-coherence-test
   (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"

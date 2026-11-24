@@ -9,7 +9,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.sync.util :as sync-util]
+   [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.warehouse-schema.structural-metadata.fixtures :as fixtures]
    [metabase.warehouse-schema.structural-metadata.prototype-classifiers.custom-property :as classifiers.custom-property]
@@ -138,9 +138,9 @@
       (testing "every classifier output either maps to a column or is a known dropped output"
         (is (empty? (remove dropped-outputs leftovers))))
       (when (seq table-changes)
-        (sync-util/update-table-unless-user-set! table-id table-changes))
+        (sync.updates/update-table-unless-user-set! table-id table-changes))
       (doseq [[field-id changes] field-changes]
-        (sync-util/update-field-unless-user-set! field-id changes))
+        (sync.updates/update-field-unless-user-set! field-id changes))
       (let [saved-table  (select-keys (t2/select-one :model/Table :id table-id) (keys table-changes))
             saved-fields (into {}
                                (for [[field-id changes] field-changes]

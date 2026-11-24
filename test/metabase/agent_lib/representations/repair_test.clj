@@ -2331,9 +2331,6 @@
                    (select-by-pks [_ _ _ _] (throw (ex-info "boom" {})))
                    (select-by-refs [_ _ _ _] (throw (ex-info "unexpected store call" {})))
                    (select-by-parent-pks [_ _ _ _] (throw (ex-info "unexpected store call" {})))
-                   (insert-rows! [_ _ _] (throw (ex-info "unexpected store call" {})))
-                   (update-row! [_ _ _ _] (throw (ex-info "unexpected store call" {})))
-                   (delete-rows! [_ _ _] (throw (ex-info "unexpected store call" {})))
                    (transact [_ _ f] (f)))
         clause   ["field" {} ["DB" "PUBLIC" "PRODUCTS" "CATEGORY"]]
         run      (fn [strict?]

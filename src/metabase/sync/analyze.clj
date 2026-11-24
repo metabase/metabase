@@ -4,6 +4,7 @@
    like running MBQL queries and fetching values to do things like determine Table row counts
    and infer field semantic types."
   (:require
+   [java-time.api :as t]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.analyze.classify :as classify]
@@ -15,7 +16,8 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.field :as field]))
 
 ;; How does analysis decide which Fields should get analyzed?
 ;;
@@ -58,12 +60,14 @@
 (mu/defn- update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
   [table :- i/TableInstance]
-  (sync.db/mark-incomplete-fields-analyzed-for-table! (:id table) i/*latest-fingerprint-version*))
+  (let [now (t/offset-date-time)]
+    (field/update-fields! (for [id (vec (sync.db/analyzed-field-ids-of-table (:id table) i/*latest-fingerprint-version*))] {:id id :last_analyzed now}))))
 
 (mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
   [database :- i/DatabaseInstance]
-  (sync.db/mark-incomplete-fields-analyzed-for-database! (:id database) i/*latest-fingerprint-version*))
+  (let [now (t/offset-date-time)]
+    (field/update-fields! (for [id (vec (sync.db/analyzed-field-ids-of-database (:id database) i/*latest-fingerprint-version*))] {:id id :last_analyzed now}))))
 
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."

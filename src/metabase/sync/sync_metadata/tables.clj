@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -16,12 +15,15 @@
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.models.database :as database]
    [metabase.workspaces.table-remapping :as ws.table-remapping])
   (:import
    (clojure.lang ITransientSet)))
@@ -122,8 +124,7 @@
   [database    :- i/DatabaseInstance
    db-metadata :- i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
-  (sync.db/update-database! (u/the-id database)
-                            {:details (assoc (:details database) :version (:version db-metadata))}))
+  (database/update-databases! [{:id (u/the-id database) :details (assoc (:details database) :version (:version db-metadata))}]))
 
 (mu/defn- cruft-dependent-cols :- :map
   [{table-name :name :as table} :- TableMetadataOrInstance
@@ -132,7 +133,7 @@
   (let [is-crufty? (if (and (= sync-stage ::update)
                             (not (:is-attached-dwh database)))
                      ;; TODO: we should add an updated_by column to metabase_table in
-                     ;; [[metabase.warehouse-schema-rest.api.table/update-table!*]] to track occasions where the table
+                     ;; [[metabase.warehouse-schema-rest.api.table/update-existing-tables!]] to track occasions where the table
                      ;; was updated by an admin, and respect their choices during an update.
                      ;;
                      ;; This will fix the issue where a table is marked as visible, but cruftiness settings keep re-hiding it
@@ -153,31 +154,37 @@
                             :else                   "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
 
-(mu/defn- insert-table! :- (ms/InstanceOf :model/Table)
-  "Inserts a new table in `database`, ready to be synced; `:sample?` is whether `database` is the Sample Database."
+(mu/defn- new-table-row :- :map
+  "The row of a new table in `database`, ready to be synced; `:sample?` is whether `database` is the Sample Database."
   [database          :- i/DatabaseInstance
    table             :- TableMetadata
    {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
-  (sync.db/insert-table!
-   (merge (cruft-dependent-cols table database ::create)
-          {:active                  true
-           :db_id                   (:id database)
-           :schema                  (:schema table)
-           :description             (:description table)
-           :database_require_filter (:database_require_filter table)
-           :display_name            (or (:display_name table)
-                                        (warehouse-schema.humanization/name->human-readable-name (:name table)))
-           :name                    (:name table)
-           :is_writable             (:is_writable table)}
-          (when (:field_order table)
-            {:field_order (:field_order table)})
-          (when (:data_source table)
-            {:data_source (:data_source table)})
-          (when (:data_authority table)
-            {:data_authority (:data_authority table)})
-          (when sample?
-            {:data_authority :ingested
-             :data_source    :ingested}))))
+  (merge (cruft-dependent-cols table database ::create)
+         {:active                  true
+          :db_id                   (:id database)
+          :schema                  (:schema table)
+          :description             (:description table)
+          :database_require_filter (:database_require_filter table)
+          :display_name            (or (:display_name table)
+                                       (warehouse-schema.humanization/name->human-readable-name (:name table)))
+          :name                    (:name table)
+          :is_writable             (:is_writable table)}
+         (when (:field_order table)
+           {:field_order (:field_order table)})
+         (when (:data_source table)
+           {:data_source (:data_source table)})
+         (when (:data_authority table)
+           {:data_authority (:data_authority table)})
+         (when sample?
+           {:data_authority :ingested
+            :data_source    :ingested})))
+
+(mu/defn- insert-table! :- (ms/InstanceOf :model/Table)
+  "Inserts a new table in `database`, ready to be synced; `:sample?` is whether `database` is the Sample Database."
+  [database :- i/DatabaseInstance
+   table    :- TableMetadata
+   options  :- [:map {:closed true} [:sample? :boolean]]]
+  (first (table/create-tables! [(new-table-row database table options)])))
 
 (mu/defn create-table! :- (ms/InstanceOf :model/Table)
   "Creates a new table in the database, ready to be synced.
@@ -193,13 +200,13 @@
   [database          :- i/DatabaseInstance
    existing          :- (ms/InstanceOf :model/Table)
    {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
-  (sync-util/update-table-unless-user-set! (:id existing)
-                                           (cond-> (cruft-dependent-cols existing database ::reactivate)
-                                             ;; do not unhide tables w/ cruft settings
-                                             (some? (:visibility_type existing)) (dissoc :visibility_type)
-                                             true                                (assoc :active true)
-                                             sample?                             (assoc :data_authority :ingested
-                                                                                        :data_source    :ingested))))
+  (sync.updates/update-table-unless-user-set! existing
+                                              (cond-> (cruft-dependent-cols existing database ::reactivate)
+                                                ;; do not unhide tables w/ cruft settings
+                                                (some? (:visibility_type existing)) (dissoc :visibility_type)
+                                                true                                (assoc :active true)
+                                                sample?                             (assoc :data_authority :ingested
+                                                                                           :data_source    :ingested))))
 
 (mu/defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if a matching inactive one exists."
@@ -259,23 +266,23 @@
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
   (let [field-order (some-> (:engine database) driver/default-field-order)]
-    (events/with-batched-events
-      (mapv (fn [table-metadata]
-              (insert-table! database (m/assoc-some table-metadata :field_order field-order) options))
-            (sort-by (juxt :schema :name) new-table-metadatas)))))
+    (table/create-tables! (mapv (fn [table-metadata]
+                                  (new-table-row database (m/assoc-some table-metadata :field_order field-order) options))
+                                (sort-by (juxt :schema :name) new-table-metadatas)))))
 
 (mu/defn- retire-tables!
   "Mark the active Tables with `table-ids` as inactive."
   [table-ids :- [:set ::lib.schema.id/table]]
   (when (seq table-ids)
     (log/info "Marking tables as inactive:" (pr-str table-ids))
-    (sync.db/deactivate-tables! table-ids)))
+    (table/update-tables! (for [id (vec table-ids)] {:id id :active false}))))
 
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
 
-(mu/defn- update-table-metadata-if-needed!
-  "Update the table metadata if it has changed. Returns true if a row was updated."
+(mu/defn- table-metadata-changes
+  "The changes to make to the table metadata if it has changed, as a pair of `metabase-table` and its changes, or nil
+  when nothing changes, without writing them."
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)
    metabase-database :- i/DatabaseInstance]
@@ -309,10 +316,8 @@
                  (sync-util/name-for-logging metabase-table)
                  (get metabase-table k)
                  v))
-    (boolean
-     (when (seq changes)
-       (sync-util/update-table-unless-user-set! (:id metabase-table) changes)
-       true))))
+    (when (seq changes)
+      [metabase-table changes])))
 
 (mu/defn- update-tables-metadata-if-needed! :- :int
   "Update metadata for the tables present in both `table-metadatas` and `metabase-tables`. Returns
@@ -321,16 +326,17 @@
    metabase-tables :- [:set (ms/InstanceOf :model/Table)]
    metabase-database :- i/DatabaseInstance]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
-        name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)]
-    (reduce (fn [updated name+schema]
-              (cond-> updated
-                (update-table-metadata-if-needed! (name+schema->table-metadata name+schema)
-                                                  (name+schema->metabase-table name+schema)
-                                                  metabase-database)
-                inc))
-            0
-            (set/intersection (set (keys name+schema->table-metadata))
-                              (set (keys name+schema->metabase-table))))))
+        name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)
+        pairs                       (into []
+                                          (keep (fn [name+schema]
+                                                  (table-metadata-changes (name+schema->table-metadata name+schema)
+                                                                          (name+schema->metabase-table name+schema)
+                                                                          metabase-database)))
+                                          (set/intersection (set (keys name+schema->table-metadata))
+                                                            (set (keys name+schema->metabase-table))))]
+    (when (seq pairs)
+      (sync.updates/update-tables-unless-user-set! pairs))
+    (count pairs)))
 
 (def ^:private table-sync-batch-size
   "How many warehouse tables to reconcile against the app DB at a time. Bounds peak memory so a
@@ -386,8 +392,10 @@
    schemas-to-update :- [:maybe [:map-of :string :string]]]
   (when schemas-to-update
     (log/infof "Renaming schemas: %s" (pr-str schemas-to-update)))
-  (doseq [[schema new-schema] schemas-to-update]
-    (sync.db/rename-table-schema! (:id database) schema new-schema)))
+  (when (seq schemas-to-update)
+    (table/update-tables! (for [[schema new-schema] schemas-to-update
+                                id                  (sync.db/table-ids-with-schema (:id database) schema)]
+                            {:id id :schema new-schema}))))
 
 (def ^:private
   ^{:doc "threshold after which deactivated tables will be archived"}
@@ -420,7 +428,8 @@
                   ;; in the extremely unlikely case that there already exists a table with our
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
-                  [(sync.db/archive-inactive-table! (:id table) new-name)]
+                  (table/update-tables! [{:id (:id table) :archived_at (t/offset-date-time) :name new-name}])
+                  [1]
                   (catch Throwable t
                     [0 t]))]
             (when (zero? did-update)

@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.server.middleware.security :as security]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -40,13 +41,14 @@
   ;; a thread-local `binding`).
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp          app            {:bundle app-bundle}
+      (mt/with-temp [:model/Collection       {coll-id :id}  {:namespace :data-apps}
+                     :model/DataApp          app            {:bundle app-bundle :resource_collection_id coll-id}
                      :model/PermissionsGroup {group-id :id} {}]
         (testing "a user who cannot read the app's collection cannot open the app"
           (mt/user-http-request :rasta :get 403 (data-apps.tu/app-url app)))
         (testing "a member can open a data app"
           (group-access/add-groups! app [group-id])
-          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
           (is (str/includes? (str (mt/user-real-request :rasta :get 200 (data-apps.tu/app-url app "bundle")))
                              "BUNDLE")))
         (testing "a non-superuser is still forbidden from managing data apps"
@@ -58,7 +60,8 @@
 (deftest superuser-can-manage-and-view-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp app {:bundle app-bundle}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp    app           {:bundle app-bundle :resource_collection_id coll-id}]
         (is (not (some #(= (:resource_collection_id app) (:id %))
                        (mt/user-http-request :rasta :get 200 "collection"))))
         (testing "a superuser can list, read metadata, and serve the bundle"
@@ -71,7 +74,8 @@
 
 (deftest read-only-remote-sync-blocks-data-app-changes-test
   (mt/with-premium-features #{:data-apps :remote-sync}
-    (mt/with-temp [:model/DataApp app {:name "Demo app"}]
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                   :model/DataApp    app           {:name "Demo app" :resource_collection_id coll-id}]
       (let [url (data-apps.tu/app-url app)]
         (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                            remote-sync-type :read-only]
@@ -102,7 +106,8 @@
     (mt/with-premium-features #{:data-apps}
       (data-apps.tu/with-published-tables! [(mt/id :venues)]
         (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp [:model/DataApp          {app-collection-id :resource_collection_id :as app} {}
+          (mt/with-temp [:model/Collection       {coll-id :id}                                       {:namespace :data-apps}
+                         :model/DataApp          {app-collection-id :resource_collection_id :as app} {:resource_collection_id coll-id}
                          :model/PermissionsGroup {group-id :id}                                      {}
                          :model/Collection       {source-collection-id :id}                          {:namespace :data-actions}
                          :model/Action           {source-id :id}                                     {:type          :implicit
@@ -116,7 +121,7 @@
                                                                                                       :kind      "row/update"
                                                                                                       :table_id  (mt/id :venues)}]
             (group-access/add-groups! app [group-id])
-            (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+            (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
             (testing "the group with access reads the action copied into the app collection"
               (is (=? {:id copied-id}
                       (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
@@ -130,10 +135,12 @@
 (deftest outdated-apps-are-hidden-from-users-and-badged-for-admins-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp          old            {:version 1}
-                     :model/DataApp          current        {:bundle app-bundle :version 2}
+      (mt/with-temp [:model/Collection       {old-coll-id :id}     {:namespace :data-apps}
+                     :model/Collection       {current-coll-id :id} {:namespace :data-apps}
+                     :model/DataApp          old            {:version 1 :resource_collection_id old-coll-id}
+                     :model/DataApp          current        {:bundle app-bundle :version 2 :resource_collection_id current-coll-id}
                      :model/PermissionsGroup {group-id :id} {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
         (doseq [app [old current]]
           (group-access/add-groups! app [group-id]))
         (with-redefs [data-app.config/supported-app-version 2]
@@ -174,8 +181,11 @@
 
 (deftest list-includes-allowed-hosts-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp with-hosts    {:allowed_hosts ["https://api.example.com"]}
-                   :model/DataApp without-hosts {}]
+    (mt/with-temp [:model/Collection {with-coll-id :id}    {:namespace :data-apps}
+                   :model/Collection {without-coll-id :id} {:namespace :data-apps}
+                   :model/DataApp    with-hosts            {:allowed_hosts          ["https://api.example.com"]
+                                                            :resource_collection_id with-coll-id}
+                   :model/DataApp    without-hosts         {:resource_collection_id without-coll-id}]
       (testing "the list endpoint returns allowed_hosts, always a list, also for an app stored with NULL (→ [])"
         (let [by-name (->> (mt/user-http-request :crowberto :get 200 "ee/apps")
                            (into {} (map (juxt :slug identity))))]
@@ -187,7 +197,8 @@
 (deftest update-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp app {:name "Demo app"}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp    app           {:name "Demo app" :resource_collection_id coll-id}]
         (let [url (data-apps.tu/app-url app)]
           (testing "a non-superuser cannot update an app"
             (is (= "You don't have permissions to do that."
@@ -198,7 +209,7 @@
           (testing "a superuser updates manifest fields"
             (is (=? {:name "Renamed" :description "What it does" :allowed_hosts []}
                     (mt/user-http-request :crowberto :put 200 url {:name          "Renamed"
-                                                                   :description   "  What it does  "
+                                                                   :description   "What it does"
                                                                    :allowed_hosts []}))))
           (testing "invalid manifest fields are refused"
             (mt/user-http-request :crowberto :put 400 url {:bundle_path "/abs.js"})
@@ -238,7 +249,7 @@
                  :version                1
                  :enabled                true
                  :resource_collection_id pos-int?}
-                (mt/user-http-request :crowberto :post 200 "ee/apps" (assoc app-request :bundle_path "./dist/index.js"))))
+                (mt/user-http-request :crowberto :post 200 "ee/apps" app-request)))
         (testing "with an empty bundle"
           (is (= 0 (alength ^bytes (t2/select-one-fn :bundle :model/DataApp :slug "demo")))))
         (testing "with its own collection in the data-apps namespace, which no group but Administrators reads"
@@ -252,7 +263,10 @@
       (testing "invalid manifest fields are refused"
         (doseq [bad [{:slug "Not A Slug"}
                      {:bundle_path "../escape.js"}
+                     {:bundle_path "./dist/index.js"}
+                     {:name "   "}
                      {:allowed_hosts ["ftp://example.com"]}
+                     {:allowed_hosts ["https://API.example.com/"]}
                      {:version 0}]]
           (mt/user-http-request :crowberto :post 400 "ee/apps" (merge app-request {:slug "other"} bad))
           (is (not (t2/exists? :model/DataApp :slug "other")) (str "should refuse: " (pr-str bad))))))))
@@ -273,7 +287,8 @@
 (deftest replace-bundle-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp app {:bundle app-bundle}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp    app           {:bundle app-bundle :resource_collection_id coll-id}]
         (let [url (data-apps.tu/app-url app "bundle")]
           (testing "a non-superuser cannot replace the bundle"
             (mt/user-http-request :rasta :put 403 url {:bundle "MINE"}))
@@ -290,7 +305,8 @@
 
 (deftest delete-endpoint-requires-superuser-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp                    app            {}
+    (mt/with-temp [:model/Collection                 {coll-id :id}  {:namespace :data-apps}
+                   :model/DataApp                    app            {:resource_collection_id coll-id}
                    :model/PermissionsGroup           {group-id :id} {}
                    :model/PermissionsGroupMembership _              {:user_id  (mt/user->id :rasta)
                                                                      :group_id group-id}]
@@ -308,7 +324,8 @@
 (deftest delete-endpoint-deletes-collection-and-keeps-groups-test
   (mt/with-premium-features #{:data-apps}
     (data-apps.tu/with-published-tables! [(mt/id :venues)]
-      (mt/with-temp [:model/DataApp          app            {}
+      (mt/with-temp [:model/Collection       {coll-id :id}  {:namespace :data-apps}
+                     :model/DataApp          app            {:resource_collection_id coll-id}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/Card             {card-id :id}  {:collection_id (:resource_collection_id app)
                                                              :dataset_query (data-apps.tu/venues-query)}]
@@ -326,7 +343,8 @@
 (deftest list-and-bundle-endpoints-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp _ demo-app]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp    _             (assoc demo-app :resource_collection_id coll-id)]
         (testing "GET / lists the apps"
           (is (=? [{:slug "demo" :name "Demo app"
                     :bundle_path "dist/index.js" :enabled true}]
@@ -350,7 +368,8 @@
 (deftest enable-disable-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp _ demo-app]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp    _             (assoc demo-app :resource_collection_id coll-id)]
         (testing "PUT /:slug can disable an app"
           (is (=? {:slug "demo" :enabled false}
                   (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled false}))))
@@ -372,7 +391,8 @@
     (data-apps.tu/with-published-tables! [(mt/id :venues)]
       (mt/with-actions-enabled
         (mt/with-model-cleanup [:model/Card :model/Action]
-          (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {}]
+          (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                         :model/DataApp    {collection-id :resource_collection_id} {:resource_collection_id coll-id}]
             (let [query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))]
               (testing "an admin creates a question in the app's collection"
                 (is (=? {:collection_id collection-id}
@@ -398,7 +418,8 @@
 
 (deftest disabled-apps-are-listed-only-to-superusers-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp app {:slug "demo" :enabled false}]
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                   :model/DataApp    app           {:slug "demo" :enabled false :resource_collection_id coll-id}]
       (group-access/add-groups! app [(:id (perms/all-users-group))])
       (testing "a user with access doesn't see the disabled app"
         (is (not-any? #(= "demo" (:slug %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
@@ -410,7 +431,8 @@
 
 (deftest apps-are-listed-only-to-users-who-can-read-their-collection-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp _ {:slug "demo"}]
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                   :model/DataApp    _             {:slug "demo" :resource_collection_id coll-id}]
       (testing "a user without a grant on the app's collection doesn't see the app"
         (is (not-any? #(= "demo" (:slug %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
       (testing "a user sees it once their group can read the collection"
@@ -560,8 +582,10 @@
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
       (mt/user->id :crowberto)
-      (mt/with-temp [:model/DataApp app {:slug "birds" :name "Birds" :bundle_path "birds.js"
-                                         :bundle (.getBytes "BUNDLE" "UTF-8")}
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp app {:slug "birds" :name "Birds" :bundle_path "birds.js"
+                                         :bundle (.getBytes "BUNDLE" "UTF-8")
+                                         :resource_collection_id coll-id}
                      :model/PermissionsGroup group {}]
         (mt/with-model-cleanup [:model/ApiKey :model/User]
           (let [{api-key :unmasked_key key-id :id}

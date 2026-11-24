@@ -11,9 +11,10 @@
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.models.measure :as measure]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.db :as qp.db]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -92,7 +93,7 @@
       (field-user-settings/upsert-field-user-settings! {:id field-id} {:display_name display-name})
       (thunk)
       (finally
-        (field-user-settings/delete-field-user-settings! [field-id])))))
+        (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [field-id]))))))
 
 (defmacro ^:private with-field-display-name!
   "Run `body` with `display-name` set by a user as the display name of the Field with `field-id`."
@@ -112,7 +113,7 @@
                      :model/Card {after-native-id :id} {:dataset_query (card-query native-id)}]
         (run-jobs!)
         (is (nil? (column question-id "Grand total")))
-        (t2/update! :model/Card :id model-id {:dataset_query (add-grand-total (table-query :orders))})
+        (queries.card/update-cards! [{:id model-id :dataset_query (add-grand-total (table-query :orders))}])
         (is (pending? question-id))
         (run-jobs!)
         (is (some? (column question-id "Grand total")))
@@ -121,7 +122,7 @@
           (is (nil? (column after-native-id "Grand total"))))
         (is (not-any? pending? [model-id question-id nested-id]))
         (testing "a column no longer inferred is removed"
-          (t2/update! :model/Card :id model-id {:dataset_query (table-query :orders)})
+          (queries.card/update-cards! [{:id model-id :dataset_query (table-query :orders)}])
           (run-jobs!)
           (is (nil? (column question-id "Grand total")))
           (is (nil? (column nested-id "Grand total"))))))))
@@ -148,12 +149,12 @@
 (deftest fingerprints-come-only-from-stored-metadata-test
   (testing "re-deriving a card keeps the stored fingerprints and adds none for a column the stored metadata lacks"
     (with-dependencies-feature
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
+      (mt/with-temp [:model/Card {card-id :id} (mt/card-with-metadata {:dataset_query (table-query :venues)})]
         (let [marker {:global {:distinct-count 7}}
               stored (->> (t2/select-one-fn :result_metadata :model/Card :id card-id)
                           (remove #(= "PRICE" (:name %)))
                           (mapv #(cond-> % (= "ID" (:name %)) (assoc :fingerprint marker))))]
-          (t2/update! :model/Card :id card-id {:result_metadata stored})
+          (queries.card/update-cards! [{:id card-id :result_metadata stored}])
           (run-jobs!)
           (reprocess! card-id)
           (run-jobs!)
@@ -164,7 +165,8 @@
 (deftest native-parent-test
   (testing "a card depending on a changed model directly is re-derived even when it also depends on a native card"
     (with-dependencies-feature
-      (mt/with-temp [:model/Card {model-id :id}  {:type :model :dataset_query (table-query :orders)}
+      (mt/with-temp [:model/Card {model-id :id}  (mt/card-with-metadata {:type          :model
+                                                                         :dataset_query (table-query :orders)})
                      :model/Card {native-id :id} {:dataset_query   (native-card-query model-id)
                                                   :result_metadata (t2/select-one-fn :result_metadata :model/Card
                                                                                      :id model-id)}]
@@ -175,7 +177,7 @@
                                                                        (lib/ref (lib.metadata/field mp (mt/id :orders :id))))]))]
           (mt/with-temp [:model/Card {joined-id :id} {:dataset_query joined}]
             (run-jobs!)
-            (t2/update! :model/Card :id model-id {:dataset_query (add-grand-total (table-query :orders))})
+            (queries.card/update-cards! [{:id model-id :dataset_query (add-grand-total (table-query :orders))}])
             (run-jobs!)
             (is (some? (column joined-id "Grand total")))))))))
 
@@ -187,7 +189,7 @@
                      :model/Card {internal-id :id} {:dataset_query (card-query model-id)
                                                     :creator_id    config/internal-mb-user-id}]
         (run-jobs!)
-        (t2/update! :model/Card :id model-id {:dataset_query (add-grand-total (table-query :orders))})
+        (queries.card/update-cards! [{:id model-id :dataset_query (add-grand-total (table-query :orders))}])
         (run-jobs!)
         (is (some? (column card-id "Grand total")))
         (is (nil? (column internal-id "Grand total")))))))
@@ -198,9 +200,9 @@
       (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (table-query :orders)}
                      :model/Card {card-id :id}  {:dataset_query (card-query model-id)}]
         (run-jobs!)
-        (t2/update! :model/Card :id model-id {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
-                                                                                                :id model-id)
-                                                                              "TOTAL" "Grand total")})
+        (queries.card/update-cards! [{:id model-id :result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
+                                                                                                     :id model-id)
+                                                                                   "TOTAL" "Grand total")}])
         (is (pending? card-id))
         (run-jobs!)
         (is (= "Grand total" (:display_name (column card-id "TOTAL"))))))))
@@ -210,9 +212,9 @@
     (with-dependencies-feature
       (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (table-query :orders)}]
         (run-jobs!)
-        (t2/update! :model/Card :id model-id {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
-                                                                                                :id model-id)
-                                                                              "TOTAL" "Grand total")})
+        (queries.card/update-cards! [{:id model-id :result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
+                                                                                                     :id model-id)
+                                                                                   "TOTAL" "Grand total")}])
         (with-field-display-name! (mt/id :orders :total) "Order total"
           (is (pending? model-id))
           (run-jobs!)
@@ -240,10 +242,9 @@
         (run-jobs!)
         (let [column-name #(:name (first (t2/select-one-fn :result_metadata :model/Card :id card-id)))]
           (is (= "count" (column-name)))
-          (t2/update! :model/Measure :id measure-id
-                      {:definition (-> (table-query :orders)
-                                       (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
-                                                                                   (mt/id :orders :total)))))})
+          (measure/update-measures! [{:id measure-id :definition (-> (table-query :orders)
+                                                                     (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
+                                                                                                                 (mt/id :orders :total)))))}])
           (run-jobs!)
           (is (= "avg" (column-name))))))))
 
@@ -260,10 +261,9 @@
           (run-jobs!)
           (let [base-type #(:base_type (first (t2/select-one-fn :result_metadata :model/Card :id card-id)))]
             (is (isa? (base-type) :type/Integer))
-            (t2/update! :model/Measure :id inner-id
-                        {:definition (-> (table-query :orders)
-                                         (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
-                                                                                     (mt/id :orders :total)))))})
+            (measure/update-measures! [{:id inner-id :definition (-> (table-query :orders)
+                                                                     (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
+                                                                                                                 (mt/id :orders :total)))))}])
             (run-jobs!)
             (is (isa? (base-type) :type/Float))))))))
 
@@ -280,7 +280,7 @@
 (defn- store-run-metadata!
   "Store `metadata` as the result metadata of the Card with `card-id`, as a run of the card does."
   [card-id metadata]
-  (#'qp.db/set-card-result-metadata! card-id metadata))
+  (queries.card/update-cards! [{:id card-id :result_metadata metadata :updated_at :updated_at}]))
 
 (defn- once!
   "A function running `f` the first time it is called and doing nothing after."
@@ -296,7 +296,7 @@
         (with-field-display-name! (mt/id :orders :total) "Order total"
           (is (pos? (rederive-during-inference!
                      card-id
-                     (once! #(t2/update! :model/Card :id card-id {:dataset_query (add-grand-total (table-query :orders))})))))
+                     (once! #(queries.card/update-cards! [{:id card-id :dataset_query (add-grand-total (table-query :orders))}])))))
           (is (some? (column card-id "Grand total")))
           (is (pending? card-id))
           (run-jobs!)
@@ -328,7 +328,7 @@
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (by-unit :month)}
                        :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
           (run-jobs!)
-          (t2/update! :model/Card :id source-id {:dataset_query (by-unit :year)})
+          (queries.card/update-cards! [{:id source-id :dataset_query (by-unit :year)}])
           (run-jobs!)
           (is (=? {:display_name "Created At: Year" :unit :year}
                   (column card-id "CREATED_AT"))))))))
@@ -342,16 +342,16 @@
                        :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
           (run-jobs!)
           (is (isa? (:base_type (column card-id "X")) :type/Number))
-          (t2/update! :model/Card :id source-id {:dataset_query (with (lib/concat total "!"))})
+          (queries.card/update-cards! [{:id source-id :dataset_query (with (lib/concat total "!"))}])
           (run-jobs!)
           (is (= :type/Text (:base_type (column card-id "X"))))
           (testing "within one root type too, since no run measured the card's types"
-            (t2/update! :model/Card :id source-id {:dataset_query (with (lib/+ (lib.metadata/field (mt/metadata-provider)
-                                                                                                   (mt/id :orders :quantity))
-                                                                               1))})
+            (queries.card/update-cards! [{:id source-id :dataset_query (with (lib/+ (lib.metadata/field (mt/metadata-provider)
+                                                                                                        (mt/id :orders :quantity))
+                                                                                    1))}])
             (run-jobs!)
             (is (= :type/Integer (:base_type (column card-id "X"))))
-            (t2/update! :model/Card :id source-id {:dataset_query (with (lib/* total 1.5))})
+            (queries.card/update-cards! [{:id source-id :dataset_query (with (lib/* total 1.5))}])
             (run-jobs!)
             (is (= :type/Float (:base_type (column card-id "X"))))))))))
 
@@ -382,7 +382,7 @@
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (run-jobs!)
-        (t2/update! :model/Card :id source-id {:dataset_query (add-grand-total (table-query :orders))})
+        (queries.card/update-cards! [{:id source-id :dataset_query (add-grand-total (table-query :orders))}])
         (do-with-inference (fn [_infer _query _card] (throw (ex-info "Inference failed" {})))
                            run-jobs!)
         (is (nil? (column card-id "Grand total")))
@@ -399,13 +399,13 @@
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}]
           (run-jobs!)
-          (let [card-id (t2/insert-returning-pk! :model/Card {:name                   "Dependent"
-                                                              :display                :table
-                                                              :visualization_settings {}
-                                                              :creator_id             (mt/user->id :rasta)
-                                                              :database_id            (mt/id)
-                                                              :dataset_query          (card-query source-id)})]
-            (t2/update! :model/Card :id source-id {:dataset_query (add-grand-total (table-query :orders))})
+          (let [card-id (:id (first (queries.card/create-cards! [{:name                   "Dependent"
+                                                                  :display                :table
+                                                                  :visualization_settings {}
+                                                                  :creator_id             (mt/user->id :rasta)
+                                                                  :database_id            (mt/id)
+                                                                  :dataset_query          (card-query source-id)}])))]
+            (queries.card/update-cards! [{:id source-id :dataset_query (add-grand-total (table-query :orders))}])
             (mt/with-premium-features #{:dependencies}
               (deps.result-metadata/update-result-metadata! 1000))
             (run-jobs!)
@@ -420,12 +420,12 @@
           (run-jobs!)
           (is (not (pending? source-id)))
           (Thread/sleep 5)
-          (t2/insert! :model/Card {:name                   "Dependent"
-                                   :display                :table
-                                   :visualization_settings {}
-                                   :creator_id             (mt/user->id :rasta)
-                                   :database_id            (mt/id)
-                                   :dataset_query          (card-query source-id)})
+          (queries.card/create-cards! [{:name                   "Dependent"
+                                        :display                :table
+                                        :visualization_settings {}
+                                        :creator_id             (mt/user->id :rasta)
+                                        :database_id            (mt/id)
+                                        :dataset_query          (card-query source-id)}])
           (deps.test/synchronously-run-dependency-job!)
           (is (not (pending? source-id))))))))
 
@@ -436,15 +436,15 @@
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}]
           (run-jobs!)
-          (let [card-id (t2/insert-returning-pk! :model/Card {:name                   "Dependent"
-                                                              :display                :table
-                                                              :visualization_settings {}
-                                                              :creator_id             (mt/user->id :rasta)
-                                                              :database_id            (mt/id)
-                                                              :dataset_query          (card-query source-id)})]
-            (t2/update! :model/Card :id source-id {:dataset_query (add-grand-total (table-query :orders))})
+          (let [card-id (:id (first (queries.card/create-cards! [{:name                   "Dependent"
+                                                                  :display                :table
+                                                                  :visualization_settings {}
+                                                                  :creator_id             (mt/user->id :rasta)
+                                                                  :database_id            (mt/id)
+                                                                  :dataset_query          (card-query source-id)}])))]
+            (queries.card/update-cards! [{:id source-id :dataset_query (add-grand-total (table-query :orders))}])
             (deps.result-metadata/update-result-metadata! 1000)
-            (t2/update! :model/Card :id card-id {:name "Renamed"})
+            (queries.card/update-cards! [{:id card-id :name "Renamed"}])
             (run-jobs!)
             (is (some? (column card-id "Grand total")))))))))
 
@@ -467,7 +467,7 @@
         (deps.test/synchronously-run-dependency-job!)
         (let [submitted (atom [])
               before    (t2/select-one-fn :updated_at :model/Card :id card-id)]
-          (t2/update! :model/Card :id source-id {:dataset_query (add-grand-total (table-query :orders))})
+          (queries.card/update-cards! [{:id source-id :dataset_query (add-grand-total (table-query :orders))}])
           (deps.test/synchronously-run-dependency-job!)
           (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
             (rederive!)
@@ -534,8 +534,8 @@
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (table-query :venues)}]
         (run-jobs!)
-        (t2/update! :model/Card :id card-id {:dataset_query (card-query source-id)})
-        (t2/update! :model/Card :id source-id {:dataset_query (add-grand-total (table-query :orders))})
+        (queries.card/update-cards! [{:id card-id :dataset_query (card-query source-id)}])
+        (queries.card/update-cards! [{:id source-id :dataset_query (add-grand-total (table-query :orders))}])
         (run-jobs!)
         (is (some? (column card-id "Grand total")))))))
 
@@ -546,12 +546,12 @@
                      :model/Card {other-id :id}   {:dataset_query (table-query :venues)}]
         (run-jobs!)
         (reprocess! failing-id other-id)
-        (let [store (mt/original-fn #'dependencies.db/set-card-result-metadata!)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/set-card-result-metadata!
-                                      (fn [card-id metadata]
-                                        (if (= failing-id card-id)
+        (let [store (mt/original-fn #'queries.card/update-cards!)]
+          (mt/with-dynamic-fn-redefs [queries.card/update-cards!
+                                      (fn [ids & args]
+                                        (if (some #{failing-id} ids)
                                           (throw (ex-info "Store failed" {}))
-                                          (store card-id metadata)))]
+                                          (apply store ids args)))]
             (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed"))
                                rederive!)))
         (is (= "Changed" (:display_name (column other-id "NAME"))))))))
@@ -562,7 +562,7 @@
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (run-jobs!)
-        (t2/update! :model/Card :id source-id {:dataset_query (add-grand-total (table-query :orders))})
+        (queries.card/update-cards! [{:id source-id :dataset_query (add-grand-total (table-query :orders))}])
         (let [inferred (atom #{})]
           (do-with-inference (fn [infer query card]
                                (swap! inferred conj (:id card))
@@ -631,10 +631,10 @@
                                         (if (= card-id (:id entity))
                                           (throw (ex-info "Computation failed" {}))
                                           (calculate entity-type entity)))]
-            (t2/update! :model/Card :id card-id {:dataset_query (card-query source-id)
-                                                 :description   "edited"})
+            (queries.card/update-cards! [{:id card-id :dataset_query (card-query source-id)
+                                          :description   "edited"}])
             (dependencies.db/mark-dependency-statuses-stale! {:card #{card-id}})
-            (t2/update! :model/Card :id source-id {:dataset_query (add-grand-total (table-query :orders))})
+            (queries.card/update-cards! [{:id source-id :dataset_query (add-grand-total (table-query :orders))}])
             (run-jobs!)))
         (is (nil? (column card-id "Grand total")))
         (is (pending? card-id))))))
@@ -704,9 +704,9 @@
                      :model/Card {other-id :id} {:dataset_query (table-query :venues)}]
         (run-jobs!)
         (reprocess! card-id)
-        (let [store  (mt/original-fn #'dependencies.db/set-card-result-metadata!)
+        (let [store  (mt/original-fn #'queries.card/update-cards!)
               marked (atom nil)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/set-card-result-metadata!
+          (mt/with-dynamic-fn-redefs [queries.card/update-cards!
                                       (fn [& args]
                                         (reset! marked (deref (future (t2/update! :model/ResultMetadataStatus
                                                                                   :entity_type :card
@@ -728,7 +728,7 @@
         (let [locked (promise)
               save   (future
                        (t2/with-transaction [_]
-                         (t2/update! :model/Card :id card-id {:name "Saved"})
+                         (queries.card/update-cards! [{:id card-id :name "Saved"}])
                          (deliver locked true)
                          (Thread/sleep 1000)))]
           @locked
@@ -782,21 +782,23 @@
 (deftest store-updates-parameters-using-dropped-columns-test
   (testing "storing a re-derived card resets the parameters taking values from a column it no longer has"
     (with-dependencies-feature
-      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :venues)}
-                     :model/Card {card-id :id}   {:dataset_query (table-query :venues)
-                                                  :parameters    [{:id                   "price"
-                                                                   :type                 :category
-                                                                   :name                 "Price"
-                                                                   :slug                 "price"
-                                                                   :values_source_type   :card
-                                                                   :values_source_config {:card_id     source-id
-                                                                                          :value_field [:field (mt/id :venues :price) nil]}}]}]
-        (run-jobs!)
-        (reprocess! source-id)
-        (do-with-inference (fn [infer query card]
-                             (cond->> (infer query card)
-                               (= source-id (:id card)) (into [] (remove #(= "PRICE" (:name %))))))
-                           rederive!)
-        (is (nil? (column source-id "PRICE")))
-        (is (=? [{:id "price" :values_source_type nil}]
-                (t2/select-one-fn :parameters :model/Card :id card-id)))))))
+      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :venues)}]
+        (mt/with-model-cleanup [:model/Card]
+          (let [{card-id :id} (first (queries.card/create-cards!
+                                      [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :display :table :name (mt/random-name) :visualization_settings {}} {:dataset_query (table-query :venues)
+                                                                                                                                                                         :parameters    [{:id                   "price"
+                                                                                                                                                                                          :type                 :category
+                                                                                                                                                                                          :name                 "Price"
+                                                                                                                                                                                          :slug                 "price"
+                                                                                                                                                                                          :values_source_type   :card
+                                                                                                                                                                                          :values_source_config {:card_id     source-id
+                                                                                                                                                                                                                 :value_field [:field (mt/id :venues :price) nil]}}]})]))]
+            (run-jobs!)
+            (reprocess! source-id)
+            (do-with-inference (fn [infer query card]
+                                 (cond->> (infer query card)
+                                   (= source-id (:id card)) (into [] (remove #(= "PRICE" (:name %))))))
+                               rederive!)
+            (is (nil? (column source-id "PRICE")))
+            (is (=? [{:id "price" :values_source_type nil}]
+                    (t2/select-one-fn :parameters :model/Card :id card-id)))))))))

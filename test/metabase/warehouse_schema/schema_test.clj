@@ -19,14 +19,14 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"require a human readable field id"
                             (lib/normalize ::warehouse-schema.schema/external-dimension bad {:throw? true}))))
     (testing "an external Dimension with its Field, or a body without one of the two columns, passes"
-      (is (= {:type :external, :human_readable_field_id 1}
+      (is (= {:id 1, :type :external, :human_readable_field_id 1}
              (lib/normalize ::warehouse-schema.schema/dimension.update
-                            {:type "external", :human_readable_field_id 1} {:throw? true})))
-      (is (= {:human_readable_field_id nil}
+                            {:id 1, :type "external", :human_readable_field_id 1} {:throw? true})))
+      (is (= {:id 1, :human_readable_field_id nil}
              (lib/normalize ::warehouse-schema.schema/dimension.update
-                            {:human_readable_field_id nil} {:throw? true})))
-      (is (= {:type :external}
-             (lib/normalize ::warehouse-schema.schema/dimension.update {:type "external"} {:throw? true}))))))
+                            {:id 1, :human_readable_field_id nil} {:throw? true})))
+      (is (= {:id 1, :type :external}
+             (lib/normalize ::warehouse-schema.schema/dimension.update {:id 1, :type "external"} {:throw? true}))))))
 
 (deftest ^:parallel table-role-schema-test
   (testing "a table role is a keyword in the table role hierarchy"
@@ -121,7 +121,7 @@
       (is (not (mr/validate ::warehouse-schema.schema/table (assoc table :history_definition "{}"))))
       (is (not (mr/validate ::warehouse-schema.schema/table-user-settings {:mutability "versioned"}))))
     (testing "a grain is at most 254 characters"
-      (is (not (mr/validate ::warehouse-schema.schema/table.update {:grain (apply str (repeat 255 "x"))}))))))
+      (is (not (mr/validate ::warehouse-schema.schema/table.update {:id 1, :grain (apply str (repeat 255 "x"))}))))))
 
 (deftest ^:parallel field-structural-metadata-schema-test
   (let [field {:id 1, :is_grain true, :attribute_scd_type 2, :facets [:type/EventTimestamp]}]

@@ -151,10 +151,12 @@
 (deftest test-run-permissions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-group-for-user [lucky-group :lucky {:name "Lucky Transforms Group"}]
-        (mt/with-db-perm-for-group! lucky-group (mt/id) :perms/transforms :yes
-          (is (=? {:status 403} (test-run :user :rasta)))
-          (is (=? {:status 200} (test-run :user :lucky))))))))
+      (mt/with-model-cleanup [:model/PermissionsGroup]
+        (let [[lucky-group] (perms-group/create-permissions-groups! [{:name "Lucky Transforms Group"}])]
+          (mt/with-temp [:model/PermissionsGroupMembership _ {:group_id (:id lucky-group) :user_id (mt/user->id :lucky)}]
+            (mt/with-db-perm-for-group! lucky-group (mt/id) :perms/transforms :yes
+              (is (=? {:status 403} (test-run :user :rasta)))
+              (is (=? {:status 200} (test-run :user :lucky))))))))))
 
 (deftest test-run-input-limit-test
   (mt/dataset transforms-dataset/transforms-test

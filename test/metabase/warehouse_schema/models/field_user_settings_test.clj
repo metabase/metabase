@@ -1,10 +1,10 @@
 (ns metabase.warehouse-schema.models.field-user-settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase.sync.util :as sync-util]
+   [metabase.serialization.core :as serialization]
+   [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
-   [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
    [toucan2.core :as t2]))
 
 (def ^:private structural-metadata
@@ -83,7 +83,7 @@
 (deftest sync-skips-user-structural-metadata-test
   (mt/with-temp [:model/Field {field-id :id} {}]
     (field-user-settings/upsert-field-user-settings! (field-row field-id) structural-metadata)
-    (sync-util/update-field-unless-user-set! field-id synced-structural-metadata)
+    (sync.updates/update-field-unless-user-set! field-id synced-structural-metadata)
     (is (=? structural-metadata (field-row field-id)))))
 
 (deftest user-null-structural-metadata-is-kept-test
@@ -91,7 +91,7 @@
     (mt/with-temp [:model/Field {field-id :id} synced-structural-metadata]
       (field-user-settings/upsert-field-user-settings! (field-row field-id) nulls)
       (is (=? (merge nulls structural-metadata-flags) (t2/select-one :model/FieldUserSettings :field_id field-id)))
-      (sync-util/update-field-unless-user-set! field-id synced-structural-metadata)
+      (sync.updates/update-field-unless-user-set! field-id synced-structural-metadata)
       (is (= nulls (select-keys (field-row field-id) (keys nulls)))))))
 
 (deftest unset-structural-metadata-clears-flags-test
@@ -102,12 +102,16 @@
     (is (=? (merge (update-vals structural-metadata (constantly nil))
                    (update-vals structural-metadata-flags (constantly false)))
             (t2/select-one :model/FieldUserSettings :field_id field-id)))
-    (sync-util/update-field-unless-user-set! field-id synced-structural-metadata)
+    (sync.updates/update-field-unless-user-set! field-id synced-structural-metadata)
     (is (=? synced-structural-metadata (field-row field-id)))))
 
-(deftest serdes-load-keeps-structural-metadata-test
-  (testing "a SerDes load clears the user values its export lacks, but not the structural metadata it never carries"
-    (let [[{:keys [row]}] (warehouse-schema.serialization/field-user-settings-before-load
-                           [{:local {:field_id 1}, :row {:description "d"}}])]
-      (is (= {:description "d", :display_name nil} (select-keys row [:description :display_name])))
-      (is (not-any? #(contains? row %) (keys structural-metadata))))))
+(deftest serdes-update-keeps-structural-metadata-test
+  (testing "a SerDes update sets every column its spec copies and none it skips, so the structural metadata stays"
+    (mt/with-temp [:model/Field {field-id :id} {}]
+      (field-user-settings/upsert-field-user-settings! (field-row field-id) structural-metadata)
+      (let [{:keys [copy defaults update!]} (serialization/spec :model/FieldUserSettings)
+            settings-id                     (t2/select-one-pk :model/FieldUserSettings :field_id field-id)]
+        (update! [(merge (zipmap copy (repeat nil)) defaults {:id settings-id :description "d"})])
+        (is (=? (assoc structural-metadata :description "d")
+                (t2/select-one :model/FieldUserSettings :id settings-id)))
+        (is (=? structural-metadata (field-row field-id)))))))

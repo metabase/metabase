@@ -2,10 +2,7 @@
   "The SerDes of Fields, their Dimensions, FieldValues and user settings, and the user settings of Tables."
   (:require
    [clojure.string :as str]
-   [metabase.serialization.core :as serialization]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
-   [metabase.warehouse-schema.models.table :as table]
-   [metabase.warehouse-schema.user-settings :as user-settings]))
+   [metabase.serialization.core :as serialization]))
 
 (set! *warn-on-reflection* true)
 
@@ -55,36 +52,11 @@
   [entities _ctx]
   (field-paths-with-suffix entities "___fieldvalues"))
 
-(defn field-values-before-load
-  "The FieldValues load `items` without the `type` and `hash_key` their local rows already hold."
-  [items]
-  (mapv (fn [{:keys [local] :as item}]
-          (cond-> item
-            (and local (= (get-in item [:row :type]) (:type local)))         (update :row dissoc :type)
-            (and local (= (get-in item [:row :hash_key]) (:hash_key local))) (update :row dissoc :hash_key)))
-        items))
-
 (defn field-user-settings-storage-paths
   "The storage path of each of the FieldUserSettings `entities`, the one of its Field with a `___fieldusersettings`
   suffix."
   [entities _ctx]
   (field-paths-with-suffix entities "___fieldusersettings"))
-
-(defn field-user-settings-before-load
-  "The FieldUserSettings load `items`, clearing on local rows the exported user-settable columns they lack."
-  [items]
-  (let [skipped (set (:skip (serialization/spec :model/FieldUserSettings)))
-        cleared (zipmap (remove skipped user-settings/user-settable-field-columns) (repeat nil))]
-    (mapv (fn [{:keys [local] :as item}]
-            (cond-> item
-              local (update :row #(merge cleared %))))
-          items)))
-
-(defn field-user-settings-after-load
-  "Writes the user-set columns of the loaded FieldUserSettings `items` to their Fields."
-  [items]
-  (doseq [{{:keys [field_id] :as settings} :instance} items]
-    (warehouse-schema.db/update-field! field_id (select-keys settings (user-settings/user-set-field-columns settings)))))
 
 (defn table-user-settings-storage-paths
   "The storage path of each of the TableUserSettings `entities`, in the directory of its Table with a
@@ -101,33 +73,3 @@
   (mapv (fn [{:keys [collection_id]}]
           (cond-> #{} collection_id (conj [:model/Collection collection_id])))
         entities))
-
-(defn- without-derived-half
-  "Drop from `changes` the half of a `visibility_type`/`data_layer` pair the Table's own update derives from the other."
-  [{:keys [visibility_type data_layer] :as changes}]
-  (if (and (contains? changes :visibility_type) (contains? changes :data_layer))
-    (if (= (some-> data_layer keyword) (table/visibility-type->data-layer (some-> visibility_type keyword)))
-      (dissoc changes :data_layer)
-      (dissoc changes :visibility_type))
-    changes))
-
-(defn- load-legacy-fields!
-  "Loads the FieldUserSettings that the settings `items` of an older export carry under `:fields`, deleting the other
-  FieldUserSettings of their Tables."
-  [items]
-  (doseq [{{:keys [table_id]} :instance {:keys [fields]} :entity} (filter #(contains? (:entity %) :fields) items)]
-    (let [kept (into #{} (map :field_id)
-                     (serialization/load :model/FieldUserSettings (mapv serialization/restore-identity fields)))]
-      (warehouse-schema.db/delete-field-user-settings!
-       (vec (remove kept (warehouse-schema.db/field-ids-with-user-settings-for-table table_id)))))))
-
-(defn table-user-settings-after-load
-  "Writes the user-set columns of the loaded TableUserSettings `items` to their Tables, loading the FieldUserSettings
-  of older exports."
-  [items]
-  (load-legacy-fields! items)
-  (doseq [{{:keys [table_id] :as settings} :instance :keys [entity]} items]
-    (warehouse-schema.db/update-table! table_id (without-derived-half
-                                                 (select-keys settings (user-settings/user-set-table-columns settings))))
-    (when (:field_order entity)
-      (table/update-field-positions! (warehouse-schema.db/table table_id)))))

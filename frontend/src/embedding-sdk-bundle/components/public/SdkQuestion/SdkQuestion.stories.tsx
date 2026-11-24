@@ -128,32 +128,30 @@ export const WithEditableSqlParametersCustomLayout = {
               display: "table",
               id: QUESTION_ID,
               query_type: "native",
-              dataset_query: Lib.toLegacyQuery(
-                Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
-                  query:
-                    "SELECT * FROM people WHERE state = {{State}} [[ and city = {{City}} ]] [[ and source = {{Source}} ]]",
-                  templateTags: {
-                    State: {
-                      type: "text",
-                      name: "State",
-                      id: "1",
-                      "display-name": "State",
-                    },
-                    City: {
-                      type: "text",
-                      name: "City",
-                      id: "2",
-                      "display-name": "City",
-                    },
-                    Source: {
-                      type: "text",
-                      name: "Source",
-                      id: "3",
-                      "display-name": "Source",
-                    },
+              dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+                query:
+                  "SELECT * FROM people WHERE state = {{State}} [[ and city = {{City}} ]] [[ and source = {{Source}} ]]",
+                templateTags: {
+                  State: {
+                    type: "text",
+                    name: "State",
+                    id: "1",
+                    "display-name": "State",
                   },
-                }),
-              ),
+                  City: {
+                    type: "text",
+                    name: "City",
+                    id: "2",
+                    "display-name": "City",
+                  },
+                  Source: {
+                    type: "text",
+                    name: "Source",
+                    id: "3",
+                    "display-name": "Source",
+                  },
+                },
+              }),
               parameters: [
                 createMockParameter({
                   id: "1",
@@ -308,32 +306,30 @@ export const ControlledSqlParameters = {
               display: "table",
               id: QUESTION_ID,
               query_type: "native",
-              dataset_query: Lib.toLegacyQuery(
-                Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
-                  query:
-                    "SELECT * FROM people WHERE state = {{state}} [[ and city = {{city}} ]] [[ and source = {{source}} ]]",
-                  templateTags: {
-                    state: {
-                      type: "text",
-                      name: "state",
-                      id: "1",
-                      "display-name": "State",
-                    },
-                    city: {
-                      type: "text",
-                      name: "city",
-                      id: "2",
-                      "display-name": "City",
-                    },
-                    source: {
-                      type: "text",
-                      name: "source",
-                      id: "3",
-                      "display-name": "Source",
-                    },
+              dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+                query:
+                  "SELECT * FROM people WHERE state = {{state}} [[ and city = {{city}} ]] [[ and source = {{source}} ]]",
+                templateTags: {
+                  state: {
+                    type: "text",
+                    name: "state",
+                    id: "1",
+                    "display-name": "State",
                   },
-                }),
-              ),
+                  city: {
+                    type: "text",
+                    name: "city",
+                    id: "2",
+                    "display-name": "City",
+                  },
+                  source: {
+                    type: "text",
+                    name: "source",
+                    id: "3",
+                    "display-name": "Source",
+                  },
+                },
+              }),
               parameters: [
                 createMockParameter({ id: "1", slug: "state" }),
                 createMockParameter({ id: "2", slug: "city" }),

@@ -1,7 +1,7 @@
 (ns metabase.warehouse-schema.models.table-user-settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase.sync.util :as sync-util]
+   [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
@@ -83,7 +83,8 @@
         (t2/update! :model/TableUserSettings :table_id table-id {:description nil :description_set false})
         (is (false? (t2/select-one-fn :description_set :model/TableUserSettings :table_id table-id))))
       (testing "both halves of the visibility choice move together"
-        (t2/update! :model/TableUserSettings :table_id table-id {:visibility_type :hidden})
+        (table-user-settings/update-table-user-settings!
+         [{:id (t2/select-one-pk :model/TableUserSettings :table_id table-id) :visibility_type :hidden}])
         (is (=? {:visibility_type :hidden :data_layer :hidden
                  :visibility_type_set true :data_layer_set true}
                 (t2/select-one :model/TableUserSettings :table_id table-id))))
@@ -120,7 +121,7 @@
       (table-user-settings/upsert-table-user-settings! table {:data_authority :authoritative
                                                               :display_name   "User Name"
                                                               :description    "user description"})
-      (table-user-settings/delete-table-user-settings! [table-id])
+      (table-user-settings/delete-table-user-settings! (table-user-settings/ids-of-tables [table-id]))
       (is (=? {:data_authority :authoritative :description "user description" :display_name "User Name"}
               (user-table table-id)))
       (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))))
@@ -214,7 +215,7 @@
 (deftest sync-skips-user-structural-metadata-test
   (mt/with-temp [:model/Table {table-id :id :as table} {}]
     (table-user-settings/upsert-table-user-settings! table structural-metadata)
-    (sync-util/update-table-unless-user-set! table-id synced-structural-metadata)
+    (sync.updates/update-table-unless-user-set! table-id synced-structural-metadata)
     (is (=? structural-metadata (user-table table-id)))))
 
 (deftest user-null-structural-metadata-is-kept-test
@@ -222,7 +223,7 @@
     (mt/with-temp [:model/Table {table-id :id :as table} synced-structural-metadata]
       (table-user-settings/upsert-table-user-settings! table nulls)
       (is (=? (merge nulls structural-metadata-flags) (t2/select-one :model/TableUserSettings :table_id table-id)))
-      (sync-util/update-table-unless-user-set! table-id synced-structural-metadata)
+      (sync.updates/update-table-unless-user-set! table-id synced-structural-metadata)
       (is (= nulls (select-keys (user-table table-id) (keys nulls)))))))
 
 (deftest unset-structural-metadata-clears-flags-test
@@ -232,5 +233,18 @@
     (is (=? (merge (update-vals structural-metadata (constantly nil))
                    (update-vals structural-metadata-flags (constantly false)))
             (t2/select-one :model/TableUserSettings :table_id table-id)))
-    (sync-util/update-table-unless-user-set! table-id synced-structural-metadata)
+    (sync.updates/update-table-unless-user-set! table-id synced-structural-metadata)
     (is (=? synced-structural-metadata (user-table table-id)))))
+(deftest upsert-after-concurrent-insert-updates-stored-row-test
+  (testing "settings another writer inserts between the read and the insert are updated, not duplicated"
+    (mt/with-temp [:model/Table {table-id :id :as table} {}]
+      (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Other Writer"})
+      (let [reads (atom 0)
+            read  (mt/original-fn #'warehouse-schema.db/table-user-settings)]
+        (mt/with-dynamic-fn-redefs [warehouse-schema.db/table-user-settings (fn [id]
+                                                                              (when (> (swap! reads inc) 1)
+                                                                                (read id)))]
+          (table-user-settings/upsert-table-user-settings! table {:description "User Description"})))
+      (is (=? [{:display_name "Other Writer" :description "User Description" :description_set true}]
+              (t2/select :model/TableUserSettings :table_id table-id)))
+      (is (= "User Description" (:description (user-table table-id)))))))

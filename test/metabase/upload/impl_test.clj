@@ -21,9 +21,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.query-processor.test :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -1947,12 +1947,12 @@
                 other-id    (mt/id :venues)
                 other-table (t2/select-one :model/Table :id other-id)
                 mp          (lib-be/application-database-metadata-provider (:db_id table))]
-            (mt/with-temp [:model/Card {question-id        :id} {:table_id table-id, :dataset_query (mbql mp table)}
-                           :model/Card {model-id           :id} {:table_id table-id, :type :model, :dataset_query (mbql mp table)}
-                           :model/Card {complex-model-id   :id} {:table_id table-id, :type :model, :dataset_query (join-mbql mp table other-table)}
-                           :model/Card {archived-model-id  :id} {:table_id table-id, :type :model, :archived true, :dataset_query (mbql mp table)}
-                           :model/Card {unrelated-model-id :id} {:table_id other-id, :type :model, :dataset_query (mbql mp other-table)}
-                           :model/Card {joined-model-id    :id} {:table_id other-id, :type :model, :dataset_query (join-mbql mp other-table table)}]
+            (mt/with-temp [:model/Card {question-id        :id} (mt/card-with-metadata {:table_id table-id, :dataset_query (mbql mp table)})
+                           :model/Card {model-id           :id} (mt/card-with-metadata {:table_id table-id, :type :model, :dataset_query (mbql mp table)})
+                           :model/Card {complex-model-id   :id} (mt/card-with-metadata {:table_id table-id, :type :model, :dataset_query (join-mbql mp table other-table)})
+                           :model/Card {archived-model-id  :id} (mt/card-with-metadata {:table_id table-id, :type :model, :archived true, :dataset_query (mbql mp table)})
+                           :model/Card {unrelated-model-id :id} (mt/card-with-metadata {:table_id other-id, :type :model, :dataset_query (mbql mp other-table)})
+                           :model/Card {joined-model-id    :id} (mt/card-with-metadata {:table_id other-id, :type :model, :dataset_query (join-mbql mp other-table table)})]
               (is (= #{question-id model-id complex-model-id}
                      (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
               (mt/with-persistence-enabled! [persist-models!]
@@ -2649,7 +2649,7 @@
                      :model/Table            {upload-table :id}      {:db_id db-id :schema "upload_schema" :name "UploadTable"}
                      :model/Table            {blocked-table :id}     {:db_id db-id :schema "other_schema"  :name "BlockedTable"}
                      :model/PermissionsGroup pg                      {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
         (t2/delete! :model/DataPermissions :db_id db-id)
         ;; Set database-level defaults to blocked
         (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)

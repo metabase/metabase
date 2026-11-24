@@ -1,6 +1,7 @@
 (ns metabase.change-log.log
   "The writes to the change log (see `metabase.change-log.core`)."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.change-log.db :as change-log.db]
    [metabase.change-log.numbering :as change-log.numbering]
    [metabase.change-log.spec :as change-log.spec]
@@ -34,11 +35,11 @@
           :when (pos? n)]
     (throw-or-log (format "Not logging %d %s on %s to the change log: row key missing or not an integer. See %s."
                           n action table-name "metabase.change-log.core")))
-  (run! change-log.db/insert-entries!
-        (partition-all 1000 (for [[table-name row-ids action] changes
-                                  id                          row-ids
-                                  :when                       (integer? id)]
-                              {:table_name table-name, :row_id id, :action action})))
+  (run! (comp change-log.db/insert-entries! vec)
+        (partition-all app-db/create-partition-size (for [[table-name row-ids action] changes
+                                                          id                          row-ids
+                                                          :when                       (integer? id)]
+                                                      {:table_name table-name, :row_id id, :action action})))
   (when-not config/is-test?
     (change-log.numbering/stay-awake!)))
 
@@ -53,5 +54,19 @@
   (when (premium-features/enable-change-log?)
     (if (change-log.spec/tracked? model)
       (log! [[(table-of model) (change-log.db/matching-pks model (vec conditions)) (name action)]])
+      (throw-or-log (format "Not logging %s on %s to the change log: the model has no `metabase.change-log.core/spec`."
+                            (name action) model)))))
+
+(mu/defn log-changes!
+  "Logs `action` on `rows`, the rows of `model` that a plain write of a part of an entity inserted, updated or deleted,
+  each holding its primary key, doing nothing while the log is off and sending a model that is not tracked to
+  [[throw-or-log]] while it is on, and not logging what a delete cascades to."
+  [model  :- :keyword
+   action :- [:enum :insert :update :delete]
+   rows   :- [:maybe [:sequential :map]]]
+  (when (and (seq rows) (premium-features/enable-change-log?))
+    (if (change-log.spec/tracked? model)
+      (let [pk (first (t2/primary-keys model))]
+        (log! [[(table-of model) (mapv pk rows) (name action)]]))
       (throw-or-log (format "Not logging %s on %s to the change log: the model has no `metabase.change-log.core/spec`."
                             (name action) model)))))

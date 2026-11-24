@@ -152,7 +152,9 @@
       (mt/with-dynamic-fn-redefs [qp/process-query              (fn process-query
                                                                   [_query rff]
                                                                   (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                                  sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
+                                  sync.fingerprint/save-fingerprints! (fn [rows _]
+                                                                        (when (some :fingerprint rows)
+                                                                          (reset! fingerprinted? true)))]
         (mt/with-temp [:model/Table table {}
                        :model/Field _     (assoc field-properties :table_id (u/the-id table))]
           [(sync.fingerprint/fingerprint-table! table)
@@ -170,7 +172,7 @@
       (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {2 #{:type/Float}}]
         (mt/with-dynamic-fn-redefs [qp/process-query                   (fn [_query rff]
                                                                          (transduce identity (rff :metadata) [[1 1] [2 2] [3 3] [4 4] [5 5]]))
-                                    sync.fingerprint/save-fingerprint! (fn [& _] (swap! saved inc))]
+                                    sync.fingerprint/save-fingerprints! (fn [rows _] (swap! saved + (count (filter :fingerprint rows))))]
           (mt/with-temp [:model/Table table {}
                          :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}
                          :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}]
@@ -342,7 +344,7 @@
 (deftest refingerprint-fields-for-db!-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "refingerprints up to a limit"
-      (with-redefs [sync.fingerprint/save-fingerprint! (constantly nil)
+      (with-redefs [sync.fingerprint/save-fingerprints! (constantly nil)
                     sync.fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
         (let [results (sync.fingerprint/refingerprint-fields-for-db!
                        (lib.metadata/database (mt/metadata-provider))
