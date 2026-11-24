@@ -1,6 +1,9 @@
-# Filter prototypes
+# Prototypes
 
-This branch (`filters-prototype-base`) is the base for the filter prototypes. Each prototype is a branch off this one. This branch adds a mock dataset with many column types, and it makes some tables slow on purpose.
+This branch (`prototype-base`) is the base for prototypes of any part of Metabase. Each prototype is a branch off this one. This branch adds:
+
+- A mock **Prototype Data** database with many column types. It is a real Postgres database.
+- A **Prototype settings** submenu in the main menu, with the types and the controls for settings. It has no settings: each prototype adds its own.
 
 ## Run it
 
@@ -29,36 +32,21 @@ If the Prototype Data database does not appear, look in the Metabase log for lin
 
 Metabase writes the data into the `prototype_data` schema of its Postgres app DB. The generator is `src/metabase/prototype/dataset.clj`. It uses fixed random seeds, so the rows are the same on every machine.
 
-| Table | Rows | Speed | Good for |
-|---|---|---|---|
-| `countries` | 46 | fast | world map, flags (ImageURL), arrays, percentages |
-| `us_states` | 50 | fast | US state map, income, percentages |
-| `stores` | 300 | fast | pin map, opening times, open and closed dates |
-| `products` | 1,000 | fast | categories, prices, scores, images, JSON attributes, tags |
-| `customers` | 5,000 | fast | avatars, emails, US and world locations, plans, enum status, IP addresses |
-| `orders` | 100,000 | **slow** | currency, quantities, durations, shipping location, FKs to customers, products and stores |
-| `web_events` | 150,000 | **slow** | UUIDs, URLs, devices and browsers, times of day, JSON properties |
-| `reviews` | 25,000 | **slow** | 1–5 ratings, sentiment scores, long text, photos |
-| `support_tickets` | 15,000 | **slow** | priorities (enum), assignees, durations, nullable dates |
+| Table | Rows | Good for |
+|---|---|---|
+| `countries` | 46 | world map, flags (ImageURL), arrays, percentages |
+| `us_states` | 50 | US state map, income, percentages |
+| `stores` | 300 | pin map, opening times, open and closed dates |
+| `products` | 1,000 | categories, prices, scores, images, JSON attributes, tags |
+| `customers` | 5,000 | avatars, emails, US and world locations, plans, enum status, IP addresses |
+| `orders` | 100,000 | currency, quantities, durations, shipping location, FKs to customers, products and stores |
+| `web_events` | 150,000 | UUIDs, URLs, devices and browsers, times of day, JSON properties |
+| `reviews` | 25,000 | 1–5 ratings, sentiment scores, long text, photos |
+| `support_tickets` | 15,000 | priorities (enum), assignees, durations, nullable dates |
 
 The data covers these semantic types: PK, FK, Name, Title, Description, Comment, Category, Company, Subscription, Source, Owner, Email, URL, ImageURL, AvatarURL, IPAddress, City, State, Country, ZipCode, Latitude, Longitude, Price, Cost, GrossMargin, Income, Discount, Currency, Percentage, Score, Quantity, Duration, Birthdate, and the Creation, Join, Updated, Deletion and Cancelation timestamps and dates. It also has columns with no semantic type: booleans, dates, times, timestamps with and without time zone, UUIDs, Postgres enums, text arrays and JSON.
 
 The semantic types come from `dataset.clj`, not from sync. Metabase saves them as user values, the same as when you change them in the data model admin. You can still change them in the admin.
-
-## Slow and fast tables
-
-When a user runs a query that reads a slow table, Metabase waits 5 seconds before it runs the query. Queries that read only fast tables run without a wait. This applies to query builder questions, SQL questions, joins and dashboards. Cached results do not wait.
-
-- To change the wait, set `MB_PROTOTYPE_SLOW_QUERY_DELAY_MS`, or change the `prototype-slow-query-delay-ms` setting.
-- To make a different table slow or fast, change its `:slow?` in `src/metabase/prototype/dataset.clj`.
-
-The frontend can read which tables are slow:
-
-```ts
-const prototypeData = useSetting("prototype-data");
-// { database_id: 2, slow_table_ids: [9, 15, 11, 13], fast_table_ids: [7, 14, 12, 10, 8] }
-const delayMs = useSetting("prototype-slow-query-delay-ms");
-```
 
 ## Prototype settings
 
@@ -73,22 +61,22 @@ To add settings to a prototype:
 // frontend/src/metabase/prototype/settings.ts
 import type { BooleanPrototypeSetting, PrototypeSetting } from "./types";
 
-export const SHOW_FILTER_HINTS: BooleanPrototypeSetting = {
+export const SHOW_HINTS: BooleanPrototypeSetting = {
   type: "boolean",
-  key: "show-filter-hints",
-  label: "Show filter hints",
-  description: "Show a short help text under each filter",
+  key: "show-hints",
+  label: "Show hints",
+  description: "Show a short help text under each field",
   defaultValue: true,
 };
 
-export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [SHOW_FILTER_HINTS];
+export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [SHOW_HINTS];
 ```
 
 ```tsx
 // in any component
-import { SHOW_FILTER_HINTS, usePrototypeSetting } from "metabase/prototype";
+import { SHOW_HINTS, usePrototypeSetting } from "metabase/prototype";
 
-const [showHints, setShowHints] = usePrototypeSetting(SHOW_FILTER_HINTS);
+const [showHints, setShowHints] = usePrototypeSetting(SHOW_HINTS);
 ```
 
 | Type | Control | Extra fields |
@@ -114,19 +102,25 @@ On start, Metabase sees the new version, creates the `prototype_data` schema aga
 
 ## Other ways to run it
 
-- **Worktrees (`wt`)**: the app DB of a worktree is Postgres, so the data appears automatically. Use `wt up`, not `bun run dev-prototype`: the `mise.local.toml` of the worktree overrides the database settings of `dev-prototype`.
-- **Preview environments**: the app DB is Postgres, so the data should appear automatically. This is not tested yet.
+- **Worktrees (`wt`)**: the app DB of a worktree is Postgres, so the data appears automatically. Use `wt up` with `--no-clone-db`, not `bun run dev-prototype`: the `mise.local.toml` of the worktree overrides the database settings of `dev-prototype`. The instance starts empty, so create the admin user in the setup page or with `POST /api/setup`.
+- **Preview environments**: the app DB is Postgres, so the data appears automatically. The first start takes a few minutes.
 - **H2 app DB** (plain `bun run dev`): there is no prototype data. Metabase logs a warning.
 
 ## Make a prototype
 
 ```sh
-git checkout filters-prototype-base
-git checkout -b filters-prototype-<idea>
+git checkout prototype-base
+git checkout -b prototype-<idea>
 ```
 
 With `wt`:
 
 ```sh
-wt up filters-prototype-<idea> --from filters-prototype-base
+wt up prototype-<idea> --from origin/prototype-base --no-clone-db --host <short>
 ```
+
+A change that every prototype needs (for example, a new setting type or new mock data) goes on `prototype-base`. Then rebase the prototype branches onto it.
+
+## Share a prototype
+
+Open a draft PR to `master` with the labels `do not merge`, `no-backport` and `PR-Env`. The `PR-Env` label deploys a preview environment. If the deploy is cancelled (this can happen when you add many labels at the same time), remove the `PR-Env` label and add it again.

@@ -65,21 +65,21 @@
       (prototype.db/set-field-semantic-type! field-id semantic-type))))
 
 (defn- apply-table-display-names!
-  "Label each table as slow or fast, so that the UI tells them apart."
+  "Set the display name of each table from the dataset definition."
   [database-id]
   (let [ids-by-name (prototype.db/table-ids-by-name database-id dataset/schema-name)]
     (doseq [{table-name :name, :as table} dataset/tables
             :let  [table-id (get ids-by-name table-name)]
             :when table-id]
-      (prototype.db/set-table-display-name! table-id (dataset/table-display-name table)))))
+      (prototype.db/set-table-display-name! table-id (:display-name table)))))
 
 (defn- sync-and-apply-metadata!
   [database]
   (log/info "Prototype data: syncing the Database")
-  (sync/sync-db-metadata! database)
+  (sync/sync-db-metadata! (:id database))
   ;; Set the semantic types before the analysis, so that category fields get field values.
   (apply-semantic-types! (:id database))
-  (sync/sync-database! database)
+  (sync/sync-database! (:id database))
   (log/info "Prototype data: ready"))
 
 (defn ensure-prototype-data!

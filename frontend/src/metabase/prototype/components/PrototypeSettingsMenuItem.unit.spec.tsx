@@ -20,10 +20,10 @@ const SHOW_HINTS: BooleanPrototypeSetting = {
   defaultValue: false,
 };
 
-const FILTER_LAYOUT: SelectPrototypeSetting = {
+const LAYOUT: SelectPrototypeSetting = {
   type: "select",
-  key: "filter-layout",
-  label: "Filter layout",
+  key: "layout",
+  label: "Layout",
   options: [
     { value: "compact", label: "Compact" },
     { value: "wide", label: "Wide" },
@@ -45,10 +45,8 @@ const PREVIEW_MODE: SegmentedPrototypeSetting = {
 
 function SettingValues() {
   const [showHints] = usePrototypeSetting(SHOW_HINTS);
-  const [filterLayout] = usePrototypeSetting(FILTER_LAYOUT);
-  return (
-    <div data-testid="setting-values">{`${showHints}:${filterLayout}`}</div>
-  );
+  const [layout] = usePrototypeSetting(LAYOUT);
+  return <div data-testid="setting-values">{`${showHints}:${layout}`}</div>;
 }
 
 interface SetupOpts {
@@ -94,13 +92,13 @@ describe("PrototypeSettingsMenuItem", () => {
   });
 
   it("should show a control for each setting with its default value", async () => {
-    setup({ settings: [SHOW_HINTS, FILTER_LAYOUT] });
+    setup({ settings: [SHOW_HINTS, LAYOUT] });
 
     const submenu = await openSubmenu();
 
     expect(within(submenu).getByLabelText("Show hints")).not.toBeChecked();
     expect(
-      within(submenu).getByRole("textbox", { name: "Filter layout" }),
+      within(submenu).getByRole("textbox", { name: "Layout" }),
     ).toHaveValue("Compact");
     expect(
       within(submenu).queryByText("No settings for this prototype."),
@@ -108,7 +106,7 @@ describe("PrototypeSettingsMenuItem", () => {
   });
 
   it("should give new values to every component that reads the setting", async () => {
-    setup({ settings: [SHOW_HINTS, FILTER_LAYOUT] });
+    setup({ settings: [SHOW_HINTS, LAYOUT] });
     expect(screen.getByTestId("setting-values")).toHaveTextContent(
       "false:compact",
     );
@@ -116,7 +114,7 @@ describe("PrototypeSettingsMenuItem", () => {
     const submenu = await openSubmenu();
     await userEvent.click(within(submenu).getByLabelText("Show hints"));
     await userEvent.click(
-      within(submenu).getByRole("textbox", { name: "Filter layout" }),
+      within(submenu).getByRole("textbox", { name: "Layout" }),
     );
     await userEvent.click(await screen.findByRole("option", { name: "Wide" }));
 
@@ -153,12 +151,12 @@ describe("PrototypeSettingsMenuItem", () => {
 
   it("should use the default value when the stored value is not valid", () => {
     localStorage.setItem(
-      "metabase-prototype-setting:filter-layout",
+      "metabase-prototype-setting:layout",
       JSON.stringify("removed-option"),
     );
     localStorage.setItem("metabase-prototype-setting:show-hints", "not json");
 
-    setup({ settings: [SHOW_HINTS, FILTER_LAYOUT] });
+    setup({ settings: [SHOW_HINTS, LAYOUT] });
 
     expect(screen.getByTestId("setting-values")).toHaveTextContent(
       "false:compact",
