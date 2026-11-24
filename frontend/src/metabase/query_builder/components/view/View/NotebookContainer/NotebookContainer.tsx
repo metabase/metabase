@@ -150,7 +150,9 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      <ExpressionSidebarSlot />
+      {/* While the chart shows, the view has its own slot: this one is
+          off-screen with the notebook. */}
+      {isOpen && <ExpressionSidebarSlot />}
 
       {renderNativePreview && (
         <>

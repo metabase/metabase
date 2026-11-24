@@ -41,6 +41,7 @@ import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
 import { ViewSidebar } from "../../ViewSidebar";
+import { ExpressionSidebarSlot } from "../ExpressionSidebarSlot";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
 import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
@@ -310,6 +311,11 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
               >
                 <ViewRightSidebarContainer {...props} />
               </ViewSidebar>
+              {/* The docs of the expression editors in the popovers of the
+                  chart screen. The notebook has its own slot. */}
+              {!isNative && !isNotebookContainerOpen && (
+                <ExpressionSidebarSlot />
+              )}
             </Flex>
           </Flex>
 

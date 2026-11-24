@@ -15,7 +15,14 @@ export function ExpressionSidebarSlot() {
       isOpen={isOpen}
       data-testid="expression-sidebar"
     >
-      <div ref={host?.setContainer} style={{ height: "100%" }} />
+      <div
+        ref={host?.setContainer}
+        style={{ height: "100%" }}
+        // A popover closes on a mousedown outside it. The docs belong to the
+        // editor in the popover, so clicks here keep it open.
+        onMouseDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
+      />
     </ViewSidebar>
   );
 }

@@ -1,0 +1,24 @@
+/* The notebook's editor in a popover. The popover is its box, so the editor
+   has no border of its own. */
+.widget {
+  width: max-content;
+  max-width: calc(100vw - 32px);
+
+  [data-testid="expression-editor"] {
+    grid-template-columns: 640px;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* The margin of the editor below a step in the notebook. */
+  > div:has([data-testid="expression-editor"]) {
+    margin-top: 0;
+  }
+}
+
+/* The name of a summary or custom column, below the editor. */
+.name {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-top: 1px solid var(--mb-color-border-neutral);
+}

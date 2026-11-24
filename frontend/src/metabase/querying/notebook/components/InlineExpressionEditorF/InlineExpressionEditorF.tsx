@@ -334,8 +334,13 @@ export function InlineExpressionEditorF({
       : clause != null ||
         initialExpressionClause != null ||
         (initialSource ?? "").trim() !== "";
+  // Run shows the step's preview. Without one, like in a popover of the chart
+  // screen, there is nothing to run: Done saves.
   const hasCodeToRun =
-    editedSource !== undefined && !isEmpty && editedSource !== lastRunSource;
+    stepPreview != null &&
+    editedSource !== undefined &&
+    !isEmpty &&
+    editedSource !== lastRunSource;
   useLiveStepPreview(
     lastRunSource !== undefined && editedSource === lastRunSource,
   );
