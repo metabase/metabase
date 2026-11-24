@@ -319,6 +319,8 @@ categories:
                 url: "embedding/browser-reference"
               - name: "AI chat"
                 url: "embedding/ai-chat"
+              - name: "Data app"
+                url: "embedding/data-app"
           - name: "Filters and parameters"
             url: "embedding/parameters"
           - name: "Parameters reference"
