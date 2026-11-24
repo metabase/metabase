@@ -170,8 +170,10 @@
   []
   ;; Names only the server's own MCP resource URL: the client's `resource` may hold characters RFC 6749 forbids here.
   ;; A request with no `resource` of its own gets here in two ways: a refresh narrowed to its token's resource, and a
-  ;; re-signed consent form, since the decision endpoint doesn't apply [[with-default-mcp-resource]]. The provider
-  ;; cannot be built without a Site URL, so the URL is always there.
+  ;; re-signed consent form, since the decision endpoint doesn't apply [[with-default-mcp-resource]]. Only the refresh
+  ;; shows this text to the client: the decision endpoint answers every failure with
+  ;; `invalid-authorization-request-description`. The provider cannot be built without a Site URL, so the URL is
+  ;; always there.
   (str "The requested scopes are not accepted by the requested resource. "
        "The MCP server's resource URL is " (oauth-server/mcp-resource-url) "."))
 

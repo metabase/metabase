@@ -3311,11 +3311,8 @@
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [client        (register-app-client! "Copilot Studio" "https://example.com/callback")
-              refresh-token (str (random-uuid))
-              _             (insert-token! :model/OAuthRefreshToken :crowberto (:client_id client) v2-scope-set
-                                           :token (oidc-util/hash-token refresh-token))
-              refreshed     (refresh-with-scope! client {:refresh_token refresh-token}
-                                                 (str all-v2-scopes " bogus:scope"))]
+        (let [client    (register-app-client! "Copilot Studio" "https://example.com/callback")
+              refreshed (refresh-with-scope! client (stored-token! client v2-scope-set)
+                                             (str all-v2-scopes " bogus:scope"))]
           (is (=? {:resource [(mcp-resource-uri)]} refreshed))
           (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed))))))))
