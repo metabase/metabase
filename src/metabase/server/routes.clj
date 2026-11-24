@@ -41,6 +41,7 @@
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
   (GET "/sdk/v1" [] index/embed-sdk)
+  (GET "/permission-preview-content/*" [] index/permission-preview-content)
   (GET ["/embedded-apps/:name", :name #"[^/]+"] [] index/data-app)
   (GET ["/embedded-apps/:name/*", :name #"[^/]+"] [] index/data-app)
   ;; Same `data-app.html` for the bare path and any deeper sub-route — the

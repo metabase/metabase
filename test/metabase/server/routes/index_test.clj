@@ -69,3 +69,21 @@
   (testing "without the feature the request falls through to the generic embed handler"
     (mt/with-premium-features #{}
       (is (nil? (data-app-response {:uri "/embed/apps/sales" :metabase-user-id (mt/user->id :crowberto)}))))))
+
+(defn- permission-preview-content-response
+  [request]
+  (let [response (promise)]
+    (index/permission-preview-content request #(deliver response %) #(throw %))
+    @response))
+
+(deftest permission-preview-content-entrypoint-test
+  (testing "a signed-in person who isn't an admin is refused"
+    (is (= 403 (:status (permission-preview-content-response
+                         {:uri "/embed/permission-preview-content/question/1" :metabase-user-id 2 :is-superuser? false})))))
+  (testing "a signed-out visitor is refused"
+    (is (= 403 (:status (permission-preview-content-response {:uri "/embed/permission-preview-content/question/1"})))))
+  (testing "an admin's session gets the embed document"
+    (with-redefs [index/embed (fn [_request respond _raise] (respond {:status 200 :body "embed.html"}))]
+      (is (= {:status 200 :body "embed.html"}
+             (permission-preview-content-response
+              {:uri "/embed/permission-preview-content/question/1" :metabase-user-id 1 :is-superuser? true}))))))

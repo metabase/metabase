@@ -41,6 +41,15 @@
   [{:keys [uri]}]
   (re-matches #"^/embed/.*$" uri))
 
+(def ^:private permission-preview-content-prefix
+  "URL prefix of the permission preview's content document, the page the Preview access page frames."
+  "/embed/permission-preview-content")
+
+(defn permission-preview-content?
+  "Is this ring request for the permission preview's content document?"
+  [{:keys [uri]}]
+  (boolean (and uri (str/starts-with? uri (str permission-preview-content-prefix "/")))))
+
 (def data-app-url-segment
   "URL path segment of data-app pages: the `/apps` page route and the `/embed/apps` iframe prefix derive from it
    (mirrors the FE `DATA_APP_URL_SEGMENT`)."

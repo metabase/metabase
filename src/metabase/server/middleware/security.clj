@@ -243,9 +243,18 @@
   [_slug]
   [])
 
+(defn- permission-preview-sources
+  "The `img-src` and `frame-src` of the permission preview content document. They name no `'self'` and no `*`: both
+  match the main origin, and the document runs on it with the admin's cookie, which images and nested frames would
+  carry."
+  []
+  {:img-src   (cond-> ["data:" "blob:"]
+                config/is-dev? (conj frontend-address))
+   :frame-src ["'none'"]})
+
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img? allow-eval?]
+  [nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img? allow-eval? permission-preview?]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -365,6 +374,7 @@
                                   (if (seq data-app-connect-hosts)
                                     data-app-connect-hosts
                                     ["'none'"]))}
+          :let [vs (if permission-preview? (get (permission-preview-sources) k vs) vs)]
           :when vs]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
@@ -410,9 +420,10 @@
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [frame-ancestors-mode nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img? allow-eval?]
+  [frame-ancestors-mode nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img? allow-eval?
+   permission-preview?]
   (update (content-security-policy-header nonce script-nonce? data-app-iframe? data-app-connect-hosts
-                                          allow-blob-img? allow-eval?)
+                                          allow-blob-img? allow-eval? permission-preview?)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode))))
 
@@ -531,14 +542,15 @@
    interactive embedding is configured). `:script-nonce?` adds the nonce to `script-src`, see
    [[script-nonce-response-key]]. `:allow-eval?` adds `'unsafe-eval'` to `script-src`."
   [& {:keys [origin nonce script-nonce? frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts
-             allow-blob-img? allow-eval? cors]
+             allow-blob-img? allow-eval? permission-preview? cors]
       :or   {frame-ancestors :none, allow-cache? false, script-nonce? false, data-app-iframe? false,
-             allow-blob-img? false, allow-eval? false}}]
+             allow-blob-img? false, allow-eval? false, permission-preview? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors frame-ancestors nonce script-nonce? data-app-iframe?
-                                                        data-app-connect-hosts allow-blob-img? allow-eval?)
+                                                        data-app-connect-hosts allow-blob-img? allow-eval?
+                                                        permission-preview?)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk) cors)
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
@@ -648,7 +660,8 @@
         nil false true (drop-instance-origin allowed-hosts) true
         ;; The isolated-origin document installs this policy too, and its `about:blank` realm needs `eval`. A
         ;; same-origin document's own header keeps `eval` out whatever this policy allows.
-        (some? (server.settings/isolated-origin)))
+        (some? (server.settings/isolated-origin))
+        false)
        "Content-Security-Policy"))
 
 (defn- cacheable-status?
@@ -665,6 +678,10 @@
   data-app iframe: `'self'` when same-origin, the site URL when served from the isolated origin."
   [request]
   (cond
+    ;; Before the broader `embed?`, which `/embed/...` also matches.
+    (request/permission-preview-content? request)
+    :self
+
     ;; Both before the broader `embed?`, which `/embed/...` also matches.
     (request/embedded-data-app? request)
     :any
@@ -717,7 +734,8 @@
                                                     [])))
                  ;; Data apps and the EAJS embed page both render custom viz icons as blob: <img> URLs
                  :allow-blob-img?             (or (data-app-iframe-request? request)
-                                                  (request/embed-sdk-eajs-entrypoint? request)))
+                                                  (request/embed-sdk-eajs-entrypoint? request))
+                 :permission-preview?         (request/permission-preview-content? request))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
