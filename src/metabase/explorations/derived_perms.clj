@@ -39,7 +39,7 @@
 
   The verdict's halves project the query *differently*, so the key has to carry each of them or it is
   not a partition. The lens comparison resolves the query first (`query->resolved-source-ids`
-  preprocesses, expanding implicit joins and card chains); `can-run-query?` needs both the raw
+  preprocesses, expanding implicit joins and card chains); `query-run-answers` needs both the raw
   projection and the resolved one — the latter because `:card-ids` only exist after preprocessing and
   each one costs a read-permission check on that card's collection.
 

@@ -1861,7 +1861,7 @@
             (store-fake-result! qid qp-out)
             (mark-done! qid)
             (let [doc (t2/select-one :model/Document :id doc-id)]
-              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
+              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries (fn [_] nil)
                                           queries.card/create-cards!                        (fn [& _] (throw (ex-info "boom" {})))]
                 (is (thrown? Throwable
                              (eqr/create-ephemeral-card-for-exploration-queries!
@@ -1899,7 +1899,7 @@
             (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                               :exploration_query_id qid)
                   doc       (t2/select-one :model/Document :id doc-id)
-                  result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+                  result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries (fn [_] nil)]
                               (eqr/create-ephemeral-card-for-exploration-queries!
                                [qid] doc-id (:collection_id doc) u
                                {:display "bar" :visualization-settings {}}))
@@ -3108,7 +3108,7 @@
   create hold no data perms, and `create-cards!` runs the same check — the existing single-query
   test stubs it for the same reason. Tests that are *about* the permission check don't use this."
   [& args]
-  (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+  (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries (fn [_] nil)]
     (apply eqr/create-ephemeral-card-for-exploration-queries! args)))
 
 (deftest composite-snapshot-carries-a-data-access-token-test
@@ -3208,8 +3208,8 @@
             ;; "checked them all" are distinguishable.
             (t2/update! :model/ExplorationQuery :id (second query-ids) {:dataset_query other-q})
             (let [checked (atom [])]
-              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query
-                                          (fn [q] (swap! checked conj q) nil)]
+              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries
+                                          (fn [qs] (swap! checked into qs) nil)]
                 (eqr/create-ephemeral-card-for-exploration-queries!
                  query-ids document-id (:collection_id doc) u
                  {:display "bar" :visualization-settings {}}))

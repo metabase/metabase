@@ -205,7 +205,7 @@
    _query-params
    {:keys [chart_id card]} :- SaveEntityBody]
   (api/read-check :model/MetabotConversation id)
-  (query-perms/check-run-permissions-for-query (:dataset_query card))
+  (query-perms/check-run-permissions-for-queries [(:dataset_query card)])
   (if-let [dashboard-id (:dashboard_id card)]
     (let [dashboard-collection-id (:collection_id (api/write-check :model/Dashboard dashboard-id))
           [_ specified-collection-id :as specified?] (find card :collection_id)]

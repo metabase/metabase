@@ -212,8 +212,10 @@
   ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the
   ;; preprocessing to fail because current user doesn't have permissions to run it when we're not trying to run it at
   ;; all
-  (request/as-admin
-    (qp.preprocess/preprocess query)))
+  (if api/*is-superuser?*
+    (qp.preprocess/preprocess query)
+    (request/as-admin
+      (qp.preprocess/preprocess query))))
 
 (defn- preprocess-without-per-user-lens
   "[[preprocess-query]], minus the preprocess middlewares that resolve the current user's data-access
@@ -512,26 +514,54 @@
                       {:type    qp.error-type/invalid-query
                        :card-id card-id}))))
 
+(defn- check-result-metadatas-data-perms
+  "Throws for the first of `result-metadatas`, in order, either what it is when it is a throwable or the refusal of a
+  column of a Table of the Database with `database-id` the current user may not view, with the Tables of the Fields
+  of all of them and the permissions on those Tables read together."
+  [database-id result-metadatas]
+  (let [found        (remove #(instance? Throwable %) result-metadatas)
+        field-ids    (into #{} (comp cat (keep :id)) found)
+        field->table (if (seq field-ids) (query-permissions.db/field-id->table-id field-ids) {})
+        tables       (fn [result-metadata]
+                       (into (set (keep (some-fn :table-id :table_id) result-metadata))
+                             (keep field->table)
+                             (keep :id result-metadata)))
+        table-ids    (into #{} (mapcat tables) found)
+        permissions  (if (seq table-ids)
+                       (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                         :perms/view-data
+                                                         (zipmap table-ids (repeat database-id)))
+                       {})]
+    (doseq [result-metadata result-metadatas]
+      (when (instance? Throwable result-metadata)
+        (throw result-metadata))
+      (run! #(when-not (= :unrestricted (get permissions %))
+               (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." (str %))
+                                       {database-id {:perms/view-data {% :unrestricted}}})))
+            (tables result-metadata)))))
+
 (defn check-result-metadata-data-perms
   "Check current user has view-data perms on all columns of `result-metadata`."
   [database-id result-metadata]
-  (let [field-ids   (keep :id result-metadata)
-        table-ids   (into (set (keep (some-fn :table-id :table_id) result-metadata))
-                          (when (seq field-ids)
-                            (query-permissions.db/field-table-ids field-ids)))
-        permissions (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
-                                                      :perms/view-data
-                                                      (zipmap table-ids (repeat database-id)))]
-    (run! #(when-not (= :unrestricted (get permissions %))
-             (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." (str %))
-                                     {database-id {:perms/view-data {% :unrestricted}}})))
-          table-ids)))
+  (check-result-metadatas-data-perms database-id [result-metadata]))
 
 (defn check-card-result-metadata-data-perms
   "Using `card-id` check current user has view data perms on all of card's result_metadata elements."
   [database-id card-id]
   (let [result-metadata (:result_metadata (card database-id card-id))]
     (check-result-metadata-data-perms database-id result-metadata)))
+
+(defn check-cards-result-metadata-data-perms
+  "Throws what [[check-card-result-metadata-data-perms]] throws for the first of `card-ids`, in order, that it refuses,
+  with the Tables of their Fields and the permissions on them read for all of them together."
+  [database-id card-ids]
+  (when (seq card-ids)
+    (check-result-metadatas-data-perms database-id
+                                       (mapv #(try
+                                                (:result_metadata (card database-id %))
+                                                (catch Throwable e
+                                                  e))
+                                             card-ids))))
 
 (mr/def ::perm-value
   "A required (or granted) permission level: either a single level, or a level per Table (Table 0 is a sentinel used
@@ -618,12 +648,6 @@
   (when (seq card-ids)
     (check-cards-readable {:cards (delay (card-read-answers [[database-id card-ids]]))} database-id card-ids)))
 
-(mu/defn check-card-read-perms
-  "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
-  [database-id :- ::lib.schema.id/database
-   card-id     :- ::lib.schema.id/card]
-  (check-cards-read-perms database-id [card-id]))
-
 (defn- check-data-perms-with
   "Throws, as [[check-data-perms]] does, unless the current user has the data permissions `query` needs,
   `required-perms`, from `answers`, and returns true otherwise."
@@ -664,47 +688,119 @@
   (check-cards-readable answers database-id (:card-ids required-perms))
   true)
 
-(defn- can-run-query*
-  [query {:keys [throw-exceptions?] :as perms-opts}]
-  (try
-    (let [required-perms (required-perms-for-query query perms-opts)]
-      (check-query-allowed (single-check-answers query required-perms) query required-perms))
-    (catch clojure.lang.ExceptionInfo e
-      (if (and throw-exceptions? (not (:permissions-error? (ex-data e))))
-        (throw e)
-        false))))
+(defn- shared-provider-query
+  "`query`, with its metadata provider replaced by the one shared provider of its Database when it reads the same app
+  DB, so that every query of a run check reads one cache per Database."
+  [query]
+  (let [mp    (when (map? query) (:lib/metadata query))
+        db-id (when (map? query) (:database query))]
+    (if (and mp (pos-int? db-id))
+      (let [shared (lib-be/application-database-metadata-provider db-id)]
+        (cond-> query
+          (= mp shared) (assoc :lib/metadata shared)))
+      query)))
 
-(mu/defn can-run-query?
-  "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise.
+(defn- referenced-entity-ids
+  "What `queries`, MBQL 5 queries over `mp`, reference at any depth of Cards, with one bulk read of the Cards per level
+  of nesting."
+  [mp queries]
+  (loop [acc  (lib/all-referenced-entity-ids queries)
+         seen #{}]
+    (let [card-ids (set/difference (:card acc) seen)]
+      (if (empty? card-ids)
+        acc
+        (recur (let [card-queries (into []
+                                        (comp (keep :dataset-query)
+                                              (filter seq)
+                                              (keep #(try (lib/query mp %) (catch Throwable _ nil))))
+                                        (lib.metadata/bulk-metadata mp :metadata/card card-ids))]
+                 (if (seq card-queries)
+                   (merge-with set/union acc (lib/all-referenced-entity-ids card-queries))
+                   acc))
+               (into seen card-ids))))))
 
-  With `throw-non-permission-errors?`, anything that is not a permission denial throws rather than
-  being answered as one: a failure to work out which permissions `query` needs (otherwise logged at
-  error and folded into the answer), and any other error the checks raise, such as a missing Card in
-  [[check-card-read-perms]]. A denial still returns `false`."
-  ([query :- ::query]
-   (can-run-query? query false))
+(defn- prefetch-run-check-metadata
+  "Loads in bulk into the shared metadata provider of each Database what those of `queries` that are MBQL 5 queries
+  over it reference, so that working out what they need reads no metadata one query at a time."
+  [queries]
+  (doseq [[db-id db-queries] (group-by :database (filter #(and (map? %) (:lib/metadata %)) queries))
+          :when (pos-int? db-id)
+          :let  [mp (lib-be/application-database-metadata-provider db-id)
+                 db-queries (filterv #(identical? mp (:lib/metadata %)) db-queries)]
+          :when (seq db-queries)]
+    (try
+      (lib-be/bulk-load-query-metadata! mp (referenced-entity-ids mp db-queries))
+      (catch Throwable e
+        (log/debugf "Could not prefetch the metadata of run checks: %s" (ex-message e))))))
 
-  ([query :- ::query
+(defn- shared-provider-queries
+  "`queries` moved onto the shared metadata provider of each Database by [[shared-provider-query]], with that provider
+  loaded in bulk by [[prefetch-run-check-metadata]]."
+  [queries]
+  (let [queries (mapv shared-provider-query queries)]
+    (prefetch-run-check-metadata queries)
+    queries))
+
+(defn- run-check-answers
+  "[[permission-answers]] for those of `checks`, `{:query :required-perms}` maps, whose `:required-perms` is a map."
+  [checks]
+  (permission-answers (into []
+                            (comp (filter (comp map? :required-perms))
+                                  (map #(select-keys % [:query :required-perms])))
+                            checks)))
+
+(defn- query-run-answers*
+  "Whether the current user may run each of `queries`, whose permissions are worked out with the same element of
+  `perms-opts`, with the answers read for all of them together."
+  [queries perms-opts]
+  (let [queries (shared-provider-queries queries)
+        checks  (request/as-admin
+                  (mapv (fn [query opts]
+                          {:query          query
+                           :required-perms (try
+                                             (required-perms-for-query query opts)
+                                             (catch Throwable e
+                                               e))})
+                        queries perms-opts))
+        answers (run-check-answers checks)]
+    (mapv (fn [{:keys [query required-perms]} {:keys [throw-exceptions?]}]
+            (try
+              (when (instance? Throwable required-perms)
+                (throw required-perms))
+              (check-query-allowed answers query required-perms)
+              (catch clojure.lang.ExceptionInfo e
+                (if (and throw-exceptions? (not (:permissions-error? (ex-data e))))
+                  (throw e)
+                  false))))
+          checks perms-opts)))
+
+(mu/defn query-run-answers :- [:sequential :boolean]
+  "Whether the current user may run each of `queries`, in order, with the permissions they need read together; with
+  `throw-non-permission-errors?` anything but a denial, such as a failure to work out what a query needs, throws."
+  ([queries :- [:sequential [:maybe ::query]]]
+   (query-run-answers queries false))
+
+  ([queries               :- [:sequential [:maybe ::query]]
     already-preprocessed? :- :boolean]
-   (can-run-query? query already-preprocessed? false))
+   (query-run-answers queries already-preprocessed? false))
 
-  ([query                        :- ::query
+  ([queries                      :- [:sequential [:maybe ::query]]
     already-preprocessed?        :- :boolean
     throw-non-permission-errors? :- :boolean]
-   (can-run-query* query
-                   {:already-preprocessed? already-preprocessed?
-                    :throw-exceptions?     throw-non-permission-errors?})))
+   (lib-be/with-metadata-provider-cache
+     (query-run-answers* queries (repeat {:already-preprocessed? already-preprocessed?
+                                          :throw-exceptions?     throw-non-permission-errors?})))))
 
 (mu/defn can-run-query-with-resolved-source-ids? :- :boolean
-  "[[can-run-query?]] for a query whose [[query->resolved-source-ids]] is already known, without preprocessing it.
+  "[[query-run-answers]] for a query whose [[query->resolved-source-ids]] is already known, without preprocessing it.
   Denies on empty `resolved-source-ids`, which only a failed resolution produces."
   [query               :- ::query
    resolved-source-ids :- ResolvedSourceIds]
   (if (empty? resolved-source-ids)
     (do (log/debug "Empty resolved source ids; denying")
         false)
-    (can-run-query* query {:resolved-source-ids resolved-source-ids
-                           :throw-exceptions?   false})))
+    (first (query-run-answers* [query] [{:resolved-source-ids resolved-source-ids
+                                         :throw-exceptions?   false}]))))
 
 (mu/defn native-query-database-ids :- [:set ::lib.schema.id/database]
   "The set of those of `db-ids` against which the current user may run a native query of no Cards, as
@@ -723,26 +819,61 @@
     (into #{} (remove perms/sandboxed-user-for-db?) permitted)))
 
 (defn assoc-can-query
-  "Each of `instances`, nil ones left nil, with under `k` whether the current user reads it, as its `:can_read`
-  hydration answers for all of them at once, and may run the query its `query-key` holds, one [[can-run-query?]] per
-  readable instance with the metadata providers shared."
+  "Each of `instances`, nil ones left nil, with `k` set to whether the current user reads it and may run the query
+  under `query-key`, both answered for all instances at once."
   [instances k query-key]
   (run! #(when % (api/check-500 (contains? % query-key) (format "No %s is set for a %s." query-key (t2/model %))))
         instances)
   (lib-be/with-metadata-provider-cache
-    (mapv (fn [instance]
-            (when instance
-              (assoc instance k (boolean (and (mi/can-read? instance)
-                                              (can-run-query? (get instance query-key)))))))
-          (t2/hydrate instances :can_read))))
+    (let [instances (vec (t2/hydrate instances :can_read))
+          readable  (filterv #(some-> (instances %) mi/can-read?) (range (count instances)))
+          runnable  (zipmap readable (query-run-answers (mapv #(get (instances %) query-key) readable)))]
+      (into []
+            (map-indexed (fn [i instance]
+                           (when instance
+                             (assoc instance k (boolean (get runnable i))))))
+            instances))))
 
-(mu/defn can-query-table?
-  "Does the current user have permissions to run an ad-hoc query against the Table with `table-id`?"
-  [database-id :- ::lib.schema.id/database
-   table-id    :- ::lib.schema.id/table]
-  (can-run-query? {:database database-id
-                   :type     :query
-                   :query    {:source-table table-id}}))
+(defn- table-permissions
+  "The current user's `perm-type` value on each of `tables`, as `{table-id value}`, from one bulk question."
+  [perm-type tables]
+  (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                    perm-type
+                                    (into {} (map (juxt :id :db_id)) tables)))
+
+(defn- directly-queryable-table-ids
+  "The ids of the `tables` the current user can query: those with unrestricted view-data on which they can create
+  queries, which on EE a Table published into a Collection they read also grants."
+  [tables]
+  (let [view-data      (table-permissions :perms/view-data tables)
+        create-queries (table-permissions :perms/create-queries tables)]
+    (into #{}
+          (comp (map :id)
+                (filter #(and (= :unrestricted (get view-data %))
+                              (perms/at-least-as-permissive? :perms/create-queries (get create-queries %) :query-builder))))
+          tables)))
+
+(mr/def ::table
+  "A Table, of which the permission rules read the id and the Database id."
+  [:map [:id ::lib.schema.id/table] [:db_id ::lib.schema.id/database]])
+
+(mu/defn queryable-table-ids :- [:set ::lib.schema.id/table]
+  "The ids of those of `tables`, maps with `:id` and `:db_id`, that the current user can query, a Table with external
+  remaps counting only when every Table `remap-targets` maps its id to is queryable too."
+  ([tables :- [:sequential ::table]]
+   (queryable-table-ids tables {}))
+  ([tables        :- [:sequential ::table]
+    remap-targets :- [:map-of ::lib.schema.id/table [:set ::lib.schema.id/table]]]
+   (let [queryable (directly-queryable-table-ids (into (vec tables)
+                                                       (mapcat (fn [{:keys [id db_id]}]
+                                                                 (map (fn [target-id] {:id target-id :db_id db_id})
+                                                                      (get remap-targets id))))
+                                                       tables))]
+     (into #{}
+           (comp (map :id)
+                 (filter #(and (contains? queryable %)
+                               (every? queryable (get remap-targets %)))))
+           tables))))
 
 (mu/defn check-parameter-field-permissions
   "Throw a 403 unless the current user can query each Table the Fields with `field-ids` belong to, answered by the
@@ -762,7 +893,7 @@
                         {:status-code 403}))))))
 
 (mr/def ::run-check-options
-  "Options of [[check-run-permissions-for-query]]."
+  "Options of [[check-run-permissions-for-queries]]."
   [:maybe [:map {:closed true}
            [:allow-sensitive-fields? {:optional true} :boolean]]])
 
@@ -824,8 +955,8 @@
                       required-perms)))))
 
 (defn- check-prepared-run-check
-  "Throws what [[check-run-permissions-for-query]] throws for the query of `prepared`, one of [[prepared-run-checks]],
-  from `answers`."
+  "Throws what [[check-run-permissions-for-queries]] throws for the query of `prepared`, one of
+  [[prepared-run-checks]], from `answers`."
   [answers {:keys [error query expanded? required-perms]}]
   (when error
     (throw error))
@@ -838,29 +969,16 @@
     (throw-cannot-save query expanded?)))
 
 (mu/defn check-run-permissions-for-queries :- :nil
-  "[[check-run-permissions-for-query]] for each of `queries` in order, throwing what it throws for the first one it
-  refuses, with each query preprocessed on its own as an admin and the permissions they need read for all of them
-  together."
+  "Throws a 403 for the first of `queries`, each of which must be a map, in order, that the current user may not run,
+  or what the check for `:sensitive` columns throws for it; `allow-sensitive-fields?` skips that check for saved
+  content that is being restored."
   ([queries :- [:sequential ::query]]
    (check-run-permissions-for-queries queries nil))
   ([queries :- [:sequential ::query]
     options :- ::run-check-options]
-   (let [prepared (prepared-run-checks queries options)
-         answers  (permission-answers (into []
-                                            (comp (filter (comp map? :required-perms))
-                                                  (map #(select-keys % [:query :required-perms])))
-                                            prepared))]
-     (run! #(check-prepared-run-check answers %) prepared))))
-
-(mu/defn check-run-permissions-for-query :- :nil
-  "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
-  queries they wouldn't be allowed to run!
-
-  Also rejects queries that reference `:sensitive` columns, unless `allow-sensitive-fields?` is set because `query`
-  is saved content being restored rather than a new query."
-  ([query :- ::query]
-   (check-run-permissions-for-query query nil))
-  ([query   :- ::query
-    options :- ::run-check-options]
-   {:pre [(map? query)]}
-   (check-run-permissions-for-queries [query] options)))
+   (doseq [query queries]
+     (assert (map? query)))
+   (lib-be/with-metadata-provider-cache
+     (let [prepared (prepared-run-checks (shared-provider-queries queries) options)
+           answers  (run-check-answers prepared)]
+       (run! #(check-prepared-run-check answers %) prepared)))))
