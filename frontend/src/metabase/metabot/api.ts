@@ -176,6 +176,7 @@ export const metabotApi = Api.injectEndpoints({
         url: "/api/metabot/custom-expression/generate",
         body,
       }),
+      extraOptions: { retry: false },
     }),
     updateMetabotSlackSettings: builder.mutation<
       { ok: boolean },

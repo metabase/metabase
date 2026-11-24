@@ -340,6 +340,23 @@ describe("summary formula generator", () => {
     expect(onQueryChange).not.toHaveBeenCalled();
   });
 
+  it("shows an error for a 503 without retrying the request", async () => {
+    await setup({
+      response: {
+        status: 503,
+        body: { message: "No AI provider is connected." },
+      },
+    });
+
+    await userEvent.type(getInput("values"), "revenue per customer");
+    await userEvent.keyboard("{Enter}");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No AI provider is connected.",
+    );
+    expect(fetchMock.callHistory.calls(GENERATE_ROUTE)).toHaveLength(1);
+  });
+
   it("truncates a long error page from a proxy", async () => {
     const errorPage = `<html><body><h1>502 Bad Gateway</h1>${"<p>nginx</p>".repeat(100)}</body></html>`;
     await setup({
