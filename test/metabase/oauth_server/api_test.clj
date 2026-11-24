@@ -3259,15 +3259,15 @@
   (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                      oauth-server-dynamic-registration-enabled true]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [client (register-app-client! "Copilot Studio" "https://example.com/callback")
-            mcp    [(mcp-resource-uri)]]
+      (let [client       (register-app-client! "Copilot Studio" "https://example.com/callback")
+            mcp-resource [(mcp-resource-uri)]]
         (testing "a token holding only MCP scopes keeps them and is bound to the MCP resource"
           (let [refreshed (refresh! client (stored-token! client v2-scope-set))]
-            (is (= {:response mcp, :stored mcp} (resources refreshed)))
+            (is (= {:response mcp-resource, :stored mcp-resource} (resources refreshed)))
             (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed)))
             (testing "and the next refresh without scope keeps the binding"
               (let [again (refresh! client refreshed)]
-                (is (= mcp (:stored (resources again))))
+                (is (= mcp-resource (:stored (resources again))))
                 (is (= v2-scope-set (token-scope-set again)))))))
         (testing "a token already bound to a resource keeps it"
           (is (= {:response [mcp-alias-uri], :stored [mcp-alias-uri]}
@@ -3291,13 +3291,13 @@
   (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                      oauth-server-dynamic-registration-enabled true]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [client (register-app-client! "Copilot Studio" "https://example.com/callback")
-            mcp    [(mcp-resource-uri)]]
+      (let [client       (register-app-client! "Copilot Studio" "https://example.com/callback")
+            mcp-resource [(mcp-resource-uri)]]
         (testing "a token stored with an empty resource is bound to the MCP resource on a refresh without scope"
-          (is (= {:response mcp, :stored mcp}
+          (is (= {:response mcp-resource, :stored mcp-resource}
                  (resources (refresh! client (stored-token! client v2-scope-set :resource []))))))
         (testing "a token stored with an empty resource is bound to the MCP resource on a refresh with scope"
-          (is (= {:response mcp, :stored mcp}
+          (is (= {:response mcp-resource, :stored mcp-resource}
                  (resources (refresh-with-scope! client (stored-token! client v2-scope-set :resource [])
                                                  all-v2-scopes)))))
         (testing "a refresh that names an empty resource keeps the token's own"

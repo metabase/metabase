@@ -80,7 +80,7 @@
 (defn- db-row->auth-code
   "Convert a DB row from :model/OAuthAuthorizationCode to the protocol's map shape.
    Converts user-id to a string since the oidc-provider library expects string user IDs.
-   Ensures :resource is a vector (JSON deserialization may return a list), or nil when empty."
+   Gives :resource as for [[resource-or-nil]]."
   [row]
   (when row
     (-> (select-and-kebab-keys row auth-code-db-columns)

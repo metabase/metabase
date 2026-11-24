@@ -665,8 +665,7 @@
     (let [body         (dissoc body :scope)
           stored       (when (empty? resource)
                          (some->> (not-empty refresh_token) (oidc.store/get-refresh-token (:token-store provider))))
-          ;; Every held scope, registered or not, must be an MCP scope: oidc-provider keeps them all when the refresh
-          ;; names none, while [[with-default-mcp-resource]] looks only at the registered ones.
+          ;; Not [[with-default-mcp-resource]], which looks only at the registered scopes.
           mcp-resource (when (and stored
                                   (empty? (:resource stored))
                                   (seq (:scope stored))
@@ -878,7 +877,7 @@
         ;; oidc-provider would give the new tokens an empty `resource` in place of the old token's, so it counts as
         ;; none. An empty string stays, for [[check-resource-indicators!]] to refuse.
         body                 (cond-> body
-                               (and (sequential? (:resource body)) (empty? (:resource body))) (dissoc :resource))]
+                               (= [] (:resource body)) (dissoc :resource))]
     (try
       (do-with-token-throttling ip-address client-id
                                 (fn []
