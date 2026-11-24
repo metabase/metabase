@@ -18,6 +18,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.user-settings :as user-settings]
    [toucan2.core :as t2]))
 
 (def field-order-rule
@@ -232,7 +233,8 @@
 
 (def ^:private field-user-settings-update-keys
   "The columns an insert or update of a FieldUserSettings accepts."
-  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set])
+  (into [:field_id :created_at :updated_at]
+        (concat user-settings/user-settable-field-columns (vals user-settings/field-set-flags))))
 
 (mu/defn field-ids-with-user-settings-for-table :- [:set ::lib.schema.id/field]
   "The ids of the Fields of the ::warehouse-schema.schema/table with `table-id` that have a FieldUserSettings row."
@@ -304,10 +306,8 @@
 
 (def ^:private table-user-settings-update-keys
   "The columns an insert or update of a TableUserSettings accepts."
-  [:table_id :created_at :updated_at :display_name :description :entity_type :visibility_type :caveats
-   :points_of_interest :data_layer :data_source :owner_email :owner_user_id :field_order :show_in_getting_started
-   :data_authority :is_published :collection_id :description_set
-   :visibility_type_set :data_layer_set :data_source_set])
+  (into [:table_id :created_at :updated_at]
+        (concat user-settings/user-settable-table-columns (vals user-settings/table-set-flags))))
 
 (mu/defn table-user-settings
   "The TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, or nil (also for a nil `table-id`,

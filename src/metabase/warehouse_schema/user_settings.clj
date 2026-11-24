@@ -8,14 +8,18 @@
   "The Field columns users can set, whose values `metabase_field` holds while `metabase_field_user_settings` records
   which ones a user set."
   #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy
-    :fk_target_field_id :caveats :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position})
+    :fk_target_field_id :caveats :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
+    :is_grain :attribute_scd_type :facets})
 
 (def field-set-flags
   "The user-settable Field columns sync also writes, mapped to the flag that says the user set the column, NULL
   included."
   {:description        :description_set
    :semantic_type      :semantic_type_set
-   :fk_target_field_id :fk_target_field_id_set})
+   :fk_target_field_id :fk_target_field_id_set
+   :is_grain           :is_grain_set
+   :attribute_scd_type :attribute_scd_type_set
+   :facets             :facets_set})
 
 (mu/defn user-set-field-columns :- [:set (into [:enum] user-settable-field-columns)]
   "The columns the FieldUserSettings row `settings` says a user set; `coercion_strategy` follows `effective_type`."
@@ -32,15 +36,26 @@
   "The Table columns users can set, whose values `metabase_table` holds while `metabase_table_user_settings` records
   which ones a user set."
   #{:display_name :description :entity_type :visibility_type :caveats :points_of_interest :data_layer :data_source
-    :owner_email :owner_user_id :field_order :show_in_getting_started :data_authority :is_published :collection_id})
+    :owner_email :owner_user_id :field_order :show_in_getting_started :data_authority :is_published :collection_id
+    :table_role :grain :grain_description :period_granularity :mutability :load_strategy :scd_type :history_definition
+    :eav_definition})
 
 (def table-set-flags
   "The user-settable Table columns something besides users also writes, mapped to the flag that says the user set the
   column, NULL included."
-  {:description     :description_set
-   :visibility_type :visibility_type_set
-   :data_layer      :data_layer_set
-   :data_source     :data_source_set})
+  {:description        :description_set
+   :visibility_type    :visibility_type_set
+   :data_layer         :data_layer_set
+   :data_source        :data_source_set
+   :table_role         :table_role_set
+   :grain              :grain_set
+   :grain_description  :grain_description_set
+   :period_granularity :period_granularity_set
+   :mutability         :mutability_set
+   :load_strategy      :load_strategy_set
+   :scd_type           :scd_type_set
+   :history_definition :history_definition_set
+   :eav_definition     :eav_definition_set})
 
 (mu/defn user-set-table-columns :- [:set (into [:enum] user-settable-table-columns)]
   "The columns the TableUserSettings row `settings` says a user set; `collection_id` follows `is_published`."

@@ -71,12 +71,14 @@
   (field-paths-with-suffix entities "___fieldusersettings"))
 
 (defn field-user-settings-before-load
-  "The FieldUserSettings load `items`, the rows that update a local row clearing the user-settable columns they lack."
+  "The FieldUserSettings load `items`, clearing on local rows the exported user-settable columns they lack."
   [items]
-  (mapv (fn [{:keys [local] :as item}]
-          (cond-> item
-            local (update :row #(merge (zipmap user-settings/user-settable-field-columns (repeat nil)) %))))
-        items))
+  (let [skipped (set (:skip (serialization/spec :model/FieldUserSettings)))
+        cleared (zipmap (remove skipped user-settings/user-settable-field-columns) (repeat nil))]
+    (mapv (fn [{:keys [local] :as item}]
+            (cond-> item
+              local (update :row #(merge cleared %))))
+          items)))
 
 (defn field-user-settings-after-load
   "Writes the user-set columns of the loaded FieldUserSettings `items` to their Fields."
