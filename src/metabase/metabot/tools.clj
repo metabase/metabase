@@ -176,10 +176,10 @@
 
 (def ^:private retrievers
   "The read-only retrieval tools [[run-retriever]] can run, each with a profile that offers it."
-  {"general" {:tool search-tool, :profile-id :internal}
+  {"general" {:tool search-tool,                    :profile-id :internal}
    "library" {:tool retrieve-library-entities-tool, :profile-id :nlq}
-   "nlq"     {:tool nlq-search-tool, :profile-id :nlq}
-   "sql"     {:tool sql-search-tool, :profile-id :sql}})
+   "nlq"     {:tool nlq-search-tool,                :profile-id :nlq}
+   "sql"     {:tool sql-search-tool,                :profile-id :sql}})
 
 (def retriever-names
   "The names [[run-retriever]] accepts."
