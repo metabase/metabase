@@ -179,8 +179,8 @@
    body :- [:map {:closed true}
             [:name :string]
             [:description {:optional true} [:maybe :string]]
-            [:source ::transforms.schema/transform-source]
-            [:target ::transforms.schema/transform-target]
+            [:source (eid-translation/structure-schema :model/Transform :source ::transforms.schema/transform-source)]
+            [:target (eid-translation/structure-schema :model/Transform :target ::transforms.schema/transform-target)]
             [:run_trigger {:optional true} ::transforms.schema/run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
@@ -303,8 +303,8 @@
    body :- [:map {:closed true}
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transforms.schema/transform-source]
-            [:target {:optional true} ::transforms.schema/transform-target]
+            [:source {:optional true} (eid-translation/structure-schema :model/Transform :source ::transforms.schema/transform-source)]
+            [:target {:optional true} (eid-translation/structure-schema :model/Transform :target ::transforms.schema/transform-target)]
             [:run_trigger {:optional true} ::transforms.schema/run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]

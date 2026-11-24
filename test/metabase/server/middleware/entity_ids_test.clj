@@ -396,3 +396,60 @@
       (is (=? {:errors {:dashcards some?}}
               (mt/user-http-request :crowberto :put 400 (str "dashboard/" dash-id)
                                     {:dashcards [{:id -1 :card_id card-eid :row 0 :col 0 :size_x 4 :size_y 4}]}))))))
+
+(deftest other-structures-write-back-test
+  (testing "with the header, the structures of Segments, Measures and Documents read from an instance write the same
+            rows of its restore"
+    (mt/with-model-cleanup [:model/Collection :model/Card :model/Segment :model/Measure :model/Document]
+      (let [mp       (mt/metadata-provider)
+            price    (lib.metadata/field mp (mt/id :venues :price))
+            coll     (t2/insert-returning-instance! :model/Collection {:name "eid structures"})
+            card     (mt/user-http-request :crowberto :post 200 "card" {:name                   "eid structures card"
+                                                                        :collection_id          (:id coll)
+                                                                        :display                :table
+                                                                        :dataset_query          (venues-query)
+                                                                        :visualization_settings {}})
+            segment  (mt/user-http-request :crowberto :post 200 "segment"
+                                           {:name "eid structures segment" :definition (lib/filter (venues-query) (lib/= price 1))})
+            measure  (mt/user-http-request :crowberto :post 200 "measure"
+                                           {:name "eid structures measure" :definition (lib/aggregate (venues-query) (lib/sum price))})
+            ;; a link, as a write of the Document would embed a copy of an embedded Card that it does not own
+            document (mt/user-http-request :crowberto :post 200 "document"
+                                           {:name          "eid structures document"
+                                            :collection_id (:id coll)
+                                            :document      {:type    "doc"
+                                                            :content [{:type    "paragraph"
+                                                                       :content [{:type  "smartLink"
+                                                                                  :attrs {:entityId (:id card) :model "card"}}]}]}})
+            urls     {:segment  (str "segment/" (:entity_id segment))
+                      :measure  (str "measure/" (:entity_id measure))
+                      :document (str "document/" (:entity_id document))}
+            ;; a restore counts views anew, and makes a Measure's dimensions anew, as serialization skips them
+            fetch    (fn []
+                       (update-vals urls #(without-timestamps
+                                           (dissoc (get-with-entity-ids :crowberto %)
+                                                   :last-edit-info :view_count :dimensions :dimension_mappings))))
+            before   (fetch)]
+        (restore! [[:model/Collection [coll]]
+                   [:model/Card [(t2/select-one :model/Card :id (:id card))]]
+                   [:model/Segment [(t2/select-one :model/Segment :id (:id segment))]]
+                   [:model/Measure [(t2/select-one :model/Measure :id (:id measure))]]
+                   [:model/Document [(t2/select-one :model/Document :id (:id document))]]])
+        (is (not= (:id card) (id-of :model/Card (:entity_id card))))
+        (doseq [[k body] {:segment  (assoc (select-keys (:segment before) [:definition])
+                                           :name "eid written back segment" :revision_message "written back")
+                          :measure  (assoc (select-keys (:measure before) [:definition])
+                                           :name "eid written back measure" :revision_message "written back")
+                          :document (assoc (select-keys (:document before) [:document :collection_id])
+                                           :name "eid written back document")}]
+          (testing k
+            (put-with-entity-ids :crowberto (k urls) body)))
+        (testing "the Document links to the restored Card"
+          (is (= (id-of :model/Card (:entity_id card))
+                 (get-in (t2/select-one-fn :document :model/Document :entity_id (:entity_id document))
+                         [:content 0 :content 0 :attrs :entityId]))))
+        (is (= (-> before
+                   (assoc-in [:segment :name] "eid written back segment")
+                   (assoc-in [:measure :name] "eid written back measure")
+                   (assoc-in [:document :name] "eid written back document"))
+               (fetch)))))))

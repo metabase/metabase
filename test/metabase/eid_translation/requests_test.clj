@@ -1,7 +1,12 @@
 (ns metabase.eid-translation.requests-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]))
 
 (deftest refs->ids-test
@@ -45,3 +50,40 @@
                   nil
                   (catch clojure.lang.ExceptionInfo e
                     (ex-data e)))))))))
+
+(defn- export-column
+  "`v`, the `column` of a `model` row `row`, as serialization exports it."
+  [model column row v]
+  (first ((get-in (serialization/spec model) [:transform column :export])
+          serialization/app-db-store [(assoc row column v)] [v] {})))
+
+(defn- decode-body-value
+  "`v` decoded by `schema` as a request body's value is."
+  [schema v]
+  (mc/decode schema v (mtx/transformer {:name :api})))
+
+(deftest structure-schema-test
+  (let [mp       (mt/metadata-provider)
+        source   {:type "query" :query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+        exported (export-column :model/Transform :source {} source)
+        schema   (eid-translation/structure-schema :model/Transform :source :map)]
+    (is (= [(:name (mt/db)) "PUBLIC" "VENUES"] (get-in exported [:query :stages 0 :source-table])))
+    (testing "in entity id form, an exported structure decodes to the structure it names"
+      (is (=? {:query {:database (mt/id) :stages [{:source-table (mt/id :venues)}]}}
+              (eid-translation/do-with-entity-ids #(decode-body-value schema exported)))))
+    (testing "otherwise it stays as it is"
+      (is (= exported (decode-body-value schema exported))))))
+
+(deftest structure-schema-row-test
+  (testing "the import sees the columns of the row that the body does not give"
+    (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
+      (let [row      {:content_type "application/json+vnd.prose-mirror"}
+            document {:type    "doc"
+                      :content [{:type "cardEmbed" :attrs {:id card-id :name nil}}]}
+            exported (export-column :model/Document :document row document)]
+        (is (= [{:model "Card" :id card-eid}] (get-in exported [:content 0 :attrs :id])))
+        (is (= card-id
+               (get-in (eid-translation/do-with-entity-ids
+                        #(decode-body-value (eid-translation/structure-schema :model/Document :document row :map)
+                                            exported))
+                       [:content 0 :attrs :id])))))))

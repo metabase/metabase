@@ -61,12 +61,13 @@
 
 (defn- decode-structure
   "`v`, the value of `column` of a `model` row, imported from the form serialization exports it in, as a response in
-  entity id form gives it, when the request is in entity id form. Numeric ids inside it stay as they are. A ref that
-  names no row is a 404; a value that fails to import otherwise is left for the body's schema to refuse."
-  [model column v]
+  entity id form gives it, when the request is in entity id form. The import sees the row as `row`, the columns it
+  reads that the body does not give, with `v` in `column`. Numeric ids inside it stay as they are. A ref that names
+  no row is a 404; a value that fails to import otherwise is left for the body's schema to refuse."
+  [model column row v]
   (if-let [import (and *entity-ids?* (some? v) (get-in (serialization/spec model) [:transform column :import]))]
     (try
-      (first (import serialization/app-db-store [{column v}] [v] {:numeric-ids-allowed? true}))
+      (first (import serialization/app-db-store [(assoc row column v)] [v] {:numeric-ids-allowed? true}))
       (catch clojure.lang.ExceptionInfo e
         (if (serialization.resolve/target-not-found? e)
           (throw (ex-info (tru "Not found.") {:status-code 404} e))
@@ -81,6 +82,10 @@
 
 (defn structure-schema
   "`schema`, the schema of the request body `column` of a `model` row holding a structure, such as a query, that in a
-  request in entity id form also takes the structure as serialization exports it, which it decodes by importing it."
-  [model column schema]
-  [:schema {:decode/api #(decode-structure model column %)} schema])
+  request in entity id form also takes the structure as serialization exports it, which it decodes by importing it.
+  `row`, when given, holds the columns of the row that the import reads and the body does not give, such as the
+  `:content_type` of a Document."
+  ([model column schema]
+   (structure-schema model column {} schema))
+  ([model column row schema]
+   [:schema {:decode/api #(decode-structure model column row %)} schema]))

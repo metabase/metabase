@@ -42,7 +42,7 @@
    _query-params
    body :- [:map {:closed true}
             [:name        ::segments.schema/segment.name]
-            [:definition  ::segments.schema/definition]
+            [:definition  (eid-translation/structure-schema :model/Segment :definition ::segments.schema/definition)]
             [:description {:optional true} [:maybe :string]]]]
   (create-segment! body))
 
@@ -98,7 +98,8 @@
    _query-params
    body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ::segments.schema/segment.name]]
-            [:definition              {:optional true} [:maybe ::segments.schema/definition]]
+            [:definition              {:optional true} [:maybe (eid-translation/structure-schema :model/Segment :definition
+                                                                                                 ::segments.schema/definition)]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:caveats                 {:optional true} [:maybe :string]]

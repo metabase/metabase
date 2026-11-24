@@ -2465,3 +2465,26 @@
                                                                                      :name (mt/random-name)}}]
           (mt/user-http-request :crowberto :put 200 (str "transform/" transform-id) {:collection_id coll-eid})
           (is (= coll-id (t2/select-one-fn :collection_id :model/Transform :id transform-id))))))))
+
+(deftest transform-structures-in-entity-id-form-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (testing "with the X-Metabase-Ids: entity header, PUT /api/transform/:id takes the source and target that a GET
+              with it gives"
+      ;; An update checks that the database supports the transform, so it needs a driver that does.
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Transform {transform-id :id entity-id :entity_id}
+                         {:name   "Entity id form transform"
+                          :source {:type  :query
+                                   :query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                          :target {:type   "table"
+                                   :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                   :name   (mt/random-name)}}]
+            (let [headers  {:request-options {:headers {"x-metabase-ids" "entity"}}}
+                  stored   #(t2/select-one-fn (juxt :source :target) :model/Transform :id transform-id)
+                  before   (stored)
+                  response (mt/user-http-request :crowberto :get 200 (str "transform/" entity-id) headers)]
+              (is (string? (get-in response [:source :query :database])))
+              (mt/user-http-request :crowberto :put 200 (str "transform/" entity-id) headers
+                                    (select-keys response [:source :target]))
+              (is (= before (stored))))))))))

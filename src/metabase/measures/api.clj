@@ -57,7 +57,7 @@
    _query-params
    body :- [:map {:closed true}
             [:name        ::measures.schema/measure.name]
-            [:definition  ::measures.schema/definition]
+            [:definition  (eid-translation/structure-schema :model/Measure :definition ::measures.schema/definition)]
             [:description {:optional true} [:maybe :string]]]]
   (create-measure! body))
 
@@ -120,7 +120,8 @@
    _query-params
    body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ::measures.schema/measure.name]]
-            [:definition              {:optional true} [:maybe ::measures.schema/definition]]
+            [:definition              {:optional true} [:maybe (eid-translation/structure-schema :model/Measure :definition
+                                                                                                 ::measures.schema/definition)]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]

@@ -40,10 +40,15 @@
                                              :body m.document/CardCreateSchema %)))))}
    [:map-of key-schema m.document/CardCreateSchema]])
 
+(def ^:private DocumentAst
+  "A Document's `:document`, which a request with entity ids may give as serialization exports it."
+  (eid-translation/structure-schema :model/Document :document {:content_type prose-mirror/prose-mirror-content-type}
+                                    ::prose-mirror/ast))
+
 (def ^:private DocumentCreateOptions
   [:map {:closed true}
    [:name documents.schema/DocumentName]
-   [:document ::prose-mirror/ast]
+   [:document DocumentAst]
    [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:cards {:optional true} [:maybe (cards-to-create-schema [:int {:max -1}])]]])
@@ -51,7 +56,7 @@
 (def ^:private DocumentUpdateOptions
   [:map {:closed true}
    [:name {:optional true} documents.schema/DocumentName]
-   [:document {:optional true} [:maybe ::prose-mirror/ast]]
+   [:document {:optional true} [:maybe DocumentAst]]
    [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:cards {:optional true} [:maybe (cards-to-create-schema :int)]]
