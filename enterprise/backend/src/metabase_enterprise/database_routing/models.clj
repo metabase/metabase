@@ -42,6 +42,16 @@
    :id
    {:default nil}))
 
+(defenterprise hydrate-router-anonymous-access-granted
+  "Enterprise implementation. Hydrates the router's anonymous-access grant on the databases."
+  :feature :database-routing
+  [k databases]
+  (mi/instances-with-hydrated-data
+   databases k
+   (fn [] (database-routing.db/router-anonymous-access-grants-by-database (map :id databases)))
+   :id
+   {:default nil}))
+
 (defenterprise hash-input-for-database-routing
   "Enterprise version: the hash input for the FieldValues of the Database with `db-id` when it is subject to database
   routing, with a nil destination while the `:database-routing` feature is unavailable."
@@ -49,6 +59,13 @@
   [db-id]
   (when-let [destination-db-id (some-> db-id driver.u/lib-database router-db->destination-db-id)]
     {:destination-db-id (when (premium-features/has-feature? :database-routing) destination-db-id)}))
+
+(defenterprise refuses-anonymous-access?
+  "Enterprise version. Whether the Database with `database-id` is a router database not granted anonymous access."
+  :feature :none
+  [database-id]
+  (and (database-routing.db/router-exists? database-id)
+       (not (database-routing.db/router-anonymous-access-granted? database-id))))
 
 (defenterprise-schema db-routing-enabled? :- :boolean
   "Returns whether or not the Lib metadata `db` of a Database is either a router or destination database, even while
@@ -123,7 +140,7 @@
   {:skip? true})
 
 (defmethod audit/spec :model/DatabaseRouter [_model]
-  {:track          []
+  {:track          [:anonymous_access_granted]
    :track-redacted [:database_id :user_attribute]
    :skip           []
    :details        database-routing.audit/details

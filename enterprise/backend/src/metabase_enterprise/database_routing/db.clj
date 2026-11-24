@@ -66,3 +66,16 @@
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (app-db/select-batched-map #(t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in %])
                              database-ids))
+
+(mu/defn router-anonymous-access-grants-by-database
+  "A map of Database ID to anonymous-access grant for `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (app-db/select-batched-map
+   #(t2/select-fn->fn :database_id :anonymous_access_granted :model/DatabaseRouter :database_id [:in %])
+   database-ids))
+
+(mu/defn router-anonymous-access-granted?
+  "Whether the router of the Database with `database-id` has been granted anonymous access. False when `database-id`
+  is not a router database."
+  [database-id :- ::lib.schema.id/database]
+  (boolean (t2/select-one-fn :anonymous_access_granted :model/DatabaseRouter :database_id database-id)))

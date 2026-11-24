@@ -119,6 +119,7 @@
            app-db
            collection-items
            collections
+           database-routing
            dependencies
            driver
            events
@@ -1091,6 +1092,7 @@
            batch-processing
            lib.schema
            models
+           parameters.schema
            premium-features
            serialization
            server
@@ -2203,11 +2205,16 @@
            metabase.public-sharing.init
            metabase.public-sharing.validation}
    :uses #{api
+           database-routing
+           embedding
+           lib.schema
+           parameters.schema
            settings
            util}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Dashboard
+                    :model/Database
                     :model/Document}}
 
   public-sharing.rest
@@ -2220,6 +2227,7 @@
            app-db
            dashboards
            dashboards.rest
+           database-routing
            documents
            events
            lib
@@ -3606,12 +3614,14 @@
            api-scope
            app-db
            database-routing
+           documents
            driver
            events
            lib.schema
            models
            permissions
            premium-features
+           public-sharing
            request
            sample-data
            settings

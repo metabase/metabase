@@ -10,11 +10,9 @@ import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 import { resolveCardProp } from "./resolve-card-prop";
 
 // MetabaseQueryObject is the public structural mirror of the opaque internal query type
-const DATASET_QUERY = Lib.toLegacyQuery(
-  Lib.createTestQuery(SAMPLE_PROVIDER, {
-    stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
-  }),
-) as unknown as MetabaseQueryObject;
+const DATASET_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+  stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+}) as unknown as MetabaseQueryObject;
 
 const serialize = (card: object) => utf8_to_b64url(JSON.stringify(card));
 
