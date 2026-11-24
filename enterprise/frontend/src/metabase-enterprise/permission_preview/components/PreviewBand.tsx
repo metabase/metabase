@@ -4,6 +4,7 @@ import { t } from "ttag";
 import {
   ActionIcon,
   Badge,
+  Button,
   Flex,
   Icon,
   Text,
@@ -18,6 +19,8 @@ interface PreviewBandProps {
   linkText: string;
   onOpenLink: (link: string) => void;
   onGoHome: () => void;
+  isExplainOpen: boolean;
+  onToggleExplain: () => void;
 }
 
 export function PreviewBand({
@@ -25,6 +28,8 @@ export function PreviewBand({
   linkText,
   onOpenLink,
   onGoHome,
+  isExplainOpen,
+  onToggleExplain,
 }: PreviewBandProps) {
   const [draft, setDraft] = useState(linkText);
 
@@ -72,6 +77,15 @@ export function PreviewBand({
         onChange={(event) => setDraft(event.currentTarget.value)}
         onKeyDown={handleKeyDown}
       />
+      <Button
+        flex="0 0 auto"
+        variant={isExplainOpen ? "filled" : "default"}
+        aria-pressed={isExplainOpen}
+        leftSection={<Icon name="info" />}
+        onClick={onToggleExplain}
+      >
+        {t`Explain access`}
+      </Button>
     </Flex>
   );
 }
