@@ -312,7 +312,7 @@
   The `:from` map describes the FROM source, and its `:sql` counts that source's rows.
   Each of `:steps` describes one join, in query order.
   A step's `:sql` counts the rows of the FROM source joined with every join up to and including it.
-  The WHERE clause and everything else outside FROM and JOIN are left out, and so are the CTEs they don't read.
+  The WHERE clause, the WITH clause and everything else outside FROM and JOIN are left out.
   For an outer join the `:sql` returns a second count in the same row: the rows where that join found a match.
 
   A source's `:source` is `:table`, `:cte` or `:derived`.

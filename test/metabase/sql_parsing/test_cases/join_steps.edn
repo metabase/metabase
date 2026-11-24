@@ -27,41 +27,44 @@
       :strategy "inner",
       :sql
       "SELECT COUNT(*) AS n FROM orders AS o JOIN products AS pr ON pr.id = o.product_id AND pr.category = 'Widget'"}]}}
-  {:name "a WITH clause is kept, and a join against a CTE or a derived table is described as one",
+  {:name
+   "a WITH clause is left out, and a join against a CTE or a derived table is described as one",
    :dialect "postgres",
    :sql
    "WITH c AS (SELECT id FROM people) SELECT * FROM orders o LEFT JOIN c ON c.id = o.user_id JOIN (SELECT id FROM products) d ON d.id = o.product_id",
    :expected
    {:status "ok",
     :from {:source "table", :table [nil nil "orders"], :alias "o"},
-    :base_sql "WITH c AS (SELECT id FROM people) SELECT COUNT(*) AS n FROM orders AS o",
+    :base_sql "SELECT COUNT(*) AS n FROM orders AS o",
     :steps
     [{:source "cte",
       :table nil,
       :alias "c",
       :strategy "left",
       :sql
-      "WITH c AS (SELECT id FROM people) SELECT COUNT(*) AS n, COUNT(CASE WHEN c.id = o.user_id THEN 1 END) AS m FROM orders AS o LEFT JOIN c ON c.id = o.user_id"}
+      "SELECT COUNT(*) AS n, COUNT(CASE WHEN c.id = o.user_id THEN 1 END) AS m FROM orders AS o LEFT JOIN c ON c.id = o.user_id"}
      {:source "derived",
       :table nil,
       :alias "d",
       :strategy "inner",
       :sql
-      "WITH c AS (SELECT id FROM people) SELECT COUNT(*) AS n FROM orders AS o LEFT JOIN c ON c.id = o.user_id JOIN (SELECT id FROM products) AS d ON d.id = o.product_id"}]}}
+      "SELECT COUNT(*) AS n FROM orders AS o LEFT JOIN c ON c.id = o.user_id JOIN (SELECT id FROM products) AS d ON d.id = o.product_id"}]}}
   {:name "a CTE does not shadow a qualified table of the same name",
    :dialect "postgres",
-   :sql "WITH orders AS (SELECT 1 AS id) SELECT * FROM public.orders JOIN orders x ON x.id = public.orders.id",
+   :sql
+   "WITH orders AS (SELECT 1 AS id) SELECT * FROM public.orders JOIN orders x ON x.id = public.orders.id",
    :expected
    {:status "ok",
-    :from {:source "table", :table [nil "public" "orders"], :alias "orders"},
-    :base_sql "WITH orders AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM public.orders",
+    :from
+    {:source "table", :table [nil "public" "orders"], :alias "orders"},
+    :base_sql "SELECT COUNT(*) AS n FROM public.orders",
     :steps
     [{:source "cte",
       :table nil,
       :alias "x",
       :strategy "inner",
       :sql
-      "WITH orders AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM public.orders JOIN orders AS x ON x.id = public.orders.id"}]}}
+      "SELECT COUNT(*) AS n FROM public.orders JOIN orders AS x ON x.id = public.orders.id"}]}}
   {:name "USING and NATURAL joins are rebuilt as they are",
    :dialect "postgres",
    :sql "SELECT * FROM a LEFT JOIN b USING (id) NATURAL FULL OUTER JOIN c",
@@ -109,20 +112,6 @@
       :alias "b",
       :strategy "cross",
       :sql "SELECT COUNT(*) AS n FROM a CROSS JOIN b"}]}}
-  {:name "T-SQL keeps its WITH clause before the outer SELECT",
-   :dialect "tsql",
-   :sql "WITH c AS (SELECT 1 AS x) SELECT * FROM dbo.a LEFT JOIN c ON a.id = c.x",
-   :expected
-   {:status "ok",
-    :from {:source "table", :table [nil "dbo" "a"], :alias "a"},
-    :base_sql "WITH c AS (SELECT 1 AS x) SELECT COUNT(*) AS n FROM dbo.a",
-    :steps
-    [{:source "cte",
-      :table nil,
-      :alias "c",
-      :strategy "left",
-      :sql
-      "WITH c AS (SELECT 1 AS x) SELECT COUNT(*) AS n, COUNT(CASE WHEN a.id = c.x THEN 1 END) AS m FROM dbo.a LEFT JOIN c ON a.id = c.x"}]}}
   {:name "a query with no joins has only the base count",
    :dialect "postgres",
    :sql "SELECT id FROM orders WHERE total > 1",
@@ -158,10 +147,21 @@
       :alias "b",
       :strategy "inner",
       :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}}
-  {:name "a data-modifying CTE is refused: every count query would run it",
+  {:name
+   "a data-modifying CTE is left out of the steps, so it never runs",
    :dialect "postgres",
-   :sql "WITH gone AS (DELETE FROM t RETURNING *) SELECT * FROM a JOIN gone ON a.id = gone.id",
-   :expected {:status "unsupported", :reason "not-read-only"}}
+   :sql
+   "WITH gone AS (DELETE FROM t RETURNING *) SELECT * FROM a JOIN gone ON a.id = gone.id",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "cte",
+      :table nil,
+      :alias "gone",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a JOIN gone ON a.id = gone.id"}]}}
   {:name "a lock outside FROM and JOIN is left out of the steps",
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN b ON a.id = b.id FOR UPDATE",
@@ -298,19 +298,21 @@
    :dialect "postgres",
    :sql "",
    :expected {:status "unsupported", :reason "unparseable"}}
-  {:name "an outer WITH on brackets is kept in the steps",
+  {:name
+   "an outer WITH on brackets names CTEs, and is left out of the steps",
    :dialect "postgres",
-   :sql "WITH c AS (SELECT 1 AS id) (SELECT * FROM a JOIN c ON a.id = c.id) ORDER BY 1",
+   :sql
+   "WITH c AS (SELECT 1 AS id) (SELECT * FROM a JOIN c ON a.id = c.id) ORDER BY 1",
    :expected
    {:status "ok",
     :from {:source "table", :table [nil nil "a"], :alias "a"},
-    :base_sql "WITH c AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM a",
+    :base_sql "SELECT COUNT(*) AS n FROM a",
     :steps
     [{:source "cte",
       :table nil,
       :alias "c",
       :strategy "inner",
-      :sql "WITH c AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM a JOIN c ON a.id = c.id"}]}}
+      :sql "SELECT COUNT(*) AS n FROM a JOIN c ON a.id = c.id"}]}}
   {:name "a trailing LIMIT on brackets is left out of the steps",
    :dialect "postgres",
    :sql "(SELECT * FROM a JOIN b ON a.id = b.id) LIMIT 5",
@@ -328,45 +330,52 @@
    :dialect "clickhouse",
    :sql "SELECT * FROM a LEFT JOIN b ON a.id = b.id SETTINGS join_use_nulls = 0",
    :expected {:status "unsupported", :reason "unsupported-join"}}
-  {:name "a quoted name in another case is a table, not the CTE, where the dialect keeps its case",
+  {:name
+   "a quoted name in another case is a table, not the CTE, where the dialect keeps its case",
    :dialect "postgres",
-   :sql "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"Foo\" JOIN foo f ON \"Foo\".id = f.id",
+   :sql
+   "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"Foo\" JOIN foo f ON \"Foo\".id = f.id",
    :expected
    {:status "ok",
     :from {:source "table", :table [nil nil "Foo"], :alias "Foo"},
-    :base_sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"Foo\"",
+    :base_sql "SELECT COUNT(*) AS n FROM \"Foo\"",
     :steps
     [{:source "cte",
       :table nil,
       :alias "f",
       :strategy "inner",
-      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"Foo\" JOIN foo AS f ON \"Foo\".id = f.id"}]}}
+      :sql
+      "SELECT COUNT(*) AS n FROM \"Foo\" JOIN foo AS f ON \"Foo\".id = f.id"}]}}
   {:name "an unquoted name in another case is the CTE",
    :dialect "postgres",
-   :sql "WITH foo AS (SELECT 1 AS id) SELECT * FROM FOO JOIN b ON FOO.id = b.id",
+   :sql
+   "WITH foo AS (SELECT 1 AS id) SELECT * FROM FOO JOIN b ON FOO.id = b.id",
    :expected
    {:status "ok",
     :from {:source "cte", :table nil, :alias "FOO"},
-    :base_sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM FOO",
+    :base_sql "SELECT COUNT(*) AS n FROM FOO",
     :steps
     [{:source "table",
       :table [nil nil "b"],
       :alias "b",
       :strategy "inner",
-      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM FOO JOIN b ON FOO.id = b.id"}]}}
-  {:name "a quoted upper-case name is the CTE where the dialect folds unquoted names up",
+      :sql "SELECT COUNT(*) AS n FROM FOO JOIN b ON FOO.id = b.id"}]}}
+  {:name
+   "a quoted upper-case name is the CTE where the dialect folds unquoted names up",
    :dialect "snowflake",
-   :sql "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"FOO\" JOIN b ON \"FOO\".id = b.id",
+   :sql
+   "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"FOO\" JOIN b ON \"FOO\".id = b.id",
    :expected
    {:status "ok",
     :from {:source "cte", :table nil, :alias "FOO"},
-    :base_sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"FOO\"",
+    :base_sql "SELECT COUNT(*) AS n FROM \"FOO\"",
     :steps
     [{:source "table",
       :table [nil nil "b"],
       :alias "b",
       :strategy "inner",
-      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"FOO\" JOIN b ON \"FOO\".id = b.id"}]}}
+      :sql
+      "SELECT COUNT(*) AS n FROM \"FOO\" JOIN b ON \"FOO\".id = b.id"}]}}
   {:name "a LEFT JOIN on a schema-qualified column keeps the reference",
    :dialect "postgres",
    :sql "SELECT * FROM s.a LEFT JOIN s.b ON s.b.id = s.a.id",
@@ -408,19 +417,22 @@
       :alias "b",
       :strategy "left",
       :sql "SELECT COUNT(*) AS n, COUNT(CASE WHEN a.id = b.id THEN 1 END) AS m FROM a LEFT JOIN s.b ON a.id = b.id"}]}}
-  {:name "with no dialect, as for H2, a quoted upper-case name is the CTE",
+  {:name
+   "with no dialect, as for H2, a quoted upper-case name is the CTE",
    :dialect nil,
-   :sql "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"FOO\" JOIN b ON \"FOO\".id = b.id",
+   :sql
+   "WITH foo AS (SELECT 1 AS id) SELECT * FROM \"FOO\" JOIN b ON \"FOO\".id = b.id",
    :expected
    {:status "ok",
     :from {:source "cte", :table nil, :alias "FOO"},
-    :base_sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"FOO\"",
+    :base_sql "SELECT COUNT(*) AS n FROM \"FOO\"",
     :steps
     [{:source "table",
       :table [nil nil "b"],
       :alias "b",
       :strategy "inner",
-      :sql "WITH foo AS (SELECT 1 AS id) SELECT COUNT(*) AS n FROM \"FOO\" JOIN b ON \"FOO\".id = b.id"}]}}
+      :sql
+      "SELECT COUNT(*) AS n FROM \"FOO\" JOIN b ON \"FOO\".id = b.id"}]}}
   {:name
    "with no dialect, as for H2, a quoted lower-case name is a table, not the CTE",
    :dialect nil,
@@ -471,22 +483,10 @@
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN b ON a.id = b.id AND b.x = ?",
    :expected {:status "unsupported", :reason "parameters"}}
-  {:name "a CTE shadowed by an inner WITH is refused, since one WITH list cannot hold both",
-   :dialect "postgres",
-   :sql "WITH c AS (SELECT 1 AS id) (WITH c AS (SELECT 2 AS id) SELECT * FROM a JOIN c ON a.id = c.id) ORDER BY 1",
-   :expected {:status "unsupported", :reason "not-a-select"}}
   {:name "a sample inside a join condition is refused, since each step would sample different rows",
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN b ON b.id IN (SELECT id FROM c TABLESAMPLE BERNOULLI (10))",
    :expected {:status "unsupported", :reason "unsupported-source"}}
-  {:name "several WITH scopes are refused, even with distinct names",
-   :dialect "postgres",
-   :sql "WITH \"C\" AS (SELECT 1 AS id) (WITH \"c\" AS (SELECT 2 AS id) SELECT * FROM \"C\" JOIN \"c\" ON \"C\".id = \"c\".id) LIMIT 1",
-   :expected {:status "unsupported", :reason "not-a-select"}}
-  {:name "a CTE repeated by bare brackets, which sqlglot flattens, is refused",
-   :dialect "postgres",
-   :sql "WITH c AS (SELECT 1 AS id) (WITH c AS (SELECT 2 AS id) SELECT * FROM a JOIN c ON a.id = c.id)",
-   :expected {:status "unsupported", :reason "not-a-select"}}
   {:name "a LEFT JOIN whose condition holds for an unmatched row counts matches with the join made INNER",
    :dialect "postgres",
    :sql "SELECT * FROM a LEFT JOIN b ON a.id = 1",
@@ -612,66 +612,6 @@
       :strategy "left",
       :sql
       "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM s1.orders LEFT JOIN s2.orders ON s1.orders.id = 1) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM s1.orders JOIN s2.orders ON s1.orders.id = 1) AS m"}]}}
-  {:name "a CTE the steps don't read is left out, even one that writes",
-   :dialect "postgres",
-   :sql
-   "WITH gone AS (DELETE FROM t RETURNING *) SELECT * FROM a JOIN b ON a.id = b.id",
-   :expected
-   {:status "ok",
-    :from {:source "table", :table [nil nil "a"], :alias "a"},
-    :base_sql "SELECT COUNT(*) AS n FROM a",
-    :steps
-    [{:source "table",
-      :table [nil nil "b"],
-      :alias "b",
-      :strategy "inner",
-      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}}
-  {:name
-   "a CTE the steps don't read is left out, so its sample doesn't matter",
-   :dialect "postgres",
-   :sql
-   "WITH s AS (SELECT id FROM t TABLESAMPLE SYSTEM (1)) SELECT * FROM a JOIN b ON a.id = b.id WHERE a.id IN (SELECT id FROM s)",
-   :expected
-   {:status "ok",
-    :from {:source "table", :table [nil nil "a"], :alias "a"},
-    :base_sql "SELECT COUNT(*) AS n FROM a",
-    :steps
-    [{:source "table",
-      :table [nil nil "b"],
-      :alias "b",
-      :strategy "inner",
-      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}}
-  {:name "a CTE read through another CTE is kept with it",
-   :dialect "postgres",
-   :sql
-   "WITH c1 AS (SELECT id FROM t), c2 AS (SELECT id FROM c1), c3 AS (SELECT 1 AS id) SELECT * FROM a JOIN c2 ON a.id = c2.id",
-   :expected
-   {:status "ok",
-    :from {:source "table", :table [nil nil "a"], :alias "a"},
-    :base_sql
-    "WITH c1 AS (SELECT id FROM t), c2 AS (SELECT id FROM c1) SELECT COUNT(*) AS n FROM a",
-    :steps
-    [{:source "cte",
-      :table nil,
-      :alias "c2",
-      :strategy "inner",
-      :sql
-      "WITH c1 AS (SELECT id FROM t), c2 AS (SELECT id FROM c1) SELECT COUNT(*) AS n FROM a JOIN c2 ON a.id = c2.id"}]}}
-  {:name "a CTE read in a join condition is kept",
-   :dialect "postgres",
-   :sql
-   "WITH k AS (SELECT id FROM t) SELECT * FROM a JOIN b ON a.id = b.id AND b.id IN (SELECT id FROM k)",
-   :expected
-   {:status "ok",
-    :from {:source "table", :table [nil nil "a"], :alias "a"},
-    :base_sql "WITH k AS (SELECT id FROM t) SELECT COUNT(*) AS n FROM a",
-    :steps
-    [{:source "table",
-      :table [nil nil "b"],
-      :alias "b",
-      :strategy "inner",
-      :sql
-      "WITH k AS (SELECT id FROM t) SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id AND b.id IN (SELECT id FROM k)"}]}}
   {:name
    "a comma join with a WHERE clause is refused, since its condition may be there",
    :dialect "postgres",

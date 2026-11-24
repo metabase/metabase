@@ -630,7 +630,7 @@
    A step is a source with its `:sql` and a `:strategy`, the string `inner`, `left`, `right`, `full` or `cross`.
    The `:base_sql` counts the rows of the FROM source alone.
    A step's `:sql` counts the rows of the FROM source joined with every join up to and including that step.
-   Both keep any WITH clause and leave out the WHERE clause and everything else outside FROM and JOIN.
+   Both leave out the WITH clause, the WHERE clause and everything else outside FROM and JOIN.
    For an outer join the step query returns a second count in the same row, of the rows where that join found a match.
 
    Anything else is `{:status \"unsupported\", :reason <reason>}`, with a reason from `join_steps` in `sql_tools.py`.
@@ -639,7 +639,7 @@
    the list is in a clause the queries keep."
   [parser dialect sql]
   ;; The check reads what will run, not `sql`: a lock or function call in a clause the steps leave out never executes,
-  ;; while a CTE the steps read is kept, so a data-modifying one would run once per query.
+  ;; while a lock in a clause the steps keep would run once per query.
   (let [stripped (strip-large-literal-lists sql executable-literal-list-ceiling)
         result   (protocol/join-steps parser dialect stripped)
         queries  (when (= "ok" (:status result))

@@ -531,16 +531,12 @@ def _inner_variant(join):
     return inner
 
 
-def _cte_names(with_, dialect):
-    """The effective names of the CTEs in `with_`, in order, or an empty list for no WITH clause."""
-    return [_effective_name(cte.args["alias"].this, dialect) for cte in (with_.expressions if with_ else [])]
-
-
 def _whole_query(stmt, dialect):
-    """The statement `stmt` without brackets around the whole of it, and the WITH clause it runs under, or None.
+    """The statement `stmt` without brackets around the whole of it, and the effective names of its CTEs.
 
+    The CTEs are those of every WITH clause on the brackets and the statement.
     A trailing ORDER BY or LIMIT on the brackets is dropped with the rest of what is outside FROM and JOIN.
-    Raises `_JoinStepsUnsupported` for brackets with any other clause of their own, or several WITH scopes.
+    Raises `_JoinStepsUnsupported` for brackets with any other clause of their own.
     """
     withs = []
     while isinstance(stmt, exp.Subquery) and not stmt.alias:
@@ -551,21 +547,7 @@ def _whole_query(stmt, dialect):
         stmt = stmt.this
     if isinstance(stmt, exp.Select) and stmt.args.get("with_"):
         withs.append(stmt.args["with_"])
-    # One WITH list cannot stand in for several scopes. sqlglot flattens some of them itself, leaving a repeated name.
-    if len(withs) > 1:
-        raise _JoinStepsUnsupported("not-a-select")
-    with_ = withs[0] if withs else None
-    names = _cte_names(with_, dialect)
-    if len(names) != len(set(names)):
-        raise _JoinStepsUnsupported("not-a-select")
-    return stmt, with_
-
-
-def _with(select, with_):
-    """The query `select`, given a copy of `with_` as its WITH clause when there is one."""
-    if with_ is not None:
-        select.set("with_", with_.copy())
-    return select
+    return stmt, {_effective_name(cte.args["alias"].this, dialect) for with_ in withs for cte in with_.expressions}
 
 
 def _count_star():
@@ -573,32 +555,31 @@ def _count_star():
     return exp.alias_(exp.Count(this=exp.Star()), "n")
 
 
-def _select(expressions, from_, joins, with_):
-    """The query `SELECT <expressions> FROM <from_> <joins>`, with `with_` as its WITH clause."""
-    return _with(exp.Select(expressions=expressions, from_=from_.copy(), joins=[j.copy() for j in joins]), with_)
+def _select(expressions, from_, joins):
+    """The query `SELECT <expressions> FROM <from_> <joins>`."""
+    return exp.Select(expressions=expressions, from_=from_.copy(), joins=[j.copy() for j in joins])
 
 
-def _count_select(from_, joins, with_=None):
-    """The query `SELECT COUNT(*) AS n FROM <from_> <joins>`, with `with_` as its WITH clause."""
-    return _select([_count_star()], from_, joins, with_)
+def _count_select(from_, joins):
+    """The query `SELECT COUNT(*) AS n FROM <from_> <joins>`."""
+    return _select([_count_star()], from_, joins)
 
 
-def _two_counts(first, second, with_):
+def _two_counts(first, second):
     """Both one-row counts in one row: `SELECT w.n, m.n FROM (<first>) AS w CROSS JOIN (<second>) AS m`."""
     # Each count is a derived table rather than a scalar subquery so the query has a FROM clause, which some databases
     # (Oracle before 23c) require.
-    select = exp.Select(
+    return exp.Select(
         expressions=[exp.column("n", table="w"), exp.column("n", table="m")],
         from_=exp.From(this=first.subquery("w")),
         joins=[exp.Join(this=second.subquery("m"), kind="CROSS")],
     )
-    return _with(select, with_)
 
 
-def _on_counts(from_, joins, with_):
+def _on_counts(from_, joins):
     """The query `SELECT COUNT(*) AS n, COUNT(CASE WHEN <last join's ON> THEN 1 END) AS m FROM <from_> <joins>`."""
     matched = exp.Case(ifs=[exp.If(this=joins[-1].args["on"].copy(), true=exp.Literal.number(1))])
-    return _select([_count_star(), exp.alias_(exp.Count(this=matched), "m")], from_, joins, with_)
+    return _select([_count_star(), exp.alias_(exp.Count(this=matched), "m")], from_, joins)
 
 
 _JOIN_COMPARISONS = (exp.EQ, exp.NEQ, exp.GT, exp.GTE, exp.LT, exp.LTE)
@@ -657,42 +638,8 @@ def _on_counts_matches(from_, joins, strategy, dialect):
     return {"left": from_joined, "right": from_earlier, "full": from_joined and from_earlier}[strategy]
 
 
-def _referenced_with(stmt, with_, dialect):
-    """The WITH clause `with_` cut down to the CTEs that the FROM and JOIN clauses of `stmt` read, directly or through
-    other CTEs, or None when they read none.
-
-    A statement that is not a SELECT with a FROM keeps `with_` whole, for the refusals to judge.
-    """
-    # Master's steps ran without the WITH clause, so a CTE the steps never read must not refuse them.
-    from_ = stmt.args.get("from_") if isinstance(stmt, exp.Select) else None
-    if with_ is None or from_ is None:
-        return with_
-    ctes = {_effective_name(cte.args["alias"].this, dialect): cte for cte in with_.expressions}
-
-    def reads(node):
-        names = {
-            _effective_name(table.this, dialect)
-            for table in node.find_all(exp.Table)
-            if isinstance(table.this, exp.Identifier) and not table.db and not table.catalog
-        }
-        return names & ctes.keys()
-
-    wanted = set()
-    todo = set().union(*(reads(node) for node in [from_, *(stmt.args.get("joins") or [])]))
-    while todo:
-        name = todo.pop()
-        if name not in wanted:
-            wanted.add(name)
-            todo |= reads(ctes[name].this)
-    if not wanted:
-        return None
-    pruned = with_.copy()
-    pruned.set("expressions", [cte.copy() for name, cte in ctes.items() if name in wanted])
-    return pruned
-
-
-def _statement_refusal(stmt, with_):
-    """Why the parsed statement `stmt`, run under `with_`, cannot have its join steps rebuilt, or None.
+def _statement_refusal(stmt):
+    """Why the parsed statement `stmt` cannot have its join steps rebuilt, or None.
 
     A source can still be refused when it is described.
     """
@@ -711,7 +658,7 @@ def _statement_refusal(stmt, with_):
     if from_ is None or from_.this is None:
         return "no-from"
     joins = stmt.args.get("joins") or []
-    kept = [node for node in [from_, *joins, with_] if node is not None]
+    kept = [from_, *joins]
     # A placeholder is a value the step queries would have to be handed again, and nothing passes them on. One in a
     # clause the steps leave out does not matter.
     if any(node.find(exp.Placeholder, exp.Parameter) for node in kept):
@@ -735,7 +682,8 @@ def join_steps(sql: str, dialect: str = None) -> str:
     The FROM source and every join are described, each with the SQL of a query that counts its rows.
     For the FROM source that is the source alone; for a join, the FROM source joined with every join up to and
     including it.
-    The WHERE clause and everything else outside FROM and JOIN are left out, and so are the CTEs they don't read.
+    The WHERE clause, the WITH clause and everything else outside FROM and JOIN are left out, so a step that reads a
+    CTE fails when run.
 
     For a LEFT, RIGHT or FULL join, the step query returns two counts in one row: the rows of the chain as written,
     and those where that last join found a match.
@@ -770,14 +718,12 @@ def join_steps(sql: str, dialect: str = None) -> str:
             raise _JoinStepsUnsupported("unparseable")
         if not stmts:
             raise _JoinStepsUnsupported("unparseable")
-        stmt, with_ = _whole_query(stmts[0], dialect)
-        with_ = _referenced_with(stmt, with_, dialect)
-        reason = _statement_refusal(stmt, with_)
+        stmt, cte_names = _whole_query(stmts[0], dialect)
+        reason = _statement_refusal(stmt)
         if reason:
             raise _JoinStepsUnsupported(reason)
         from_ = stmt.args["from_"]
         joins = stmt.args.get("joins") or []
-        cte_names = set(_cte_names(with_, dialect))
         from_source = _join_step_source(from_.this, cte_names, dialect)
         steps = []
         for n, join in enumerate(joins, start=1):
@@ -785,19 +731,19 @@ def join_steps(sql: str, dialect: str = None) -> str:
             strategy = _join_step_strategy(join)
             chain = joins[:n]
             if strategy not in ("left", "right", "full"):
-                query = _count_select(from_, chain, with_)
+                query = _count_select(from_, chain)
             elif _on_counts_matches(from_, chain, strategy, dialect):
-                query = _on_counts(from_, chain, with_)
+                query = _on_counts(from_, chain)
             else:
                 query = _two_counts(
-                    _count_select(from_, chain), _count_select(from_, chain[:-1] + [_inner_variant(join)]), with_
+                    _count_select(from_, chain), _count_select(from_, chain[:-1] + [_inner_variant(join)])
                 )
             steps.append(dict(source, strategy=strategy, sql=query.sql(dialect=dialect)))
         return json.dumps(
             {
                 "status": "ok",
                 "from": from_source,
-                "base_sql": _count_select(from_, [], with_).sql(dialect=dialect),
+                "base_sql": _count_select(from_, []).sql(dialect=dialect),
                 "steps": steps,
             }
         )
