@@ -240,7 +240,7 @@ function getColumns(): TreeTableColumnDef<ConversationRow>[] {
         </Tooltip>
       ),
       width: "auto",
-      minWidth: 120,
+      minWidth: 130,
       enableSorting: true,
       sortDescFirst: false,
       accessorFn: (convo) => convo.input_tokens,
@@ -250,7 +250,7 @@ function getColumns(): TreeTableColumnDef<ConversationRow>[] {
       id: "output_tokens",
       header: t`Output tokens`,
       width: "auto",
-      minWidth: 120,
+      minWidth: 140,
       enableSorting: true,
       sortDescFirst: false,
       accessorFn: (convo) => convo.output_tokens,
@@ -268,7 +268,7 @@ function getColumns(): TreeTableColumnDef<ConversationRow>[] {
           />
         </Tooltip>
       ),
-      minWidth: 150,
+      minWidth: 190,
       width: "auto",
       enableSorting: true,
       sortDescFirst: false,
