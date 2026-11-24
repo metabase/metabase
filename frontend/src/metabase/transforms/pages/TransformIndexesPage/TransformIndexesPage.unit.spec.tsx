@@ -170,15 +170,12 @@ describe("TransformIndexesPage", () => {
       ).toBeInTheDocument();
     }
 
+    const indexNames = ["idx_animal_name", "idx_animal_score"];
     const getRowNames = () =>
       within(table)
         .getAllByRole("row")
         .map((row) =>
-          row.textContent?.includes("idx_animal_name")
-            ? "idx_animal_name"
-            : row.textContent?.includes("idx_animal_score")
-              ? "idx_animal_score"
-              : row.textContent,
+          indexNames.find((name) => row.textContent?.includes(name)),
         );
 
     expect(getRowNames()).toEqual(["idx_animal_name", "idx_animal_score"]);
