@@ -324,17 +324,28 @@ describe("NewTransformPage", () => {
       await userEvent.click(
         await screen.findByRole("option", { name: "Writable Postgres12" }),
       );
+      expect(
+        await within(await screen.findByTestId("gui-builder-data")).findByText(
+          "Writable Postgres12",
+          {},
+          { timeout: 5000 },
+        ),
+      ).toBeInTheDocument();
       await userEvent.type(
         within(
           await screen.findByTestId("native-query-editor-container"),
         ).getByRole("textbox"),
         "SELECT 42",
       );
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      const saveButton = screen.getByRole("button", { name: "Save" });
+      await waitFor(() => expect(saveButton).toBeEnabled());
+      await userEvent.click(saveButton);
 
-      const modal = await screen.findByRole("dialog", {
-        name: "Save your transform",
-      });
+      const modal = await screen.findByRole(
+        "dialog",
+        { name: "Save your transform" },
+        { timeout: 5000 },
+      );
       await userEvent.type(
         within(modal).getByLabelText("Name"),
         "SQL transform",
@@ -367,9 +378,9 @@ describe("NewTransformPage", () => {
       await userEvent.click(
         await screen.findByRole("option", { name: "Writable Postgres12" }),
       );
-      const databaseTrigger = within(
+      const databaseTrigger = await within(
         await screen.findByTestId("gui-builder-data"),
-      ).getByText("Writable Postgres12");
+      ).findByText("Writable Postgres12", {}, { timeout: 5000 });
       await userEvent.click(databaseTrigger);
 
       const sampleDatabase = await screen.findByRole("option", {
