@@ -3223,9 +3223,6 @@
                    (t2/select-one-fn :resource :model/OAuthRefreshToken
                                      :token (oidc-util/hash-token (:refresh_token refreshed)))))))))))
 
-;; RFC 6749 section 6 lets a refresh leave out `scope`, and oidc-provider then keeps the token's scopes. The token must
-;; still be bound to the MCP resource, or a client that never sends `scope` keeps an unbound token for good.
-
 (def ^:private mcp-alias-uri
   "A legacy alias of the MCP endpoint, which a token issued before the canonical path existed may be bound to."
   "http://localhost:3000/api/mcp")
@@ -3255,6 +3252,8 @@
    :stored   (t2/select-one-fn :resource :model/OAuthRefreshToken
                                :token (oidc-util/hash-token (:refresh_token token-response)))})
 
+;; RFC 6749 section 6 lets a refresh leave out `scope`, and oidc-provider then keeps the token's scopes. The token must
+;; still be bound to the MCP resource, or a client that never sends `scope` keeps an unbound token for good.
 (deftest scope-less-refresh-of-a-token-without-resource-defaults-to-mcp-test
   (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                      oauth-server-dynamic-registration-enabled true]
@@ -3281,7 +3280,7 @@
                 refreshed (refresh! client (stored-token! client #{not-mcp}))]
             (is (= {:response nil, :stored nil} (resources refreshed)))
             (is (= #{not-mcp} (token-scope-set refreshed)))))
-        (testing "a token holding an MCP scope and an unregistered one stays unbound, since the refresh keeps both"
+        (testing "a token holding an MCP scope and an unregistered one stays unbound"
           (is (= {:response nil, :stored nil}
                  (resources (refresh! client (stored-token! client #{"agent:content:read" "*"}))))))))))
 

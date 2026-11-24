@@ -659,9 +659,9 @@
     body
 
     (str/blank? scope)
-    ;; Only a token with no resource needs anything here, so [[refreshable-token]], which authenticates the client a
-    ;; second time, runs for that token alone and not on every refresh. See the `:else` arm for why naming the
-    ;; resource binds the new tokens.
+    ;; Only a token with no resource needs anything here. The token is read on every such refresh, but
+    ;; [[refreshable-token]], which authenticates the client a second time, runs only for one that needs binding. See
+    ;; the `:else` arm for why naming the resource binds the new tokens.
     (let [body         (dissoc body :scope)
           stored       (when (empty? resource)
                          (some->> (not-empty refresh_token) (oidc.store/get-refresh-token (:token-store provider))))
