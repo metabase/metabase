@@ -31,7 +31,7 @@
                      :ordered-statuses #(mapv :moderated_item_id (content-verification.db/most-recent-moderation-review-statuses #{:card} card-ids))
                      :beyond-newest    #(set (map :id (content-verification.db/moderation-reviews-beyond-newest items 1)))
                      :except           #(set (map :id (content-verification.db/most-recent-moderation-reviews-except items [])))
-                     :ids-of-cards     #(content-verification.db/moderation-review-ids-of-cards card-ids)}]
+                     :ids-of-cards     #(set (content-verification.db/moderation-review-ids-of-cards card-ids))}]
           (doseq [[read-name read-fn] reads]
             (testing read-name
               (let [whole (read-fn)]

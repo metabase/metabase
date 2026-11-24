@@ -29,7 +29,7 @@
   authoritative."
   []
   (t2/reducible-select [:model/Table :t.id :t.data_layer :t.data_authority
-                        [[:coalesce :s.is_published false] :is_published]]
+                        [:s.is_published :is_published]]
                        {:from      [[(t2/table-name :model/Table) :t]]
                         :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
                         :where     [:and

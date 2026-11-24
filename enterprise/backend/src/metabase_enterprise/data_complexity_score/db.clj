@@ -64,7 +64,7 @@
   [audit-database-id :- ::lib.schema.id/database]
   (t2/select [:model/Table :t.id :t.name :t.visibility_type :t.db_id :t.data_layer :t.data_authority
               [:s.collection_id :collection_id]
-              [[:coalesce :s.is_published false] :is_published]]
+              [:s.is_published :is_published]]
              {:from      [[(t2/table-name :model/Table) :t]]
               :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
               :where     [:and

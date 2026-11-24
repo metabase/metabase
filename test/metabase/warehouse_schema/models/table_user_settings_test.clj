@@ -88,8 +88,10 @@
     (mt/with-temp [:model/Table {table-id :id} {}]
       (is (thrown?
            Exception
-           (t2/insert! :model/TableUserSettings
-                       {:table_id table-id :is_published true :collection_id Integer/MAX_VALUE})))))
+           (t2/with-transaction [_conn]
+             (t2/insert! :model/TableUserSettings
+                         {:table_id table-id :is_published true :collection_id Integer/MAX_VALUE}))))
+      (is (= table-id (:id (user-table table-id))))))
   (testing "deleting a collection unpublishes the tables in it"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                    :model/Table {table-1-id :id} {}

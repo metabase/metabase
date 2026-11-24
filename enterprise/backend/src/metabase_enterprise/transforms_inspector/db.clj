@@ -18,7 +18,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :engine :model/Database :id database-id))
 
-(mu/defn active-fields-for-table
-  "The active Fields of the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true))
+(mu/defn active-fields-for-tables
+  "The active Fields of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (mdb/select-batched #(t2/select :model/Field :table_id [:in %] :active true) table-ids))

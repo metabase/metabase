@@ -260,14 +260,19 @@
   [filters :- RunFilters
    limit   :- ms/PositiveInt
    offset  :- ms/IntGreaterThanOrEqualToZero]
-  (->> (app-db/select-batched #(t2/select :model/DataTestRun
-                                          {:where    (run-filter-clause (assoc filters :test-ids (set %)))
-                                           :order-by [[:start_time :desc] [:id :desc]]
-                                           :limit    (+ offset limit)})
-                              (:test-ids filters))
-       (sort-by (juxt :start_time :id) #(compare %2 %1))
-       (drop offset)
-       (into [] (take limit))))
+  (if (<= (count (:test-ids filters)) app-db/select-partition-size)
+    (t2/select :model/DataTestRun {:where    (run-filter-clause filters)
+                                   :order-by [[:start_time :desc] [:id :desc]]
+                                   :limit    limit
+                                   :offset   offset})
+    (->> (app-db/select-batched #(t2/select :model/DataTestRun
+                                            {:where    (run-filter-clause (assoc filters :test-ids (set %)))
+                                             :order-by [[:start_time :desc] [:id :desc]]
+                                             :limit    (+ offset limit)})
+                                (:test-ids filters))
+         (sort-by (juxt :start_time :id) #(compare %2 %1))
+         (drop offset)
+         (into [] (take limit)))))
 
 (mu/defn test-run-count :- :int
   "The number of DataTestRuns matching `filters`."

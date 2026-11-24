@@ -7,7 +7,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,6 +21,45 @@
             (is (= "Lens data not available"
                    (mt/user-http-request :lucky :get 404
                                          (format "ee/transforms/%d/inspect/no-such-lens" transform-id))))))))))
+
+(defn- inspect-call-count!
+  "App-DB statements of one inspect request of a Python transform reading `n` source tables, as a user who may inspect."
+  [n]
+  (let [table-ids (mapv (fn [i]
+                          (let [table-id (t2/insert-returning-pk! :model/Table {:db_id (mt/id)
+                                                                                :name  (str "inspector_count_source_" n "_" i)
+                                                                                :active true})]
+                            (t2/insert! :model/Field {:table_id      table-id
+                                                      :name          "id"
+                                                      :base_type     :type/Integer
+                                                      :database_type "INTEGER"
+                                                      :active        true})
+                            table-id))
+                        (range n))]
+    (try
+      (mt/with-temp [:model/Transform {transform-id :id}
+                     {:source_type :python
+                      :source      {:type            :python
+                                    :source-database (mt/id)
+                                    :source-tables   (mapv (fn [i table-id] {:alias (str "t" i) :table_id table-id})
+                                                           (range) table-ids)
+                                    :body            "pass"}
+                      :target      {:type :table :database (mt/id) :schema nil :name (str "inspector_count_target_" n)}}]
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (let [url (format "ee/transforms/%d/inspect" transform-id)]
+              (mt/user-http-request :lucky :get 200 url)
+              (t2/with-call-count [call-count]
+                (mt/user-http-request :lucky :get 200 url)
+                (call-count))))))
+      (finally
+        (t2/delete! :model/Table :id [:in table-ids])))))
+
+(deftest inspect-statement-count-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-python :hosting}
+    (testing "GET /api/ee/transforms/:id/inspect reads the fields of all source tables in one statement"
+      (is (= (inspect-call-count! 2)
+             (inspect-call-count! 6))))))
 
 ;;; -------------------------------------------------- Inspector Query API --------------------------------------------------
 

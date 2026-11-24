@@ -340,18 +340,23 @@
    database-id :- ::lib.schema.id/database
    perm-type   :- [:or :keyword :string]
    table-ids   :- [:set ms/IntGreaterThanOrEqualToZero]]
-  (into []
-        (comp (remove (comp table-ids :table_id))
-              (map :perm_value)
-              (distinct)
-              (map (fn [perm-value] {:perm_value perm-value})))
-        (t2/query {:select [:table_id :perm_value]
-                   :from   [(t2/table-name :model/DataPermissions)]
-                   :where  [:and
-                            [:= :group_id group-id]
-                            [:= :db_id database-id]
-                            [:= :perm_type perm-type]
-                            [:not= :table_id nil]]})))
+  (let [where [:and
+               [:= :group_id group-id]
+               [:= :db_id database-id]
+               [:= :perm_type perm-type]
+               [:not= :table_id nil]]]
+    (if (<= (count table-ids) mdb/select-partition-size)
+      (t2/query {:select-distinct [:perm_value]
+                 :from            [(t2/table-name :model/DataPermissions)]
+                 :where           (conj where [:not [:in :table_id table-ids]])})
+      (into []
+            (comp (remove (comp table-ids :table_id))
+                  (map :perm_value)
+                  (distinct)
+                  (map (fn [perm-value] {:perm_value perm-value})))
+            (t2/query {:select [:table_id :perm_value]
+                       :from   [(t2/table-name :model/DataPermissions)]
+                       :where  where})))))
 
 (mu/defn table-permission-ids
   "The IDs of the `perm-type` DataPermissions rows of the group with `group-id` on the Tables with `table-ids`."

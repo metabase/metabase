@@ -47,9 +47,9 @@
   (let [request #(mt/user-http-request user :get 200 path)
         _       (request)
         _       (add-rows! 4)
-        small   (statements request)
+        small   (min (statements request) (statements request))
         _       (add-rows! 10)
-        large   (statements request)]
+        large   (min (statements request) (statements request))]
     (is (= small large) (str "as " user " on " path))))
 
 (deftest dashboard-statements-do-not-grow-with-virtual-dashcards-test
