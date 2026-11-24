@@ -1,14 +1,8 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
-import { css } from "@emotion/react";
-// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
-import styled from "@emotion/styled";
 import cx from "classnames";
 import type React from "react";
 import { forwardRef } from "react";
 
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useComputedColorScheme } from "metabase/ui";
-import { getSaveDomImageStyles } from "metabase/viz-core";
+import { useComputedColorScheme, useMantineTheme } from "metabase/ui";
 
 import S from "./PublicComponentStylesWrapper.style.css";
 
@@ -17,11 +11,6 @@ import S from "./PublicComponentStylesWrapper.style.css";
  * This is to ensure that the SDK components are styled correctly,
  * even when rendered under a React portal.
  */
-const PublicComponentStylesWrapperInner = styled.div`
-  font-size: ${({ theme }) => theme.other.fontSize};
-  ${() => getSaveDomImageStyles(isEmbeddingSdk())}
-`;
-
 export const PublicComponentStylesWrapper = forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div">
@@ -35,13 +24,22 @@ export const PublicComponentStylesWrapper = forwardRef<
   const colorScheme = useComputedColorScheme("light", {
     getInitialValueInEffect: false,
   });
+  const theme = useMantineTheme();
+  // The wrapper class reads the font size, so host rules and the `style` prop can still override it
+  const style: React.CSSProperties & {
+    "--public-component-font-size"?: string;
+  } = {
+    "--public-component-font-size": theme.other.fontSize,
+    ...props.style,
+  };
 
   return (
-    <PublicComponentStylesWrapperInner
+    <div
       {...props}
       ref={ref}
       dir="ltr"
       className={cx("mb-wrapper", S.publicComponentWrapper, props.className)}
+      style={style}
       data-mantine-color-scheme={colorScheme}
     />
   );
@@ -52,20 +50,18 @@ export const PublicComponentStylesWrapper = forwardRef<
  * can't also apply our entire css reset scoped to this container, as it would
  * be of higher specificity than some of our styles.
  *
- * The reason why this works is two things combined:
- * - `*:where(button)` doesn't increase specificity, so the resulting specificity is (0,1,0)
- * - this global css is loaded in the provider, before our other styles
- * - -> our other code with specificity (0,1,0) will override this as they're loaded after
+ * This works because `:where()` adds no specificity, so every rule here is (0,0,0).
+ * Any of our rules with a class or element selector overrides it, whatever the load order.
  */
 // note: if we move this to  css.module, remember to add :global to .mb-wrapper
-export const SCOPED_CSS_RESET = css`
+export const SCOPED_CSS_RESET = `
   :where(.mb-wrapper) *:where(button) {
     border: 0;
     background-color: transparent;
   }
 
-  // The app resets list padding and margin globally. These styles are scoped
-  // to the wrapper, so the reset has to be repeated inside it.
+  /* The app resets list padding and margin globally. These styles are scoped
+     to the wrapper, so the reset has to be repeated inside it. */
   :where(.mb-wrapper) *:where(ul) {
     padding: 0;
     margin: 0;
@@ -75,8 +71,8 @@ export const SCOPED_CSS_RESET = css`
     display: inline;
   }
 
-  // Mobile Safari sets the opacity of disabled inputs/textareas to 0.4 which we don't want
-  // https://github.com/metabase/metabase/issues/49170
+  /* Mobile Safari sets the opacity of disabled inputs/textareas to 0.4 which we don't want
+     https://github.com/metabase/metabase/issues/49170 */
   @supports (-webkit-touch-callout: none) {
     :where(.mb-wrapper) *:where(input),
     :where(.mb-wrapper) *:where(textarea) {

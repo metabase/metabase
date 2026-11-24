@@ -9,8 +9,6 @@ import { EditBar } from "metabase/common/components/EditBar";
 import { Button } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-import S from "./MetricEditorHeader.module.css";
-
 type MetricEditorHeaderProps = {
   question: Question;
   isDirty: boolean;
@@ -34,7 +32,6 @@ export function MetricEditorHeader({
 
   return (
     <EditBar
-      className={S.root}
       title={question.displayName() ?? t`New metric`}
       buttons={[
         <Button key="cancel" variant="on-dark-secondary" onClick={onCancel}>
