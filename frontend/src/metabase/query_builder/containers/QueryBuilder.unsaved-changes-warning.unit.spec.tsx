@@ -16,10 +16,8 @@ import {
   within,
 } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
-import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";
 import { setPendingMetabotCard } from "metabase/redux/query-builder";
 import * as Urls from "metabase/urls";
-import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -31,7 +29,6 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 import {
-  PRODUCTS,
   PRODUCTS_ID,
   PRODUCT_CATEGORY_VALUES,
   createProductsCategoryDatasetColumn,
@@ -984,12 +981,8 @@ describe("QueryBuilder - unsaved changes warning", () => {
     ) => {
       await userEvent.click(screen.getByTestId("notebook-button"));
       const filterStep = await screen.findByTestId("step-filter-0-0");
-      const filterItem = within(filterStep).getByText(filterName);
-      await userEvent.click(
-        within(
-          checkNotNull(filterItem.closest("[data-testid=notebook-cell-item]")),
-        ).getByLabelText("close icon"),
-      );
+      expect(within(filterStep).getByText(filterName)).toBeInTheDocument();
+      await userEvent.click(within(filterStep).getByLabelText("close icon"));
       await waitFor(() =>
         expect(
           within(filterStep).queryByText(filterName),
@@ -1060,26 +1053,41 @@ describe("QueryBuilder - unsaved changes warning", () => {
     });
 
     it("does not show the warning after opening the question filtered by a dashboard click", async () => {
-      // The URL a dashboard click behavior opens: the saved question with
-      // the clicked value as a filter, built by the click behavior code.
+      // A dashboard click behavior that opens a saved question opens it with
+      // the clicked value as a filter, at an ad-hoc URL that keeps the id of
+      // the saved question in `original_card_id`.
       const metadata = createMockMetadata({
         databases: [createSampleDatabase()],
       });
-      const question = new Question(PRODUCTS_CARD, metadata);
-      const url = getStructuredQuestionUrlWithParameters(
-        question.setQuery(Lib.ensureFilterStage(question.query())),
-        question,
-        [
-          {
-            id: "title",
-            slug: "title",
-            name: "Title",
-            type: "string/=",
-            target: ["dimension", ["field", PRODUCTS.TITLE, null]],
-          },
-        ],
-        { title: "Rustic Paper Wallet" },
+      const filteredQuestion = new Question(
+        {
+          ...PRODUCTS_CARD,
+          dataset_query: Lib.toJsQuery(
+            Lib.createTestQuery(SAMPLE_PROVIDER, {
+              stages: [
+                {
+                  source: { type: "table", id: PRODUCTS_ID },
+                  filters: [
+                    {
+                      type: "operator",
+                      operator: "=",
+                      args: [
+                        { type: "column", name: "TITLE" },
+                        { type: "literal", value: "Rustic Paper Wallet" },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            }),
+          ),
+        },
+        metadata,
       );
+      const url = Urls.question(filteredQuestion, {
+        originalQuestion: new Question(PRODUCTS_CARD, metadata),
+      });
+      expect(url).toMatch(/^\/question#/);
       const { router } = await setupProductsQuestion({ initialRoute: url });
 
       expect(
