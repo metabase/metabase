@@ -86,10 +86,10 @@
                                      (update-vals #(map :user_id %)))
                                  {})
           user-id->user        (pulse.db/users-names-and-emails-by-id
-                                (into (cond-> (vec (distinct (keep :creator_id broken-pulses)))
-                                        dashboard-creator-id (conj dashboard-creator-id))
-                                      (comp cat (distinct))
-                                      (vals channel-id->user-ids)))]
+                                (distinct
+                                 (concat (keep :creator_id broken-pulses)
+                                         [dashboard-creator-id]
+                                         (sequence cat (vals channel-id->user-ids)))))]
       (for [broken-pulse broken-pulses]
         (assoc
          (bad-pulse-notification-data user-id->user channel-id->user-ids broken-pulse
