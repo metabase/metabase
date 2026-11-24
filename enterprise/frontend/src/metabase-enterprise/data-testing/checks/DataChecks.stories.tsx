@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
@@ -13,12 +13,14 @@ import {
   Flex,
   Group,
   Icon,
+  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
 
+import { DATA_CHECK_CATALOGUE, DATA_CHECK_CATEGORIES } from "./catalogue";
 import {
   DataCheckForm,
   DataCheckList,
@@ -287,4 +289,65 @@ export const EditCheck: Story = {
       </Box>
     </Box>
   ),
+};
+
+type ShownResult = "failing" | "passing";
+
+const SHOWN_RESULT_OPTIONS: { value: ShownResult; label: string }[] = [
+  { value: "failing", label: "Failing" },
+  { value: "passing", label: "Passing" },
+];
+
+function getRunOfType(check: string, shown: ShownResult): DataCheckRun | null {
+  const example = DQ_FIXTURE.examples.find(
+    ({ definition }) => definition.check === check,
+  );
+  if (example != null) {
+    return { definition: example.definition, result: example[shown] };
+  }
+  return (
+    DQ_FIXTURE.extras.find(
+      ({ result }) => result.check === check && result.reason === "unsupported",
+    ) ?? null
+  );
+}
+
+function EveryCheckTypeGallery() {
+  const [shown, setShown] = useState<ShownResult>("failing");
+
+  return (
+    <Box bg="background_page-secondary" mih="100vh" p="xl">
+      <Stack gap="xl" maw="84rem" mx="auto">
+        <SegmentedControl
+          value={shown}
+          onChange={setShown}
+          data={SHOWN_RESULT_OPTIONS}
+          w="16rem"
+        />
+        {Object.entries(DATA_CHECK_CATEGORIES).map(([category, title]) => (
+          <Stack key={category} gap="md">
+            <Title order={4}>{title}</Title>
+            <SimpleGrid cols={2} spacing="lg" style={{ alignItems: "start" }}>
+              {DATA_CHECK_CATALOGUE.filter(
+                (entry) => String(entry.category) === category,
+              ).map((entry) => {
+                const run = getRunOfType(entry.name, shown);
+                return (
+                  run != null && (
+                    <Box key={entry.name} data-check-type={entry.name}>
+                      <DataCheckResultCard {...run} />
+                    </Box>
+                  )
+                );
+              })}
+            </SimpleGrid>
+          </Stack>
+        ))}
+      </Stack>
+    </Box>
+  );
+}
+
+export const EveryCheckType: Story = {
+  render: () => <EveryCheckTypeGallery />,
 };

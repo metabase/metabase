@@ -71,16 +71,20 @@ export type DataCheckProblem = {
 };
 
 export function getDataCheckProblem(
-  result: Pick<DataCheckResult, "reason" | "message">,
+  result: Pick<DataCheckResult, "reason" | "message" | "check">,
   needsHistory: boolean,
 ): DataCheckProblem {
   switch (result.reason) {
     case "unsupported":
       return {
         title: t`This check can't run yet`,
-        explanation: needsHistory
-          ? t`It compares today's numbers with earlier runs, and earlier runs aren't stored yet.`
-          : (result.message ?? t`It needs something that isn't available yet.`),
+        explanation:
+          result.check === "last_updated_within"
+            ? t`It needs to know when the table was last changed, and that isn't recorded yet.`
+            : needsHistory
+              ? t`It compares today's numbers with earlier runs, and earlier runs aren't stored yet.`
+              : (result.message ??
+                t`It needs something that isn't available yet.`),
         action: t`Nothing is wrong with your data or with the check. It will start running once this is available.`,
         showsEngineMessage: false,
       };
