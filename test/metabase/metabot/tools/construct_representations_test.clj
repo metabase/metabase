@@ -572,9 +572,9 @@
 (deftest llm-orders-by-inline-aggregation-reproducer-test
   (testing (str "Reproducer: when the LLM writes `order-by` by re-stating the aggregation\n"
                 "expression inline (`[desc, {}, [sum, {}, [field, {}, FK]]]`) instead of using\n"
-                "an aggregation reference, the construct call appears to succeed but the\n"
-                "resulting query is unrunnable: the legacy-MBQL form has an inline aggregation\n"
-                "in `:order-by`, which legacy MBQL rejects. Triggered by the natural-language\n"
+                "an aggregation reference, the repair pass rewrites it to one. The inline form\n"
+                "is valid MBQL 5, but legacy MBQL allows only a ref in `:order-by`, so a query\n"
+                "converted to legacy MBQL would fail to load. Triggered by the natural-language\n"
                 "request 'total revenue per product category' - the LLM adds a sort by\n"
                 "revenue desc and writes the order-by inline.")
     (with-mp-and-stubs!
@@ -593,9 +593,8 @@
                                                     ["sum" {}
                                                      ["field" {}
                                                       ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]})
-              ;; Today: `execute-representations-query` succeeds quietly here. The crash
-              ;; happens later, when downstream callers (chart re-load, normalize, QP) try to
-              ;; round-trip the query through legacy MBQL.
+              ;; The inline form is valid MBQL 5, so the construct call succeeds either way; what
+              ;; matters is that the repair pass replaced it with an aggregation reference.
               result   (try
                          (construct/execute-representations-query query)
                          (catch clojure.lang.ExceptionInfo e e))]
@@ -605,27 +604,12 @@
                      (when (instance? clojure.lang.ExceptionInfo result)
                        (pr-str {:msg (ex-message result) :data (ex-data result)}))))
             (when-not (instance? clojure.lang.ExceptionInfo result)
-              (let [q          (get-in result [:structured-output :query])
-                    ;; Round-trip through legacy is the gate the production failure hit.
-                    legacy     #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL q)
-                    rebuilt    (try (lib/query mp legacy)
-                                    (catch clojure.lang.ExceptionInfo e e))]
-                (testing "order-by uses an aggregation reference, not an inline aggregation"
-                  ;; In MBQL 5: `[:aggregation {} \"<uuid>\"]`. Whatever shape we settle on, an
-                  ;; inline `[:sum [:field ...]]` (a stage-aggregation expression) must NOT
-                  ;; appear inside `:order-by`.
-                  (is (not= :sum
-                            (let [first-ord (first (get-in q [:stages 0 :order-by]))
-                                  ;; first-ord is `[:desc {} <inner>]`; `nth ord 2` is the inner clause
-                                  inner     (when (and (vector? first-ord) (>= (count first-ord) 3))
-                                              (nth first-ord 2))]
-                              (when (vector? inner) (first inner))))
-                      "order-by inner clause should be an aggregation ref, not :sum"))
-                (testing "legacy round-trip succeeds (would fail in production with :order-by [:sum ...])"
-                  (is (not (instance? clojure.lang.ExceptionInfo rebuilt))
-                      (str "legacy-roundtrip failed: "
-                           (when (instance? clojure.lang.ExceptionInfo rebuilt)
-                             (ex-message rebuilt)))))))))))))
+              (let [q        (get-in result [:structured-output :query])
+                    agg-uuid (get-in q [:stages 0 :aggregation 0 1 :lib/uuid])]
+                (testing "order-by refers to the stage's aggregation, not an inline copy of it"
+                  (is (string? agg-uuid))
+                  (is (=? [[:desc {} [:aggregation {} agg-uuid]]]
+                          (get-in q [:stages 0 :order-by]))))))))))))
 
 ;;; ============================================================
 ;;; Step-14-follow-up contract: database identity from `stages[0]`

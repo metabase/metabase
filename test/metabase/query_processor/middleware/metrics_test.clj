@@ -728,46 +728,43 @@
                                               (add-aggregation-options {:display-name "My Cool Aggregation"})))
           before {:source-table (meta/id :venues)
                   :aggregation  [[:metric (:id source-metric)]]}
+          ;; the stage that `before` becomes once the metric is expanded
           after {:source-table (meta/id :venues)
-                 :aggregation  [[:aggregation-options
-                                 [:sum [:case [[[:= [:field (meta/id :venues :name) {}] [:value "abc" {}]]
-                                                [:field (meta/id :venues :price) {}]]]]]
-                                 {:display-name "Mock Metric"}]]}
+                 :aggregation  [[:sum
+                                 {:display-name "Mock Metric"}
+                                 [:case
+                                  {}
+                                  [[[:= {} [:field {} (meta/id :venues :name)] [:value {} "abc"]]
+                                    [:field {} (meta/id :venues :price)]]]]]]}
           expand-macros (fn [mbql-query]
-                          ;; existing usage -- do not use going forward
-                          #_{:clj-kondo/ignore [:deprecated-var]}
-                          (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->mbql5 mbql-query)))))]
-      (comment
-        (testing "nested 1 level"
-          (is (=? (lib.tu.macros/mbql-query nil
-                    {:source-query after})
-                  (expand-macros (lib.tu.macros/mbql-query nil
-                                   {:source-query before})))))
-        (testing "nested 2 levels"
-          (is (=? (lib.tu.macros/mbql-query nil
-                    {:source-query {:source-query after}})
-                  (expand-macros
-                   (lib.tu.macros/mbql-query nil
-                     {:source-query {:source-query before}})))))
-        (testing "nested 3 levels"
-          (is (=? (lib.tu.macros/mbql-query nil
-                    {:source-query {:source-query {:source-query after}}})
-                  (expand-macros
-                   (lib.tu.macros/mbql-query nil
-                     {:source-query {:source-query {:source-query before}}}))))))
-      (testing "inside :source-query inside :joins"
-        (is (=? (lib.tu.macros/mbql-query checkins
-                  {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
-                            :source-query after}]})
+                          (adjust (lib/query mp (lib.convert/->mbql5 mbql-query))))]
+      (testing "nested 1 level"
+        (is (=? {:stages [after {}]}
+                (expand-macros (lib.tu.macros/mbql-query nil
+                                 {:source-query before})))))
+      (testing "nested 2 levels"
+        (is (=? {:stages [after {} {}]}
+                (expand-macros
+                 (lib.tu.macros/mbql-query nil
+                   {:source-query {:source-query before}})))))
+      (testing "nested 3 levels"
+        (is (=? {:stages [after {} {} {}]}
+                (expand-macros
+                 (lib.tu.macros/mbql-query nil
+                   {:source-query {:source-query {:source-query before}}})))))
+      (testing "inside a stage inside :joins"
+        (is (=? {:stages [{:source-table (meta/id :checkins)
+                           :joins        [{:conditions [[:= {} [:field {} (meta/id :checkins :id)] 2]]
+                                           :stages     [after]}]}]}
                 (expand-macros
                  (lib.tu.macros/mbql-query checkins
                    {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
                              :source-query before}]})))))
-      (testing "inside :joins inside :source-query"
-        (is (=? (lib.tu.macros/mbql-query nil
-                  {:source-query {:source-table (meta/id :checkins)
-                                  :joins        [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
-                                                  :source-query after}]}})
+      (testing "inside :joins inside an earlier stage"
+        (is (=? {:stages [{:source-table (meta/id :checkins)
+                           :joins        [{:conditions [[:= {} [:field {} (meta/id :checkins :venue-id)] 2]]
+                                           :stages     [after]}]}
+                          {}]}
                 (expand-macros (lib.tu.macros/mbql-query nil
                                  {:source-query {:source-table (meta/id :checkins)
                                                  :joins

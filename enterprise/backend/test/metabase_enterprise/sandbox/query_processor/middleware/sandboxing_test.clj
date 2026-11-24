@@ -47,7 +47,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -173,19 +172,9 @@
        :order-by [[:asc $venue_id->venues.price]]
        :breakout [$venue_id->venues.price]}))))
 
-;; TODO -- #19754 adds [[mt/remove-source-metadata]] that can be used here (once it gets merged)
-(defn- remove-metadata [m]
-  (match/replace m
-    {:source-metadata _}
-    (remove-metadata (dissoc &match :source-metadata))))
-
 (defn- apply-row-level-permissions [query]
   (-> (lib/query (mt/metadata-provider) query)
-      (#'sandboxing/apply-sandboxing)
-      ;; existing usage -- do not use going forward
-      #_{:clj-kondo/ignore [:deprecated-var]}
-      lib/->legacy-MBQL
-      remove-metadata))
+      (#'sandboxing/apply-sandboxing)))
 
 (deftest middleware-test
   (testing "Make sure the middleware does the correct transformation given the GTAPs we have"
@@ -193,49 +182,56 @@
                               :venues (dissoc (venues-price-mbql-gtap-def) :query)}
                       :attributes {"user" 5, "price" 1}}
       (testing "Should add a filter for attributes-only GTAP"
-        (is (=? (mt/query checkins
-                  {:type :query
-                   :query {:source-query {:source-table $$checkins
-                                          :fields [[:field %id {}]
-                                                   [:field %date {}]
-                                                   [:field %user_id {}]
-                                                   [:field %venue_id {}]]
-                                          :filter [:and
-                                                   ;; This still gets :default bucketing! auto-bucket-datetimes
-                                                   ;; puts :day bucketing on both parts of this filter, since it's
-                                                   ;; matching a YYYY-mm-dd string. Then optimize-temporal-clauses
-                                                   ;; sees that the
-                                                   ;; :type/Date column already has :day
-                                                   ;; granularity, and switches both to :default
-                                                   [:> !default.date [:absolute-datetime
-                                                                      #t "2014-01-01"
-                                                                      :default]]
-                                                   [:=
-                                                    $user_id
-                                                    [:value 5 {:base_type :type/Integer
-                                                               :semantic_type :type/FK
-                                                               :database_type "INTEGER"}]]]
-                                          ::sandboxing/sandbox? true
-                                          :query-permissions/sandboxed-table $$checkins}
-                           :joins [{:source-query
-                                    {:source-table $$venues
-                                     :fields [[:field %venues.id {}]
-                                              [:field %venues.name {}]
-                                              [:field %venues.category_id {}]
-                                              [:field %venues.latitude {}]
-                                              [:field %venues.longitude {}]
-                                              [:field %venues.price {}]]
-                                     :filter [:=
-                                              $venues.price
-                                              [:value 1 {:base_type :type/Integer
-                                                         :semantic_type :type/Category
-                                                         :database_type "INTEGER"}]]
-                                     ::sandboxing/sandbox? true
-                                     :query-permissions/sandboxed-table $$venues}
-                                    :alias "v"
-                                    :strategy :left-join
-                                    :condition [:= $venue_id &v.venues.id]}]
-                           :aggregation [[:count]]}
+        (is (=? (mt/$ids checkins
+                  {:stages [{:source-table $$checkins
+                             :fields [[:field {} %id]
+                                      [:field {} %date]
+                                      [:field {} %user_id]
+                                      [:field {} %venue_id]]
+                             :filters [;; This still gets :default bucketing! auto-bucket-datetimes
+                                       ;; puts :day bucketing on both parts of this filter, since it's
+                                       ;; matching a YYYY-mm-dd string. Then optimize-temporal-clauses
+                                       ;; sees that the
+                                       ;; :type/Date column already has :day
+                                       ;; granularity, and switches both to :default
+                                       [:>
+                                        {}
+                                        [:field {:temporal-unit :default} %date]
+                                        [:absolute-datetime {} #t "2014-01-01" :default]]
+                                       [:=
+                                        {}
+                                        [:field {} %user_id]
+                                        [:value
+                                         {:base-type :type/Integer
+                                          :semantic-type :type/FK
+                                          :database-type "INTEGER"}
+                                         5]]]
+                             ::sandboxing/sandbox? true
+                             :query-permissions/sandboxed-table $$checkins}
+                            {:joins [{:stages [{:source-table $$venues
+                                                :fields [[:field {} %venues.id]
+                                                         [:field {} %venues.name]
+                                                         [:field {} %venues.category_id]
+                                                         [:field {} %venues.latitude]
+                                                         [:field {} %venues.longitude]
+                                                         [:field {} %venues.price]]
+                                                :filters [[:=
+                                                           {}
+                                                           [:field {} %venues.price]
+                                                           [:value
+                                                            {:base-type :type/Integer
+                                                             :semantic-type :type/Category
+                                                             :database-type "INTEGER"}
+                                                            1]]]
+                                                ::sandboxing/sandbox? true
+                                                :query-permissions/sandboxed-table $$venues}]
+                                      :alias "v"
+                                      :strategy :left-join
+                                      :conditions [[:=
+                                                    {}
+                                                    [:field {} %venue_id]
+                                                    [:field {:join-alias "v"} %venues.id]]]}]
+                             :aggregation [[:count {}]]}]
 
                    ::sandboxing/original-metadata [{:base_type :type/Integer
                                                     :semantic_type :type/Quantity
@@ -256,15 +252,15 @@
     (testing "Should substitute appropriate value in native query"
       (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}
                         :attributes {"cat" 50}}
-        (is (=? (mt/query nil
+        (is (=? (mt/$ids nil
                   {:database (mt/id)
-                   :type :query
-                   :query {:aggregation [[:count]]
-                           :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
-                                                       "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
-                                                       "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\" ASC")
-                                          :query-permissions/sandboxed-table $$venues
-                                          :params []}}
+                   :stages [{:lib/type :mbql.stage/native
+                             :native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
+                                          "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
+                                          "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\" ASC")
+                             :query-permissions/sandboxed-table $$venues
+                             :params []}
+                            {:aggregation [[:count {}]]}]
 
                    ::sandboxing/original-metadata [{:base_type :type/Integer
                                                     :semantic_type :type/Quantity
@@ -1103,18 +1099,16 @@
                             test-preprocessing
                             (fn []
                               (testing "`fix-bad-field-id-refs` middleware should infer `:field` `:join-alias` correctly"
-                                (is (= [:=
-                                        [:field (mt/id :products :category) {:join-alias "products"}]
-                                        [:value "Widget" {:base_type :type/Text
-                                                          :semantic_type (t2/select-one-fn :semantic_type :model/Field
-                                                                                           :id (mt/id :products :category))
-                                                          :database_type "CHARACTER VARYING"}]]
-                                       (get-in (-> drill-thru-query
-                                                   qp.preprocess/preprocess
-                                                   ;; legacy usage -- don't do things like this going forward
-                                                   #_{:clj-kondo/ignore [:deprecated-var]}
-                                                   lib/->legacy-MBQL)
-                                               [:query :filter])))))]
+                                (is (=? [[:=
+                                          {}
+                                          [:field {:join-alias "products"} (mt/id :products :category)]
+                                          [:value
+                                           {:base-type :type/Text
+                                            :semantic-type (t2/select-one-fn :semantic_type :model/Field
+                                                                             :id (mt/id :products :category))
+                                            :database-type "CHARACTER VARYING"}
+                                           "Widget"]]]
+                                        (-> drill-thru-query qp.preprocess/preprocess :stages last :filters)))))]
                         (testing "As an admin"
                           (mt/with-test-user :crowberto
                             (test-preprocessing)

@@ -1638,11 +1638,11 @@
 ;;;   aggregation: [[sum, {}, [field, {}, [..., TOTAL]]]]
 ;;;   order-by:    [[desc, {}, [sum, {}, [field, {}, [..., TOTAL]]]]]   # <-- inline copy
 ;;;
-;;; In MBQL 5 / legacy MBQL the `order-by` direction must wrap an aggregation **reference**,
-;;; not the aggregation expression itself. The `lib.normalize` step accepts the inline form
-;;; structurally, but `lib/->legacy-MBQL` produces a query that fails legacy-schema validation
-;;; the moment something downstream re-loads it (e.g. when the chart is opened, the QP
-;;; round-trips through legacy MBQL and explodes with `Invalid output: {:query {:order-by ...}}`).
+;;; The query builder writes an aggregation **reference** in `order-by`, not the aggregation
+;;; expression itself. MBQL 5 accepts the inline form, but legacy MBQL allows only an
+;;; `aggregation`, `expression` or `field` ref there, so this matters only to a consumer that
+;;; converts the query to legacy MBQL: the converted query fails to load, with
+;;; `Invalid output: {:query {:order-by ...}}`.
 ;;;
 ;;; This pass detects the pattern, structurally matches each `order-by` inner clause against
 ;;; the stage's `aggregation` list (ignoring options-map differences), and:

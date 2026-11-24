@@ -7,7 +7,6 @@
    [metabase.api.common :as mb.api]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -1597,8 +1596,8 @@
   (testing "Native queries are properly adjusted"
     (let [mp (mt/metadata-provider)
           native (lib/native-query mp "select * from orders")
-          ;; existing usage -- do not use going forward
-          legacy #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL native)
+          ;; legacy MBQL, written by hand: this test is about upgrading it
+          legacy {:database (mt/id), :type :native, :native {:query "select * from orders"}}
           items  [{:type "adhoc" :query legacy}
                   {:type "dashboard"}
                   {:type "model" :query legacy :chart_configs [{:query legacy}]}]

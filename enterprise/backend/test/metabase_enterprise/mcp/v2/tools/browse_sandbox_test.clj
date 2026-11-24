@@ -1,13 +1,12 @@
 (ns metabase-enterprise.mcp.v2.tools.browse-sandbox-test
   "Row-restriction tests for `browse_data`'s `get_fields` action. Fingerprints are computed at sync
    time over every row of the table, so they must not reach a user whose row access is narrowed."
-  ;; A gtap `:query` is persisted as a card's legacy `dataset_query`, so building these in Lib would
-  ;; only round-trip back through `lib.convert/->legacy-MBQL`.
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.mcp.v2.tools.browse-sandbox-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.browse :as tools.browse]
    [metabase.test :as mt]
@@ -27,9 +26,16 @@
   [envelope field-name]
   (->> (:tables envelope) (mapcat :fields) (filter #(= field-name (:name %))) first))
 
+(defn- sandbox-query
+  "A query for the table `table-kw` that keeps only the rows where the field `field-kw` equals `value`."
+  [table-kw field-kw value]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+        (lib/filter (lib/= (lib.metadata/field mp (mt/id table-kw field-kw)) value)))))
+
 (deftest ^:synchronized sandboxed-get-fields-withholds-fingerprint-test
   (testing "a row-sandboxed user gets no fingerprint — it is computed over rows they cannot see"
-    (met/with-gtaps! {:gtaps      {:venues {:query (mt/mbql-query venues {:filter [:= $price 1]})}}
+    (met/with-gtaps! {:gtaps      {:venues {:query (sandbox-query :venues :price 1)}}
                       :attributes {}}
       (let [envelope (get-fields {:action          "get_fields"
                                   :table_ids       [(mt/id :venues)]
@@ -46,7 +52,7 @@
 
 (deftest ^:synchronized sandboxed-get-fields-withholds-temporal-fingerprint-test
   (testing ":earliest/:latest are literal timestamps from hidden rows"
-    (met/with-gtaps! {:gtaps      {:checkins {:query (mt/mbql-query checkins {:filter [:= $venue_id 1]})}}
+    (met/with-gtaps! {:gtaps      {:checkins {:query (sandbox-query :checkins :venue_id 1)}}
                       :attributes {}}
       (let [envelope (get-fields {:action          "get_fields"
                                   :table_ids       [(mt/id :checkins)]
@@ -57,7 +63,7 @@
 
 (deftest ^:synchronized sandboxed-get-fields-withholds-fingerprint-projection-test
   (testing "an explicit `fields` projection cannot route around the withholding"
-    (met/with-gtaps! {:gtaps      {:venues {:query (mt/mbql-query venues {:filter [:= $price 1]})}}
+    (met/with-gtaps! {:gtaps      {:venues {:query (sandbox-query :venues :price 1)}}
                       :attributes {}}
       (let [envelope (get-fields {:action    "get_fields"
                                   :table_ids [(mt/id :venues)]

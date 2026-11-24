@@ -90,6 +90,8 @@ liability it usually is.
 - [ ] New tests do not use `mt/mbql-query`, `mt/query`, `mt/native-query` or `mt/run-mbql-query`
 - [ ] New tests that need no real app DB objects use `meta/metadata-provider` and `lib.tu/mock-metadata-provider`, not
       `(mt/metadata-provider)` and `mt/with-temp`
+- [ ] A key that must be absent is asserted inside the `=?` expectation with `(symbol "nil #_\"key is not present.\"")`,
+      not with `nil` or a separate `contains?` check
 
 ### Modules
 
@@ -163,6 +165,7 @@ Quick scan for common issues:
 | Query params with `snake_case`               | Use kebab-case for query params                             |
 | New API endpoint without tests               | Add tests for the endpoint                                  |
 | `(mt/mbql-query ...)` in a new test          | Build the query with `lib/query` and a metadata provider    |
+| `{:k nil}` in `=?` to mean `:k` is absent    | `(symbol "nil #_\"key is not present.\"")` as the expected value |
 | `lib/->legacy-MBQL`                          | About to be removed; keep the query in MBQL 5               |
 | `inner-query`, `outer-query`, `pmbql` names  | Legacy or outdated terms in MBQL 5 code: `stage`, `query`, `mbql5` |
 

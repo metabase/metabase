@@ -457,16 +457,18 @@
 
 (deftest ^:parallel replace-clause-breakout-test-3
   (testing "should ignore duplicate breakouts with the same temporal bucket when converting from legacy MBQL"
-    (let [base-query  (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column      (meta/field-metadata :people :birth-date)
-          query       (-> base-query
-                          (lib/breakout (lib/with-temporal-bucket column :year))
-                          (lib/breakout (lib/with-temporal-bucket column :month)))
-          query       (->> query
-                           ;; existing usage -- do not use going forward
-                           #_{:clj-kondo/ignore [:deprecated-var]}
-                           lib/->legacy-MBQL
-                           (lib/query meta/metadata-provider))]
+    (let [column (meta/field-metadata :people :birth-date)
+          ;; legacy MBQL, written by hand: this test is about converting it
+          query  (lib/query meta/metadata-provider
+                            {:database (meta/id)
+                             :type     :query
+                             :query    {:source-table (meta/id :people)
+                                        :breakout     [[:field
+                                                        (meta/id :people :birth-date)
+                                                        {:base-type :type/Date, :temporal-unit :year}]
+                                                       [:field
+                                                        (meta/id :people :birth-date)
+                                                        {:base-type :type/Date, :temporal-unit :month}]]}})]
       (is (= query
              (lib/replace-clause query
                                  (first (lib/breakouts query))

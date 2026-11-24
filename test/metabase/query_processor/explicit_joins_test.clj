@@ -10,9 +10,7 @@
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -1387,10 +1385,7 @@
 (defn- check-venues+categories-with-value-wrapped-args
   [[op & args] expected-rows]
   (check-venues+categories-on-condition
-   ;; existing usage -- do not use going forward
-   (into [op] (map (comp #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL
-                         lib.expression/value))
-         args)
+   (into [op] (map (fn [arg] [:value arg {:base_type :type/Integer}])) args)
    expected-rows))
 
 (deftest ^:parallel join-expressions-operator-<-always-true-condition-test

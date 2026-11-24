@@ -55,6 +55,16 @@
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
 
+(defn- legacy-venues-query
+  "The legacy MBQL form of [[venues-query]], written by hand: a conversation can hold queries in that format."
+  []
+  {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}})
+
+(defn- legacy-sql-query
+  "A legacy MBQL native query that runs `sql`, written by hand: a conversation can hold queries in that format."
+  [sql]
+  {:database (mt/id), :type :native, :native {:query sql}})
+
 (deftest dashboard-for-each-source-test
   (mt/with-temp [:model/Table {table-id :id :as table} {:name (mt/random-name) :db_id (mt/id)}
                  :model/Card  {model-id :id}            {:type :model :name "Test model"}
@@ -81,8 +91,7 @@
                    :model/Card {metric-id :id}   {:type :metric :dataset_query (lib/aggregate venues (lib/count))}
                    :model/Card {question-id :id} {:type :question :dataset_query venues}]
       (let [queries {"q-1"      venues
-                     ;; existing usage -- do not use going forward
-                     "q-legacy" #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL venues)
+                     "q-legacy" (legacy-venues-query)
                      "q-model"  (lib/query (mt/metadata-provider)
                                            (lib.metadata/card
                                             (mt/metadata-provider) model-id))
@@ -130,11 +139,9 @@
                       "Query \"q-9\" was not found. Available query IDs: \"q-1\", \"q-legacy\"."
                       "Use an available query ID from this conversation.")
              (invoke {:query_id "q-9"} {"q-1"          (venues-query)
-                                        ;; existing usage -- do not use going forward
-                                        "q-legacy"     #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL (venues-query))
+                                        "q-legacy"     (legacy-venues-query)
                                         "q-sql"        sql
-                                        ;; existing usage -- do not use going forward
-                                        "q-sql-legacy" #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL sql)
+                                        "q-sql-legacy" (legacy-sql-query "SELECT * FROM VENUES")
                                         "q-sql-staged" (lib/append-stage sql)
                                         "q-draft"      {:database (mt/id)}})))))
   (testing "a long list of IDs is cut to complete IDs, so the recovery step still reaches the model"
@@ -218,11 +225,20 @@
                    :model/Card {card-id :id} {:collection_id collection-id
                                               :dataset_query (let [mp (mt/metadata-provider)]
                                                                (lib/query mp (lib.metadata/table mp (mt/id :categories))))}]
-      (let [mp    (mt/metadata-provider)
-            query (-> (venues-query)
-                      (lib/join (lib.metadata/card mp card-id)))]
-        ;; existing usage -- do not use going forward
-        (doseq [query [query #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL query)]]
+      (let [mp     (mt/metadata-provider)
+            query  (-> (venues-query)
+                       (lib/join (lib.metadata/card mp card-id)))
+            ;; the same query as legacy MBQL, written by hand: the tool has to refuse it in that format too
+            legacy {:database (mt/id)
+                    :type     :query
+                    :query    {:source-table (mt/id :venues)
+                               :joins        [{:fields       :all
+                                               :alias        "Category"
+                                               :source-table (str "card__" card-id)
+                                               :condition    [:=
+                                                              [:field (mt/id :venues :category_id) {:base-type :type/Integer}]
+                                                              [:field "ID" {:base-type :type/BigInteger, :join-alias "Category"}]]}]}}]
+        (doseq [query [query legacy]]
           (let [queries {"q-join" query}
                 path    (mt/with-current-user (mt/user->id :crowberto)
                           (->> (invoke {:query_id "q-join"} queries)
@@ -282,9 +298,8 @@
 
 (deftest native-query-test
   (testing "an unsaved SQL query gets a recoverable refusal instead of a broken X-ray link"
-    ;; existing usage -- do not use going forward
-    (doseq [query ((juxt identity #_{:clj-kondo/ignore [:deprecated-var]} lib/->legacy-MBQL)
-                   (lib/native-query (mt/metadata-provider) "SELECT * FROM VENUES"))]
+    (doseq [query [(lib/native-query (mt/metadata-provider) "SELECT * FROM VENUES")
+                   (legacy-sql-query "SELECT * FROM VENUES")]]
       (testing (pr-str (dissoc query :lib/metadata))
         (is (= (failure ::autogen-dashboard/unsupported-native-query
                         "Query q-sql is an unsaved SQL query, which X-ray does not support."

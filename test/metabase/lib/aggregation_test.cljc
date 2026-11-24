@@ -1104,20 +1104,18 @@
         (is (lib.types.isa/numeric? new-col))))))
 
 (deftest ^:parallel aggregations-over-native-card-survive-normalize-test
-  (testing "#15725 aggregations built over a native card survive a convert round-trip and are not dropped"
-    (let [mp     (lib.tu/metadata-provider-with-mock-cards)
-          card   (:orders/native (lib.tu/mock-cards))
-          query  (lib/query mp card)
-          total  (m/find-first #(= "TOTAL" (:name %)) (lib/visible-columns query))
-          pid    (m/find-first #(= "PRODUCT_ID" (:name %)) (lib/visible-columns query))
-          q      (-> query
-                     (lib/aggregate (lib/count))
-                     (lib/aggregate (lib/sum total))
-                     (lib/breakout pid))
-          ;; existing usage -- do not use going forward
-          q'     (lib/query mp #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL q))]
-      (is (= 2 (count (lib/aggregations q'))))
-      (is (= 1 (count (lib/breakouts q')))))))
+  (testing "#15725 aggregations over a native card are not dropped when a legacy MBQL query is converted"
+    (let [mp   (lib.tu/metadata-provider-with-mock-cards)
+          card (:orders/native (lib.tu/mock-cards))
+          ;; legacy MBQL, written by hand: this test is about converting it
+          q    (lib/query mp {:database (meta/id)
+                              :type     :query
+                              :query    {:source-table (str "card__" (:id card))
+                                         :aggregation  [[:count]
+                                                        [:sum [:field "TOTAL" {:base-type :type/Float}]]]
+                                         :breakout     [[:field "PRODUCT_ID" {:base-type :type/Integer}]]}})]
+      (is (= 2 (count (lib/aggregations q))))
+      (is (= 1 (count (lib/breakouts q)))))))
 
 (deftest ^:parallel aggregation-named-same-as-aggregated-column-test
   (testing "#44567 an aggregation named the same as the column it aggregates still resolves the inner field"

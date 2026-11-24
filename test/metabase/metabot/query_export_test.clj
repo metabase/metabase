@@ -67,8 +67,15 @@
 
 (deftest transform-source-withholds-unchecked-legacy-native-sql-test
   (testing "native SQL in the legacy format is withheld if its permissions cannot be checked"
-    ;; existing usage -- do not use going forward
-    (let [query #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL (snippet-query))]
+    ;; legacy MBQL, written by hand: this test is about a query in that format
+    (let [query {:database (mt/id)
+                 :type     :native
+                 :native   {:query         "SELECT * FROM {{snip}}"
+                            :template-tags {"snip" {:type         :snippet
+                                                    :name         "snip"
+                                                    :display-name "snip"
+                                                    :snippet-id   Integer/MAX_VALUE
+                                                    :snippet-name "snip"}}}}]
       (mt/with-current-user (mt/user->id :rasta)
         (is (:unchecked? (shared.content-store/query-for-export query false)))
         (is (nil? (rendered-source query)))))))

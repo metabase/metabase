@@ -62,7 +62,7 @@ EE hooks: `metabase.query-processor.middleware.enterprise` wraps `defenterprise`
 2. Bisect the pipeline in the REPL: `(qp.preprocess/preprocess q)`, then `(qp.compile/compile q)` for SQL, then `(sql.qp/mbql->honeysql driver preprocessed)` for the HoneySQL map. Bugs usually sit in the MBQL -> HoneySQL step, not in HoneySQL formatting.
 3. To see each middleware's diff, bind `metabase.query-processor.debug/*debug*` to true and run `dev.debug-qp/start-portal!`. `dev.debug-qp/pprint-sql` formats SQL.
 4. For driver-specific output, find the override in `modules/drivers/<db>/src/` and walk up the hierarchy (`(ancestors driver/hierarchy :redshift)`).
-5. Prefer DB-free tests: `metabase.lib.test-metadata` (`meta/metadata-provider`) and the `metabase.lib.test-util` mock providers. Use `metabase.test` (`mt/`) and `mt/test-drivers` only when you need real execution.
+5. Prefer DB-free tests: `metabase.lib.test-metadata` (`meta/metadata-provider`) and the `metabase.lib.test-util` mock providers. Use `metabase.test` (`mt/`) and `mt/test-drivers` only when you need real execution. Assert on MBQL 5 with `=?`: `{}` matches any options map, and an option that must be absent gets the expected value `(symbol "nil #_\"key is not present.\"")`, not `nil`.
 6. Tests to start from: `metabase.query-processor.preprocess-test`, `metabase.query-processor.middleware.<name>-test`, `metabase.driver.sql.query-processor-test`, `metabase.query-processor.<feature>-test` (e.g. `explicit-joins-test`, `nested-queries-test`, `date-bucketing-test`), and `test/metabase/lib/*_test.cljc`.
 7. To add an MBQL clause, touch each of these:
    - The schema in `lib.schema` (`mbql_clause`, `expression`).

@@ -30,27 +30,27 @@
   "A count metric over `table-kw`, so different tables mean genuinely different required perms."
   [table-kw]
   (let [mp (mt/metadata-provider)]
-    ;; existing usage -- do not use going forward
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
-                           (lib/aggregate (lib/count))))))
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+        (lib/aggregate (lib/count)))))
 
 (defn- thread-with-snapshots!
   "A thread whose queries are each finalized (`dataset_query` + `data_access_token` stamped, as the
   runner's `finalize-row!` does) and backed by one StoredResult built from `snapshot-specs`
   (`{:creator-id, :table, :token}`, or `:query` in place of `:table` for a shape `count-query`
-  can't express). Returns the thread id."
+  can't express, or to share one query between threads). Snapshots of one table share one query,
+  `:lib/uuid`s included. Returns the thread id."
   [snapshot-specs]
-  (let [creator (mt/user->id :lucky)
-        card    (t2/insert-returning-pk! :model/Card
-                                         {:name "m" :type :metric :creator_id creator
-                                          :database_id (mt/id) :dataset_query (count-query :venues)
-                                          :display "table" :visualization_settings {}})
-        expl    (t2/insert-returning-pk! :model/Exploration {:name "derived" :creator_id creator})
-        thread  (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id expl :position 0})
-        block   (t2/insert-returning-pk! :model/ExplorationBlock {:exploration_thread_id thread})]
+  (let [creator      (mt/user->id :lucky)
+        table->query (memoize count-query)
+        card         (t2/insert-returning-pk! :model/Card
+                                              {:name "m" :type :metric :creator_id creator
+                                               :database_id (mt/id) :dataset_query (table->query :venues)
+                                               :display "table" :visualization_settings {}})
+        expl         (t2/insert-returning-pk! :model/Exploration {:name "derived" :creator_id creator})
+        thread       (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id expl :position 0})
+        block        (t2/insert-returning-pk! :model/ExplorationBlock {:exploration_thread_id thread})]
     (doseq [[i {:keys [creator-id table token query]}] (map-indexed vector snapshot-specs)]
-      (let [dq   (or query (count-query table))
+      (let [dq   (or query (table->query table))
             page (t2/insert-returning-pk! :model/ExplorationPage
                                           {:exploration_block_id block :card_id card
                                            :dimension_id "d1" :query_type "default"})
@@ -327,11 +327,11 @@
 (deftest stored-resolved-source-ids-key-the-verdict-only-for-their-own-query-test
   (let [thread   (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])
         q-id     (t2/select-one-pk :model/ExplorationQuery :exploration_thread_id thread)
-        stamp!   (fn [stamped-from]
+        stamp!   (fn [query table-kw]
                    (t2/update! :model/ExplorationQuery :id q-id
                                {:resolved_source_ids (query-perms/stamped-resolved-source-ids
-                                                      (count-query stamped-from)
-                                                      {:table-ids #{(mt/id stamped-from)}})}))
+                                                      query
+                                                      {:table-ids #{(mt/id table-kw)}})}))
         resolves (fn []
                    (let [calls (atom 0)
                          orig  (dynamic-redefs/original-fn #'query-perms/query->resolved-source-ids)]
@@ -342,10 +342,10 @@
                          (derived-perms/thread-ids-with-visible-derived-data [thread])))
                      @calls))]
     (testing "a value stamped from the row's own query stands in for resolving it"
-      (stamp! :venues)
+      (stamp! (t2/select-one-fn :dataset_query :model/ExplorationQuery :id q-id) :venues)
       (is (zero? (resolves))))
     (testing "a value stamped from another query is ignored, and the row's query is resolved live"
-      (stamp! :checkins)
+      (stamp! (count-query :checkins) :checkins)
       (is (= 1 (resolves))))))
 
 ;;; --------------------------------- Summary-document content gate ---------------------------------
@@ -458,12 +458,13 @@
   "The number of statements of asking `:can_write` of `n` Summary documents whose Explorations have a thread each, as
   rasta, who writes their Collection."
   [n]
-  (let [lucky (mt/user->id :lucky)]
+  (let [lucky (mt/user->id :lucky)
+        query (count-query :venues)]
     (mt/with-temp [:model/Collection {coll-id :id} {}]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
       (let [docs (doall
                   (for [_ (range n)
-                        :let [expl (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :table :venues :token {}}]))
+                        :let [expl (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :query query :token {}}]))
                               id   (t2/insert-returning-pk! :model/Document {:name         "Summary"
                                                                              :collection_id coll-id
                                                                              :creator_id   lucky

@@ -9,7 +9,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -21,35 +20,32 @@
    [metabase.test.data.interface :as tx]))
 
 (defn- expand-parameters
+  "Expand the top-level `:parameters` of `query` into each of its stages, returning an MBQL 5 query. A legacy `query` is
+  upgraded to MBQL 5 first."
   [query]
-  (if (:lib/type query)
-    ;; MBQL 5 query: return an MBQL 5 query
-    (let [params (:parameters query)]
-      (reduce
-       (fn [query stage-number]
-         (lib/update-query-stage
-          query
-          stage-number
-          (fn [stage]
-            (qp.mbql/expand query
-                            [:stages stage-number]
-                            (cond-> stage
-                              (not-empty params) (assoc :parameters params))))))
-       (dissoc query :parameters)
-       (range (count (:stages query)))))
-    ;; legacy input: return a legacy query
-    (-> (lib/query meta/metadata-provider (mbql.normalize/normalize query))
-        expand-parameters
-        ;; existing usage -- do not use going forward
-        #_{:clj-kondo/ignore [:deprecated-var]}
-        lib/->legacy-MBQL)))
+  (let [query  (cond->> query
+                 (not (:lib/type query)) (lib/query meta/metadata-provider))
+        params (:parameters query)]
+    (reduce
+     (fn [query stage-number]
+       (lib/update-query-stage
+        query
+        stage-number
+        (fn [stage]
+          (qp.mbql/expand query
+                          [:stages stage-number]
+                          (cond-> stage
+                            (not-empty params) (assoc :parameters params))))))
+     (dissoc query :parameters)
+     (range (count (:stages query))))))
 
-(defn- expanded-query-with-filter [filter-clause]
+(defn- expanded-query-with-filters
+  "The MBQL 5 query we expect [[query-with-parameters]] to expand to, with `filter-clauses`."
+  [& filter-clauses]
   {:database (meta/id)
-   :type     :query
-   :query    {:source-table (meta/id :venues)
-              :filter       filter-clause
-              :breakout     [[:field (meta/id :venues :price) nil]]}})
+   :stages   [{:source-table (meta/id :venues)
+               :filters      (vec filter-clauses)
+               :breakout     [[:field {} (meta/id :venues :price)]]}]})
 
 (defn- query-with-parameters [& parameters]
   {:database   (meta/id)
@@ -60,8 +56,8 @@
 
 (deftest ^:parallel basic-test
   (testing "adding a simple parameter"
-    (is (=? (expanded-query-with-filter
-             [:= [:field (meta/id :venues :name) nil] "Cam's Toucannery"])
+    (is (=? (expanded-query-with-filters
+             [:= {} [:field {} (meta/id :venues :name)] "Cam's Toucannery"])
             (expand-parameters
              (query-with-parameters
               {:id   "abc123"
@@ -72,8 +68,8 @@
 
 (deftest ^:parallel biginteger-test
   (testing "adding an id parameter with a biginteger value"
-    (is (=? (expanded-query-with-filter
-             [:= [:field (meta/id :orders :id) nil] 9223372036854775808])
+    (is (=? (expanded-query-with-filters
+             [:= {} [:field {} (meta/id :orders :id)] 9223372036854775808])
             (expand-parameters
              (query-with-parameters
               {:id   "abc123"
@@ -83,12 +79,11 @@
                :value  "9223372036854775808"}))))))
 
 (deftest ^:parallel multiple-filters-test
-  (testing "multiple filters are conjoined by an :and"
-    (is (=? (expanded-query-with-filter
-             [:and
-              [:= [:field (meta/id :venues :id) nil] 12]
-              [:= [:field (meta/id :venues :name) nil] "Cam's Toucannery"]
-              [:= [:field (meta/id :venues :id) nil] 999]])
+  (testing "each parameter adds its own filter after the existing ones, and the filters are AND-ed"
+    (is (=? (expanded-query-with-filters
+             [:= {} [:field {} (meta/id :venues :id)] 12]
+             [:= {} [:field {} (meta/id :venues :name)] "Cam's Toucannery"]
+             [:= {} [:field {} (meta/id :venues :id)] 999])
             (expand-parameters
              (-> (query-with-parameters
                   {:id   "abc123"
@@ -150,16 +145,19 @@
 (deftest ^:parallel date-range-parameters-test
   (testing "date range parameters"
     (doseq [[value expected-filter-clause]
-            {"past30days"            [:time-interval [:field (meta/id :users :last-login) nil] -30 :day {:include-current false}]
-             "past30days~"           [:time-interval [:field (meta/id :users :last-login) nil] -30 :day {:include-current true}]
+            {"past30days"            [:time-interval {:include-current false} [:field {} (meta/id :users :last-login)] -30 :day]
+             "past30days~"           [:time-interval {:include-current true} [:field {} (meta/id :users :last-login)] -30 :day]
              "yesterday"             [:=
-                                      [:field (meta/id :users :last-login) {:temporal-unit :day}]
-                                      [:relative-datetime -1 :day]]
-             "2014-05-10~2014-05-16" [:between [:field (meta/id :users :last-login) {:temporal-unit :day}]
+                                      {}
+                                      [:field {:temporal-unit :day} (meta/id :users :last-login)]
+                                      [:relative-datetime {} -1 :day]]
+             "2014-05-10~2014-05-16" [:between
+                                      {}
+                                      [:field {:temporal-unit :day} (meta/id :users :last-login)]
                                       "2014-05-10"
                                       "2014-05-16"]}]
       (testing (format "value = %s" (pr-str value))
-        (is (=? (expanded-query-with-filter expected-filter-clause)
+        (is (=? (expanded-query-with-filters expected-filter-clause)
                 (expand-parameters
                  (query-with-parameters
                   {:id   "abc123"
@@ -171,11 +169,11 @@
 (deftest ^:parallel single-date-parameters-test
   (testing "absolute date parameters"
     (doseq [[value expected-filter-clause]
-            {"2014-05-10"          [:= [:field (meta/id :users :last-login) {:temporal-unit :day}] "2014-05-10"]
-             "2014-05-10T09:30:00" [:= [:field (meta/id :users :last-login) {:temporal-unit :minute}]
+            {"2014-05-10"          [:= {} [:field {:temporal-unit :day} (meta/id :users :last-login)] "2014-05-10"]
+             "2014-05-10T09:30:00" [:= {} [:field {:temporal-unit :minute} (meta/id :users :last-login)]
                                     "2014-05-10T09:30:00"]}]
       (testing (format "value = %s" (pr-str value))
-        (is (=? (expanded-query-with-filter expected-filter-clause)
+        (is (=? (expanded-query-with-filters expected-filter-clause)
                 (expand-parameters
                  (query-with-parameters
                   {:id   "abc123"
@@ -186,8 +184,8 @@
 
 (deftest ^:parallel before-after-date-parameters-test
   (testing "before and after parameters keep time"
-    (are [value op unit expected-value] (=? (expanded-query-with-filter
-                                             [op [:field (meta/id :users :last-login) {:temporal-unit unit}] expected-value])
+    (are [value op unit expected-value] (=? (expanded-query-with-filters
+                                             [op {} [:field {:temporal-unit unit} (meta/id :users :last-login)] expected-value])
                                             (expand-parameters
                                              (query-with-parameters
                                               {:id     "abc123"
@@ -202,8 +200,8 @@
 
 (deftest ^:parallel date-parameters-on-date-column-test
   (testing "time of date parameter is ignored for date-only column, which cannot be bucketed by minute"
-    (are [value op expected-value] (=? (expanded-query-with-filter
-                                        [op [:field (meta/id :checkins :date) {:temporal-unit :day}] expected-value])
+    (are [value op expected-value] (=? (expanded-query-with-filters
+                                        [op {} [:field {:temporal-unit :day} (meta/id :checkins :date)] expected-value])
                                        (expand-parameters
                                         (query-with-parameters
                                          {:id     "abc123"
@@ -564,14 +562,12 @@
           title-col (m/find-first #(and (= (:id %) (meta/id :products :title))
                                         (= (:lib/join-alias %) "Products"))
                                   (lib/visible-columns query))]
-      (is (=? {:query {:filter [:= [:field (meta/id :products :title) {:join-alias "Products"}] "Google"]}}
+      (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "Products"} (meta/id :products :title)] "Google"]]}]}
               (expand-parameters
-               ;; existing usage -- do not use going forward
-               (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)
-                   (assoc :parameters
-                          [{:type   :string/=
-                            :value  ["Google"]
-                            :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref title-col))]}]))))))))
+               (assoc query :parameters
+                      [{:type   :string/=
+                        :value  ["Google"]
+                        :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref title-col))]}])))))))
 
 (deftest ^:parallel boolean-mbql-parameter-test
   (testing "a boolean/= param mapped to a boolean expression column expands to an equality filter on that expression"
@@ -583,14 +579,12 @@
                                                     (lib/visible-columns q))]))]
       (doseq [v [true false]]
         (testing (format "value = %s" (pr-str v))
-          (is (=? {:query {:filter [:= [:expression "Bool" {:base-type :type/Boolean}] v]}}
+          (is (=? {:stages [{:filters [[:= {} [:expression {:base-type :type/Boolean} "Bool"] v]]}]}
                   (expand-parameters
-                   ;; existing usage -- do not use going forward
-                   (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)
-                       (assoc :parameters
-                              [{:type   :boolean/=
-                                :value  [v]
-                                :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/expression-ref query "Bool"))]}]))))))))))
+                   (assoc query :parameters
+                          [{:type   :boolean/=
+                            :value  [v]
+                            :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/expression-ref query "Bool"))]}])))))))))
 
 (deftest ^:parallel duplicate-temporal-unit-params-same-breakout-test
   ;; NOTE: this pins CURRENT product behavior. The documented intent for #44684 is for the LAST param to take priority
@@ -605,13 +599,11 @@
           query      (-> (lib/query mp (meta/table-metadata :orders))
                          (lib/aggregate (lib/count))
                          (lib/breakout (lib/with-temporal-bucket created-at :month)))]
-      (is (=? {:query {:breakout [[:field (meta/id :orders :created-at) {:temporal-unit :quarter}]]}}
+      (is (=? {:stages [{:breakout [[:field {:temporal-unit :quarter} (meta/id :orders :created-at)]]}]}
               (expand-parameters
-               ;; existing usage -- do not use going forward
-               (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)
-                   (assoc :parameters
-                          [{:type :temporal-unit, :target [:dimension (month-ref)], :value :quarter}
-                           {:type :temporal-unit, :target [:dimension (month-ref)], :value :year}]))))))))
+               (assoc query :parameters
+                      [{:type :temporal-unit, :target [:dimension (month-ref)], :value :quarter}
+                       {:type :temporal-unit, :target [:dimension (month-ref)], :value :year}])))))))
 
 (deftest ^:parallel temporal-unit-param-disambiguates-same-column-breakouts-test
   (testing "two temporal-unit params retarget only the breakout matching their current unit (#46536, #46776)"
@@ -665,31 +657,28 @@
           big    (biginteger "9223372036854775808")
           id-ref (lib.convert/->legacy-MBQL-ref (lib/ref (meta/field-metadata :orders :id)))]
       (doseq [[ptype value expected]
-              [[:number/!=      [big]   [:!= [:field (meta/id :orders :id) {:base-type :type/BigInteger}] big]]
-               [:number/>=      [big]   [:>= [:field (meta/id :orders :id) {:base-type :type/BigInteger}] big]]
-               [:number/<=      [big]   [:<= [:field (meta/id :orders :id) {:base-type :type/BigInteger}] big]]
-               [:number/between [0 big] [:between [:field (meta/id :orders :id) {:base-type :type/BigInteger}] 0 big]]]]
+              [[:number/!=      [big]   [:!= {} [:field {:base-type :type/BigInteger} (meta/id :orders :id)] big]]
+               [:number/>=      [big]   [:>= {} [:field {:base-type :type/BigInteger} (meta/id :orders :id)] big]]
+               [:number/<=      [big]   [:<= {} [:field {:base-type :type/BigInteger} (meta/id :orders :id)] big]]
+               [:number/between [0 big] [:between {} [:field {:base-type :type/BigInteger} (meta/id :orders :id)] 0 big]]]]
         (testing (pr-str ptype)
-          (is (=? {:query {:filter expected}}
+          (is (=? {:stages [{:filters [expected]}]}
                   (expand-parameters
-                   ;; existing usage -- do not use going forward
-                   (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL (lib/query mp (meta/table-metadata :orders)))
-                       (assoc :parameters
-                              [{:type   ptype
-                                :value  value
-                                :target [:dimension id-ref]}]))))))))))
+                   (assoc (lib/query mp (meta/table-metadata :orders))
+                          :parameters
+                          [{:type   ptype
+                            :value  value
+                            :target [:dimension id-ref]}])))))))))
 
 (deftest ^:parallel two-params-same-column-conjunction-test
   (testing "two params mapped to the same column AND-combine (intersection)"
     (let [mp      meta/metadata-provider
           cat-ref (lib.convert/->legacy-MBQL-ref (lib/ref (meta/field-metadata :products :category)))]
-      (is (=? {:query {:filter [:and
-                                [:= [:field (meta/id :products :category) {:base-type :type/Text}] "Doohickey" "Gizmo"]
-                                [:= [:field (meta/id :products :category) {:base-type :type/Text}] "Gadget"]]}}
+      (is (=? {:stages [{:filters [[:= {} [:field {:base-type :type/Text} (meta/id :products :category)] "Doohickey" "Gizmo"]
+                                   [:= {} [:field {:base-type :type/Text} (meta/id :products :category)] "Gadget"]]}]}
               (expand-parameters
-               ;; existing usage -- do not use going forward
-               (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL (-> (lib/query mp (meta/table-metadata :products))
-                                                                                          (lib/aggregate (lib/count))))
+               (-> (lib/query mp (meta/table-metadata :products))
+                   (lib/aggregate (lib/count))
                    (assoc :parameters
                           [{:type   :string/=
                             :value  ["Doohickey" "Gizmo"]
@@ -706,12 +695,11 @@
           query      (-> (lib/query mp (meta/table-metadata :orders))
                          (lib/aggregate (lib/count))
                          (lib/breakout (lib/with-temporal-bucket created-at :month)))]
-      (is (=? {:query {:breakout [[:field (meta/id :orders :created-at) {:temporal-unit :year}]]}}
+      (is (=? {:stages [{:breakout [[:field {:temporal-unit :year} (meta/id :orders :created-at)]]}]}
               (expand-parameters
-               ;; existing usage -- do not use going forward
-               (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)
-                   (assoc :parameters
-                          [{:type           :temporal-unit
-                            :target         [:dimension month-ref]
-                            :value          :year
-                            :temporal_units [:month :quarter]}]))))))))
+               ;; normalize the parameter the way API input is normalized: `:temporal_units` becomes `:temporal-units`
+               (lib/query mp (assoc query :parameters
+                                    [{:type           :temporal-unit
+                                      :target         [:dimension month-ref]
+                                      :value          :year
+                                      :temporal_units [:month :quarter]}]))))))))

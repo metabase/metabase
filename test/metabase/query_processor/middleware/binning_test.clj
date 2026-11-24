@@ -42,48 +42,43 @@
                      :effective-type :type/Float})]}))
 
 (defn- update-binning-strategy [mp query]
-  (-> (lib/query mp query)
-      binning/update-binning-strategy
-      ;; existing usage -- do not use going forward
-      #_{:clj-kondo/ignore [:deprecated-var]}
-      lib/->legacy-MBQL))
+  (binning/update-binning-strategy (lib/query mp query)))
 
 (deftest ^:parallel update-binning-strategy-test
-  (is (= {:query    {:source-table (meta/id :checkins)
-                     :breakout     [[:field 1
+  (is (=? {:stages [{:source-table (meta/id :checkins)
+                     :breakout     [[:field
                                      {:binning
                                       {:strategy  :num-bins
                                        :num-bins  8
                                        :min-value 0.0
                                        :max-value 240.0
-                                       :bin-width 30.0}}]]}
-          :type     :query
-          :database (meta/id)}
-         (update-binning-strategy
-          (mock-field-metadata-provider)
-          {:query    {:source-table (meta/id :checkins)
-                      :breakout     [[:field 1 {:binning {:strategy :default}}]]}
-           :type     :query
-           :database (meta/id)}))))
+                                       :bin-width 30.0}}
+                                     1]]}]}
+          (update-binning-strategy
+           (mock-field-metadata-provider)
+           {:query    {:source-table (meta/id :checkins)
+                       :breakout     [[:field 1 {:binning {:strategy :default}}]]}
+            :type     :query
+            :database (meta/id)}))))
 
 (deftest ^:parallel update-binning-strategy-test-2
   (testing "should work recursively on nested queries"
-    (is (= {:query    {:source-query
-                       {:source-table (meta/id :checkins)
-                        :breakout     [[:field 1 {:binning {:strategy  :num-bins
-                                                            :num-bins  8
-                                                            :min-value 0.0
-                                                            :max-value 240.0
-                                                            :bin-width 30.0}}]]}}
-            :type     :query
-            :database (meta/id)}
-           (update-binning-strategy
-            (mock-field-metadata-provider)
-            {:query    {:source-query
-                        {:source-table (meta/id :checkins)
-                         :breakout     [[:field 1 {:binning {:strategy :default}}]]}}
-             :type     :query
-             :database (meta/id)})))))
+    (is (=? {:stages [{:source-table (meta/id :checkins)
+                       :breakout     [[:field
+                                       {:binning {:strategy  :num-bins
+                                                  :num-bins  8
+                                                  :min-value 0.0
+                                                  :max-value 240.0
+                                                  :bin-width 30.0}}
+                                       1]]}
+                      {}]}
+            (update-binning-strategy
+             (mock-field-metadata-provider)
+             {:query    {:source-query
+                         {:source-table (meta/id :checkins)
+                          :breakout     [[:field 1 {:binning {:strategy :default}}]]}}
+              :type     :query
+              :database (meta/id)})))))
 
 (deftest ^:parallel binning-nested-questions-test
   (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
@@ -131,16 +126,20 @@
                       {:breakout    [[:field %lat {:binning {:strategy :default}}]
                                      [:field %lon {:binning {:strategy :default}}]]
                        :aggregation [[:count]]})]
-          (is (=? {:query {:breakout [[:field integer? {:binning {:strategy  :bin-width
-                                                                  :min-value -30.0
-                                                                  :max-value -20.0
-                                                                  :num-bins  1
-                                                                  :bin-width 10.0}}]
-                                      [:field integer? {:binning {:strategy  :bin-width
-                                                                  :min-value -60.0
-                                                                  :max-value -50.0
-                                                                  :num-bins  1
-                                                                  :bin-width 10.0}}]]}}
+          (is (=? {:stages [{:breakout [[:field
+                                         {:binning {:strategy  :bin-width
+                                                    :min-value -30.0
+                                                    :max-value -20.0
+                                                    :num-bins  1
+                                                    :bin-width 10.0}}
+                                         integer?]
+                                        [:field
+                                         {:binning {:strategy  :bin-width
+                                                    :min-value -60.0
+                                                    :max-value -50.0
+                                                    :num-bins  1
+                                                    :bin-width 10.0}}
+                                         integer?]]}]}
                   (update-binning-strategy (qp.store/metadata-provider) query)))
           (mt/with-native-query-testing-context query
             (is (= [[-30.00M -60.00M 1]]
@@ -178,16 +177,16 @@
           query            (-> query
                                (lib/breakout (lib/with-binning expr-col binning-strategy)))]
       (testing "without filter"
-        (is (=? {:query {:breakout [[:field
-                                     "foo"
-                                     {:base-type :type/Float
-                                      :binning   {:strategy :num-bins, :num-bins 10, :min-value -50.0, :max-value 175.0, :bin-width 25.0}}]]}}
+        (is (=? {:stages [{:breakout [[:field
+                                       {:base-type :type/Float
+                                        :binning   {:strategy :num-bins, :num-bins 10, :min-value -50.0, :max-value 175.0, :bin-width 25.0}}
+                                       "foo"]]}]}
                 (update-binning-strategy mp query))))
       (testing "with filter"
-        (is (=? {:query {:breakout [[:field
-                                     "foo"
-                                     {:base-type :type/Float
-                                      :binning   {:strategy :num-bins, :num-bins 10, :min-value 20.0, :max-value 40.0, :bin-width 2.0}}]]}}
+        (is (=? {:stages [{:breakout [[:field
+                                       {:base-type :type/Float
+                                        :binning   {:strategy :num-bins, :num-bins 10, :min-value 20.0, :max-value 40.0, :bin-width 2.0}}
+                                       "foo"]]}]}
                 (update-binning-strategy mp (lib/filter query (lib/between expr-col 20 40)))))))))
 
 (deftest ^:parallel update-original-binning-e2e-test

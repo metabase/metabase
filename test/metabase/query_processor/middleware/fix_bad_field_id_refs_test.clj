@@ -18,18 +18,16 @@
    (wrap-joined-fields meta/metadata-provider query))
 
   ([metadata-provider query]
-   (-> (lib/query metadata-provider query)
-       fix-bad-field-id-refs/fix-bad-field-id-refs
-       ;; existing usage -- do not use going forward
-       #_{:clj-kondo/ignore [:deprecated-var]}
-       lib/->legacy-MBQL)))
+   (fix-bad-field-id-refs/fix-bad-field-id-refs (lib/query metadata-provider query))))
 
 (deftest ^:parallel wrap-fields-in-joined-field-test
-  (is (=? (lib.tu.macros/mbql-query checkins
-            {:filter [:!= [:field %users.name {:join-alias "u"}] nil]
-             :joins  [{:source-table $$users
-                       :alias        "u"
-                       :condition    [:= $user-id &u.users.id]}]})
+  (is (=? {:stages [{:source-table (meta/id :checkins)
+                     :filters      [[:!= {} [:field {:join-alias "u"} (meta/id :users :name)] nil]]
+                     :joins        [{:stages     [{:source-table (meta/id :users)}]
+                                     :alias      "u"
+                                     :conditions [[:= {}
+                                                   [:field {} (meta/id :checkins :user-id)]
+                                                   [:field {:join-alias "u"} (meta/id :users :id)]]]}]}]}
           (wrap-joined-fields
            (lib.tu.macros/mbql-query checkins
              {:filter [:!= [:field %users.name nil] nil]
@@ -39,11 +37,13 @@
 
 (deftest ^:parallel wrap-fields-in-joined-field-test-2
   (testing "Do we correctly recurse into `:source-query`"
-    (is (=? (lib.tu.macros/mbql-query checkins
-              {:source-query {:filter [:!= [:field %users.name {:join-alias "u"}] nil]
-                              :joins  [{:source-table $$users
-                                        :alias        "u"
-                                        :condition    [:= $user-id &u.users.id]}]}})
+    (is (=? {:stages [{:filters [[:!= {} [:field {:join-alias "u"} (meta/id :users :name)] nil]]
+                       :joins   [{:stages     [{:source-table (meta/id :users)}]
+                                  :alias      "u"
+                                  :conditions [[:= {}
+                                                [:field {} (meta/id :checkins :user-id)]
+                                                [:field {:join-alias "u"} (meta/id :users :id)]]]}]}
+                      {}]}
             (wrap-joined-fields
              (lib.tu.macros/mbql-query checkins
                {:source-query {:source-table $$checkins
@@ -54,12 +54,14 @@
 
 (deftest ^:parallel deduplicate-fields-test
   (testing "fix-bad-field-id-refs should deduplicate :fields after resolving stuff"
-    (is (=? (lib.tu.macros/mbql-query checkins
-              {:fields [[:field %users.name {:join-alias "u"}]]
-               :filter [:!= [:field %users.name {:join-alias "u"}] nil]
-               :joins  [{:source-table $$users
-                         :alias        "u"
-                         :condition    [:= $user-id &u.users.id]}]})
+    (is (=? {:stages [{:source-table (meta/id :checkins)
+                       :fields       [[:field {:join-alias "u"} (meta/id :users :name)]]
+                       :filters      [[:!= {} [:field {:join-alias "u"} (meta/id :users :name)] nil]]
+                       :joins        [{:stages     [{:source-table (meta/id :users)}]
+                                       :alias      "u"
+                                       :conditions [[:= {}
+                                                     [:field {} (meta/id :checkins :user-id)]
+                                                     [:field {:join-alias "u"} (meta/id :users :id)]]]}]}]}
             (wrap-joined-fields
              (lib.tu.macros/mbql-query checkins
                {:fields [[:field %users.name nil]
@@ -82,7 +84,10 @@
                                      :alias        "products"
                                      :fields       :all}]})]
         (testing (str "\n" (u/pprint-to-str query))
-          (is (=? {:query {:filter (lib.tu.macros/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"])}}
+          (is (=? {:stages [{}
+                            {:filters [[:= {}
+                                        [:field {:join-alias "products"} (meta/id :products :category)]
+                                        "Widget"]]}]}
                   (wrap-joined-fields query))))))))
 
 (deftest ^:parallel fix-bad-field-id-refs-in-source-queries-test-2
@@ -98,8 +103,11 @@
                                                            :alias        "products"
                                                            :fields       :all}]}})]
         (testing (str "\n" (u/pprint-to-str nested-query))
-          (is (=? {:query {:source-query {:filter (lib.tu.macros/$ids
-                                                    [:= [:field %products.category {:join-alias "products"}] "Widget"])}}}
+          (is (=? {:stages [{}
+                            {:filters [[:= {}
+                                        [:field {:join-alias "products"} (meta/id :products :category)]
+                                        "Widget"]]}
+                            {}]}
                   (wrap-joined-fields nested-query))))))))
 
 (deftest ^:parallel fix-bad-field-id-refs-in-source-queries-e2e-test
@@ -119,12 +127,12 @@
                                                               :alias        "products"
                                                               :fields       :all}]}
                                :alias        "orders"
-                               :condition    [:= $products.id [:field %orders.product_id {:join-alias "orders"}]]}]})]
+                               :condition    [:= $products.id [:field %orders.product_id {:join-alias "orders"}]]}]})
+            query (lib/query (mt/metadata-provider) joins-in-joins-query)]
         (testing (str "\n" (u/pprint-to-str joins-in-joins-query))
-          (is (= (assoc-in joins-in-joins-query
-                           [:query :joins 0 :source-query :filter]
-                           (mt/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"]))
-                 (wrap-joined-fields (mt/metadata-provider) joins-in-joins-query)))
+          (testing "the products.category ref in the join's filter gets the inner join's alias, and nothing else changes"
+            (is (= (update-in query [:stages 0 :joins 0 :stages 0 :filters 0 2] lib/update-options assoc :join-alias "products")
+                   (fix-bad-field-id-refs/fix-bad-field-id-refs query))))
           (testing "Can we actually run the join-in-joins query?"
             (is (=? {:status :completed, :row_count 1}
                     (qp/process-query (assoc-in joins-in-joins-query [:query :limit] 1))))))))))
@@ -156,28 +164,30 @@
                                                                              [:field %products.id {:join-alias "products-2"}]]
                                                               :alias        "products-2"}]}
                                :alias        "orders-2"
-                               :condition    [:= $products.id [:field %orders.product-id {:join-alias "orders-2"}]]}]})]
+                               :condition    [:= $products.id [:field %orders.product-id {:join-alias "orders-2"}]]}]})
+            query (lib/query meta/metadata-provider joins-in-joins-query)]
         (testing (str "\n" (u/pprint-to-str joins-in-joins-query))
-          (is (= (-> joins-in-joins-query
-                     (assoc-in [:query :joins 0 :source-query :filter]
-                               (lib.tu.macros/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"]))
-                     (assoc-in [:query :joins 1 :source-query :filter]
-                               (lib.tu.macros/$ids [:= [:field %products.category {:join-alias "products-2"}] "Widget"])))
-                 (wrap-joined-fields joins-in-joins-query))))))))
+          (testing "each join's products.category filter ref gets the alias of the join inside it, and nothing else changes"
+            (is (= (-> query
+                       (update-in [:stages 0 :joins 0 :stages 0 :filters 0 2] lib/update-options assoc :join-alias "products")
+                       (update-in [:stages 0 :joins 1 :stages 0 :filters 0 2] lib/update-options assoc :join-alias "products-2"))
+                   (fix-bad-field-id-refs/fix-bad-field-id-refs query)))))))))
 
 (deftest ^:parallel no-op-test
   (testing "Make sure a query that doesn't need anything wrapped is returned as-is"
-    (let [query (lib.tu.macros/mbql-query venues
-                  {:source-query {:source-table $$venues
-                                  :aggregation  [[:count]]
-                                  :breakout     [$name [:field %categories.name {:join-alias "c"}]]
-                                  :joins        [{:source-table $$categories
-                                                  :alias        "c"
-                                                  :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]}
-                   :filter       [:> [:field "count" {:base-type :type/Number}] 0]
-                   :limit        3})]
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query venues
+                   {:source-query {:source-table $$venues
+                                   :aggregation  [[:count]]
+                                   :breakout     [$name [:field %categories.name {:join-alias "c"}]]
+                                   :joins        [{:source-table $$categories
+                                                   :alias        "c"
+                                                   :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]}
+                    :filter       [:> [:field "count" {:base-type :type/Number}] 0]
+                    :limit        3}))]
       (is (= query
-             (wrap-joined-fields query))))))
+             (fix-bad-field-id-refs/fix-bad-field-id-refs query))))))
 
 (deftest ^:parallel multiple-joins-to-same-table-e2e-test
   (testing "Should prefer EXPLICIT joins when resolving joined fields and both implicit/explicit joins are present"
@@ -216,14 +226,15 @@
 
 (deftest ^:parallel handle-unwrapped-joined-fields-correctly-test
   (testing "References to joined fields in a join in a source query should be resolved correctly #(14766)"
-    (is (=? (lib.tu.macros/mbql-query orders
-              {:source-query {:source-table $$orders
-                              :joins        [{:source-table $$products
-                                              :condition    [:= $product-id &Products.products.id]
-                                              :alias        "Products"}]}
-               :aggregation  [[:count]]
-               :breakout     [[:field "Products__ID" {}]]
-               :limit        5})
+    (is (=? {:stages [{:source-table (meta/id :orders)
+                       :joins        [{:stages     [{:source-table (meta/id :products)}]
+                                       :conditions [[:= {}
+                                                     [:field {} (meta/id :orders :product-id)]
+                                                     [:field {:join-alias "Products"} (meta/id :products :id)]]]
+                                       :alias      "Products"}]}
+                      {:aggregation [[:count {}]]
+                       :breakout    [[:field {} "Products__ID"]]
+                       :limit       5}]}
             (wrap-joined-fields
              (lib.tu.macros/mbql-query orders
                {:source-query {:source-table $$orders
@@ -238,24 +249,37 @@
 (deftest ^:parallel do-not-rewrite-top-level-clauses-if-field-is-from-source-table-or-query
   (testing (str "Do not add `:join-alias` to top-level `:field` clauses if the Field could come from the "
                 "`:source-table` or `:source-query` (#18502)")
-    (is (=? (lib.tu.macros/mbql-query people
-              {:source-query {:source-table $$people
-                              :breakout     [!month.created-at]
-                              :aggregation  [[:count]]
-                              :order-by     [[:asc !month.created-at]]}
-               :joins        [{:source-query {:source-table $$people
-                                              :breakout     [!month.birth-date]
-                                              :aggregation  [[:count]]
-                                              :order-by     [[:asc !month.birth-date]]}
-                               :alias        "Q2"
-                               :condition    [:= !month.created-at !month.&Q2.birth-date]
-                               :fields       [&Q2.birth-date &Q2.*count/BigInteger]
-                               :strategy     :left-join}]
-               :fields       [!default.created-at
-                              *count/BigInteger
-                              &Q2.birth-date
-                              &Q2.*count/BigInteger]
-               :limit        3})
+    (is (=? {:stages [{:source-table (meta/id :people)
+                       :breakout     [[:field {:temporal-unit :month} (meta/id :people :created-at)]]
+                       :aggregation  [[:count {}]]
+                       :order-by     [[:asc {} [:field {:temporal-unit :month} (meta/id :people :created-at)]]]}
+                      {:joins  [{:stages     [{:source-table (meta/id :people)
+                                               :breakout     [[:field {:temporal-unit :month} (meta/id :people :birth-date)]]
+                                               :aggregation  [[:count {}]]
+                                               :order-by     [[:asc {} [:field
+                                                                        {:temporal-unit :month}
+                                                                        (meta/id :people :birth-date)]]]}]
+                                 :alias      "Q2"
+                                 :conditions [[:= {}
+                                               [:field
+                                                {:temporal-unit :month
+                                                 :join-alias    (symbol "nil #_\"key is not present.\"")}
+                                                (meta/id :people :created-at)]
+                                               [:field {:join-alias "Q2", :temporal-unit :month} (meta/id :people :birth-date)]]]
+                                 :fields     [[:field {:join-alias "Q2"} (meta/id :people :birth-date)]
+                                              [:field {:base-type :type/BigInteger, :join-alias "Q2"} "count"]]
+                                 :strategy   :left-join}]
+                       :fields [[:field
+                                 {:temporal-unit :default
+                                  :join-alias    (symbol "nil #_\"key is not present.\"")}
+                                 (meta/id :people :created-at)]
+                                [:field
+                                 {:base-type  :type/BigInteger
+                                  :join-alias (symbol "nil #_\"key is not present.\"")}
+                                 "count"]
+                                [:field {:join-alias "Q2"} (meta/id :people :birth-date)]
+                                [:field {:base-type :type/BigInteger, :join-alias "Q2"} "count"]]
+                       :limit  3}]}
             (wrap-joined-fields
              (lib.tu.macros/mbql-query people
                {:source-query {:source-table $$people
@@ -312,13 +336,7 @@
           result (fix-bad-field-id-refs/fix-bad-field-id-refs mbql5-with-meta)]
       (testing "expression definition must retain :lib/expression-name after fix-bad-field-id-refs"
         (is (=? {:stages [{} {:expressions [[:field {:lib/expression-name "My Date"} "DATE_COL"]]}]}
-                result)))
-      (testing "->legacy-MBQL :expressions must have string keys, not nil"
-        ;; existing usage -- do not use going forward
-        (let [mbql4 #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL result)
-              exprs (get-in mbql4 [:query :expressions])]
-          (is (every? string? (keys exprs))
-              (str "Assert failed: :expressions should always use string keys, got: " (pr-str exprs))))))))
+                result))))))
 
 (deftest ^:parallel preserve-remapping-keys-when-fixing-field-id-ref-test
   (testing "rewriting bad ID refs preserves the remapping dimension keys added by add-remaps (#78187)"

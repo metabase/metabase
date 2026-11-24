@@ -16,8 +16,7 @@
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.lib.util :as lib.util]
    [metabase.types.core :as types]
-   [metabase.util.malli :as mu]
-   [metabase.util.match :as match]))
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -78,15 +77,19 @@
                                          :fields [[:field (meta/id :venues :id) nil]]
                                          :filters [[:= [:expression "math"] 2]]}}))))
   (testing "filling in works for nested join queries"
-    (let [clause (as-> (lib/expression (lib.tu/venues-query) "CC" (lib/+ 1 1)) $q
-                   (lib/join-clause $q [(lib/= (meta/field-metadata :venues :id)
-                                               (lib/expression-ref $q "CC"))]))
-          query (lib/join (lib.tu/venues-query) clause)
-          ;; Make a legacy query but don't put types in :field and :expression
-          converted-query (lib.convert/->mbql5
-                           ;; existing usage -- do not use going forward
-                           (match/replace-all #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)
-                             #'map? (dissoc &match :base-type :effective-type)))]
+    ;; A legacy query without types in :field and :expression
+    (let [converted-query (lib.convert/->mbql5
+                           {:database (meta/id)
+                            :type     :query
+                            :query    {:source-table (meta/id :venues)
+                                       :joins        [{:fields       :all
+                                                       :strategy     :left-join
+                                                       :alias        "Venues_2"
+                                                       :condition    [:=
+                                                                      [:field (meta/id :venues :id) {:join-alias "Venues_2"}]
+                                                                      [:expression "CC"]]
+                                                       :source-query {:source-table (meta/id :venues)
+                                                                      :expressions  {"CC" [:+ 1 1]}}}]}})]
       (is (=? {:stages [{:joins [{:conditions [[:= {}
                                                 [:field {:base-type :type/BigInteger} (meta/id :venues :id)]
                                                 [:expression
