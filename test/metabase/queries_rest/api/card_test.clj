@@ -2641,6 +2641,34 @@
                            nil))))))
        (is (t2/exists? :model/Notification :id notification-id))))))
 
+(deftest alert-stopped-email-goes-out-once-the-change-commits-test
+  (testing "Archiving a Card outside any test transaction emails its alert's recipients after the commit"
+    ;; Not `mt/with-temp`, which wraps its body in a transaction that never commits, so the email would never go out.
+    (mt/with-model-cleanup [:model/Card]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (api.notification-test/with-send-messages-sync!
+          (let [card-id (t2/insert-returning-pk! :model/Card {:name                   "YOLO"
+                                                              :display                :table
+                                                              :creator_id             (mt/user->id :crowberto)
+                                                              :database_id            (mt/id)
+                                                              :visualization_settings {}
+                                                              :dataset_query          (mbql-count-query (mt/id)
+                                                                                                        (mt/id :checkins))})]
+            (notification.tu/with-temp-notification
+              [notification {:notification {:payload      {:card_id card-id}
+                                            :payload_type :notification/card
+                                            :creator_id   (mt/user->id :crowberto)}
+                             :handlers     [{:channel_type :channel/email
+                                             :recipients   [{:type    :notification-recipient/user
+                                                             :user_id (mt/user->id :rasta)}]}]}]
+              (let [[email] (mt/with-test-user :crowberto
+                              (notification.tu/with-mock-inbox-email!
+                                (card/update-cards! [{:id card-id, :archived true}])))]
+                (is (=? {:bcc     ["rasta@metabase.com"]
+                         :subject "One of your alerts has stopped working"}
+                        email))
+                (is (not (t2/exists? :model/Notification :id (:id notification))))))))))))
+
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (doseq [{:keys [message display]}
           [{:message "Changing display type from line to area should not delete alert"
