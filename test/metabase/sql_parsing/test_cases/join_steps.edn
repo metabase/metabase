@@ -239,6 +239,10 @@
       :alias "b",
       :strategy "inner",
       :sql "SELECT COUNT(*) AS n FROM a LEFT SEMI JOIN b ON a.x = b.x"}]}}
+  {:name "an ANTI join is refused, since its count is the rows that found no match",
+   :dialect "clickhouse",
+   :sql "SELECT * FROM a LEFT ANTI JOIN b ON a.x = b.x",
+   :expected {:status "unsupported", :reason "unsupported-join"}}
   {:name "a LATERAL source is refused",
    :dialect "postgres",
    :sql "SELECT * FROM a LEFT JOIN LATERAL (SELECT 1 AS y) t ON true",
@@ -280,19 +284,10 @@
       :alias "b",
       :strategy "inner",
       :sql "SELECT COUNT(*) AS n FROM a ASOF JOIN b ON a.id = b.id AND a.t >= b.t"}]}}
-  {:name "Snowflake's MATCH_CONDITION is kept in the step",
+  {:name "a Snowflake ASOF join is refused, since it keeps unmatched rows and has no INNER form",
    :dialect "snowflake",
    :sql "SELECT * FROM a ASOF JOIN b MATCH_CONDITION (a.t >= b.t) ON a.id = b.id",
-   :expected
-   {:status "ok",
-    :from {:source "table", :table [nil nil "a"], :alias "a"},
-    :base_sql "SELECT COUNT(*) AS n FROM a",
-    :steps
-    [{:source "table",
-      :table [nil nil "b"],
-      :alias "b",
-      :strategy "inner",
-      :sql "SELECT COUNT(*) AS n FROM a ASOF JOIN b MATCH_CONDITION (a.t >= b.t) ON a.id = b.id"}]}}
+   :expected {:status "unsupported", :reason "unsupported-join"}}
   {:name "a pivoted derived table is kept as written",
    :dialect "postgres",
    :sql "SELECT * FROM (SELECT 1 AS x) d PIVOT (SUM(x) FOR y IN (1))",
@@ -321,6 +316,10 @@
   {:name "unparseable SQL is refused",
    :dialect "postgres",
    :sql "SELECT * FROM (a",
+   :expected {:status "unsupported", :reason "unparseable"}}
+  {:name "SQL that does not tokenize is refused",
+   :dialect "postgres",
+   :sql "SELECT 'abc FROM a JOIN b ON a.id = b.id",
    :expected {:status "unsupported", :reason "unparseable"}}
   {:name "empty SQL is refused",
    :dialect "postgres",

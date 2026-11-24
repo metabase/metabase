@@ -11,7 +11,7 @@ logging.getLogger("sqlglot").setLevel(logging.CRITICAL)
 import sqlglot.optimizer as optimizer
 from sqlglot import exp
 from sqlglot.dialects.clickhouse import ClickHouse
-from sqlglot.errors import ParseError
+from sqlglot.errors import ParseError, TokenError
 from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
 
 # sqlglot (as of 28.6.0) renders every placeholder in ClickHouse's named-parameter
@@ -498,8 +498,8 @@ def _join_step_strategy(join):
     # A comma join has no side, kind, method or condition.
     if kind == "CROSS" or not (side or kind or method or _set_args(join) & {"on", "using"}):
         return "cross"
-    # A SEMI or ANTI join filters its left side, so it has no unmatched rows to count, whatever its side.
-    if kind in ("SEMI", "ANTI"):
+    # A SEMI join keeps the left rows that found a match, so its one count is the matched rows, whatever its side.
+    if kind == "SEMI":
         return "inner"
     return {"LEFT": "left", "RIGHT": "right", "FULL": "full"}.get(side, "inner")
 
@@ -677,6 +677,12 @@ def _statement_refusal(stmt, with_):
     # DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
     if any((join.method or "").upper() == "POSITIONAL" for join in joins):
         return "unsupported-join"
+    # An ANTI join keeps the left rows that found no match, so its one count would be read as the matched rows.
+    if any((join.kind or "").upper() == "ANTI" for join in joins):
+        return "unsupported-join"
+    # Snowflake's ASOF join keeps unmatched left rows like a LEFT join, and has no INNER form to count its matches.
+    if any(join.args.get("match_condition") for join in joins):
+        return "unsupported-join"
     return None
 
 
@@ -718,7 +724,7 @@ def join_steps(sql: str, dialect: str = None) -> str:
     try:
         try:
             stmts = _nonempty_statements(sqlglot.parse(sql, read=dialect))
-        except ParseError:
+        except (ParseError, TokenError):
             raise _JoinStepsUnsupported("unparseable")
         if not stmts:
             raise _JoinStepsUnsupported("unparseable")

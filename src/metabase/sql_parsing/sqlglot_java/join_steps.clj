@@ -11,6 +11,7 @@
                              Expressions$Placeholder Expressions$Query Expressions$Select Expressions$SetOperation
                              Expressions$Subquery Expressions$Table Expressions$TableSample Expressions$Values)
    (com.metabase.sqlglot.reference NormalizeIdentifiers ParseError)
+   (com.metabase.sqlglot.reference.tokens TokenError)
    (java.util Collection)))
 
 (set! *warn-on-reflection* true)
@@ -91,8 +92,8 @@
                (not-any? (set-args join) ["on" "using"])))
       "cross"
 
-      ;; A SEMI or ANTI join filters its left side, so it has no unmatched rows to count, whatever its side.
-      (#{"SEMI" "ANTI"} kind)
+      ;; A SEMI join keeps the left rows that found a match, so its one count is the matched rows, whatever its side.
+      (= "SEMI" kind)
       "inner"
 
       :else
@@ -282,6 +283,8 @@
   (let [stmts (try
                 (ast/nonempty-statements (ast/parse sql dialect))
                 (catch ParseError _
+                  (throw (unsupported "unparseable")))
+                (catch TokenError _
                   (throw (unsupported "unparseable"))))]
     (if (seq stmts)
       (whole-query (first stmts) dialect)
@@ -311,6 +314,14 @@
 
       ;; DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
       (some #(= "POSITIONAL" (upper-arg % "method")) joins)
+      "unsupported-join"
+
+      ;; An ANTI join keeps the left rows that found no match, so its one count would be read as the matched rows.
+      (some #(= "ANTI" (upper-arg % "kind")) joins)
+      "unsupported-join"
+
+      ;; Snowflake's ASOF join keeps unmatched left rows like a LEFT join, and has no INNER form to count its matches.
+      (some #(ast/arg % "match_condition") joins)
       "unsupported-join")))
 
 (defn- statement-refusal

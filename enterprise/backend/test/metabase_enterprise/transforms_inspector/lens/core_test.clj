@@ -115,7 +115,7 @@
     (is (not (lens.core/lens-applicable? :unmatched-rows
                                          {:source-type :native
                                           :has-joins? true
-                                          :native-context {:from-table [:raw "t"]
+                                          :native-context {:from-count-sql "SELECT COUNT(*) AS n FROM t"
                                                            :join-structure [{:strategy :left-join}]}}))))
   (testing "unmatched-rows not applicable without outer joins"
     (is (not (lens.core/lens-applicable? :unmatched-rows
