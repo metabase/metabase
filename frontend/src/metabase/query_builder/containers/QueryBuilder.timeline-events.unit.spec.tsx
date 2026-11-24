@@ -1384,12 +1384,12 @@ describe("QueryBuilder > timeline events on the chart and in the events panel", 
     });
 
     expect(
-      await within(screen.getByTestId("question-row-count")).findByText(
+      await within(await screen.findByTestId("question-row-count")).findByText(
         "Showing 0 rows",
       ),
     ).toBeInTheDocument();
     const main = screen.getByTestId("query-builder-main");
-    expect(within(main).getByText("No results")).toBeInTheDocument();
+    expect(await within(main).findByText("No results")).toBeInTheDocument();
 
     await userEvent.click(
       within(screen.getByTestId("view-footer")).getByRole("button", {
