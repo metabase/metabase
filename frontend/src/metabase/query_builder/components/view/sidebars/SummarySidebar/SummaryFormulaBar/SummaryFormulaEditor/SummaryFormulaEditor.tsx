@@ -48,6 +48,7 @@ export function SummaryFormulaEditor({
       expressionMode={getExpressionMode(draft.wellId)}
       expressionIndex={formula?.index}
       initialSource={draft.source}
+      initialName={isEdit ? undefined : draft.name}
       sourceStatus={isEdit ? draft.original.status : undefined}
       submitLabel={isEdit ? t`Update` : t`Add`}
       onEditorCreate={onEditorCreate}

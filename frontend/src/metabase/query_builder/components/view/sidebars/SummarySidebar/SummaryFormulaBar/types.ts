@@ -34,7 +34,7 @@ export type SummaryFormulaDraft = {
   wellId: SummaryWellId;
   source: string;
 } & (
-  | { kind: "new" }
+  | { kind: "new"; name?: string }
   | {
       kind: "edit";
       clause: SummaryFormulaClause;
@@ -43,7 +43,12 @@ export type SummaryFormulaDraft = {
 );
 
 export type SummaryFormulaInput = {
-  start: (source: string, input: HTMLInputElement, onReady: () => void) => void;
+  start: (
+    source: string,
+    input: HTMLInputElement,
+    onReady: () => void,
+    name?: string,
+  ) => void;
   isPending: () => boolean;
   update: (source: string) => void;
   edit: (clause: SummaryFormulaClause, input: HTMLInputElement | null) => void;

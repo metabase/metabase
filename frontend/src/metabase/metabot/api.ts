@@ -5,6 +5,8 @@ import type {
   Card,
   DeleteSuggestedMetabotPromptRequest,
   ForkMetabotConversationRequest,
+  GenerateCustomExpressionRequest,
+  GenerateCustomExpressionResponse,
   ListMetabotConversationsRequest,
   ListMetabotConversationsResponse,
   MetabotConversationTitleResponse,
@@ -165,6 +167,17 @@ export const metabotApi = Api.injectEndpoints({
         body: params,
       }),
     }),
+    generateCustomExpression: builder.mutation<
+      GenerateCustomExpressionResponse,
+      GenerateCustomExpressionRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/metabot/custom-expression/generate",
+        body,
+      }),
+      extraOptions: { retry: false },
+    }),
     updateMetabotSlackSettings: builder.mutation<
       { ok: boolean },
       MetabotSlackSettings
@@ -203,5 +216,6 @@ export const {
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
+  useGenerateCustomExpressionMutation,
   useGetUserMetabotPermissionsQuery,
 } = metabotApi;

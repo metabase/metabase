@@ -5,3 +5,4 @@ export type {
   NamedExpression,
 } from "./types";
 export { isDefaultFormulaName } from "./utils";
+export { getFormulaColumns } from "./utils";

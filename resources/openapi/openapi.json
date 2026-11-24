@@ -22675,7 +22675,7 @@
                       "minLength" : 1,
                       "type" : "string"
                     }, {
-                      "maxLength" : 255,
+                      "maxLength" : 256,
                       "type" : "string"
                     } ]
                   }, {
@@ -22692,11 +22692,11 @@
                         "minLength" : 1,
                         "type" : "string"
                       }, {
-                        "maxLength" : 255,
+                        "maxLength" : 256,
                         "type" : "string"
                       } ]
                     }, {
-                      "description" : "Column types can only have letters, digits, spaces and _ . / -",
+                      "description" : "Types can only have letters, digits, spaces and _ . / -",
                       "pattern" : "\\A[A-Za-z0-9 _./-]+\\z",
                       "type" : "string"
                     } ]
@@ -22719,20 +22719,47 @@
           "measures" : {
             "anyOf" : [ {
               "items" : {
-                "allOf" : [ {
-                  "allOf" : [ {
-                    "description" : "value must be a non-blank string.",
-                    "minLength" : 1,
-                    "type" : "string"
-                  }, {
-                    "maxLength" : 255,
-                    "type" : "string"
-                  } ]
-                }, {
-                  "description" : "Column, metric and measure names must be references like [Total], with any [ or ] escaped.",
-                  "pattern" : "\\A\\[(?:[^\\[\\]\\\\\\x08\\t\\n\\f\\r\\x0B]|\\\\[^\\n\\r])+\\]\\z",
-                  "type" : "string"
-                } ]
+                "additionalProperties" : false,
+                "properties" : {
+                  "name" : {
+                    "allOf" : [ {
+                      "allOf" : [ {
+                        "description" : "value must be a non-blank string.",
+                        "minLength" : 1,
+                        "type" : "string"
+                      }, {
+                        "maxLength" : 256,
+                        "type" : "string"
+                      } ]
+                    }, {
+                      "description" : "Column, metric and measure names must be references like [Total], with any [ or ] escaped.",
+                      "pattern" : "\\A\\[(?:[^\\[\\]\\\\\\x08\\t\\n\\f\\r\\x0B]|\\\\[^\\n\\r])+\\]\\z",
+                      "type" : "string"
+                    } ]
+                  },
+                  "type" : {
+                    "anyOf" : [ {
+                      "allOf" : [ {
+                        "allOf" : [ {
+                          "description" : "value must be a non-blank string.",
+                          "minLength" : 1,
+                          "type" : "string"
+                        }, {
+                          "maxLength" : 256,
+                          "type" : "string"
+                        } ]
+                      }, {
+                        "description" : "Types can only have letters, digits, spaces and _ . / -",
+                        "pattern" : "\\A[A-Za-z0-9 _./-]+\\z",
+                        "type" : "string"
+                      } ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "name" ],
+                "type" : "object"
               },
               "maxItems" : 200,
               "type" : "array"
@@ -22740,23 +22767,60 @@
               "type" : "null"
             } ]
           },
+          "metabot_id" : {
+            "allOf" : [ {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }, {
+              "maxLength" : 256,
+              "type" : "string"
+            } ]
+          },
           "metrics" : {
             "anyOf" : [ {
               "items" : {
-                "allOf" : [ {
-                  "allOf" : [ {
-                    "description" : "value must be a non-blank string.",
-                    "minLength" : 1,
-                    "type" : "string"
-                  }, {
-                    "maxLength" : 255,
-                    "type" : "string"
-                  } ]
-                }, {
-                  "description" : "Column, metric and measure names must be references like [Total], with any [ or ] escaped.",
-                  "pattern" : "\\A\\[(?:[^\\[\\]\\\\\\x08\\t\\n\\f\\r\\x0B]|\\\\[^\\n\\r])+\\]\\z",
-                  "type" : "string"
-                } ]
+                "additionalProperties" : false,
+                "properties" : {
+                  "name" : {
+                    "allOf" : [ {
+                      "allOf" : [ {
+                        "description" : "value must be a non-blank string.",
+                        "minLength" : 1,
+                        "type" : "string"
+                      }, {
+                        "maxLength" : 256,
+                        "type" : "string"
+                      } ]
+                    }, {
+                      "description" : "Column, metric and measure names must be references like [Total], with any [ or ] escaped.",
+                      "pattern" : "\\A\\[(?:[^\\[\\]\\\\\\x08\\t\\n\\f\\r\\x0B]|\\\\[^\\n\\r])+\\]\\z",
+                      "type" : "string"
+                    } ]
+                  },
+                  "type" : {
+                    "anyOf" : [ {
+                      "allOf" : [ {
+                        "allOf" : [ {
+                          "description" : "value must be a non-blank string.",
+                          "minLength" : 1,
+                          "type" : "string"
+                        }, {
+                          "maxLength" : 256,
+                          "type" : "string"
+                        } ]
+                      }, {
+                        "description" : "Types can only have letters, digits, spaces and _ . / -",
+                        "pattern" : "\\A[A-Za-z0-9 _./-]+\\z",
+                        "type" : "string"
+                      } ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "name" ],
+                "type" : "object"
               },
               "maxItems" : 200,
               "type" : "array"
@@ -22785,7 +22849,7 @@
                 "minLength" : 1,
                 "type" : "string"
               }, {
-                "maxLength" : 255,
+                "maxLength" : 256,
                 "type" : "string"
               } ]
             }, {
@@ -22793,7 +22857,7 @@
             } ]
           }
         },
-        "required" : [ "mode", "prompt", "columns", "database_id" ],
+        "required" : [ "mode", "prompt", "columns", "database_id", "metabot_id" ],
         "type" : "object"
       },
       "metabase.metabot.api.custom-expression.response-schema" : {
