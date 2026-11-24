@@ -3,6 +3,7 @@ import {
   getContentUrl,
   getItemFromContentPath,
   getItemFromLink,
+  getLinkText,
   isContentPath,
   parseItem,
 } from "./item";
@@ -20,16 +21,23 @@ describe("getItemFromLink", () => {
     expect(getItemFromLink(link)).toBe(item);
   });
 
-  it("reads a bare number as a question", () => {
-    expect(getItemFromLink(" 42 ")).toBe("question/42");
-  });
-
-  it.each(["", "hello", "/admin/settings", "/dashboard/abc", "/question/"])(
-    "reads %p as no item",
+  it.each(["/", "http://localhost:3000/", "  /  "])(
+    "reads the root path %p as All collections",
     (link) => {
-      expect(getItemFromLink(link)).toBe(NOT_FOUND_ITEM);
+      expect(getItemFromLink(link)).toBe("collection/all");
     },
   );
+
+  it.each([
+    "",
+    "42",
+    "hello",
+    "/admin/settings",
+    "/dashboard/abc",
+    "/question/",
+  ])("reads %p as no item", (link) => {
+    expect(getItemFromLink(link)).toBe(NOT_FOUND_ITEM);
+  });
 });
 
 describe("parseItem", () => {
@@ -65,5 +73,12 @@ describe("content path", () => {
 
   it("is not the path of the other embed pages", () => {
     expect(isContentPath("/embed/question/abc")).toBe(false);
+  });
+});
+
+describe("getLinkText", () => {
+  it("shows All collections as the root path and any other item as its path", () => {
+    expect(getLinkText("collection/all")).toBe("/");
+    expect(getLinkText("dashboard/12")).toBe("/dashboard/12");
   });
 });
