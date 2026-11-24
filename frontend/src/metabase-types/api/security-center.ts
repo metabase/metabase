@@ -38,6 +38,8 @@ export type Advisory = {
 
 export type ListAdvisoriesResponse = {
   last_checked_at: string | null;
+  last_sync_attempted_at: string | null;
+  last_sync_error: string | null;
   advisories: Advisory[];
 };
 
