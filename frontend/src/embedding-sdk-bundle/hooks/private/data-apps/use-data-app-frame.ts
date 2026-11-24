@@ -21,17 +21,13 @@ type Options = {
   isPathControlled: boolean;
   origin: string;
   initialSrc: string;
-  onPathChange: ((path: string) => void) | undefined;
-  locale: string | undefined;
+  onPathChange?: (path: string) => void;
+  locale?: string;
   store: SdkStore;
   authConfig: MetabaseAuthConfig;
 };
 
-/**
- * Runs the data app iframe: settings, authentication, errors and path sync.
- *
- * Returns the iframe's ref and `src`, or the error to show instead of it.
- */
+/** Returns the iframe's ref and `src`, or the error to show instead of the iframe. */
 export function useDataAppFrame({
   path,
   slug,
@@ -67,7 +63,7 @@ export function useDataAppFrame({
     setFailure(null);
   }
 
-  const error = failure?.path === path ? failure.message : null;
+  const error = failure?.message ?? null;
 
   // The slug only dedupes events per app. It is not sent to analytics.
   useTrackSdkComponentMount("DataApp", slug, {});
@@ -133,9 +129,6 @@ export function useDataAppFrame({
         }
 
         if (isCurrentAuthRequest()) {
-          // an error from an earlier route must not come back after a retry works
-          setFailure(null);
-
           send({
             type: "metabase.embed.submitSessionToken",
             data: { authMethod: "provider-managed", sessionToken },
@@ -182,7 +175,7 @@ export function useDataAppFrame({
           .otherwise(() => undefined),
     });
 
-    // Resend the settings when the locale or auth changes.
+    // A ready iframe does not send `iframeReady` again, so a locale or auth change resends the settings here.
     if (navigation.isIframeReady()) {
       sendSettings();
     }

@@ -2,15 +2,14 @@ import { match } from "ts-pattern";
 
 import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/data-apps/embedded-data-app-path";
 
-/** What the host knows about the data app iframe's page. */
 export interface DataAppFrameNavigation {
-  /** The path the iframe first loads. Settings always carry it, so resending them never moves the app. */
+  /** Settings always carry this path, so resending them never moves the app. */
   initialPath: string;
 
   /** Requests sent before the iframe is ready are lost, so the iframe is navigated once it is. */
   isReady: boolean;
 
-  /** The page the iframe is on, as far as the host knows: the last path it reported or was asked to show. */
+  /** The last path the iframe reported or was asked to show. */
   iframePath: string;
 
   /**
@@ -62,7 +61,6 @@ export const createDataAppFrameNavigation = (
   expectedNavigationId: undefined,
 });
 
-/** The next navigation state for an event, and what the host should do. */
 export const reduceDataAppFrameNavigation = (
   state: DataAppFrameNavigation,
   event: DataAppFrameNavigationEvent,
@@ -78,7 +76,7 @@ export const reduceDataAppFrameNavigation = (
         expectedNavigationId: undefined,
       };
 
-      return hostPath === readyState.iframePath
+      return hostPath === state.initialPath
         ? { state: readyState, command: null }
         : navigateIframe(readyState, hostPath);
     })
@@ -99,7 +97,6 @@ const navigateIframe = (
 ): Transition => {
   const nextState = { ...state, iframePath: path, reportedPaths: [] };
 
-  // Before the iframe is ready, it navigates to the host's path once it is.
   if (!state.isReady) {
     return { state: nextState, command: null };
   }

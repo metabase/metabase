@@ -17,11 +17,8 @@ import type { SdkIframeEmbedNavigateToDataAppPathMessage } from "metabase/embedd
 type NavigationRequest = SdkIframeEmbedNavigateToDataAppPathMessage["data"];
 
 /**
- * Keeps the data app router and the host's `path` in sync.
- *
- * Navigates the router to `navigationRequest` when set, otherwise to `path`, and calls
- * `onPathChange` for every other change of the app's page, with the ID of the
- * last navigation request it handled.
+ * Navigates the router to `navigationRequest` when set, otherwise to `path`.
+ * Calls `onPathChange` for every other change of the app's page, with the ID of the last navigation request it handled.
  **/
 export function useDataAppPathNavigation({
   slug,
@@ -89,9 +86,6 @@ function getRequestedPath(
   return isRequestForThisApp ? navigationRequest.path : path;
 }
 
-/**
- * The router route for the host's `path`, or `null` when the app is already there.
- */
 function getHostPathRoute(slug: string, hostPath: string): string | null {
   const normalizedPath = normalizeDataAppPath(hostPath);
 
@@ -109,10 +103,6 @@ function getHostPathRoute(slug: string, hostPath: string): string | null {
   return route.startsWith("/") ? route : `/${route}`;
 }
 
-/**
- * The current location in the same format as the host's `path`,
- * or `null` when the router left this app.
- */
 function getCurrentDataAppPath(slug: string): string | null {
   const basename = getBasename();
 

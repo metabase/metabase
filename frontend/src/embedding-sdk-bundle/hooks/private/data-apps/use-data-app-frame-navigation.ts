@@ -22,8 +22,7 @@ type PathReport = { path: string; navigationId?: number };
 /**
  * Keeps the data app iframe's page and the host's `path` in sync.
  *
- * The returned handlers are stable. Call them when the iframe is ready, is lost, reports a page,
- * or when the host's `path` changes.
+ * The returned handlers are stable, so effects that depend on them do not resend the settings.
  */
 export function useDataAppFrameNavigation({
   iframeRef,

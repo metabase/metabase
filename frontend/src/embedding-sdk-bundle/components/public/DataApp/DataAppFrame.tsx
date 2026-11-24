@@ -12,7 +12,6 @@ interface DataAppFrameProps extends Omit<DataAppProps, "initialPath" | "path"> {
   path: string;
   slug: string;
 
-  /** Whether the host passed `path`, so it can navigate the app. */
   isPathControlled: boolean;
 
   origin: string;
@@ -22,7 +21,6 @@ interface DataAppFrameProps extends Omit<DataAppProps, "initialPath" | "path"> {
    *
    * Later values are ignored, so a route change does not reload the app.
    * `DataApp` keys this component by the app slug and instance URL, so it remounts when either changes.
-   * When only the route or query changes, the iframe is asked to navigate client-side.
    */
   initialSrc: string;
 
@@ -32,31 +30,13 @@ interface DataAppFrameProps extends Omit<DataAppProps, "initialPath" | "path"> {
 }
 
 export function DataAppFrame({
-  path,
-  slug,
-  isPathControlled,
-  origin,
-  initialSrc,
-  onPathChange,
-  locale,
-  store,
-  authConfig,
   height = DEFAULT_HEIGHT,
   width = "100%",
   className,
   style,
+  ...frameOptions
 }: DataAppFrameProps) {
-  const { iframeRef, src, error } = useDataAppFrame({
-    path,
-    slug,
-    isPathControlled,
-    origin,
-    initialSrc,
-    onPathChange,
-    locale,
-    store,
-    authConfig,
-  });
+  const { iframeRef, src, error } = useDataAppFrame(frameOptions);
 
   if (error) {
     return <SdkError message={error} />;

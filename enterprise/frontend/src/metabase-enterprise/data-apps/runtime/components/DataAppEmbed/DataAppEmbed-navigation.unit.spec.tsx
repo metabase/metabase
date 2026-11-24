@@ -13,9 +13,12 @@ import { act, render, renderHook, screen } from "__support__/ui";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { navigate } from "embedding-sdk-package/data-apps/private/lib/data-app-routing";
 import { useDataAppLocation } from "embedding-sdk-package/data-apps/public/hooks/use-data-app-location";
+import type { SdkIframeEmbedNavigateToDataAppPathMessage } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 
 import { DataAppEmbed } from "./DataAppEmbed";
 import { useDataAppPathNavigation } from "./hooks/use-data-app-path-navigation";
+
+type NavigationRequest = SdkIframeEmbedNavigateToDataAppPathMessage["data"];
 
 const store = getSdkStore();
 
@@ -117,32 +120,15 @@ describe("DataAppEmbed - router navigation", () => {
 
     const pushState = jest.spyOn(window.history, "pushState");
 
-    renderHook(() =>
-      useDataAppPathNavigation({
-        slug: "sales",
-        path: "sales/orders?active=true",
-        onPathChange: () => {},
-      }),
-    );
+    setupPathNavigation({ path: "sales/orders?active=true" });
 
     expect(pushState).not.toHaveBeenCalled();
   });
 
   it("navigates when the host sets the same path again", () => {
-    const initialProps: {
-      navigationRequest: { path: string } | null;
-    } = { navigationRequest: null };
-
-    const { rerender } = renderHook(
-      ({ navigationRequest }) =>
-        useDataAppPathNavigation({
-          slug: "sales",
-          path: "sales/orders/details?tab=summary",
-          navigationRequest,
-          onPathChange: () => {},
-        }),
-      { initialProps },
-    );
+    const { requestNavigation } = setupPathNavigation({
+      path: "sales/orders/details?tab=summary",
+    });
 
     // simulates in-app navigation
     window.history.replaceState(null, "", "/embed/embedded-apps/sales/orders");
@@ -151,11 +137,7 @@ describe("DataAppEmbed - router navigation", () => {
     const replaceState = jest.spyOn(window.history, "replaceState");
 
     // host sets the same path again after in-app navigation
-    rerender({
-      navigationRequest: {
-        path: "sales/orders/details?tab=summary",
-      },
-    });
+    requestNavigation({ path: "sales/orders/details?tab=summary" });
 
     expect(window.location.href).toBe(
       `${window.location.origin}/embed/embedded-apps/sales/orders/details?tab=summary`,
@@ -176,25 +158,13 @@ describe("DataAppEmbed - router navigation", () => {
     "navigates to path again instead of a request that does not name this app: %j",
     (requestedPath) => {
       window.history.replaceState(null, "", "/embed/embedded-apps/sales");
-      const initialProps: { navigationRequest: { path: string } | null } = {
-        navigationRequest: null,
-      };
+      const { requestNavigation } = setupPathNavigation({
+        path: "sales/orders",
+      });
 
-      const { rerender } = renderHook(
-        ({ navigationRequest }) =>
-          useDataAppPathNavigation({
-            slug: "sales",
-            path: "sales/orders",
-            navigationRequest,
-            onPathChange: () => {},
-          }),
-        { initialProps },
-      );
-
-      // simulates in-app navigation
       act(() => navigate("/products"));
 
-      rerender({ navigationRequest: { path: requestedPath } });
+      requestNavigation({ path: requestedPath });
 
       expect(window.location.pathname).toBe(
         "/embed/embedded-apps/sales/orders",
@@ -203,28 +173,14 @@ describe("DataAppEmbed - router navigation", () => {
   );
 
   it("reports the ID of the last navigation request it handled", () => {
-    const onPathChange = jest.fn<void, [string, number | undefined]>();
-    const initialProps: {
-      navigationRequest: { path: string; navigationId?: number } | null;
-    } = { navigationRequest: null };
-
-    const { rerender } = renderHook(
-      ({ navigationRequest }) =>
-        useDataAppPathNavigation({
-          slug: "sales",
-          path: "sales",
-          navigationRequest,
-          onPathChange,
-        }),
-      { initialProps },
-    );
+    const { onPathChange, requestNavigation } = setupPathNavigation({
+      path: "sales",
+    });
 
     act(() => navigate("/orders"));
     expect(onPathChange).toHaveBeenLastCalledWith("sales/orders", undefined);
 
-    rerender({
-      navigationRequest: { path: "sales/products", navigationId: 3 },
-    });
+    requestNavigation({ path: "sales/products", navigationId: 3 });
     expect(window.location.pathname).toBe(
       "/embed/embedded-apps/sales/products",
     );
@@ -253,14 +209,29 @@ describe("DataAppEmbed - router navigation", () => {
   });
 });
 
-function setupPathNavigation({ path }: { path: string }) {
-  const onPathChange = jest.fn<void, [string, number | undefined]>();
+type SetupPathNavigationOpts = {
+  path: string;
+};
 
-  const view = renderHook(
-    ({ path }) =>
-      useDataAppPathNavigation({ slug: "sales", path, onPathChange }),
-    { initialProps: { path } },
+function setupPathNavigation({ path }: SetupPathNavigationOpts) {
+  const onPathChange = jest.fn<void, [string, number | undefined]>();
+  const initialProps: { navigationRequest: NavigationRequest | null } = {
+    navigationRequest: null,
+  };
+
+  const { rerender } = renderHook(
+    ({ navigationRequest }) =>
+      useDataAppPathNavigation({
+        slug: "sales",
+        path,
+        navigationRequest,
+        onPathChange,
+      }),
+    { initialProps },
   );
 
-  return { ...view, onPathChange };
+  const requestNavigation = (navigationRequest: NavigationRequest) =>
+    rerender({ navigationRequest });
+
+  return { onPathChange, requestNavigation };
 }

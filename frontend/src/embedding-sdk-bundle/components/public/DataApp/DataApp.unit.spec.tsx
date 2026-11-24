@@ -101,17 +101,20 @@ const messageEvent = (
 const message = (...args: Parameters<typeof messageEvent>) =>
   act(() => window.dispatchEvent(messageEvent(...args)));
 
-const pathChangeMessage = (
+const pathChangeEvent = (
   iframe: HTMLIFrameElement,
-  path: unknown,
+  path: string,
   navigationId?: number,
 ) =>
-  message(iframe, "metabase.embed.dataAppPathChange", {
+  messageEvent(iframe, "metabase.embed.dataAppPathChange", {
     data: {
       type: "metabase.embed.dataAppPathChange",
       data: { path, navigationId },
     },
   });
+
+const pathChangeMessage = (...args: Parameters<typeof pathChangeEvent>) =>
+  act(() => window.dispatchEvent(pathChangeEvent(...args)));
 
 const getNavigationId = (postMessage: jest.SpyInstance) => {
   const [lastMessage] = postMessage.mock.lastCall ?? [];
@@ -503,11 +506,7 @@ describe("DataApp", () => {
     // e.g. a page that redirects straight back, with both reports rendered together
     act(() => {
       for (const path of ["boba-hq/orders/42", "boba-hq"]) {
-        window.dispatchEvent(
-          messageEvent(iframe, "metabase.embed.dataAppPathChange", {
-            data: { type: "metabase.embed.dataAppPathChange", data: { path } },
-          }),
-        );
+        window.dispatchEvent(pathChangeEvent(iframe, path));
       }
     });
 

@@ -6,7 +6,7 @@ type Options = {
 };
 
 /**
- * The path `DataApp` shows: `path` when set, otherwise the first `initialPath`. Later `initialPath` changes are ignored.
+ * The path `DataApp` shows: `path` when set, otherwise the first `initialPath`.
  * When `path` is removed, the app stays on the last `path`. Warns when both are set.
  */
 export const useDataAppPath = ({ initialPath, path }: Options): string => {
@@ -20,12 +20,12 @@ export const useDataAppPath = ({ initialPath, path }: Options): string => {
     }
   }, [hasConflictingPaths]);
 
-  const [shownPath, setShownPath] = useState(path ?? initialPath);
-  const nextPath = path ?? shownPath;
+  const [lastShownPath, setLastShownPath] = useState(path ?? initialPath);
+  const shownPath = path ?? lastShownPath;
 
-  if (nextPath !== shownPath) {
-    setShownPath(nextPath);
+  if (shownPath !== lastShownPath) {
+    setLastShownPath(shownPath);
   }
 
-  return nextPath ?? "";
+  return shownPath ?? "";
 };
