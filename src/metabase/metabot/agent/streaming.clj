@@ -34,12 +34,13 @@
     tool-title-type})
 
 (defn persistable-data-part?
-  "True if `part` should be written to MetabotMessage.data. `state` parts are
-  skipped because their value is diffed separately into MetabotMessage.state;
-  duplicating the full blob in the message data would bloat storage. Non-data
-  parts are always persistable here; the caller is responsible for filtering
-  stream-level metadata
-  (`:start`, `:usage`, `:finish`) separately."
+  "True if `part` should be written to MetabotMessage.data.
+
+  `state` parts are skipped because their value is diffed separately into MetabotMessage.state;
+  duplicating the full blob in the message data would bloat storage. Non-data parts are always
+  persistable here; each caller removes the stream metadata it does not store. Storage keeps
+  `:start` as the `step-start` part that history replay splits steps at
+  (see [[metabase.metabot.persistence/parts->storable-content]])."
   [part]
   (not (and (= :data (:type part))
             (contains? ephemeral-data-types (:data-type part)))))
