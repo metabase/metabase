@@ -86,8 +86,12 @@ const API_KEY_USAGE_FIELDS: FieldSpec[] = [
 const fieldId = (name: string) =>
   API_KEY_USAGE_TABLE_ID * 100 +
   API_KEY_USAGE_FIELDS.findIndex(([, fieldName]) => fieldName === name);
+const fieldName = (id: number) =>
+  API_KEY_USAGE_FIELDS[id - API_KEY_USAGE_TABLE_ID * 100]?.[1];
 const API_KEY_ID_FIELD_ID = fieldId("api_key_id");
 const OCCURRED_AT_FIELD_ID = fieldId("occurred_at");
+const API_KEY_NAME_FIELD_ID = fieldId("api_key_name");
+const CREATOR_DISPLAY_NAME_FIELD_ID = fieldId("creator_display_name");
 
 const buildTable = (id: number, name: string, fields: FieldSpec[]) =>
   createMockTable({
@@ -150,6 +154,7 @@ type MbqlStage = {
   filters?: MbqlClause[];
   aggregation?: MbqlClause[];
   breakout?: MbqlClause[];
+  fields?: MbqlClause[];
   page?: { page: number; items: number };
 };
 
@@ -165,12 +170,24 @@ function getApiKeyIdFilter(stage: MbqlStage): number | undefined {
   return clause ? Number(clause[3]) : undefined;
 }
 
-/** The filter clause on `occurred_at`, or undefined. */
-function getOccurredAtFilter(stage: MbqlStage): MbqlClause | undefined {
-  return stage.filters?.find((clause) =>
-    clause.slice(2).some((arg) => isFieldRef(arg, OCCURRED_AT_FIELD_ID)),
+/** The `time-interval` filter on `occurred_at`, or undefined. */
+function getOccurredAtInterval(stage: MbqlStage) {
+  const clause = stage.filters?.find(
+    ([operator, , field]) =>
+      operator === "time-interval" && isFieldRef(field, OCCURRED_AT_FIELD_ID),
   );
+  return clause
+    ? {
+        value: clause[3],
+        unit: clause[4],
+        includeCurrent: clause[1]["include-current"] === true,
+      }
+    : undefined;
 }
+
+/** The field ids the stage projects with `fields`. */
+const getFieldIds = (stage: MbqlStage): number[] =>
+  (stage.fields ?? []).map((ref) => Number(ref[2]));
 
 const column = (name: string, source: DatasetColumn["source"] = "fields") =>
   createMockColumn({ name, display_name: name, source });
@@ -183,33 +200,27 @@ const dataset = (cols: DatasetColumn[], rows: RowValue[][]): Dataset =>
     running_time: 1,
   });
 
-const EVENT_COLUMNS = [
-  "log_id",
-  "occurred_at",
-  "route_template",
-  "http_method",
-  "status",
-  "duration_ms",
-  "api_key_name",
-  "creator_display_name",
-  "client_display_name",
-  "embedding_client",
-  "embedding_hostname",
-];
-
-const SEEDED_EVENT_ROW: RowValue[] = [
-  501,
-  "2026-11-23T10:00:00Z",
-  "/api/testing/api-keys/seed-usage",
-  "GET",
-  200,
-  42,
-  SEEDED_KEY.name,
-  ADMIN_DISPLAY_NAME,
-  "curl",
-  null,
-  null,
-];
+// The seeded call, as a row of the view. Like the call the e2e test seeds, it happened today.
+const SEEDED_CALL: Record<string, RowValue> = {
+  log_id: 501,
+  occurred_at: new Date().toISOString(),
+  route_template: "/api/testing/api-keys/seed-usage",
+  http_method: "GET",
+  status: 200,
+  duration_ms: 42,
+  api_key_id: SEEDED_KEY.id,
+  api_key_name: SEEDED_KEY.name,
+  actor_user_id: 2,
+  creator_id: ADMIN_USER_ID,
+  creator_display_name: ADMIN_DISPLAY_NAME,
+  group_name: ADMIN_GROUP.name,
+  client_name: "curl",
+  client_display_name: "curl",
+  embedding_client: null,
+  embedding_hostname: null,
+  ip_address: null,
+  user_agent: "curl/8.0.1",
+};
 
 /** Stage 0 of an `/api/dataset` request body. */
 function parseFirstStage(body: string): MbqlStage {
@@ -219,26 +230,32 @@ function parseFirstStage(body: string): MbqlStage {
 }
 
 /**
- * Stands in for the audit view: with `hasCalls`, it holds one call, made with the seeded key.
- * Every query gets that call only when it isn't filtered to another API key, so a request that
- * drops or mangles the API key filter shows the wrong rows.
+ * Stands in for the audit view: with `hasCalls`, it holds one call, made today with the seeded
+ * key. Every query gets that call only when it isn't filtered to another API key and its date
+ * range includes today, so a request that drops or mangles either filter shows the wrong rows.
+ * The events query gets back only the columns it projects.
  */
 function respondToDatasetQuery(body: string, hasCalls: boolean): Dataset {
   const stage = parseFirstStage(body);
   const apiKeyId = getApiKeyIdFilter(stage);
   const matchesSeededCall =
-    hasCalls && (apiKeyId == null || apiKeyId === SEEDED_KEY.id);
+    hasCalls &&
+    (apiKeyId == null || apiKeyId === SEEDED_KEY.id) &&
+    getOccurredAtInterval(stage)?.includeCurrent === true;
 
   if (stage.page != null) {
+    const names = getFieldIds(stage)
+      .map(fieldName)
+      .filter((name): name is string => name != null);
     return dataset(
-      EVENT_COLUMNS.map((name) => column(name)),
-      matchesSeededCall ? [SEEDED_EVENT_ROW] : [],
+      names.map((name) => column(name)),
+      matchesSeededCall ? [names.map((name) => SEEDED_CALL[name])] : [],
     );
   }
   if (stage.breakout?.some((ref) => isFieldRef(ref, API_KEY_ID_FIELD_ID))) {
     return dataset(
       [column("api_key_id", "breakout"), column("max", "aggregation")],
-      matchesSeededCall ? [[SEEDED_KEY.id, "2026-11-23T10:00:00Z"]] : [],
+      matchesSeededCall ? [[SEEDED_KEY.id, SEEDED_CALL.occurred_at]] : [],
     );
   }
   if (stage.breakout == null || stage.breakout.length === 0) {
@@ -405,6 +422,13 @@ describe("ApiKeyUsageSectionLayout", () => {
 
     expect(router?.location.pathname).toBe(Urls.monitorApiKeyUsageEvents());
     const table = await eventsTable();
+    // The events query projects the key and creator columns; the mock returns only those it asks for.
+    expect(getFieldIds(eventsStages().at(-1) ?? {})).toEqual(
+      expect.arrayContaining([
+        API_KEY_NAME_FIELD_ID,
+        CREATOR_DISPLAY_NAME_FIELD_ID,
+      ]),
+    );
     expect(
       within(table).getByRole("columnheader", { name: "Created by" }),
     ).toBeInTheDocument();
@@ -461,10 +485,12 @@ describe("ApiKeyUsageSectionLayout", () => {
   it("sends the selected date range with the events query", async () => {
     setup({ initialRoute: Urls.monitorApiKeyUsageEvents() });
     const table = await eventsTable();
-    // The default range is the last 30 days.
-    expect(getOccurredAtFilter(eventsStages().at(-1) ?? {})).toEqual(
-      expect.arrayContaining(["time-interval", -29, "day"]),
-    );
+    // The default range is the last 30 days, including today.
+    expect(getOccurredAtInterval(eventsStages().at(-1) ?? {})).toEqual({
+      value: -29,
+      unit: "day",
+      includeCurrent: true,
+    });
 
     await userEvent.click(
       screen.getByTestId("conversation-filters-date-select"),
@@ -474,9 +500,11 @@ describe("ApiKeyUsageSectionLayout", () => {
     );
 
     await waitFor(() =>
-      expect(getOccurredAtFilter(eventsStages().at(-1) ?? {})).toEqual(
-        expect.arrayContaining(["time-interval", -6, "day"]),
-      ),
+      expect(getOccurredAtInterval(eventsStages().at(-1) ?? {})).toEqual({
+        value: -6,
+        unit: "day",
+        includeCurrent: true,
+      }),
     );
     expect(await within(table).findByText(SEEDED_KEY.name)).toBeInTheDocument();
   });
