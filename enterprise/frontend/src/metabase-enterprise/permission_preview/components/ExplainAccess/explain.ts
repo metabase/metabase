@@ -29,11 +29,6 @@ export interface ExplainAnswers {
   download?: PermissionDebugAnswer;
 }
 
-/** A table's own name, with its schema when it has one */
-export function getTableName(table: PermissionDebugTable) {
-  return table.name;
-}
-
 export function getSubject(target: PreviewTarget) {
   return target.kind === "user"
     ? target.user.common_name
@@ -142,7 +137,7 @@ export function getRouteSentence(route: PermissionDebugRoute) {
     case "router":
       return t`${route["db-name"]}: queries stay on this database (${route.attribute} = ${route.value}).`;
     case "missing-value":
-      return t`${route["db-name"]}: every query fails, there is no value for ${route.attribute}.`;
+      return t`${route["db-name"]}: every query fails: no value for ${route.attribute}.`;
     case "no-destination":
       return t`${route["db-name"]}: every query fails, no database is named ${route.value}.`;
   }

@@ -362,7 +362,7 @@ function ConnectionSection({ query }: ConnectionSectionProps) {
 function getImpersonationSentence(impersonation: PermissionDebugImpersonation) {
   const database = impersonation["db-name"];
   return impersonation["missing?"]
-    ? t`${database}: every query fails, there is no value for ${impersonation.attribute}.`
+    ? t`${database}: every query fails: no value for ${impersonation.attribute}.`
     : t`${database}: connects as the role ${impersonation.value}, set by ${impersonation.attribute}.`;
 }
 

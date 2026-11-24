@@ -333,6 +333,11 @@ describe("ExplainAccess", () => {
         }),
       );
 
+      expect(
+        screen.getByText(
+          "Sandy Sales sees only the Products rows that match the attributes below, from Sales.",
+        ),
+      ).toBeInTheDocument();
       expect(screen.getByText("Row and column security")).toBeInTheDocument();
       expect(screen.getByText("Set by Sales")).toBeInTheDocument();
       expect(screen.getByText("Columns: all columns")).toBeInTheDocument();
@@ -551,7 +556,7 @@ describe("ExplainAccess", () => {
 
       expect(
         await screen.findByText(
-          "Sample Database: every query fails, there is no value for destination.",
+          "Sample Database: every query fails: no value for destination.",
         ),
       ).toBeInTheDocument();
     });

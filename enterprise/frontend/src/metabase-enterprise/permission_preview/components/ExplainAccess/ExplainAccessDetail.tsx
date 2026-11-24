@@ -172,10 +172,14 @@ interface SandboxCardProps {
 }
 
 function SandboxCard({ subject, tableName, sandboxes }: SandboxCardProps) {
+  const groupNames = sandboxes
+    .map((sandbox) => sandbox["group-name"])
+    .join(", ");
+
   return (
     <Stack gap="sm">
       <Text fw="bold">{t`Result`}</Text>
-      <Text>{t`${subject} sees only the ${tableName} rows that match the attributes below.`}</Text>
+      <Text>{t`${subject} sees only the ${tableName} rows that match the attributes below, from ${groupNames}.`}</Text>
       {sandboxes.map((sandbox) => (
         <Stack key={sandbox["sandbox-id"]} gap="xs">
           <Text fw="bold">{t`Row and column security`}</Text>
