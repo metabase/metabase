@@ -699,15 +699,19 @@
           (is (zero? (t2/count :model/Transform :collection_id [:in [regular-id transforms-id missing-id]]))))))))
 
 (defn- statements-outside-query-analysis!
-  "The number of app-DB statements `thunk` runs, leaving out the reads of group memberships and table remappings that
-  the query processor makes each time it analyzes a query."
+  "The number of app-DB statements `thunk` runs on the calling thread, leaving out the reads of group memberships and
+  table remappings that the query processor makes each time it analyzes a query."
   [thunk]
   (let [statements (atom [])
+        thread     (Thread/currentThread)
         reduce-fn  @#'t2.jdbc.query/reduce-jdbc-query]
     (events.tu/without-delivery
      (with-redefs-fn {#'t2.jdbc.query/reduce-jdbc-query
                       (fn [& args]
-                        (swap! statements conj (str (first (second (take-last 3 args)))))
+                        ;; The redefinition is global, so it also sees statements other threads run meanwhile, such as
+                        ;; the consumers of the events the transforms' creation published.
+                        (when (identical? thread (Thread/currentThread))
+                          (swap! statements conj (str (first (second (take-last 3 args))))))
                         (apply reduce-fn args))}
        thunk))
     (count (remove #(re-find #"(?i)permissions_group_membership|table_remapping" %) @statements))))
