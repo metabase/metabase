@@ -8,21 +8,24 @@
 
 (p/import-vars
  [metabase.query-permissions.impl
+  assoc-can-query
   can-query-table?
   check-parameter-field-permissions
   can-run-query?
   can-run-query-with-resolved-source-ids?
   check-card-read-perms
+  check-cards-read-perms
   check-card-result-metadata-data-perms
   check-data-perms
   check-result-metadata-data-perms
+  check-run-permissions-for-queries
   check-run-permissions-for-query
   has-perm-for-query?
   merge-resolved-source-ids
+  native-query-database-ids
   perms-exception
   query->resolved-source-ids
   query->source-ids
-  query->source-table-ids
   required-perms-for-query
   resolved-source-ids-transform
   ResolvedSourceIds

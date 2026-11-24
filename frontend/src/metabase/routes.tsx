@@ -18,6 +18,13 @@ import {
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
+import {
+  dashboardApp,
+  dashboardArchiveModal,
+  dashboardCopyModal,
+  dashboardMoveModal,
+  getDashboardRoute,
+} from "metabase/dashboard/routes";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { getEmbeddingHubRoutes } from "metabase/embedding-hub/routes";
 import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
@@ -107,15 +114,6 @@ const metabotQueryBuilder = () =>
  * Documents, in their own chunk. It carries the rich text editing stack, which
  * nothing outside the document page needs on first paint.
  */
-/**
- * The dashboard, in its own chunk. Its three modal children defer separately, so
- * opening one does not depend on the page chunk having arrived.
- */
-const dashboardApp = () =>
-  import(
-    /* webpackChunkName: "dashboard" */ "metabase/dashboard/containers/DashboardApp/DashboardApp"
-  ).then(({ DashboardApp }) => ({ Component: DashboardApp }));
-
 const automaticDashboardApp = () =>
   import(
     /* webpackChunkName: "automatic-dashboard" */ "metabase/dashboard/containers/AutomaticDashboardApp"
@@ -205,23 +203,6 @@ const commentsSidesheet = () =>
   import(
     /* webpackChunkName: "comments-sidesheet" */ "metabase/documents/components/CommentsSidesheet"
   ).then(({ CommentsSidesheet }) => CommentsSidesheet);
-
-const dashboardMoveModal = () =>
-  import(
-    /* webpackChunkName: "dashboard-move-modal" */ "metabase/dashboard/components/DashboardMoveModal"
-  ).then(({ DashboardMoveModalConnected }) => DashboardMoveModalConnected);
-
-const dashboardCopyModal = () =>
-  import(
-    /* webpackChunkName: "dashboard-copy-modal" */ "metabase/dashboard/components/DashboardCopyModal"
-  ).then(({ DashboardCopyModalConnected }) => DashboardCopyModalConnected);
-
-const dashboardArchiveModal = () =>
-  import(
-    /* webpackChunkName: "dashboard-archive-modal" */ "metabase/dashboard/containers/ArchiveDashboardModal"
-  ).then(
-    ({ ArchiveDashboardModalConnected }) => ArchiveDashboardModalConnected,
-  );
 
 /**
  * Hovering a link into one of these chunks starts the fetch, so it is usually in
@@ -328,9 +309,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "document/:entityId",
                 lazy: documentPage,
                 children: [
-                  lazyModalRoute("comments/:childTargetId", commentsSidesheet, {
-                    noWrap: true,
-                  }),
+                  lazyModalRoute("comments/:childTargetId", commentsSidesheet),
                 ],
               },
 
@@ -379,19 +358,12 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 children: [
                   ...toRouteObjects(
                     <>
-                      {modalRoute("move", MoveCollectionModal, {
-                        noWrap: true,
-                      })}
-                      {modalRoute("archive", ArchiveCollectionModal, {
-                        noWrap: true,
-                      })}
-                      {modalRoute("permissions", CollectionPermissionsModal, {
-                        noWrap: true,
-                      })}
+                      {modalRoute("move", MoveCollectionModal)}
+                      {modalRoute("archive", ArchiveCollectionModal)}
+                      {modalRoute("permissions", CollectionPermissionsModal)}
                       {modalRoute(
                         "move-questions-dashboard",
                         MoveQuestionsIntoDashboardsModal,
-                        { noWrap: true },
                       )}
                       {PLUGIN_COLLECTIONS.cleanUpRoute}
                     </>,
@@ -423,21 +395,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 }),
               },
 
-              {
-                path: "dashboard/:slug",
-                lazy: dashboardApp,
-                children: [
-                  lazyModalRoute("move", dashboardMoveModal, {
-                    noWrap: true,
-                  }),
-                  lazyModalRoute("copy", dashboardCopyModal, {
-                    noWrap: true,
-                  }),
-                  lazyModalRoute("archive", dashboardArchiveModal, {
-                    noWrap: true,
-                  }),
-                ],
-              },
+              getDashboardRoute(),
 
               {
                 path: "/question",

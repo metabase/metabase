@@ -102,7 +102,7 @@
 
 (mr/def ::mock-metadata-spec
   "A partial [[::mock-metadata]] map, which [[mock-coercer]] completes with mock values."
-  [:map {:closed false, ::mr/deliberately-open true, :description "mock metadata spec"}])
+  [:map {:closed false, :description "mock metadata spec"}])
 
 (mu/defn- mock-coercer :- [:=> [:cat] [:=> [:cat :map] ::mock-metadata]]
   []

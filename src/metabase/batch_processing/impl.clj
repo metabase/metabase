@@ -90,7 +90,7 @@
    [:json_query                  {:optional true} [:maybe query-like]]
    ;; the entry shape is enforced where it is built ([[metabase.lib.schema/sandboxing.details.entry]]) and on the way
    ;; into the app DB ([[metabase.queries.schema/query-execution.update]]); this row schema only passes it through
-   [:sandbox_details             {:optional true} [:maybe [:sequential [:map {::mr/deliberately-open true}]]]]])
+   [:sandbox_details             {:optional true} [:maybe [:sequential :map]]]])
 
 (def ^:private id+timestamp
   [:map {:closed true}
@@ -172,3 +172,14 @@
         (f [object]))
       (apply grouper/submit! (:grouper grouper-wrapper) object options))
     nil))
+
+(mu/defn submit-all! :- :nil
+  "Submit each of `objects` as [[submit!]] does, processing them in one batch when it would process them on this
+  thread."
+  [grouper-wrapper :- ::grouper-wrapper
+   objects         :- [:sequential submit-object]]
+  (if (or (batch-processing.settings/synchronous-batch-updates) (mdb/in-transaction?))
+    (when (seq objects)
+      ((:f grouper-wrapper) (vec objects)))
+    (run! #(grouper/submit! (:grouper grouper-wrapper) %) objects))
+  nil)

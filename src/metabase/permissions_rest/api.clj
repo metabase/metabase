@@ -4,11 +4,12 @@
    [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions-rest.db :as permissions-rest.db]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as permissions-group]
+   [metabase.permissions.models.permissions-group-membership :as permissions-group-membership]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
@@ -50,14 +51,14 @@
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
   (data-perms.graph/api-graph {:group-id group-id}))
 
-(defenterprise upsert-sandboxes!
-  "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
+(defenterprise upsert-sandboxes-for-graph!
+  "OSS implementation of `upsert-sandboxes-for-graph!`. Errors since this is an enterprise feature."
   metabase-enterprise.sandbox.models.sandbox
   [_sandboxes]
   (throw (premium-features/ee-feature-error (tru "Sandboxes"))))
 
-(defenterprise insert-impersonations!
-  "OSS implementation of `insert-impersonations!`. Errors since this is an enterprise feature."
+(defenterprise upsert-connection-impersonations-for-graph!
+  "OSS implementation of `upsert-connection-impersonations-for-graph!`. Errors since this is an enterprise feature."
   metabase-enterprise.impersonation.models
   [_impersonations]
   (throw (premium-features/ee-feature-error (tru "Connection impersonation"))))
@@ -88,7 +89,7 @@
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
    new-graph :- ::permissions-rest.schema/graph-update-request]
   (api/check-superuser)
-  (perms/check-tenant-groups-visible! (keys (:groups new-graph)))
+  (perms/check-tenant-groups-visible (keys (:groups new-graph)))
   (t2/with-transaction [_conn]
     (let [group-ids (-> new-graph :groups keys)
           old-graph (data-perms.graph/api-graph {:group-ids group-ids})
@@ -102,10 +103,10 @@
       (perms/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
       (let [sandbox-updates        (:sandboxes new-graph)
             sandboxes              (when sandbox-updates
-                                     (upsert-sandboxes! sandbox-updates))
+                                     (upsert-sandboxes-for-graph! sandbox-updates))
             impersonation-updates  (:impersonations new-graph)
             impersonations         (when impersonation-updates
-                                     (insert-impersonations! impersonation-updates))
+                                     (upsert-connection-impersonations-for-graph! impersonation-updates))
             group-ids (-> new-graph :groups keys)]
         (merge {:revision (perms/latest-permissions-revision-id)}
                (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
@@ -178,12 +179,11 @@
   "Fetch the details for a certain permissions group."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (perms/check-manager-of-group id)
-  (api/check-404 (empty? (perms/hidden-tenant-group-ids [id])))
-  (api/check-404
-   (some-> (permissions-rest.db/permissions-group id)
-           (t2/hydrate :members)
-           (maybe-fix-name (setting/get :use-tenants)))))
+  (let [group (api/read-check (permissions-rest.db/permissions-group id))]
+    (api/check-404 (empty? (perms/hidden-tenant-group-ids [id])))
+    (-> group
+        (t2/hydrate :members)
+        (maybe-fix-name (setting/get :use-tenants)))))
 
 (api.macros/defendpoint :get "/invite-group-ids"
   :- [:sequential ms/PositiveInt]
@@ -216,16 +216,14 @@
    {:keys [name is_tenant_group]} :- [:map {:closed true}
                                       [:name ms/NonBlankString]
                                       [:is_tenant_group {:optional true} [:maybe :boolean]]]]
-  (api/check-superuser)
+  (api/create-check :model/PermissionsGroup {:name name :is_tenant_group (boolean is_tenant_group)})
   (when is_tenant_group
     (when-not (premium-features/enable-tenants?)
       (throw (premium-features/ee-feature-error (tru "Tenants"))))
     (when-not (setting/get :use-tenants)
       (throw (ex-info (tru "Tenant groups cannot be created while the Tenants feature is disabled.")
                       {:status-code 400}))))
-  (u/prog1 (permissions-rest.db/insert-permissions-group! name (boolean is_tenant_group))
-    (events/publish-event! :event/group-create {:object <>
-                                                :user-id api/*current-user-id*})))
+  (first (permissions-group/create-permissions-groups! [{:name name :is_tenant_group (boolean is_tenant_group)}])))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -238,32 +236,18 @@
    _query-params
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
-  (perms/check-manager-of-group group-id)
+  (api/write-check (permissions-rest.db/permissions-group group-id))
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (let [group (permissions-rest.db/permissions-group group-id)]
-    (api/check-404 group)
-    (permissions-rest.db/rename-permissions-group! group-id name)
-    ;; return the updated group
-    (u/prog1 (permissions-rest.db/permissions-group group-id)
-      (events/publish-event! :event/group-update
-                             {:user-id api/*current-user-id*
-                              :object <>
-                              :previous-object group}))))
+  (permissions-group/update-permissions-groups! [{:id group-id :name name}])
+  (permissions-rest.db/permissions-group group-id))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/group/:group-id"
+(api.macros/defendpoint :delete "/group/:group-id" :- ::api/generic-204-no-content
   "Delete a specific `PermissionsGroup`."
   [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
-  (perms/check-manager-of-group group-id)
+  (api/write-check (permissions-rest.db/permissions-group group-id))
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (let [group (permissions-rest.db/permissions-group group-id)]
-    (permissions-rest.db/delete-permissions-group! group-id)
-    (events/publish-event! :event/group-delete {:object group
-                                                :user-id api/*current-user-id*}))
+  (permissions-group/delete-permissions-groups! [group-id])
   api/generic-204-no-content)
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
@@ -300,15 +284,11 @@
                                                    [:user_id          ms/PositiveInt]
                                                    [:is_group_manager {:default false} [:maybe :boolean]]]]
   (let [is_group_manager (boolean is_group_manager)]
-    (perms/check-manager-of-group group_id)
-    (perms/check-tenant-groups-visible! [group_id])
+    (api/create-check :model/PermissionsGroupMembership {:group_id group_id :user_id user_id :is_group_manager is_group_manager})
+    (perms/check-tenant-groups-visible [group_id])
     (when is_group_manager
-      ;; enable `is_group_manager` require advanced-permissions enabled
-      (perms/check-advanced-permissions-enabled :group-manager)
-      (api/check
-       (permissions-rest.db/non-admin-user-exists? user_id)
-       [400 (tru "Admin cannot be a group manager.")]))
-    (perms/add-user-to-group! user_id group_id is_group_manager)
+      (perms/check-advanced-permissions-enabled :group-manager))
+    (permissions-group-membership/add-users-to-groups! [{:user user_id :group group_id :is-group-manager? is_group_manager}])
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
     (:members (t2/hydrate (t2/instance :model/PermissionsGroup {:id group_id}) :members))))
@@ -326,44 +306,29 @@
                                   [:is_group_manager :boolean]]]
   ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
   (perms/check-advanced-permissions-enabled :group-manager)
-  ;; Make sure only Super user or Group Managers can call this
-  (perms/check-group-manager)
-  (let [old (permissions-rest.db/group-membership id)]
-    (api/check-404 old)
-    (perms/check-tenant-groups-visible! [(:group_id old)])
-    (perms/check-manager-of-group (:group_id old))
-    (api/check
-     (permissions-rest.db/non-admin-user-exists? (:user_id old))
-     [400 (tru "Admin cannot be a group manager.")])
-    (permissions-rest.db/set-group-membership-manager! (:id old) is_group_manager)
+  (let [old (api/check-404 (permissions-rest.db/group-membership id))]
+    (perms/check-tenant-groups-visible [(:group_id old)])
+    (api/write-check old)
+    (permissions-group-membership/update-permissions-group-memberships! [{:id (:id old) :is_group_manager is_group_manager}])
     (permissions-rest.db/group-membership (:id old))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/membership/:group-id/clear"
+(api.macros/defendpoint :put "/membership/:group-id/clear" :- ::api/generic-204-no-content
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
-  (perms/check-manager-of-group group-id)
-  (api/check-404 (permissions-rest.db/permissions-group-exists? group-id))
+  (api/write-check (permissions-rest.db/permissions-group group-id))
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
-  (perms/check-tenant-groups-visible! [group-id])
-  (perms/remove-all-users-from-group! group-id)
+  (perms/check-tenant-groups-visible [group-id])
+  (permissions-group-membership/remove-users-from-groups! (permissions-rest.db/group-member-ids group-id) [group-id])
   api/generic-204-no-content)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/membership/:id"
+(api.macros/defendpoint :delete "/membership/:id" :- ::api/generic-204-no-content
   "Remove a User from a PermissionsGroup (delete their membership)."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [membership (permissions-rest.db/group-membership id)]
     (api/check-404 membership)
-    (perms/check-tenant-groups-visible! [(:group_id membership)])
-    (perms/check-manager-of-group (:group_id membership))
-    (perms/remove-user-from-group! (:user_id membership) (:group_id membership))
+    (perms/check-tenant-groups-visible [(:group_id membership)])
+    (api/write-check membership)
+    (permissions-group-membership/remove-users-from-groups! [(:user_id membership)] [(:group_id membership)])
     api/generic-204-no-content))

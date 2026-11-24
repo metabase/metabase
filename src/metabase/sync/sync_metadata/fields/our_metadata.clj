@@ -5,6 +5,7 @@
   comparing the differences in the two sets of Metadata."
   (:require
    [medley.core :as m]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
@@ -81,3 +82,12 @@
    `TableMetadataField` format returned by `describe-table`."
   [table :- i/TableInstance]
   (-> table table->fields fields->our-metadata))
+
+(mu/defn our-metadata-by-table-id :- [:map-of ::lib.schema.id/table [:set common/TableMetadataFieldWithID]]
+  "The [[our-metadata]] of each of the Tables with `table-ids` by Table id, read together, an empty set for a Table
+  with no active Field."
+  [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
+  (let [table-id->fields (group-by :table_id (sync.db/active-fields-metadata-for-tables table-ids))]
+    (into {}
+          (map (fn [table-id] [table-id (fields->our-metadata (get table-id->fields table-id))]))
+          table-ids)))

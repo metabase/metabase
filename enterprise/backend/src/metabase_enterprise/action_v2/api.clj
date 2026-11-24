@@ -13,7 +13,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,10 +32,9 @@
 (mr/def ::api-action-expression
   "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside.
 
-  Opaque ([[ms/OpaqueJSONObject]]) rather than a bare `:map`: the shape is deliberately unspecified here, and a closed
-  map with no declared entries would have every key stripped during request decoding, so the handler would only ever
-  see `{}`."
-  ms/OpaqueJSONObject)
+  Open rather than a bare `:map`: the shape is deliberately unspecified here, and a map with no declared entries
+  would have every key stripped during request decoding, so the handler would only ever see `{}`."
+  [:map {:closed false, :description "an action expression"}])
 
 (mr/def ::api-action-id-or-expression
   "All the various ways of referring to an action with the v2 APIs."
@@ -56,7 +56,7 @@
   Same shape as [[metabase.actions.schema/execute-parameter-values]]. Decoding sees a permissive string-keyed map and the
   values are validated against, rather than decoded through, [[strict-action-value-map]]."
   [:and
-   ms/OpaqueJSONObject
+   (ms/string-keyed-map :metabase.util.malli/value)
    [:fn {:error/message "value must be a scalar, or a sequence of scalars"}
     #(mr/validate strict-action-value-map %)]])
 
@@ -102,26 +102,20 @@
      param-map)))
 
 (defn- apply-mapping [{:keys [mapping] :as action} params inputs]
-  (let [mapping (hydrate-mapping mapping)
-        tag?    #(and (vector? %2) (= %1 (first %2)))]
+  (let [mapping (hydrate-mapping mapping)]
     (if-not mapping
       (if (or params (:param-map action))
         (map #(augment-params action % params) inputs)
         inputs)
       (for [input inputs
             :let [root (augment-params action input params)]]
-        (walk/postwalk
-         (fn [x]
-           (cond
-             (= ::root x)   root
-             (= ::input x)  input
-             (= ::params x) params
-             ;; specific key
-             (tag? ::key x)   (get root (second x))
-             (tag? ::param x) (get params (second x))
-             :else
-             x))
-         mapping)))))
+        (match/replace-all mapping
+          ::root   root
+          ::input  input
+          ::params params
+          ;; specific key
+          [::key k & _]   (get root k)
+          [::param k & _] (get params k))))))
 
 (defn- apply-mapping-nested [{:keys [inner-action] :as outer-action} params inputs-before]
   (let [inputs-after (apply-mapping outer-action params inputs-before)]
@@ -167,8 +161,6 @@
        [:scope ::types/scope.raw]
        [:params {:optional true} ::action-value-map]
        [:input {:optional true} ::action-value-map]]]
-  ;; This check should be redundant in practice with the permission checks within perform-action!
-  ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
   (events/publish-event! :event/action-v2-execute
                          {:details {:action action
@@ -206,8 +198,6 @@
        [:scope ::types/scope.raw]
        [:inputs [:sequential {:min 1} ::action-value-map]]
        [:params {:optional true} ::action-value-map]]]
-  ;; This check should be redundant in practice with the permission checks within perform-action!
-  ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
   (events/publish-event! :event/action-v2-execute
                          {:details {:action action
@@ -227,8 +217,6 @@
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:input {:optional true} ::action-value-map]]]
-  ;; This check should be redundant in practice with the permission checks within perform-action!
-  ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
   (let [scope         (actions/hydrate-scope scope)
         unified       (fetch-unified-action scope action)

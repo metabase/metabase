@@ -6,7 +6,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery, DateTimeAbsoluteUnit, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
-import type { ConcreteTableId, SchemaName, Table } from "./table";
+import type { SchemaName, Table, TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 import type { CardDisplayType } from "./visualization";
 
@@ -41,7 +41,7 @@ export type Transform = {
   source_readable: boolean;
   can_read?: boolean;
   can_write?: boolean;
-  can_execute?: boolean;
+  can_query?: boolean;
 
   source_database_id?: DatabaseId;
 
@@ -78,7 +78,7 @@ export type SuggestedTransform = Partial<Pick<Transform, "id">> &
 
 export type PythonTransformTableEntry = {
   alias: string;
-  table_id: ConcreteTableId;
+  table_id: TableId;
   schema?: SchemaName | null;
   database_id: DatabaseId;
 };
@@ -272,6 +272,7 @@ export type TransformJob = {
   tag_ids?: TransformTagId[];
   last_run?: TransformRun | null;
   next_run?: { start_time: string } | null;
+  can_query?: boolean;
 };
 
 export type CreateTransformRequest = {
@@ -295,6 +296,11 @@ export type UpdateTransformRequest = {
   collection_id?: number | null;
   owner_user_id?: UserId | null;
   owner_email?: string | null;
+};
+
+export type DeleteTransformsFolderRequest = {
+  id: CollectionId;
+  "delete-tables"?: boolean;
 };
 
 export type CreateTransformJobRequest = {
@@ -517,7 +523,7 @@ export type InspectorSummary = {
 };
 
 export type InspectorSource = {
-  table_id?: ConcreteTableId;
+  table_id?: TableId;
   table_name: string;
   schema?: SchemaName;
   db_id?: DatabaseId;
@@ -527,7 +533,7 @@ export type InspectorSource = {
 };
 
 export type InspectorTarget = {
-  table_id: ConcreteTableId;
+  table_id: TableId;
   table_name: string;
   schema?: SchemaName;
   row_count?: number;
@@ -595,7 +601,7 @@ export type InspectorCardDisplayType = CardDisplayType | "hidden";
 type InspectorCardMetadata = {
   card_type: "join_step" | "table_count" | "base_count";
   dedup_key: Array<string | number>;
-  table_id?: ConcreteTableId;
+  table_id?: TableId;
   join_step?: number;
   join_alias?: string;
   join_strategy?: JoinStrategy;

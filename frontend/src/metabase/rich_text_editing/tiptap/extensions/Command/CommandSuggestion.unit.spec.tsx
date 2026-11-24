@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
-import { useState } from "react";
+import { createRef, forwardRef, useState } from "react";
 
 import {
   setupCollectionByIdEndpoint,
@@ -11,9 +11,19 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { Input } from "metabase/ui";
-import { type RecentItem, isRecentTableItem } from "metabase-types/api";
+import {
+  type RecentItem,
+  type SearchResult,
+  isRecentTableItem,
+} from "metabase-types/api";
 import {
   createMockDatabase,
   createMockRecentCollectionItem,
@@ -24,8 +34,13 @@ import {
 import {
   CommandSuggestion,
   type CommandSuggestionProps,
+  type CommandSuggestionRef,
 } from "./CommandSuggestion";
-import type { NewQuestionOption } from "./types";
+import type {
+  NewQuestionModalProps,
+  NewQuestionModals,
+  NewQuestionOption,
+} from "./types";
 import type { MetabotCommandConfig } from "./utils";
 
 const SEARCH_ITEMS = [
@@ -83,29 +98,33 @@ const getRecentItemName = (item: RecentItem) =>
   isRecentTableItem(item) ? (item.display_name ?? item.name) : item.name;
 
 const MOCK_DATABASE = createMockDatabase({
-  is_saved_questions: true,
   native_permissions: "write",
 });
 
-const TestWrapper = (props: CommandSuggestionProps) => {
-  const [query, setQuery] = useState(props.query);
+const TestWrapper = forwardRef<CommandSuggestionRef, CommandSuggestionProps>(
+  function TestWrapper(props, ref) {
+    const [query, setQuery] = useState(props.query);
 
-  return (
-    <>
-      <Input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        aria-label="test-input"
-      />
-      <CommandSuggestion {...props} query={query} />
-    </>
-  );
-};
+    return (
+      <>
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="test-input"
+        />
+        <CommandSuggestion {...props} ref={ref} query={query} />
+      </>
+    );
+  },
+);
 
 type SetupProps = {
   query?: string;
   metabotCommand?: MetabotCommandConfig | null;
   newQuestionOptions?: NewQuestionOption[];
+  recentItems?: RecentItem[];
+  searchItems?: SearchResult[];
+  newQuestionModals?: NewQuestionModals;
 };
 
 const TEST_NEW_QUESTION_MODALS = {
@@ -113,11 +132,26 @@ const TEST_NEW_QUESTION_MODALS = {
   native: () => null,
 };
 
+const NativeQuestionModalStub = ({ onClose }: NewQuestionModalProps) => (
+  <div role="dialog" aria-label="Native question modal">
+    <button onClick={onClose}>Cancel</button>
+  </div>
+);
+
+const NEW_QUESTION_OPTIONS: NewQuestionOption[] = [
+  { value: "notebook", label: "New Question", icon: "insight" },
+  { value: "native", label: "New SQL query", icon: "sql" },
+];
+
 const setup = ({
   query = "",
   metabotCommand = null,
   newQuestionOptions = [],
+  recentItems = RECENT_ITEMS,
+  searchItems = SEARCH_ITEMS,
+  newQuestionModals = TEST_NEW_QUESTION_MODALS,
 }: SetupProps = {}) => {
+  const ref = createRef<CommandSuggestionRef>();
   const command = jest.fn();
 
   const editor = {
@@ -128,12 +162,13 @@ const setup = ({
     isActive: jest.fn(),
   };
 
-  setupSearchEndpoints(SEARCH_ITEMS);
-  setupRecentViewsEndpoints(RECENT_ITEMS);
+  setupSearchEndpoints(searchItems);
+  setupRecentViewsEndpoints(recentItems);
   setupDatabasesEndpoints([MOCK_DATABASE]);
 
   renderWithProviders(
     <TestWrapper
+      ref={ref}
       command={command}
       // Unjustified type cast. FIXME
       editor={editor as unknown as Editor}
@@ -142,13 +177,19 @@ const setup = ({
       range={{ from: 0, to: 0 }}
       metabotCommand={metabotCommand}
       newQuestionOptions={newQuestionOptions}
-      newQuestionModals={TEST_NEW_QUESTION_MODALS}
+      newQuestionModals={newQuestionModals}
     />,
     { storeInitialState: createMockState({ settings: mockSettings({}) }) },
   );
 
+  const pressKey = (key: string) =>
+    act(() => {
+      ref.current?.onKeyDown({ event: new KeyboardEvent("keydown", { key }) });
+    });
+
   return {
     command,
+    pressKey,
   };
 };
 
@@ -343,7 +384,6 @@ describe("CommandSuggestion", () => {
 
     setupDatabasesEndpoints([
       createMockDatabase({
-        is_saved_questions: false,
         native_permissions: "none",
       }),
     ]);
@@ -451,6 +491,17 @@ describe("CommandSuggestion", () => {
         await expectStandardCommandsToBePresent();
       });
 
+      it("should ask for a Metabot block when Ask Metabot is clicked", async () => {
+        const { command } = setup({ metabotCommand: { name: "Metabot" } });
+
+        await userEvent.click(
+          await screen.findByRole("option", { name: "Ask Metabot" }),
+        );
+
+        expect(command).toHaveBeenCalledTimes(1);
+        expect(command).toHaveBeenCalledWith({ command: "metabot" });
+      });
+
       it("should use the provided metabot name", async () => {
         setup({ metabotCommand: { name: "Ada" } });
 
@@ -459,7 +510,174 @@ describe("CommandSuggestion", () => {
       });
     });
   });
+
+  describe("keyboard and mouse selection", () => {
+    it("keeps exactly one option active while navigating commands and search results", async () => {
+      // Recent items load asynchronously and reset the active option
+      const { pressKey } = setup({
+        metabotCommand: { name: "Metabot" },
+        recentItems: [],
+      });
+
+      expect(
+        await screen.findByRole("option", { name: "Ask Metabot" }),
+      ).toBeInTheDocument();
+      expectOnlyOptionActive("Ask Metabot");
+
+      pressKey("ArrowDown");
+      pressKey("ArrowDown");
+      expectOnlyOptionActive("Link");
+
+      await userEvent.hover(screen.getByRole("option", { name: "Quote" }));
+      expectOnlyOptionActive("Quote");
+
+      await userEvent.type(getQueryInput(), "Orders by");
+      expect(
+        await screen.findByRole("option", { name: /Orders by category/ }),
+      ).toBeInTheDocument();
+      expect(screen.getAllByRole("option")).toHaveLength(2);
+      expectOnlyOptionActive(/Orders by product/);
+
+      pressKey("ArrowDown");
+      expectOnlyOptionActive(/Orders by category/);
+
+      await userEvent.hover(
+        screen.getByRole("option", { name: /Orders by product/ }),
+      );
+      expectOnlyOptionActive(/Orders by product/);
+    });
+
+    it("resets the active option when the number of search results changes", async () => {
+      const { pressKey } = setup({
+        query: "Orders",
+        searchItems: [
+          ...SEARCH_ITEMS,
+          createMockSearchResult({
+            name: "Orders over time",
+            model: "card",
+            id: 7,
+          }),
+        ],
+      });
+
+      expect(
+        await screen.findByRole("option", { name: /Orders over time/ }),
+      ).toBeInTheDocument();
+      pressKey("ArrowDown");
+      expectOnlyOptionActive(/Orders by category/);
+
+      await userEvent.type(getQueryInput(), " by");
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("option", { name: /Orders over time/ }),
+        ).not.toBeInTheDocument(),
+      );
+      expectOnlyOptionActive(/Orders by product/);
+    });
+  });
+
+  describe("new question type menu", () => {
+    it("supports keyboard navigation from Chart to the native question modal", async () => {
+      const { pressKey } = setup({
+        recentItems: [],
+        newQuestionOptions: NEW_QUESTION_OPTIONS,
+        newQuestionModals: {
+          notebook: () => null,
+          native: NativeQuestionModalStub,
+        },
+      });
+
+      expect(
+        await screen.findByRole("option", { name: "Chart" }),
+      ).toBeInTheDocument();
+      expectOnlyOptionActive("Chart");
+      pressKey("Enter");
+
+      expect(
+        await screen.findByRole("option", { name: /New chart/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: /Browse all/ }),
+      ).toBeInTheDocument();
+      expectOnlyOptionActive(/New chart/);
+      pressKey("Enter");
+
+      expect(
+        await screen.findByRole("option", { name: /New Question/ }),
+      ).toBeInTheDocument();
+      expectOnlyOptionActive(/New Question/);
+
+      pressKey("ArrowDown");
+      expectOnlyOptionActive(/New SQL query/);
+
+      pressKey("Enter");
+      const modal = await screen.findByRole("dialog", {
+        name: "Native question modal",
+      });
+
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Cancel" }),
+      );
+      expect(
+        screen.queryByRole("dialog", { name: "Native question modal" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the 'New chart' and 'Browse all' footers when a Chart search has no results", async () => {
+      setup({ newQuestionOptions: NEW_QUESTION_OPTIONS });
+
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Chart" }),
+      );
+      await userEvent.type(getQueryInput(), "xyznonexistentquery");
+
+      expect(await screen.findByText("No results found")).toBeInTheDocument();
+      expect(
+        within(getCommandDialog()).getByRole("separator"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: /New chart/ })).toBeVisible();
+      expect(screen.getByRole("option", { name: /Browse all/ })).toBeVisible();
+    });
+
+    it("opens the new question type menu on Enter when a command search has no results", async () => {
+      const { pressKey } = setup({
+        query: "asdfsdaf",
+        newQuestionOptions: NEW_QUESTION_OPTIONS,
+      });
+
+      expect(await screen.findByText("No results found")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("option", { name: /New chart/ }),
+      ).toBeInTheDocument();
+      expectOnlyOptionActive(/New chart/);
+
+      pressKey("Enter");
+
+      expect(
+        await screen.findByRole("option", { name: /New Question/ }),
+      ).toBeVisible();
+      expect(
+        within(getCommandDialog()).queryByText(/Browse all/),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
+
+const getQueryInput = () => screen.getByRole("textbox", { name: "test-input" });
+
+const getCommandDialog = () => screen.getByLabelText("Command Dialog");
+
+const expectOnlyOptionActive = (name: string | RegExp) => {
+  expect(screen.getByRole("option", { name })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  expect(
+    screen
+      .getAllByRole("option")
+      .filter((option) => option.getAttribute("aria-selected") === "true"),
+  ).toHaveLength(1);
+};
 
 const expectStandardCommandsToBePresent = async () => {
   // Custom Commands

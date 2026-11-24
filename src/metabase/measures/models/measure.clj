@@ -2,24 +2,30 @@
   "A Measure is a saved MBQL 'macro', expanding to an `:aggregation` clause. It is tied to a table and contains
    exactly one aggregation expression."
   (:require
-   [medley.core :as m]
-   [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.eid-translation.spec :as eid-translation]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.measure :as lib.schema.measure]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.db :as measures.db]
+   [metabase.measures.dependencies :as measures.dependencies]
+   [metabase.measures.replacement :as measures.replacement]
    [metabase.measures.schema :as measures.schema]
+   [metabase.measures.serialization :as measures.serialization]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.replacement.spec :as replacement]
+   [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
-   [metabase.util :as u]
+   [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -33,169 +39,74 @@
 (methodical/defmethod t2/table-name :model/Measure [_model] :measure)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :measure] [_original-model _k] :model/Measure)
 
-(defn- validate-mbql5-definition
-  "Validate that a measure definition is in MBQL5 format.
-  Throws an exception with 'Invalid measure definition' if the definition is not valid MBQL5."
-  [definition]
-  (when (seq definition)
-    (when-not (= :mbql-version/mbql5 (when (map? definition)
-                                       (u/ignore-exceptions (lib/normalized-mbql-version definition))))
-      (throw (ex-info (tru "Invalid measure definition: expected MBQL5 format")
-                      {:definition definition})))
-    (mu/validate-throw ::lib.schema.measure/definition definition)))
-
-(def ^:private transform-measure-definition
-  "Transform for measure definitions. Handles JSON serialization/deserialization.
-  Validation happens in before-insert and before-update hooks."
-  {:in mi/json-in
-   :out mi/json-out-without-keywordization})
-
 (t2/deftransforms :model/Measure
-  {:definition         transform-measure-definition
+  {:definition         lib-be/transform-query
    :dimensions         metrics/transform-dimensions
    :dimension_mappings metrics/transform-dimension-mappings})
 
 (doto :model/Measure
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/dependencies))
+  (derive :hook/entity-id))
 
-(defmethod mi/can-read? :model/Measure
-  ([instance]
-   (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
-     (mi/can-read? table)))
-  ([_model pk]
-   (mi/can-read? (measures.db/measure pk))))
+(defn- definition-table-id
+  "The id of the Table `definition`, a full query, is built on, read without the app DB."
+  [definition]
+  (:source-table (lib-be/query-first-stage definition)))
 
-;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
-;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).
-(defmethod mi/can-write? :model/Measure
-  ([instance]
-   (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
-     (and (or api/*is-superuser?*
-              (and (api/entitled-data-analyst?)
-                   (perms/user-has-permission-for-table?
-                    api/*current-user-id*
-                    :perms/view-data
-                    :unrestricted
-                    (:db_id table)
-                    (u/the-id table))))
-          (remote-sync/table-editable? table))))
-  ([_model pk]
-   (mi/can-write? (measures.db/measure pk))))
-
-;; Measures can be created by superusers, but only if the parent table is editable
-;; (not in a remote-synced collection in read-only mode).
-(defmethod mi/can-create? :model/Measure
-  [_model instance]
-  (let [table (or (:table instance)
-                  (measures.db/table (:table_id instance)))]
-    (and (or api/*is-superuser?*
-             (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-table?
-                   api/*current-user-id*
-                   :perms/view-data
-                   :unrestricted
-                   (:db_id table)
-                   (u/the-id table))))
-         (remote-sync/table-editable? table))))
-
-(methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
-  "Batched hydration for :can_write on measures. First hydrates :table for all measures,
-   then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
-   on each measure. This avoids N+1 queries when checking permissions for multiple measures."
-  [_model k measures]
-  (let [measures-with-tables (t2/hydrate (remove nil? measures) :table)
-        ;; Get all unique collection IDs from the hydrated tables
-        collection-ids (->> measures-with-tables
-                            (keep (comp :collection_id :table))
-                            distinct)
-        ;; Batch fetch is_remote_synced for all collections
-        collection-synced-map (if (seq collection-ids)
-                                (into {}
-                                      (map (juxt :id :is_remote_synced))
-                                      (measures.db/collections collection-ids))
-                                {})
-        ;; Associate collection info with each measure's table
-        measures-with-collection (for [measure measures-with-tables
-                                       :let [table (:table measure)
-                                             coll-id (:collection_id table)]]
-                                   (if (and table coll-id)
-                                     (assoc-in measure [:table :collection]
-                                               {:id coll-id
-                                                :is_remote_synced (get collection-synced-map coll-id false)})
-                                     measure))]
-    (mi/instances-with-hydrated-data
-     measures k
-     #(u/index-by :id mi/can-write? measures-with-collection)
-     :id
-     {:default false})))
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
-  (validate-mbql5-definition definition)
-  (when (seq definition)
-    (lib/check-measure-overwrite nil definition))
-  (cond-> measure
-    (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
+  (assoc measure :table_id (definition-table-id definition)))
 
-(defenterprise pre-update-check-sandbox-constraints-for-measure
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.sandbox
-  [_ _])
-
-(defenterprise pre-delete-check-sandbox-constraints-for-measure
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.sandbox
-  [_])
-
-(t2/define-before-update :model/Measure [{:keys [id definition] :as measure}]
-  ;; additional checks (Enterprise Edition only)
-  (pre-update-check-sandbox-constraints-for-measure measure (t2/changes measure))
-  ;; throw an Exception if someone tries to update creator_id
-  (when (contains? (t2/changes measure) :creator_id)
-    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Measure."))))
-  ;; validate and check for cycles if definition is being updated
-  (when-let [def-change (:definition (t2/changes measure))]
-    (validate-mbql5-definition def-change)
-    (lib/check-measure-overwrite id def-change))
-  (if (and (contains? (t2/changes measure) :definition)
-           (seq definition))
-    (m/assoc-some measure
-                  :table_id (lib/primary-source-table-id definition))
-    measure))
-
-(t2/define-before-delete :model/Measure
-  [measure]
-  ;; additional checks (Enterprise Edition only)
-  (pre-delete-check-sandbox-constraints-for-measure measure)
-  measure)
-
-(defmethod mi/perms-objects-set :model/Measure
-  [measure read-or-write]
-  (let [table (or (:table measure)
-                  (measures.db/table-perms-columns (u/the-id (:table_id measure))))]
-    (mi/perms-objects-set table read-or-write)))
-
-(defn- normalize-definition-from-db
-  "Normalize a measure definition read from the database.
-  This handles keyword normalization after JSON round-trip (e.g., string \"mbql/query\" -> keyword :mbql/query)."
+(t2/define-before-update :model/Measure
   [{:keys [definition] :as measure}]
-  (if (seq definition)
-    (try
-      (assoc measure :definition (-> (lib/normalize ::lib.schema/query definition)
-                                     lib-be/normalize-query))
-      (catch Throwable e
-        (log/errorf "Error normalizing measure definition: %s" (ex-message e))
-        measure))
-    measure))
+  (let [changes (t2/changes measure)]
+    (when (contains? changes :creator_id)
+      (throw (ex-info (tru "You cannot change the creator of a Measure.") {:status-code 400})))
+    (when (and (contains? changes :table_id) (not (contains? changes :definition)))
+      (throw (ex-info (tru "The table of a Measure follows its definition; change the definition instead.") {:status-code 400})))
+    (cond-> measure
+      (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
 
-(t2/define-after-select :model/Measure
-  [measure]
-  (normalize-definition-from-db measure))
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/Measure :can_read]
+  "Whether the current user can read each of `measures`, which they can when they read its Table, the Tables answered
+  together."
+  [_model _k measures]
+  (collection/hydrate-table-content-can-read measures))
+
+(methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
+  "Whether the current user can write each of `measures`, which they can when they write Measures of its Table."
+  [_model _k measures]
+  (collection/hydrate-table-content-can-write measures))
+
+(defn- definition-writable?
+  "Whether the current user can write Measures of the Table `definition` is built on."
+  [definition]
+  (let [table (some-> definition not-empty definition-table-id measures.db/table)]
+    (boolean (and table (seq (collection/writable-table-ids [table]))))))
+
+(defmethod mi/can-create? :model/Measure
+  [_model {:keys [definition]}]
+  (definition-writable? definition))
+
+(defenterprise sandboxes-allow-measure-update?
+  "Whether sandboxing lets the current user apply `changes` to `measure`, which OSS always does."
+  metabase-enterprise.sandbox.models.sandbox
+  [_measure _changes]
+  true)
+
+(defmethod mi/can-update? :model/Measure
+  [measure changes]
+  (and (mi/can-write? measure)
+       (or (not (contains? changes :definition))
+           (definition-writable? (:definition changes)))
+       (sandboxes-allow-measure-update? measure changes)))
+
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Measure's definition."
@@ -212,70 +123,179 @@
   (for [measure measures]
     (assoc measure :definition_description (definition-description measure))))
 
-;;; ------------------------------------------------ Serialization ---------------------------------------------------
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
-(defmethod serdes/deserialization-dependencies "Measure" [{:keys [definition]}]
-  (serdes/mbql-deps false definition))
+(defn- check-definitions-of-new-measures
+  "Throws unless every Measure that the definition of each of the new Measure `rows` refers to exists."
+  [rows]
+  (run! #(lib/check-measure-overwrite nil (lib-be/normalize-query (:definition %))) rows))
 
-(defmethod serdes/storage-path "Measure" [measure _ctx]
-  (let [table-path (-> measure :definition serdes/serialized-query-source-table)]
-    (into (serdes/storage-path-prefixes (serdes/table->path table-path))
-          [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
+(mu/defn create-measures! :- [:sequential (ms/InstanceOf :model/Measure)]
+  "Insert the Measure `rows` and return the inserted instances, in one transaction, publishing their create event, a
+  definition that refers to a Measure that does not exist throwing."
+  [rows :- [:sequential ::measures.schema/measure.create]]
+  (app-db/create-batched! :model/Measure rows
+                          {:before-create check-definitions-of-new-measures
+                           :after-create  #(events/publish-event! :event/measure-create (events/create-event %))}))
 
-(defn- import-measure-definition
-  "Import a measure definition from serialization format.
-  Converts portable IDs back to numeric IDs, then converts MBQL4 to MBQL5."
-  [exported]
-  (let [with-ids (serdes/import-mbql exported)]
-    (if (seq with-ids)
-      (lib-be/normalize-query with-ids)
-      with-ids)))
+(defn- check-changed-definition
+  "Throws when the new definition in `changes` of one of the Measures with `ids`, `stored` as they are, differs from the
+  stored one and refers to the Measure itself or to a Measure that makes a cycle."
+  [ids changes stored]
+  (when (contains? changes :definition)
+    (let [definition (lib-be/normalize-query (:definition changes))]
+      (doseq [id    ids
+              :when (not= definition (some-> (get stored id) :definition lib-be/normalize-query))]
+        (lib/check-measure-overwrite id definition)))))
 
-(defmethod serdes/make-spec "Measure" [_model-name _opts]
-  {:schema    ::measures.schema/external-measure
-   :copy [:name :archived :description :entity_id]
-   :skip [;; dimensions are computed from the query and reconciled on read, not serialized
-          :dimensions :dimension_mappings
-          ;; always re-derived from definition by before-insert via lib/primary-source-table-id
-          :table_id]
-   :transform {:creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import import-measure-definition}}
-   :defaults {:archived false}})
+(defn- check-measure-updates
+  "Throw a 400 unless every one of `updates`, over the Measures `id->stored`, satisfies these rules:
 
-;;;; ------------------------------------------------- Search ----------------------------------------------------------
+  - a new definition does not refer to the Measure itself or make a cycle of Measures"
+  [updates id->stored]
+  (doseq [{:keys [id] :as row} updates]
+    (check-changed-definition [id] (dissoc row :id) id->stored)))
 
-(search/define-spec "measure"
-  {:model :model/Measure
-   :attrs {:archived true
-           :collection-id false
-           :creator-id true
-           :database-id :table.db_id
-           :created-at true
-           :updated-at true
-           ;; A measure on a Library table inherits the table's library ranking boost and curated status.
-           :root-collection-type {:fn collection/table-root-collection-type}}
-   :search-terms [:name :description]
-   :render-terms {:table-id                  :table_id
-                  :table_description         :table.description
-                  :table_name                :table.name
-                  :table_display_name        :table.display_name
-                  :table_schema              :table.schema
-                  ;; The parent table's collection, for [[collection/table-root-collection-type]].
-                  ;; Listing these terms also reindexes a measure when its table moves into or out of the Library.
-                  :table-collection-id       :table.collection_id
-                  :table-is-published        :table.is_published
-                  :table-collection-location :collection.location
-                  :table-collection-type     :collection.type}
-   ;; Only published tables count as library content, matching the table spec's own collection join.
-   :joins {:table      [:model/Table [:= :table.id :this.table_id]]
-           :collection [:model/Collection
-                        [:and
-                         [:= :table.is_published true]
-                         [:= :collection.id :table.collection_id]]]}})
+(defn- assoc-measure-tables
+  "`updates` of Measures, each with the table its new definition gives, computed once for each distinct definition."
+  [updates _id->stored]
+  (let [table-ids (into {} (map (fn [definition] [definition (definition-table-id definition)]))
+                        (distinct (keep :definition updates)))]
+    (mapv #(cond-> % (contains? % :definition) (assoc :table_id (get table-ids (:definition %)))) updates)))
 
-;;; ------------------------------------------------- Dimension Persistence --------------------------------------------------
+(mu/defn update-measures! :- :nil
+  "Apply `updates`, each the `:id` of a Measure with the columns to give it, in one transaction, publishing their update
+  event with the `:writer` and `:context` of `opts`."
+  ([updates :- [:sequential ::measures.schema/measure.update]]
+   (update-measures! updates nil))
+  ([updates :- [:sequential ::measures.schema/measure.update]
+    opts    :- :metabase.events.schema/write-opts]
+   (app-db/update-batched! :model/Measure updates
+                           {:before-update (fn [updates id->stored]
+                                             (check-measure-updates updates id->stored)
+                                             (assoc-measure-tables updates id->stored))
+                            :reread?       true
+                            :after-update  (fn [updates id->stored id->updated]
+                                             (when (seq updates)
+                                               (events/publish-event! :event/measure-update
+                                                                      (events/update-event id->stored updates
+                                                                                           (assoc opts :objects id->updated)))))})))
+
+(mu/defn set-measure-dimensions!
+  "Set the dimensions and dimension mappings of the Measure with `id`, publishing its update event."
+  [id                 :- ::lib.schema.id/measure
+   dimensions         :- [:maybe [:sequential ::measures.schema/measure.dimension]]
+   dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
+  (t2/with-transaction [_conn]
+    (when-let [previous (measures.db/measure id)]
+      (measures.db/set-measure-dimensions! id dimensions dimension-mappings)
+      (events/publish-event! :event/measure-update
+                             (events/update-event {id previous}
+                                                  [{:id id :dimensions dimensions :dimension_mappings dimension-mappings}])))))
+
+(mu/defn delete-measures! :- :nil
+  "Delete the Measures with `ids` in one transaction, publishing their delete event right before the first statement."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (app-db/delete-batched! :model/Measure ids
+                          {:before-delete #(events/publish-event! :event/measure-delete (events/delete-event %))}))
+
+(def ^:private revision-columns
+  "The columns of a Measure that its Revisions track and a revert restores."
+  [:name :description :definition :archived :table_id])
+
+(defn- revert-measure!
+  "Return the Measure with `id` to the `snapshot` of a Measure that a Revision recorded."
+  [id _user-id snapshot]
+  (update-measures! [(assoc snapshot :id id)] {:writer :revert}))
+
+;;; --------------------------------------------- Dimension persistence ----------------------------------------------
 
 (defmethod metrics/save-dimensions! :metadata/measure
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
-    (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))
+    (set-measure-dimensions! measure-id dimensions dimension-mappings)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Measure [_model]
+  {:skip? false})
+
+(defmethod serialization/spec :model/Measure [_]
+  {:schema              ::measures.schema/external-measure
+   :copy                [:name :archived :description :entity_id]
+   :skip                [:dimensions :dimension_mappings :table_id]
+   :transform           {:creator_id serialization/user-transform
+                         :definition measures.serialization/definition-transform}
+   :defaults            {:archived false}
+   :import-dependencies measures.serialization/import-dependencies
+   :storage-paths       measures.serialization/storage-paths
+   :insert!             create-measures!
+   :update!             #(do (update-measures! % {:writer :import}) %)
+   :delete!             delete-measures!})
+
+(defmethod remote-sync/spec :model/Measure
+  [_model]
+  {:synced-items         measures.db/synced-measure-items
+   :synced-filter-clause measures.db/synced-measures-clause})
+
+(defmethod revisions/spec :model/Measure [_model]
+  {:track        revision-columns
+   :skip         [:entity_id :creator_id :dimensions :dimension_mappings]
+   :schema       ::measures.schema/measure.revision
+   :same?        {:definition revisions/same-definition?}
+   :revert!      revert-measure!
+   :diff-columns [:name :description :definition]})
+
+(defmethod audit/spec :model/Measure [_model]
+  {:track          []
+   :track-redacted [:archived :creator_id :definition :description :name :table_id]
+   :skip           [:dimension_mappings :dimensions :entity_id]})
+
+(defmethod search/spec :model/Measure
+  [_model]
+  {"measure"
+   {:attrs {:archived true
+            :collection-id false
+            :creator-id true
+            :database-id :table.db_id
+            :created-at true
+            :updated-at true
+            ;; A measure on a Library table inherits the table's library ranking boost and curated status.
+            :root-collection-type {:batch-fn collection/table-root-collection-types}}
+    :search-terms [:name :description]
+    :render-terms {:table-id                  :table_id
+                   :table_description         :table.description
+                   :table_name                :table.name
+                   :table_display_name        :table.display_name
+                   :table_schema              :table.schema
+                   ;; The parent table's collection, for [[collection/table-root-collection-types]].
+                   ;; Listing these terms also reindexes a measure when its table moves into or out of the Library.
+                   :table-collection-id       :table_settings.collection_id
+                   :table-is-published        :table_settings.is_published
+                   :table-collection-location :collection.location
+                   :table-collection-type     :collection.type}
+    ;; Only published tables count as library content, matching the table spec's own collection join.
+    :joins {:table          [:model/Table [:= :table.id :this.table_id]]
+            :table_settings [:model/TableUserSettings [:= :table_settings.table_id :this.table_id]]
+            :collection     [:model/Collection
+                             [:and
+                              [:= :table_settings.is_published true]
+                              [:= :collection.id :table_settings.collection_id]]]}}})
+
+(defmethod dependencies/spec :model/Measure [_model]
+  {:type     :measure
+   :inlined? true
+   :items    measures.db/dependency-measure-items
+
+   :dependencies measures.dependencies/dependencies
+
+   :dependency-columns #{:definition :table_id}
+   :output-columns     #{:definition :table_id}})
+
+(defmethod replacement/spec :model/Measure [_model]
+  {:upgrade-field-refs measures.replacement/upgrade-field-refs
+   :swap-source        measures.replacement/swap-source
+   :update!            #(do (update-measures! % {:writer :replacement}) %)})
+
+(defmethod eid-translation/spec :model/Measure [_model]
+  {:names [:measure]})

@@ -2,6 +2,7 @@
   "Application database queries for the public sharing REST module. Every function here is a direct Toucan 2 call with
   no additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -69,19 +70,27 @@
   [document-id :- [:maybe ms/PositiveInt]]
   (t2/select-one [:model/Document :id :document :content_type] :id document-id))
 
+(mu/defn archivable-entity
+  "The id and archived flag of the Card, Dashboard or Document with `id`, or nil."
+  [model :- [:enum :model/Card :model/Dashboard :model/Document]
+   id    :- ms/PositiveInt]
+  (t2/select-one [model :id :archived] :id [:auto/param id]))
+
 ;;; ----------------------------------------------------- Timelines ----------------------------------------------------
 
 (mu/defn active-timeline-ids
   "The ids of the non-archived Timelines among `timeline-ids`."
   [timeline-ids :- [:set ms/PositiveInt]]
-  (t2/select-pks-set :model/Timeline :id [:in timeline-ids] :archived false))
+  (mdb/select-batched-set #(t2/select-pks-set :model/Timeline :id [:in %] :archived false) timeline-ids))
 
 (mu/defn active-timeline-events
   "The non-archived TimelineEvents of the Timelines with `timeline-ids`, restricted to the columns safe to expose
   publicly, in timestamp order."
   [timeline-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/TimelineEvent :id :timeline_id :name :description :icon :timestamp :timezone :time_matters
-              :archived :created_at]
-             :timeline_id [:in timeline-ids]
-             :archived false
-             {:order-by [[:timestamp :asc] [:id :asc]]}))
+  (vec (sort-by (juxt :timestamp :id)
+                (mdb/select-batched #(t2/select [:model/TimelineEvent :id :timeline_id :name :description :icon :timestamp :timezone :time_matters
+                                                 :archived :created_at]
+                                                :timeline_id [:in %]
+                                                :archived false
+                                                {:order-by [[:timestamp :asc] [:id :asc]]})
+                                    timeline-ids))))

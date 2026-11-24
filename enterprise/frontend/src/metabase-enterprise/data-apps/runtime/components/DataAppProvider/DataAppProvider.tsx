@@ -1,5 +1,3 @@
-import createCache from "@emotion/cache";
-import { CacheProvider, Global } from "@emotion/react";
 import { type ReactNode, useMemo, useState } from "react";
 
 import { SCOPED_CSS_RESET } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
@@ -7,7 +5,7 @@ import { PortalContainer } from "embedding-sdk-bundle/components/private/SdkPort
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { setDataApp } from "metabase/embedding/config";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { getCspNonce } from "metabase/utils/csp";
+import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data-apps/sandbox/types";
 
 import { useHostSdkStore } from "../../lib/use-host-sdk-store";
@@ -19,7 +17,7 @@ import { DataAppErrorState } from "../DataAppErrorState/DataAppErrorState";
 // in the host document, not the iframe.
 
 interface DataAppProviderProps {
-  appName: string;
+  appSlug: string;
   isDevApp?: boolean;
   providerProps?: DataAppMetabaseProviderProps;
   children?: ReactNode;
@@ -37,11 +35,11 @@ interface DataAppProviderProps {
  * session cookie; auth is already established.
  */
 export const DataAppProvider = (props: DataAppProviderProps) => {
-  const { children, providerProps, appName, isDevApp } = props;
+  const { children, providerProps, appSlug, isDevApp } = props;
   const { theme } = providerProps ?? {};
 
   // Configure the data-app request headers before any child renders. This must happen during the first render
-  useState(() => setDataApp(appName, { isDev: isDevApp }));
+  useState(() => setDataApp(appSlug, { isDev: isDevApp }));
 
   // Swap the SDK's default red error alert for a calm, neutral empty state,
   // unless the app ships its own `errorComponent`.
@@ -54,24 +52,15 @@ export const DataAppProvider = (props: DataAppProviderProps) => {
   );
   const sdkStore = useHostSdkStore(hostProviderProps);
 
-  // Iframe-side Emotion cache: keyed + CSP-nonced so SDK/Mantine styles inject
-  // into this document's head (not the parent's).
-  const emotionCache = useMemo(
-    () => createCache({ key: "data-app", nonce: getCspNonce() ?? undefined }),
-    [],
-  );
-
   return (
-    <CacheProvider value={emotionCache}>
-      <MetabaseReduxProvider store={sdkStore}>
-        <SdkThemeProvider theme={theme}>
-          <Global styles={SCOPED_CSS_RESET} />
+    <MetabaseReduxProvider store={sdkStore}>
+      <SdkThemeProvider theme={theme}>
+        <GlobalStyleSheet styles={SCOPED_CSS_RESET} />
 
-          {children}
+        {children}
 
-          <PortalContainer />
-        </SdkThemeProvider>
-      </MetabaseReduxProvider>
-    </CacheProvider>
+        <PortalContainer />
+      </SdkThemeProvider>
+    </MetabaseReduxProvider>
   );
 };

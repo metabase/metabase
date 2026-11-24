@@ -15,6 +15,7 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
@@ -38,7 +39,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.io OutputStream)))
 
@@ -52,7 +54,7 @@
   have multiple participants (e.g. multiple users in a shared Slack thread)."
   [conversation-id]
   (when-let [conversation (metabot.db/conversation conversation-id)]
-    (api/check-403 (mi/can-read? conversation))))
+    (api/check-403 (mi/can-read? (t2/hydrate conversation :can_read)))))
 
 (defn- make-out-of-sync-fn
   [conversation-id parent-message-id retry-message-id]
@@ -199,9 +201,12 @@
   was persisted. `:user-external-id` is the turn's user row `external_id`,
   emitted as the `start` event's `messageMetadata.userMessageId`.
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
-  it seeds the agent loop as the immutable baseline for this turn's state."
+  it seeds the agent loop as the immutable baseline for this turn's state.
+  `:full-context-replayed?` is true when `:history` replays a full `<context>` block
+  (see [[metabot.persistence/replays-full-context?]]), so this turn sends only the time
+  and what the user is viewing."
   [{:keys [metabot profile-id message context history conversation-id state debug?
-           eval-session-id assistant-msg-id external-id user-external-id title-job]}]
+           eval-session-id assistant-msg-id external-id user-external-id title-job full-context-replayed?]}]
   (let [enriched-context (metabot.context/create-context
                           ;; Server-authoritative: decided from the request's client header here, on the
                           ;; handler thread, before the agent moves to the streaming thread.
@@ -234,17 +239,18 @@
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
-                      (cond-> {:messages              messages
-                               :state                 state
-                               :metabot               metabot
-                               :conversation-id       conversation-id
-                               :profile-id            (keyword profile-id)
-                               :context               enriched-context
-                               :eval-session-id       eval-session-id
-                               :memory-atom           memory-atom
-                               :tracking-opts         {:session-id conversation-id}
+                      (cond-> {:messages               messages
+                               :state                  state
+                               :metabot                metabot
+                               :conversation-id        conversation-id
+                               :profile-id             (keyword profile-id)
+                               :context                enriched-context
+                               :full-context-replayed? (boolean full-context-replayed?)
+                               :eval-session-id        eval-session-id
+                               :memory-atom            memory-atom
+                               :tracking-opts          {:session-id conversation-id}
                                ;; A query a tool is running stops when the client goes away.
-                               :request-canceled-chan canceled-chan}
+                               :request-canceled-chan  canceled-chan}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
@@ -276,7 +282,7 @@
                 (vreset! canceled? true))))
           (finally
             (try
-              (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
+              (let [combined-parts (into [] (streaming/combine-text-parts-xf) @parts-atom)
                     aborted?       @canceled?
                     thrown-ex      @thrown
                     ;; Precedence: aborted > thrown > streamed `:error`.
@@ -293,6 +299,8 @@
                  :finished?             (not aborted?)
                  :error                 error-data
                  :turn-state            (some-> @memory-atom memory/turn-state)
+                 :context-block         (some-> @memory-atom memory/context-block)
+                 :full-context?         (some-> @memory-atom memory/context-block-full?)
                  :context-window-tokens window))
               (catch Exception e
                 (log/error "Failed to finalize assistant turn"
@@ -349,6 +357,7 @@
           deleted?  (set message-ids)
           live      (remove #(deleted? (:id %)) messages)
           history   (metabot.persistence/history live)
+          replayed? (metabot.persistence/replays-full-context? live)
           state     (metabot.persistence/conversation-state live)
           first-msg (or (:content (metabot.persistence/first-non-forked-user-message live))
                         (:content message))
@@ -358,19 +367,20 @@
                      first-msg)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
-       {:metabot          metabot
-        :profile-id       profile-id
-        :message          message
-        :context          context
-        :history          history
-        :conversation-id  conversation_id
-        :state            state
-        :debug?           debug?
-        :eval-session-id  eval_session_id
-        :assistant-msg-id assistant-msg-id
-        :external-id      assistant-external-id
-        :user-external-id user-external-id
-        :title-job        title-job}))))
+       {:metabot                metabot
+        :profile-id             profile-id
+        :message                message
+        :context                context
+        :history                history
+        :full-context-replayed? replayed?
+        :conversation-id        conversation_id
+        :state                  state
+        :debug?                 debug?
+        :eval-session-id        eval_session_id
+        :assistant-msg-id       assistant-msg-id
+        :external-id            assistant-external-id
+        :user-external-id       user-external-id
+        :title-job              title-job}))))
 
 (defn- legacy->modern-query
   [query]
@@ -429,9 +439,7 @@
                         :ip-address (request/ip-address req)}]
     (streaming-request body* request-info)))
 
-(api.macros/defendpoint :post "/feedback"  :- [:map
-                                               [:status [:= 204]]
-                                               [:body :nil]]
+(api.macros/defendpoint :post "/feedback" :- ::api/generic-204-no-content
   "Persist Metabot feedback."
   [_route-params
    _query-params
@@ -445,9 +453,7 @@
   (metabot.feedback/persist-feedback! body)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/source-feedback" :- [:map
-                                                     [:status [:= 204]]
-                                                     [:body :nil]]
+(api.macros/defendpoint :post "/source-feedback" :- ::api/generic-204-no-content
   "Persist Metabot source feedback."
   [_route-params
    _query-params

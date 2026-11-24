@@ -6,17 +6,19 @@
    [java-time.api :as t]
    [java-time.clock]
    [metabase.app-db.core :as mdb]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.tools.search :as metabot.search]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.server.settings :as server.settings]
    [metabase.session.api :as session.api]
    [metabase.test :as mt]
    [metabase.testing-api.api :as testing]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.queue :as queue]
-   [toucan2.core :as t2]))
+   [metabase.util.queue :as queue]))
 
 (set! *warn-on-reflection* true)
 
@@ -110,7 +112,8 @@
           ;; Snapshot with a valid search index in place
           (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))
           ;; Clear the tracking atoms so we can verify they get restored
-          (reset! @#'search.index/*indexes* {:active nil, :pending nil})
+          ;; keeps the time of the next sync, so the read below does not sync the tables back
+          (mc/swap! (search.index/indexes-handle) assoc :active nil, :pending nil)
           (is (nil? (search.index/active-table))
               "Precondition: tracking atoms should be cleared before restore")
           ;; Restore should call sync-from-restored-db! and refresh the atoms
@@ -191,19 +194,78 @@
             (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value vllm})))
             (is (= vllm (vec (llm.settings/llm-providers))))))))))
 
-(deftest seed-ai-usage-test
-  (testing "POST seeds one chat LLM call per count, each in its own agent loop, and DELETE removes them"
-    (let [user-id   (mt/user->id :rasta)
-          seed-rows #(t2/select :model/AiUsageLog :user_id user-id :model "test/model" :source "metabot_agent")]
-      (try
-        (is (= {:inserted 3}
-               (mt/user-http-request :crowberto :post 200 "testing/metabot/seed-ai-usage"
-                                     {:user_id user-id :count 3})))
-        (let [rows (seed-rows)]
-          (is (= 3 (count rows)))
-          (is (= 3 (count (distinct (map :request_id rows)))) "each row is its own agent loop")
-          (is (every? :request_id rows)))
-        (finally
-          (is (= {:deleted 3}
-                 (mt/user-http-request :crowberto :delete 200 "testing/metabot/seed-ai-usage" {:user_id user-id})))
-          (is (empty? (seed-rows))))))))
+(deftest set-isolated-origin-test
+  (mt/with-temporary-setting-values [site-url        "http://localhost:4000"
+                                     isolated-origin nil]
+    (is (nil? (mt/user-http-request :rasta :put 204 "testing/isolated-origin" {:value "http://127.0.0.1:4000"})))
+    (is (= "http://127.0.0.1:4000" (server.settings/isolated-origin)))
+    (testing "a nil value unsets it"
+      (is (nil? (mt/user-http-request :rasta :put 204 "testing/isolated-origin" {:value nil})))
+      (is (nil? (server.settings/isolated-origin))))))
+
+(deftest ^:parallel metabot-retrieve-is-for-admins-test
+  (is (= "You don't have permissions to do that."
+         (mt/user-http-request :rasta :post 403 "testing/metabot/retrieve"
+                               {:retriever "general", :arguments {:keyword_queries ["orders"]}}))))
+
+(deftest metabot-retrieve-runs-the-named-tool-test
+  (doseq [[retriever types arguments] [["general"
+                                        ["dashboard" "document" "measure" "metric" "model" "question" "segment" "table"]
+                                        {:keyword_queries ["orders"]}]
+                                       ["nlq"
+                                        ["metric" "measure" "segment" "model" "question" "table"]
+                                        {:keyword_queries ["orders"]}]
+                                       ["sql"
+                                        ["model" "table"]
+                                        {:keyword_queries ["orders"], :database_id (mt/id)}]]]
+    (testing retriever
+      (let [opts (atom nil)]
+        (mt/with-dynamic-fn-redefs [metabot.search/search (fn [search-opts] (reset! opts search-opts) [])]
+          (is (string? (:output (mt/user-http-request :crowberto :post 200 "testing/metabot/retrieve"
+                                                      {:retriever retriever, :arguments arguments})))))
+        (is (= types (vec (:entity-types @opts))))
+        (is (= ["orders"] (:term-queries @opts)))))))
+
+(deftest metabot-retrieve-rejects-bad-arguments-test
+  (testing "an unknown retriever is rejected by the route's schema"
+    (is (some? (:errors (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                              {:retriever "run_sql", :arguments {}})))))
+  (testing "arguments the tool rejects are the caller's mistake"
+    (doseq [[retriever arguments] [["sql"     {:keyword_queries ["orders"]}]
+                                   ["general" {:keyword_queries ["orders"], :entity_typo ["table"]}]]]
+      (is (=? {:error-class "validation"}
+              (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                    {:retriever retriever, :arguments arguments})))))
+  (testing "arguments that pass the tool's schema but name nothing to search are the caller's mistake too"
+    (doseq [[retriever arguments code] [["general" {:keyword_queries [" "]}
+                                         "metabase.metabot.tools.search/missing-query"]
+                                        ["library" {:user_search_prompt " "}
+                                         "metabase.metabot.tools.entity-retrieval/blank-search-prompt"]
+                                        ["sql"     {:keyword_queries ["orders"], :database_id Integer/MAX_VALUE}
+                                         "metabase.metabot.tools.search/unavailable-database"]]]
+      (is (=? {:error-code code, :error-class "recoverable"}
+              (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                    {:retriever retriever, :arguments arguments}))))))
+
+(deftest metabot-retrieve-passes-arguments-through-test
+  (testing "a null the tool accepts reaches the tool"
+    (mt/with-dynamic-fn-redefs [metabot.search/search (constantly [])]
+      (is (string? (:output (mt/user-http-request :crowberto :post 200 "testing/metabot/retrieve"
+                                                  {:retriever "general"
+                                                   :arguments {:keyword_queries ["orders"], :limit nil}})))))))
+
+(deftest metabot-retrieve-reports-a-failed-call-test
+  (mt/with-premium-features #{}
+    (is (=? {:error-code  "metabase.metabot.tools.entity-retrieval/library-search-unavailable"
+             :error-class "recoverable"}
+            (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
+                                  {:retriever "library"
+                                   :arguments {:user_search_prompt "Where are the orders?"}})))))
+
+(deftest metabot-retrieve-reports-failed-queries-test
+  (testing "a search that lost some of its queries is a failure, not a smaller result"
+    (mt/with-dynamic-fn-redefs [metabot.search/search (fn [_] (with-meta [] {:failed-queries ["people"]}))]
+      (is (=? {:failed-queries ["people"]
+               :output         #"(?s).*Total results: 0.*"}
+              (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
+                                    {:retriever "general", :arguments {:keyword_queries ["orders" "people"]}}))))))

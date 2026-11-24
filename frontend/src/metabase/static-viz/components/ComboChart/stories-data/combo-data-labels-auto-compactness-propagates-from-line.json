@@ -31,7 +31,6 @@
         "graph.dimensions": ["X"],
         "graph.metrics": ["Y1_FULL", "Y2_FULL", "Y3_LINE_COMPACT"]
       },
-      "collection_preview": true,
       "entity_id": "mPZpZ2XzGAebGrZ17iiYp",
       "display": "bar",
       "parameter_mappings": [],

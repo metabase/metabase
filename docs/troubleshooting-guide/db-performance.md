@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting database performance
+summary: Find and fix the bottlenecks that make queries against your database slow.
 ---
 
 # Troubleshooting database performance
@@ -51,6 +52,8 @@ In general, Metabase will try to close hanging connections to your database afte
 **Explanation**
 
 If someone or something creates 100 queries at the same time, this stampede of queries will take up all of the available connections between Metabase and your database, preventing any new queries from running. If other people continue running questions and dashboards while the first 100 queries are still in progress, the queue will grow at a faster rate than your database can keep up with.
+
+To keep the queue from growing without limit, you can make queries fail with an error instead of waiting for a connection. Use [`MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`](../configuring-metabase/environment-variables.md#mb_jdbc_data_warehouse_connection_pool_checkout_timeout_ms) to limit how long each query waits, and [`MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_MAX_PENDING_CHECKOUTS`](../configuring-metabase/environment-variables.md#mb_jdbc_data_warehouse_connection_pool_max_pending_checkouts) to limit how many queries can wait at once. By default, neither is limited.
 
 ## Managing resource-intensive queries
 

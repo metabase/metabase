@@ -275,6 +275,7 @@
    "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/public"               (+public-exceptions (+without-current-user metabase.public-sharing-rest.api/routes))
+   "/public-link-refusal"  (+auth metabase.public-sharing-rest.api/refusal-routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
@@ -310,6 +311,9 @@
   "Ring routes for API endpoints."
   ;; EE routes defined in [[metabase-enterprise.api-routes.routes/routes]] always get the first chance to handle a
   ;; request, if they exist. If they don't exist, this handler returns `nil` which means we will try the next handler.
+  ;; This could be a zero-arity `defenterprise` that returns the EE routes, with `pass-thru-handler` as its OSS
+  ;; body, which would take this namespace off the OSS-to-EE allowlist in `metabase.core.modules-test`. The EE body
+  ;; would have to return the var `#'routes`, not its value, or REPL reloads of the EE routes stop reaching this table.
   (handlers/routes
    (if (and config/ee-available? (not *compile-files*))
      (requiring-resolve 'metabase-enterprise.api-routes.routes/routes)

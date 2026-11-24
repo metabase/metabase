@@ -62,7 +62,7 @@
         _         (when (shared/curated-only?)
                     (curation/check-curated-subject! (str "dashboard " dashboard-id) ["dashboard" dashboard-id]))
         dashcards (filter (comp int? :id :card) (:dashcards dashboard))]
-    (when-not (every? (comp mi/can-read? :card) dashcards)
+    (when-not (every? mi/can-read? (t2/hydrate (map :card dashcards) :can_read))
       (tools/unrecoverable!
        ::dashboard-cards-not-readable
        {:user-message (tru "You can''t subscribe to this dashboard, because you don''t have access to every question on it.")

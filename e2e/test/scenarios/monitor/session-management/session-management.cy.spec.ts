@@ -8,7 +8,10 @@ import {
   JWT_SHARED_SECRET,
   enableJwtAuth,
 } from "e2e/support/helpers/e2e-jwt-helpers";
-import type { SessionListResponse } from "metabase-types/api";
+import type {
+  SessionListResponse,
+  SupportAccessGrant,
+} from "metabase-types/api";
 
 const { H } = cy;
 
@@ -21,9 +24,6 @@ const JWT_USER = {
 };
 
 const LDAP_USER = { email: "user01@example.org", password: "123456" };
-
-/** What creating a support access grant returns: the grant, and the token that redeems it */
-type CreatedGrant = { id: number; token: string };
 
 /** A session created outside the browser: its credential, and its id as the admin's list shows it */
 type TestSession = { key: string; id: string };
@@ -169,20 +169,6 @@ describe("scenarios > monitor > session management", () => {
             .findByText("This session")
             .should("be.visible");
 
-          cy.log(
-            "The admin's own session can't be selected or revoked from here",
-          );
-          currentSessionRow().findByRole("checkbox").should("be.disabled");
-          currentSessionRow().click();
-          sessionSidebar().should("contain", "Bobby Tables");
-          sessionSidebar()
-            .findByRole("button", { name: "Revoke session" })
-            .should("not.exist");
-          sessionSidebar()
-            .findByRole("button", { name: "Revoke active sessions" })
-            .should("not.exist");
-          sessionSidebar().button("Close").click();
-
           cy.log("Every revoked session is on record as revoked by an admin");
           cy.findByTestId("sessions-tab-ended").click();
           sessionRow(s.signedOut).should("contain", "Signed out");
@@ -204,16 +190,6 @@ describe("scenarios > monitor > session management", () => {
           ].forEach((session) =>
             sessionRow(session).should("contain", "Revoked by admin"),
           );
-
-          cy.log("Ended sessions are read-only");
-          cy.findByTestId("sessions-table")
-            .findAllByRole("checkbox")
-            .should("not.exist");
-          sessionRow(s.ldap).click();
-          sessionSidebar().should("contain", "Revoked by admin");
-          sessionSidebar()
-            .findByRole("button", { name: "Revoke session" })
-            .should("not.exist");
         },
       );
     },
@@ -223,14 +199,21 @@ describe("scenarios > monitor > session management", () => {
     startSession(passwordLogin(USERS.readonly)).as("loggedOut");
     startSession(passwordLogin(nodata)).as("deactivated");
     startSession(passwordLogin(normal)).as("passwordChanged");
-    cy.task<CreatedGrant>("requestAsAdmin", {
+    H.setupSMTP();
+    cy.task<SupportAccessGrant>("requestAsAdmin", {
       method: "POST",
       url: "/api/ee/support-access-grant",
       body: { grant_duration_minutes: 60 },
     }).as("grant");
-    cy.get<CreatedGrant>("@grant").then(({ token }) =>
-      startSession(supportAccessLogin(token)).as("supportAccess"),
-    );
+    H.getInbox(1).then(({ body: emails }: { body: { html: string }[] }) => {
+      const token = emails[0]?.html.match(
+        /\/auth\/reset_password\/([\w-]+)"/,
+      )?.[1];
+      if (!token) {
+        throw new Error("Missing reset link in the support access email");
+      }
+      return startSession(supportAccessLogin(token)).as("supportAccess");
+    });
 
     withSessions(
       ["loggedOut", "deactivated", "passwordChanged", "supportAccess"],
@@ -260,7 +243,7 @@ describe("scenarios > monitor > session management", () => {
         });
 
         cy.log("An admin revokes the support access grant");
-        cy.get<CreatedGrant>("@grant").then(({ id }) =>
+        cy.get<SupportAccessGrant>("@grant").then(({ id }) =>
           cy.task("requestAsAdmin", {
             method: "PUT",
             url: `/api/ee/support-access-grant/${id}/revoke`,
@@ -277,72 +260,27 @@ describe("scenarios > monitor > session management", () => {
         sessionRow(s.deactivated).should("contain", "User deactivated");
         sessionRow(s.passwordChanged).should("contain", "Password changed");
         sessionRow(s.supportAccess).should("contain", "Support access revoked");
-
-        const ended = [
-          s.loggedOut,
-          s.deactivated,
-          s.passwordChanged,
-          s.supportAccess,
-        ];
-        const expectOnlyListed = (...listed: TestSession[]) =>
-          ended.forEach((session) =>
-            sessionRow(session).should(
-              listed.includes(session) ? "be.visible" : "not.exist",
-            ),
-          );
-
-        cy.log("Filtering by reason narrows the ended sessions");
-        cy.button("Show filters").click();
-        H.popover().findByRole("textbox", { name: "Reason" }).click();
-        cy.findByRole("option", { name: "Password changed" }).click();
-        H.popover().button("Apply").click();
-        expectOnlyListed(s.passwordChanged);
-
-        cy.log("Clearing the filters brings every ended session back");
-        cy.button("Show filters").click();
-        H.popover().button("Clear filters").click();
-        expectOnlyListed(...ended);
-
-        cy.log("Filtering by auth method narrows them too");
-        cy.button("Show filters").click();
-        H.popover().findByRole("button", { name: "Support access" }).click();
-        H.popover().button("Apply").click();
-        expectOnlyListed(s.supportAccess);
-
-        cy.log("Searching matches the owner of an ended session");
-        cy.button("Show filters").click();
-        H.popover().button("Clear filters").click();
-        cy.findByLabelText("Search sessions").type("Read Only");
-        expectOnlyListed(s.loggedOut);
       },
     );
   });
 });
 
-describe("scenarios > monitor > session management > access", () => {
+describe("scenarios > monitor > session management > upsell", () => {
   beforeEach(() => {
     H.restore();
-  });
-
-  it("shows the upsell to an admin without the feature", () => {
     cy.signInAsAdmin();
     // a valid token that lacks the feature, rather than no token at all
     H.activateToken("starter");
+  });
+
+  // Jest covers which page the route renders; this checks the upsell is visible in a real layout, which jsdom can't
+  it("shows the upsell to an admin without the feature", () => {
     cy.visit("/monitor/sessions");
     cy.findByTestId("monitor-main")
       .findByText(
         /See who is signed in to your Metabase. Revoke individual sessions/,
       )
       .should("be.visible");
-    cy.findByTestId("sessions-table").should("not.exist");
-  });
-
-  it("is admin-only", () => {
-    cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
-    cy.signInAsNormalUser();
-    cy.visit("/monitor/sessions");
-    cy.location("pathname").should("eq", "/unauthorized");
   });
 });
 
@@ -468,14 +406,6 @@ function visitSessions() {
 
 function sessionRow(session: TestSession) {
   return cy.findByTestId(`session-row-${session.id}`);
-}
-
-/** The row of the session the admin's own browser is using, flagged "This session" */
-function currentSessionRow() {
-  return cy
-    .findByTestId("sessions-table")
-    .findByText("This session")
-    .closest("[role='row']");
 }
 
 function sessionSidebar() {

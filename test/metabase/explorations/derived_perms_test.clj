@@ -5,8 +5,10 @@
   the batching that must not merge snapshots requiring different permissions."
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.documents.core :as documents]
    [metabase.documents.models.document :as m.document]
+   [metabase.events.test-util :as events.tu]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.derived-perms :as derived-perms]
    [metabase.lib.core :as lib]
@@ -28,6 +30,8 @@
   "A count metric over `table-kw`, so different tables mean genuinely different required perms."
   [table-kw]
   (let [mp (mt/metadata-provider)]
+    ;; existing usage -- do not use going forward
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
                            (lib/aggregate (lib/count))))))
 
@@ -192,8 +196,7 @@
   (let [mp   (mt/metadata-provider)
         base (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                  (lib/aggregate (lib/count)))]
-    (lib/->legacy-MBQL
-     (lib/breakout base (first (filter :fk-field-id (lib/breakoutable-columns base)))))))
+    (lib/breakout base (first (filter :fk-field-id (lib/breakoutable-columns base))))))
 
 (deftest batching-does-not-merge-a-plain-breakout-with-an-fk-traversed-one-test
   (testing "the two halves of the verdict project the query differently — perms from the raw query,
@@ -218,7 +221,7 @@
   "A plain, unaggregated query over `table-kw` — a shape that works as a join source."
   [table-kw]
   (let [mp (mt/metadata-provider)]
-    (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id table-kw))))))
+    (lib/query mp (lib.metadata/table mp (mt/id table-kw)))))
 
 (defn- card-joined-query
   "A venues count joined to a saved card that itself reads venues. Both of the key's query
@@ -258,7 +261,7 @@
             (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)
             (testing "sanity: rasta can query venues but cannot read the joined card"
               (is (false? (boolean (request/with-current-user (mt/user->id :rasta)
-                                     (mi/can-read? (t2/select-one :model/Card :id joined)))))))
+                                     (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id joined) :can_read)))))))
             (testing "control: the plain query alone is visible"
               (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])]
                 (is (true? (visible? thread :rasta)))))
@@ -315,10 +318,11 @@
                         (t2/with-call-count [call-count]
                           (derived-perms/thread-ids-with-visible-derived-data [thread])
                           (call-count)))))
+          _       (measure 1)
           small   (measure 2)
           large   (measure 25)]
-      (is (< large (* 2 small))
-          (format "resolution must stay cheap (2 charts: %d queries, 25 charts: %d)" small large)))))
+      (is (= small large)
+          (format "resolution must not grow with charts (2 charts: %d queries, 25 charts: %d)" small large)))))
 
 (deftest stored-resolved-source-ids-key-the-verdict-only-for-their-own-query-test
   (let [thread   (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])
@@ -346,9 +350,14 @@
 
 ;;; --------------------------------- Summary-document content gate ---------------------------------
 
+(defn- doc-content-visible-to-current-user?
+  "Whether the current user may see the content of `document`, as the visibility function answers for it alone."
+  [document]
+  ((derived-perms/doc-content-visibility-fn [document]) document))
+
 (defn- doc-content-visible? [document user-kw]
   (request/with-current-user (mt/user->id user-kw)
-    (derived-perms/doc-content-visible-to-current-user? document)))
+    (doc-content-visible-to-current-user? document)))
 
 (deftest doc-content-gate-does-not-fail-open-on-a-partial-select-test
   (testing "a Summary document whose exploration the viewer may not see"
@@ -389,11 +398,97 @@
             (is (true? (boolean (doc-content-visible? document :crowberto))))
             (is (zero? @loads))))))))
 
+(defn- reference-content-visible?
+  "The verdict the gate gave one document at a time, read from the threads of its Exploration."
+  [document]
+  (if-let [exploration-id (:exploration_id document)]
+    (or (boolean api/*is-superuser?*)
+        (let [thread-ids (explorations.db/thread-ids-for-exploration exploration-id)]
+          (or (empty? thread-ids)
+              (= thread-ids (derived-perms/thread-ids-with-visible-derived-data thread-ids)))))
+    true))
+
+(defn- exploration-of-thread [thread-id]
+  (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id))
+
+(deftest content-gate-answers-many-documents-as-one-by-one-test
+  (testing "the gate answered for a list of Summary documents gives each the verdict it gets alone"
+    (mt/with-no-data-perms-for-all-users!
+      (let [group (perms-group/all-users)]
+        (perms/set-table-permission! group (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)
+        (let [lucky       (mt/user->id :lucky)
+              no-threads  (t2/insert-returning-pk! :model/Exploration {:name "none" :creator_id lucky})
+              visible     (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :table :venues :token {}}]))
+              blocked     (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :table :checkins :token {}}]))
+              mixed       (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :table :venues :token {}}]))
+              unstamped   (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :table :venues :token nil}]))
+              other       (thread-with-snapshots! [{:creator-id lucky :table :checkins :token {}}])]
+          (t2/update! :model/ExplorationThread :id other {:exploration_id mixed :position 1})
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Document {d-none :id}      {:collection_id coll-id :exploration_id no-threads}
+                         :model/Document {d-visible :id}   {:collection_id coll-id :exploration_id visible}
+                         :model/Document {d-blocked :id}   {:collection_id coll-id :exploration_id blocked}
+                         :model/Document {d-mixed :id}     {:collection_id coll-id :exploration_id mixed}
+                         :model/Document {d-unstamped :id} {:collection_id coll-id :exploration_id unstamped}
+                         :model/Document {d-plain :id}     {:collection_id coll-id}]
+            (perms/grant-collection-read-permissions! group coll-id)
+            (let [ids       [d-none d-visible d-blocked d-mixed d-unstamped d-plain]
+                  expected  {:rasta      [true true false false false true]
+                             :crowberto  [true true true true true true]}
+                  documents #(mapv (fn [id] (t2/select-one :model/Document :id id)) ids)]
+              (doseq [user [:rasta :crowberto]]
+                (request/with-current-user (mt/user->id user)
+                  (testing (name user)
+                    (let [docs (documents)]
+                      (is (= (expected user)
+                             (mapv (derived-perms/doc-content-visibility-fn docs) docs)))
+                      (is (= (mapv reference-content-visible? docs)
+                             (mapv (derived-perms/doc-content-visibility-fn docs) docs)))
+                      (is (= (mapv doc-content-visible-to-current-user? docs)
+                             (mapv (derived-perms/doc-content-visibility-fn docs) docs)))
+                      (testing "hydrated :can_read of all of them matches that of each alone"
+                        (is (= (mapv #(mi/can-read? (first (t2/hydrate [%] :can_read))) docs)
+                               (mapv mi/can-read? (t2/hydrate docs :can_read)))))
+                      (testing "hydrated :can_write of all of them matches that of each alone"
+                        (is (= (mapv #(mi/can-write? (first (t2/hydrate [%] :can_write))) docs)
+                               (mapv mi/can-write? (t2/hydrate docs :can_write))))))))))))))))
+
+(defn- summary-documents-statement-count!
+  "The number of statements of asking `:can_write` of `n` Summary documents whose Explorations have a thread each, as
+  rasta, who writes their Collection."
+  [n]
+  (let [lucky (mt/user->id :lucky)]
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+      (let [docs (doall
+                  (for [_ (range n)
+                        :let [expl (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :table :venues :token {}}]))
+                              id   (t2/insert-returning-pk! :model/Document {:name         "Summary"
+                                                                             :collection_id coll-id
+                                                                             :creator_id   lucky
+                                                                             :content_type documents/prose-mirror-content-type
+                                                                             :exploration_id expl})]]
+                    (t2/select-one :model/Document :id id)))]
+        (request/with-current-user (mt/user->id :rasta)
+          (events.tu/real-statement-count! #(t2/hydrate docs :can_write)))))))
+
+(deftest content-gate-statement-count-does-not-grow-with-documents-test
+  (testing "asking :can_write of Summary documents as a user who is not a superuser costs the same for more documents"
+    (mt/with-no-data-perms-for-all-users!
+      (let [group (perms-group/all-users)]
+        (perms/set-table-permission! group (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-model-cleanup [:model/Document :model/Exploration :model/Card]
+          (summary-documents-statement-count! 2)
+          (is (= (summary-documents-statement-count! 2)
+                 (summary-documents-statement-count! 6))))))))
+
 ;;; --------------------------- Cards scoped to a gated Summary document ---------------------------
 
 (defn- card-readable? [card-id user-kw]
   (request/with-current-user (mt/user->id user-kw)
-    (boolean (mi/can-read? (t2/select-one :model/Card :id card-id)))))
+    (boolean (mi/can-read? (t2/hydrate (t2/select-one :model/Card :id card-id) :can_read)))))
 
 (deftest card-scoped-to-a-gated-document-is-not-readable-test
   (testing "a Card scoped to an exploration Summary document"
@@ -416,7 +511,7 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
         (testing "sanity: the owning Summary document is itself gated for this viewer"
           (is (false? (boolean (request/with-current-user (mt/user->id :rasta)
-                                 (mi/can-read? (t2/select-one :model/Document :id doc-id)))))))
+                                 (mi/can-read? (t2/hydrate (t2/select-one :model/Document :id doc-id) :can_read)))))))
         (testing "is not readable by a viewer whose data-access lens is incompatible, even though they can read the collection"
           (is (false? (card-readable? card-id :rasta))))
         (testing "is still readable by a superuser, matching the gate's standing exemption"
@@ -505,9 +600,11 @@
                   orig  @gate
                   calls (atom 0)]
               (try
-                (reset! gate (fn [doc] (swap! calls inc) (orig doc)))
+                (reset! gate (fn [docs]
+                               (let [visible? (orig docs)]
+                                 (fn [doc] (swap! calls inc) (visible? doc)))))
                 (documents/with-content-gate-cache
-                  (is (every? mi/can-read? cards)))
+                  (is (every? mi/can-read? (t2/hydrate cards :can_read))))
                 (is (= 1 @calls) "one verdict should serve every card")
                 (finally
                   (reset! gate orig))))))))))

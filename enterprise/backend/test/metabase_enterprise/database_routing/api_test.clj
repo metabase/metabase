@@ -2,13 +2,17 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [medley.core :as m]
    [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -126,6 +130,12 @@
     (is (= "Cannot enable database routing for a database with actions enabled"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
+  (mt/with-additional-premium-features #{:workspaces}
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :settings {:database-enable-workspaces true}}]
+      (is (= "Cannot enable database routing for a database with workspaces enabled"
+             (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                   {:user_attribute "db_name"})))))
   (mt/with-temp [:model/Database {db-id :id} {:uploads_enabled true}]
     (is (= "Cannot enable database routing for a database with uploads enabled"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
@@ -140,11 +150,24 @@
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
   (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Transform _ {:source_database_id db-id
+                 :model/Transform _ {:source {:type  :query
+                                              :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")}
                                      :name "Test Transform"}]
     (is (= "Cannot enable database routing for a database with transforms"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"})))))
+                                 {:user_attribute "db_name"}))))
+  (testing "workspace rows refuse routing even with the setting off, since their teardown would follow routing"
+    (mt/with-temp [:model/Database {db-id :id} {:settings {:database-enable-workspaces false}}
+                   :model/Workspace {ws-id :id} {:name "w" :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {:user "mb__isolation_w" :password "secret"}
+                                               :output_namespace "mb__isolation_w"
+                                               :input_schemas    []
+                                               :status           :provisioned}]
+      (is (= "Cannot enable database routing for a database used by a workspace"
+             (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                   {:user_attribute "db_name"}))))))
 
 (deftest can-delete-router-databases
   (mt/with-temp [:model/Database {db-id :id} {}
@@ -257,11 +280,12 @@
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
                  :model/Database {destination-db-id :id} {:router_database_id db-id}]
-    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group for Routing"}]
-      (testing "New group should have permissions for the router database"
-        (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
-      (testing "New group should NOT have permissions for the destination database"
-        (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id)))))))
+    (mt/with-model-cleanup [:model/PermissionsGroup]
+      (let [[{group-id :id}] (perms-group/create-permissions-groups! [{:name "Test Group for Routing"}])]
+        (testing "New group should have permissions for the router database"
+          (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
+        (testing "New group should NOT have permissions for the destination database"
+          (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id))))))))
 
 (deftest manage-db-user-can-update-destination-database-test
   (testing "PUT /api/database/:id on a routed destination honors manage-database perms held on its router database"
@@ -311,3 +335,104 @@
                    (mt/user-http-request :rasta :delete 403 (str "database/" dest)))))
           (is (t2/exists? :model/Database :id regular-db-id))
           (is (t2/exists? :model/Database :id dest)))))))
+
+(defn- anonymous-access-granted? [db-id]
+  (t2/select-one-fn :anonymous_access_granted :model/DatabaseRouter :database_id db-id))
+
+(deftest anonymous-access-grant-defaults-to-ungranted-test
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (mt/with-model-cleanup [:model/DatabaseRouter]
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute "foo"})
+      (is (false? (anonymous-access-granted? db-id))))))
+
+(deftest anonymous-access-grant-is-set-on-enable-test
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (mt/with-model-cleanup [:model/DatabaseRouter]
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute "foo" :anonymous_access_granted true})
+      (is (true? (anonymous-access-granted? db-id))))))
+
+(deftest anonymous-access-grant-can-be-changed-on-an-existing-router-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}]
+    (testing "granting"
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute "foo" :anonymous_access_granted true})
+      (is (true? (anonymous-access-granted? db-id))))
+    (testing "revoking"
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute "foo" :anonymous_access_granted false})
+      (is (false? (anonymous-access-granted? db-id))))))
+
+(deftest changing-the-user-attribute-alone-leaves-the-anonymous-access-grant-alone-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo" :anonymous_access_granted true}]
+    (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                          {:user_attribute "bar"})
+    (is (= "bar" (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id db-id)))
+    (is (true? (anonymous-access-granted? db-id)))))
+
+(deftest the-anonymous-access-grant-can-be-changed-alone-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}]
+    (testing "granting"
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:anonymous_access_granted true})
+      (is (true? (anonymous-access-granted? db-id))))
+    (testing "revoking"
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:anonymous_access_granted false})
+      (is (false? (anonymous-access-granted? db-id))))
+    (testing "the router keeps its user attribute"
+      (is (= "foo" (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id db-id))))))
+
+(deftest the-anonymous-access-grant-alone-needs-a-router-test
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                          {:anonymous_access_granted true})
+    (is (not (t2/exists? :model/DatabaseRouter :database_id db-id)))))
+
+(deftest an-empty-body-changes-nothing-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo" :anonymous_access_granted true}]
+    (mt/user-http-request :crowberto :put (str "ee/database-routing/router-database/" db-id) {})
+    (is (= {:user_attribute "foo" :anonymous_access_granted true}
+           (t2/select-one [:model/DatabaseRouter :user_attribute :anonymous_access_granted] :database_id db-id)))))
+
+(deftest a-null-user-attribute-disables-routing-whatever-the-grant-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}]
+    (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                          {:user_attribute nil :anonymous_access_granted true})
+    (is (not (t2/exists? :model/DatabaseRouter :database_id db-id)))))
+
+(deftest disabling-routing-discards-the-anonymous-access-grant-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo" :anonymous_access_granted true}]
+    (mt/with-model-cleanup [:model/DatabaseRouter]
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute nil})
+      (testing "re-enabling routing starts ungranted again"
+        (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                              {:user_attribute "foo"})
+        (is (false? (anonymous-access-granted? db-id)))))))
+
+(deftest router-databases-have-an-anonymous-access-grant-on-the-get-api-test
+  (mt/with-temp [:model/Database {granted-id :id} {}
+                 :model/DatabaseRouter _ {:database_id granted-id :user_attribute "foo" :anonymous_access_granted true}
+                 :model/Database {ungranted-id :id} {}
+                 :model/DatabaseRouter _ {:database_id ungranted-id :user_attribute "bar"}
+                 :model/Database {plain-id :id} {}]
+    (testing "GET /api/database/:id"
+      (is (true? (:router_anonymous_access_granted
+                  (mt/user-http-request :crowberto :get 200 (str "database/" granted-id)))))
+      (is (false? (:router_anonymous_access_granted
+                   (mt/user-http-request :crowberto :get 200 (str "database/" ungranted-id))))))
+    (testing "GET /api/database"
+      (let [by-id (m/index-by :id (:data (mt/user-http-request :crowberto :get 200 "database/")))]
+        (is (true? (get-in by-id [granted-id :router_anonymous_access_granted])))
+        (is (false? (get-in by-id [ungranted-id :router_anonymous_access_granted])))
+        (testing "a database that is not a router reports no grant"
+          (is (contains? by-id plain-id))
+          (is (nil? (get-in by-id [plain-id :router_anonymous_access_granted]))))))))

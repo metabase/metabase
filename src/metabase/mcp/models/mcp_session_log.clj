@@ -1,5 +1,10 @@
 (ns metabase.mcp.models.mcp-session-log
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
+   [metabase.mcp.db :as mcp.db]
+   [metabase.mcp.schema :as mcp.schema]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -7,3 +12,25 @@
 
 (doto :model/McpSessionLog
   (derive :metabase/model))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-mcp-session-log!
+  "Record the MCP session `row`."
+  [row :- ::mcp.schema/mcp-session-log.create]
+  (mcp.db/insert-session-log! row))
+
+(mu/defn end-mcp-session-log!
+  "Stamp `ended_at` on the McpSessionLog with `session-id`."
+  [session-id :- :string]
+  (mcp.db/end-session-log! session-id))
+
+(mu/defn delete-mcp-session-logs! :- :nil
+  "Delete the McpSessionLogs with `ids` in one transaction."
+  [ids :- [:sequential :string]]
+  (app-db/delete-batched! :model/McpSessionLog ids {}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/McpSessionLog [_model]
+  {:skip? true})

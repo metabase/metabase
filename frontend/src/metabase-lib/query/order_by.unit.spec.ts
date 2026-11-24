@@ -4,7 +4,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_ID,
-  createProductsTitleField,
+  createProductsTitleDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -52,7 +52,7 @@ describe("order by", () => {
             displayName: "Orders",
             longDisplayName: "Orders",
             isSourceTable: true,
-            schema: "1:PUBLIC",
+            schema: "PUBLIC",
             visibilityType: null,
           },
         }),
@@ -78,7 +78,8 @@ describe("order by", () => {
             displayName: "Products",
             longDisplayName: "Products",
             isSourceTable: false,
-            schema: "1:PUBLIC",
+            description: "All of our products",
+            schema: "PUBLIC",
             visibilityType: null,
           },
         }),
@@ -86,7 +87,7 @@ describe("order by", () => {
     });
 
     it("returns metadata for columns in source question/model", () => {
-      const field = createProductsTitleField();
+      const field = createProductsTitleDatasetColumn();
       const card = createMockCard({
         name: "Product Model",
         result_metadata: [field],

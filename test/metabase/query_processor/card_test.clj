@@ -12,7 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.core :as queries]
@@ -61,7 +61,7 @@
                                        :name         "date"
                                        :display-name "Check-In Date"
                                        :type         :dimension
-                                       :dimension    (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :checkins :date)))
+                                       :field-id     (mt/id :checkins :date)
                                        :widget-type  :date/all-options}})))
 
 (defn field-filter-query-between
@@ -72,7 +72,7 @@
                                              :name         "quantities"
                                              :display-name "Quantity Range"
                                              :type         :dimension
-                                             :dimension    (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :quantity)))
+                                             :field-id     (mt/id :orders :quantity)
                                              :widget-type  :number/between}})))
 
 (defn non-field-filter-query
@@ -304,16 +304,16 @@
                                     (let [info (assoc info :query-hash (byte-array 0))]
                                       (qp/process-query (assoc query :info info)))))))]
               (testing "Should not be able to run the parent Card"
-                (is (not (mi/can-read? disallowed-collection)))
-                (is (not (mi/can-read? parent-card)))
+                (is (not (mi/can-read? (t2/hydrate disallowed-collection :can_read))))
+                (is (not (mi/can-read? (t2/hydrate parent-card :can_read))))
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"\QYou don't have permissions to do that.\E"
                      (process-query-for-card parent-card))))
               (testing "Should not be able to run the child Card either, since it reads the parent"
-                (is (not (mi/can-read? parent-card)))
-                (is (mi/can-read? allowed-collection))
-                (is (mi/can-read? child-card))
+                (is (not (mi/can-read? (t2/hydrate parent-card :can_read))))
+                (is (mi/can-read? (t2/hydrate allowed-collection :can_read)))
+                (is (mi/can-read? (t2/hydrate child-card :can_read)))
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to view Card"

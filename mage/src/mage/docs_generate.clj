@@ -1,6 +1,5 @@
 (ns mage.docs-generate
-  "Regenerates the docs that are built from source: environment variables, the config template, the API, AI providers,
-  MCP tools, CLI commands, the usage analytics reference, and the embedding SDK and EAJS references."
+  "Regenerates the docs that are built from source. See [[suites]]."
   (:refer-clojure :exclude [run!])
   (:require
    [babashka.fs :as fs]
@@ -10,16 +9,22 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private bb
+  "`./bin/mage` installs `bin/bb` in its own checkout only, not in the `--dir` checkout."
+  (str (fs/path u/project-root-directory "bin" "bb")))
+
 ;; .github/scripts/check-preresolve-aliases.sh reads the `clojure` alias out of this file.
 ;; CI runs this list from master on each target branch, so every target branch needs each command.
 (def ^:private suites
   "Each suite and its command, in the order the bare `docs-generate` command runs them."
   [;; One JVM runs every Clojure generator, so Metabase's namespaces load once rather than once per document.
-   ["backend"         ["clojure" "-M:ee:doc" "all-documentation"]]
-   ;; `./bin/mage` installs `bin/bb` in its own checkout only, not in the `--dir` checkout.
-   ["usage-analytics" [(str (fs/path u/project-root-directory "bin" "bb")) "bin/generate-usage-analytics-docs.bb"]]
+   ;; `:drivers` puts the driver modules on the classpath for the database feature support page.
+   ["backend"         ["clojure" "-M:ee:drivers:doc" "all-documentation"]]
+   ["usage-analytics" [bb "bin/generate-usage-analytics-docs.bb"]]
    ["embedding-sdk"   ["bun" "run" "embedding-sdk:docs:generate"]]
-   ["embedding-eajs"  ["bun" "run" "embedding-eajs:docs:generate"]]])
+   ["embedding-eajs"  ["bun" "run" "embedding-eajs:docs:generate"]]
+   ;; Runs mage.docs-docker-tags from this checkout, with its own `bb.edn`, so target branches don't need it.
+   ["docker-tags"     [bb "--config" (str (fs/path u/project-root-directory "bb.edn")) "-m" "mage.docs-docker-tags"]]])
 
 (def ^:private suite->command (into {} suites))
 

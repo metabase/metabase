@@ -118,7 +118,7 @@ function createDashboard() {
           name: "Product ID",
           "display-name": "Product ID",
           type: "dimension",
-          dimension: ["field", ORDERS.PRODUCT_ID, null],
+          "field-id": ORDERS.PRODUCT_ID,
         },
       },
     },

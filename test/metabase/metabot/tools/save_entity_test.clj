@@ -19,8 +19,9 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -196,6 +197,53 @@
               card   (t2/select-one :model/Card :id (get-in result [:structured-output :card-id]))]
           (is (= :line (:display card))))))))
 
+(deftest curated-only-chart-test
+  (mt/with-additional-premium-features #{:content-verification :official-collections :library}
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection {official :id}   {:name "Official", :authority_level "official"}
+                     :model/Collection {coll :id}       {:name "Saved charts"}
+                     :model/Card       {curated-id :id} {:name          "Curated venues"
+                                                         :collection_id official
+                                                         :dataset_query (venues-query)}
+                     :model/Metabot    curated-metabot  {:name "curated", :use_verified_content true}
+                     :model/Metabot    open-metabot     {:name "open", :use_verified_content false}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [destination {:target_type "collection" :collection_id coll}
+                ;; A chart seeded from the viewing context holds the user's query as legacy MBQL.
+                seeded      (atom {:state   {:queries {}
+                                             :charts  {"c-1" {:chart_id     "c-1"
+                                                              ;; existing usage -- do not use going forward
+                                                              :queries      [#_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL (venues-query))]
+                                                              :chart_config {:display_type "bar"}}}}
+                                   :context {}})
+                as-metabot  (fn [metabot thunk]
+                              (binding [shared/*metabot*    metabot
+                                        shared/*profile-id* :internal]
+                                (thunk)))]
+            (testing "under curated-only, a chart that reads an uncurated table is refused, and nothing is saved"
+              (is (=? {:class :recoverable
+                       :code  ::recoverable.common/not-curated
+                       :text  #"(?s)`chart c-1` is not available: this Metabot only uses curated content.*"}
+                      (as-metabot curated-metabot
+                                  #(failure seeded (assoc chart-args :destination destination)))))
+              (is (not (t2/exists? :model/Card :collection_id coll))))
+            (testing "under curated-only, a chart that reads a curated question is saved"
+              (let [mp    (mt/metadata-provider)
+                    query (lib/query mp (lib.metadata/card mp curated-id))]
+                (as-metabot curated-metabot
+                            #(binding [shared/*memory-atom* (atom {:state   {:queries {"q-1" query}
+                                                                             :charts  {"c-1" {:chart_id "c-1"
+                                                                                              :query_id "q-1"
+                                                                                              :queries  [query]}}}
+                                                                   :context {}})]
+                               (call-save-entity (assoc chart-args :destination destination))))
+                (is (= 1 (t2/count :model/Card :collection_id coll)))))
+            (testing "with curation off, a chart that reads an uncurated table is saved"
+              (as-metabot open-metabot
+                          #(binding [shared/*memory-atom* seeded]
+                             (call-save-entity (assoc chart-args :destination destination))))
+              (is (= 2 (t2/count :model/Card :collection_id coll))))))))))
+
 (def ^:private document-ast
   {:type "doc"
    :content [{:type "paragraph" :content [{:type "text" :text "Intro"}]}
@@ -203,7 +251,7 @@
 
 (defn- card-embed [card-id]
   {:type "resizeNode"
-   :content [{:type "cardEmbed" :attrs {"id" card-id "_id" string?}}]})
+   :content [{:type "cardEmbed" :attrs {:id card-id :_id string?}}]})
 
 (deftest save-to-document-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -239,9 +287,9 @@
 
 (deftest ^:parallel arguments-the-schema-refuses-test
   (testing "a document destination needs a document_id"
-    (is (=? #"Invalid tool arguments: `destination` .*"
-            (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
-                                           (assoc chart-args :destination {:target_type "document"})))))
+    (is (= "Invalid tool arguments: `destination.document_id` is required."
+           (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
+                                          (assoc chart-args :destination {:target_type "document"})))))
   (testing "a name must fit the application database column"
     (is (=? #"Invalid tool arguments: `name` must contain 1 to 254 .*"
             (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
@@ -283,16 +331,17 @@
       (is (str/includes? (:text (failure (atom {}) args)) "No charts have been created in this conversation yet.")))))
 
 (deftest no-personal-collection-test
-  (mt/with-temp [:model/User {user-id :id} {:type :api-key}]
-    (mt/with-current-user user-id
-      (testing "a user without a personal collection gets instructions for choosing a collection"
-        (is (= {:class :recoverable
-                :code  ::save-entity/no-personal-collection
-                :text  (str "The user has no personal collection, so `collection_id` can't be omitted.\n"
-                            "Read `metabase://collections?tree=true` with `read_resource` and pass the ID of a"
-                            " collection with `can_write=true`.\n"
-                            "Or ask the user which collection to save it to.")}
-               (failure {:target_type "collection"})))))))
+  (mt/with-model-cleanup [:model/User]
+    (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email) :type :api-key}])]
+      (mt/with-current-user user-id
+        (testing "a user without a personal collection gets instructions for choosing a collection"
+          (is (= {:class :recoverable
+                  :code  ::save-entity/no-personal-collection
+                  :text  (str "The user has no personal collection, so `collection_id` can't be omitted.\n"
+                              "Read `metabase://collections?tree=true` with `read_resource` and pass the ID of a"
+                              " collection with `can_write=true`.\n"
+                              "Or ask the user which collection to save it to.")}
+                 (failure {:target_type "collection"}))))))))
 
 (deftest unreadable-destination-test
   (testing "a destination that is hidden from the user or does not exist is reported as not found"
@@ -384,19 +433,18 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/Card]
       (mt/with-temp [:model/Collection coll {}]
-        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic _event]
-                                                            (when (= :event/card-create topic)
-                                                              (throw (ex-info "A subscriber failed." {}))))]
-          (testing "the save succeeds and creates one card even when a card-create subscriber fails"
+        (with-redefs [events/publish-event! (fn [topic _event]
+                                              (when (= :event/card-create topic)
+                                                (throw (ex-info "A subscriber failed." {}))))]
+          (testing "a failing card-create subscriber fails the save in its transaction, which leaves no card behind"
             (let [outcome (invoke-save-entity
                            (assoc chart-args :destination {:target_type "collection" :collection_id (:id coll)}))]
-              (is (nil? (:error outcome)))
-              (is (= [(get-in outcome [:structured-output :card-id])]
-                     (t2/select-pks-vec :model/Card :collection_id (:id coll)))))))))))
+              (is (=? {:class :unrecoverable} (:error outcome)))
+              (is (empty? (t2/select-pks-vec :model/Card :collection_id (:id coll)))))))))))
 
 (deftest undeclared-failure-test
   (testing "an unexpected failure ends the turn without reaching the model"
-    (mt/with-dynamic-fn-redefs [queries/create-card! (fn [& _] (throw (ex-info "boom" {})))]
+    (mt/with-dynamic-fn-redefs [queries.card/create-cards! (fn [& _] (throw (ex-info "boom" {})))]
       (mt/with-current-user (mt/user->id :crowberto)
         (is (= {:class :unrecoverable :code :internal}
                (failure {:target_type "collection" :collection_id nil})))))))
@@ -408,7 +456,7 @@
                      :model/Document doc {:document document-ast}]
         (testing "4xx failures during card creation reach the agent with their message"
           (doseq [status [400 403 404 409 422 499]]
-            (mt/with-dynamic-fn-redefs [queries/create-card!
+            (mt/with-dynamic-fn-redefs [queries.card/create-cards!
                                         (fn [& _]
                                           (throw (ex-info "Uses content that is not remote synced."
                                                           {:status-code status})))]
@@ -429,7 +477,7 @@
 
 (deftest transaction-server-error-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-dynamic-fn-redefs [queries/create-card!
+    (mt/with-dynamic-fn-redefs [queries.card/create-cards!
                                 (fn [& _] (throw (ex-info "Private save failure." {:status-code 500})))]
       (testing "the card may have been saved before the failure, so the turn ends and the user is told to check"
         (is (= {:output "This call failed and the user was shown the error (:unconfirmed-write). Don't retry it."
@@ -453,21 +501,22 @@
 
 (deftest read-only-destination-without-personal-collection-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp [:model/User {user-id :id} {:type :api-key}
-                   :model/Collection coll {}
-                   :model/Dashboard dash {:collection_id (:id coll)}
-                   :model/Document doc {:collection_id (:id coll) :document document-ast}]
-      (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
-      (mt/with-current-user user-id
-        (doseq [destination [{:target_type "collection" :collection_id (:id coll)}
-                             {:target_type "collection" :collection_id nil}
-                             {:target_type "dashboard" :dashboard_id (:id dash)}
-                             {:target_type "document" :document_id (:id doc)}]]
-          (let [{:keys [class code text]} (failure destination)]
-            (is (= [:recoverable ::save-entity/destination-not-writable] [class code]))
-            (is (str/includes? text "`can_write=true`"))
-            (is (str/includes? text "ask the user"))
-            (is (not (str/includes? text "personal collection")))))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email) :type :api-key}])]
+        (mt/with-temp [:model/Collection coll {}
+                       :model/Dashboard dash {:collection_id (:id coll)}
+                       :model/Document doc {:collection_id (:id coll) :document document-ast}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+          (mt/with-current-user user-id
+            (doseq [destination [{:target_type "collection" :collection_id (:id coll)}
+                                 {:target_type "collection" :collection_id nil}
+                                 {:target_type "dashboard" :dashboard_id (:id dash)}
+                                 {:target_type "document" :document_id (:id doc)}]]
+              (let [{:keys [class code text]} (failure destination)]
+                (is (= [:recoverable ::save-entity/destination-not-writable] [class code]))
+                (is (str/includes? text "`can_write=true`"))
+                (is (str/includes? text "ask the user"))
+                (is (not (str/includes? text "personal collection")))))))))))
 
 (deftest h2-emoji-name-test
   (when (= :h2 (mdb/db-type))

@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock, { type CallLog } from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupAdhocQueryEndpoint,
   setupAdhocQueryMetadataEndpoint,
@@ -33,6 +34,7 @@ import { McpEventsPage } from "metabase-enterprise/monitor/ai-auditing/mcp-analy
 import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import { ApiKeyUsageEventsPage } from "metabase-enterprise/monitor/api-key-usage/components/ApiKeyUsageEventsPage";
 import { ApiKeyUsageSectionLayout } from "metabase-enterprise/monitor/api-key-usage/components/ApiKeyUsageSectionLayout";
+import * as Lib from "metabase-lib";
 import type { Dataset, Field, Table } from "metabase-types/api";
 import {
   createMockColumn,
@@ -86,7 +88,6 @@ type Section = (typeof SECTIONS)[number];
 const [CLI_SECTION] = SECTIONS;
 const EVENTS_TABLE_ID = 2001;
 const GROUP_MEMBERS_TABLE_ID = 2002;
-const DATE_FIELD_ID = EVENTS_TABLE_ID * 100 + 1;
 const FILTERED_ROUTE_SEARCH =
   "?date=past7days~&user=1&group=2&api_key=9&page=2";
 
@@ -131,9 +132,6 @@ function requestStage(call: CallLog | undefined): unknown {
   if (body === null || typeof body !== "object") {
     return null;
   }
-  if ("query" in body) {
-    return body.query;
-  }
   if (!("stages" in body) || !Array.isArray(body.stages)) {
     return null;
   }
@@ -141,9 +139,20 @@ function requestStage(call: CallLog | undefined): unknown {
   return stages[0];
 }
 
+// The counter is the only request that counts rows under the date filter alone.
 function isCounterQuery(call: CallLog): boolean {
-  const body = requestBody(call);
-  return body !== null && typeof body === "object" && "query" in body;
+  const stage = requestStage(call);
+  return (
+    stage !== null &&
+    typeof stage === "object" &&
+    "aggregation" in stage &&
+    "filters" in stage &&
+    Array.isArray(stage.filters) &&
+    stage.filters.length === 1 &&
+    !("page" in stage) &&
+    !("breakout" in stage) &&
+    !("joins" in stage)
+  );
 }
 
 function countCalls() {
@@ -157,31 +166,11 @@ function findEventRow() {
 }
 
 function getTab(section: Section) {
-  return screen.getByRole("link", { name: section.label });
+  return screen.getByRole("tab", { name: section.label });
 }
 
-interface SetupOpts {
-  section?: Section;
-  getCountResponse?: () => Dataset | Response | Promise<Dataset | Response>;
-  missingView?: boolean;
-  metadataError?: boolean;
-  initialRoute?: string;
-  tableTotal?: number;
-  getEventsResponse?: () => Dataset | Promise<Dataset>;
-}
-
-function setup({
-  section = CLI_SECTION,
-  getCountResponse = () => countDataset(137),
-  missingView = false,
-  metadataError = false,
-  initialRoute = `${section.eventsPath}${FILTERED_ROUTE_SEARCH}`,
-  tableTotal = 3,
-  getEventsResponse,
-}: SetupOpts = {}) {
-  setupEnterprisePlugins();
-  mockGetBoundingClientRect({ width: 100, height: 100 });
-  const database = createMockDatabase({
+function createAuditDatabase(section: Section, missingView: boolean) {
+  return createMockDatabase({
     id: AUDIT_DB_ID,
     tables: missingView
       ? []
@@ -223,6 +212,44 @@ function setup({
           ]),
         ],
   });
+}
+
+function parseRequestQuery(call: CallLog | undefined, section: Section) {
+  const provider = Lib.metadataProvider(
+    AUDIT_DB_ID,
+    createMockMetadata({
+      databases: [createAuditDatabase(section, false)],
+    }),
+  );
+  const body = call?.options?.body;
+  if (typeof body !== "string") {
+    throw new Error("Expected a query request body");
+  }
+  return Lib.fromJsQuery(provider, JSON.parse(body));
+}
+
+interface SetupOpts {
+  section?: Section;
+  getCountResponse?: () => Dataset | Response | Promise<Dataset | Response>;
+  missingView?: boolean;
+  metadataError?: boolean;
+  initialRoute?: string;
+  tableTotal?: number;
+  getEventsResponse?: () => Dataset | Promise<Dataset>;
+}
+
+function setup({
+  section = CLI_SECTION,
+  getCountResponse = () => countDataset(137),
+  missingView = false,
+  metadataError = false,
+  initialRoute = `${section.eventsPath}${FILTERED_ROUTE_SEARCH}`,
+  tableTotal = 3,
+  getEventsResponse,
+}: SetupOpts = {}) {
+  setupEnterprisePlugins();
+  mockGetBoundingClientRect({ width: 100, height: 100 });
+  const database = createAuditDatabase(section, missingView);
   if (metadataError) {
     setupDatabaseMetadataErrorEndpoint(AUDIT_DB_ID);
   } else {
@@ -232,6 +259,7 @@ function setup({
     databases: [database],
     tables: database.tables ?? [],
     fields: database.tables?.flatMap((table) => table.fields ?? []) ?? [],
+    cards: [],
   });
   setupUsersEndpoints([createMockUser({ id: 1 })]);
   setupGroupsEndpoint([createMockGroup({ id: 1 }), createMockGroup({ id: 2 })]);
@@ -289,61 +317,45 @@ describe.each(SECTIONS)("$label tab count", (section) => {
 
     expect(await within(getTab(section)).findByText("137")).toBeVisible();
     expect(
-      within(screen.getByRole("link", { name: "Usage" })).queryByText("137"),
+      within(screen.getByRole("tab", { name: "Usage" })).queryByText("137"),
     ).not.toBeInTheDocument();
     expect(await findEventRow()).toBeVisible();
     expect(countCalls()).toHaveLength(1);
-    const stage = requestStage(countCalls()[0]);
-    expect(stage).toEqual(
-      expect.objectContaining({
-        "source-table": EVENTS_TABLE_ID,
-        aggregation: [["count"]],
-        filter: [
-          "time-interval",
-          ["field", DATE_FIELD_ID, expect.anything()],
-          -29,
-          "day",
-          { "include-current": true },
-        ],
-      }),
+    const query = parseRequestQuery(countCalls()[0], section);
+    expect(Lib.stageCount(query)).toBe(1);
+    expect(Lib.primarySourceTableId(query)).toBe(EVENTS_TABLE_ID);
+    const aggregations = Lib.aggregations(query, -1);
+    expect(aggregations).toHaveLength(1);
+    expect(Lib.displayInfo(query, -1, aggregations[0]).displayName).toBe(
+      "Count",
     );
-    for (const key of ["joins", "page", "limit", "breakout", "order-by"]) {
-      expect(stage).not.toHaveProperty(key);
-    }
+    const filters = Lib.filters(query, -1);
+    expect(filters).toHaveLength(1);
+    expect(Lib.displayInfo(query, -1, filters[0]).longDisplayName).toBe(
+      `${section.dateColumn} is in the previous 29 days or today`,
+    );
+    expect(Lib.breakouts(query, -1)).toHaveLength(0);
+    expect(Lib.joins(query, -1)).toHaveLength(0);
+    expect(Lib.orderBys(query, -1)).toHaveLength(0);
+    expect(Lib.currentLimit(query, -1)).toBeNull();
   });
 
-  it("matches the unfiltered table's date window and total", async () => {
-    setup({ section, initialRoute: section.eventsPath, tableTotal: 137 });
+  it("shares one count request with the unfiltered table's total", async () => {
+    setup({ section, initialRoute: section.eventsPath });
 
     expect(await within(getTab(section)).findByText("137")).toBeVisible();
     expect(await screen.findByTestId("pagination-total")).toHaveTextContent(
       "137",
     );
-    const totalStage = fetchMock.callHistory
-      .calls("filtered-dataset")
-      .map(requestStage)
-      .find(
-        (stage) =>
-          stage !== null &&
-          typeof stage === "object" &&
-          "aggregation" in stage &&
-          !("page" in stage),
-      );
-    expect(totalStage).toEqual(
-      expect.objectContaining({
-        "source-table": EVENTS_TABLE_ID,
-        filters: [
-          [
-            "time-interval",
-            expect.objectContaining({ "include-current": true }),
-            ["field", expect.anything(), DATE_FIELD_ID],
-            -29,
-            "day",
-          ],
-        ],
-      }),
+    expect(countCalls()).toHaveLength(1);
+    const query = parseRequestQuery(countCalls()[0], section);
+    expect(Lib.primarySourceTableId(query)).toBe(EVENTS_TABLE_ID);
+    const filters = Lib.filters(query, -1);
+    expect(filters).toHaveLength(1);
+    expect(Lib.displayInfo(query, -1, filters[0]).longDisplayName).toBe(
+      `${section.dateColumn} is in the previous 29 days or today`,
     );
-    expect(totalStage).not.toHaveProperty("joins");
+    expect(Lib.joins(query, -1)).toHaveLength(0);
   });
 });
 
@@ -375,10 +387,10 @@ describe("audit tab count freshness and failures", () => {
     const pending = defer<Dataset>();
     setup({ getCountResponse: () => pending.promise });
     expect(await findEventRow()).toBeVisible();
-    await userEvent.click(screen.getByRole("link", { name: "Usage" }));
-    expect(screen.getByRole("link", { name: "Usage" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    await userEvent.click(screen.getByRole("tab", { name: "Usage" }));
+    expect(screen.getByRole("tab", { name: "Usage" })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
     await act(async () => pending.resolve(countDataset(137)));
     expect(await within(getTab(CLI_SECTION)).findByText("137")).toBeVisible();
@@ -499,7 +511,7 @@ describe("CLI Calls grid loading", () => {
     let requests = 0;
     setup({
       initialRoute: CLI_SECTION.eventsPath,
-      tableTotal: 26,
+      getCountResponse: () => countDataset(26),
       getEventsResponse: () =>
         ++requests === 1 ? initial.promise : pending.promise,
     });

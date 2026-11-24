@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useField, useFormikContext } from "formik";
 import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -252,9 +253,8 @@ export function FormCollectionAndDashboardPicker({
           ref={buttonRef}
           id={id}
           onClick={() => setIsPickerOpen(true)}
-          size="lg"
           fullWidth
-          rightSection={<Icon name="ellipsis" />}
+          rightSection={<Icon name="chevronright" size={12} />}
           styles={{
             inner: {
               justifyContent: "space-between",

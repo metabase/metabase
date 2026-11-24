@@ -4,9 +4,10 @@
    [clj-http.conn-mgr :as conn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.ai-tracing.core :as ait]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools.error :as tools.error]
@@ -20,10 +21,13 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.o11y :refer [with-span]])
+   [metabase.util.match :as match]
+   [metabase.util.o11y :refer [with-span]]
+   [metabase.util.performance :as perf])
   (:import
    (java.io BufferedReader Closeable FilterInputStream InputStream IOException)
-   (java.util.concurrent Callable Executors ExecutorService)))
+   (java.util.concurrent CompletableFuture Executor Executors ThreadPoolExecutor)
+   (java.util.function BiFunction Supplier)))
 
 (set! *warn-on-reflection* true)
 
@@ -84,7 +88,8 @@
    [:title-fn {:optional true} [:maybe [:fn fn?]]]
    [:system-instructions {:optional true} [:maybe :string]]
    [:capabilities {:optional true} [:maybe [:set :keyword]]]
-   [:scope {:optional true} [:maybe :string]]])
+   [:scope {:optional true} [:maybe :string]]
+   [:runs-alone? {:optional true} [:maybe :boolean]]])
 
 (def ^:private DataPart
   "One entry of a tool's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, ...}`
@@ -104,6 +109,7 @@
    [:output            :string]
    [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
    [:data-parts        {:optional true} [:sequential DataPart]]
+   [:non-terminal?     {:optional true} :boolean]
    [:error             {:optional true} [:map {:closed true}
                                          [:class        [:enum :validation :recoverable :unrecoverable]]
                                          [:code         :keyword]
@@ -128,8 +134,7 @@
 
   `{:query {\"stages\" []}}` passes. `{\"query\" {\"stages\" []}}` and `{:query {:stages []}}` do not: the argument
   names are keywords, and the values are `::decoded-json`, with string keys."
-  [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   :keyword ::decoded-json])
+  [:map-of :keyword ::decoded-json])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
@@ -220,8 +225,7 @@
 (def ^:private JSONSchemaProperties
   "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
   string keys off the wire, keyword keys when built in Clojure."
-  [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
-   [:or :string :keyword] JSONSchemaLeaf])
+  [:map-of [:or :string :keyword] JSONSchemaLeaf])
 
 (def ^:private JSONSchemaNode
   "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
@@ -240,7 +244,7 @@
     :system           - System prompt string
     :input            - Sequence of AISDK parts and user messages
     :tools            - Sequence of tool definition maps
-    :tool_choice      - \"auto\" or \"required\"
+    :tool_choice      - \"auto\", \"required\" or \"none\"
     :temperature      - Sampling temperature
     :max-tokens       - Maximum tokens in the response
     :schema           - JSON Schema map for structured output; each provider forces a
@@ -267,7 +271,7 @@
    [:system           {:optional true} [:maybe :string]]
    [:input            {:optional true} [:sequential AISDKPart]]
    [:tools            {:optional true} [:maybe [:sequential ToolEntry]]]
-   [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
+   [:tool_choice      {:optional true} [:maybe [:enum "auto" "required" "none"]]]
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
    [:schema           {:optional true} [:maybe JSONSchemaNode]]
@@ -478,10 +482,7 @@
   "If `v` is a string that looks like a JSON object or array, decode it.
   Returns the decoded value on success, or the original value on failure."
   [v]
-  (if (and (string? v)
-           (let [trimmed (str/trim v)]
-             (or (str/starts-with? trimmed "{")
-                 (str/starts-with? trimmed "["))))
+  (if (tools.runtime/json-text? v)
     (try
       (json/decode+kw v)
       (catch Exception _ v))
@@ -501,6 +502,15 @@
                args)
     args))
 
+(defn error-chunk
+  "The AI SDK `:error` chunk for `error-text`, with the provider's `error` object when it sent one.
+
+  The object keeps fields that the text loses, such as OpenRouter's `metadata.error_type` or an error code, so that
+  Metabot can classify the failure. Its `:message` is `error-text`."
+  [error error-text]
+  (cond-> {:type :error :errorText error-text}
+    (map? error) (assoc :error (assoc error :message error-text))))
+
 (defn- aisdk-chunks->part [[chunk :as chunks]]
   (case (:type chunk)
     :start                 {:type :start
@@ -509,8 +519,8 @@
     ;; Provider adapters emit AI SDK v5 error chunks (`{:type :error :errorText "..."}`). The rest of the
     ;; pipeline — `format-error-line` and `metabot.persistence`'s turn finalize — keys off an internal
     ;; `{:error {:message ...}}` part instead, so translate here. Internally-generated error parts (usage
-    ;; limits, agent-loop exceptions) and the error chunks of Claude and Chat Completions, which keep the
-    ;; provider's own error object, already carry an `:error` map; pass those through unchanged.
+    ;; limits, agent-loop exceptions) and the error chunks that keep the provider's own error object (Claude's, and
+    ;; [[error-chunk]]'s), already carry an `:error` map; pass those through unchanged.
     :error                 (if (:error chunk)
                              chunk
                              {:type :error :error {:message (:errorText chunk)}})
@@ -639,7 +649,7 @@
                                     (get tools (:function part)))]
            (if title-fn
              (let [title (try
-                           (title-fn (walk/keywordize-keys (coerce-stringified-json (:arguments part))))
+                           (title-fn (perf/keywordize-keys (coerce-stringified-json (:arguments part))))
                            (catch Throwable e
                              (log/debug e "tool title-fn failed" {:tool (:function part)})
                              nil))]
@@ -812,7 +822,7 @@
     :tool-input       -> tool-input-available
     :tool-output      -> tool-output-available | tool-output-error
     :data             -> data-<data-type>
-    :error            -> [start + start-step]? error
+    :error            -> [start + start-step]? error (`:provider-failure` sets finish.messageMetadata.providerFailure)
     :usage            -> (accumulated; emitted as finish.message_metadata)
     :finish           -> (recorded — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
@@ -821,6 +831,7 @@
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
+           provider-failure  (volatile! nil)
            finish-reason     (volatile! nil)
            loop-finish-reason (volatile! nil)
            started?          (volatile! false)
@@ -862,7 +873,8 @@
          ([] (rf))
          ([result]
           (let [metadata (merge (->message-metadata @usage-by-model @last-call context-window-tokens)
-                                (when @finish-error-code {:errorCode @finish-error-code}))
+                                (when @finish-error-code {:errorCode @finish-error-code})
+                                (when @provider-failure {:providerFailure @provider-failure}))
                 finish   (cond-> {:type         "finish"
                                   :finishReason (completion-finish-reason @finish-reason @error? @loop-finish-reason)}
                            (seq metadata) (assoc :messageMetadata metadata))]
@@ -951,6 +963,8 @@
                 (vreset! error? true)
                 (when-let [code (some-> (:error-code (:error part)) name)]
                   (vreset! finish-error-code code))
+                (when-let [kind (:provider-failure part)]
+                  (vreset! provider-failure (u/kebab->snake (name kind))))
                 (rf (ensure-started result) (format-error-line part)))
 
               :finish
@@ -979,15 +993,45 @@
 
 ;;; Tool executor
 
-(defonce ^:private tool-executor
+(defonce ^:private ^ThreadPoolExecutor tool-executor
+  ;; One pool per instance, shared by every user and conversation. A call waits here when 20 calls already run.
   (Executors/newFixedThreadPool
    20
    (.. (Thread/ofVirtual) (name "tool-executor-") factory)))
 
+(defmethod analytics.core/pull-collector ::tool-executor [_]
+  ;; Reading the pool's counters is cheap, so every scrape refreshes them.
+  {:min-interval-s 0
+   :f (fn []
+        (analytics/set-gauge! :metabase-metabot/tool-executor-pool-size (.getMaximumPoolSize tool-executor))
+        (analytics/set-gauge! :metabase-metabot/tool-executor-active (.getActiveCount tool-executor))
+        (analytics/set-gauge! :metabase-metabot/tool-executor-queued (.size (.getQueue tool-executor))))})
+
+(def ^:private ^Executor observed-tool-executor
+  "Runs each task on [[tool-executor]] and observes the time the task waits there for a free thread."
+  (reify Executor
+    (execute [_ task]
+      (let [submitted (u/start-timer)]
+        (.execute tool-executor
+                  ^Runnable (fn []
+                              ;; The task completes the call's future, so it runs even if the observation throws
+                              (try
+                                (analytics/observe! :metabase-metabot/tool-executor-wait-ms
+                                                    (u/since-ms submitted))
+                                (finally
+                                  (.run task)))))))))
+
 (defn- submit-virtual
-  "Submit a thunk to run on a virtual thread, bounded by pool size."
-  [thunk]
-  (.submit ^ExecutorService tool-executor ^Callable thunk))
+  "Submit a thunk to run on a virtual thread, bounded by pool size, once every future in `after` has completed.
+  Waiting takes no thread from the pool. Returns a CompletableFuture of the thunk's value."
+  [after thunk]
+  (if (seq after)
+    ;; `handleAsync` hands the thunk to the executor only when `after` completes, so the wait timer starts when the
+    ;; thunk reaches the pool and the wait on `after` is in no metric.
+    (.handleAsync (CompletableFuture/allOf (into-array CompletableFuture after))
+                  (reify BiFunction (apply [_ _ _] (thunk)))
+                  observed-tool-executor)
+    (CompletableFuture/supplyAsync (reify Supplier (get [_] (thunk))) observed-tool-executor)))
 
 (defn- collect-tool-result
   "Normalize tool result into a vector of output chunks.
@@ -1080,7 +1124,7 @@
                            ;; garble the message.
                            (or
                             (unparsed-arguments-outcome arguments)
-                            (let [arguments (walk/keywordize-keys
+                            (let [arguments (perf/keywordize-keys
                                              (or (coerce-stringified-json arguments) {}))]
                               (log/debug "Executing tool" {:tool-name safe-name})
                               (when (ait/capture-active?)
@@ -1107,22 +1151,27 @@
   - Passes chunks through unchanged as they arrive
   - Tracks tool calls from :tool-input-start through :tool-input-available
   - Spawns virtual thread for each tool when input is complete
-  - Once an :error chunk comes through, starts no more tools and drops the tool-input chunks after it
-  - At completion, waits for all tools and appends results
+  - A call to a tool whose entry sets `:runs-alone?` starts once the calls before it have finished, and the calls
+    after it start once it has finished
+  - Once an :error chunk comes through, starts no more tools, the calls already waiting to start included, and drops
+    the tool-input chunks after it
+  - At completion, waits for all tools and appends their results in call order
 
   Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
   [tools]
   (fn [rf]
     (let [active   (volatile! {}) ;; tool-call-id -> {:chunks [...]} or {:task derefable}
-          errored? (volatile! false)]
+          errored? (volatile! false)
+          started  (volatile! []) ;; the tasks of the calls so far, in the order their input completed
+          alone    (volatile! nil)] ;; the last of those tasks that runs alone
       (fn
         ([result]
-         (let [{tasks  true
-                chunks false} (group-by #(contains? (val %) :task) @active)]
+         (let [{chunks false} (group-by #(contains? (val %) :task) @active)]
            (when (seq chunks)
              (log/warn "Multiple tool calls were not collected fully before stream finish"
                        {:tool-calls (map first chunks)}))
-           (if-let [tasks (some->> (seq tasks) (map #(:task (second %))))]
+           ;; The agent loop stores the queries in results in arrival order, so edits must arrive in call order
+           (if-let [tasks (seq @started)]
              (rf (reduce rf result (mapcat deref tasks)))
              (rf result))))
 
@@ -1140,7 +1189,14 @@
 
                :tool-input-available
                (when-let [{:keys [chunks]} (get @active toolCallId)]
-                 (let [task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
+                 (let [runs-alone? (:runs-alone? (get tools toolName))
+                       after       (if runs-alone? @started (some-> @alone list))
+                       task        (submit-virtual after (bound-fn* #(if @errored?
+                                                                       []
+                                                                       (run-tool toolCallId toolName tools chunks))))]
+                   (vswap! started conj task)
+                   (when runs-alone?
+                     (vreset! alone task))
                    (vswap! active assoc toolCallId {:task task})))
 
                :error
@@ -1240,10 +1296,10 @@
   only for the caller to truncate it back down. Collections also render under
   `*print-length*`/`*print-level*` to bound element count and nesting depth."
   [body limit]
-  (let [slice (fn [x] (cond-> x (string? x) (truncate-to limit)))]
-    (binding [*print-length* 100
-              *print-level*  10]
-      (pr-str (walk/postwalk slice body)))))
+  (binding [*print-length* 100
+            *print-level*  10]
+    (pr-str (match/replace-all body
+              #'string? (truncate-to &match limit)))))
 
 (defn- truncate-to-preview-limit
   "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
@@ -1353,14 +1409,27 @@
   otherwise surface raw instead of in the provider-friendly error shape.
 
   Takes the reducible first so adapters can thread it straight off
-  [[sse-reducible]]/`capture-stream` with `->`."
+  [[sse-reducible]]/`capture-stream` with `->`.
+
+  An exception that `rf` throws comes from Metabot's own code downstream (the adapter's chunk translation, the agent
+  loop), so it is rethrown as it is, without the provider tag. The chunk translation counts as Metabot's code also
+  when it throws because the provider sent a stream that is wrong, such as an event with no type: nothing here can
+  tell that case from a fault in the translation."
   [reducible provider res->message]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
-      (try
-        (reduce rf init reducible)
-        (catch Exception e
-          (rethrow-api-error! provider res->message e))))))
+      (let [downstream (volatile! nil)
+            guarded-rf (fn [acc x]
+                         (try
+                           (rf acc x)
+                           (catch Exception e
+                             (vreset! downstream e)
+                             (throw e))))]
+        (try
+          (reduce guarded-rf init reducible)
+          (catch Exception e
+            ;; A wrapper between here and the provider stream may have translated the exception, so check the record.
+            (throw (or @downstream (rethrow-api-error! provider res->message e)))))))))
 
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."

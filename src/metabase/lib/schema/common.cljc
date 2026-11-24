@@ -8,7 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :refer [mapv update-keys every-key? #?@(:clj [some])]]))
+   [metabase.util.performance :refer [mapv update-keys every-key? #?@(:clj [some every?])]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -21,6 +21,10 @@
   [x]
   (cond-> x
     (string? x) keyword))
+
+(mr/def ::keyword
+  "A keyword, normalized from its name."
+  [:keyword {:decode/normalize normalize-keyword}])
 
 (defn normalize-keyword-lower
   "Base normalization behavior for something that should be a keyword: calls [[clojure.core/keyword]] on it if it is a
@@ -120,7 +124,7 @@
 
 (mr/def ::clause-tag-candidate
   "Any value a `:multi` schema dispatches on with [[mbql-clause-tag]], which may or may not be an MBQL clause."
-  [:schema {::mr/deliberately-open true, :description "a value that may be an MBQL clause"} :any])
+  [:maybe :metabase.util.malli/object])
 
 (mu/defn mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
@@ -150,35 +154,59 @@
 
 (mr/def ::positive-number
   [:fn
-   {:error/message "positive number"}
+   {:error/message "positive number"
+    :json-schema   {:type "number" :exclusiveMinimum 0}}
    (every-pred number? pos?)])
-
-(mr/def ::visualization-settings
-  "Chart-rendering settings authored by the frontend. The backend stores and echoes them and reads no fixed key set, so
-  the keys are whatever the visualization the user picked needs. This is the `.cljc` equivalent
-  of [[metabase.util.malli.schema/VisualizationSettings]], which we cannot use here because that namespace is `.clj`
-  only."
-  [:map {:closed false, ::mr/deliberately-open true, :description "visualization settings", :decode/normalize normalize-map-no-kebab-case}])
 
 (mr/def ::clause-options
   "The options map of any MBQL clause, MBQL 5 or legacy, possibly not yet normalized; its keys depend on the clause."
-  [:map {:closed false, ::mr/deliberately-open true, :description "options map of any MBQL clause"}])
+  [:map {:closed false, :description "options map of any MBQL clause"}])
+
+(mr/def ::open-json.object
+  "A JSON object kept as it arrived, whatever its keys."
+  [:map {:closed false, :description "a JSON object kept as it arrived"}])
+
+(mr/def ::open-json
+  "A JSON value kept as it arrived: a scalar, a sequence of such values, or a map of any keys."
+  [:or
+   :string
+   :boolean
+   :keyword
+   number?
+   [:sequential [:maybe [:ref ::open-json]]]
+   ::open-json.object])
+
+(mr/def ::java-collection
+  "A Java collection or map that is not a Clojure one, such as the documents a driver builds for its native query."
+  [:fn
+   {:error/message "a Java collection", :json-schema {}}
+   #?(:clj  #(and (not (coll? %))
+                  (or (instance? java.util.Collection %) (instance? java.util.Map %)))
+      :cljs (constantly false))])
+
+(mr/def ::driver-native-form
+  "A native query as a driver takes it: JSON-like data, in which a driver may also keep Java collections."
+  [:or
+   :string :boolean :keyword number?
+   ::java-collection
+   [:sequential [:maybe [:ref ::driver-native-form]]]
+   ::open-json.object])
 
 (mr/def ::database-details
-  "Connection details for a Database; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseDetails]]."
-  [:map {:closed false, ::mr/deliberately-open true, :description "database connection details"}])
+  "Connection details for a Database; the `.cljc` equivalent of `:metabase.warehouses.schema/database.connection-details`."
+  [:map {:closed false, :description "database connection details"}])
 
 (mr/def ::database-settings
-  "A Database's `:settings`; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseSettings]]."
-  [:map {:closed false, ::mr/deliberately-open true, :description "database settings"}])
+  "A Database's `:settings`; the `.cljc` equivalent of `:metabase.warehouses.schema/database.local-settings`."
+  [:map {:closed false, :description "database settings"}])
 
 (mr/def ::exception-data
   "The `ex-data` of an exception; the `.cljc` equivalent of [[metabase.util.malli.schema/ExceptionData]]."
-  [:map {:closed false, ::mr/deliberately-open true, :description "exception data"}])
+  [:map {:closed false, :description "exception data"}])
 
 (mr/def ::field-value
   "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]]."
-  [:maybe [:or :string number? :boolean uuid? #?(:clj [:fn {:error/message "instance of java.time.temporal.Temporal"}
+  [:maybe [:or :string number? :boolean uuid? #?(:clj [:fn {:error/message "instance of java.time.temporal.Temporal", :json-schema {:type "string"}}
                                                        #(instance? java.time.temporal.Temporal %)])]])
 
 (mr/def ::uuid
@@ -347,7 +375,7 @@
                            :metabase.lib.field/temporal-unit :metabase.lib.field/original-effective-type
                            :metabase.lib.field/simple-display-name
                            :metabase.lib.query/transformation-added-base-type
-                           :lib/stage-metadata :condition :parameters :dimension :strategy :lib/uuid :lib/type
+                           :lib/stage-metadata :condition :parameters :dimension :field-id :strategy :lib/uuid :lib/type
                            :model/inner_ident :stages :lib/model-display-name]
                   :string]]
   (let [fn-schemas (map (fn [[k message]]
@@ -457,10 +485,17 @@
    [:options  {:optional true} [:maybe [:ref ::clause-options]]]])
 
 #?(:clj
+   (def ^:private string-encoded-classes
+     "Classes, with their subclasses, whose instances JSON encodes as strings."
+     [java.time.temporal.Temporal java.util.regex.Pattern]))
+
+#?(:clj
    (defn- instance-of-class* [& classes]
-     [:fn {:error/message (str "instance of "
-                               (str/join " or "
-                                         (map #(.getName ^Class %) classes)))}
+     [:fn (cond-> {:error/message (str "instance of "
+                                       (str/join " or "
+                                                 (map #(.getName ^Class %) classes)))}
+            (every? (fn [klass] (some #(isa? klass %) string-encoded-classes)) classes)
+            (assoc :json-schema {:type "string"}))
       (fn [x]
         (some (fn [klass]
                 (instance? klass x))

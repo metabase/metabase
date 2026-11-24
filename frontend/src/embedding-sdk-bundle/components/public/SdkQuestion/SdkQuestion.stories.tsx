@@ -12,13 +12,9 @@ import {
   questionIds,
 } from "embedding-sdk-bundle/test/storybook-id-args";
 import { Box, Stack } from "metabase/ui";
-import {
-  createMockNativeCard,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockParameter,
-} from "metabase-types/api/mocks";
-import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { createMockCard, createMockParameter } from "metabase-types/api/mocks";
 
 import { SdkQuestion } from "./SdkQuestion";
 import { nativeQuestionWithParametersData } from "./data/data";
@@ -127,36 +123,34 @@ export const WithEditableSqlParametersCustomLayout = {
       handlers: [
         http.get(`*/api/card/${QUESTION_ID}`, () =>
           HttpResponse.json(
-            createMockNativeCard({
+            createMockCard({
               name: "Test Question",
               display: "table",
               id: QUESTION_ID,
-              dataset_query: createMockNativeDatasetQuery({
-                native: createMockNativeQuery({
-                  query:
-                    "SELECT * FROM people WHERE state = {{State}} [[ and city = {{City}} ]] [[ and source = {{Source}} ]]",
-                  "template-tags": {
-                    State: {
-                      type: "text",
-                      name: "State",
-                      id: "1",
-                      "display-name": "State",
-                    },
-                    City: {
-                      type: "text",
-                      name: "City",
-                      id: "2",
-                      "display-name": "City",
-                    },
-                    Source: {
-                      type: "text",
-                      name: "Source",
-                      id: "3",
-                      "display-name": "Source",
-                    },
+              query_type: "native",
+              dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+                query:
+                  "SELECT * FROM people WHERE state = {{State}} [[ and city = {{City}} ]] [[ and source = {{Source}} ]]",
+                templateTags: {
+                  State: {
+                    type: "text",
+                    name: "State",
+                    id: "1",
+                    "display-name": "State",
                   },
-                }),
-                database: SAMPLE_DB_ID,
+                  City: {
+                    type: "text",
+                    name: "City",
+                    id: "2",
+                    "display-name": "City",
+                  },
+                  Source: {
+                    type: "text",
+                    name: "Source",
+                    id: "3",
+                    "display-name": "Source",
+                  },
+                },
               }),
               parameters: [
                 createMockParameter({
@@ -307,36 +301,34 @@ export const ControlledSqlParameters = {
       handlers: [
         http.get(`*/api/card/${QUESTION_ID}`, () =>
           HttpResponse.json(
-            createMockNativeCard({
+            createMockCard({
               name: "Controlled SQL parameters demo",
               display: "table",
               id: QUESTION_ID,
-              dataset_query: createMockNativeDatasetQuery({
-                native: createMockNativeQuery({
-                  query:
-                    "SELECT * FROM people WHERE state = {{state}} [[ and city = {{city}} ]] [[ and source = {{source}} ]]",
-                  "template-tags": {
-                    state: {
-                      type: "text",
-                      name: "state",
-                      id: "1",
-                      "display-name": "State",
-                    },
-                    city: {
-                      type: "text",
-                      name: "city",
-                      id: "2",
-                      "display-name": "City",
-                    },
-                    source: {
-                      type: "text",
-                      name: "source",
-                      id: "3",
-                      "display-name": "Source",
-                    },
+              query_type: "native",
+              dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+                query:
+                  "SELECT * FROM people WHERE state = {{state}} [[ and city = {{city}} ]] [[ and source = {{source}} ]]",
+                templateTags: {
+                  state: {
+                    type: "text",
+                    name: "state",
+                    id: "1",
+                    "display-name": "State",
                   },
-                }),
-                database: SAMPLE_DB_ID,
+                  city: {
+                    type: "text",
+                    name: "city",
+                    id: "2",
+                    "display-name": "City",
+                  },
+                  source: {
+                    type: "text",
+                    name: "source",
+                    id: "3",
+                    "display-name": "Source",
+                  },
+                },
               }),
               parameters: [
                 createMockParameter({ id: "1", slug: "state" }),

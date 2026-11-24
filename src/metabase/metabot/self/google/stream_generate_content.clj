@@ -204,7 +204,8 @@
       (and fdecls tool_choice)
       (assoc :toolConfig {:functionCallingConfig {:mode (case (name tool_choice)
                                                           "auto"     "AUTO"
-                                                          "required" "ANY")}})
+                                                          "required" "ANY"
+                                                          "none"     "NONE")}})
 
       ;; Structured output: force a call to one tool that carries the schema. The Claude and Chat Completions adapters
       ;; do the same, thus the shared :tool-input extraction in call-llm-structured works.
@@ -431,5 +432,4 @@
                                            :errorText (str "Prompt blocked by Google: " block-reason)}))
              ;; An error envelope in the stream, e.g. a failure in the middle of the stream.
              (some? error)        (-> (close-blocks!)
-                                      (rf {:type      :error
-                                           :errorText (or (:message error) (pr-str error))})))))))))
+                                      (rf (core/error-chunk error (or (:message error) (pr-str error))))))))))))

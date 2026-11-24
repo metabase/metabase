@@ -1,5 +1,6 @@
 ---
 title: "People overview"
+summary: Manage accounts and groups, set up SSO and SCIM provisioning, set password, session, and two-factor rules, and create API keys.
 redirect_from:
   - /docs/latest/administration-guide/sso
   - /docs/latest/people-and-groups
@@ -7,7 +8,7 @@ redirect_from:
 
 # People overview
 
-User accounts, groups, and authentication. For permissions, see [Permissions overview](../permissions/start.md).
+For permissions, see [Permissions overview](../permissions/start.md).
 
 ## [Editing your account settings](./account-settings.md)
 

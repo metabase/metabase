@@ -8,11 +8,11 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.oauth-server.core :as oauth-server]
-   [metabase.oauth-server.events.revoke-on-deactivation] ; for side effects: revokes tokens on deactivation
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.users.models.user :as user]
    [oidc-provider.store :as oidc.store]
    [toucan2.core :as t2]))
 
@@ -167,9 +167,11 @@
                     (client/client :get 401 "user/current"
                                    {:request-options {:headers {"authorization" (str "Bearer " token)}}}))
                   (testing "an agent API endpoint that declares a scope does not serve it"
-                    (client/client :post 401 "agent/v1/search"
-                                   {:request-options {:headers {"authorization" (str "Bearer " token)}}}
-                                   {:term_queries ["orders"]})))))))))))
+                    ;; opt in to the deprecated Agent API, so its 403 does not mask the 401
+                    (mt/with-temporary-setting-values [deprecated-agent-api-enabled? true]
+                      (client/client :post 401 "agent/v1/search"
+                                     {:request-options {:headers {"authorization" (str "Bearer " token)}}}
+                                     {:term_queries ["orders"]}))))))))))))
 
 (deftest non-oauth-auth-is-unaffected-by-oauth-fail-closed-test
   (testing "GHY-4542: session and API-key requests carry nil `:token-scopes` and must keep passing the scope
@@ -206,7 +208,9 @@
   (testing "GHY-4542: a narrow OAuth token reaching an agent API endpoint that declares a scope it does not hold gets
             a 403 carrying the RFC 6750 section 3 `insufficient_scope` challenge, naming the scope that endpoint
             requires, so the client knows to re-authorize for it"
-    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    ;; opt in to the deprecated Agent API, so its 403 does not mask the scope 403
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       deprecated-agent-api-enabled? true]
       (oauth-server.tu/with-oauth-client [client-id]
         (mt/with-model-cleanup [:model/OAuthAccessToken]
           (let [token    (str (random-uuid))
@@ -264,10 +268,10 @@
             (save-access-token! token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
             (testing "authenticates before deactivation"
               (is (= user-id (:metabase-user-id (merge-current-user-info (bearer-request token))))))
-            (t2/update! :model/User :id user-id {:is_active false})
+            (user/update-users! [{:id user-id :is_active false}])
             (testing "after deactivation the token no longer authenticates"
               (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))
-            (t2/update! :model/User :id user-id {:is_active true})
+            (user/update-users! [{:id user-id :is_active true}])
             (testing "after reactivation the same token STILL does not authenticate"
               (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))))))))
 

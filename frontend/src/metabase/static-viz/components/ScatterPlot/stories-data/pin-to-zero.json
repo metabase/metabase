@@ -162,7 +162,6 @@
       "parameter_mappings": [],
       "display": "scatter",
       "entity_id": "WIK1d7IpvM9y9wWuxP-Uf",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.y_axis.unpin_from_zero": false,
         "stackable.stack_type": null,

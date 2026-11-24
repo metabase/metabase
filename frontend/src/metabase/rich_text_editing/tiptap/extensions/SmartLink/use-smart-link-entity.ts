@@ -12,7 +12,6 @@ import type {
   Table,
   TableId,
 } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 import {
   entityToUrlableModel,
@@ -52,13 +51,16 @@ const getLibraryEntity = (
   parentTable: Table | undefined,
 ): LibraryEntity | undefined =>
   match(data)
-    .with({ model: "table", entity: { is_published: true } }, ({ entity }) => ({
-      model: "table" as const,
-      id: entity.id,
-      name: entity.display_name,
-      description: entity.description,
-      collection: entity.collection,
-    }))
+    .with(
+      { model: "table", entity: { collection: P.nonNullable } },
+      ({ entity }) => ({
+        model: "table" as const,
+        id: entity.id,
+        name: entity.display_name,
+        description: entity.description,
+        collection: entity.collection,
+      }),
+    )
     .with(
       {
         model: P.union("card", "dataset", "metric"),
@@ -76,7 +78,7 @@ const getLibraryEntity = (
       }),
     )
     .with({ model: "measure", entity: P.nonNullable }, ({ entity }) =>
-      parentTable?.is_published
+      parentTable?.collection != null
         ? {
             model: "measure" as const,
             id: entity.id,
@@ -88,7 +90,7 @@ const getLibraryEntity = (
         : undefined,
     )
     .with({ model: "segment", entity: P.nonNullable }, ({ entity }) =>
-      parentTable?.is_published
+      parentTable?.collection != null
         ? {
             model: "segment" as const,
             id: entity.id,
@@ -131,9 +133,7 @@ const getEntityHref = (
 ): string | undefined =>
   match(data)
     .with({ model: "table", entity: P.nonNullable }, ({ entity }) =>
-      isConcreteTableId(entity.id)
-        ? Urls.table({ id: entity.id, name: entity.display_name })
-        : Urls.modelToUrl(entityToUrlableModel(entity, "table")),
+      Urls.table({ id: entity.id, name: entity.display_name }),
     )
     .with({ model: "measure", entity: P.nonNullable }, ({ entity }) =>
       Urls.dataStudioPublishedTableMeasure(entity.table_id, entity.id),

@@ -4,6 +4,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.embedding-rest.db :as embedding-rest.db]
+   [metabase.embedding.models.theme :as embedding-theme]
+   [metabase.embedding.schema :as embedding.schema]
    [metabase.embedding.settings :as embedding.settings]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
@@ -19,7 +21,7 @@
    [:id        ms/PositiveInt]
    [:entity_id ms/NonBlankString]
    [:name      ms/NonBlankString]
-   [:settings ms/OpaqueJSONObject]
+   [:settings ::embedding.schema/embedding-theme.settings]
    [:is_default :boolean]
    [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
    [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]])
@@ -43,9 +45,9 @@
    _query-params
    {:keys [name settings]} :- [:map {:closed true}
                                [:name     ms/NonBlankString]
-                               [:settings ms/OpaqueJSONObject]]]
-  (embedding-rest.db/insert-embedding-theme! {:name name
-                                              :settings settings}))
+                               [:settings ::embedding.schema/embedding-theme.settings]]]
+  (first (embedding-theme/create-embedding-themes! [{:name name
+                                                     :settings settings}])))
 
 (api.macros/defendpoint :put "/:id" :- ::EmbeddingTheme
   "Update an embedding theme."
@@ -53,19 +55,18 @@
    _query-params
    {:keys [name settings]} :- [:map {:closed true}
                                [:name {:optional true} [:maybe ms/NonBlankString]]
-                               [:settings {:optional true} [:maybe ms/OpaqueJSONObject]]]]
+                               [:settings {:optional true} [:maybe ::embedding.schema/embedding-theme.settings]]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
-  (embedding-rest.db/update-embedding-theme! id
-                                             (cond-> {}
-                                               name (assoc :name name)
-                                               settings (assoc :settings settings)))
+  (embedding-theme/update-embedding-themes! [(assoc (cond-> {}
+                                                      name (assoc :name name)
+                                                      settings (assoc :settings settings)) :id id)])
   (embedding-rest.db/embedding-theme id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete an embedding theme."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
-  (embedding-rest.db/delete-embedding-theme! id)
+  (embedding-theme/delete-embedding-themes! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/copy" :- ::EmbeddingTheme
@@ -73,8 +74,8 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
   (let [source-theme (embedding-rest.db/embedding-theme id)]
-    (embedding-rest.db/insert-embedding-theme! {:name (tru "Copy of {0}" (:name source-theme))
-                                                :settings (:settings source-theme)})))
+    (first (embedding-theme/create-embedding-themes! [{:name (tru "Copy of {0}" (:name source-theme))
+                                                       :settings (:settings source-theme)}]))))
 
 (api.macros/defendpoint :post "/seed-defaults" :- :nil
   "Seed default embedding themes on first call, using the payloads built by the frontend from the
@@ -87,13 +88,13 @@
    {:keys [themes]} :- [:map {:closed true}
                         [:themes [:sequential [:map {:closed true}
                                                [:name     ms/NonBlankString]
-                                               [:settings ms/OpaqueJSONObject]]]]]]
+                                               [:settings ::embedding.schema/embedding-theme.settings]]]]]]
   (locking seed-defaults-lock
     (t2/with-transaction [_conn]
       (when-not (embedding.settings/default-embedding-themes-seeded)
         ;; Marked here because nothing else can identify them afterwards: the
         ;; names are stored already translated, and seeding is lazy so the ids
         ;; are not ordered.
-        (embedding-rest.db/insert-embedding-themes! (map #(assoc % :is_default true) themes))
+        (embedding-theme/create-embedding-themes! (map #(assoc % :is_default true) themes))
         (embedding.settings/default-embedding-themes-seeded! true))))
   nil)

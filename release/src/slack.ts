@@ -337,6 +337,38 @@ export function githubRunLink(
   );
 }
 
+type JobResults = Record<string, { result?: string } | null>;
+
+export function formatJobResults(needsJson?: string) {
+  if (!needsJson) {
+    return "";
+  }
+
+  let needs: JobResults;
+  try {
+    needs = JSON.parse(needsJson);
+  } catch {
+    return "";
+  }
+
+  if (!needs || typeof needs !== "object") {
+    return "";
+  }
+
+  const jobsWithResult = (result: string) =>
+    Object.entries(needs)
+      .filter(([, job]) => job?.result === result)
+      .map(([name]) => `\`${name}\``);
+
+  return [
+    ["Failed", jobsWithResult("failure")],
+    ["Cancelled", jobsWithResult("cancelled")],
+  ]
+    .filter(([, jobs]) => jobs.length > 0)
+    .map(([label, jobs]) => `${label}: ${(jobs as string[]).join(", ")}`)
+    .join(". ");
+}
+
 export type ReleaseStatus = "failure" | "success";
 
 export async function sendReleaseSlackMessage({

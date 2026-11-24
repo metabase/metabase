@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import {
   LEVEL_ONE_TYPES as cljs_LEVEL_ONE_TYPES,
   TYPE as cljs_TYPE,

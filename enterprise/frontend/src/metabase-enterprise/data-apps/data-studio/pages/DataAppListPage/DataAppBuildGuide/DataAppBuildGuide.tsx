@@ -7,33 +7,28 @@ import { useDocsUrl } from "metabase/common/hooks";
 import {
   ActionIcon,
   Card,
+  Center,
   FixedSizeIcon,
   Group,
-  List,
   Stack,
+  Text,
   Title,
 } from "metabase/ui";
 
 const BUILD_GUIDE_ID = "data-apps-build-guide";
 
-export function DataAppBuildSteps() {
+export const getDataAppsIntroTitle = () => t`Apps built on your semantic layer`;
+
+export const getDataAppsIntroDescription = () =>
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Data Studio is only for admins.
+  t`Data apps are highly customizable applications built on top of your vetted metrics and data. Create a data app with your AI agent of choice and the Metabase CLI, then sync it with git, and choose which groups can open and use it.`;
+
+export function DataAppBuildDocsLink() {
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Data Studio is only for admins.
   const { url } = useDocsUrl("data-apps/build");
 
   return (
-    <Stack gap="md">
-      <List type="ordered" spacing="xs">
-        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Data Studio is only for admins. */}
-        <List.Item>{t`Install the Metabase CLI, and log it in to your Metabase as an admin.`}</List.Item>
-        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Data Studio is only for admins. */}
-        <List.Item>{t`Start your AI coding agent in a local clone of your Git repository, on the branch your Metabase syncs with.`}</List.Item>
-        <List.Item>{t`Ask your agent to create a data app. It writes the app's code, questions, and actions in the repository, builds the app, and pushes it.`}</List.Item>
-        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Data Studio is only for admins. */}
-        <List.Item>{t`Pull the changes into Metabase. Your agent can do this for you.`}</List.Item>
-        <List.Item>{t`Choose which groups can open the app.`}</List.Item>
-      </List>
-      <ExternalLink href={url}>{t`Learn how to build data apps`}</ExternalLink>
-    </Stack>
+    <ExternalLink href={url}>{t`Learn how to build data apps`}</ExternalLink>
   );
 }
 
@@ -52,12 +47,27 @@ export const DataAppBuildGuide = () => {
             aria-labelledby={titleId}
           >
             <Group justify="space-between" align="flex-start" wrap="nowrap">
-              <Stack gap="sm">
-                <Title id={titleId} order={4}>
-                  {t`How to build a data app`}
-                </Title>
-                <DataAppBuildSteps />
-              </Stack>
+              <Group gap="lg" align="flex-start" wrap="nowrap">
+                <Center
+                  w={80}
+                  h={80}
+                  bdrs="50%"
+                  bg="background_surface-brand-subtle"
+                  flex="0 0 auto"
+                  mx="md"
+                >
+                  <FixedSizeIcon name="app" size={24} c="core-brand" />
+                </Center>
+                <Stack gap="sm">
+                  <Title id={titleId} order={4}>
+                    {getDataAppsIntroTitle()}
+                  </Title>
+                  <Text c="text-secondary" lh="1.25rem">
+                    {getDataAppsIntroDescription()}
+                  </Text>
+                  <DataAppBuildDocsLink />
+                </Stack>
+              </Group>
               <ActionIcon
                 variant="subtle"
                 aria-label={t`Dismiss`}

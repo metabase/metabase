@@ -1180,6 +1180,7 @@
      :round
      :setweight
      :split_part
+     :statement_timestamp
      :sum
      :substring
      :to_regclass

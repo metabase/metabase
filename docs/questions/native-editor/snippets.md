@@ -1,5 +1,6 @@
 ---
 title: Snippets
+summary: Save reusable bits of SQL that you and your team can drop into any native query.
 redirect_from:
   - /docs/latest/users-guide/sql-snippets
   - /docs/latest/questions/native-editor/sql-snippets

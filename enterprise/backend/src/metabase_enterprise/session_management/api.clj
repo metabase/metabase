@@ -14,6 +14,7 @@
    [metabase.users.models.user :as user]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -90,8 +91,7 @@
 (mr/def ::EndedOnlyCriterion
   ;; declared purely to refuse the key: an undeclared key would be stripped rather than rejected, and a schema that
   ;; only rejects a value would still let an explicit JSON `null` through and drop the filter
-  [:fn {:error/message "only live sessions can be revoked, so a filter that only matches ended ones is not allowed"}
-   (constantly false)])
+  (mu/never {:error/message "only live sessions can be revoked, so a filter that only matches ended ones is not allowed"}))
 
 (mr/def ::RevokeByCriteriaParams
   ;; [[::FilterParams]] rather than [[::ListParams]]: an ended session cannot be revoked, or removed early, so a
@@ -111,8 +111,7 @@
     ;; ([[metabase.api.macros]]'s `strip-extra-keys-transformer`), so a caller who meant to narrow the revoke by name
     ;; would instead revoke every live session.
     [:query           {:optional true}
-     [:fn {:error/message "not supported when revoking; list the sessions first, then revoke them by `ids`"}
-      (constantly false)]]]])
+     (mu/never {:error/message "not supported when revoking; list the sessions first, then revoke them by `ids`"})]]])
 
 (mr/def ::RevokeByCriteriaResult
   [:map {:closed true}
@@ -255,12 +254,12 @@
     (events/publish-event! :event/sessions-revoked
                            {:user-id api/*current-user-id*
                             :details {:criteria criteria, :count revoked, :remaining remaining}})
-    (doseq [[user-id revoked-for-user] (frequencies user-ids)]
+    (when (seq user-ids)
       (events/publish-event! :event/session-revoked
-                             {:user-id  api/*current-user-id*
-                              :model    :model/User
-                              :model-id user-id
-                              :details  {:criteria criteria, :count revoked-for-user}}))
+                             {:user-id api/*current-user-id*
+                              :details {:criteria criteria}
+                              :objects (for [[user-id revoked-for-user] (frequencies user-ids)]
+                                         {:id user-id :count revoked-for-user})}))
     (catch Throwable e
       (log/warn e "Error recording a session revocation in the audit log"))))
 

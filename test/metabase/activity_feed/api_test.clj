@@ -99,7 +99,7 @@
                  :model/Dashboard dash {:name        "rand-name2"
                                         :description "rand-name2"
                                         :creator_id  (mt/user->id :crowberto)}
-                 :model/Table     table1 {:name "rand-name"}
+                 :model/Table     table1 {:name "rand-name" :display_name "rand-name"}
                  :model/Table     hidden-table {:name            "hidden table"
                                                 :visibility_type "hidden"}
                  :model/Card      dataset {:name                   "rand-name"
@@ -166,7 +166,7 @@
                      :model/Dashboard dash {:name        "rand-name2"
                                             :description "rand-name2"
                                             :creator_id  (mt/user->id :crowberto)}
-                     :model/Table     table1 {:name "rand-name"}
+                     :model/Table     table1 {:name "rand-name" :display_name "rand-name"}
                      :model/Table     hidden-table {:name            "hidden table"
                                                     :visibility_type "hidden"}
                      :model/Card      dataset {:name                   "rand-name"
@@ -240,7 +240,7 @@
                      :model/Dashboard dash {:name        "rand-name2"
                                             :description "rand-name2"
                                             :creator_id  (mt/user->id :crowberto)}
-                     :model/Table     table1 {:name "rand-name"}
+                     :model/Table     table1 {:name "rand-name" :display_name "rand-name"}
                      :model/Table     hidden-table {:name            "hidden table"
                                                     :visibility_type "hidden"}
                      :model/Card      dataset {:name                   "rand-name"
@@ -325,7 +325,7 @@
                                                  :creator_id  (mt/user->id :crowberto)
                                                  :view_count  5
                                                  :archived true}
-                 :model/Table     table1 {:name "rand-name"}
+                 :model/Table     table1 {:name "rand-name" :display_name "rand-name"}
                  :model/Table     hidden-table {:name            "hidden table"
                                                 :visibility_type "hidden"}
                  :model/Table     inactive-table {:name            "inactive table"
@@ -429,12 +429,12 @@
                        :recents
                        (filter #(= (:id %) (:id metric-card)))))))))))
 
-(deftest card-query-collection-context-excluded-from-recents-test
+(deftest card-query-dashboard-context-excluded-from-recents-test
   (testing "A card-query event with a non-question context is not recorded as a recent view (#45003)"
     (mt/with-test-user :crowberto
       (mt/with-model-cleanup [:model/RecentViews]
         (mt/with-temp [:model/Card {card-id :id} {:creator_id (mt/user->id :crowberto)}]
-          (doseq [ctx [:collection :dashboard :dashboard-subscription]]
+          (doseq [ctx [:dashboard :dashboard-subscription]]
             (events/publish-event! :event/card-query {:user-id (mt/user->id :crowberto) :card-id card-id :context ctx}))
           (is (empty? (filter (comp #{card-id} :id)
                               (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))))))))))
@@ -445,10 +445,10 @@
       (clear-recent-views-for-user :crowberto)
       (mt/with-model-cleanup [:model/RecentViews :model/ModerationReview]
         (mt/with-temp [:model/Card card {:name "verified card"}]
-          (moderation-review/create-review! {:moderated_item_id   (:id card)
-                                             :moderated_item_type "card"
-                                             :moderator_id        (mt/user->id :crowberto)
-                                             :status              "verified"})
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id   (:id card)
+                                                          :moderated_item_type "card"
+                                                          :moderator_id        (mt/user->id :crowberto)
+                                                          :status              "verified"}])
           (events/publish-event! :event/card-query {:user-id (mt/user->id :crowberto) :card-id (:id card)})
           (is (=? {:model "card" :moderated_status "verified"}
                   (->> (mt/user-http-request :crowberto :get 200 "activity/recents?context=views")

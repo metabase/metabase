@@ -1,12 +1,11 @@
 ---
 title: Custom actions
+summary: Write your own SQL to update records in your database, then run it from a form, a dashboard button, or a public link.
 redirect_from:
   - /docs/latest/actions/custom
 ---
 
 # Custom actions
-
-Write SQL to update records in your databases.
 
 ![Custom action](./images/custom-action.png)
 

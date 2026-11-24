@@ -186,6 +186,25 @@ Metabase will display this illustration when searches don't return any results.
 - No illustration
 - Custom
 
+## Configure appearance with environment variables
+
+On self-hosted Metabases, you can also set these settings with [environment variables](./environment-variables.md).
+
+| Setting                                                         | Environment variable                                                                                                                                                                               |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Color palette](#color-palette)                                 | [`MB_APPLICATION_COLORS`](./environment-variables.md#mb_application_colors)                                                                                                                        |
+| [Logo](#logo)                                                   | [`MB_APPLICATION_LOGO_URL`](./environment-variables.md#mb_application_logo_url)                                                                                                                    |
+| [Favicon](#favicon)                                             | [`MB_APPLICATION_FAVICON_URL`](./environment-variables.md#mb_application_favicon_url)                                                                                                              |
+| [Font](#font)                                                   | [`MB_APPLICATION_FONT`](./environment-variables.md#mb_application_font), [`MB_APPLICATION_FONT_FILES`](./environment-variables.md#mb_application_font_files)                                       |
+| [Loading message](#loading-message)                             | [`MB_LOADING_MESSAGE`](./environment-variables.md#mb_loading_message)                                                                                                                              |
+| [Application name](#application-name)                           | [`MB_APPLICATION_NAME`](./environment-variables.md#mb_application_name)                                                                                                                            |
+| [Documentation and references](#documentation-and-references)   | [`MB_SHOW_METABASE_LINKS`](./environment-variables.md#mb_show_metabase_links)                                                                                                                      |
+| [Help link](#help-link-in-the-settings-menu)                    | [`MB_HELP_LINK`](./environment-variables.md#mb_help_link), [`MB_HELP_LINK_CUSTOM_DESTINATION`](./environment-variables.md#mb_help_link_custom_destination)                                         |
+| [Login page illustration](#login-and-unsubscribe-pages)         | [`MB_LOGIN_PAGE_ILLUSTRATION`](./environment-variables.md#mb_login_page_illustration), [`MB_LOGIN_PAGE_ILLUSTRATION_CUSTOM`](./environment-variables.md#mb_login_page_illustration_custom)         |
+| [Landing page illustration](#landing-page)                      | [`MB_LANDING_PAGE_ILLUSTRATION`](./environment-variables.md#mb_landing_page_illustration), [`MB_LANDING_PAGE_ILLUSTRATION_CUSTOM`](./environment-variables.md#mb_landing_page_illustration_custom) |
+| [No results illustration](#when-calculations-return-no-results) | [`MB_NO_DATA_ILLUSTRATION`](./environment-variables.md#mb_no_data_illustration), [`MB_NO_DATA_ILLUSTRATION_CUSTOM`](./environment-variables.md#mb_no_data_illustration_custom)                     |
+| [No objects found illustration](#when-no-objects-can-be-found)  | [`MB_NO_OBJECT_ILLUSTRATION`](./environment-variables.md#mb_no_object_illustration), [`MB_NO_OBJECT_ILLUSTRATION_CUSTOM`](./environment-variables.md#mb_no_object_illustration_custom)             |
+
 ## Further reading
 
 - [Embedding introduction](../embedding/start.md).

@@ -1,12 +1,15 @@
 import { serializeCardForUrl } from "metabase/common/utils/card";
-import type { DatasetQuery } from "metabase-types/api";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import { conversationChartUrl } from "./metabot";
 
 describe("conversationChartUrl", () => {
   it("builds an ad-hoc question url with a locked display from a conversation chart", () => {
-    const datasetQuery = createMockStructuredDatasetQuery();
+    const datasetQuery = Lib.createTestJsQuery(
+      SAMPLE_PROVIDER,
+      DEFAULT_TEST_QUERY,
+    );
     const url = conversationChartUrl({
       queries: [datasetQuery],
       visualization_settings: { chart_type: "bar" },
@@ -26,19 +29,5 @@ describe("conversationChartUrl", () => {
 
   it("returns undefined when the chart has no query", () => {
     expect(conversationChartUrl({ queries: [] })).toBeUndefined();
-  });
-
-  it("returns undefined for a backend pMBQL query that legacy /question# urls cannot represent", () => {
-    // OpaqueDatasetQuery is branded, so the raw pMBQL wire shape needs a cast
-    const pmbqlQuery = {
-      "lib/type": "mbql/query",
-      stages: [{ "lib/type": "mbql.stage/mbql", "source-table": 1 }],
-    } as unknown as DatasetQuery;
-    expect(
-      conversationChartUrl({
-        queries: [pmbqlQuery],
-        visualization_settings: { chart_type: "bar" },
-      }),
-    ).toBeUndefined();
   });
 });

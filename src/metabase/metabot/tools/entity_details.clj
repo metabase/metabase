@@ -1,19 +1,24 @@
 (ns metabase.metabot.tools.entity-details
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.revisions.core :as revisions]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -79,6 +84,15 @@
   (let [review (metabot.db/latest-review-status-row id item-type)]
     (= (:status review) "verified")))
 
+(defn- verified-review-ids
+  "The ids of those of the items with `ids` of `item-type` for which [[verified-review?]] is true, read at once."
+  [ids item-type]
+  (into #{}
+        (keep (fn [[id reviews]]
+                (when (= "verified" (:status (apply max-key :id reviews)))
+                  id)))
+        (group-by :moderated_item_id (metabot.db/latest-review-status-rows (vec ids) item-type))))
+
 (def ^:private max-glossary-items
   "Maximal number of items from glossary to include in Metabot's context."
   100)
@@ -112,19 +126,81 @@
                                  {:glossary glossary}))}
     {:output "current user not found"}))
 
+(defn- person-name
+  "The name of `user`, a map with `:first_name`, `:last_name` and `:email`, or nil when it has none of them.
+  A user without a first or last name goes by their email, as `:common_name` does."
+  [{:keys [first_name last_name email]}]
+  (or (not-empty (str/trim (str first_name " " last_name))) (not-empty email)))
+
+(defn- dashboard-collection
+  "The collection with `collection-id`, nil for the root collection, with its authority level, whether it is in the
+  trash, and the path to it the current user can see. A collection trashed directly has its path through the Trash;
+  one trashed with its parent keeps its own location, as core's breadcrumbs do, so only `:archived` says it is in the
+  trash."
+  [collection-id]
+  (if-not collection-id
+    (let [root-name (:name (collection/root-collection-with-ui-details nil))]
+      {:id nil, :name root-name, :path root-name})
+    (when-let [collection (metabot.db/collection-with-ancestors collection-id)]
+      ;; As the Agent API's `collection-path` does, a personal subtree starts at the personal collection rather than the
+      ;; root, and a personal collection shows the name the current user sees it by.
+      (let [ancestors (cond->> (:effective_ancestors collection)
+                        (collection/is-personal-collection-or-descendant-of-one? collection)
+                        (remove #(= "root" (:id %))))
+            chain     (collection/personal-collections-with-ui-details
+                       (conj (vec ancestors) (dissoc collection :effective_ancestors)))]
+        {:id              collection-id
+         :name            (:name (last chain))
+         :path            (str/join " / " (map :name chain))
+         :authority_level (:authority_level collection)
+         :archived        (boolean (:archived collection))}))))
+
+(defn- visible-dashcards
+  "The dashcards of the dashboard with `dashboard-id` that the current user can see: text, headings, links and actions,
+  and charts whose question they can read.
+  When the session may only reach curated content, charts also need a curated card, or a metric whose definition
+  passes [[curation/usable-metric-ids]], as in the dashboard's items."
+  [dashboard-id]
+  (let [dashcards (metabot.db/dashcards dashboard-id)
+        card-ids  (into #{} (keep #(when-not (:action_id %) (:card_id %))) dashcards)
+        readable  (if (seq card-ids)
+                    (into #{} (map :id) (mi/readable (metabot.db/cards-for-read-check card-ids)))
+                    #{})
+        visible   (if (shared/curated-only?)
+                    (curation/usable-metric-ids readable)
+                    readable)]
+    (filter #(or (:action_id %) (nil? (:card_id %)) (contains? visible (:card_id %))) dashcards)))
+
+(defn with-filter-connections
+  "Each of the dashboard filters `parameters` with the ids of the `dashcards` it filters, as `:connected_dashcards`."
+  [parameters dashcards]
+  (for [{parameter-id :id :as parameter} parameters]
+    (assoc parameter :connected_dashcards (for [{:keys [id parameter_mappings]} dashcards
+                                                :when (some #(= parameter-id (:parameter_id %)) parameter_mappings)]
+                                            id))))
+
 (defn get-dashboard-details
-  "Get information about the dashboard with ID `dashboard-id`."
+  "Get information about the dashboard with ID `dashboard-id`: its details, who created and last edited it, its
+  collection, and its filters with the dashcards each one filters."
   [{:keys [dashboard-id]}]
   (when-not (int? dashboard-id)
     (throw (ex-info "Invalid dashboard_id format"
                     {:agent-error? true :status-code 400})))
   (if-let [dashboard (metabot.db/dashboard-summary dashboard-id)]
     (do (api/read-check dashboard)
-        {:structured-output
-         (-> dashboard
-             (dissoc :collection_id)
-             (assoc :type :dashboard
-                    :verified (verified-review? dashboard-id "dashboard")))})
+        (let [last-edit (get-in (revisions/fetch-last-edited-info {:dashboard-ids [dashboard-id]})
+                                [:dashboard dashboard-id])]
+          {:structured-output
+           (-> dashboard
+               (dissoc :collection_id :creator_id)
+               (assoc :type           :dashboard
+                      :verified       (verified-review? dashboard-id "dashboard")
+                      :created_by     (person-name (metabot.db/user-summary (:creator_id dashboard)))
+                      :last_edited_by (person-name last-edit)
+                      :last_edited_at (:timestamp last-edit)
+                      :collection     (dashboard-collection (:collection_id dashboard)))
+               (cond-> (seq (:parameters dashboard))
+                 (update :parameters with-filter-connections (visible-dashcards dashboard-id))))}))
     {:output "dashboard not found"}))
 
 (defn- get-field-values
@@ -135,8 +211,7 @@
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
     (let [id->values (params.field-values/get-or-create-field-values-by-field-id!
-                      (filter params.field-values/current-user-can-fetch-field-values?
-                              (t2/hydrate (metabot.db/fields (set field-ids)) :table)))]
+                      (mi/readable (t2/hydrate (metabot.db/fields (set field-ids)) :table)))]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 
@@ -184,39 +259,67 @@
          (or (nil? fk-field-id)
              (referenced-field-visible? ctx accessible-table-ids fk-field-id)))))
 
+(defn- column-permission-context
+  "What [[permitted-columns]] needs to know about the fields and tables of `columns`, read once for all of them."
+  [columns {:keys [explicit-joins-caller-performed?]}]
+  (let [column-field-ids     (into #{} (comp (map u/id) (filter pos-int?)) columns)
+        referenced-field-ids (into #{}
+                                   (comp (mapcat (juxt :fk-field-id :fk-target-field-id))
+                                         (filter some?))
+                                   columns)
+        field-ids            (into column-field-ids referenced-field-ids)
+        field-id->table-id   (when (seq field-ids)
+                               (metabot.perms/field-id->table-id field-ids))
+        table-ids            (into #{}
+                                   (filter pos-int?)
+                                   (concat (map (partial column-table-id field-id->table-id) columns)
+                                           (vals field-id->table-id)))]
+    {:field-ids                         field-ids
+     :table-ids                         table-ids
+     :field-id->table-id                field-id->table-id
+     :sandbox-restricted-ids            (metabot.perms/sandbox-restricted-fields table-ids)
+     :queryable-table-ids               (metabot.perms/queryable-table-ids table-ids)
+     :accessible-table-ids              (metabot.perms/data-accessible-table-ids table-ids)
+     :explicit-joins-caller-performed?  explicit-joins-caller-performed?}))
+
+(defn- permitted-columns
+  "`columns` without those hidden by `ctx`, a [[column-permission-context]] of them or more, with inaccessible FK
+  targets hidden on the rest."
+  [{:keys [field-id->table-id queryable-table-ids] :as ctx} columns]
+  (->> columns
+       (filter (partial column-visible? ctx))
+       (mapv (fn [{:keys [fk-target-field-id] :as column}]
+               (cond-> (if-let [table-id (get field-id->table-id (u/id column))]
+                         (assoc column :table-id table-id)
+                         column)
+                 (and fk-target-field-id
+                      (not (referenced-field-visible? ctx queryable-table-ids fk-target-field-id)))
+                 (dissoc :fk-target-field-id))))))
+
 (defn permission-filter-columns
   "Remove columns hidden by Table or sandbox permissions and hide inaccessible FK targets on retained columns."
   ([columns] (permission-filter-columns columns nil))
-  ([columns {:keys [explicit-joins-caller-performed?]}]
-   (let [columns              (vec columns)
-         column-field-ids     (into #{} (comp (map u/id) (filter pos-int?)) columns)
-         referenced-field-ids (into #{}
-                                    (comp (mapcat (juxt :fk-field-id :fk-target-field-id))
-                                          (filter some?))
-                                    columns)
-         field-id->table-id   (let [field-ids (into column-field-ids referenced-field-ids)]
-                                (when (seq field-ids)
-                                  (metabot.perms/field-id->table-id field-ids)))
-         table-ids            (into #{}
-                                    (filter pos-int?)
-                                    (concat (map (partial column-table-id field-id->table-id) columns)
-                                            (vals field-id->table-id)))
-         queryable-table-ids  (metabot.perms/queryable-table-ids table-ids)
-         accessible-table-ids (metabot.perms/data-accessible-table-ids table-ids)
-         ctx {:field-id->table-id                field-id->table-id
-              :sandbox-restricted-ids            (metabot.perms/sandbox-restricted-fields table-ids)
-              :queryable-table-ids               queryable-table-ids
-              :accessible-table-ids              accessible-table-ids
-              :explicit-joins-caller-performed?  explicit-joins-caller-performed?}]
-     (->> columns
-          (filter (partial column-visible? ctx))
-          (mapv (fn [{:keys [fk-target-field-id] :as column}]
-                  (cond-> (if-let [table-id (get field-id->table-id (u/id column))]
-                            (assoc column :table-id table-id)
-                            column)
-                    (and fk-target-field-id
-                         (not (referenced-field-visible? ctx queryable-table-ids fk-target-field-id)))
-                    (dissoc :fk-target-field-id))))))))
+  ([columns opts]
+   (let [columns (vec columns)]
+     (permitted-columns (column-permission-context columns opts) columns))))
+
+(defn- context-covers?
+  "Whether `ctx`, a [[column-permission-context]], was read for every field and table of `columns`."
+  [{:keys [field-ids table-ids field-id->table-id]} columns]
+  (every? (fn [column]
+            (and (every? #(or (not (pos-int? %)) (contains? field-ids %))
+                         [(u/id column) (:fk-field-id column) (:fk-target-field-id column)])
+                 (let [table-id (column-table-id field-id->table-id column)]
+                   (or (not (pos-int? table-id)) (contains? table-ids table-id)))))
+          columns))
+
+(defn- context-permission-filter-columns
+  "[[permission-filter-columns]] of `columns` with `opts`, answered from `ctx`, a [[column-permission-context]] read for
+  these columns and others, when it covers them all."
+  [ctx columns opts]
+  (if (and ctx (context-covers? ctx columns))
+    (permitted-columns (merge ctx (select-keys opts [:explicit-joins-caller-performed?])) columns)
+    (permission-filter-columns columns opts)))
 
 (defn- strip-lib-uuids
   "Recursively drop volatile `\"lib/uuid\"` keys from a portable clause so the LLM copies a clean,
@@ -237,10 +340,10 @@
         (tree-seq coll? seq x)))
 
 (defn- metric-join-required-columns
-  "Return accessible dimensions grouped by the explicit joins needed to use them.
-
-  Exclude join keys and columns already reachable without the join. Only include joins that can be exported."
-  [metadata-provider defq base-reachable-ids]
+  "The accessible dimensions grouped by the exportable explicit joins needed to use them, without join keys and
+  columns reachable without the join, with column permissions from `column-context`, a [[column-permission-context]],
+  when it covers the columns."
+  [metadata-provider defq base-reachable-ids column-context]
   (when defq
     (let [explicit-joins (filter #(nil? (:fk-field-id %)) (lib/joins defq -1))]
       (when (seq explicit-joins)
@@ -249,8 +352,9 @@
               ;; collection-based and says nothing about the join target's Table/sandbox permissions,
               ;; so filter here too or we would leak columns the user cannot read. A wholly
               ;; unreadable target table yields no dims, which drops the join entry (fail closed).
-              def-cols          (permission-filter-columns (lib/filterable-columns defq)
-                                                           {:explicit-joins-caller-performed? true})
+              def-cols          (context-permission-filter-columns column-context
+                                                                   (lib/filterable-columns defq)
+                                                                   {:explicit-joins-caller-performed? true})
               ;; Both `explicit-joins` and the export are keyed off the aggregation stage: `lib/joins`
               ;; reads stage -1 and we read the exported LAST stage's joins, so their aliases line up
               ;; for multi-stage definitions too (a stage whose join fails to export drops, closed).
@@ -278,7 +382,7 @@
                  explicit-joins)))))))
 
 (defn- metric-join-required-dimensions
-  [metadata-provider defq base-reachable-ids]
+  [metadata-provider defq base-reachable-ids column-context]
   (not-empty
    (mapv (fn [{join-alias :join_alias :as join}]
            (update join :dimensions
@@ -287,7 +391,7 @@
                                      (cond-> rc
                                        (vector? (:portable_fk rc))
                                        (assoc :reference ["field" {"join-alias" join-alias} (:portable_fk rc)])))))))
-         (metric-join-required-columns metadata-provider defq base-reachable-ids))))
+         (metric-join-required-columns metadata-provider defq base-reachable-ids column-context))))
 
 (defn metric-dimension-columns
   "Return the accessible columns listed as a metric's dimensions, including dimensions requiring explicit joins."
@@ -297,7 +401,23 @@
             (lazy-seq
              (let [mp (lib.metadata/->metadata-provider query)
                    definition (some->> (lib.metadata/card mp metric-id) :dataset-query (lib/query mp))]
-               (mapcat :dimensions (metric-join-required-columns mp definition (set (keep :id base-columns)))))))))
+               (mapcat :dimensions (metric-join-required-columns mp definition (set (keep :id base-columns)) nil)))))))
+
+(defn- metric-columns
+  "The columns [[metric-details]] may filter by permission for the metric `card`, so that one
+  [[column-permission-context]] answers for many metrics, or none when its queries cannot be built."
+  [metadata-provider card]
+  (try
+    (let [metric-card (lib.metadata/card metadata-provider (:id card))
+          base-query  (lib/remove-all-breakouts
+                       (metabot.tools.u/metric-dimension-query metadata-provider
+                                                               metric-card
+                                                               (metabot.tools.u/metric-required-source metadata-provider card)))]
+      (concat (lib/filterable-columns base-query)
+              (lib/visible-columns base-query)
+              (some->> (:dataset-query metric-card) (lib/query metadata-provider) lib/filterable-columns)))
+    (catch Exception _
+      nil)))
 
 (defn- card-read-verdicts-for-metrics
   "Return read permissions for the source cards required by `metric-cards`, or nil when none are required.
@@ -314,6 +434,27 @@
       (let [readable (metabot.tools.u/readable-source-cards source-card-ids)]
         (into {} (map (juxt identity #(contains? readable %))) source-card-ids)))))
 
+(defn- table-query-verdicts-for-metrics
+  "Return `{table-id -> boolean}` query permissions for the source tables required by `metric-cards`, false for
+  missing tables."
+  [metadata-provider metric-cards]
+  (let [table-ids (into #{}
+                        (keep #(let [r (metabot.tools.u/metric-required-source metadata-provider %)]
+                                 (when (= :table (:kind r)) (:table-id r))))
+                        metric-cards)
+        queryable (into #{}
+                        (comp (filter mi/can-query?) (map :id))
+                        (t2/hydrate (metabot.db/tables-with-ids (vec table-ids)) :can_query))]
+    (into {} (map (juxt identity #(contains? queryable %))) table-ids)))
+
+(defn- table-queryable?
+  "Return whether the current user may query the table with `table-id`, from the trusted `table-query-verdicts` map
+  when it holds the table and by row otherwise."
+  [table-query-verdicts table-id]
+  (if (contains? table-query-verdicts table-id)
+    (get table-query-verdicts table-id)
+    (boolean (some-> (metabot.db/table table-id) (t2/hydrate :can_query) mi/can-query?))))
+
 (defn- card-readable?
   "Return whether the current user may read the card with `card-id`.
 
@@ -326,21 +467,24 @@
     (contains? (metabot.tools.u/readable-source-cards #{card-id}) card-id)))
 
 (defn metric-details
-  "Get metric details as returned by tools."
+  "Get metric details as returned by tools, with column permissions from `column-context`, a
+  [[column-permission-context]] read for these columns and others (see [[metric-columns]]), when given."
   ([id] (metric-details id nil))
   ([id options]
    (when-let [card (metabot.tools.u/get-card id :metric)]
      (metric-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([card metadata-provider options]
-   (metric-details card metadata-provider options nil))
-  ;; `card-read-verdicts`: see [[card-readable?]].
+   (metric-details card metadata-provider options nil nil))
+  ([card metadata-provider options card-read-verdicts table-query-verdicts]
+   (metric-details card metadata-provider options card-read-verdicts table-query-verdicts nil nil))
+  ;; `card-read-verdicts`: see [[card-readable?]]; `table-query-verdicts`: see [[table-queryable?]].
   ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?
                                    with-segments?]
                             :or   {field-values-fn                 add-field-values
                                    with-default-temporal-breakout? true
                                    with-queryable-dimensions?      true
                                    with-segments?                  false}}
-    card-read-verdicts]
+    card-read-verdicts table-query-verdicts verified-ids column-context]
    (metabot.tools.u/check-card-type card :metric)
    (let [id (:id card)
          ;; Database metadata so the LLM can build portable FKs — metrics are always
@@ -355,7 +499,7 @@
          source-table-id (when (= :table (:kind required)) (:table-id required))
          source-card-id (when (= :card (:kind required)) (:card-id required))
          source-table (when (and source-table-id
-                                 (mi/can-query? :model/Table source-table-id))
+                                 (table-queryable? table-query-verdicts source-table-id))
                         (lib.metadata/table metadata-provider source-table-id))
          source-card (when (and source-card-id
                                 ;; Reading the metric is collection-based and does not imply permission to read
@@ -371,18 +515,20 @@
          metric-card (when query-needed?
                        (lib.metadata/card metadata-provider id))
          metric-query (when query-needed?
-                        (lib/query metadata-provider metric-card))
+                        (metabot.tools.u/metric-dimension-query metadata-provider metric-card required))
          breakouts (when query-needed?
                      (lib/breakouts metric-query))
          base-query (when query-needed?
                       (lib/remove-all-breakouts metric-query))
-         ;; Consumer-framed filterable columns (base table + FK-reachable), permission-filtered.
+         ;; Consumer-framed filterable columns (base table + FK-reachable), before the permission filter.
+         all-filterable-cols  (when (and query-needed? with-queryable-dimensions?)
+                                (lib/filterable-columns base-query))
+         ;; The same columns, permission-filtered.
          ;; Computed once and shared by `:queryable-dimensions` and the join-required-dims
          ;; reachability filter below — which needs the FILTERED set, so that a column the user
          ;; cannot read is never treated as "already reachable" nor re-surfaced under a join.
-         base-filterable-cols (when (and query-needed? with-queryable-dimensions?)
-                                (->> (lib/filterable-columns base-query)
-                                     permission-filter-columns))
+         base-filterable-cols (when all-filterable-cols
+                                (context-permission-filter-columns column-context all-filterable-cols nil))
          ;; Definition query (WITH the metric's own joins) — surfaces FK-less join dimensions that
          ;; the consumer-framed `base-query` drops. Built from the card's `:dataset-query`, not from
          ;; `metric-query`, which frames the metric as a source and hides its definition joins.
@@ -390,9 +536,10 @@
                               (metric-join-required-dimensions
                                metadata-provider
                                (some->> (:dataset-query metric-card) (lib/query metadata-provider))
-                               (set (keep :id base-filterable-cols))))
+                               (set (keep :id base-filterable-cols))
+                               column-context))
          visible-cols (when query-needed?
-                        (permission-filter-columns (lib/visible-columns base-query)))
+                        (context-permission-filter-columns column-context (lib/visible-columns base-query) nil))
          default-temporal-breakout (when (and query-needed? with-default-temporal-breakout?)
                                      (->> breakouts
                                           (map #(lib/find-matching-column % visible-cols))
@@ -409,7 +556,9 @@
               ;; Portable entity id — the string the LLM must copy verbatim into a
               ;; `[metric, {}, <entity_id>]` aggregation clause to reference this metric.
               :portable_entity_id (metabot.tools.u/metric-card-shape-get card :entity-id :entity_id)
-              :verified (verified-review? id "card")}
+              :verified (if verified-ids
+                          (contains? verified-ids id)
+                          (verified-review? id "card"))}
        true
        (merge (metabot.tools.u/metric-source-fields
                {:source-card   (when source-card
@@ -427,7 +576,8 @@
                  :default_time_dimension_field_name (:name col)}))
 
        (and query-needed? with-queryable-dimensions?)
-       (assoc :queryable-dimensions (mapv #(metabot.tools.u/->result-column metric-query %) queryable-columns))
+       (assoc :queryable-dimensions
+              (metabot.tools.u/metric-dimensions metric-query queryable-columns all-filterable-cols))
 
        (seq join-required-dims)
        (assoc :join-required-dimensions join-required-dims)
@@ -441,9 +591,10 @@
   "Return metric metadata for the LLM, using trusted read permissions from `card-read-verdicts`.
 
   See [[card-readable?]] for the requirements on that argument."
-  [db-metric metadata-provider options card-read-verdicts]
+  [db-metric metadata-provider options card-read-verdicts table-query-verdicts]
   (-> db-metric
-      (metric-details metadata-provider (assoc options :with-queryable-dimensions? false) card-read-verdicts)
+      (metric-details metadata-provider (assoc options :with-queryable-dimensions? false)
+                      card-read-verdicts table-query-verdicts)
       (select-keys [:id :type :name :description
                     :default_time_dimension_field_id :default_time_dimension_field_name
                     :database_id :database_name :portable_entity_id
@@ -469,8 +620,14 @@
   individually. Any related-tables beyond this are dropped with a note presented to the LLM in rendering."
   50)
 
+(defn- table-visible-columns
+  "The visible columns of `table-query`, without the implicitly joinable ones."
+  [table-query]
+  (lib/visible-columns table-query -1 {:include-implicitly-joinable? false}))
+
 (defn- table-details
   ([id] (table-details id nil))
+  ([id options] (table-details id options nil))
   ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?
                with-measures? with-segments?]
         :or   {field-values-fn      add-field-values
@@ -479,7 +636,8 @@
                with-metrics?        true
                with-measures?       false
                with-segments?       false}
-        :as   options}]
+        :as   options}
+    column-context]
    (when-not (int? id)
      (throw (ex-info "Invalid table id format"
                      {:agent-error? true :status-code 400})))
@@ -502,9 +660,10 @@
            table-query (when query-needed?
                          (lib/query mp (lib.metadata/table mp id)))
            cols (when with-fields?
-                  (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
-                       permission-filter-columns
-                       field-values-fn))
+                  (let [columns (table-visible-columns table-query)]
+                    (field-values-fn (if column-context
+                                       (permitted-columns column-context columns)
+                                       (permission-filter-columns columns)))))
            related (when with-related-tables?
                      (related-tables table-query with-fields? field-values-fn))]
        (-> {:id id
@@ -524,11 +683,12 @@
            (m/assoc-some :description (:description base)
                          ;; Table queries can list card metrics through their base table; batch the source-card read checks.
                          :metrics (when with-metrics?
-                                    (let [metrics  (lib/available-metrics table-query)
-                                          verdicts (card-read-verdicts-for-metrics mp metrics)]
+                                    (let [metrics        (lib/available-metrics table-query)
+                                          verdicts       (card-read-verdicts-for-metrics mp metrics)
+                                          table-verdicts (table-query-verdicts-for-metrics mp metrics)]
                                       (when-let [ids (seq (keep (fn [[id readable?]] (when readable? id)) verdicts))]
                                         (lib.metadata/bulk-metadata mp :metadata/card ids))
-                                      (not-empty (mapv #(convert-metric % mp options verdicts) metrics))))
+                                      (not-empty (mapv #(convert-metric % mp options verdicts table-verdicts) metrics))))
                          :measures (when with-measures?
                                      (not-empty (mapv #(convert-measure-or-segment % :aggregation)
                                                       (lib/available-measures table-query))))
@@ -696,8 +856,9 @@
                          shared.content-store/default-store))
           ;; These metrics require the source card already returned by `card-details`, so its read check is sufficient.
           :metrics (when with-metrics?
-                     (not-empty (mapv #(convert-metric % metadata-provider options {id true})
-                                      (lib/available-metrics card-query))))
+                     (not-empty (let [metrics        (lib/available-metrics card-query)
+                                      table-verdicts (table-query-verdicts-for-metrics metadata-provider metrics)]
+                                  (mapv #(convert-metric % metadata-provider options {id true} table-verdicts) metrics))))
           :measures (when with-measures?
                       (not-empty (mapv #(convert-measure-or-segment % :aggregation)
                                        (lib/available-measures card-query))))
@@ -715,13 +876,18 @@
           ;; Only metrics need these source-card permissions. A question or model's own source is not used downstream.
           card-read-verdicts (when (= card-type :metric)
                                (card-read-verdicts-for-metrics mp cards))
+          table-query-verdicts (when (= card-type :metric)
+                                 (table-query-verdicts-for-metrics mp cards))
           readable-source-card-ids (into #{} (keep (fn [[id readable?]] (when readable? id))) card-read-verdicts)
+          verified-ids (when (= card-type :metric)
+                         (verified-review-ids (map :id cards) "card"))
+          _ (lib.metadata/bulk-metadata mp :metadata/card (into (set (map :id cards)) readable-source-card-ids))
+          column-context (when (= card-type :metric)
+                           (column-permission-context (into [] (mapcat #(metric-columns mp %)) cards) nil))
           detail-fn (case card-type
-                      :metric #(metric-details %1 %2 %3 card-read-verdicts)
+                      :metric #(metric-details %1 %2 %3 card-read-verdicts table-query-verdicts verified-ids column-context)
                       :model card-details
                       :question card-details)]
-      ;; Warm source-card metadata too, since `metric-details` reads each card's name and entity ID.
-      (lib.metadata/bulk-metadata mp :metadata/card (into (set (map :id cards)) readable-source-card-ids))
       ;; Realized eagerly (not `map`) so every detail-fn call -- and the metabot.perms lookups it
       ;; triggers -- runs inside this with-cache binding. A lazy seq would only be walked by the
       ;; caller, after the binding above has already unwound, defeating the cache.
@@ -757,6 +923,16 @@
   (cond-> arguments
     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity)))
 
+(defn- entity-details-response
+  "The tool response for the entity details `thunk` returns, or for the error it throws."
+  [thunk]
+  (try
+    {:structured-output (assoc (thunk) :result-type :entity)}
+    (catch Exception e
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot.tools.u/handle-agent-error e)))))
+
 (defn get-table-details
   "Get information about the table, question or model with .
   `table-id` is string either encoding an integer that is the ID of a table
@@ -770,35 +946,86 @@
   call `check-table-resource-database` / `check-card-resource-database` there first, or a destination
   database becomes reachable as if it were an ordinary resource."
   [{:keys [entity-type entity-id] :as arguments}]
-  (try
-    (lib-be/with-metadata-provider-cache
-      (metabot.perms/with-cache
-        (let [options (arguments->options arguments)
-              details (cond
-                        (#{:model :question} entity-type)
-                        (card-details entity-id (assoc options :expected-type entity-type))
+  (entity-details-response
+   (fn []
+     (lib-be/with-metadata-provider-cache
+       (metabot.perms/with-cache
+         (let [options (arguments->options arguments)
+               details (cond
+                         (#{:model :question} entity-type)
+                         (card-details entity-id (assoc options :expected-type entity-type))
 
-                        (and (= :table entity-type)
-                             (int? entity-id))
-                        (table-details entity-id options)
+                         (and (= :table entity-type)
+                              (int? entity-id))
+                         (table-details entity-id options)
 
-                        (and (= :table entity-type)
-                             (string? entity-id))
-                        (if-let [[_ card-id] (re-matches #"card__(\d+)" entity-id)]
-                          (card-details (parse-long card-id) options)
-                          (if (re-matches #"\d+" entity-id)
-                            (table-details (parse-long entity-id) options)
-                            (throw (ex-info "Invalid table_id format"
-                                            {:agent-error? true :status-code 400}))))
+                         (and (= :table entity-type)
+                              (string? entity-id))
+                         (if-let [[_ card-id] (re-matches #"card__(\d+)" entity-id)]
+                           (card-details (parse-long card-id) options)
+                           (if (re-matches #"\d+" entity-id)
+                             (table-details (parse-long entity-id) options)
+                             (throw (ex-info "Invalid table_id format"
+                                             {:agent-error? true :status-code 400}))))
 
-                        :else
-                        (throw (ex-info "Invalid arguments: must provide valid entity-type and entity-id"
-                                        {:agent-error? true :status-code 400})))]
-          {:structured-output (assoc details :result-type :entity)})))
-    (catch Exception e
-      (if (= (:status-code (ex-data e)) 404)
-        {:output (ex-message e) :status-code 404}
-        (metabot.tools.u/handle-agent-error e)))))
+                         :else
+                         (throw (ex-info "Invalid arguments: must provide valid entity-type and entity-id"
+                                         {:agent-error? true :status-code 400})))]
+           details))))))
+
+(defn get-tables-details
+  "[[get-table-details]] of each of the Tables with `table-ids`, in order, all of the Database `metadata-provider`
+  reads: the tables and the Database read-checked with one hydration each, their fields, segments and measures loaded
+  at once and their column permissions read once."
+  [metadata-provider table-ids arguments]
+  (let [table-ids      (vec table-ids)
+        id->table      (u/index-by :id (t2/hydrate (filterv :active (metabot.db/tables-with-ids table-ids)) :can_read))
+        database       (t2/hydrate (metabot.db/database-with-columns [:model/Database :id :engine :name]
+                                                                     (:id (lib.metadata/database metadata-provider)))
+                                   :can_read)
+        readable-ids   (into [] (filter #(some-> (id->table %) mi/can-read?)) table-ids)]
+    (lib.metadata/bulk-metadata metadata-provider :metadata/table readable-ids)
+    (when (seq readable-ids)
+      (doseq [metadata-type [:metadata/column :metadata/segment :metadata/measure]]
+        (lib.metadata/metadatas metadata-provider {:lib/type metadata-type :table-ids (set readable-ids)})))
+    (let [options        (assoc (arguments->options arguments) :metadata-provider metadata-provider)
+          columns        (into []
+                               (mapcat #(some->> (lib.metadata/table metadata-provider %)
+                                                 (lib/query metadata-provider)
+                                                 table-visible-columns))
+                               readable-ids)
+          column-context (column-permission-context columns nil)]
+      (mapv (fn [table-id]
+              (entity-details-response
+               (fn []
+                 (api/read-check (id->table table-id))
+                 (api/read-check database)
+                 (table-details table-id options column-context))))
+            table-ids))))
+
+(defn get-metrics-details
+  "[[get-metric-details]] of each of the metric `cards`, in order, all of the Database with `database-id`: the cards
+  read-checked with one hydration and detailed together by [[cards-details]]."
+  [database-id cards arguments]
+  (let [cards    (t2/hydrate (vec cards) :can_read)
+        metrics  (filterv #(and (mi/can-read? %) (= :metric (:type %))) cards)
+        details  (when (seq metrics)
+                   (try
+                     (u/index-by :id (cards-details :metric
+                                                    database-id
+                                                    metrics
+                                                    (u/assoc-default (arguments->options arguments)
+                                                                     :field-values-fn add-field-values)))
+                     (catch Exception e
+                       e)))]
+    (mapv (fn [card]
+            (entity-details-response
+             (fn []
+               (metabot.tools.u/check-card-type (api/read-check card) :metric)
+               (if (instance? Exception details)
+                 (throw details)
+                 (get details (:id card))))))
+          cards)))
 
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`.

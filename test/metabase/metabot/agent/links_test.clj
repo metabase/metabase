@@ -42,24 +42,27 @@
                          :aggregation [[:count]]
                          :breakout    [[:field 31 {:temporal-unit :day
                                                    :base-type     :type/DateTime}]]}}
+             ;; existing usage -- do not use going forward
+             #_{:clj-kondo/ignore [:deprecated-var]}
              (links/->legacy-mbql rehydrated))))))
 
 (def ^:private strip-lib-keys query-repair-test/strip-lib-keys)
 (def ^:private stripped-aggregated-query query-repair-test/stripped-aggregated-query)
 
-(deftest ^:parallel ->legacy-mbql-lib-type-less-pmbql-test
-  (testing "converts pMBQL stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
+(deftest ^:parallel ->legacy-mbql-lib-type-less-mbql-5-test
+  (testing "converts MBQL 5 stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
     ;; Regression for the BOT-1604 follow-up: a query that round-trips through the
-    ;; frontend's `user_is_viewing` / `chart_configs` context comes back as pMBQL
+    ;; frontend's `user_is_viewing` / `chart_configs` context comes back as MBQL 5
     ;; without `:lib/type`. The old guard keyed only on `:lib/type`, so such a query
-    ;; fell through unchanged and the raw pMBQL (`:stages`, pMBQL-order field clauses)
+    ;; fell through unchanged and the raw MBQL 5 (`:stages`, MBQL 5-order field clauses)
     ;; leaked into the `/question#<base64>` hash — the frontend then crashed with
     ;; "Error calculating display info for query: Stage 0 does not exist".
     (let [fe-query (strip-lib-keys (lib.tu/venues-query))
-          legacy   (links/->legacy-mbql fe-query)]
+          ;; existing usage -- do not use going forward
+          legacy   #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql fe-query)]
       (is (not (contains? fe-query :lib/type)))
       (is (contains? fe-query :stages))
-      (testing "is normalized + converted to legacy MBQL, not passed through as raw pMBQL"
+      (testing "is normalized + converted to legacy MBQL, not passed through as raw MBQL 5"
         (is (= :query (:type legacy)))
         (is (not (contains? legacy :stages)))
         (is (map? (:query legacy)))
@@ -70,7 +73,8 @@
     ;; `normalize` mints a fresh `:lib/uuid` for the aggregation, so the ref in the order-by names a uuid that no
     ;; aggregation carries. With one aggregation the ref can only mean that one.
     (let [stripped (stripped-aggregated-query (lib/count))
-          legacy   (links/->legacy-mbql stripped)]
+          ;; existing usage -- do not use going forward
+          legacy     #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql stripped)]
       (is (not (contains? stripped :lib/type)))
       (is (= :query (:type legacy)))
       (is (= [[:desc [:aggregation 0]]] (-> legacy :query :order-by)))))
@@ -78,7 +82,9 @@
     ;; Conversion throws on the dangling ref. This used to take down the whole agent turn instead of just
     ;; producing a broken link.
     (let [stripped (stripped-aggregated-query (lib/count) (lib/sum (meta/field-metadata :venues :price)))]
-      (is (= stripped (links/->legacy-mbql stripped))))))
+      (is (= stripped
+             ;; existing usage -- do not use going forward
+             #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql stripped))))))
 
 (deftest ^:parallel pseudo-card->link-keeps-mbql5-temporal-filters-test
   (testing "temporal filters survive JSON serialization in the /question# hash (BOT-1972)"
@@ -140,7 +146,8 @@
                            "MBQL 5 stripped of its :lib/* keys" (strip-lib-keys native)
                            "MBQL 5 after a JSON round trip"     (-> native lib/prepare-for-serialization json/encode json/decode+kw)}]
         (testing desc
-          (is (= (lib/->legacy-MBQL native)
+          ;; existing usage -- do not use going forward
+          (is (= #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL native)
                  (links/->frontend-query sent))))))
     (testing "a structured query with a date filter stays MBQL 5"
       (let [sent (links/->frontend-query structured)]
@@ -228,6 +235,42 @@
     (is (= "/question/101" (links/resolve-metabase-uri "metabase://question/101" {} {})))
     (is (= "/data-studio/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))))
 
+(deftest ^:parallel resolve-links-unknown-question-id-shows-link-text-test
+  (testing "an unknown ID that is no card ID leaves only the link text, so no dead or wrong link reaches the user"
+    (is (= "Failed charges"
+           (links/resolve-links "[Failed charges](metabase://question/TQVDPycvL8DIo3fryAgS0)" {} {} (atom {}))))))
+
+(deftest ^:parallel resolve-metabase-uri-every-entity-type-test
+  (let [query {:database 1 :lib/type :mbql.stage/native}
+        chart {:queries [query] :visualization_settings {:chart_type "bar"}}]
+    (doseq [[entity-type path] [["question" "/question"]
+                                ["model" "/model"]
+                                ["metric" "/metric"]
+                                ["dashboard" "/dashboard"]
+                                ["document" "/document"]
+                                ["table" "/table"]
+                                ["transform" "/data-studio/transforms"]]
+            :let [resolve-id (fn [id & [queries charts]]
+                               (links/resolve-metabase-uri (str "metabase://" entity-type "/" id) queries charts))]]
+      (testing entity-type
+        (testing "a numeric ID stays an entity link, also when a chart seeded from that entity has the ID"
+          (is (= (str path "/157") (resolve-id "157")))
+          (is (= (str path "/157") (resolve-id "157" {} {"157" chart}))))
+        (testing "a slug, a sub-path, or a query string resolves to the page of the numeric ID"
+          (doseq [id ["157-orders-by-month" "157/fields" "157/sources?page=2" "157?page=2" "157#tab"]]
+            (is (= (str path "/157") (resolve-id id)) id)))
+        (testing "the ID of a query or a chart from this conversation opens it"
+          (doseq [id ["TQVDPycvL8DIo3fryAgS0" "3QVDPycvL8DIo3fryAgS0" "12-abcdefghijklmnopq"
+                      "12345678-9abc-def0-1234-56789abcdef0"]]
+            (is (str/starts-with? (resolve-id id {id query}) "/question#") id)
+            (is (str/starts-with? (resolve-id id {} {id chart}) "/question#") id)))
+        (testing "an unknown ID that is not numeric does not resolve, because the frontend reads a leading digit as the ID"
+          (doseq [id ["TQVDPycvL8DIo3fryAgS0" "3QVDPycvL8DIo3fryAgS0" "12-VDPycvL8DIo3fryAg" "card__157"
+                      "12345678-9abc-def0-1234-56789abcdef0"]]
+            (is (nil? (resolve-id id)) id)))
+        (testing "a slug made only of hex groups that do not form a canonical UUID stays a slug"
+          (is (= (str path "/157") (resolve-id "157-bad-cafe-dead-beef"))))))))
+
 (deftest ^:parallel resolve-metabase-uri-table-link-test
   (testing "resolves table links to the table page"
     (is (= (str "/table/" (mt/id :venues))
@@ -236,7 +279,6 @@
 (deftest resolve-metabase-uri-measure-link-test
   (let [mp (mt/metadata-provider)]
     (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue Count"
-                                                    :table_id   (mt/id :venues)
                                                     :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                                     (lib/aggregate (lib/count)))}]
       (testing "resolves measure links to the measure's Data Studio page"
@@ -249,7 +291,6 @@
 (deftest resolve-metabase-uri-segment-link-test
   (let [mp (mt/metadata-provider)]
     (mt/with-temp [:model/Segment {segment-id :id} {:name       "Cheap Venues"
-                                                    :table_id   (mt/id :venues)
                                                     :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                                     (lib/filter (lib/< (lib.metadata/field mp (mt/id :venues :price)) 2)))}]
       (testing "resolves segment links to an ad-hoc question filtered by the segment"
@@ -260,7 +301,11 @@
 
 (deftest ^:parallel resolve-metabase-uri-unknown-entity-type-test
   (testing "returns nil for unknown entity types"
-    (is (nil? (links/resolve-metabase-uri "metabase://unknown/123" {} {})))))
+    (is (nil? (links/resolve-metabase-uri "metabase://unknown/123" {} {}))))
+  (testing "an unknown entity type does not open a query from this conversation"
+    (is (nil? (links/resolve-metabase-uri "metabase://collection/q1"
+                                          {"q1" {:database 1 :lib/type :mbql.stage/native}}
+                                          {})))))
 
 (deftest ^:parallel resolve-metabase-uri-non-metabase-uris-test
   (testing "returns nil for non-metabase URIs"

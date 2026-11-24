@@ -4,7 +4,7 @@
    [environ.core :as env]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.util :as task.util]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.events.core :as events]
    [metabase.task.core :as task]
    [metabase.test :as mt])
   (:import
@@ -48,5 +48,5 @@
     (let [scheduled (atom [])]
       (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (mt/with-premium-features #{:dependencies}
-          (dependencies.hooks/after-premium-token-update)
+          (events/publish-event! :event/premium-token-update {})
           (is (contains? (scheduled-job-names @scheduled) job-key)))))))

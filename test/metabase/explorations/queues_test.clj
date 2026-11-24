@@ -37,10 +37,9 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- venues-query []
-  (lib/->legacy-MBQL
-   (let [mp (mt/metadata-provider)]
-     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-         (lib/aggregate (lib/count))))))
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
 
 (defn- do-with-fixtures!
   "Insert a user, a metric card, and a started exploration thread — committed, not `with-temp`'d —

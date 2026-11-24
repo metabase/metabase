@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
@@ -122,7 +123,9 @@
 (s/def :parameter/id   ::not-empty-string)
 (s/def :parameter/type #{:text})
 (s/def ::parameter  (s/keys :req-un [:parameter/id :parameter/type]))
-(s/def ::parameters (s/coll-of ::parameter))
+(s/def ::parameters (s/with-gen (s/coll-of ::parameter)
+                      #(gen/fmap (fn [parameters] (into [] (m/distinct-by :id) parameters))
+                                 (s/gen (s/coll-of ::parameter)))))
 
 (s/def :action/type #{:query :implicit})
 
@@ -169,7 +172,7 @@
 (s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
 (s/def ::pulse-channel-recipient (s/keys :req-un [::id]))
 
-(s/def ::icon           (s/and ::name #(< (count %) 100)))
+(s/def ::icon           #{"star" "cake" "mail" "warning" "bell" "cloud"})
 (s/def ::time_matters   boolean?)
 (s/def ::timezone       (set (java.time.ZoneId/getAvailableZoneIds)))
 (s/def ::timeline       (s/keys :req-un [::id ::name ::description ::icon]))
@@ -346,6 +349,9 @@
     (= ent-type :field)
     (update :name unique-name)
 
+    (= ent-type :field)
+    (as-> field (assoc field :display_name (:name field)))
+
     ;; Native Query Snippet names need to be unique. This enforces it, and appends junk to names if needed.
     (= ent-type :native-query-snippet)
     (update :name unique-name)
@@ -386,10 +392,15 @@
       (rs/visit-ents-once
        :insert! (fn [sm-db {:keys [schema-opts attrs] :as visit-opts}]
                   (try
-                    (first (t2/insert-returning-instances! (:model schema-opts)
-                                                           (rsg/spec-gen-assoc-relations
-                                                            sm-db
-                                                            (assoc visit-opts :visit-val (:spec-gen attrs)))))
+                    (let [row (rsg/spec-gen-assoc-relations sm-db (assoc visit-opts :visit-val (:spec-gen attrs)))
+                          row (cond-> row
+                                (and (= :model/Action (:model schema-opts)) (:model_id row))
+                                (assoc :collection_id (t2/select-one-fn :collection_id :model/Card :id (:model_id row)))
+
+                                (= :model/NativeQuerySnippet (:model schema-opts))
+                                (assoc :template_tags (#'native-query-snippet/snippet-template-tags
+                                                       row (#'native-query-snippet/name->id [row]))))]
+                      (first (t2/insert-returning-instances! (:model schema-opts) row)))
                     (catch Throwable e
                       (log/error e)))))
       (rs/attr-map :insert!)))

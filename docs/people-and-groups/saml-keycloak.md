@@ -1,5 +1,6 @@
 ---
 title: SAML with Keycloak
+summary: Step-by-step setup for SAML single sign-on between Keycloak and Metabase, including group mapping.
 redirect_from:
   - /docs/latest/enterprise-guide/saml-keycloak
 ---
@@ -25,7 +26,7 @@ For more information, check out our guide for [authenticating with SAML](./authe
    - **Client ID**: Enter `metabase` in lowercase.
    - **Client type**: Select `SAML` from the dropdown.
    - Click **Next**.
-   - **Valid Redirect URIs**: The URL where you are hosting your Metabase instance followed by a slash (/) and an asterisk (*). For example, if you are hosting Metabase locally at `http://localhost:3000`, the URL would be `http://localhost:3000/*`. If you've set a custom `MB_SITE_URL`, use that base URL instead — it may be `127.0.0.1` rather than `localhost`.
+   - **Valid Redirect URIs**: The URL where you are hosting your Metabase instance followed by a slash (`/`) and an asterisk (`*`). For example, if you are hosting Metabase locally at `http://localhost:3000`, the URL would be `http://localhost:3000/*`. If you've set a custom [`MB_SITE_URL`](../configuring-metabase/environment-variables.md#mb_site_url), use that base URL instead — it may be `127.0.0.1` rather than `localhost`.
    - **Home URL**: In your Metabase, go to **Admin** > **Settings** > **Authentication** > **SAML**. You'll find your Home URL in the field **URL the IdP should redirect back to**.
    - Click **Save**.
 

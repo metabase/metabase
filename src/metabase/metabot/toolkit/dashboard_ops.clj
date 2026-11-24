@@ -18,6 +18,7 @@
    The data also holds the values that explain the error, and the failing op's `:op-index` and `:op-name`.
    This namespace words no errors: each tool turns that data into text for its own model."
   (:require
+   [clojure.set :as set]
    [malli.error :as me]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -38,8 +39,9 @@
    Values from an op have the types [[dashboard-op-schema/op-schema]] gives them, or `:any` where it leaves them open.
    Values read from the dashboard have their types.
    Errors thrown while checking or applying an op also carry `:op-index` (0-based) and `:op-name` (as sent, or nil).
-   The `:cards-without-tab` check runs after the last op, and `:invalid-payload` checks the whole save, sent ops or not.
-   So those two errors carry neither."
+   The `:cards-without-tab`, `:overlapping-cards` and `:past-grid-edge` checks run after the last op.
+   The `:invalid-payload` check covers the whole save, sent ops or not.
+   So those errors carry neither."
   {:invalid-op                         [:map {:closed true} [:explanation :any]]
    :invalid-payload                    [:map {:closed true} [:explanation :any]]
    :duplicate-new-id                   [:map {:closed true} [:id :int]]
@@ -52,6 +54,8 @@
    :unknown-patch-key                  [:map {:closed true} [:key :string]]
    :tab-index-out-of-range             [:map {:closed true} [:index :int] [:tab-count :int]]
    :cards-without-tab                  [:map {:closed true} [:dashcard-ids [:sequential :int]]]
+   :overlapping-cards                  [:map {:closed true} [:dashcard-ids [:sequential :int]]]
+   :past-grid-edge                     [:map {:closed true} [:dashcard-id :int] [:col :int] [:size-x :int]]
    :unknown-parameter                  [:map {:closed true} [:parameter-id :string]]
    :parameter-exists                   [:map {:closed true} [:parameter-id :string]]
    :set-and-cleared                    [:map {:closed true} [:field :string]]
@@ -110,7 +114,20 @@
   {:dashcards  (vec (:dashcards current))
    :tabs       (vec (:tabs current))
    :parameters (vec (:parameters current))
-   ::cards     cards})
+   ::cards     cards
+   ::placed    {}})
+
+(defn- mark-placed
+  "Record that an op gave the dashcard `id` its `:position` or its `:size`, for [[settle-layout]].
+   A position outranks a size, so a card moved and then resized keeps its place."
+  [state id how]
+  (update-in state [::placed id] #(if (= :position %) % how)))
+
+(defn- shown-tab
+  "The id of the tab a dashcard with `tab-id` shows on, which for a nil `tab-id` is the dashboard's first tab, if any."
+  [state tab-id]
+  ;; The save puts a card with no tab on the sole tab, and [[check-tab-coverage!]] refuses one when there are more.
+  (or tab-id (:id (first (:tabs state)))))
 
 (defn- card-display
   "The display type keyword driving a new dashcard's default size; `:table` when the card is
@@ -127,7 +144,7 @@
 (defn- find-row
   "The row in `(get state coll)` whose `:id` is `id`, or nil."
   [state coll id]
-  (first (filter #(= id (:id %)) (get state coll))))
+  (u/seek #(= id (:id %)) (get state coll)))
 
 (defn- insert-row
   "Append `row` to `(get state coll)`, preserving save order."
@@ -140,9 +157,12 @@
   (update state coll (partial mapv #(if (= id (:id %)) (f %) %))))
 
 (defn- remove-row
-  "Drop the row with `id`, preserving the order of the rest."
+  "Drop the row with `id`, preserving the order of the rest.
+   A dashcard also loses the mark [[mark-placed]] gave it."
   [state coll id]
-  (update state coll (partial filterv #(not= id (:id %)))))
+  (cond-> (update state coll (partial filterv #(not= id (:id %))))
+    ;; A later op in the call may reuse a removed card's new id, and the new card must not inherit the mark.
+    (= :dashcards coll) (update ::placed dissoc id)))
 
 (defn- move-row
   "Move the row with `id` so it sits at `index` among the remaining rows.
@@ -186,7 +206,7 @@
    the display type's default and an omitted position autoplaces against the cards already on
    the target tab."
   [state {:keys [position size]} tab-id display-type]
-  (let [siblings   (filterv #(= tab-id (:dashboard_tab_id %)) (:dashcards state))
+  (let [siblings   (filterv #(= (shown-tab state tab-id) (shown-tab state (:dashboard_tab_id %))) (:dashcards state))
         ;; The display's default size, from `dashboards.constants` via the 2-arity. Resolved
         ;; against no siblings so it always yields a size — the search below can come up empty on
         ;; a full tab, and the default size must not vanish with it.
@@ -255,8 +275,9 @@
   [state op base display]
   (check-new-id! state (:id op))
   (check-tab-id! state (:dashboard_tab_id base))
-  (insert-row state :dashcards
-              (merge base (placement state op (:dashboard_tab_id base) display))))
+  (cond-> (insert-row state :dashcards
+                      (merge base (placement state op (:dashboard_tab_id base) display)))
+    (:position op) (mark-placed (:id op) :position)))
 
 ;;; ------------------------------------------------- Ops ----------------------------------------------------------
 
@@ -389,25 +410,29 @@
         tab-id (if (contains? op :tab) tab (:dashboard_tab_id dc))]
     (when (contains? op :tab)
       (check-tab-id! state tab))
-    (update-row state :dashcards dashcard_id
-                (fn [dc]
-                  (merge dc
-                         {:dashboard_tab_id tab-id}
-                         (if position
-                           {:row (:row position) :col (:col position)}
-                           ;; autoplace against the other cards on the tab: the card being moved is
-                           ;; not its own sibling, or the search can never return the slot it holds
-                           (select-keys (placement (update state :dashcards
-                                                           (partial filterv #(not= dashcard_id (:id %))))
-                                                   {:size (select-keys dc [:size_x :size_y])}
-                                                   tab-id
-                                                   :table)
-                                        [:row :col])))))))
+    (cond-> (update-row state :dashcards dashcard_id
+                        (fn [dc]
+                          (merge dc
+                                 {:dashboard_tab_id tab-id}
+                                 (if position
+                                   {:row (:row position) :col (:col position)}
+                                   ;; autoplace against the other cards on the tab: the card being moved is
+                                   ;; not its own sibling, or the search can never return the slot it holds
+                                   (select-keys (placement (update state :dashcards
+                                                                   (partial filterv #(not= dashcard_id (:id %))))
+                                                           {:size (select-keys dc [:size_x :size_y])}
+                                                           tab-id
+                                                           :table)
+                                                [:row :col])))))
+      position       (mark-placed dashcard_id :position)
+      ;; Autoplace chose the slot, so an earlier op's mark no longer says where the card belongs.
+      (not position) (update ::placed dissoc dashcard_id))))
 
 (defmethod apply-op "resize"
   [state {:keys [dashcard_id size]}]
   (resolve-dashcard! state dashcard_id)
-  (update-row state :dashcards dashcard_id #(merge % (select-keys size [:size_x :size_y]))))
+  (-> (update-row state :dashcards dashcard_id #(merge % (select-keys size [:size_x :size_y])))
+      (mark-placed dashcard_id :size)))
 
 (defmethod apply-op "remove"
   [state {:keys [dashcard_id]}]
@@ -529,12 +554,17 @@
         cards  (filterv #(= tab_id (:dashboard_tab_id %)) (:dashcards state))
         state  (insert-row state :tabs {:id id :name (:name source)})]
     (reduce (fn [st card]
-              (insert-row st :dashcards
-                          (-> card
-                              (dissoc :created_at :updated_at :card)
-                              clear-inline-parameters
-                              (assoc :id (next-temp-id st)
-                                     :dashboard_tab_id id))))
+              (let [copy-id (next-temp-id st)
+                    how     (get-in st [::placed (:id card)])]
+                ;; The tab is copied before [[settle-layout]] runs, so each copy carries its card's mark, and the copy
+                ;; settles the way the source tab does.
+                (cond-> (insert-row st :dashcards
+                                    (-> card
+                                        (dissoc :created_at :updated_at :card)
+                                        clear-inline-parameters
+                                        (assoc :id copy-id
+                                               :dashboard_tab_id id)))
+                  how (mark-placed copy-id how))))
             state
             cards)))
 
@@ -555,6 +585,86 @@
     (when-let [orphans (not-empty (filterv #(nil? (:dashboard_tab_id %)) dashcards))]
       (fail! :cards-without-tab {:dashcard-ids (mapv :id orphans)})))
   state)
+
+;;; ------------------------------------------------- Layout -------------------------------------------------------
+
+(defn- bottom
+  [dc]
+  (+ (:row dc) (:size_y dc)))
+
+(defn- overlap?
+  [a b]
+  (and (< (:col a) (+ (:col b) (:size_x b)))
+       (< (:col b) (+ (:col a) (:size_x a)))
+       (< (:row a) (bottom b))
+       (< (:row b) (bottom a))))
+
+(defn- push-below
+  "`dc` moved down until it overlaps none of `settled`."
+  [settled dc]
+  (if-let [hits (seq (filter (partial overlap? dc) settled))]
+    (recur settled (assoc dc :row (apply max (map bottom hits))))
+    dc))
+
+(defn- check-placements!
+  "Throws when a card in `dcs`, all on one tab, that an op placed runs past the grid's right edge, or when two cards
+   given positions overlap.
+   `placed` is as [[settle-tab]] takes it."
+  [placed dcs]
+  (doseq [{:keys [id col size_x]} (filter (comp placed :id) dcs)
+          :when (< autoplace/default-grid-width (+ col size_x))]
+    (fail! :past-grid-edge {:dashcard-id id, :col col, :size-x size_x}))
+  (let [positioned (filterv (comp #{:position} placed :id) dcs)]
+    (when-let [pair (first (for [[i a] (map-indexed vector positioned)
+                                 b     (drop (inc i) positioned)
+                                 :when (overlap? a b)]
+                             [(:id a) (:id b)]))]
+      (fail! :overlapping-cards {:dashcard-ids pair}))))
+
+(defn- settle-tab
+  "The new rows of the dashcards in `dcs`, all on one tab, that must move down, as `{id row}`.
+   `placed` maps the id of each card an op placed to `:position` or `:size`, as [[mark-placed]] records it.
+   Cards given a position stay where they are.
+   Resized cards settle next, then the rest, each group in reading order.
+   A resized card moves below whatever settled card it overlaps.
+   Any other card moves only when it overlaps a placed card or a card that moved, and then it moves below every
+   settled card it overlaps.
+   So a pushed card pushes the cards it lands on in turn, and two cards that already overlapped stay as they were
+   unless something pushes one of them."
+  [placed dcs]
+  (let [{positioned :position resized :size others nil} (group-by (comp placed :id) dcs)
+        in-reading-order (partial sort-by (juxt :row :col))]
+    (peek
+     (reduce (fn [[settled disturbed moved] dc]
+               (let [placed?    (contains? placed (:id dc))
+                     settled-dc (if (or placed? (some (partial overlap? dc) disturbed))
+                                  (push-below settled dc)
+                                  dc)
+                     moved?     (not= (:row dc) (:row settled-dc))]
+                 [(conj settled settled-dc)
+                  (cond-> disturbed (or placed? moved?) (conj settled-dc))
+                  (cond-> moved moved? (assoc (:id dc) (:row settled-dc)))]))
+             [(vec positioned) (vec positioned) {}]
+             (concat (in-reading-order resized) (in-reading-order others))))))
+
+(defn- settle-layout
+  "Push down the cards that a card an op placed now covers, as the dashboard editor does, and record under
+   `::pushed` the ids of the stored dashcards that moved, in save order.
+   Only tabs holding a card an op placed are settled, and there only the cards a placed card reaches move.
+   A layout that already overlaps stays as it was elsewhere, so adding a tab or editing a filter doesn't rearrange it.
+   A duplicated tab's copies carry their cards' marks, so they settle as the source tab does."
+  [{:keys [dashcards] :as state}]
+  (let [tab-of      #(shown-tab state (:dashboard_tab_id %))
+        ;; A card an op placed and a later op removed is gone.
+        placed      (select-keys (::placed state) (map :id dashcards))
+        placed-tabs (into #{} (comp (filter (comp placed :id)) (map tab-of)) dashcards)
+        ;; `contains?`, as a dashboard without tabs keeps its cards under the tab nil.
+        by-tab      (vals (group-by tab-of (filter #(contains? placed-tabs (tab-of %)) dashcards)))
+        _           (run! (partial check-placements! placed) by-tab)
+        rows        (into {} (mapcat (partial settle-tab placed)) by-tab)]
+    (-> state
+        (map-rows :dashcards #(if-let [row (get rows (:id %))] (assoc % :row row) %))
+        (assoc ::pushed (into [] (comp (map :id) (filter #(and (pos-int? %) (contains? rows %)))) dashcards)))))
 
 ;;; --------------------------------------------- Parameter ops -----------------------------------------------------
 
@@ -587,24 +697,25 @@
                   (assoc :id parameter_id)
                   assoc-slug)))
 
+(defn updated-parameter
+  "The filter `parameter` as the `update_parameter` op `op` leaves it, with its slug unchanged."
+  [parameter {:keys [clear] :as op}]
+  ;; A parameter is a map, so clearing removes the key rather than setting it to nil — `merge` can only add, and a
+  ;; stored explicit null is not the same as an absent property to the REST shape.
+  (apply dissoc (merge parameter (dissoc op :op :parameter_id :clear)) (map keyword clear)))
+
 (defmethod apply-op "update_parameter"
   [state {:keys [parameter_id clear] :as op}]
   (resolve-parameter! state parameter_id)
-  (let [cleared (map keyword clear)]
-    (doseq [field cleared
-            :when (contains? op field)]
-      (fail! :set-and-cleared {:field (name field)}))
-    (update-row state :parameters parameter_id
-                (fn [param]
-                  ;; A parameter is a map, so clearing removes the key rather than setting it to
-                  ;; nil — `merge` can only add, and a stored explicit null is not the same as an
-                  ;; absent property to the REST shape.
-                  (cond-> (apply dissoc
-                                 (merge param (dissoc op :op :parameter_id :clear))
-                                 cleared)
-                    ;; only re-slug on a rename, so an unrelated edit can't rewrite the slug of a
-                    ;; parameter created in the editor and break its existing URLs
-                    (contains? op :name) assoc-slug)))))
+  (doseq [field (map keyword clear)
+          :when (contains? op field)]
+    (fail! :set-and-cleared {:field (name field)}))
+  (update-row state :parameters parameter_id
+              (fn [param]
+                (cond-> (updated-parameter param op)
+                  ;; only re-slug on a rename, so an unrelated edit can't rewrite the slug of a
+                  ;; parameter created in the editor and break its existing URLs
+                  (contains? op :name) assoc-slug))))
 
 (defmethod apply-op "remove_parameter"
   [state {:keys [parameter_id]}]
@@ -792,7 +903,7 @@
             "set_series"   (:card_ids op)
             nil)))
 
-(defn- source-card-id
+(defn source-card-id
   "The card `parameter` takes its values from, or nil when its values come from somewhere else."
   [parameter]
   ;; Matches what the save read-checks: a source card counts only while the source type is card.
@@ -805,7 +916,7 @@
    They also include the card in each config a parameter op sends or touches, since the op may make it the source.
    The caller resolves these into the `cards` map, leaving out the ones its user cannot read."
   [dash ops]
-  (let [id->parameter (into {} (map (juxt :id identity)) (:parameters dash))
+  (let [id->parameter (u/index-by :id (:parameters dash))
         op-card-ids   (fn [op]
                         (concat (placed-card-ids op)
                                 (when (contains? parameter-ops (:op op))
@@ -856,7 +967,7 @@
 (defn- compact-op
   "The op without its null-valued keys."
   [op]
-  (into {} (remove (comp nil? val)) op))
+  (u/remove-nils op))
 
 (defn- prepared-op
   "The op at `idx`, checked against [[dashboard-op-schema/op-schema]] and then stripped of null values."
@@ -898,6 +1009,130 @@
   (cond-> dc
     (seq (:series dc)) (update :series (partial mapv #(select-keys % [:id])))))
 
+(defn- slot
+  "Where `card-id` shows on `dashcard`: `:card` for the dashcard's own card, the card's id for a series card, and nil
+   when the dashcard doesn't show it."
+  [{:keys [card_id series]} card-id]
+  (cond
+    (= card-id card_id)                :card
+    (some #(= card-id (:id %)) series) card-id))
+
+(defn- connections
+  "The filter connections of `dashcards`, as a set of `[parameter-id dashcard-id card-id]`."
+  [dashcards]
+  (into #{}
+        (for [{dashcard-id :id :keys [parameter_mappings]} dashcards
+              {:keys [parameter_id card_id]}                parameter_mappings]
+          [parameter_id dashcard-id card_id])))
+
+(defn- slot-connections
+  "The filter connections of `dashcards`, as a set of `[parameter-id dashcard-id slot]`, with the slot from [[slot]],
+   or the card id for a card the dashcard doesn't show.
+   The dashcard's own slot stays the same when `replace_card` changes its card."
+  [dashcards]
+  (into #{}
+        (for [{dashcard-id :id :keys [parameter_mappings] :as dashcard} dashcards
+              {:keys [parameter_id card_id]}                            parameter_mappings]
+          [parameter_id dashcard-id (or (slot dashcard card_id) card_id)])))
+
+(defn- asked-drops
+  "The connections among `stored`, as [[slot-connections]] gives them, that `op` asks to drop.
+   Those are a filter's for `remove_parameter` and `unwire_parameter`, on its one dashcard when the unwire names one,
+   and a dashcard's for a `patch_dashcard` that sets its `parameter_mappings`."
+  [stored {op-name :op, :keys [parameter_id dashcard_id patch], :as op}]
+  ;; Judged by what the op names rather than what it removed, so asking to drop a connection an earlier op already
+  ;; cleared still counts.
+  (case op-name
+    "remove_parameter" (filter (fn [[p]] (= parameter_id p)) stored)
+    "unwire_parameter" (filter (fn [[p dc]]
+                                 (and (= parameter_id p)
+                                      (or (not (contains? op :dashcard_id)) (= dashcard_id dc))))
+                               stored)
+    "patch_dashcard"   (when (contains? patch :parameter_mappings)
+                         (filter (fn [[_ dc]] (= dashcard_id dc)) stored))
+    nil))
+
+(defn- stored-slots
+  "The stored slots the slot `s` stands for in `dashcard-origins`, one dashcard's origins from [[track-promotions]].
+   A slot missing from them stands for itself."
+  [dashcard-origins s]
+  (get dashcard-origins s #{s}))
+
+(defn- track-promotions
+  "The origins after `op`, given the `origins` and `state` before it: for each dashcard id, a map from each current
+   slot to the stored slots it stands for.
+   Only a `replace_card` that promotes a series card changes them.
+   A slot missing from them stands for itself."
+  [origins state {:keys [op dashcard_id card_id]}]
+  (let [promoted (when (= "replace_card" op)
+                   (slot (find-row state :dashcards dashcard_id) card_id))]
+    ;; A promoted series card's connection now shares the dashcard's own slot with the stored card's, but a drop
+    ;; asked for before the promotion meant only one of them.
+    (cond-> origins
+      (int? promoted) (update dashcard_id
+                              (fn [m]
+                                (assoc m :card (set/union (stored-slots m :card) (stored-slots m promoted))))))))
+
+(defn- stored-connections
+  "The [[slot-connections]] of `dashcards`, with each slot replaced by the stored slots it stands for in `origins`."
+  [origins dashcards]
+  (into #{}
+        (for [[parameter-id dashcard-id s] (slot-connections dashcards)
+              stored-slot                  (stored-slots (get origins dashcard-id) s)]
+          [parameter-id dashcard-id stored-slot])))
+
+(defn- apply-op-tracking-drops
+  "Runs [[apply-op-at]] on `op`, the op at `idx`, and updates two keys of `state`.
+   It keeps the origins [[track-promotions]] gives under `::slot-origins`.
+   It keeps under `::asked-drops` the stored connections an op asked to drop, as [[asked-drops]] finds them, less those
+   a later op restored.
+   It reads the stored connections from `::stored-connections`."
+  [state idx op]
+  (let [origins (track-promotions (::slot-origins state) state op)
+        state'  (assoc (apply-op-at state idx op) ::slot-origins origins)
+        asked   (into (::asked-drops state) (asked-drops (::stored-connections state) op))]
+    (assoc state' ::asked-drops (set/difference asked (stored-connections origins (:dashcards state'))))))
+
+(defn- current-slot
+  "Where the stored slot `stored-slot` of `dashcard` is after the ops, given the dashcard's `origins` from
+   [[track-promotions]]: the dashcard's own slot for its stored card or a promoted series card, the series card's id
+   while it is still one, and nil once it is gone."
+  [dashcard origins stored-slot]
+  (cond
+    (contains? (stored-slots origins :card) stored-slot) :card
+    (= stored-slot (slot dashcard stored-slot))          stored-slot))
+
+(defn- dropped-connections
+  "The filter connections of `current` that `payload` lost, as `{:parameter_id :dashcard_id :card_id :series}` maps.
+   The `:card_id` is the card that is no longer filtered, and `:series` is true when that is a series card.
+   A connection counts only when its filter and its dashcard survive, its card is still on the dashcard or was
+   replaced, and the ops didn't drop it on purpose.
+   The `state` is the folded compiler state, read for `::slot-origins` and `::asked-drops`, both keyed by stored slot."
+  [current payload {::keys [slot-origins asked-drops]}]
+  (let [surviving-parameter? (into #{} (map :id) (:parameters payload))
+        stored-dashcards     (u/index-by :id (:dashcards current))
+        saved-dashcards      (u/index-by :id (:dashcards payload))
+        kept                 (stored-connections slot-origins (:dashcards payload))]
+    (->> (for [[parameter-id dashcard-id card-id] (connections (:dashcards current))
+               :when (surviving-parameter? parameter-id)
+               :let  [dashcard    (saved-dashcards dashcard-id)
+                      ;; A stored mapping onto a card the dashcard doesn't show filtered nothing, so it has no slot.
+                      stored-slot (slot (stored-dashcards dashcard-id) card-id)
+                      connection  [parameter-id dashcard-id stored-slot]
+                      new-slot    (when (and dashcard stored-slot)
+                                    (current-slot dashcard (get slot-origins dashcard-id) stored-slot))]
+               :when (and new-slot
+                          (not (contains? kept connection))
+                          (not (contains? asked-drops connection)))]
+           ;; A stored card and the series card promoted over it share a slot, so they can report the same row.
+           {:parameter_id parameter-id
+            :dashcard_id  dashcard-id
+            :card_id      (if (= :card new-slot) (:card_id dashcard) new-slot)
+            :series       (not= :card new-slot)})
+         set
+         (sort-by (juxt :parameter_id :dashcard_id :card_id))
+         vec)))
+
 (defn compile-ops
   "Fold `ops` over `current`, a dashboard hydrated with `[:dashcards :series :card] :tabs`.
    Returns `{:dashcards :tabs :parameters}`, the full-replacement payload `update-dashboard!` saves.
@@ -908,11 +1143,33 @@
    It covers the cards [[referenced-card-ids]] finds, leaving out the ones the user cannot read.
    A card the dashboard already references needs no row, as the save leaves stored references alone.
    This namespace does no I/O, so the caller resolves them.
+   A card that an op gives a position stays where the op put it.
+   A resized card keeps its place unless a card given a position, or a resized card before it, covers it.
+   Resized cards count in reading order, so the one before it sits above it or to its left.
+   Either pushes down the cards it covers, and a card that no op placed moves only then.
+   The ops' other effects ride in the payload's metadata, read by [[effects]].
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."
   [current ops cards]
-  (-> (reduce-kv apply-op-at
-                 (assoc (init-state current cards) ::stored-card-ids (dashboard-card-ids current))
-                 (prepare-ops ops))
-      check-tab-coverage!
-      (select-keys [:dashcards :tabs :parameters])
-      (update :dashcards (partial mapv series-ids))))
+  (let [ops     (prepare-ops ops)
+        state   (-> (reduce-kv apply-op-tracking-drops
+                               (assoc (init-state current cards)
+                                      ::stored-card-ids    (dashboard-card-ids current)
+                                      ::stored-connections (slot-connections (:dashcards current))
+                                      ::asked-drops        #{})
+                               ops)
+                    check-tab-coverage!
+                    settle-layout)
+        payload (-> state
+                    (select-keys [:dashcards :tabs :parameters])
+                    (update :dashcards (partial mapv series-ids)))]
+    (with-meta payload
+               {::effects {:pushed-dashcard-ids (::pushed state)
+                           :dropped-connections (dropped-connections current payload state)}})))
+
+(defn effects
+  "What the ops did beyond the payload [[compile-ops]] returns, read from its metadata.
+   Its `:pushed-dashcard-ids` are the ids of the stored dashcards pushed down for cards the ops placed, in save order.
+   Its `:dropped-connections` are the filter connections the ops dropped without asking, as
+   `{:parameter_id :dashcard_id :card_id :series}` maps, with `:series` true for a series card's connection."
+  [payload]
+  (::effects (meta payload)))

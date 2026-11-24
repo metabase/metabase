@@ -1,5 +1,4 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -27,10 +26,13 @@ import { isNotNull } from "metabase/utils/types";
 import type {
   CollectionId,
   CollectionPermissions,
-  DataPermissionValue,
   Group as GroupType,
 } from "metabase-types/api";
-import { DataPermission, DataPermissionType } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
+} from "metabase-types/api";
 
 export const tenantSpecificCollectionsQuery = {
   "exclude-other-user-collections": true,
@@ -130,7 +132,10 @@ const getTenantSpecificCollectionPermission = (
   permissions: CollectionPermissions,
   groupId: number,
   collectionId: CollectionId,
-) => getIn(permissions, [groupId, collectionId]) || "none";
+): DataPermissionValue =>
+  // Collection permission levels ("write", "read", "none") are a subset of
+  // the values the permission editor models with `DataPermissionValue`.
+  (permissions[groupId]?.[collectionId] || "none") as DataPermissionValue;
 
 export const getTenantSpecificCollectionsPermissionEditor = createSelector(
   getTenantSpecificCollectionsPermissions,
@@ -158,7 +163,7 @@ export const getTenantSpecificCollectionsPermissionEditor = createSelector(
               defaultGroup.id,
               collection.id,
             )
-          : "none";
+          : DataPermissionValue.NONE;
 
         if (!defaultGroup) {
           return null;
@@ -257,11 +262,15 @@ function getTenantSpecificCollectionWarning(
     ),
   );
   if (
-    collectionPerm === "none" &&
-    (descendentPerms.has("read") || descendentPerms.has("write"))
+    collectionPerm === DataPermissionValue.NONE &&
+    (descendentPerms.has(DataPermissionValue.READ) ||
+      descendentPerms.has(DataPermissionValue.WRITE))
   ) {
     return t`This group has permission to view at least one subcollection of this collection.`;
-  } else if (collectionPerm === "read" && descendentPerms.has("write")) {
+  } else if (
+    collectionPerm === DataPermissionValue.READ &&
+    descendentPerms.has(DataPermissionValue.WRITE)
+  ) {
     return t`This group has permission to edit at least one subcollection of this collection.`;
   }
 }

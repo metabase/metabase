@@ -8,17 +8,18 @@
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.events.core :as events]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.view-log.db :as view-log.db]
    [metabase.view-log.events.view-log :as events.view-log]
+   [metabase.view-log.models.view-log :as view-log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -162,8 +163,9 @@
 
 (deftest table-read-ee-test
   (mt/with-premium-features #{:audit-app}
-    (mt/with-temp [:model/User user {}]
-      (let [table (t2/select-one :model/Table :id (mt/id :users))]
+    (mt/with-model-cleanup [:model/User]
+      (let [[user] (user/create-users! [{:email (mt/random-email)}])
+            table  (t2/select-one :model/Table :id (mt/id :users))]
         (testing "A basic table read event is recorded in EE"
           (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
           (is (partial=
@@ -291,7 +293,7 @@
   (testing "when the batch fails for a reason other than a rejected row (e.g. the app DB is down), do not retry each
             row: every retry would fail too, and could wait for a connection"
     (let [calls (atom 0)]
-      (mt/with-dynamic-fn-redefs [view-log.db/insert-view-logs!
+      (mt/with-dynamic-fn-redefs [view-log/create-view-logs!
                                   (fn [_views]
                                     (swap! calls inc)
                                     (throw (java.sql.SQLTransientConnectionException. "pool checkout timed out")))]

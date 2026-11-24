@@ -53,11 +53,10 @@
    :segment   [:name :description :created_at :creator :creator_id :table :table_id]
    :measure   [:name :description :created_at :creator :creator_id :table :table_id]
    :action    [:name :description :type :model_id :parameters :created_at :creator :creator_id :collection :collection_id]
-   :data-app  [:name :display_name :description :created_at]})
+   :data-app  [:slug :name :description :created_at]})
 
 (mr/def ::data-value
-  [:schema {::mr/deliberately-open true, :description "any column or hydrated value of a dependency-tracked entity"}
-   :any])
+  :metabase.util.malli/value)
 
 (mu/defn- format-subentity :- ::data-value
   "`entity` slimmed to the keys the response shows when it is a hydrated Collection, Dashboard, or Document."
@@ -272,7 +271,7 @@
    :dashboard [:id :name :description :created_at :creator_id :collection_id :view_count]
    :document  [:id :name :created_at :creator_id :collection_id :view_count]
    :table     [:id :name :description :display_name :db_id :schema
-               :owner_user_id :owner_email :transform_id]
+               :owner_user_id :owner_email]
    :transform [:id :name :description :creator_id
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
                :source
@@ -282,7 +281,7 @@
    :segment   [:id :name :description :created_at :creator_id :table_id]
    :measure   [:id :name :description :created_at :creator_id :table_id]
    :action    [:id :name :description :type :model_id :parameters :created_at :creator_id :collection_id]
-   :data-app  [:id :name :display_name :description :created_at]})
+   :data-app  [:id :slug :name :description :created_at]})
 
 (mr/def ::include-archived-items
   [:enum :exclude :all :only])
@@ -389,6 +388,13 @@
          (into {} (mapcat errors-by-entity-type-and-id))
          not-empty)))
 
+(defn- hydrate-root-collections
+  "`entities` with the root collection of `collection-namespace`, hydrated once, as the `:collection` of those at the
+  root."
+  [entities collection-namespace]
+  (let [root (collection.root/hydrated-root-collection collection-namespace)]
+    (map #(collection.root/hydrate-root-collection % root) entities)))
+
 (mu/defn- hydrate-entities :- [:sequential Entity]
   "`entities` of the entity type `entity-type`, hydrated with what the dependency graph responses show."
   [entity-type :- ::deps.dependency-types/dependency-types
@@ -396,24 +402,24 @@
   (case entity-type
     :card (-> entities
               (t2/hydrate :creator :dashboard :document [:collection :is_personal])
-              (->> (map collection.root/hydrate-root-collection))
+              (hydrate-root-collections nil)
               (revisions/with-last-edit-info :card))
-    :table (t2/hydrate entities :fields :db :transform :owner)
+    :table (t2/hydrate entities :fields [:db :json_access] :transform :owner)
     :transform (-> entities
                    (t2/hydrate :creator :table-with-db-and-fields :last_run :collection :owner)
-                   (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :transforms)))))
+                   (hydrate-root-collections :transforms))
     :dashboard (-> entities
                    (t2/hydrate :creator [:collection :is_personal])
-                   (->> (map collection.root/hydrate-root-collection))
+                   (hydrate-root-collections nil)
                    (revisions/with-last-edit-info :dashboard))
     :document (-> entities
                   (t2/hydrate :creator [:collection :is_personal])
-                  (->> (map collection.root/hydrate-root-collection)))
-    :sandbox (t2/hydrate entities [:table :db :fields])
+                  (hydrate-root-collections nil))
+    :sandbox (t2/hydrate entities [:table [:db :json_access] :fields])
     :snippet (-> entities
                  (t2/hydrate :creator :collection)
-                 (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
-    (:segment :measure) (t2/hydrate entities :creator [:table :db])
+                 (hydrate-root-collections :snippets))
+    (:segment :measure) (t2/hydrate entities :creator [:table [:db :json_access]])
     :action (->> (t2/hydrate entities :creator [:collection :is_personal])
                  (map #(collection.root/hydrate-root-collection
                         %
@@ -421,7 +427,7 @@
                          (dependencies.db/action-root-namespace (nil? (:model_id %)))))))
     ;; Like the data-app API, which gives a non-admin only an app's names.
     :data-app (cond->> entities
-                (not api/*is-superuser?*) (map #(select-keys % [:id :name :display_name])))))
+                (not api/*is-superuser?*) (map #(select-keys % [:id :slug :name])))))
 
 (mu/defn- fetch-and-hydrate-nodes :- [:map-of ::deps.schema/node Entity]
   "Fetches and hydrates entities for the given nodes.
@@ -498,7 +504,7 @@
   [entity :- ::entity-node]
   (let [data (:data entity)]
     (case (:type entity)
-      (:table :data-app) (:display_name data)
+      :table             (:display_name data)
       :sandbox           nil
       (:name data))))
 
@@ -654,9 +660,7 @@
   (let [types (or types (case query-type
                           :unreferenced (vec deps.dependency-types/dependency-types)
                           :breaking [:card :table]))
-        selected-types (cond->> (if (sequential? types) types [types])
-                         ;; Sandboxes have no name or location to search.
-                         query (remove #{:sandbox}))]
+        selected-types (if (sequential? types) types [types])]
     (merge (current-user-visibility nil)
            {:query-type query-type
             :entity-types selected-types
@@ -793,14 +797,11 @@
         downstream-errors (node-downstream-errors nodes-by-type)
         total (dependencies.db/dependency-item-count item-params)
         usages (node-usages downstream-graph all-ids)
-        fetch-entity (fn [entity-type entity-id]
-                       (let [fields (entity-select-fields entity-type)]
-                         (dependencies.db/entity-with-columns entity-type fields entity-id)))
+        node->entity (fetch-and-hydrate-nodes nodes-by-type)
         data (into []
-                   (keep (fn [[entity-type entity-id]]
-                           (when-let [entity (fetch-entity entity-type entity-id)]
-                             (let [hydrated (first (hydrate-entities entity-type [entity]))]
-                               (entity-value entity-type hydrated usages downstream-errors)))))
+                   (keep (fn [[entity-type :as node]]
+                           (when-let [entity (node->entity node)]
+                             (entity-value entity-type entity usages downstream-errors))))
                    all-ids)]
     {:data   data
      :offset offset

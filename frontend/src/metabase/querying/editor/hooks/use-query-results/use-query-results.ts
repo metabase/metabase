@@ -21,9 +21,9 @@ export function useQueryResults(
   const abortRef = useRef<() => void>(undefined);
 
   const { rawSeries, isRunnable, isResultDirty } = useMemo(() => {
-    // Read only for its card and its legacy query, so it needs no metadata.
     const lastRunQuestion = lastRunQuery
       ? Question.create({
+          metadata: question.metadata(),
           dataset_query: lastRunQuery,
           cardType: question.type(),
           display: question.display(),
@@ -37,7 +37,7 @@ export function useQueryResults(
     const isRunnable = Lib.canRun(question.query(), question.type());
     const isResultDirty =
       lastRunQuestion == null ||
-      !Lib.areLegacyQueriesEqual(
+      !Lib.areQueriesEqual(
         question.datasetQuery(),
         lastRunQuestion.datasetQuery(),
       );

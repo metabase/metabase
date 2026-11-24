@@ -117,7 +117,7 @@ In your development Metabase, [create a new branch](../data-modeling/semantic-la
 
 ### 3. Ask the agent to create content
 
-Run the `/metabase-cli` skill and prompt the agent to build your questions and dashboards. The agent creates the content directly in your development Metabase.
+Run the `/metabase-cli` skill and prompt the agent to build your questions and dashboards in a [synced collection](../data-modeling/semantic-layer/remote-sync.md#syncing-other-collections). The agent creates the content directly in your development Metabase.
 
 ### 4. Verify the content in your development Metabase
 

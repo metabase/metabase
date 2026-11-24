@@ -21,13 +21,15 @@ You'll write a query or a Python script in Metabase, a transform will run this q
   - A job runs on a schedule (e.g., every day at midnight) and executes all transforms that have been assigned a specific tag.
 - Each execution of a transform is a **run**. A run replaces the target table with fresh results. You can review the history of runs to monitor their success or failure.
 - You can **inspect** a transform to analyze its data flow, join behavior, and column distributions. See [Transform inspector](inspector.md).
+- You can **test** a query transform by running it on test data and checking its output, without touching your real tables. See [Transform tests](tests.md).
 
 ## Databases that support transforms
 
 Currently, Metabase can create transforms on the following databases:
 
 - BigQuery
-- ClickHouse (only ClickHouse Cloud)
+- ClickHouse (ClickHouse Cloud and self-hosted single-node deployments)
+- MongoDB (only Python transforms)
 - MySQL/MariaDB
 - PostgreSQL
 - Redshift
@@ -173,6 +175,8 @@ You can run a transform manually or schedule the transform using tags and jobs.
 
 Running a transform for the first time will create and sync the table created by the transform, and you'll be able to edit the table's [metadata](../metadata/metadata-editing.md) and [permissions](../../permissions/data.md). Subsequent runs will drop and recreate the table, unless you use [Incremental transforms](#incremental-transforms).
 
+The transform's table doesn't inherit [row and column security](../../permissions/row-and-column-security.md) from the transform's source tables. If a source table has row and column security policies, set up new policies on the transform's table.
+
 You can see the time and status of the latest transform run on the transform's page, or in the [Runs view](./jobs-and-runs.md). The time of the run is given in the system's timezone.
 
 For Python transforms, you'll also see the transform's execution logs.
@@ -206,6 +210,12 @@ _Data Studio > Data transformation > [transform name] > Inspect_
 > Transform inspector requires the [Advanced transforms add-on](addons.md)
 
 The [transform inspector](./inspector.md) lets you poke at the input and outputs of your transform.
+
+## Test a transform
+
+_Data Studio > Data transformation > [transform name] > Tests_
+
+[Transform tests](./tests.md) run a query transform on test data you provide and check that the output is what you expect. Tests use temporary tables, so your real tables aren't touched.
 
 ## Transform dependencies
 

@@ -66,7 +66,7 @@
                                              (nil? (:channel_id channel)))]
                                 (:id channel)))]
       (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
-      (pulse.db/delete-pulse-channels! ids-to-delete)
+      (models.pulse/remove-pulse-channels! (vec ids-to-delete))
       (set ids-to-delete))))
 
 (defn- send-pulse!*

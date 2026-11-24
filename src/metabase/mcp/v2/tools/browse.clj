@@ -13,8 +13,8 @@
    and total node budget."
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collection-items.core :as collection-items]
    [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
@@ -28,12 +28,12 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
-   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.table :as schema.table]))
+   [metabase.warehouse-schema.table :as schema.table]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -155,9 +155,7 @@
   ;; Nothing projected reads the `details`/`settings` blobs, and `mi/can-read?` needs only `:id`.
   (let [rows (mcp.db/browsable-databases database-detailed-keys
                                          (schema.table/browsable-databases-honeysql-filter))
-        ;; `mi/can-read?` below is one permission check per database; load them in one query first.
-        _    (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) rows)})
-        dbs  (filterv mi/can-read? rows)]
+        dbs  (mi/readable rows)]
     (paged-list-content args dbs {:empty-hint (message/msg [(str "No databases are visible to you. Browsing "
                                                                  "data needs query-builder or table-metadata "
                                                                  "permission on at least one database.")])}
@@ -233,7 +231,7 @@
   [{:keys [database_id] :as args}]
   (check-database! database_id)
   (let [models (->> (mcp.db/unarchived-models-in-database question-select-columns database_id)
-                    (filterv mi/can-read?))]
+                    mi/readable)]
     (paged-list-content args models {} #(project-rows :question args %))))
 
 ;;; ------------------------------------------------- get_fields ---------------------------------------------------
@@ -255,22 +253,12 @@
   10)
 
 (defn- fetch-table-metadata-rows
-  "Fetch query-metadata rows for `table-ids` in request order. Always goes through the
-   defenterprise fetchers so EE column-level sandboxing applies; `include-hidden?` forces the
-   per-table path (the batch helper cannot include hidden fields). Ids that don't resolve to a
-   readable table land in `:missing` — indistinguishable between absent and unreadable.
-   Returns `{:rows [...] :missing [ids]}`."
+  "The query-metadata rows of `table-ids` in request order, fetched through the defenterprise fetcher so that EE
+  column-level sandboxing applies, with hidden fields when `include-hidden?`, as `{:rows [...] :missing [ids]}` where
+  `:missing` holds the ids of absent and of unreadable tables alike."
   [table-ids include-hidden?]
-  (let [rows  (if include-hidden?
-                (keep (fn [id]
-                        (try
-                          (schema.table/fetch-table-query-metadata id {:include-hidden-fields? true})
-                          (catch clojure.lang.ExceptionInfo e
-                            (when-not (contains? #{403 404} (:status-code (ex-data e)))
-                              (throw e)))))
-                      table-ids)
-                (schema.table/batch-fetch-table-query-metadatas table-ids nil))
-        by-id (m/index-by :id rows)]
+  (let [rows  (schema.table/batch-fetch-table-query-metadatas table-ids {:include-hidden-fields? include-hidden?})
+        by-id (u/index-by :id rows)]
     {:rows    (into [] (keep by-id) table-ids)
      :missing (into [] (remove by-id) table-ids)}))
 
@@ -303,8 +291,8 @@
         related          (when (seq related-ids)
                            (->> (mcp.db/active-tables-by-ids related-ids)
                                 (filter (comp browsable-db-ids :db_id))
-                                (filter mi/can-read?)
-                                (m/index-by :id)))
+                                mi/readable
+                                (u/index-by :id)))
         expand-ids       (into #{}
                                (mapcat (fn [[_ target-ids]]
                                          (->> target-ids
@@ -339,9 +327,7 @@
   ;; Read permission is not enough: values are rows of the table, not metadata about it. REST draws
   ;; the same line — `/api/field/:id/summary` gates on `read-check`, `/api/field/:id/values` on
   ;; `query-check` — so a metadata-only caller who is refused there must be refused here too.
-  (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                  :table-ids (into #{} (keep :id) tables)})
-  (let [queryable  (into #{} (comp (filter mi/can-query?) (keep :id)) tables)
+  (let [queryable  (into #{} (comp (filter mi/can-query?) (keep :id)) (t2/hydrate tables :can_query))
         ;; Field ids are unique across tables, so restricting the fetch to queryable tables is the
         ;; whole gate — nothing withheld here can be looked up again below.
         field-ids  (into []
@@ -381,13 +367,9 @@
                 (update :fields (partial mapv #(dissoc % :fingerprint)))))
             tables))))
 
-(defn- compact
-  [m]
-  (into {} (remove (comp nil? val)) m))
-
 (defn- brief-row
   [row]
-  (compact (select-keys row [:id :name :description])))
+  (u/select-non-nil-keys row [:id :name :description]))
 
 (defn- table-metadata-row
   "Build the get_fields response row for one batch-fetched `table`, at detail level `fmt`.
@@ -396,9 +378,9 @@
   (let [field-keys (case fmt
                      :concise  field-concise-keys
                      :detailed field-detailed-keys)]
-    (-> (compact (select-keys table [:id :name :display_name :schema :db_id :description]))
+    (-> (u/select-non-nil-keys table [:id :name :display_name :schema :db_id :description])
         (assoc :fields         (into []
-                                     (map #(compact (select-keys % field-keys)))
+                                     (map #(u/select-non-nil-keys % field-keys))
                                      (sort-by #(or (:position %) 0) (:fields table)))
                :measures       (mapv brief-row (:measures table))
                :segments       (mapv brief-row (:segments table))
@@ -681,7 +663,7 @@
                                       ns-str)))
         created-by-id (when (= created_by "me") api/*current-user-id*)
         models        (if root?
-                        (collections.children/visible-model-kwds collection (root-namespace-models ns-str type))
+                        (collection-items/visible-model-kwds collection (root-namespace-models ns-str type))
                         (into #{} (map type->rest-model) type))
         trash?        (collection/is-trash? collection)
         options   {:show-dashboard-questions? false
@@ -697,7 +679,7 @@
         ;; adjudicates the gate, and the cache keeps that to once per document
         res       (request/with-limit-and-offset limit offset
                     (documents/with-content-gate-cache
-                      (collections.children/collection-children collection options)))
+                      (collection-items/collection-children collection options)))
         total     (or (:total res) 0)
         ;; the snippets-namespace root path ignores the limit/offset binding (no :limit key on
         ;; the result) and returns every row, so the page is sliced here

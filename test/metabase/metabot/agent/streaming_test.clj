@@ -129,6 +129,7 @@
     (is (false? (streaming/persistable-data-part? (streaming/tool-title-part "[Orders](metabase://table/1)")))))
   (testing "other parts are persisted"
     (is (true? (streaming/persistable-data-part? {:type :data :data-type "todo_list" :data []})))
+    (is (true? (streaming/persistable-data-part? (streaming/dashboard-saved-part {:dashboard_id 1}))))
     (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))))
 
 ;;; Transducer Tests
@@ -231,3 +232,25 @@
       (is (= :tool-output (:type (nth result 0))))
       (is (= "dp" (:data-type (nth result 1))))
       (is (= "text" (:text (nth result 2)))))))
+
+(deftest ^:parallel combine-text-parts-xf-merges-consecutive-text-test
+  (testing "consecutive :text parts coalesce; non-text parts split runs"
+    (let [parts [{:type :text :text "Hello, "}
+                 {:type :text :text "world"}
+                 {:type :text :text "!"}
+                 {:type :tool-input :id "c1" :function "search"}
+                 {:type :text :text "After "}
+                 {:type :text :text "tool."}]
+          out   (into [] (streaming/combine-text-parts-xf) parts)]
+      (is (= [{:type :text :text "Hello, world!"}
+              {:type :tool-input :id "c1" :function "search"}
+              {:type :text :text "After tool."}]
+             out))))
+  (testing "adjacent non-text parts pass through unchanged"
+    (is (= [{:type :tool :id 1} {:type :tool :id 2}]
+           (into [] (streaming/combine-text-parts-xf) [{:type :tool :id 1} {:type :tool :id 2}]))))
+  (testing "single text part flushes on completion"
+    (is (= [{:type :text :text "lone"}]
+           (into [] (streaming/combine-text-parts-xf) [{:type :text :text "lone"}]))))
+  (testing "empty input"
+    (is (= [] (into [] (streaming/combine-text-parts-xf) [])))))

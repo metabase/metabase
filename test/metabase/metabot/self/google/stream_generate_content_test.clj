@@ -320,7 +320,9 @@
       (is (=? {:toolConfig {:functionCallingConfig {:mode "AUTO"}}}
               (body-for "auto")))
       (is (=? {:toolConfig {:functionCallingConfig {:mode "ANY"}}}
-              (body-for "required"))))))
+              (body-for "required")))
+      (is (=? {:toolConfig {:functionCallingConfig {:mode "NONE"}}}
+              (body-for "none"))))))
 
 (deftest ^:parallel request-body-structured-output-test
   (testing "a :schema forces a structured_output function call via mode ANY + allowedFunctionNames"
@@ -861,7 +863,7 @@
                   {:error {:code 503 :message "The model is overloaded." :status "UNAVAILABLE"}}]]
       (is (=? [{:type :start}
                {:type :text :text "partial"}
-               {:type :error :error {:message "The model is overloaded."}}]
+               {:type :error :error {:message "The model is overloaded." :code 503 :status "UNAVAILABLE"}}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
 (deftest ^:parallel in-stream-error-without-a-message-test

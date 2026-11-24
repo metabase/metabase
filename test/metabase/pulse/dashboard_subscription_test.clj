@@ -18,7 +18,7 @@
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.notification.test-util :as notification.tu]
    [metabase.parameters.shared :as shared.params]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -268,9 +268,8 @@
                    :model/Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
                    :model/Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
-                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
-                   :model/User {user-id :id} {}]
-      (let [result (execute-dashboard (:id dashboard) user-id nil)]
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}]
+      (let [result (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)]
         (is (malli= [:sequential
                      {:min 2, :max 2}
                      [:map
@@ -290,9 +289,8 @@
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3}
-                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-4}
-                   :model/User {user-id :id} {}]
-      (let [result (execute-dashboard (:id dashboard) user-id nil)]
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-4}]
+      (let [result (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)]
         (is (= 3 (count result)))))))
 
 (deftest ^:parallel execute-dashboard-test-3
@@ -303,9 +301,8 @@
                    :model/Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}
-                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}
-                   :model/User {user-id :id} {}]
-      (let [result (execute-dashboard (:id dashboard) user-id nil)]
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
+      (let [result (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result)))))))
 
@@ -315,10 +312,9 @@
                    :model/Card          _ {:dataset_query (mt/mbql-query venues)}
                    :model/Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    :model/DashboardCard _ {:dashboard_id dashboard-id
-                                           :visualization_settings {:virtual_card {}, :text "test"}}
-                   :model/User {user-id :id} {}]
+                                           :visualization_settings {:virtual_card {}, :text "test"}}]
       (is (= [{:virtual_card {} :text "test" :type :text}]
-             (execute-dashboard (:id dashboard) user-id nil))))))
+             (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil))))))
 
 (deftest basic-table-test
   (tests!
@@ -892,7 +888,7 @@
                                                                            :name         "category"
                                                                            :display-name "Category"
                                                                            :type         :dimension
-                                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                                           :field-id     (mt/id :products :category)
                                                                            :widget-type  :category}}})}
                          :model/DashboardCard _ {:parameter_mappings [{:parameter_id "_SQL_CATEGORY_"
                                                                        :card_id      sql-card-id
@@ -1035,6 +1031,21 @@
                        {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
                        {:text "### [https://metabase.com](https://metabase.com)"}]
                       (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil))))))))))
+
+(deftest document-link-card-test
+  (mt/with-temp [:model/Collection    {coll-id :id}      {}
+                 :model/Document      {doc-id :id}       {:name          "Linked document"
+                                                          :document      {:type "doc" :content []}
+                                                          :content_type  "application/json+vnd.prose-mirror"
+                                                          :collection_id coll-id}
+                 :model/Dashboard     {dashboard-id :id} {}
+                 :model/DashboardCard _                  {:dashboard_id           dashboard-id
+                                                          :visualization_settings {:virtual_card {:display "link"}
+                                                                                   :link         {:entity {:id    doc-id
+                                                                                                           :model "document"}}}}]
+    (mt/with-temporary-setting-values [site-url "https://testmb.com"]
+      (is (=? [{:text (format "### [Linked document](https://testmb.com/document/%d)" doc-id)}]
+              (execute-dashboard dashboard-id (mt/user->id :crowberto) nil))))))
 
 (deftest execute-dashboard-with-tabs-test
   (mt/with-temp
@@ -1203,7 +1214,7 @@
                  (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
 (defn- result-attachment!
-  [part _creator-id]
+  [part _download-level _providers]
   (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/maybe-realize-data-rows part)]
     (when (seq rows)
       [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
@@ -1259,7 +1270,7 @@
   (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
       (notification.tu/with-notification-testing-setup!
-        (mt/with-temp [:model/Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+        (mt/with-temp [:model/Card {card-id :id :as c} (mt/card-with-metadata (pulse.test-util/checkins-query-card {:breakout [!day.date]}))
                        :model/Dashboard {dash-id :id} {:name "just dash"}]
           (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
                 ;; with an additional key `:enabled`. Here the 1st col is enabled, and the 2nd is disabled
@@ -1695,9 +1706,8 @@
                    :model/Dashboard     {dashboard-id :id} {:name "Hide-empty PDF"}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id full-id  :row 0 :col 0 :size_x 8 :size_y 4}
                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 8 :size_x 8 :size_y 4
-                                           :visualization_settings {:card.hide_empty true}}
-                   :model/User          {user-id :id} {}]
-      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+                                           :visualization_settings {:card.hide_empty true}}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id (mt/user->id :rasta) []))]
         (is (str/includes? text "Has Data Card")
             "the card with results is rendered")
         (is (not (str/includes? text "Hidden Empty Card"))
@@ -1706,9 +1716,8 @@
     (mt/with-temp [:model/Card          {empty-id :id} {:name          "Shown Empty Card"
                                                         :dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
                    :model/Dashboard     {dashboard-id :id} {:name "Show-empty PDF"}
-                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 0 :size_x 8 :size_y 4}
-                   :model/User          {user-id :id} {}]
-      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 0 :size_x 8 :size_y 4}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id (mt/user->id :rasta) []))]
         (is (str/includes? text "Shown Empty Card")
             "without the setting, the empty card still appears")
         (is (str/includes? text "No results")

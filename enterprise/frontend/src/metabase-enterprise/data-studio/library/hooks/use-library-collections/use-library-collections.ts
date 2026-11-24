@@ -11,7 +11,6 @@ export type LibraryCollections = {
   libraryCollection: Collection | undefined;
   tableCollection: Collection | undefined;
   metricCollection: Collection | undefined;
-  dashboardCollection: Collection | undefined;
 };
 
 /**
@@ -34,7 +33,6 @@ export function useLibraryCollections(): LibraryCollections {
       libraryCollection,
       tableCollection: getSection("library-data"),
       metricCollection: getSection("library-metrics"),
-      dashboardCollection: getSection("library-dashboards"),
     };
   }, [collections, isLoading]);
 }

@@ -5,7 +5,6 @@ import _ from "underscore";
 import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { FieldList } from "metabase/metadata/components/FieldList";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 interface Props {
@@ -28,13 +27,13 @@ export const TableFieldList = ({
   }, [table.fields]);
 
   const handleGetFieldHref = useCallback(
-    (field: Field) => getFieldHref(getRawTableFieldId(field)),
+    (field: Field) => getFieldHref(field.id),
     [getFieldHref],
   );
 
   const handleNameChange = useCallback(
     async (field: Field, name: string) => {
-      const id = getRawTableFieldId(field);
+      const id = field.id;
       const { error } = await updateField({ id, display_name: name });
 
       if (error) {
@@ -54,7 +53,7 @@ export const TableFieldList = ({
 
   const handleDescriptionChange = useCallback(
     async (field: Field, description: string | null) => {
-      const id = getRawTableFieldId(field);
+      const id = field.id;
       const { error } = await updateField({ id, description });
 
       if (error) {
@@ -81,7 +80,7 @@ export const TableFieldList = ({
     <FieldList
       fields={fields}
       activeFieldKey={activeFieldId}
-      getFieldKey={getRawTableFieldId}
+      getFieldKey={(field) => field.id}
       getFieldHref={handleGetFieldHref}
       readOnly={!table.can_write}
       onNameChange={handleNameChange}
