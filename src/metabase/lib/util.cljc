@@ -1,5 +1,5 @@
 (ns metabase.lib.util
-  (:refer-clojure :exclude [format every? mapv select-keys update-keys some get-in #?(:clj for)])
+  (:refer-clojure :exclude [format every? mapv not-empty select-keys update-keys some get-in #?(:clj for)])
   (:require
    #?@(:clj
        ([potemkin :as p])
@@ -26,7 +26,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [every? mapv select-keys update-keys some get-in dropv #?(:clj for)]]))
+   [metabase.util.performance :refer [every? mapv not-empty select-keys update-keys some get-in dropv #?(:clj for)]]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -406,14 +406,14 @@
     (assoc query :stages stages')))
 
 (mu/defn query-for-join :- ::lib.schema/query
-  "A workable query whose shape is the stages of `join` executed in the scope of `outer-query`. Any CTEs declared on
-  the join replace the ones declared on `outer-query`, since the join introduces its own CTE scope."
+  "A workable query whose shape is the stages of `join` executed in the scope of `outer-query`. The join's `:ctes`
+  extend the outer query's, so `:source-cte` refs inside the join resolve against either scope."
   [outer-query :- ::lib.schema/query
    join        :- ::lib.schema.join/join]
   (-> outer-query
       (assoc :stages (:stages join))
       (dissoc :ctes)
-      (m/assoc-some :ctes (:ctes join))))
+      (m/assoc-some :ctes (not-empty (into (vec (:ctes outer-query)) (:ctes join))))))
 
 (mu/defn drop-later-stages :- ::lib.schema/query
   "Drop any stages in the `query` that come after `stage-number`."

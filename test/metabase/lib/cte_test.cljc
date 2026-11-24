@@ -70,3 +70,13 @@
     (testing "stage 0 with both :source-cte and :source-table is rejected"
       (is (not (mr/validate :metabase.lib.schema/query
                             (assoc-in wrapped [:stages 0] (assoc stage0 :source-table 1))))))))
+
+(deftest ^:parallel join-to-cte-returned-columns-test
+  (testing "a join that reads from a CTE returns the CTE's columns"
+    (let [query  (lib/wrap-as-cte (lib.tu/venues-query) "v")
+          cte    (lib/cte-metadata query "v")
+          id     #(first (filter (comp #{"ID"} :name) %))
+          joined (lib/join query (lib/join-clause cte [(lib/= (id (lib/visible-columns query))
+                                                              (id (lib/returned-columns query cte)))]))]
+      (is (= (map :name (lib/returned-columns query cte))
+             (map :name (lib/returned-columns joined -1 (first (lib/joins joined)))))))))
