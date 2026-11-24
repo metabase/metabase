@@ -9,9 +9,9 @@ type UseDataAppLocationResult = {
 
 <!-- [<snippet properties>] -->
 
-| Property                         | Type                       |
-| :------------------------------- | :------------------------- |
-| <a id="navigate"></a> `navigate` | (`to`: `string`) => `void` |
-| <a id="pathname"></a> `pathname` | `string`                   |
+| Property                                                  | Type                       |
+| :-------------------------------------------------------- | :------------------------- |
+| <a id="usedataapplocationresult-navigate"></a> `navigate` | (`to`: `string`) => `void` |
+| <a id="usedataapplocationresult-pathname"></a> `pathname` | `string`                   |
 
 <!-- [<endsnippet properties>] -->

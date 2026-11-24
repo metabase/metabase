@@ -14,8 +14,8 @@ Pro/Enterprise
 
 <!-- [<snippet properties>] -->
 
-| Property                 | Type     | Description                                                                                                                 |
-| :----------------------- | :------- | :-------------------------------------------------------------------------------------------------------------------------- |
-| <a id="path"></a> `path` | `string` | App slug, optionally followed by routes and query parameters. For example, `my-app` or `my-app/orders/details?tab=summary`. |
+| Property                                           | Type     | Description                                                                                                                 |
+| :------------------------------------------------- | :------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| <a id="metabasedataappattributes-path"></a> `path` | `string` | App slug, optionally followed by routes and query parameters. For example, `my-app` or `my-app/orders/details?tab=summary`. |
 
 <!-- [<endsnippet properties>] -->

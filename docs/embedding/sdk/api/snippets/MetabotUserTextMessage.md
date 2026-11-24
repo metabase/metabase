@@ -11,11 +11,11 @@ type MetabotUserTextMessage = {
 
 <!-- [<snippet properties>] -->
 
-| Property                       | Type     |
-| :----------------------------- | :------- |
-| <a id="id"></a> `id`           | `string` |
-| <a id="message"></a> `message` | `string` |
-| <a id="role"></a> `role`       | `"user"` |
-| <a id="type"></a> `type`       | `"text"` |
+| Property                                              | Type     |
+| :---------------------------------------------------- | :------- |
+| <a id="metabotusertextmessage-id"></a> `id`           | `string` |
+| <a id="metabotusertextmessage-message"></a> `message` | `string` |
+| <a id="metabotusertextmessage-role"></a> `role`       | `"user"` |
+| <a id="metabotusertextmessage-type"></a> `type`       | `"text"` |
 
 <!-- [<endsnippet properties>] -->

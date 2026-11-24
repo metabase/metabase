@@ -10,8 +10,8 @@ Response from a custom SQL action — the affected row count.
 
 <!-- [<snippet properties>] -->
 
-| Property                                   | Type     |
-| :----------------------------------------- | :------- |
-| <a id="rows-affected"></a> `rows-affected` | `number` |
+| Property                                                      | Type     |
+| :------------------------------------------------------------ | :------- |
+| <a id="actionresultforsql-rows-affected"></a> `rows-affected` | `number` |
 
 <!-- [<endsnippet properties>] -->

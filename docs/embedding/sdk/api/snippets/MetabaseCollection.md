@@ -14,12 +14,12 @@ The Collection entity
 
 <!-- [<snippet properties>] -->
 
-| Property                               | Type                                                                   |
-| :------------------------------------- | :--------------------------------------------------------------------- |
-| <a id="description"></a> `description` | `string` \| `null`                                                     |
-| <a id="entity_id"></a> `entity_id?`    | [`SdkEntityId`](/docs/latest/embedding/sdk/api/SdkEntityId.md)         |
-| <a id="id"></a> `id`                   | [`SdkCollectionId`](/docs/latest/embedding/sdk/api/SdkCollectionId.md) |
-| <a id="name"></a> `name`               | `string`                                                               |
-| <a id="slug"></a> `slug?`              | `string`                                                               |
+| Property                                                  | Type                                                                   |
+| :-------------------------------------------------------- | :--------------------------------------------------------------------- |
+| <a id="metabasecollection-description"></a> `description` | `string` \| `null`                                                     |
+| <a id="metabasecollection-entity_id"></a> `entity_id?`    | [`SdkEntityId`](/docs/latest/embedding/sdk/api/SdkEntityId.md)         |
+| <a id="metabasecollection-id"></a> `id`                   | [`SdkCollectionId`](/docs/latest/embedding/sdk/api/SdkCollectionId.md) |
+| <a id="metabasecollection-name"></a> `name`               | `string`                                                               |
+| <a id="metabasecollection-slug"></a> `slug?`              | `string`                                                               |
 
 <!-- [<endsnippet properties>] -->

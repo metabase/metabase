@@ -27,12 +27,12 @@ no HTTP response was received.
 
 <!-- [<snippet properties>] -->
 
-| Property                               | Type                                                                                                                                                      |
-| :------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <a id="data"></a> `data`               | \{ `errors?`: [`Record`](https://www.typescriptlang.org/docs/handbook/utility-types.html#recordkeys-type)\<`string`, `string`\>; `message?`: `string`; \} |
-| `data.errors?`                         | [`Record`](https://www.typescriptlang.org/docs/handbook/utility-types.html#recordkeys-type)\<`string`, `string`\>                                         |
-| `data.message?`                        | `string`                                                                                                                                                  |
-| <a id="iscancelled"></a> `isCancelled` | `boolean`                                                                                                                                                 |
-| <a id="status"></a> `status?`          | `number`                                                                                                                                                  |
+| Property                                                  | Type                                                                                                                                                      |
+| :-------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <a id="actionexecuteerror-data"></a> `data`               | \{ `errors?`: [`Record`](https://www.typescriptlang.org/docs/handbook/utility-types.html#recordkeys-type)\<`string`, `string`\>; `message?`: `string`; \} |
+| `data.errors?`                                            | [`Record`](https://www.typescriptlang.org/docs/handbook/utility-types.html#recordkeys-type)\<`string`, `string`\>                                         |
+| `data.message?`                                           | `string`                                                                                                                                                  |
+| <a id="actionexecuteerror-iscancelled"></a> `isCancelled` | `boolean`                                                                                                                                                 |
+| <a id="actionexecuteerror-status"></a> `status?`          | `number`                                                                                                                                                  |
 
 <!-- [<endsnippet properties>] -->

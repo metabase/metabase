@@ -13,11 +13,11 @@ Payload passed to `onParametersChange` callback
 
 <!-- [<snippet properties>] -->
 
-| Property                                             | Type                                                                               |
-| :--------------------------------------------------- | :--------------------------------------------------------------------------------- |
-| <a id="defaultparameters"></a> `defaultParameters`   | [`ParameterValues`](/docs/latest/embedding/sdk/api/ParameterValues.md)             |
-| <a id="lastusedparameters"></a> `lastUsedParameters` | [`ParameterValues`](/docs/latest/embedding/sdk/api/ParameterValues.md)             |
-| <a id="parameters"></a> `parameters`                 | [`ParameterValues`](/docs/latest/embedding/sdk/api/ParameterValues.md)             |
-| <a id="source"></a> `source`                         | [`ParameterChangeSource`](/docs/latest/embedding/sdk/api/ParameterChangeSource.md) |
+| Property                                                                    | Type                                                                               |
+| :-------------------------------------------------------------------------- | :--------------------------------------------------------------------------------- |
+| <a id="parameterchangepayload-defaultparameters"></a> `defaultParameters`   | [`ParameterValues`](/docs/latest/embedding/sdk/api/ParameterValues.md)             |
+| <a id="parameterchangepayload-lastusedparameters"></a> `lastUsedParameters` | [`ParameterValues`](/docs/latest/embedding/sdk/api/ParameterValues.md)             |
+| <a id="parameterchangepayload-parameters"></a> `parameters`                 | [`ParameterValues`](/docs/latest/embedding/sdk/api/ParameterValues.md)             |
+| <a id="parameterchangepayload-source"></a> `source`                         | [`ParameterChangeSource`](/docs/latest/embedding/sdk/api/ParameterChangeSource.md) |
 
 <!-- [<endsnippet properties>] -->

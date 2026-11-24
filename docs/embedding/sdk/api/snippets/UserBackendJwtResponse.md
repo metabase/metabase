@@ -8,8 +8,8 @@ type UserBackendJwtResponse = {
 
 <!-- [<snippet properties>] -->
 
-| Property               | Type     |
-| :--------------------- | :------- |
-| <a id="jwt"></a> `jwt` | `string` |
+| Property                                      | Type     |
+| :-------------------------------------------- | :------- |
+| <a id="userbackendjwtresponse-jwt"></a> `jwt` | `string` |
 
 <!-- [<endsnippet properties>] -->

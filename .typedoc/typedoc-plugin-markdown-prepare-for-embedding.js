@@ -11,11 +11,31 @@ const getSnippetEndComment = (snippetName) =>
 const convertSectionNameToSnippetName = (sectionName) =>
   sectionName.trim().toLowerCase().replace(/\s+/g, "-");
 
+const anchorIdRegExp = /<a id="([^"]+)"><\/a>/g;
+const internalLinkRegExp =
+  /\]\(((?:\/docs\/latest\/embedding\/sdk\/api\/|\.\/)?([A-Za-z0-9_]+)\.md)?#([^)\s]+)\)/g;
+
+const getAnchorPrefix = (pageName) => pageName.toLowerCase();
+
+const prefixAnchors = (contents, pageName) =>
+  contents
+    .replace(
+      anchorIdRegExp,
+      (_, id) => `<a id="${getAnchorPrefix(pageName)}-${id}"></a>`,
+    )
+    .replace(
+      internalLinkRegExp,
+      (_, path = "", linkedPage = pageName, id) =>
+        `](${path}#${getAnchorPrefix(linkedPage)}-${id})`,
+    );
+
 /**
  * A typedoc plugin that prepares `.md` files for embedding
  * - it makes links to other API pages absolute, so they resolve the same from every page that
  *   includes a snippet. It's done here rather than with `publicPath`, because typedoc-plugin-markdown
  *   counts the link urls when deciding to break a union over several lines.
+ * - it prefixes property anchors with the page name (`metabaseconfig-instanceurl`), so they stay
+ *   unique when a docs page includes snippets from several types.
  * - it wraps content of all sections into `jekyll_include_plugin` snippet comments,
  *   so such snippets can be included into other `.md` files.
  *   See: https://github.com/flant/jekyll_include_plugin/tree/master
@@ -29,6 +49,10 @@ export function load(app) {
       page.contents = page.contents.replaceAll(
         "](./api/",
         "](/docs/latest/embedding/sdk/api/",
+      );
+      page.contents = prefixAnchors(
+        page.contents,
+        page.url.split("/").pop().replace(/\.md$/, ""),
       );
     }
 

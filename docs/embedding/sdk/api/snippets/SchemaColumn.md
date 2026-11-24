@@ -12,12 +12,12 @@ type SchemaColumn = {
 
 <!-- [<snippet properties>] -->
 
-| Property                                | Type                                                                             |
-| :-------------------------------------- | :------------------------------------------------------------------------------- |
-| <a id="description"></a> `description?` | `string`                                                                         |
-| <a id="displayname"></a> `displayName?` | `string`                                                                         |
-| <a id="jstype"></a> `jsType?`           | [`SchemaJavaScriptType`](/docs/latest/embedding/sdk/api/SchemaJavaScriptType.md) |
-| <a id="name"></a> `name`                | `string`                                                                         |
-| <a id="type"></a> `type?`               | `"column"`                                                                       |
+| Property                                             | Type                                                                             |
+| :--------------------------------------------------- | :------------------------------------------------------------------------------- |
+| <a id="schemacolumn-description"></a> `description?` | `string`                                                                         |
+| <a id="schemacolumn-displayname"></a> `displayName?` | `string`                                                                         |
+| <a id="schemacolumn-jstype"></a> `jsType?`           | [`SchemaJavaScriptType`](/docs/latest/embedding/sdk/api/SchemaJavaScriptType.md) |
+| <a id="schemacolumn-name"></a> `name`                | `string`                                                                         |
+| <a id="schemacolumn-type"></a> `type?`               | `"column"`                                                                       |
 
 <!-- [<endsnippet properties>] -->

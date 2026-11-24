@@ -21,9 +21,9 @@ A data app passes a `defineAction` definition with `entityId`.
 
 <!-- [<snippet properties>] -->
 
-| Property                         | Type                                                                        |
-| :------------------------------- | :-------------------------------------------------------------------------- |
-| <a id="action"></a> ~~`action`~~ | \{ `id`: [`SdkActionId`](/docs/latest/embedding/sdk/api/SdkActionId.md); \} |
-| `action.id`                      | [`SdkActionId`](/docs/latest/embedding/sdk/api/SdkActionId.md)              |
+| Property                                                   | Type                                                                        |
+| :--------------------------------------------------------- | :-------------------------------------------------------------------------- |
+| <a id="sdklegacyactiondefinition-action"></a> ~~`action`~~ | \{ `id`: [`SdkActionId`](/docs/latest/embedding/sdk/api/SdkActionId.md); \} |
+| `action.id`                                                | [`SdkActionId`](/docs/latest/embedding/sdk/api/SdkActionId.md)              |
 
 <!-- [<endsnippet properties>] -->
