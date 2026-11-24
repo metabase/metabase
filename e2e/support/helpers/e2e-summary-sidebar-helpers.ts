@@ -83,22 +83,33 @@ export function dragSummaryItemToWell(
   dragToWell("@draggedSummaryItem", targetWellId);
 }
 
+const INPUT_LABELS: Record<SummaryWellId, string> = {
+  values: "Add a value by name",
+  columns: "Add a grouping by name",
+  rows: "Add a row by name",
+};
+
 /** A closed typeahead keeps its options in the page, so the option is looked for among the visible ones. */
-function pickSummaryOption(wellId: SummaryWellId, label: string, name: string) {
-  summaryWell(wellId).findByLabelText(label).type(name);
+function pickSummaryOption(wellId: SummaryWellId, text: string, name = text) {
+  summaryWell(wellId).findByLabelText(INPUT_LABELS[wellId]).type(text);
   cy.contains('[role="option"]:visible', name).click();
 }
 
 export function addSummaryValue(name: string) {
-  pickSummaryOption("values", "Add a value by name", name);
+  pickSummaryOption("values", name);
 }
 
 export function addSummaryGrouping(name: string) {
-  pickSummaryOption("columns", "Add a grouping by name", name);
+  pickSummaryOption("columns", name);
 }
 
 export function addSummaryRow(name: string) {
-  pickSummaryOption("rows", "Add a row by name", name);
+  pickSummaryOption("rows", name);
+}
+
+/** Types a prompt in a well and picks the option that writes a formula for it with AI. */
+export function generateSummaryFormula(wellId: SummaryWellId, prompt: string) {
+  pickSummaryOption(wellId, prompt, `Generate “${prompt}”`);
 }
 
 export function removeSummaryItem(name: string) {

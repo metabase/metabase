@@ -574,6 +574,136 @@ describe("scenarios > question > summarize sidebar > pivot round trip", () => {
   });
 });
 
+describe("scenarios > question > summarize sidebar > AI formulas", () => {
+  const GENERATE_ENDPOINT = "/api/metabot/custom-expression/generate";
+  const MOCK_LLM_PORT = 6125;
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("generates a formula in each well from a stubbed endpoint, runs the query with it, and shows an endpoint error under the option", () => {
+    const stubFormula = (expression: string, name: string) =>
+      cy
+        .intercept("POST", GENERATE_ENDPOINT, { expression, name })
+        .as("generate");
+
+    H.setupAnthropicLlmProvider();
+    H.openOrdersTable();
+    cy.intercept("POST", "/api/dataset").as("summaryQuery");
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotQuery");
+    H.summarize();
+
+    cy.log("Summarize by");
+    stubFormula("Average([Total])", "Average total");
+    H.generateSummaryFormula("values", "typical order size");
+    cy.wait("@generate")
+      .its("request.body")
+      .should("include", { mode: "aggregation", prompt: "typical order size" });
+    cy.wait("@summaryQuery").then(({ request, response }) => {
+      expect(request.body.stages[0].aggregation[0][0]).to.eq("avg");
+      expect(response?.body.error).to.eq(undefined);
+      expect(getResult(response?.body).cols).to.deep.equal(["Average total"]);
+    });
+    H.assertSummaryWellItems("values", ["Average total"]);
+    cy.findByTestId("scalar-value").should("be.visible");
+
+    cy.log("Group by");
+    stubFormula("year([Created At])", "Order year");
+    H.generateSummaryFormula("columns", "when it was ordered");
+    cy.wait("@generate")
+      .its("request.body")
+      .should("include", { mode: "expression", prompt: "when it was ordered" });
+    cy.wait("@summaryQuery").then(({ response }) => {
+      expect(response?.body.error).to.eq(undefined);
+      const result = getResult(response?.body);
+      expect(result.cols).to.deep.equal(["Order year", "Average total"]);
+      expect(result.rows).to.have.length.greaterThan(1);
+    });
+    H.assertSummaryWellItems("columns", ["Order year"]);
+
+    cy.log("Rows, in pivot mode");
+    cy.button("Pivot into rows and columns").click();
+    stubFormula("upper([Product → Category])", "Loud category");
+    H.generateSummaryFormula("rows", "shouted product kind");
+    cy.wait("@generate").its("request.body").should("include", {
+      mode: "expression",
+      prompt: "shouted product kind",
+    });
+    cy.wait("@pivotQuery").its("response.body.error").should("not.exist");
+    H.assertSummaryWellItems("rows", ["Loud category"]);
+    H.assertSummaryWellItems("columns", ["Order year"]);
+    H.assertSummaryWellItems("values", ["Average total"]);
+    cy.findByTestId("pivot-table").findByText("DOOHICKEY").should("be.visible");
+
+    cy.log("an endpoint error stays under the option and changes nothing");
+    cy.intercept("POST", GENERATE_ENDPOINT, {
+      statusCode: 422,
+      body: { message: "Couldn't find a formula for that." },
+    }).as("generateError");
+    H.generateSummaryFormula("values", "something odd");
+    cy.wait("@generateError");
+    cy.contains('[role="option"]:visible', "Generate “something odd”")
+      .findByRole("alert")
+      .should("have.text", "Couldn't find a formula for that.");
+    H.summaryWell("values")
+      .findByLabelText("Add a value by name")
+      .should("have.value", "something odd");
+    H.assertSummaryWellItems("values", ["Average total"]);
+    cy.get("@pivotQuery.all").should("have.length", 1);
+  });
+
+  describe("through the real endpoint", () => {
+    beforeEach(() => {
+      cy.task("startMockLlmServer", {
+        port: MOCK_LLM_PORT,
+        toolCall: {
+          name: "not_json",
+          input: { expression: "Average([Total])", name: "Average total" },
+        },
+      });
+      H.setupAnthropicLlmProvider({
+        baseUrl: `http://localhost:${MOCK_LLM_PORT}`,
+      });
+    });
+
+    afterEach(() => {
+      cy.task("stopMockLlmServer");
+    });
+
+    it("generates a Summarize by formula from a mock LLM's tool call and runs the query with it", () => {
+      H.openOrdersTable();
+      cy.intercept("POST", "/api/dataset").as("summaryQuery");
+      cy.intercept("POST", GENERATE_ENDPOINT).as("generate");
+      H.summarize();
+
+      H.generateSummaryFormula("values", "typical order size");
+
+      cy.wait("@generate").then(({ request, response }) => {
+        expect(request.body).to.include({
+          mode: "aggregation",
+          prompt: "typical order size",
+        });
+        expect(response?.statusCode).to.eq(200);
+        expect(response?.body).to.deep.equal({
+          expression: "Average([Total])",
+          name: "Average total",
+        });
+      });
+      cy.wait("@summaryQuery").then(({ request, response }) => {
+        expect(request.body.stages[0].aggregation[0][0]).to.eq("avg");
+        expect(response?.body.error).to.eq(undefined);
+        const result = getResult(response?.body);
+        expect(result.cols).to.deep.equal(["Average total"]);
+        expect(result.rows).to.have.length(1);
+      });
+      H.assertSummaryWellItems("values", ["Average total"]);
+      cy.findByTestId("scalar-value").should("be.visible");
+    });
+  });
+});
+
 function assertNotebookSummary({
   values,
   groupings,

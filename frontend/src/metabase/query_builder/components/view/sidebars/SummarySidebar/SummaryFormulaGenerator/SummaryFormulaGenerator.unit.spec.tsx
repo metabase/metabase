@@ -23,6 +23,7 @@ import { defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
+  ColumnNameColumnSplitSetting,
   GenerateCustomExpressionResponse,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
@@ -83,6 +84,8 @@ async function setup({
 
   function Harness() {
     const [query, setQuery] = useState(initialQuery);
+    const [pivotColumnSplit, setPivotColumnSplit] =
+      useState<ColumnNameColumnSplitSetting>();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     return (
       <FormulaBarSlotProvider>
@@ -92,8 +95,15 @@ async function setup({
           <SummarySidebar
             query={query}
             stageIndex={-1}
-            onQueryChange={(nextQuery) => {
+            pivotColumnSplit={pivotColumnSplit}
+            onQueryChange={(nextQuery, pivotChange) => {
               setQuery(nextQuery);
+              if (pivotChange?.type === "show") {
+                setPivotColumnSplit(pivotChange.columnSplit);
+              }
+              if (pivotChange?.type === "hide") {
+                setPivotColumnSplit(undefined);
+              }
               onQueryChange(nextQuery);
             }}
           />
@@ -132,11 +142,20 @@ async function setup({
   return { onQueryChange, getLastQuery };
 }
 
+const INPUT_NAMES: Record<SummaryWellId, string> = {
+  values: "Add a value by name",
+  columns: "Add a grouping by name",
+  rows: "Add a row by name",
+};
+
 function getInput(wellId: SummaryWellId) {
-  return screen.getByRole("textbox", {
-    name:
-      wellId === "values" ? "Add a value by name" : "Add a grouping by name",
-  });
+  return screen.getByRole("textbox", { name: INPUT_NAMES[wellId] });
+}
+
+function getChipLabels(wellId: SummaryWellId) {
+  return within(screen.getByTestId(`summary-well-${wellId}`))
+    .queryAllByTestId("summary-well-item")
+    .map((chip) => chip.textContent);
 }
 
 function findGenerateOption(prompt: string) {
@@ -198,6 +217,38 @@ describe("summary formula generator", () => {
       measures: [],
       metabot_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
     });
+  });
+
+  it("adds a generated custom column to Rows in pivot mode, and keeps it there", async () => {
+    const { getLastQuery } = await setup({
+      response: {
+        expression: 'datetimeAdd([Created At], 1, "day")',
+        name: "Next day",
+      } satisfies GenerateCustomExpressionResponse,
+    });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Pivot into rows and columns" }),
+    );
+
+    await userEvent.type(getInput("rows"), "the day after the order");
+    await userEvent.click(await findGenerateOption("the day after the order"));
+
+    await waitFor(() =>
+      expect(getLastQuery()).toEqual({
+        values: ["Count"],
+        dimensions: ["Next day: Month"],
+        expressions: ["Next day"],
+      }),
+    );
+    expect(await getLastRequestBody()).toMatchObject({
+      mode: "expression",
+      prompt: "the day after the order",
+      metrics: [],
+      measures: [],
+    });
+    expect(getChipLabels("rows")).toEqual(["Next day: Month"]);
+    expect(getChipLabels("columns")).toEqual([]);
+    expect(getInput("rows")).toHaveValue("");
   });
 
   it("shows the generation in progress and keeps the text until it's done", async () => {
