@@ -1,6 +1,7 @@
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { Route } from "metabase/router";
 import type { TokenFeatures, User } from "metabase-types/api";
 import {
@@ -21,7 +22,7 @@ const setup = ({ user, tokenFeatures = {} }: SetupOpts) =>
       <Route element={<CanAccessDataStudio />}>
         <Route path="/data-studio" element={<div>data studio page</div>} />
       </Route>
-      <Route path="/unauthorized" element={<div>unauthorized</div>} />
+      <Route path="/unauthorized" element={<Unauthorized />} />
     </>,
     {
       storeInitialState: createMockState({
@@ -75,5 +76,9 @@ describe("CanAccessDataStudio", () => {
     await waitFor(() => {
       expect(router?.location.pathname).toBe("/unauthorized");
     });
+    expect(
+      await screen.findByText("Sorry, you don’t have permission to see that."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("data studio page")).not.toBeInTheDocument();
   });
 });
