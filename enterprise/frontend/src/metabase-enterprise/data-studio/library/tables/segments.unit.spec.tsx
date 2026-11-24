@@ -218,6 +218,10 @@ describe("published table segment pages", () => {
       "aria-selected",
       "true",
     );
+    expect(screen.getByRole("tab", { name: "Segments" })).toHaveAttribute(
+      "href",
+      Urls.dataStudioTableSegments(ORDERS_ID),
+    );
 
     await userEvent.click(screen.getByRole("link", { name: /New segment/ }));
     await waitFor(() => {
