@@ -41,7 +41,7 @@ export type Transform = {
   source_readable: boolean;
   can_read?: boolean;
   can_write?: boolean;
-  can_execute?: boolean;
+  can_query?: boolean;
 
   source_database_id?: DatabaseId;
 
@@ -272,6 +272,7 @@ export type TransformJob = {
   tag_ids?: TransformTagId[];
   last_run?: TransformRun | null;
   next_run?: { start_time: string } | null;
+  can_query?: boolean;
 };
 
 export type CreateTransformRequest = {

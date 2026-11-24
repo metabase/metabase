@@ -24,6 +24,6 @@
         last-body (revisions.db/latest-revision-object (name entity) id)]
     (when (or (nil? last-body)
               (revision/changed? entity (round-trip last-body) (round-trip (:object row))))
-      (revisions.db/insert-revisions! [row])
+      (revision/create-revisions! [row])
       (revision/publish-created! row)
       object)))

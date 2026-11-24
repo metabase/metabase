@@ -10,21 +10,32 @@
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.measures.test-util :as measures.tu]
+   [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(defn- create-and-delete-sandbox!
+  "Create `sandbox` through [[sandboxes/create-sandboxes!]], delete it again, and return `:ok`."
+  [sandbox]
+  (let [[{sandbox-id :id}] (sandboxes/create-sandboxes! [sandbox])]
+    (t2/delete! :model/Sandbox :id sandbox-id)
+    :ok))
 
 (deftest disallow-changing-table-id-test
   (testing "You can't change the table_id of a sandbox after it has been created."
@@ -50,8 +61,8 @@
 (deftest attribute-remappings-shape-test
   (testing "schema"
     (doseq [remappings [{"cat" true} {"" "CATEGORY_ID"}]]
-      (is (not (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings remappings}))))
-    (is (mr/validate ::sandbox.schema/sandbox.update {:attribute_remappings {"cat" "CATEGORY_ID"}})))
+      (is (not (mr/validate ::sandbox.schema/sandbox.update {:id 1 :attribute_remappings remappings}))))
+    (is (mr/validate ::sandbox.schema/sandbox.update {:id 1 :attribute_remappings {"cat" "CATEGORY_ID"}})))
   (testing "update normalizes the stored remappings"
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                    :model/Sandbox {sandbox-id :id} {:table_id             (mt/id :venues)
@@ -63,17 +74,22 @@
 
 (deftest card-columns-checked-only-when-card-changes-test
   (testing "an update checks the sandbox Card's columns against the Table only when it sets the Card"
-    (let [mp (mt/metadata-provider)]
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                     :model/Card             {card-id :id}  {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
-                     :model/Card             {other-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                     :model/Card             {card-id :id}  {:dataset_query   query
+                                                             :result_metadata (qp.preprocess/query->expected-cols query)}
+                     :model/Card             {other-id :id} {:dataset_query   query
+                                                             :result_metadata (qp.preprocess/query->expected-cols query)}
                      :model/Sandbox          {sandbox-id :id} {:table_id (mt/id :venues) :group_id group-id :card_id card-id}]
         (let [checks (atom 0)]
           (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (let [f (mt/original-fn #'sandboxes/table-field-names->cols)]
-                                                                          (fn [table-id] (swap! checks inc) (f table-id)))]
-            (t2/update! :model/Sandbox :id sandbox-id {:attribute_remappings {"cat" "CATEGORY_ID"}})
+                                                                          (fn [database-id table-id] (swap! checks inc) (f database-id table-id)))]
+            (sandboxes/update-sandboxes! [{:id sandbox-id :attribute_remappings {"cat" "CATEGORY_ID"}}])
             (is (= 0 @checks))
-            (t2/update! :model/Sandbox :id sandbox-id {:card_id other-id})
+            (sandboxes/update-sandboxes! [{:id sandbox-id :card_id card-id}])
+            (is (= 0 @checks))
+            (sandboxes/update-sandboxes! [{:id sandbox-id :card_id other-id}])
             (is (= 1 @checks))))))))
 
 (deftest insert-removes-native-access-of-each-group-test
@@ -84,9 +100,10 @@
     (perms/set-database-permission! group-2 (mt/id) :perms/create-queries :query-builder-and-native)
     (perms/set-database-permission! group-3 (mt/id) :perms/create-queries :no)
     (try
-      (t2/insert! :model/Sandbox [{:table_id (mt/id :venues) :group_id group-1}
-                                  {:table_id (mt/id :checkins) :group_id group-2}
-                                  {:table_id (mt/id :venues) :group_id group-3}])
+      (doseq [sandbox [{:table_id (mt/id :venues) :group_id group-1}
+                       {:table_id (mt/id :checkins) :group_id group-2}
+                       {:table_id (mt/id :venues) :group_id group-3}]]
+        (sandboxes/create-sandboxes! [sandbox]))
       (is (= {(mt/id :venues) :query-builder}
              (perms/table-permissions-for-groups #{group-1} :perms/create-queries {(mt/id :venues) (mt/id)})))
       (is (= {(mt/id :checkins) :query-builder}
@@ -101,12 +118,11 @@
   (testing "Don't allow saving a Sandboxing query that contains columns not in the Table it replaces (#13715)"
     (doseq [[msg f] {"Create a new GTAP"
                      (fn [query]
-                       (mt/with-temp [:model/Card                   card {:dataset_query   query
-                                                                          :result_metadata (qp.preprocess/query->expected-cols query)}
-                                      :model/Sandbox _    {:table_id (mt/id :venues)
-                                                           :group_id (u/the-id (perms-group/all-users))
-                                                           :card_id  (:id card)}]
-                         :ok))
+                       (mt/with-temp [:model/Card card {:dataset_query   query
+                                                        :result_metadata (qp.preprocess/query->expected-cols query)}]
+                         (create-and-delete-sandbox! {:table_id (mt/id :venues)
+                                                      :group_id (u/the-id (perms-group/all-users))
+                                                      :card_id  (:id card)})))
 
                      "Update an existing GTAP"
                      (fn [query]
@@ -114,7 +130,7 @@
                                                                           :result_metadata (qp.preprocess/query->expected-cols query)}
                                       :model/Sandbox gtap {:table_id (mt/id :venues)
                                                            :group_id (u/the-id (perms-group/all-users))}]
-                         (t2/update! :model/Sandbox :id (:id gtap) {:card_id (:id card)})
+                         (sandboxes/update-sandboxes! [{:id (:id gtap) :card_id (:id card)}])
                          :ok))
 
                      "Update query for Card associated with an existing GTAP"
@@ -144,12 +160,11 @@
     (mt/with-premium-features #{:sandboxes}
       (doseq [[msg f] {"Create a new GTAP"
                        (fn [metadata]
-                         (mt/with-temp [:model/Card                   card {:dataset_query   (mt/mbql-query venues)
-                                                                            :result_metadata metadata}
-                                        :model/Sandbox _    {:table_id (mt/id :venues)
-                                                             :group_id (u/the-id (perms-group/all-users))
-                                                             :card_id  (:id card)}]
-                           :ok))
+                         (mt/with-temp [:model/Card card {:dataset_query   (mt/mbql-query venues)
+                                                          :result_metadata metadata}]
+                           (create-and-delete-sandbox! {:table_id (mt/id :venues)
+                                                        :group_id (u/the-id (perms-group/all-users))
+                                                        :card_id  (:id card)})))
 
                        "Update an existing GTAP"
                        (fn [metadata]
@@ -157,7 +172,7 @@
                                                                             :result_metadata metadata}
                                         :model/Sandbox gtap {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))}]
-                           (t2/update! :model/Sandbox :id (:id gtap) {:card_id (:id card)})
+                           (sandboxes/update-sandboxes! [{:id (:id gtap) :card_id (:id card)}])
                            :ok))
 
                        "Update query for Card associated with an existing GTAP"
@@ -167,7 +182,7 @@
                                         :model/Sandbox _    {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))
                                                              :card_id  (:id card)}]
-                           (t2/update! :model/Card :id (:id card) {:result_metadata metadata})
+                           (queries.card/update-cards! [{:id (:id card) :result_metadata metadata}])
                            :ok))}]
         (testing (str "\n" msg "\n")
           (is (thrown-with-msg?
@@ -355,40 +370,46 @@
                 (is (or (:isError result) error) (some-> error :message message/render))
                 (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))))))))))
 
-(defn- with-snippet-policy
-  "A policy whose snippet `outer` splices in snippet `inner`, which in turn reads Card `nested-card` through a
-  `{{#card}}` tag."
+(defn- do-with-snippet-policy!
+  "Call `f` with a policy whose snippet `outer` splices in snippet `inner`, which in turn reads Card `nested-card`
+  through a `{{#card}}` tag."
   [f]
   (let [inner-name (mt/random-name)
         outer-name (mt/random-name)]
-    (mt/with-temp [:model/PermissionsGroup   group       {}
-                   :model/Card               nested-card {:dataset_query (mt/mbql-query venues {:limit 1})}
-                   :model/NativeQuerySnippet inner       {:name    inner-name
-                                                          :content (format "ID IN (SELECT ID FROM {{#%d-nested}})"
-                                                                           (:id nested-card))}
-                   :model/NativeQuerySnippet outer       {:name    outer-name
-                                                          :content (format "{{snippet: %s}}" inner-name)}
-                   :model/NativeQuerySnippet other       {:content "1 = 1"}
-                   :model/Card               policy      {:dataset_query (snippet-query outer)}
-                   :model/Sandbox            _           {:table_id (mt/id :venues)
-                                                          :group_id (:id group)
-                                                          :card_id  (:id policy)}]
-      (f {:inner inner, :outer outer, :other other, :nested-card nested-card}))))
+    (mt/with-temp [:model/PermissionsGroup group       {}
+                   :model/Card             nested-card {:dataset_query (mt/mbql-query venues {:limit 1})}]
+      (mt/with-model-cleanup [:model/NativeQuerySnippet]
+        (let [[inner]       (native-query-snippet/create-snippets!
+                             [{:name       inner-name
+                               :content    (format "ID IN (SELECT ID FROM {{#%d-nested}})" (:id nested-card))
+                               :creator_id (mt/user->id :crowberto)}])
+              [outer other] (native-query-snippet/create-snippets!
+                             [{:name       outer-name
+                               :content    (format "{{snippet: %s}}" inner-name)
+                               :creator_id (mt/user->id :crowberto)}
+                              {:name       (mt/random-name)
+                               :content    "1 = 1"
+                               :creator_id (mt/user->id :crowberto)}])]
+          (mt/with-temp [:model/Card    policy {:dataset_query (snippet-query outer)}
+                         :model/Sandbox _      {:table_id (mt/id :venues)
+                                                :group_id (:id group)
+                                                :card_id  (:id policy)}]
+            (f {:inner inner, :outer outer, :other other, :nested-card nested-card})))))))
 
 (deftest only-admins-change-card-read-by-sandbox-through-snippet-test
   (mt/with-premium-features #{:sandboxes}
     (letfn [(update-check [nested-card]
               (api/update-check (t2/select-one :model/Card :id (:id nested-card)) {:dataset_query (mt/mbql-query venues)}))]
       (testing "a non-admin is refused the query of the nested Card"
-        (with-snippet-policy
-          (fn [{:keys [nested-card]}]
-            (mt/with-test-user :rasta
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check nested-card)))))))
+        (do-with-snippet-policy!
+         (fn [{:keys [nested-card]}]
+           (mt/with-test-user :rasta
+             (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check nested-card)))))))
       (testing "an admin may change it"
-        (with-snippet-policy
-          (fn [{:keys [nested-card]}]
-            (mt/with-test-user :crowberto
-              (is (true? (update-check nested-card))))))))))
+        (do-with-snippet-policy!
+         (fn [{:keys [nested-card]}]
+           (mt/with-test-user :crowberto
+             (is (true? (update-check nested-card))))))))))
 
 (deftest only-admins-can-change-a-snippet-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
@@ -400,55 +421,55 @@
                ["archive"                       outer {:archived true}]
                ["content of the nested snippet" inner {:content "2 = 2"}]])]
       (testing "a non-admin is refused"
-        (with-snippet-policy
-          (fn [policy]
-            (mt/with-test-user :rasta
-              (doseq [[change-name snippet changes] (guarded-changes policy)]
-                (testing change-name
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check snippet changes)))))))))
+        (do-with-snippet-policy!
+         (fn [policy]
+           (mt/with-test-user :rasta
+             (doseq [[change-name snippet changes] (guarded-changes policy)]
+               (testing change-name
+                 (is (thrown-with-msg? clojure.lang.ExceptionInfo forbidden-msg (update-check snippet changes)))))))))
       (testing "an admin may do all of it"
-        (with-snippet-policy
-          (fn [policy]
-            (mt/with-test-user :crowberto
-              (doseq [[change-name snippet changes] (guarded-changes policy)]
-                (testing change-name
-                  (is (true? (update-check snippet changes)))))))))
+        (do-with-snippet-policy!
+         (fn [policy]
+           (mt/with-test-user :crowberto
+             (doseq [[change-name snippet changes] (guarded-changes policy)]
+               (testing change-name
+                 (is (true? (update-check snippet changes)))))))))
       (testing "a change that does not touch what the sandbox reads is allowed"
-        (with-snippet-policy
-          (fn [{:keys [outer]}]
-            (mt/with-test-user :rasta
-              (is (true? (update-check outer {:description "A description"})))))))
+        (do-with-snippet-policy!
+         (fn [{:keys [outer]}]
+           (mt/with-test-user :rasta
+             (is (true? (update-check outer {:description "A description"})))))))
       (testing "an unrelated snippet is untouched"
-        (with-snippet-policy
-          (fn [{:keys [other]}]
-            (mt/with-test-user :rasta
-              (is (true? (update-check other {:content "2 = 2"}))))))))))
+        (do-with-snippet-policy!
+         (fn [{:keys [other]}]
+           (mt/with-test-user :rasta
+             (is (true? (update-check other {:content "2 = 2"}))))))))))
 
 (deftest only-admins-change-sandbox-source-snippet-through-endpoint-test
   (mt/with-premium-features #{:sandboxes}
     (letfn [(put-url [snippet]
               (str "native-query-snippet/" (:id snippet)))]
-      (with-snippet-policy
-        (fn [{:keys [inner outer other]}]
-          (testing "a non-admin is refused"
-            (doseq [[change-name snippet changes] [["content"                       outer {:content "1 = 1"}]
-                                                   ["name"                          outer {:name (mt/random-name)}]
-                                                   ["archive"                       outer {:archived true}]
-                                                   ["content of the nested snippet" inner {:content "2 = 2"}]]]
-              (testing change-name
-                (is (= forbidden-message
-                       (mt/user-http-request :rasta :put 403 (put-url snippet) changes))))))
-          (testing "the snippets are unchanged"
-            (is (= (:content outer) (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id outer))))
-            (is (= (:name outer) (t2/select-one-fn :name :model/NativeQuerySnippet :id (:id outer))))
-            (is (false? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id outer))))
-            (is (= (:content inner) (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id inner)))))
-          (testing "an admin may change them"
-            (is (=? {:content "1 = 1"}
-                    (mt/user-http-request :crowberto :put 200 (put-url outer) {:content "1 = 1"}))))
-          (testing "a non-admin may change an unrelated snippet"
-            (is (=? {:content "2 = 2"}
-                    (mt/user-http-request :rasta :put 200 (put-url other) {:content "2 = 2"})))))))))
+      (do-with-snippet-policy!
+       (fn [{:keys [inner outer other]}]
+         (testing "a non-admin is refused"
+           (doseq [[change-name snippet changes] [["content"                       outer {:content "1 = 1"}]
+                                                  ["name"                          outer {:name (mt/random-name)}]
+                                                  ["archive"                       outer {:archived true}]
+                                                  ["content of the nested snippet" inner {:content "2 = 2"}]]]
+             (testing change-name
+               (is (= forbidden-message
+                      (mt/user-http-request :rasta :put 403 (put-url snippet) changes))))))
+         (testing "the snippets are unchanged"
+           (is (= (:content outer) (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id outer))))
+           (is (= (:name outer) (t2/select-one-fn :name :model/NativeQuerySnippet :id (:id outer))))
+           (is (false? (t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id outer))))
+           (is (= (:content inner) (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id inner)))))
+         (testing "an admin may change them"
+           (is (=? {:content "1 = 1"}
+                   (mt/user-http-request :crowberto :put 200 (put-url outer) {:content "1 = 1"}))))
+         (testing "a non-admin may change an unrelated snippet"
+           (is (=? {:content "2 = 2"}
+                   (mt/user-http-request :rasta :put 200 (put-url other) {:content "2 = 2"})))))))))
 
 (defn- venues-query []
   (let [mp (mt/metadata-provider)]
@@ -484,7 +505,7 @@
   (mt/with-premium-features #{:sandboxes :advanced-permissions}
     (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
                    :model/User             {analyst-id :id} {:is_data_analyst true}]
-      (perms/add-user-to-group! analyst-id group-id)
+      (perms-group-membership/add-users-to-groups! [{:user analyst-id :group group-id}])
       (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
       (mt/with-current-user analyst-id
         (thunk)))))
@@ -711,34 +732,41 @@
                        :model/Card               source      {:collection_id (:id chain-coll)
                                                               :dataset_query (measure-then-filter-query (:id measure))}
                        :model/Card               _free-card  {:collection_id (:id free-coll)
-                                                              :dataset_query (mt/mbql-query venues)}
-                       :model/NativeQuerySnippet _inner      {:collection_id (:id dep-snippet-coll)
-                                                              :name          inner-name
-                                                              :content       (format "ID IN (SELECT ID FROM {{#%d-nested}})"
-                                                                                     (:id nested-card))}
-                       :model/NativeQuerySnippet outer       {:collection_id (:id policy-snippet-coll)
-                                                              :name          outer-name
-                                                              :content       (format "{{snippet: %s}}" inner-name)}
-                       :model/NativeQuerySnippet _free-snip  {:collection_id (:id free-snippet-coll), :content "1 = 1"}
-                       :model/Card               policy-a    {:collection_id (:id policy-coll)
-                                                              :dataset_query (snippet-query outer)}
-                       :model/Card               policy-b    {:collection_id (:id policy-coll)
-                                                              :dataset_query (lib/query mp (lib.metadata/card mp (:id source)))}
-                       :model/Sandbox            _           {:table_id (mt/id :venues)
-                                                              :group_id (:id group-a)
-                                                              :card_id  (:id policy-a)}
-                       :model/Sandbox            _           {:table_id (mt/id :venues)
-                                                              :group_id (:id group-b)
-                                                              :card_id  (:id policy-b)}]
-          (let [colls {:policy         policy-coll
-                       :chain          chain-coll
-                       :free           free-coll
-                       :policy-snippet policy-snippet-coll
-                       :dep-snippet    dep-snippet-coll
-                       :free-snippet   free-snippet-coll}]
-            (doseq [coll (vals colls)]
-              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
-            (f colls)))))))
+                                                              :dataset_query (mt/mbql-query venues)}]
+          (mt/with-model-cleanup [:model/NativeQuerySnippet]
+            (let [[_inner _free-snip] (native-query-snippet/create-snippets!
+                                       [{:collection_id (:id dep-snippet-coll)
+                                         :name          inner-name
+                                         :content       (format "ID IN (SELECT ID FROM {{#%d-nested}})" (:id nested-card))
+                                         :creator_id    (mt/user->id :crowberto)}
+                                        {:collection_id (:id free-snippet-coll)
+                                         :name          (mt/random-name)
+                                         :content       "1 = 1"
+                                         :creator_id    (mt/user->id :crowberto)}])
+                  [outer]             (native-query-snippet/create-snippets!
+                                       [{:collection_id (:id policy-snippet-coll)
+                                         :name          outer-name
+                                         :content       (format "{{snippet: %s}}" inner-name)
+                                         :creator_id    (mt/user->id :crowberto)}])]
+              (mt/with-temp [:model/Card               policy-a    {:collection_id (:id policy-coll)
+                                                                    :dataset_query (snippet-query outer)}
+                             :model/Card               policy-b    {:collection_id (:id policy-coll)
+                                                                    :dataset_query (lib/query mp (lib.metadata/card mp (:id source)))}
+                             :model/Sandbox            _           {:table_id (mt/id :venues)
+                                                                    :group_id (:id group-a)
+                                                                    :card_id  (:id policy-a)}
+                             :model/Sandbox            _           {:table_id (mt/id :venues)
+                                                                    :group_id (:id group-b)
+                                                                    :card_id  (:id policy-b)}]
+                (let [colls {:policy         policy-coll
+                             :chain          chain-coll
+                             :free           free-coll
+                             :policy-snippet policy-snippet-coll
+                             :dep-snippet    dep-snippet-coll
+                             :free-snippet   free-snippet-coll}]
+                  (doseq [coll (vals colls)]
+                    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
+                  (f colls))))))))))
 
 (defn- archive-collection! [coll]
   (collections/update-collection! (:id coll) {:archived true}))
@@ -769,7 +797,8 @@
                     (archive-collection! coll)
                     (is (true? (archived? coll))))
                   (testing "and deleted"
-                    (is (= 1 (t2/delete! :model/Collection :id (:id coll)))))))))))
+                    (collection/delete-collections! [(:id coll)])
+                    (is (not (t2/exists? :model/Collection :id (:id coll)))))))))))
       (testing "an admin may archive and then delete all of them"
         (with-mixed-policies!
           (fn [colls]
@@ -780,4 +809,230 @@
                   (is (true? (archived? coll)))))
               (doseq [coll (vals colls)]
                 (testing (:name coll)
-                  (is (= 1 (t2/delete! :model/Collection :id (:id coll)))))))))))))
+                  (collection/delete-collections! [(:id coll)])
+                  (is (not (t2/exists? :model/Collection :id (:id coll)))))))))))))
+
+(defn- delete-sandboxes-count!
+  "The number of statements that deleting `n` Sandboxes, each of a new group, runs."
+  [n]
+  (mt/with-model-cleanup [:model/Sandbox :model/PermissionsGroup]
+    (let [group-ids   (t2/insert-returning-pks! :model/PermissionsGroup
+                                                (for [_ (range n)] {:name (mt/random-name)}))
+          sandbox-ids (t2/insert-returning-pks! :model/Sandbox
+                                                (for [group-id group-ids]
+                                                  {:group_id group-id :table_id (mt/id :venues)}))]
+      (t2/with-call-count [call-count]
+        (sandboxes/delete-sandboxes! sandbox-ids)
+        (is (not (t2/exists? :model/Sandbox :id [:in sandbox-ids])))
+        (call-count)))))
+
+(deftest delete-sandboxes-runs-fixed-statement-count-test
+  (delete-sandboxes-count! 1)
+  (is (= (delete-sandboxes-count! 2) (delete-sandboxes-count! 6))))
+
+(deftest delete-sandboxes-statement-count-does-not-grow-with-rows-test
+  (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
+                 :model/PermissionsGroup {group-2 :id} {}
+                 :model/PermissionsGroup {group-3 :id} {}]
+    (mt/with-model-cleanup [:model/Sandbox]
+      (let [table-ids (mapv mt/id [:venues :checkins :users :categories :orders :people])
+            counted   (fn [group-id n]
+                        (let [ids (t2/insert-returning-pks! :model/Sandbox
+                                                            (mapv #(hash-map :group_id group-id :table_id %)
+                                                                  (take n table-ids)))]
+                          (events.tu/statement-count! #(sandboxes/delete-sandboxes! ids))))]
+        (counted group-1 1)
+        (is (= (counted group-2 2) (counted group-3 6)))))))
+
+(deftest update-sandboxes-statement-count-does-not-grow-with-rows-test
+  (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
+                 :model/PermissionsGroup {group-2 :id} {}
+                 :model/PermissionsGroup {group-3 :id} {}]
+    (mt/with-model-cleanup [:model/Sandbox]
+      (let [table-ids (mapv mt/id [:venues :checkins :users :categories :orders :people])
+            changes   {:card_id nil :attribute_remappings {"cat" "CATEGORY_ID"}}
+            counted   (fn [group-id n]
+                        (let [ids (t2/insert-returning-pks! :model/Sandbox
+                                                            (mapv #(hash-map :group_id group-id :table_id %)
+                                                                  (take n table-ids)))]
+                          (sandboxes/update-sandboxes! (mapv (fn [row-id] (assoc (select-keys changes [:attribute_remappings]) :id row-id)) (take-nth 2 ids)))
+                          (events.tu/statement-count! #(sandboxes/update-sandboxes! (mapv (fn [id] (assoc changes :id id)) ids)))))]
+        (counted group-1 1)
+        (is (= (counted group-2 2) (counted group-3 6)))))))
+
+(deftest update-sandboxes-refuses-in-input-order-test
+  (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
+                 :model/PermissionsGroup {group-2 :id} {}
+                 :model/Sandbox          {venues :id} {:group_id group-1 :table_id (mt/id :venues)}
+                 :model/Sandbox          {users :id}  {:group_id group-2 :table_id (mt/id :users)}]
+    (testing "a change of the group of a Sandbox is refused and writes nothing"
+      (let [before (t2/select-one-fn :attribute_remappings :model/Sandbox :id venues)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot change the group of a sandbox"
+                              (sandboxes/update-sandboxes! (mapv #(hash-map :id %
+                                                                            :group_id group-1
+                                                                            :attribute_remappings {"cat" "CATEGORY_ID"})
+                                                                 [venues users]))))
+        (is (= before (t2/select-one-fn :attribute_remappings :model/Sandbox :id venues)))))
+    (testing "a row whose Sandbox does not exist is skipped and the others are written"
+      (is (nil? (sandboxes/update-sandboxes! (mapv #(hash-map :id % :attribute_remappings {"cat" "CATEGORY_ID"})
+                                                   [users venues Integer/MAX_VALUE]))))
+      (is (= {"cat" "CATEGORY_ID"} (t2/select-one-fn :attribute_remappings :model/Sandbox :id users))))))
+
+(deftest update-and-delete-sandboxes-publish-one-event-test
+  (mt/with-temp [:model/PermissionsGroup {group-1 :id} {}
+                 :model/PermissionsGroup {group-2 :id} {}]
+    (mt/with-model-cleanup [:model/Sandbox]
+      (let [table-ids (mapv mt/id [:venues :checkins :users :categories :orders :people])]
+        (doseq [[group-id n] [[group-1 2] [group-2 6]]]
+          (let [ids (t2/insert-returning-pks! :model/Sandbox (mapv #(hash-map :group_id group-id :table_id %) (take n table-ids)))]
+            (testing (str "update of " n " sandboxes publishes one update event")
+              (is (= [:event/sandbox-update]
+                     (events.tu/published-topics!
+                      #(sandboxes/update-sandboxes! (mapv (fn [id] {:id id :attribute_remappings {"cat" "CATEGORY_ID"}}) ids))))))
+            (testing (str "delete of " n " sandboxes publishes one delete event")
+              (is (= [:event/sandbox-delete]
+                     (events.tu/published-topics! #(sandboxes/delete-sandboxes! ids)))))))))))
+
+(defn- create-sandboxes-row-by-row!
+  "Insert each of `rows` after taking native query access away from its group on the Database of its Table where the
+  group has it on that Table, one row after another."
+  [rows]
+  (doseq [{:keys [group_id table_id] :as row} rows]
+    (let [db-id (t2/select-one-fn :db_id :model/Table :id table_id)]
+      (when (= :query-builder-and-native
+               (get (perms/table-permissions-for-groups #{group_id} :perms/create-queries {table_id db-id}) table_id))
+        (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
+    (t2/insert! :model/Sandbox row)))
+
+(defn- stored-permissions-by-role
+  "The DataPermissions rows on the Databases with `db-ids` of each group of `role->group-id`, without ids, by role."
+  [role->group-id db-ids]
+  (let [group-id->role (zipmap (vals role->group-id) (keys role->group-id))]
+    (update-vals (group-by (comp group-id->role :group_id)
+                           (t2/select :model/DataPermissions
+                                      :group_id [:in (vals role->group-id)]
+                                      :db_id    [:in db-ids]))
+                 (fn [rows]
+                   (frequencies (map (juxt :perm_type :perm_value :db_id :table_id :schema_name) rows))))))
+
+(deftest create-sandboxes-matches-row-by-row-on-mixed-batch-test
+  (mt/with-temp [:model/Database {db-1 :id} {}
+                 :model/Database {db-2 :id} {}
+                 :model/Table    {a-1 :id}  {:db_id db-1 :schema "PUBLIC" :name "A1"}
+                 :model/Table    {a-2 :id}  {:db_id db-1 :schema "PUBLIC" :name "A2"}
+                 :model/Table    {b-1 :id}  {:db_id db-2 :schema "PUBLIC" :name "B1"}
+                 :model/Table    {b-2 :id}  {:db_id db-2 :schema "PUBLIC" :name "B2"}]
+    (mt/with-model-cleanup [:model/Sandbox :model/PermissionsGroup]
+      (let [roles        [:native-on-one-db :no-native :native-on-two-dbs :granular :native-sandboxed-on-two-dbs]
+            groups!      (fn [tag]
+                           (zipmap roles (t2/insert-returning-pks! :model/PermissionsGroup
+                                                                   (for [role roles] {:name (str "mixed " tag " " (name role))}))))
+            set-up!      (fn [{:keys [native-on-one-db no-native native-on-two-dbs granular native-sandboxed-on-two-dbs]}]
+                           (perms/set-database-permission! native-on-one-db db-1 :perms/create-queries :query-builder-and-native)
+                           (perms/set-database-permission! no-native db-1 :perms/create-queries :query-builder)
+                           (doseq [group-id [native-on-two-dbs native-sandboxed-on-two-dbs granular]]
+                             (perms/set-database-permission! group-id db-1 :perms/create-queries :query-builder-and-native))
+                           (doseq [group-id [native-on-two-dbs native-sandboxed-on-two-dbs]]
+                             (perms/set-database-permission! group-id db-2 :perms/create-queries :query-builder-and-native))
+                           (perms/set-table-permissions! granular :perms/create-queries {b-1 :query-builder b-2 :no}))
+            rows         (fn [{:keys [native-on-one-db no-native native-on-two-dbs granular native-sandboxed-on-two-dbs]}]
+                           [{:group_id native-on-one-db :table_id a-1}
+                            {:group_id no-native :table_id a-1}
+                            {:group_id native-sandboxed-on-two-dbs :table_id a-2}
+                            {:group_id native-on-one-db :table_id a-2}
+                            {:group_id granular :table_id b-2}
+                            {:group_id native-on-two-dbs :table_id b-1}
+                            {:group_id granular :table_id a-1}
+                            {:group_id native-sandboxed-on-two-dbs :table_id b-2}])
+            batch        (groups! "batch")
+            row-by-row (groups! "one at a time")]
+        (set-up! batch)
+        (set-up! row-by-row)
+        (sandboxes/create-sandboxes! (rows batch))
+        (create-sandboxes-row-by-row! (rows row-by-row))
+        (testing "every group holds the same permission rows as when its sandboxes are created one at a time"
+          (is (= (stored-permissions-by-role row-by-row [db-1 db-2])
+                 (stored-permissions-by-role batch [db-1 db-2]))))
+        (testing "native access is taken away only on the Databases of the new sandboxes where the group had it"
+          (let [value (fn [role table-id db-id]
+                        (get (perms/table-permissions-for-groups #{(batch role)} :perms/create-queries {table-id db-id})
+                             table-id))]
+            (is (= {:native-on-one-db            [:query-builder :query-builder]
+                    :no-native                   [:query-builder]
+                    :native-on-two-dbs           [:query-builder-and-native :query-builder]
+                    :granular                    [:query-builder :query-builder :no]
+                    :native-sandboxed-on-two-dbs [:query-builder :query-builder]}
+                   {:native-on-one-db            [(value :native-on-one-db a-1 db-1) (value :native-on-one-db a-2 db-1)]
+                    :no-native                   [(value :no-native a-1 db-1)]
+                    :native-on-two-dbs           [(value :native-on-two-dbs a-1 db-1) (value :native-on-two-dbs b-1 db-2)]
+                    :granular                    [(value :granular a-1 db-1) (value :granular b-1 db-2) (value :granular b-2 db-2)]
+                    :native-sandboxed-on-two-dbs [(value :native-sandboxed-on-two-dbs a-1 db-1)
+                                                  (value :native-sandboxed-on-two-dbs b-1 db-2)]}))))))))
+
+(deftest create-sandboxes-statement-count-does-not-grow-with-rows-test
+  (mt/with-premium-features #{:sandboxes}
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/with-model-cleanup [:model/Sandbox :model/PermissionsGroup]
+        (let [table-ids (vec (t2/insert-returning-pks! :model/Table (for [i (range 16)]
+                                                                      (merge (mt/with-temp-defaults :model/Table)
+                                                                             {:db_id db-id :schema "PUBLIC" :name (str "T" i)}))))
+              groups!   (fn [tag n]
+                          (vec (t2/insert-returning-pks! :model/PermissionsGroup
+                                                         (for [i (range n)] {:name (format "sandbox count %s %d %d" tag n i)}))))
+              native!   (fn [group-ids]
+                          (doseq [group-id group-ids]
+                            (perms/set-database-permission! group-id db-id :perms/create-queries :query-builder-and-native)))
+              counted   (fn [thunk] (t2/with-call-count [call-count] (thunk) (call-count)))]
+          (testing "one group with native access, n Tables"
+            (let [run (fn [n]
+                        (let [[group-id] (groups! "one group" n)]
+                          (native! [group-id])
+                          (counted #(sandboxes/create-sandboxes! (mapv (fn [table-id] {:group_id group-id :table_id table-id})
+                                                                       (take n table-ids))))))]
+              (run 2)
+              (is (= (run 4) (run 16)))))
+          (testing "n groups with native access, one Table each"
+            (let [run (fn [n]
+                        (let [group-ids (groups! "distinct groups" n)]
+                          (native! group-ids)
+                          (counted #(sandboxes/create-sandboxes! (mapv (fn [group-id table-id] {:group_id group-id :table_id table-id})
+                                                                       group-ids table-ids)))))]
+              (run 2)
+              (is (= (run 4) (run 16)))))
+          (testing "n new sandboxes of a permissions graph, one group"
+            (let [run (fn [n]
+                        (let [[group-id] (groups! "graph" n)]
+                          (native! [group-id])
+                          (counted #(sandboxes/upsert-sandboxes-for-graph! (mapv (fn [table-id] {:group_id group-id :table_id table-id})
+                                                                                 (take n table-ids))))))]
+              (run 2)
+              (is (= (run 4) (run 16))))))))))
+
+(deftest create-sandboxes-with-cards-statement-count-test
+  (testing "sandboxes with Cards on fresh Tables are checked against the Database of each Table in as many statements for 2 rows as for 6"
+    (mt/with-premium-features #{:sandboxes}
+      (let [mp    (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+        (mt/with-temp [:model/Database {db-id :id}   {}
+                       :model/Card     {card-id :id} {:dataset_query   query
+                                                      :result_metadata (qp.preprocess/query->expected-cols query)}]
+          (mt/with-model-cleanup [:model/Sandbox :model/PermissionsGroup :model/Table]
+            (let [checked (atom #{})
+                  run     (fn [n]
+                            (let [table-ids (vec (t2/insert-returning-pks! :model/Table
+                                                                           (for [i (range n)]
+                                                                             (merge (mt/with-temp-defaults :model/Table)
+                                                                                    {:db_id db-id :schema "PUBLIC" :name (format "S%d_%d" n i)}))))
+                                  group-ids (vec (t2/insert-returning-pks! :model/PermissionsGroup
+                                                                           (for [i (range n)] {:name (format "sandbox card count %d %d" n i)})))]
+                              (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (fn [database-id _table-id]
+                                                                                              (swap! checked conj database-id)
+                                                                                              {})]
+                                (t2/with-call-count [call-count]
+                                  (sandboxes/create-sandboxes! (mapv (fn [group-id table-id]
+                                                                       {:group_id group-id :table_id table-id :card_id card-id})
+                                                                     group-ids table-ids))
+                                  (call-count)))))]
+              (run 1)
+              (is (= (run 2) (run 6)))
+              (is (= #{db-id} @checked)))))))))

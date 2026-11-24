@@ -560,6 +560,8 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - card-test-run-timeout
 - cloud-add-on-purchase
 - create-permission-failure
+- dashboard-add-cards
+- dashboard-remove-cards
 - database-discard-field-values
 - database-manual-scan
 - database-manual-sync

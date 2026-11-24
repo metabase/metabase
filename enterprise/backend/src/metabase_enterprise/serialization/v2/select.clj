@@ -5,18 +5,22 @@
    [metabase-enterprise.serialization.db :as serialization.db]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
 (defn- in-collections
-  "The clause matching rows in `collection-set`, nil standing for the root collection."
-  [collection-set]
-  (let [ids (vec (remove nil? collection-set))]
-    (cond-> [:or [:= 1 0]]
-      (seq ids)                  (conj [:in :collection_id ids])
-      (some nil? collection-set) (conj [:= :collection_id nil]))))
+  "The clause matching rows whose `column`, `:collection_id` by default, is in `collection-set`, nil standing for the
+  root collection."
+  ([collection-set]
+   (in-collections :collection_id collection-set))
+  ([column collection-set]
+   (let [ids (vec (remove nil? collection-set))]
+     (cond-> [:or [:= 1 0]]
+       (seq ids)                  (conj [:in column ids])
+       (some nil? collection-set) (conj [:= column nil])))))
 
 (defn- in-ids
   "The clause matching rows whose `column` is one of `ids`; with no `ids`, no row."
@@ -83,7 +87,12 @@
 (defmethod where :model/Table [_ {:keys [collection-set table-ids]}]
   (cond
     table-ids                (in-ids :id table-ids)
-    (seq collection-set)     [:and (in-collections collection-set) [:= :is_published true]]))
+    (seq collection-set)     [:exists ^:allow-subquery {:select [1]
+                                                        :from   [[(t2/table-name :model/TableUserSettings) :s]]
+                                                        :where  [:and
+                                                                 [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
+                                                                 [:= :s.is_published true]
+                                                                 (in-collections :s.collection_id collection-set)]}]))
 
 (defmethod where :model/Field [_ {:keys [table-ids]}]
   (when table-ids (in-ids :table_id table-ids)))

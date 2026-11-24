@@ -24,6 +24,7 @@
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.db :as premium-features.db]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
+   [metabase.premium-features.models.premium-features-cache :as premium-features-cache]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
@@ -36,8 +37,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
    [metabase.util.string :as u.str]
-   [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2])
+   [toucan2.connection :as t2.conn])
   (:import
    (dev.failsafe CircuitBreakerOpenException FailsafeException TimeoutExceededException)
    (java.util.concurrent Executors RejectedExecutionException ScheduledExecutorService ThreadFactory TimeUnit)))
@@ -349,22 +349,6 @@
   ^String [result]
   (-> result canonicalize-for-hash json/encode (.getBytes "UTF-8") buddy-hash/sha256 codecs/bytes->hex))
 
-(defn- write-cache-to-db!
-  "Upsert a token status hash into the premium_features_token_cache table.
-   Uses update-first to avoid poisoning PostgreSQL transactions on duplicate key.
-   Catches constraint violations from concurrent inserters and retries with an update."
-  [token-hash result-hash]
-  (t2/with-connection [_conn (app-db/app-db)]
-    (let [now     (t/offset-date-time)
-          updated (premium-features.db/update-token-status-cache! token-hash result-hash now)]
-      (when (zero? updated) ;; even though toucan2 returns 0 if we match a row but don't update it
-        ;; we should always be updating this row with the timestamp if it's there.
-        (try
-          (premium-features.db/insert-token-status-cache! token-hash result-hash now)
-          (catch Exception _e
-            ;; Another instance inserted first — update instead.
-            (premium-features.db/update-token-status-cache! token-hash result-hash now)))))))
-
 (defn- extract-locks
   "Project a `:meters` map to `{meter-keyword -> boolean}` of `:is-locked` values.
    Meters without an `:is-locked` field are dropped."
@@ -488,7 +472,7 @@
                                   :fetched-at  (t/instant)}
                    :last-failure nil)
       (try
-        (write-cache-to-db! token-hash status-hash)
+        (premium-features-cache/save-token-status-cache! token-hash status-hash)
         (catch Throwable e
           (log/warnf "Failed to record the token status hash: %s" (ex-message e))))
       (update-locked-meters! status)))

@@ -3,6 +3,8 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
+   [metabase-enterprise.data-testing.models.test-suite-run :as data-testing.models.test-suite-run]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.events.core :as events]
@@ -32,7 +34,7 @@
   ([test-type    :- ::data-testing.schema/test-type
     test-id      :- ms/PositiveInt
     initiated-by :- [:maybe ::lib.schema.id/user]]
-   (let [run (data-testing.db/insert-test-run! test-type test-id initiated-by)]
+   (let [run (data-testing.models.data-test-run/start-data-test-run! test-type test-id initiated-by)]
      (events/publish-event! (get-in (data-testing.test-type/spec test-type) [:run-topics :start])
                             (-> {:object run}
                                 (m/assoc-some :user-id initiated-by)))
@@ -46,7 +48,7 @@
   [run-id :- ms/PositiveInt
    status :- ::data-testing.schema/run-status]
   (try
-    (data-testing.db/finish-started-test-run! run-id status)
+    (data-testing.models.data-test-run/finish-data-test-run! run-id status)
     (finally
       (swap! active-runs disj run-id))))
 
@@ -55,7 +57,7 @@
   process."
   [suite-id     :- ms/PositiveInt
    initiated-by :- [:maybe ::lib.schema.id/user]]
-  (let [run (data-testing.db/insert-suite-run! suite-id initiated-by)]
+  (let [run (data-testing.models.test-suite-run/start-test-suite-run! suite-id initiated-by)]
     (events/publish-event! :event/test-suite-run-start (-> {:object run}
                                                            (m/assoc-some :user-id initiated-by)))
     (swap! active-suite-runs conj (:id run))
@@ -69,14 +71,15 @@
    status  :- ::data-testing.schema/run-status
    members :- [:maybe ::data-testing.schema/test-suite-run.stored-members]]
   (try
-    (data-testing.db/finish-started-suite-run! run-id status members)
+    (data-testing.models.test-suite-run/finish-test-suite-run! run-id status members)
     (finally
       (swap! active-suite-runs disj run-id))))
 
 (mu/defn heartbeat-runs!
   "Stamp a heartbeat on the given runs while they are still started."
   [run-ids :- [:sequential ms/PositiveInt]]
-  (rt/heartbeat-ids! :model/DataTestRun [:status "started"] :last_heartbeat run-ids))
+  (when (seq run-ids)
+    (data-testing.db/heartbeat-started-runs! :model/DataTestRun run-ids)))
 
 (defn- call-or-log-failure
   "Call `thunk` and return its value. When `thunk` throws, log the throwable as a failure to `what`, a verb phrase such
@@ -107,7 +110,7 @@
    #(rt/heartbeat-and-reconcile! {:model      :model/TestSuiteRun
                                   :active     [:status "started"]
                                   :ids        @active-suite-runs
-                                  :heartbeat! (fn [ids] (rt/heartbeat-ids! :model/TestSuiteRun [:status "started"] :last_heartbeat ids))
+                                  :heartbeat! (fn [ids] (when (seq ids) (data-testing.db/heartbeat-started-runs! :model/TestSuiteRun ids)))
                                   :on-gone    (fn [id] (swap! active-suite-runs disj id))}))
   nil)
 
@@ -119,7 +122,8 @@
   (let [reaped (rt/reap-orphaned! {:model    model
                                    :active   [:status "started"]
                                    :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
-                                   :terminal {:status "timeout" :end_time :%now}})]
+                                   :set-terminal! #(data-testing.db/set-started-runs-terminal!
+                                                    model % {:status "timeout" :end_time :%now})})]
     (doseq [run reaped]
       (if-let [topic (topic-of run)]
         (call-or-log-failure

@@ -119,7 +119,8 @@
 (deftest table-write-check-loads-publication-columns-test
   (mt/with-temp [:model/Collection synced    {:name "Synced" :is_remote_synced true :location "/"}
                  :model/Database   db        {}
-                 :model/Table      published {:db_id (:id db) :is_published true :collection_id (:id synced)}
+                 :model/Table      published {:db_id (:id db)}
+                 :model/TableUserSettings _ {:table_id (:id published) :is_published true :collection_id (:id synced)}
                  :model/Table      plain     {:db_id (:id db)}]
     (let [partial-row #(t2/instance :model/Table {:id (:id %) :db_id (:db_id %)})
           writable-ids #(into #{}

@@ -1,24 +1,38 @@
 (ns metabase.audit-app.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.audit-app.spec :as audit.spec]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util.events :as u.events]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (events/derive! ::event :metabase/event)
 
-(events/register-sink! ::rows audit-log/record-rows!)
-
 (defn- record!
-  "Record the audit row of `topic` and `params` with the other rows of the batch, in their order, or at once outside a
-  batch."
+  "Record the audit row of `topic` and `params`."
   [topic params]
   (when-let [row (audit-log/audit-row topic params)]
-    (events/add-to-sink! ::rows row)))
+    (audit-log/create-audit-logs! [row])))
+
+(defn- record-each!
+  "Record the audit row that `build-row` makes of each of `items`, skipping an item whose row cannot be built."
+  [build-row items]
+  (let [rows (into []
+                   (keep (fn [item]
+                           (try
+                             (build-row item)
+                             (catch Exception e
+                               (log/warnf "Failed to build an audit row for event item %s: %s" (:id item) (ex-message e))
+                               nil))))
+                   items)]
+    (when (seq rows)
+      (audit-log/create-audit-logs! rows))))
 
 (defn- row-of
   "The row that the lifecycle `event` is about."
@@ -35,24 +49,63 @@
         (merge (select-keys row track) extra))
       (select-keys row track))))
 
+(defn- columns-edit?
+  "Whether the lifecycle `event` of a model with an audit spec is a create, a delete, or an update that changes a column
+  that its spec does not skip."
+  [{:keys [model object previous-object]}]
+  (or (not (and object previous-object))
+      (let [skipped (audit.spec/skipped-columns model)]
+        (boolean (some #(and (not (skipped %)) (not (audit.spec/same? model % previous-object object)))
+                       (into (set (keys object)) (keys previous-object)))))))
+
+(defn- details-edit-possible?
+  "Whether the lifecycle `event` says through its context that details changed beside the columns, for a model whose
+  spec stores details, which [[spec-edit?]] then compares."
+  [{:keys [model context]}]
+  (boolean (and (:details context) (:details (audit.spec/spec model)))))
+
+(defn- maybe-edit?
+  "Whether the lifecycle `event` may be a write whose row should say a user made it, which [[spec-edit?]] decides once
+  its rows are hydrated, without reading the app DB."
+  [{:keys [context] :as event}]
+  (and (nil? (:archived-with context))
+       (or (columns-edit? event) (details-edit-possible? event))))
+
 (defn- spec-edit?
-  "Whether the lifecycle `event` of a model with an audit spec is a write whose row should say a user made it: not one
-  that the archive or restore of another entity carried to its row, nor an update that changes nothing but the columns
-  that its spec skips, unless the write says through its context that details changed beside them."
+  "Whether the lifecycle `event` of a model with an audit spec, its rows hydrated, is a write whose row should say a
+  user made it: not one that the archive or restore of another entity carried to its row, nor an update that changes
+  nothing but the columns that its spec skips, unless the write says through its context that details changed beside
+  them."
   [{:keys [model context object previous-object] :as event}]
   (and (nil? (:archived-with context))
-       (or (not (and object previous-object))
-           (let [skipped (audit.spec/skipped-columns model)]
-             (boolean (or (some #(and (not (skipped %)) (not (audit.spec/same? model % previous-object object)))
-                                (into (set (keys object)) (keys previous-object)))
-                          (and (:details context)
-                               (:details (audit.spec/spec model))
-                               (not= (details-of model object event) (details-of model previous-object event)))))))))
+       (or (columns-edit? event)
+           (and (details-edit-possible? event)
+                (not= (details-of model object event) (details-of model previous-object event))))))
+
+(defn- hydrated
+  "The row `events` with their rows before and after the writes as the `:hydrate` of the spec of their model leaves
+  them, which loads what its `:details` and `:state` read, one call per model and `app-db/delete-partition-size` rows."
+  [events]
+  (let [slots (for [[i {:keys [model] :as event}] (map-indexed vector events)
+                    :when (:hydrate (audit.spec/spec model))
+                    k     [:object :previous-object]
+                    :when (some? (get event k))]
+                [model i k])]
+    (reduce (fn [events [model model-slots]]
+              (let [hydrate (:hydrate (audit.spec/spec model))
+                    rows    (into []
+                                  (mapcat (fn [slots] (hydrate (mapv (fn [[_ i k]] (get-in events [i k])) slots))))
+                                  (partition-all app-db/delete-partition-size model-slots))]
+                (reduce (fn [events [[_ i k] row]] (assoc-in events [i k] row))
+                        events
+                        (map vector model-slots rows))))
+            (vec events)
+            (group-by first slots))))
 
 (defn- default-topic
-  "The topic of the event that `model` publishes for `operation`, as it is stored."
-  [model operation]
-  (some-> (events/spec model) (get operation) name keyword))
+  "The topic of the lifecycle `event`, as it is stored: the one its write function published it under."
+  [{:keys [topic]}]
+  (some-> topic name keyword))
 
 (defn- stored-topic
   "The topic to store for the lifecycle `event`, nil when it records nothing."
@@ -62,7 +115,7 @@
       (if (keyword? topic)
         topic
         (when topic (topic event))))
-    (default-topic model operation)))
+    (default-topic event)))
 
 (defn- state-of
   "The state that the spec of `model` stores whole for `row`, as the lifecycle `event` leaves it."
@@ -96,153 +149,114 @@
     (subject event)
     [model (:id (row-of event))]))
 
-(defn- record-event!
-  "Record the row of the lifecycle `event` of a write by the user `user-id`, with `extra` beside its details, when its
-  spec stores a topic for it."
+(defn- event-row
+  "The audit row of the lifecycle `event` of a write by the user `user-id`, with `extra` beside its details, nil unless
+  its spec stores a topic for it."
   [event user-id extra]
   (when-let [topic (stored-topic event)]
     (when-let [details (event-details event)]
       (let [[model model-id] (subject-of event)]
-        (record! topic {:user-id  user-id
-                        :model    model
-                        :model-id model-id
-                        :details  (merge extra details)})))))
-
-(defn- chain-parent
-  "The `:parent` of `model` when a write of its rows counts as a write of the parent, nil otherwise."
-  [model]
-  (let [parent (audit.spec/parent model)]
-    (when-not (:topics parent)
-      parent)))
-
-(defn- parent-ref
-  "The `[parent-model parent-id]` of the row that the `event` writes."
-  [{:keys [model] :as event}]
-  (let [{parent-model :model k :key} (audit.spec/parent model)]
-    [parent-model (get (row-of event) k)]))
-
-(defn- parent-links
-  "The `[model id]` of the parent of each of `refs`, the `[model id]` of rows whose writes count as writes of a parent,
-  loaded together: one query for the rows of each model, however many levels there are above them."
-  [refs]
-  (loop [pending (into #{} (filter #(chain-parent (first %))) refs)
-         links   {}]
-    (if (empty? pending)
-      links
-      (let [found (into {}
-                        (mapcat (fn [[model refs*]]
-                                  (let [{parent-model :model k :key} (chain-parent model)]
-                                    (for [[id parent-id] (audit-app.db/parent-ids model k (map second refs*))]
-                                      [[model id] [parent-model parent-id]]))))
-                        (group-by first pending))]
-        (recur (into #{}
-                     (comp (map val)
-                           (filter #(chain-parent (first %)))
-                           (remove #(contains? (merge links found) %)))
-                     found)
-               (merge links found))))))
-
-(defn- top-ref
-  "The topmost parent that the `ref` leads up to, through `links`, nil when a parent is missing."
-  [links ref]
-  (loop [ref ref]
-    (cond
-      (nil? (chain-parent (first ref))) ref
-      (contains? links ref)             (recur (get links ref))
-      :else                             nil)))
+        (audit-log/audit-row topic {:user-id  user-id
+                                    :model    model
+                                    :model-id model-id
+                                    :details  (merge extra details)})))))
 
 (defn- rolled-roots
   "The audited models whose rows have the writes of other models counted as writes of them."
   []
   (into #{}
         (keep (fn [model]
-                (when (chain-parent model)
+                (when (audit.spec/parent model)
                   (loop [model model]
-                    (if-let [{parent-model :model} (chain-parent model)]
+                    (if-let [{parent-model :model} (audit.spec/parent model)]
                       (recur parent-model)
                       model)))))
         (audit.spec/audited-models)))
 
-(defn- record-own-rows!
-  "Record the rows of the writes of the models that record them as their own."
+(defn- root-touch?
+  "Whether the `event` is the touch of a row that the writes of other models count as writes of, or of a model whose
+  spec says that its touch records the row, which records the row as updated."
+  [roots {:keys [model] :as event}]
+  (and (u.events/touch? event)
+       (or (contains? roots model) (= :row (:touch (audit.spec/spec model))))))
+
+(defn- own-rows
+  "The rows of the writes of the models that record them as their own, a row whose parts changed being recorded as
+  updated by its touch."
   [events roots]
-  (doseq [{:keys [model user-id] :as event} events
-          :when (and user-id
-                     (nil? (audit.spec/parent model))
-                     (not (contains? roots model))
-                     (spec-edit? event))]
-    (record-event! event user-id (context-details event))))
+  (let [candidates (filter (fn [{:keys [model user-id] :as event}]
+                             (and user-id
+                                  (nil? (audit.spec/parent model))
+                                  (or (maybe-edit? event) (root-touch? roots event))))
+                           events)]
+    (for [{:keys [user-id] :as event} (hydrated candidates)
+          :when (or (spec-edit? event) (root-touch? roots event))
+          :let  [event (cond-> event
+                         (and (u.events/touch? event) (= :row (:touch (audit.spec/spec (:model event)))))
+                         (dissoc :previous-object))]]
+      (event-row event user-id (context-details event)))))
 
-(defn- record-parent-rows!
-  "Record, once per parent and topic, the writes of the models that record them under a parent with a topic, none for a
-  parent that the batch creates."
-  [events all-events]
-  (let [groups (group-by (fn [{:keys [model operation] :as event}]
-                           (let [topic (get (:topics (audit.spec/parent model)) operation)]
-                             (when topic
-                               [(parent-ref event) topic])))
-                         (filter #(:topics (audit.spec/parent (:model %))) events))]
-    (doseq [[[[parent-model parent-id :as ref] topic] group] groups
-            :when (and (some? ref)
-                       (some? parent-id)
-                       (some :user-id group)
-                       (not-any? #(and (= parent-model (:model %))
-                                       (= :create (:operation %))
-                                       (= parent-id (:id %)))
-                                 all-events))]
-      (record! topic {:user-id  (some :user-id group)
-                      :model    parent-model
-                      :model-id parent-id
-                      :details  ((:details (audit.spec/parent (:model (first group)))) parent-id group)}))))
-
-(defn- record-rolled-rows!
-  "Record, once per topmost parent, the writes of a batch to a row and to the rows that count as parts of it, as the
-  write of the row that its own events say, an update when there are none."
-  [events roots]
-  (let [parts   (filter #(chain-parent (:model %)) events)
-        links   (parent-links (into #{} (map parent-ref) parts))
-        ref-of  (fn [{:keys [model] :as event}]
-                  (if (contains? roots model)
-                    [model (:id (row-of event))]
-                    (top-ref links (parent-ref event))))
-        groups  (group-by ref-of (filter #(or (contains? roots (:model %)) (chain-parent (:model %))) events))]
-    (doseq [[[root-model root-id] group] groups
-            :let  [user-id (some :user-id group)]
-            :when (and (some? root-id) user-id (some spec-edit? group))
-            :let  [own   (first (filter #(= root-model (:model %)) group))
-                   event (or own
-                             (when-let [row (audit-app.db/row root-model root-id)]
-                               {:model root-model :operation :update :id root-id :object row}))]
-            :when event]
-      (record-event! event user-id {}))))
-
-(defn- record-moments!
-  "Record the rows that the spec of a model derives from a column that its writes change."
+(defn- moment-rows
+  "The rows that the spec of a model derives from a column that its writes change."
   [events]
-  (doseq [{:keys [model operation user-id] :as event} events
-          :when (and user-id (contains? #{:create :update} operation))
-          {moment-topic :topic, applies? :when, moment-details :details} (:moments (audit.spec/spec model))
-          :when (applies? event)]
-    (record! moment-topic {:user-id  user-id
-                           :model    model
-                           :model-id (:id (row-of event))
-                           :details  (if moment-details (moment-details event) {})})))
+  (let [pairs   (vec (for [{:keys [model operation user-id] :as event} events
+                           :when (and user-id (contains? #{:create :update} operation))
+                           {applies? :when, :as moment} (:moments (audit.spec/spec model))
+                           :when (applies? event)]
+                       [event moment]))
+        details (reduce (fn [acc [details-fn entries]]
+                          (cond-> acc
+                            details-fn (into (map vector (map first entries) (details-fn (mapv (comp first second) entries))))))
+                        {}
+                        (group-by (comp :details second second) (map-indexed vector pairs)))]
+    (for [[i [{:keys [user-id] :as event} {moment-topic :topic}]] (map-indexed vector pairs)
+          :let [[subject-model subject-id] (subject-of event)]]
+      (audit-log/audit-row moment-topic {:user-id  user-id
+                                         :model    subject-model
+                                         :model-id subject-id
+                                         :details  (get details i {})}))))
 
 (defn- record-lifecycle-events!
-  "Record the rows of the lifecycle events of the audited models of a batch, once per batch."
-  [_owner events all-events]
+  "Record the rows of the lifecycle events of the audited models of one event."
+  [events]
   (when (premium-features/log-enabled?)
-    (let [roots (rolled-roots)]
-      (record-own-rows! events roots)
-      (record-parent-rows! events all-events)
-      (record-rolled-rows! events roots)
-      (record-moments! events))))
+    (audit-log/create-audit-logs! (into []
+                                        (remove nil?)
+                                        (concat (own-rows events (rolled-roots))
+                                                (moment-rows events))))))
 
-(events/register-owned-consumer! ::lifecycle
-                                 (fn [{:keys [model]}]
-                                   (when (audit.spec/spec model)
-                                     ::lifecycle))
-                                 record-lifecycle-events!)
+(events/derive! :metabase/lifecycle-event ::lifecycle)
+
+(methodical/defmethod events/publish-event! ::lifecycle
+  [topic event]
+  (when-let [events (not-empty (filterv (fn [{:keys [model]}] (audit.spec/spec model)) (u.events/row-events topic event)))]
+    (record-lifecycle-events! events)))
+
+(events/derive! ::dashboard-cards-event ::event)
+(events/derive! :event/dashboard-add-cards ::dashboard-cards-event)
+(events/derive! :event/dashboard-remove-cards ::dashboard-cards-event)
+
+(methodical/defmethod events/publish-event! ::dashboard-cards-event
+  "Record the dashcards that a write added to or removed from Dashboards, with the name and description of their
+  Cards, read together, one row for each entry of `:objects` (an `:object` with its `:dashcards`, or the event
+  itself when it has no `:objects`), as [[record-each!]] does."
+  [topic {:keys [objects object dashcards user-id]}]
+  (when (and user-id (premium-features/log-enabled?))
+    (let [entries (or objects [{:object object :dashcards dashcards}])
+          cards   (into {}
+                        (map (juxt :id #(select-keys % [:name :description])))
+                        (audit-app.db/cards (into [] (comp (mapcat :dashcards) (map :card_id)) entries)))]
+      (record-each! (fn [{:keys [object dashcards]}]
+                      (audit-log/audit-row topic
+                                           {:details  (-> (select-keys object [:description :name :id])
+                                                          (assoc :dashcards (for [{:keys [id card_id]} dashcards]
+                                                                              (-> (get cards card_id)
+                                                                                  (assoc :id id)
+                                                                                  (assoc :card_id card_id)))))
+                                            :user-id  user-id
+                                            :model    :model/Dashboard
+                                            :model-id (:id object)}))
+                    entries))))
 
 (def ^:private object-columns
   "The columns that the row of each event of a manual action stores of its object, for the models that have no audit
@@ -274,16 +288,30 @@
     (select-keys object (get object-columns topic))
 
     (and (t2/instance? object) (audit.spec/spec (t2/model object)))
-    (details-of (t2/model object) object {:object object :topic topic})
+    (let [model  (t2/model object)
+          object (if-let [hydrate (:hydrate (audit.spec/spec model))]
+                   (first (hydrate [object]))
+                   object)]
+      (details-of model object {:object object :topic topic}))
 
     :else
     {}))
 
+(defn- manual-params
+  "The params of the audit row of `topic` of a manual action on `object`, the event `params` with what its spec stores
+  of `object` in the details."
+  [topic object params]
+  (assoc params :details (merge (:details params) (manual-details topic object))))
+
 (defn- record-manual!
-  "Record the audit row of `topic` and the event `params` of a manual action, with what its spec stores of its object."
-  [topic {:keys [object] :as params}]
+  "Record the audit row of `topic` and the event `params` of a manual action, with what its spec stores of its object,
+  or one row for each of its `:objects`, as [[record-each!]] does."
+  [topic {:keys [object objects] :as params}]
   (when (premium-features/log-enabled?)
-    (record! topic (assoc params :details (merge (:details params) (manual-details topic object))))))
+    (if objects
+      (record-each! #(audit-log/audit-row topic (manual-params topic % (assoc (dissoc params :objects) :object %)))
+                    objects)
+      (record! topic (manual-params topic object params)))))
 
 (events/derive! ::table-event ::event)
 (events/derive! :event/table-manual-scan ::table-event)
@@ -323,23 +351,42 @@
     {}))
 
 (events/derive! ::notification-event ::event)
-(events/derive! :event/notification-create ::notification-event)
 (events/derive! :event/notification-update ::notification-event)
 (events/derive! :event/notification-unsubscribe ::notification-event)
 
 (methodical/defmethod events/publish-event! ::notification-event
-  [topic {:keys [object previous-object user-id] :as event}]
+  "Record one row for each of the `:objects` of the event (an `:object` with its `:previous-object`, or the event
+  itself when it has no `:objects`), as [[record-each!]] does."
+  [topic {:keys [objects user-id] :as event}]
   (when (premium-features/log-enabled?)
-    (record! topic
-             {:details  (merge (:details event)
-                               (if (not-empty previous-object)
-                                 (audit-log/update-details (notification-details object)
-                                                           (notification-details previous-object))
-                                 (notification-details object)))
-              :object   object
-              :model    :model/Notification
-              :model-id (:id object)
-              :user-id  user-id})))
+    (record-each! (fn [{:keys [object previous-object]}]
+                    (audit-log/audit-row topic
+                                         {:details  (merge (:details event)
+                                                           (if (not-empty previous-object)
+                                                             (audit-log/update-details (notification-details object)
+                                                                                       (notification-details previous-object))
+                                                             (notification-details object)))
+                                          :object   object
+                                          :model    :model/Notification
+                                          :model-id (:id object)
+                                          :user-id  user-id}))
+                  (or objects [event]))))
+
+(events/derive! ::notification-create-event ::event)
+(events/derive! :event/notification-create ::notification-create-event)
+
+(methodical/defmethod events/publish-event! ::notification-create-event
+  "Record one row for each Notification that `:objects` (or `:object`) holds, as [[record-each!]] does."
+  [topic {:keys [object objects user-id]}]
+  (when (premium-features/log-enabled?)
+    (record-each! (fn [notification]
+                    (audit-log/audit-row topic
+                                         {:details  (notification-details notification)
+                                          :object   notification
+                                          :model    :model/Notification
+                                          :model-id (:id notification)
+                                          :user-id  user-id}))
+                  (or objects [object]))))
 
 (events/derive! ::notification-handler-event ::event)
 (events/derive! :event/notification-unsubscribe-ex ::notification-handler-event)
@@ -384,12 +431,25 @@
     (record! topic (assoc event :details (merge (:details event) (user-details topic object))))))
 
 (events/derive! ::session-event ::event)
-(events/derive! :event/session-revoked ::session-event)
 (events/derive! :event/sessions-revoked ::session-event)
 
 (methodical/defmethod events/publish-event! ::session-event
   [topic event]
   (record-manual! topic event))
+
+(events/derive! ::session-revoked-event ::event)
+(events/derive! :event/session-revoked ::session-revoked-event)
+
+(methodical/defmethod events/publish-event! ::session-revoked-event
+  "Record one row for each User whose sessions `:objects` holds with their `:count`, as [[record-each!]] does."
+  [topic {:keys [user-id details objects]}]
+  (when (premium-features/log-enabled?)
+    (record-each! (fn [{:keys [id count]}]
+                    (audit-log/audit-row topic {:user-id  user-id
+                                                :model    :model/User
+                                                :model-id id
+                                                :details  (assoc details :count count)}))
+                  objects)))
 
 (events/derive! ::user-joined-event ::event)
 (events/derive! :event/user-joined ::user-joined-event)
@@ -502,7 +562,6 @@
 (events/derive! ::transform-event ::event)
 (events/derive! :event/transform-run-start ::transform-event)
 (events/derive! :event/transform-run-canceled ::transform-event)
-(events/derive! :event/transform-run-timeout ::transform-event)
 (events/derive! :event/transform-test-run-start ::transform-event)
 (events/derive! :event/transform-test-run-timeout ::transform-event)
 (events/derive! :event/transform-inspect-discover ::transform-event)
@@ -511,6 +570,20 @@
 (methodical/defmethod events/publish-event! ::transform-event
   [topic event]
   (record-manual! topic event))
+
+(events/derive! ::transform-run-timeout-event ::event)
+(events/derive! :event/transform-run-timeout ::transform-run-timeout-event)
+
+(methodical/defmethod events/publish-event! ::transform-run-timeout-event
+  "Record one row for each run that `:objects` (or `:object`) holds, as [[record-each!]] does."
+  [topic {:keys [object objects user-id]}]
+  (when (premium-features/log-enabled?)
+    (record-each! (fn [run]
+                    (audit-log/audit-row topic
+                                         {:details (manual-details topic run)
+                                          :object  run
+                                          :user-id (or user-id (:user_id run))}))
+                  (or objects [object]))))
 
 (events/derive! ::card-test-event ::event)
 (events/derive! :event/card-test-run-start ::card-test-event)

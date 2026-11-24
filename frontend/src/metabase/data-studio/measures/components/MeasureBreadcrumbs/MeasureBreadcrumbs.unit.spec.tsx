@@ -31,7 +31,7 @@ const TEST_TABLE = createMockTable({
   db: SINGLE_SCHEMA_DB,
   display_name: "Orders",
   schema: "PUBLIC",
-  collection_id: 1,
+  collection: createMockCollection({ id: 1 }),
 });
 
 const TEST_MEASURE = createMockMeasure({
@@ -140,12 +140,12 @@ describe("PublishedTableMeasureBreadcrumbs", () => {
     expect(newMeasureText.closest("a")).toBeNull();
   });
 
-  it("renders without collection when collection_id is null", async () => {
+  it("renders without collection when table has no collection", async () => {
     const tableNoCollection = createMockTable({
       ...TEST_TABLE,
       id: 44,
       display_name: "Unpublished Table",
-      collection_id: null,
+      collection: null,
     });
 
     setupCollectionByIdEndpoint({

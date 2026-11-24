@@ -45,9 +45,8 @@
       ;; Feature available — resolve allowed fields from source cards
       (let [card-ids    (into #{} (keep :card_id) sandboxes)
             cards-by-id (when (seq card-ids)
-                          (into {}
-                                (map (juxt :id identity))
-                                (sandbox.db/cards-result-metadata card-ids)))]
+                          (update-vals (sandbox.db/cards-result-metadata (vec card-ids))
+                                       (fn [result-metadata] {:result_metadata result-metadata})))]
         (not-empty
          (into {}
                (keep (fn [{:keys [table_id card_id]}]

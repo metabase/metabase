@@ -94,18 +94,14 @@ const CARD_PROVIDER = createMetadataProvider({
 });
 
 const createMbqlCard = (spec: TestQuerySpec) =>
-  createGeneratedCard(
-    Lib.toLegacyQuery(Lib.createTestQuery(CARD_PROVIDER, spec)),
-  );
+  createGeneratedCard(Lib.createTestJsQuery(CARD_PROVIDER, spec));
 
 const createNativeCard = (
   sql = "SELECT * FROM ORDERS",
   templateTags?: TestTemplateTags,
 ) =>
   createGeneratedCard(
-    Lib.toLegacyQuery(
-      Lib.createTestNativeQuery(CARD_PROVIDER, { query: sql, templateTags }),
-    ),
+    Lib.createTestJsNativeQuery(CARD_PROVIDER, { query: sql, templateTags }),
   );
 
 const createNativeQueryWithJoin = () => {
@@ -369,29 +365,21 @@ describe("MetabotAgentDataSourcePills", () => {
     ).toBeInTheDocument();
   });
 
-  it.each([
-    { format: "legacy", toDatasetQuery: Lib.toLegacyQuery },
-    { format: "MBQL 5", toDatasetQuery: Lib.toJsQuery },
-  ])(
-    "lists a table joined after a native stage as a source ($format)",
-    async ({ toDatasetQuery }) => {
-      setupTableEndpoints(PRODUCTS_TABLE);
-      fetchMock.post(FIELD_TABLE_IDS_ENDPOINT, { table_ids: [] });
+  it("lists a table joined after a native stage as a source", async () => {
+    setupTableEndpoints(PRODUCTS_TABLE);
+    fetchMock.post(FIELD_TABLE_IDS_ENDPOINT, { table_ids: [] });
 
-      renderWithProviders(
-        <GeneratedCardTablePills
-          messageId="message-6"
-          value={createGeneratedCard(
-            toDatasetQuery(createNativeQueryWithJoin()),
-          )}
-        />,
-      );
+    renderWithProviders(
+      <GeneratedCardTablePills
+        messageId="message-6"
+        value={createGeneratedCard(Lib.toJsQuery(createNativeQueryWithJoin()))}
+      />,
+    );
 
-      expect(
-        await screen.findByRole("link", { name: "Products" }),
-      ).toBeInTheDocument();
-    },
-  );
+    expect(
+      await screen.findByRole("link", { name: "Products" }),
+    ).toBeInTheDocument();
+  });
 
   it("renders extracted native query model sources", async () => {
     const sql = "SELECT * FROM {{#4}}";

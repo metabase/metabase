@@ -49,13 +49,24 @@
 (mu/defn unacknowledged-advisories-by-advisory-ids
   "The unacknowledged SecurityAdvisories with the external `advisory-ids`."
   [advisory-ids :- [:set :string]]
-  (t2/select :model/SecurityAdvisory :advisory_id [:in advisory-ids] :acknowledged_at nil))
+  (mdb/select-batched #(t2/select :model/SecurityAdvisory :advisory_id [:in %] :acknowledged_at nil) advisory-ids))
 
 (mu/defn update-advisory!
   "Apply `changes` to the SecurityAdvisory with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::security-center.schema/security-advisory.update [:match_status :last_evaluated_at :acknowledged_by :acknowledged_at :last_notified_at])]
   (t2/update! :model/SecurityAdvisory :id id changes))
+
+(mu/defn advisories-by-ids
+  "The SecurityAdvisories with `ids`, in any order."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (mdb/select-batched #(t2/select :model/SecurityAdvisory :id [:in [:auto/param %]]) ids))
+
+(mu/defn update-advisories!
+  "Apply `changes` to the SecurityAdvisories with `ids`, returning the number updated."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- (mut/select-keys ::security-center.schema/security-advisory.update [:acknowledged_by])]
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/SecurityAdvisory :id [:in [:auto/param %]] changes) ids))
 
 (mu/defn record-advisory-evaluation!
   "Apply `changes` to the SecurityAdvisory with `id` and stamp `last_evaluated_at` with now, returning the number
@@ -84,7 +95,9 @@
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, names, and email of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-fn->fn :id identity [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
+  (mdb/select-batched-map #(t2/select-fn->fn :id identity [:model/User :id :first_name :last_name :email]
+                                             :id [:in %])
+                          user-ids))
 
 (mu/defn group-queryable-databases :- [:sequential [:map [:id ms/PositiveInt] [:name :string]]]
   "The id and name, in name order, of the databases other than the Sample Database that the group with `group-id` can
@@ -118,3 +131,13 @@
   "Whether a connection impersonation policy exists on the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/ConnectionImpersonation :db_id database-id))
+
+(mu/defn delete-all-advisories!
+  "Delete every SecurityAdvisory."
+  []
+  (t2/delete! :model/SecurityAdvisory))
+
+(mu/defn insert-advisories!
+  "Insert `advisories` and return the inserted SecurityAdvisory instances."
+  [advisories :- [:sequential ::security-center.schema/security-advisory.update]]
+  (mdb/insert-returning-instances! :model/SecurityAdvisory advisories))
