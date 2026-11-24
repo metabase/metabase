@@ -64,7 +64,13 @@ If you've [enabled tenants](../embedding/tenants.md#enable-multi-tenant-strategy
 
 Adding a group to an app lets people in that group open the app, and gives the group read access to the app's collection. Adding a group doesn't change their [data permissions](../permissions/data.md).
 
-If the **Data access** column says **Missing N tables**, people in that group don't have [Can view](../permissions/data.md#can-view-data-permission) access to some of the tables that the app's questions and actions read. The check counts the group's own access, and All Users access (for tenant groups, All tenant users access), but not access that people get from their other groups. The check also doesn't look at [row and column security](../permissions/row-and-column-security.md): a group with row and column security can show **All tables**, but people in that group can't run the app's actions on that database. And since the check uses the [dependency graph](../data-modeling/tools/graph.md), which updates in the background, a warning can lag behind your latest edits.
+If the Data access column shows Missing N tables, that group lacks [suspicious link removed] access to some tables used by the app's questions and actions. Keep these details in mind:
+
+If the **Data access** column shows **Missing N tables**, that group lacks [Can view](../permissions/data.md#can-view-data-permission) access to some tables used by the app's questions and actions. Some notes on the permission check:
+
+- **Group scope:** The check includes the group's permissions plus All Users (or All tenant users for tenant groups), but excludes access from other groups.
+- **Row and column security:** Not checked. A group with [row and column security](../permissions/row-and-column-security.md) may show **All tables**, yet still be unable to run the app's actions on that database.
+- **Sync lag:** Warnings rely on the [dependency graph](../data-modeling/tools/graph.md), which updates in the background and may lag behind recent edits.
 
 ![Data app Permissions tab](./images/data-apps-permissions-tab.png)
 
@@ -85,24 +91,36 @@ Then merge the branch into the branch that your production Metabase pulls from, 
 
 Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access. To take an app offline without deleting it, [make it a draft](#make-an-app-live-or-a-draft).
 
-## Serve apps from a separate address
+## Isolate app code on a separate domain
 
-On a self-hosted Metabase, you can serve apps from a second address to keep app code away from people's sessions. Browsers don't send the session cookie to that address, so an app can reach Metabase only through the page that shows it. Embedded data apps don't use the second address.
+By default, an app's code runs in a sandbox at your [Site URL](../configuring-metabase/settings.md#site-url), the same address where people log in to Metabase. If you self-host Metabase, you can add another layer of protection by running the app's code at a second address, where no one is logged in.
 
-Once you set a second address, people can open apps only at your [Site URL](../configuring-metabase/settings.md#site-url). If people can also reach your Metabase at another address, the app page there shows an **Open data app** button that goes to the Site URL.
+People don't go to the second address themselves. They still open apps at your Site URL, like `https://metabase.example.com/apps/sales`. The Metabase page at your Site URL shows the app in a frame, and only that frame uses the second address. The app's code can't send requests to Metabase on its own. To read or write data, the app asks the Metabase page, and the page makes the request for the person who's logged in.
 
-1. Pick a host name on a separate domain. For a Metabase at `metabase.example.com`, use something like `example-isolated.com`.
+![A flow diagram of app code on a separate domain. People open the app on a Metabase page at metabase.example.com, where they're logged in. The app's code runs in a frame in that page. The frame is at example-isolated.com, where no one is logged in. First, the app's code asks the page for data. Then the page reads and writes data in your Metabase. Direct requests from the app's code to your Metabase are blocked.](./images/data-app-separate-domain.png)
 
-   Avoid subdomains like `apps.example.com`. Browsers treat subdomains as one site, so app code could plant cookies and send requests with the session cookie. A separate domain stops those requests only if [`MB_SESSION_COOKIE_SAMESITE`](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite) is `lax` (the default) or `strict`.
+[What an app can read and write](./build.md#what-a-data-app-can-read-and-write) stays the same.
 
-2. Point the host name at the same Metabase. Your reverse proxy must pass on the host name in the `Host` or `X-Forwarded-Host` header, or apps won't load. If Metabase runs under a path, use the same path on both addresses.
+Once you set up a second address, apps open only at your Site URL. If people can also reach your Metabase at other addresses, like an internal host name, the app page there shows an **Open data app** button that takes them to your Site URL.
 
-3. Set the [`MB_ISOLATED_ORIGIN`](../configuring-metabase/environment-variables.md#mb_isolated_origin) environment variable to the second address, then restart Metabase:
+Embedded data apps don't use the second address.
+
+### Set up a second address
+
+1. Make sure you've set your [Site URL](../configuring-metabase/settings.md#site-url).
+
+2. Pick a host name on a separate domain, not a subdomain of your Metabase's domain. For example, if your Metabase is at `metabase.example.com`, use `example-isolated.com` instead of `apps.example.com`.
+
+   Browsers treat subdomains of the same domain as one site. If app code at `apps.example.com` tried to send a request to `metabase.example.com`, the browser would include the person's session cookie. Metabase guards against these requests either way, but with a separate domain, the browser leaves out the cookie in the first place, as long as [`MB_SESSION_COOKIE_SAMESITE`](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite) is `lax` (the default) or `strict`.
+
+3. Point the host name at the same Metabase. Your reverse proxy must pass on the host name in the `Host` or `X-Forwarded-Host` header, so that Metabase can tell the two addresses apart. Otherwise, apps won't load. If Metabase runs under a path, use the same path on both addresses.
+
+4. Set the [`MB_ISOLATED_ORIGIN`](../configuring-metabase/environment-variables.md#mb_isolated_origin) environment variable to the second address, then restart Metabase:
 
    ```
    MB_ISOLATED_ORIGIN=https://example-isolated.com
    ```
 
-   The value can have only a scheme, host name, and port. Leave out the path, even if Metabase runs under one. The host name must differ from the Site URL's (a different port isn't enough), and the value must use `https` if the Site URL does.
+   The value can have only a scheme, host name, and port. Leave out the path, even if Metabase runs under one. The host name must differ from the Site URL's (a different port isn't enough), and the value must use `https` if the Site URL uses it.
 
-If the value breaks these rules, or you haven't set a Site URL, Metabase turns off data apps, except embedded ones. The app page says **Data apps are unavailable**, and the [server logs](../monitor/application-logs.md) say why.
+If the value breaks these rules, or you haven't set a Site URL, Metabase turns off data apps (except embedded apps) until you fix the problem. The app page says **Data apps are unavailable**, and the [server logs](../monitor/application-logs.md) say why.
