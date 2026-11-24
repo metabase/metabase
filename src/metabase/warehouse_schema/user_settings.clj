@@ -12,8 +12,8 @@
     :is_grain :attribute_scd_type :facets})
 
 (def field-set-flags
-  "The user-settable Field columns sync also writes, mapped to the flag that says the user set the column, NULL
-  included."
+  "The user-settable Field columns sync also writes, and the structural metadata columns, mapped to the flag that says
+  the user set the column, NULL included."
   {:description        :description_set
    :semantic_type      :semantic_type_set
    :fk_target_field_id :fk_target_field_id_set
@@ -41,8 +41,8 @@
     :eav_definition})
 
 (def table-set-flags
-  "The user-settable Table columns something besides users also writes, mapped to the flag that says the user set the
-  column, NULL included."
+  "The user-settable Table columns something besides users also writes, and the structural metadata columns, mapped to
+  the flag that says the user set the column, NULL included."
   {:description        :description_set
    :visibility_type    :visibility_type_set
    :data_layer         :data_layer_set

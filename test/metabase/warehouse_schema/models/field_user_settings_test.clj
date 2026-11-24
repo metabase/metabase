@@ -49,7 +49,8 @@
   (mt/with-temp [:model/Field             {field-id :id} {}
                  :model/FieldUserSettings _              {:field_id field-id, :display_name "User Name"}]
     (t2/update! :metabase_field_user_settings :field_id field-id {:facets "{\"time\":\"type/NotAType\"}"})
-    (is (= {} (t2/select-one-fn :facets :model/FieldUserSettings :field_id field-id)))))
+    (testing "stored facets that are all dropped read as nil"
+      (is (nil? (t2/select-one-fn :facets :model/FieldUserSettings :field_id field-id))))))
 
 (deftest bad-stored-facets-read-as-nil-test
   (mt/with-temp [:model/Field             {field-id :id} {}
@@ -68,7 +69,7 @@
   {:is_grain_set true, :attribute_scd_type_set true, :facets_set true})
 
 (defn- field-row
-  "The Field row."
+  "The Field with `field-id`, read through the model so its columns come back decoded."
   [field-id]
   (t2/select-one :model/Field :id field-id))
 

@@ -60,7 +60,7 @@
         (is (= (name good) (write transforms column good)))
         (is (= (name good) (write transforms column (name good))))
         (is (nil? (write transforms column nil)))
-        (is (=? {:status-code 400, :errors {column some?}, :value bad}
+        (is (=? {:status-code 400, :errors {column some?}, :value (keyword bad)}
                 (write-error transforms column bad)))
         (is (= good (read-back transforms column (name good))))
         (is (nil? (read-back transforms column bad)))))))
@@ -88,6 +88,9 @@
              (read-back transforms :facets
                         "{\"key\":\"type/DurableKey\",\"time\":\"type/DurableKey\",\"lifecycle\":\"type/Flag\"}"))
           "a type under a key that does not list it is dropped"))
+    (testing "stored facets that are all dropped read as nil, but stored empty facets read as empty"
+      (is (nil? (read-back transforms :facets "{\"time\":\"type/PK\"}")))
+      (is (= {} (read-back transforms :facets "{}"))))
     (testing "stored facets that are not a JSON object read as nil"
       (is (nil? (read-back transforms :facets "[\"type/Category\"]")))
       (is (nil? (read-back transforms :facets "not json"))))
