@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
+   [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.lib-be.core :as lib-be]
@@ -47,7 +48,9 @@
             ;; NOTE: The metadata provider caches must be small here - if the cache spans a sync it will see
             ;; old values after the sync!
             (lib-be/with-metadata-provider-cache
-              (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Card :id card-id)))
+              (models.analysis-finding/upsert-analyses!
+               :card {card-id (:analysis (deps.analysis-finding/analyze-entity
+                                          (t2/select-one :model/Card :id card-id)))}))
             (testing "Initial analysis succeeds"
               (is (true? (t2/select-one-fn :result :model/AnalysisFinding
                                            :entity_type :card :entity_id card-id)))

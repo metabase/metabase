@@ -1,7 +1,6 @@
 (ns metabase.auth-identity.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.query :as mdb.query]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]
@@ -64,5 +63,5 @@
       (is (contains? single user-a))
       (is (contains? single user-c))
       (is (not (contains? single user-b)))
-      (is (= single (with-redefs [mdb.query/select-partition-size 2]
+      (is (= single (mt/with-partition-size 2
                       (auth-identity.db/user-ids-with-used-password user-ids)))))))

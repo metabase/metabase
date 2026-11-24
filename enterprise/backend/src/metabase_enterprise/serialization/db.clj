@@ -25,7 +25,7 @@
    ids   :- [:sequential ms/PositiveInt]]
   (mdb/select-batched-set #(t2/select-pks-set model {:where [:in :id %]}) ids))
 
-(mu/defn existing-pks :- [:set :any]
+(mu/defn existing-pks :- [:set ms/PositiveInt]
   "The subset of `pks` that are primary keys of `model` rows."
   [model :- :keyword
    pks   :- [:sequential ms/PositiveInt]]
@@ -81,7 +81,7 @@
   (t2/reducible-select model {:where    where
                               :order-by (mapv (fn [column] [column :asc]) order-columns)}))
 
-(mu/defn entity-id->pk :- [:map-of :string :any]
+(mu/defn entity-id->pk :- [:map-of :string ms/PositiveInt]
   "The primary key of each `model` row with one of `entity-ids`, by entity id."
   [model      :- :keyword
    entity-ids :- [:sequential :string]]

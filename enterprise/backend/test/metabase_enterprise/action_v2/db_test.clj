@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.db :as action-v2.db]
-   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]))
 
@@ -37,6 +36,6 @@
             row-pks   #{{:id 1} {:id 2} {:id 3}}
             f         #(action-v2.db/superseding-change-exists? true table-ids row-pks 1)]
         (is (true? (f)))
-        (is (true? (with-redefs [mdb.query/select-partition-size 2] (f))))
-        (is (false? (with-redefs [mdb.query/select-partition-size 2]
+        (is (true? (mt/with-partition-size 2 (f))))
+        (is (false? (mt/with-partition-size 2
                       (action-v2.db/superseding-change-exists? true table-ids #{{:id 1} {:id 2}} 1))))))))

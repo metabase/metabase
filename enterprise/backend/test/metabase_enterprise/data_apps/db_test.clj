@@ -2,8 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.db :as data-apps.db]
-   [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -22,6 +20,5 @@
         rows      #(frequencies (map (juxt :group_id :db_id :perm_type :table_id :perm_value) %))]
     (testing "the database-wide rows once, from partitions of the tables"
       (is (= (rows (data-apps.db/permissions-for-warnings group-ids [(mt/id)] table-ids))
-             (rows (with-redefs [mdb.query/select-partition-size 2
-                                 mdb/select-partition-size       2]
+             (rows (mt/with-partition-size 2
                      (data-apps.db/permissions-for-warnings group-ids [(mt/id)] table-ids))))))))

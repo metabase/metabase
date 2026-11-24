@@ -606,7 +606,7 @@
   (t2/select-one-fn :max-last-used-at [:model/FieldValues [[:max :last_used_at] :max-last-used-at]]
                     {:where [:= :field_id field-id]}))
 
-(mu/defn field-values-last-used-at-by-field :- [:map-of ::lib.schema.id/field :any]
+(mu/defn field-values-last-used-at-by-field :- [:map-of ::lib.schema.id/field ms/TemporalInstant]
   "The latest `last_used_at` of any FieldValues of each of the Fields with `field-ids` that has any, by Field id."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (app-db/select-batched-map

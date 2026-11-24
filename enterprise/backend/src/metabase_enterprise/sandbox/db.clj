@@ -6,6 +6,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -32,11 +33,6 @@
   [group-ids :- [:set ms/PositiveInt]
    table-id  :- ::lib.schema.id/table]
   (mdb/select-batched #(t2/select :model/Sandbox :group_id [:in %] :table_id table-id) group-ids))
-
-(mu/defn sandboxes-using-card
-  "The `:id` and `:table_id` of the Sandboxes built on the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select [:model/Sandbox :id :table_id] :card_id card-id))
 
 (mu/defn sandboxes-using-cards
   "A map of Card id to the `:id` and `:table_id` of the Sandboxes built on it, for the Cards with `card-ids` that have
@@ -177,16 +173,11 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (u/index-by :id (queries/cards-queries-info card-ids)))
 
-(mu/defn cards-result-metadata :- [:map-of ::lib.schema.id/card :any]
+(mu/defn cards-result-metadata :- [:map-of ::lib.schema.id/card [:maybe ::queries.schema/card.result-metadata]]
   "The result metadata of each Card with an id among `card-ids`, by Card id."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
   (mdb/select-batched-map #(t2/select-pk->fn :result_metadata :model/Card :id [:in [:auto/param %]])
                           card-ids))
-
-(mu/defn card-result-metadata
-  "The result metadata of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :result_metadata :model/Card :id card-id))
 
 (mu/defn sandboxing-cards
   "The `:id`, `:dataset_query`, and `:database_id` of the Cards Sandboxes are built on."

@@ -1,8 +1,6 @@
 (ns metabase.metabot.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.db :as metabot.db]
@@ -91,8 +89,7 @@
                                                     (metabot.db/database-table-names-like (mt/id) ["v" "ve" "o"])))
                        :excluding (into #{} (map :id) (metabot.db/visible-tables-excluding (mt/id) (take 4 table-ids)))}))
         single    (read-all)
-        partition-reads (fn [] (with-redefs [mdb.query/select-partition-size 2
-                                             mdb/select-partition-size       2]
+        partition-reads (fn [] (mt/with-partition-size 2
                                  (read-all)))]
     (is (= (count table-ids) (count (:tables single))))
     (is (= #{1} (set (vals (:like single)))))

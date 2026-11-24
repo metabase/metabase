@@ -355,7 +355,7 @@
             (is (not (deps.test/run-analysis-finding-job!)) "and leave nothing to do")))))))
 
 (deftest ^:synchronized python-transform-records-clean-finding-test
-  (testing "GHY-3584: a Python transform has no query, so upsert-analysis! resolves its database from source_database_id and records a clean finding"
+  (testing "GHY-3584: a Python transform has no query, so its analysis resolves its database from source_database_id and records a clean finding"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/AnalysisFindingError]
         (mt/with-temp [:model/Transform {transform-id :id} {:source {:type            :python
@@ -363,7 +363,9 @@
                                                                      :source-tables   []
                                                                      :body            "def transform():\n    pass"}}]
           (lib-be/with-metadata-provider-cache
-            (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Transform :id transform-id)))
+            (models.analysis-finding/upsert-analyses!
+             :transform {transform-id (:analysis (deps.analysis-finding/analyze-entity
+                                                  (t2/select-one :model/Transform :id transform-id)))}))
           (is (=? {:result true}
                   (t2/select-one :model/AnalysisFinding :entity_type :transform :entity_id transform-id)))
           (is (empty? (models.analysis-finding-error/errors-for-entity :transform transform-id))))))))
@@ -378,8 +380,9 @@
                                                             :body            "def transform():\n    pass"}}]
           (let [transform-id (:id transform)]
             (lib-be/with-metadata-provider-cache
-              (deps.analysis-finding/upsert-analysis!
-               (t2/instance :model/Transform (assoc transform :source_database_id nil))))
+              (models.analysis-finding/upsert-analyses!
+               :transform {transform-id (:analysis (deps.analysis-finding/analyze-entity
+                                                    (t2/instance :model/Transform (assoc transform :source_database_id nil))))}))
             (is (false? (t2/select-one-fn :result :model/AnalysisFinding
                                           :entity_type :transform :entity_id transform-id)))
             (is (seq (models.analysis-finding-error/errors-for-entity :transform transform-id))
@@ -395,20 +398,23 @@
                                                             :body            "def transform():\n    pass"}}]
           (let [transform-id (:id transform)]
             (lib-be/with-metadata-provider-cache
-              (deps.analysis-finding/upsert-analysis!
-               (t2/instance :model/Transform (assoc transform :source_database_id nil))))
+              (models.analysis-finding/upsert-analyses!
+               :transform {transform-id (:analysis (deps.analysis-finding/analyze-entity
+                                                    (t2/instance :model/Transform (assoc transform :source_database_id nil))))}))
             (is (seq (models.analysis-finding-error/errors-for-entity :transform transform-id)))
             (lib-be/with-metadata-provider-cache
-              (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Transform :id transform-id)))
+              (models.analysis-finding/upsert-analyses!
+               :transform {transform-id (:analysis (deps.analysis-finding/analyze-entity
+                                                    (t2/select-one :model/Transform :id transform-id)))}))
             (is (empty? (models.analysis-finding-error/errors-for-entity :transform transform-id))
                 "re-analyzed normally: the database error is replaced by a clean result")))))))
 
 (deftest ^:synchronized analyze-batch-shares-one-metadata-provider-test
   (testing "Every entity in an analysis batch must share one MetadataProvider per database. Reading an entity attaches
            a provider to its query, so selecting the batch outside the cache gives each entity a private one. Nothing
-           reads through those providers today -- upsert-analysis! builds its own from the database id and passes it
+           reads through those providers today -- analyze-entity builds its own from the database id and passes it
            explicitly -- so this is a latent trap rather than a live leak: the moment an entity is analyzed through its
-           own query, a batch of 500 retains 500 providers' worth of fetched metadata. upsert-analysis! already throws
+           own query, a batch of 500 retains 500 providers' worth of fetched metadata. analyze-entity already throws
            when no cache is bound, so the cache is meant to cover this work; only the select sat outside it."
     (backfill-all-entity-analyses!)
     (let [providers   (atom [])

@@ -43,8 +43,8 @@
       (log/errorf "Error sending notification email: %s" (ex-message e)))))
 
 (methodical/defmethod events/publish-event! ::event
-  "Emails the recipients of the alerts that the save of Cards deleted, for each Card of the event's `:objects`; an event
-  without them is one such Card."
+  "Emails the recipients of the alerts that the save of Cards deleted, for each Card of the event's `:objects`, or for
+  the event itself when it has none."
   [topic {:keys [objects actor], :as event}]
   (doseq [{:keys [card notifications]} (or objects [event])]
     (send-alert-deleted-email! topic card notifications actor)))

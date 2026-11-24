@@ -124,8 +124,8 @@
         (is (= positions (run-scenario! endpoint dashboard? (get scenarios label))))))))
 
 (defn- pinned-move-statements
-  "The statements of moving to an empty Collection, as a non-admin, `n` pinned Cards that sit one in each of `n`
-  Collections, or all in one when not `distinct-sources?`, after one move as warm-up."
+  "The number of statements of moving to an empty Collection, as a non-admin, `n` pinned Cards that sit one in each of
+  `n` Collections, or all in one when not `distinct-sources?`, after one move as warm-up."
   [n distinct-sources?]
   (letfn [(collection! []
             (let [id (t2/insert-returning-pk! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:name (str "c " (random-uuid))}))]
@@ -155,8 +155,9 @@
           (is (<= many-growth one-source-growth)))))))
 
 (defn- duplicate-freed-positions!
-  "The pinned Cards left in a Collection after `moved` of the pinned Cards `rows`, `[name position]`, move out through the endpoint,
-  and in a twin Collection after the same Cards are deleted and each freed position closed one by one, the highest first."
+  "The pinned Cards left in a Collection after `moved` of the pinned Cards `rows`, `[name position]`, move out through
+  the endpoint, and in a twin Collection after the same Cards are deleted and each freed position closed one by one,
+  the highest first."
   [rows moved]
   (let [collection! (fn [] (t2/insert-returning-pk! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:name (str "c " (random-uuid))})))
         card!       (fn [coll-id [nm position]]

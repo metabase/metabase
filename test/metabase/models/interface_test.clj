@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.app-db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -389,9 +388,9 @@
       (let [[expected statements] (hydrate (cards 5))]
         (is (= user-ids expected))
         (is (= statements (second (hydrate (cards 2)))))
-        (is (= expected (first (with-redefs [mdb.query/select-partition-size 2]
+        (is (= expected (first (mt/with-partition-size 2
                                  (hydrate (cards 5))))))))
     (testing "each partition of rows reads with its own statement"
       (is (< (second (hydrate (cards 5)))
-             (second (with-redefs [mdb.query/select-partition-size 2]
+             (second (mt/with-partition-size 2
                        (hydrate (cards 5)))))))))

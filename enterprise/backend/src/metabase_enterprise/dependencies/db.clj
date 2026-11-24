@@ -530,19 +530,6 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id [:in %]) entity-ids))
 
-(mu/defn delete-dependencies-for-dependents!
-  "Delete the Dependencies of the entities `from-type` `from-ids` on the entity `to-type` `to-id`, returning the
-  number deleted."
-  [from-type :- ::dependencies.schema/entity-type
-   from-ids  :- [:sequential ms/PositiveInt]
-   to-type   :- ::dependencies.schema/entity-type
-   to-id     :- ms/PositiveInt]
-  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/Dependency
-                                                          :from_entity_type from-type
-                                                          :from_entity_id   [:in %]
-                                                          :to_entity_type   to-type
-                                                          :to_entity_id     to-id) from-ids))
-
 ;;; -------------------------------------------- Statuses, shared by the jobs --------------------------------------------
 
 (def ^:private StatusModel

@@ -322,7 +322,7 @@
 
 (defn- dimension-changes
   "`[dimensions dimension-mappings]` that syncing `entity` persists, computed with `metadata-provider`, or nil when
-   nothing changes; `initialized?` tells whether a metric's dimensions have been initialized in durable storage."
+   nothing changes, where `initialized?` tells whether a metric's dimensions have been initialized in durable storage."
   [metadata-provider entity initialized?]
   (when-let [query (lib-metric/dimensionable-query entity)]
     (let [computed-pairs     (lib-metric/compute-dimension-pairs metadata-provider (dimension-owner-key entity) query)
@@ -341,8 +341,8 @@
 (defn sync-dimensions!
   "Sync an entity's dimensions to the database. Behaviour differs by entity type:
 
-   - `:metadata/measure`: fully synced on every load; see [[measure-dimension-changes]].
-   - `:metadata/metric` (v2 Cards): curated; seeded once via [[seed-metric-dimensions]], then kept
+   - `:metadata/measure`: fully synced on every load (see [[measure-dimension-changes]]).
+   - `:metadata/metric` (v2 Cards): curated, seeded once via [[seed-metric-dimensions]] and then kept
      authoritative via [[refresh-metric-dimensions]].
 
    Arguments:

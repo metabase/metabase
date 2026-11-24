@@ -190,7 +190,8 @@
                                       (transforms-base.i/target-db-id instance)])))
 
 (mu/defn- prefetch-database-permissions :- ::database-permissions
-  "What the current user may do on the Databases of `transforms`, each read once for all of them."
+  "What the current user may do on the Databases of `transforms`: the transforms permission asked once per Database
+  and the `:perms/create-queries` values read for all of them together."
   [transforms :- [:sequential ::instance]]
   (let [db-ids (into [] (comp (mapcat database-ids) (distinct)) transforms)
         user   (perms/user-info api/*current-user-id*)]

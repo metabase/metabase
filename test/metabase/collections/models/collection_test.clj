@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.app-db.query :as app-db.query]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
@@ -531,13 +530,13 @@
                 (t2/delete! :model/Permissions :collection_id [:in [a b c]])
                 (with-current-user-perms-for-collections! visible-ids
                   (is (= expected
-                         (collection/effective-location-path {:location path}))))))))))
+                         (:effective_location (t2/hydrate {:location path} :effective_location)))))))))))
     (testing "invalid input"
       (doseq [path [nil [10 20]]]
         (testing (format "path '%s'" path)
           (is (thrown?
                Exception
-               (collection/effective-location-path {:location path}))))))))
+               (:effective_location (t2/hydrate {:location path} :effective_location)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Nested Collections: CRUD Constraints & Behavior                                 |
@@ -2326,7 +2325,7 @@
                    :model/User {d :id} {} :model/User {e :id} {}]
       (let [ids [a b c d e]]
         (t2/delete! :model/Collection :personal_owner_id [:in ids])
-        (with-redefs [app-db.query/delete-partition-size 2]
+        (mt/with-partition-size 2
           (collection/create-personal-collections! ids))
         (is (= (set ids) (t2/select-fn-set :personal_owner_id :model/Collection :personal_owner_id [:in ids])))))))
 

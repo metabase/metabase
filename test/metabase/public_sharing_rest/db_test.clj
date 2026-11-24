@@ -1,7 +1,6 @@
 (ns metabase.public-sharing-rest.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.query :as mdb.query]
    [metabase.public-sharing-rest.db :as public-sharing-rest.db]
    [metabase.test :as mt]))
 
@@ -25,5 +24,5 @@
         (testing read-name
           (let [whole (read-fn)]
             (is (seq whole))
-            (is (= whole (with-redefs [mdb.query/select-partition-size 2]
+            (is (= whole (mt/with-partition-size 2
                            (read-fn))))))))))

@@ -238,8 +238,8 @@
 
 (methodical/defmethod events/publish-event! ::dashboard-cards-event
   "Record the dashcards that a write added to or removed from Dashboards, with the name and description of their
-  Cards, read together, one row for each entry of `:objects` (an `:object` with its `:dashcards`; an event without
-  `:objects` is one such entry), as [[record-each!]] does."
+  Cards, read together, one row for each entry of `:objects` (an `:object` with its `:dashcards`, or the event
+  itself when it has no `:objects`), as [[record-each!]] does."
   [topic {:keys [objects object dashcards user-id]}]
   (when (and user-id (premium-features/log-enabled?))
     (let [entries (or objects [{:object object :dashcards dashcards}])
@@ -355,8 +355,8 @@
 (events/derive! :event/notification-unsubscribe ::notification-event)
 
 (methodical/defmethod events/publish-event! ::notification-event
-  "Record one row for each of the `:objects` of the event (an `:object` with its `:previous-object`; an event without
-  `:objects` is one such item), as [[record-each!]] does."
+  "Record one row for each of the `:objects` of the event (an `:object` with its `:previous-object`, or the event
+  itself when it has no `:objects`), as [[record-each!]] does."
   [topic {:keys [objects user-id] :as event}]
   (when (premium-features/log-enabled?)
     (record-each! (fn [{:keys [object previous-object]}]

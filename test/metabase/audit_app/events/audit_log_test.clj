@@ -866,7 +866,7 @@
         (is (= (audit-statement-count! model column 2) (audit-statement-count! model column 6)))))))
 
 (defn- publication-statement-count!
-  "The statements that the audit log runs for the publication of `n` new Tables in one batch."
+  "The number of statements that the audit log runs for the publication of `n` new Tables with one call."
   [n]
   (let [table-ids (t2/insert-returning-pks! :model/Table (repeatedly n #(assoc (mt/with-temp-defaults :model/Table)
                                                                                :name (str "Published " (random-uuid)))))]

@@ -398,7 +398,7 @@
   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time; its scalar
     return value is written to the column named after the attr key (snake_case).
   - `{:batch-fn function :fields [:field1 :field2]}` - Execute a clojure function at index time on a batch of records,
-    once per batch; it returns one value per record, in order, each written as an `:fn` value is.
+    once per batch, returning one value per record, in order, each written as an `:fn` value is.
 
   A function in a specification must be a named `defn`, not an anonymous fn, since [[index-version-hash]] identifies it
   by name."

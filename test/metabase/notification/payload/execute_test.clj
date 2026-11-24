@@ -155,8 +155,8 @@
                                        :parameter_id "_PRICE_"))))))))))
 
 (defn- statements-of-execute-dashboard!
-  "The app DB statements of [[notification.payload.execute/execute-dashboard]] for a Dashboard with `n-dashcards`
-  DashboardCards and `n-series` series Cards on its first one, the query execution itself stubbed."
+  "The number of app DB statements of [[notification.payload.execute/execute-dashboard]] for a Dashboard with
+  `n-dashcards` DashboardCards and `n-series` series Cards on its first one, the query execution itself stubbed."
   [n-dashcards n-series]
   (mt/with-model-cleanup [:model/DashboardCardSeries :model/DashboardCard :model/Dashboard :model/Card]
     (let [mp         (mt/metadata-provider)

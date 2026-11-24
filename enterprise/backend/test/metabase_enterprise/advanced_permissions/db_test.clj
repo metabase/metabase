@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
-   [metabase.app-db.query :as mdb.query]
    [metabase.permissions.db :as permissions.db]
    [metabase.test :as mt]))
 
@@ -26,4 +25,4 @@
                 :blocked-in-database #{group-a group-c group-e}
                 :sandboxed           nil}
                single))
-        (is (= single (with-redefs [mdb.query/select-partition-size 2] (reads))))))))
+        (is (= single (mt/with-partition-size 2 (reads))))))))

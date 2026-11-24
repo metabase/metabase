@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.db :as sandbox.db]
-   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]))
 
 (deftest partitioned-reads-test
@@ -22,4 +21,4 @@
       (is (= {card-a #{sandbox-a sandbox-b} card-b #{sandbox-c}} (:by-card single)))
       (is (= 3 (count (:by-id single))))
       (is (= 5 (count (:databases single))))
-      (is (= single (with-redefs [mdb.query/select-partition-size 2] (reads)))))))
+      (is (= single (mt/with-partition-size 2 (reads)))))))

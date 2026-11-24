@@ -3,7 +3,6 @@
   initial sync of each Table."
   (:require
    [malli.util :as mut]
-   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
    [metabase.util :as u]
@@ -49,12 +48,6 @@
   (update-tables-counted! (for [id (distinct (sync.db/sync-table-ids (u/the-id database)))]
                             {:id id :initial_sync_status "complete"})))
 
-(defn- settings-in-batches
-  "What `read-settings`, a read of the settings of the rows with some ids, returns for all of `ids`, read in batches of
-  [[mdb/delete-partition-size]] ids, so that any number of them stays under the parameter limit of a statement."
-  [read-settings ids]
-  (into [] (mapcat #(read-settings (vec %))) (partition-all mdb/delete-partition-size ids)))
-
 (defn- field-rows-unless-user-set
   "The update rows of `id->changes`, a map from Field id to changes, without the columns a user set, by the `settings`
   of the Fields, `{field-id settings}`, leaving out the rows left with no change."
@@ -90,7 +83,7 @@
   update with the Fields sync holds as the rows before it, the settings of the Fields read once, returning the number of
   Fields updated."
   [pairs :- [:sequential [:tuple (ms/InstanceOf :model/Field) (mut/dissoc ::warehouse-schema.schema/field.update :id)]]]
-  (let [settings (u/index-by :field_id (settings-in-batches sync.db/field-user-settings-for-fields (map (comp :id first) pairs)))]
+  (let [settings (u/index-by :field_id (sync.db/field-user-settings-for-fields (mapv (comp :id first) pairs)))]
     (update-fields-counted! (field-rows-unless-user-set settings (map (fn [[field changes]] [(:id field) changes]) pairs))
                             {:fields (mapv first pairs)})))
 
@@ -98,14 +91,14 @@
   "Apply to each Field of `id->changes` its changes to columns no user set, in one update: the settings of the Fields
   are read once and their rows once per batch of the update, returning the number of Fields updated."
   [id->changes :- [:map-of ::lib.schema.id/field (mut/dissoc ::warehouse-schema.schema/field.update :id)]]
-  (let [settings (u/index-by :field_id (settings-in-batches sync.db/field-user-settings-for-fields (keys id->changes)))]
+  (let [settings (u/index-by :field_id (sync.db/field-user-settings-for-fields (vec (keys id->changes))))]
     (update-fields-counted! (field-rows-unless-user-set settings id->changes) nil)))
 
 (mu/defn update-tables-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to each of `pairs`, a Table instance sync holds and its changes, the changes to columns no user set, in one
   update, the settings of the Tables read once, returning the number of Tables updated."
   [pairs :- [:sequential [:tuple (ms/InstanceOf :model/Table) (mut/dissoc ::warehouse-schema.schema/table.update :id)]]]
-  (let [settings (u/index-by :table_id (settings-in-batches sync.db/table-user-settings-for-tables (map (comp :id first) pairs)))]
+  (let [settings (u/index-by :table_id (sync.db/table-user-settings-for-tables (mapv (comp :id first) pairs)))]
     (update-tables-counted! (table-rows-unless-user-set settings (map (fn [[table changes]] [(:id table) changes]) pairs)))))
 
 (mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero

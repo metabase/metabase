@@ -1,7 +1,6 @@
 (ns metabase.dashboards.models.dashboard-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.query :as app-db.query]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.dashboards.models.dashboard :as dashboard]
@@ -33,9 +32,7 @@
 
 (deftest dashboard-writes-across-partitions-test
   (testing "a create, update and delete that cross the partition size write every Dashboard and publish one event each"
-    (with-redefs [app-db.query/create-partition-size 2
-                  app-db.query/update-partition-size 2
-                  app-db.query/delete-partition-size 2]
+    (mt/with-partition-size 2
       (let [ids    (atom [])
             topics (events.tu/published-topics!
                     (fn []

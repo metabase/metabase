@@ -484,7 +484,7 @@
   its metadata permission asked."
   [field]
   (let [table (t2/select-one :model/Table :id (:table_id field))]
-    (boolean (and (collection/remote-sync-writable-table? table)
+    (boolean (and (contains? (collection/remote-sync-writable-table-ids [table]) (:id table))
                   (data-perms/user-has-permission-for-tables? (data-perms/user-info api/*current-user-id*)
                                                               :perms/manage-table-metadata :yes
                                                               {(:table_id field) (:db_id table)})))))

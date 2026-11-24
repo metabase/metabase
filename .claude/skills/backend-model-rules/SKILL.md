@@ -392,7 +392,7 @@ What the shared keys mean, wherever they appear:
 
 ## Statement counts
 
-No read path and no write path runs a number of app-DB statements that grows with its rows: an endpoint, a tool, a
+No read path and no write path runs a number of app DB statements that grows with its rows: an endpoint, a tool, a
 write function, an event consumer, a hydration, a permission check. A list is read, checked and written with a fixed
 number of statements, whatever its length.
 
@@ -407,17 +407,18 @@ number of statements, whatever its length.
     chain), never per node;
   - a single-row entry point called n times by its caller, and the per-row work of a scheduled job.
 - A hydration never runs a statement per row: a key that reads the app DB is a batched hydration
-  (`mi/define-batched-hydration-method`) with one read for all rows; a simple, per-row hydration only computes from
-  what the row already holds.
+  (`mi/define-batched-hydration-method`) that reads for all rows together; a simple, per-row hydration only computes
+  from what the row already holds.
 - A permission question is never asked once per row. Hydrate `:can_read` / `:can_write` once and use the bulk forms
   (`mi/can-update-all?`, `mi/can-update-each?`, `query-perms/check-run-permissions-for-queries`, the `perms/` functions
   that take maps or vectors). The bulk answer is exactly the per-row one: the same rows refused, the same
   status and message, for the first row in order. Test it on a mixed batch against the per-row check.
 - One event per bulk operation, never one per row. What the payload carries (`:objects`, ids, before and after) is
-  decided per case; a consumer that needs more reads it once for the whole batch, and writes its rows in one call
-  (`record-each!` for audit rows, which skips a row that cannot be built and keeps the others).
+  decided per case.
+- A consumer that needs more than the payload reads it once for the whole event, and writes its rows with one call.
+- Audit rows go through `record-each!`, which skips a row that cannot be built and keeps the others.
 - Pass what was read down as arguments, or hydrate in bulk. No new dynamic var or `binding` to carry per-request
-  values, and no memo that never expires over a column that can change.
+  values, no memo over a value that can change, and none keyed by an id.
 - Batching does not change results: the same rows, order, positions, refusals and events as the per-row code. When the
   old result is not obvious, capture it from the old code and pin it.
 
@@ -431,11 +432,14 @@ Other lists (names, keys, pairs, locations) are partitioned the same way only wh
 fixed enum, a page, or a list the code itself bounds needs nothing.
 
 - A plain `id IN (...)` read: `(app-db/select-batched #(t2/select :model/X :id [:in %]) ids)`, which reads each id
-  once and returns the rows of every partition in one vector. A map comes from `app-db/select-batched-map`, a set
-  from `app-db/select-batched-set` (nil when empty, as Toucan's set selects), a reducible from
-  `app-db/select-batched-reducible`, and the row count of a partitioned write from `app-db/sum-batched`. A read that
-  needs the partitions themselves (`some` for an `exists?`, pairs of two lists) takes them from
-  `app-db/select-partitions`; a count is the sum only when no row can match two partitions.
+  once and returns the rows of every partition in one vector.
+- The other shapes have their own helper: `app-db/select-batched-map` for a map, `app-db/select-batched-set` for a
+  set (nil when empty, as Toucan's set selects), `app-db/select-batched-reducible` for a reducible,
+  `app-db/select-batched-by-keys` for a map of several lists, and `app-db/sum-batched` for the row count of a
+  partitioned write.
+- A read that needs the partitions themselves (`some` for an `exists?`, pairs of two lists) takes them from
+  `app-db/select-partitions`.
+- A count is the sum of the partitions' counts only when no row can match two partitions.
 - A list that fits one partition keeps the statement it had: the SQL `NOT IN`, `ORDER BY`, `LIMIT` and `OFFSET` stay
   in SQL, and only a longer list takes the partitioned route.
 - ORDER BY, LIMIT, DISTINCT and GROUP BY apply to the whole result: redo them in Clojure over the combined rows when
@@ -500,12 +504,14 @@ required by its module's `init.clj`.
             (is (= (counted 2) (counted 6))))))
 - A list endpoint, a hydration, a bulk permission check and an event consumer get the same test: two sizes after a
   warm-up, as a superuser and as a non-superuser, one dimension at a time (rows, children per row, parents the rows
-  are spread over, groups of the user). `(metabase.events.test-util/real-statement-count! thunk)` leaves consumers on
-  and skips Toucan's identity queries. Where an accepted per-row UPDATE remains, assert that bound relative to a
-  call that only makes those UPDATEs, not a number. Take the lower of two measurements per size when a path has
-  background noise.
+  are spread over, groups of the user).
+- `(metabase.events.test-util/real-statement-count! thunk)` counts with consumers on and skips Toucan's identity
+  queries.
+- Where an accepted per-row UPDATE remains, assert that bound relative to a call that only makes those UPDATEs, not
+  with a number.
+- Take the lower of two measurements per size when a path has background noise.
 - A `db.clj` file whose functions partition gets one test that runs a few of them, every non-trivial one included,
-  with `select-partition-size` set to 2 and compares the result with the default size.
+  inside `(mt/with-partition-size 2 ...)` and compares the result with the one at the default size.
 - Call a failure order-dependent only if the test passes alone on the branch and alone on the base.
 - Locally, run single namespaces with a 10-minute timeout (`./bin/test-agent :only '[...]'`); bigger runs go to CI.
   Before handing off: `./bin/mage kondo <file>` and `./bin/mage fix-modules-config`.

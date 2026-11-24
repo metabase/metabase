@@ -120,7 +120,7 @@
   200)
 
 (def ^:private chunk-max-columns
-  "The most warehouse columns of the Tables [[sync-fields!]] syncs together; a wider Table is synced on its own."
+  "The most warehouse columns of the Tables [[sync-fields!]] syncs together, a wider Table being synced on its own."
   5000)
 
 (defn- chunk-key-fn
@@ -150,8 +150,8 @@
 
 (defn- table-resolver
   "A function of the name and schema of a column group of `chunk` to the synced Table of `database` it belongs to, the
-  candidate Tables of the whole chunk read together; it matches over hidden Tables too, so a hidden Table's columns
-  are never given to a visible Table whose name differs only in case."
+  candidate Tables of the whole chunk read together and hidden Tables matched too, so that a hidden Table's
+  columns are never given to a visible Table whose name differs only in case."
   [database chunk]
   (let [lower-names (into [] (comp (map (comp t2.util/lower-case-en :table-name first)) (distinct)) chunk)
         candidates  (group-by (juxt :lower_name :lower_schema)

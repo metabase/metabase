@@ -436,7 +436,8 @@
 (defn- permission-answers
   "Delays of the current user's answers to the permission questions that [[check-data-perms]] and
   [[check-cards-read-perms]] ask about each of `checks`, `{:query :required-perms}` maps: each kind of answer is read
-  for all of them at once, when it is first needed."
+  for all of them at once, when it is first needed, except whether a Database is sandboxed for the user, which is asked
+  once per Database."
   [checks]
   (let [id->card (delay (card-instances (into [] (comp (mapcat (comp :source-card-ids :required-perms)) (distinct)) checks)))]
     {:id->card               id->card
@@ -625,7 +626,7 @@
 
 (defn- check-data-perms-with
   "Throws, as [[check-data-perms]] does, unless the current user has the data permissions `query` needs,
-  `required-perms`, from `answers`; returns true."
+  `required-perms`, from `answers`, and returns true otherwise."
   [answers query required-perms]
   (when-let [source-card-ids (:source-card-ids required-perms)]
     (or (can-read-card-collections? answers source-card-ids)
@@ -655,7 +656,8 @@
         false))))
 
 (defn- check-query-allowed
-  "Throws unless the current user may run `query`, which needs `required-perms`, from `answers`; returns true."
+  "Throws unless the current user may run `query`, which needs `required-perms`, from `answers`, and returns true
+  otherwise."
   [answers {database-id :database :as query} required-perms]
   (check-data-perms-with answers query required-perms)
   ;; Check card read permissions for any cards referenced in subqueries!

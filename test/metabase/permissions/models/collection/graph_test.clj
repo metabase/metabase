@@ -611,8 +611,8 @@
     (is (map? (graph/graph nil (set (range 1 70001)) nil)))))
 
 (defn- graph-update-call-count!
-  "The statements that a superuser's update of the graph takes, giving each of `group-ids` write on half of `n` new
-  Collections and read on the other half."
+  "The number of statements that a superuser's update of the graph takes, giving each of `group-ids` write on half of
+  `n` new Collections and read on the other half."
   [group-ids n]
   (let [collection-ids (t2/insert-returning-pks! :model/Collection
                                                  (repeatedly n #(t2.with-temp/with-temp-defaults :model/Collection)))

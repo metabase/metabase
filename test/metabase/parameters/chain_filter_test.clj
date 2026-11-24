@@ -1261,7 +1261,7 @@
 ;;; regresses to one-object-at-a-time, the counts of the two sizes compared below differ.
 
 (defn- chain-filter-mbql-query-call-counts
-  "The app-DB call counts of a first build of the query of `field-id`/`constraints` (fresh provider cache) and a second
+  "The app DB call counts of a first build of the query of `field-id`/`constraints` (fresh provider cache) and a second
   build (warm provider cache)."
   [field-id constraints]
   (lib-be/with-metadata-provider-cache
@@ -1273,7 +1273,7 @@
     (mt/$ids
       (let [none (chain-filter-mbql-query-call-counts %venues.name [])
             one  (chain-filter-mbql-query-call-counts %venues.name [(shorthand->constraint %venues.price 3)])]
-        (testing "a second build reuses the cached metadata, so a constraint on the source Table adds no app-DB call"
+        (testing "a second build reuses the cached metadata, so a constraint on the source Table adds no app DB call"
           (is (= (:second none) (:second one)))
           (is (< (:second none) (:first none))))))))
 

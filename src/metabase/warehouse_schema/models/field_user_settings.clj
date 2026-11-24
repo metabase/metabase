@@ -230,7 +230,7 @@
 (mu/defn upsert-field-user-settings-for-fields! :- [:maybe :int]
   "[[upsert-field-user-settings!]] for each `[field settings]` of `field+settings`, whose Fields are distinct, with
   the settings read together and one write call per kind, one update of the Fields per distinct change, and one event
-  of each kind; returns the number of Fields written."
+  of each kind, returning the number of Fields written."
   [field+settings :- [:sequential [:tuple
                                    ::warehouse-schema.schema/field
                                    (mut/dissoc ::warehouse-schema.schema/field.update :id)]]]
@@ -316,8 +316,7 @@
                                        (cond-> [[k nil]]
                                          (user-settings/field-set-flags k) (conj [(user-settings/field-set-flags k) false]))))
                           ks)]
-        (run! #(warehouse-schema.db/update-field-user-settings-by-ids! (mapv :id %) changes)
-              (partition-all mdb/update-partition-size stored))
+        (warehouse-schema.db/update-field-user-settings-by-ids! (mapv :id stored) changes)
         (user-settings-writes/publish-writes! (-> {}
                                                   (user-settings-writes/add-updated writes-spec stored (constantly changes))
                                                   (user-settings-writes/delete-empty! writes-spec (mapv :field_id stored)))

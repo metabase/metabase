@@ -26,8 +26,8 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn database-settings-by-name :- [:map-of :string :any]
-  "The `:settings` of the Databases named one of `database-names`, by name; no other column is read."
+(mu/defn database-settings-by-name :- [:map-of :string [:maybe ::warehouses.schema/database.settings]]
+  "The `:settings` of the Databases named one of `database-names`, by name, with no other column read."
   [database-names :- [:sequential :string]]
   (mdb/select-batched-map #(t2/select-fn->fn :name :settings [:model/Database :name :settings] :name [:in [:auto/param %]])
                           (distinct database-names)))

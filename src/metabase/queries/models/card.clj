@@ -453,12 +453,6 @@
   (cond-> card
     (dashboard-internal-card? card) check-dashboard-internal-card-shape))
 
-(defenterprise pre-update-check-sandbox-constraints
-  "Throws when a change of the result metadata of a Card stops it matching the Tables of its sandboxes, which OSS never
-  does."
-  metabase-enterprise.sandbox.models.sandbox
-  [_ _])
-
 (defenterprise pre-update-check-sandboxes-constraints
   "Throws when a change of the result metadata of a Card of `card-changes`, `[stored-card changes]` pairs, stops it
   matching the Tables of its sandboxes, which OSS never does."

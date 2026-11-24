@@ -95,8 +95,8 @@
                             (:groups result))))))))))
 
 (defn- update-graph-statement-count!
-  "The statements of a PUT of the application graph that grants two permissions to and revokes one from each of `n`
-  new groups."
+  "The number of statements of a PUT of the application graph that grants two permissions to and revokes one from each
+  of `n` new groups."
   [n]
   (mt/with-model-cleanup [:model/PermissionsGroup :model/ApplicationPermissionsRevision]
     (let [group-ids (t2/insert-returning-pks! :model/PermissionsGroup (for [i (range n)]

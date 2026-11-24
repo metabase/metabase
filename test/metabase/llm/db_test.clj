@@ -1,8 +1,6 @@
 (ns metabase.llm.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.llm.db :as llm.db]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -17,6 +15,5 @@
         single (read)]
     (is (= 3 (count single)))
     (is (= #{1} (set (vals single))))
-    (with-redefs [mdb.query/select-partition-size 2
-                  mdb/select-partition-size       2]
+    (mt/with-partition-size 2
       (is (= single (read))))))

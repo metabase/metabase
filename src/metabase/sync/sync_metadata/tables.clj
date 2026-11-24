@@ -208,7 +208,7 @@
 
 (mu/defn- reactivate-tables!
   "Mark the existing inactive Tables `existing`, Table instances we already hold, active again with one call,
-  refreshing their cruft-dependent columns; `:sample?` is whether `database` is the Sample Database."
+  refreshing their cruft-dependent columns, where `:sample?` is whether `database` is the Sample Database."
   [database :- i/DatabaseInstance
    existing :- [:sequential (ms/InstanceOf :model/Table)]
    options  :- [:map {:closed true} [:sample? :boolean]]]

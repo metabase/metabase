@@ -98,7 +98,7 @@
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (mdb/select-batched-map #(t2/select-pk->fn :name :model/Transform :id [:in %]) transform-ids))
 
-(mu/defn transform-last-checkpoint-values :- [:map-of ::lib.schema.id/transform :any]
+(mu/defn transform-last-checkpoint-values :- [:map-of ::lib.schema.id/transform [:maybe :string]]
   "The last checkpoint value of each of the Transforms with `transform-ids`, by id."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (mdb/select-batched-map #(t2/select-pk->fn :last_checkpoint_value [:model/Transform :id :last_checkpoint_value]

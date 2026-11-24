@@ -1,7 +1,6 @@
 (ns metabase.permissions.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.query :as mdb.query]
    [metabase.permissions.core :as perms]
    [metabase.permissions.db :as permissions.db]
    [metabase.test :as mt]
@@ -56,8 +55,7 @@
                                                              nil true "/collection/root/" [coll-1 coll-2 coll-3]
                                                              [group-id other-id] 1)))})
             single      (reads)
-            partitioned (with-redefs [mdb.query/select-partition-size 2
-                                      mdb.query/delete-partition-size 2]
+            partitioned (mt/with-partition-size 2
                           (reads))]
         (testing "every read answers the same with partitions of 2 as with one statement"
           (is (= single partitioned)))

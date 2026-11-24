@@ -307,15 +307,6 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (dependencies.db/delete-dependencies-for-entities! entity-type entity-ids))
 
-(mu/defn delete-dependencies-for-dependents!
-  "Delete the Dependencies of the entities `from-type` `from-ids` on the entity `to-type` `to-id`, returning the
-  number deleted."
-  [from-type :- ::dependencies.schema/entity-type
-   from-ids  :- [:sequential ms/PositiveInt]
-   to-type   :- ::dependencies.schema/entity-type
-   to-id     :- ms/PositiveInt]
-  (dependencies.db/delete-dependencies-for-dependents! from-type from-ids to-type to-id))
-
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/Dependency [_model]

@@ -2,8 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.search.semantic.db :as semantic.db]
-   [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -21,6 +19,5 @@
                            {:dashboards (into #{} (map :id) (semantic.db/unarchived-dashboard-ids-in-collections-reducible collection-ids))
                             :locations  (set (map :id (semantic.db/collection-owners-and-locations (set collection-ids))))})]
       (is (= {:dashboards #{d1 d2 d3}, :locations (set collection-ids)} (read-all)))
-      (with-redefs [mdb.query/select-partition-size 2
-                    mdb/select-partition-size       2]
+      (mt/with-partition-size 2
         (is (= {:dashboards #{d1 d2 d3}, :locations (set collection-ids)} (read-all)))))))

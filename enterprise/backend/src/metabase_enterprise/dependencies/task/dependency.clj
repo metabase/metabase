@@ -11,6 +11,7 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as models.dependency-status]
    [metabase-enterprise.dependencies.models.result-metadata-status :as models.result-metadata-status]
+   [metabase-enterprise.dependencies.schema :as deps.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
@@ -64,7 +65,7 @@
   its dependencies, marking an entity with a new upstream stale for its result metadata and analysis, or for a snippet
   the analysis of what expands it, which an upstream change made before the edge existed never marked."
   [entity-type   :- ::deps.dependency-types/dependency-types
-   entities+deps :- [:sequential [:tuple Entity :map]]]
+   entities+deps :- [:sequential [:tuple Entity ::deps.schema/upstream-deps]]]
   (let [id->deps (into {} (map (fn [[entity deps]] [(:id entity) deps])) entities+deps)]
     (t2/with-transaction [_]
       (let [new-ids (models.dependency/entities-with-new-dependencies entity-type id->deps)
@@ -126,7 +127,7 @@
   "Store the dependencies `entities+deps`, then clear the `stale` count of their entities."
   [entity-type   :- ::deps.dependency-types/dependency-types
    stale         :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
-   entities+deps :- [:sequential [:tuple Entity :map]]]
+   entities+deps :- [:sequential [:tuple Entity ::deps.schema/upstream-deps]]]
   (store-dependencies! entity-type entities+deps)
   (models.dependency-status/clear-statuses! entity-type
                                             (into {} (map (fn [[entity _]] [(:id entity) (stale (:id entity))])) entities+deps))

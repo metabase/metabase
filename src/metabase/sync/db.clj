@@ -245,11 +245,6 @@
                                      :id [:in %])
                          field-ids))
 
-(mu/defn field-fingerprint
-  "The fingerprint of the Field with `field-id`."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id))
-
 (mu/defn active-fields-metadata-for-table
   "The sync metadata columns of the active Fields of the Table with `table-id`, in field order."
   [table-id :- ::lib.schema.id/table]

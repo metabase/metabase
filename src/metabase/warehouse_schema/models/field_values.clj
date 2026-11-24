@@ -453,32 +453,19 @@
   [field-id]
   (get-latest-field-values field-id :full nil))
 
-(def ^:private fv-select-batch-size
-  "Chunk size when fetching FieldValues by `field_id [:in …]`.
-  Wide tables can have thousands of list-eligible fields, and batching keeps each app-DB `IN (…)` clause bounded."
-  500)
-
 (defn batched-get-latest-full-field-values
   "Batched version of [[get-latest-full-field-values]] .
   Takes a list of field-ids and returns a map of field-id -> full FieldValues.
   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-ids]
-  (delete-duplicates-and-return-latest!
-   (when (seq field-ids)
-     (mapcat (fn [batch]
-               (warehouse-schema.db/full-field-values-for-fields batch))
-             (partition-all fv-select-batch-size field-ids)))))
+  (delete-duplicates-and-return-latest! (warehouse-schema.db/full-field-values-for-fields (vec field-ids))))
 
-(mu/defn fields-last-used-at :- [:map-of ::lib.schema.id/field :any]
+(mu/defn fields-last-used-at :- [:map-of ::lib.schema.id/field ms/TemporalInstant]
   "The latest `last_used_at` of any FieldValues of the Field of each of `field-values` not used within
-  [[active-field-values-cutoff]], by Field id, read in batches of [[fv-select-batch-size]], for [[inactive?]]."
+  [[active-field-values-cutoff]], by Field id, for [[inactive?]]."
   [field-values :- [:sequential [:map [:field_id ::lib.schema.id/field]]]]
-  (into {}
-        (comp (remove (comp used-recently? :last_used_at))
-              (map :field_id)
-              (partition-all fv-select-batch-size)
-              (map #(warehouse-schema.db/field-values-last-used-at-by-field (vec %))))
-        field-values))
+  (warehouse-schema.db/field-values-last-used-at-by-field
+   (into [] (comp (remove (comp used-recently? :last_used_at)) (map :field_id)) field-values)))
 
 (defn field-values-change
   "What persisting `raw-values`, the raw distinct values of one Field from the warehouse, changes against
@@ -527,10 +514,9 @@
   [[find-or-create-full-field-values!]] when a concurrent insert stored some first."
   [rows]
   (let [stored (into #{}
-                     (comp (partition-all fv-select-batch-size)
-                           (mapcat #(warehouse-schema.db/full-field-values-by-field [:model/FieldValues :field_id] (set %)))
-                           (map :field_id))
-                     (map :field_id rows))
+                     (map :field_id)
+                     (warehouse-schema.db/full-field-values-by-field [:model/FieldValues :field_id]
+                                                                     (into #{} (map :field_id) rows)))
         rows   (into [] (remove (comp stored :field_id)) rows)]
     (when (seq rows)
       (try

@@ -1,7 +1,6 @@
 (ns metabase.permissions-rest.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.query :as mdb.query]
    [metabase.permissions-rest.db :as permissions-rest.db]
    [metabase.permissions.db :as permissions.db]
    [metabase.test :as mt]))
@@ -21,7 +20,7 @@
                               (permissions-rest.db/data-permissions-reducible
                                {:perm-type :perms/create-queries :group-ids [group-c group-a group-b]})))
           single      (rows)
-          partitioned (with-redefs [mdb.query/select-partition-size 2] (rows))]
+          partitioned (mt/with-partition-size 2 (rows))]
       (testing "the rows of every group are read, ordered by group, with one statement or several"
         (is (= 6 (count single)))
         (is (= (sort (map :group-id single)) (map :group-id partitioned)))

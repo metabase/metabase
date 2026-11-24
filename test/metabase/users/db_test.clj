@@ -1,7 +1,6 @@
 (ns metabase.users.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]
    [metabase.users.db :as users.db]
    [toucan2.core :as t2]))
@@ -14,13 +13,13 @@
                       :personal    (set (users.db/user-ids-of-type (vec user-ids) :personal))})
           single   (reads)]
       (is (= user-ids (:personal single)))
-      (is (= single (with-redefs [mdb.query/select-partition-size 2] (reads))))))
+      (is (= single (mt/with-partition-size 2 (reads))))))
   (testing "deleting more parameter values than one partition deletes and counts all of them"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
       (let [user-id    (mt/user->id :rasta)
             parameters (for [parameter-id ["a" "b" "c" "d" "e"]]
                          {:user_id user-id :dashboard_id dashboard-id :parameter_id parameter-id})]
         (users.db/insert-user-parameter-values! (map #(assoc % :value ["x"]) parameters))
-        (is (= 5 (with-redefs [mdb.query/delete-partition-size 2]
+        (is (= 5 (mt/with-partition-size 2
                    (users.db/delete-user-parameter-values! parameters))))
         (is (zero? (t2/count :model/UserParameterValue :dashboard_id dashboard-id)))))))

@@ -324,7 +324,7 @@
 
 (defn statements-at-two-sizes
   "`[(statements at 3) (statements at 9)]` of the thunk `(make-thunk n)` returns, run once to warm up and then counted
-  after `(before-count)`; every transform is deleted before each size."
+  after `(before-count)`, with every transform deleted before each size."
   ([make-thunk]
    (statements-at-two-sizes make-thunk (constantly nil)))
   ([make-thunk before-count]

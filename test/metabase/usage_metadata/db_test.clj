@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.app-db.query :as mdb.query]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -88,4 +87,4 @@
         f         #(usage-metadata.db/raw-field-fingerprints field-ids)]
     (testing "maps hold every row"
       (is (= (set field-ids) (set (keys (f)))))
-      (is (= (f) (with-redefs [mdb.query/select-partition-size 2] (f)))))))
+      (is (= (f) (mt/with-partition-size 2 (f)))))))

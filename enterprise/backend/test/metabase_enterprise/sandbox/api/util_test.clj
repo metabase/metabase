@@ -92,7 +92,7 @@
 (defn- insert-sandboxed-tables!
   "Inserts a Database with `n` Tables, gives All Users no view-data access to it, sandboxes every Table for the group
   with `sandboxed-group-id`, and gives the group with `other-group-id` unrestricted view-data access to the Tables at
-  even positions only; returns the Table ids."
+  even positions only, and returns the Table ids."
   [n sandboxed-group-id other-group-id]
   (let [db-id     (first (t2/insert-returning-pks! :model/Database [(mt/with-temp-defaults :model/Database)]))
         table-ids (vec (t2/insert-returning-pks! :model/Table

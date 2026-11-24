@@ -262,8 +262,8 @@
 
 (defn update-grouped!
   "Apply each of `updates`, the primary key of a row of `model` and the columns to change, with one update through the
-  model for each [[update-partition-size]] of the rows that get the same changes, in the order the changes first
-  appear."
+  model for each [[update-partition-size]] of the rows that get the same changes, or one update per row for a model
+  with a composite primary key, in the order the changes first appear."
   [model updates]
   (let [pk-columns (t2/primary-keys model)]
     (if (= (count pk-columns) 1)

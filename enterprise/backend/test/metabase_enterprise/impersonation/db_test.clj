@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.db :as impersonation.db]
-   [metabase.app-db.query :as mdb.query]
    [metabase.permissions.db :as permissions.db]
    [metabase.test :as mt]))
 
@@ -16,4 +15,4 @@
     (let [values #(impersonation.db/view-data-permission-values (mt/id) #{group-a group-b group-c})
           single (values)]
       (is (= #{"blocked" "unrestricted"} (set (map name single))))
-      (is (= single (with-redefs [mdb.query/select-partition-size 2] (values)))))))
+      (is (= single (mt/with-partition-size 2 (values)))))))

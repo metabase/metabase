@@ -153,17 +153,12 @@
           verdict))
       (adjudge))))
 
-(defn content-visible?
-  "Run the registered content-visibility gate for `document`, guarding against re-entry and reusing
-  a verdict already reached under [[with-content-gate-cache]]."
-  [document]
-  (content-visible-by? (@doc-content-visibility-fn [document]) document))
-
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
 (defn- content-visible-fn
-  "A predicate like [[content-visible?]] that reads the Exploration ids of `documents` lacking one together."
+  "A predicate of whether a Document of `documents` passes the registered content-visibility gate, which reads the
+  Exploration ids of those lacking one together."
   [documents]
   (let [ids                (into [] (comp (remove #(contains? % :exploration_id)) (keep :id)) documents)
         id->exploration-id (documents.db/exploration-ids-by-document-id ids)

@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]
-   [metabase.app-db.query :as mdb.query]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.test :as mt]))
 
@@ -46,5 +45,5 @@
         (testing read-name
           (let [whole (read-fn)]
             (is (seq whole))
-            (is (= whole (with-redefs [mdb.query/select-partition-size 2]
+            (is (= whole (mt/with-partition-size 2
                            (read-fn))))))))))

@@ -290,7 +290,8 @@
     (t2/insert! :model/Exploration (rows-in-collection :model/Exploration n collection-id))))
 
 (defn- archive-and-restore-call-counts!
-  "The statements that rasta's archive, and then restore, of a Collection holding `n` of each following item take."
+  "The number of statements that rasta's archive, and then restore, of a Collection holding `n` of each following item
+  take."
   [n]
   (mt/with-temp [:model/Collection {coll-id :id} {}]
     (grant! :write coll-id)

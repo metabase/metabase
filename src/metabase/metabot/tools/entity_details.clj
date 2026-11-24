@@ -405,7 +405,7 @@
 
 (defn- metric-columns
   "The columns [[metric-details]] may filter by permission for the metric `card`, so that one
-  [[column-permission-context]] answers for many metrics; none when its queries cannot be built."
+  [[column-permission-context]] answers for many metrics, or none when its queries cannot be built."
   [metadata-provider card]
   (try
     (let [metric-card (lib.metadata/card metadata-provider (:id card))

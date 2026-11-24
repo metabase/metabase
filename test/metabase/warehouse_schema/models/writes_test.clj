@@ -2,7 +2,6 @@
   "Behavior of the bulk write functions of the warehouse-schema models."
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.query :as mdb.query]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
@@ -92,9 +91,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id db-id}]
       (mt/with-model-cleanup [:model/Table]
-        (with-redefs [mdb.query/create-partition-size 2
-                      mdb.query/update-partition-size 2
-                      mdb.query/delete-partition-size 2]
+        (mt/with-partition-size 2
           (reset! published [])
           (let [fields (field/create-fields! (field-rows table-id 5))
                 ids    (mapv :id fields)]
@@ -152,9 +149,7 @@
           (round!)
           (let [one-batch (round!)]
             (is (< one-batch
-                   (with-redefs [mdb.query/create-partition-size 2
-                                 mdb.query/update-partition-size 2
-                                 mdb.query/delete-partition-size 2]
+                   (mt/with-partition-size 2
                      (round!))))))))))
 
 (deftest bulk-creates-keep-defaults-of-left-out-columns-test

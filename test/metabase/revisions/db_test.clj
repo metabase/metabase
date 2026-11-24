@@ -1,7 +1,6 @@
 (ns metabase.revisions.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.query :as mdb.query]
    [metabase.revisions.db :as revisions.db]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -25,5 +24,5 @@
         (testing read-name
           (let [whole (read-fn)]
             (is (seq whole))
-            (is (= whole (with-redefs [mdb.query/select-partition-size 2]
+            (is (= whole (mt/with-partition-size 2
                            (read-fn))))))))))

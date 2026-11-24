@@ -507,11 +507,6 @@
 
 ;;; ---------------------------------------------- Query results ----------------------------------------------
 
-(mu/defn query-result
-  "The ExplorationQueryResult of the ExplorationQuery with `query-id`, or nil."
-  [query-id :- ms/PositiveInt]
-  (t2/select-one :model/ExplorationQueryResult :exploration_query_id query-id))
-
 (mu/defn query-results-by-query-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/ExplorationQueryResult)]
   "The ExplorationQueryResults of the ExplorationQueries with `query-ids`, by query id."
   [query-ids :- [:sequential ms/PositiveInt]]
@@ -667,11 +662,6 @@
   "The unarchived Summary Document of the Exploration with `exploration-id`, or nil."
   [exploration-id :- ms/PositiveInt]
   (t2/select-one :model/Document :exploration_id exploration-id :archived false))
-
-(mu/defn document-exploration-id
-  "The Exploration ID of the Document with `document-id`."
-  [document-id :- ms/PositiveInt]
-  (t2/select-one-fn :exploration_id :model/Document :id document-id))
 
 (defn- summary-document-conditions
   "The conditions of the Summary Documents of an Exploration that an archive of it, when `archive?`, or a restore of it

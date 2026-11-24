@@ -319,11 +319,6 @@
   [snippet-ids :- [:set ::lib.schema.id/native-query-snippet]]
   (mdb/select-batched #(t2/select :model/NativeQuerySnippet :id [:in %]) snippet-ids))
 
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
-
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]

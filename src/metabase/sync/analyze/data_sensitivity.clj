@@ -63,7 +63,7 @@
 
 (defn- save-categories!
   "Write the category of each of `results`, `[field category]` pairs of Fields of `tables`, `:PUBLIC` for nil, with
-  one call, or Table by Table when that fails, leaving out the Fields whose classification threw; return `results`
+  one call, or Table by Table when that fails, leaving out the Fields whose classification threw, and return `results`
   with `::not-saved` as the result of the Fields of the Tables whose write failed."
   [tables results]
   (let [pairs  (into []

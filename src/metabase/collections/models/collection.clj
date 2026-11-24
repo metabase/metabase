@@ -388,11 +388,6 @@
               table-ids))
       table-ids)))
 
-(defn remote-sync-writable-table?
-  "Whether remote sync leaves the metadata of `table` writable, see [[remote-sync-writable-table-ids]]."
-  [table]
-  (contains? (remote-sync-writable-table-ids [table]) (:id table)))
-
 (defn writable-table-ids
   "The ids of those of `tables` whose content the current user can write: every Table for a superuser, those a data
   analyst has unrestricted view-data permissions on, answered together, and never one a read-only instance syncs."
@@ -1202,11 +1197,6 @@
                  :effective_location
                  (when-not (collection.root/is-root-collection? collection)
                    (apply location-path (filter visible (location-path->ids (real-location-path collection)))))))))))
-
-(defn effective-location-path
-  "Given a collection, returns the effective location (hiding parts of the path that the current user doesn't have access to)."
-  [collection]
-  (:effective_location (t2/hydrate collection :effective_location)))
 
 (def ^:private effective-parent-fields
   "Fields that should be included when hydrating the `:effective_parent` of a collection. Used for displaying recent views

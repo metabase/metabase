@@ -250,7 +250,7 @@
                (is (not (str/includes? (render!) "Made with")))))))))))
 
 (defn- statements-of-alert-send!
-  "The app DB statements of sending an alert created by `creator-id` to `n-handlers` email handlers."
+  "The number of app DB statements of sending an alert created by `creator-id` to `n-handlers` email handlers."
   [creator-id n-handlers]
   (notification.tu/with-notification-testing-setup!
     (notification.tu/with-card-notification
@@ -296,7 +296,7 @@
            (is (<= (- six two) (- (statements-of-task-histories! 6) (statements-of-task-histories! 2))))))))))
 
 (defn- statements-of-dashboard-email!
-  "The app DB statements of rendering a dashboard email with `n` csv attachments of one Database."
+  "The number of app DB statements of rendering a dashboard email with `n` csv attachments of one Database."
   [n]
   (let [mp        (mt/metadata-provider)
         query     (lib/query mp (lib.metadata/table mp (mt/id :venues)))

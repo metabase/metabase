@@ -271,8 +271,8 @@
 
 (defn- find-joins
   "Find the joins that must be done to make fields in Table with `other-table-id` accessible in a query whose
-  primary (source) Table is the Table with `source-table-id`, following the FK relationships of `fk-graph`; where
-  several FKs link two tables, all of them are returned, as `[{:lhs {:table <id>, :field <id>}, :rhs {...}} ...]`."
+  primary (source) Table is the Table with `source-table-id`, following the FK relationships of `fk-graph` and
+  returning every FK where several link two tables, as `[{:lhs {:table <id>, :field <id>}, :rhs {...}} ...]`."
   [fk-graph source-table-id other-table-id]
   (u/prog1 (traverse-graph fk-graph source-table-id other-table-id max-traversal-depth)
     (when (seq <>)

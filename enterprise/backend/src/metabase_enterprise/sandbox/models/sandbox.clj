@@ -172,31 +172,6 @@
   [entity-kind id]
   (non-admin-affects-sandboxing-with-any? entity-kind (when id [id])))
 
-(defn- check-result-metadata-still-matches-sandboxed-tables
-  "Throws if `new-result-metadata` would stop matching the Tables the sandboxes built out of this Card sandbox: the
-  Card cannot add fields or change types vs. the original Table."
-  [card-id new-result-metadata]
-  (when-let [gtaps-using-this-card (not-empty (sandbox.db/sandboxes-using-card card-id))]
-    (let [original-result-metadata (sandbox.db/card-result-metadata card-id)]
-      (when-not (= original-result-metadata new-result-metadata)
-        (let [table-id->database-id (sandbox.db/table-database-ids (mapv :table_id gtaps-using-this-card))]
-          (doseq [{table-id :table_id} gtaps-using-this-card]
-            (try
-              (check-columns-match-table-of-database (table-id->database-id table-id) table-id new-result-metadata)
-              (catch clojure.lang.ExceptionInfo e
-                (throw (ex-info (str (tru "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules.")
-                                     " "
-                                     (.getMessage e))
-                                (ex-data e)
-                                e))))))))))
-
-(defenterprise pre-update-check-sandbox-constraints
-  "Throws when `changes` give a Card result metadata that no longer matches the Tables of the sandboxes that use it."
-  :feature :sandboxes
-  [{new-result-metadata :result_metadata, card-id :id} changes]
-  (when (contains? changes :result_metadata)
-    (check-result-metadata-still-matches-sandboxed-tables card-id new-result-metadata)))
-
 (defenterprise pre-update-check-sandboxes-constraints
   "Throws when a change of the result metadata of any of `card-changes`, `[stored-card changes]` pairs, gives a Card
   result metadata that no longer matches the Tables of the sandboxes that use it, with the sandboxes and their Tables

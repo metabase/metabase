@@ -198,17 +198,3 @@
                  (thunk))))]
         (is (= #{:timeout} statuses))
         (is (= (disj (set run-ids) (second run-ids)) audited))))))
-
-(deftest timeout-old-runs-audit-insert-failure-test
-  (testing "when the one insert of the audit rows of 3 timed-out runs fails, each row is inserted on its own"
-    (mt/with-premium-features #{:transforms-basic :audit-app}
-      (let [create! (mt/original-fn #'audit-log/create-audit-logs!)
-            {:keys [run-ids audited]}
-            (timeout-audit-model-ids!
-             (fn [_ thunk]
-               (mt/with-dynamic-fn-redefs [audit-log/create-audit-logs! (fn [rows]
-                                                                          (when (< 1 (count rows))
-                                                                            (throw (ex-info "cannot insert rows" {})))
-                                                                          (create! rows))]
-                 (thunk))))]
-        (is (= (set run-ids) audited))))))

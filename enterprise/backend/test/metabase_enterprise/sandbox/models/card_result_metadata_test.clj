@@ -8,7 +8,7 @@
 
 (defn- column
   [base-type]
-  {:name "NAME" :display_name "Name" :base_type base-type :field_ref [:field "NAME" {:base-type base-type}]})
+  {:name "NAME" :display_name "Name" :base_type base-type})
 
 (defn- sandboxed-cards!
   "The ids of `n` new Cards with result metadata, each used by a Sandbox of a group of its own on the Venues Table."

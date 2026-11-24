@@ -6,7 +6,6 @@
    [java-time.api :as t]
    [metabase.actions.models :as actions.models]
    [metabase.api.common :as api]
-   [metabase.app-db.query :as app-db.query]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -2451,9 +2450,7 @@
   (testing "a create, update and delete that cross the partition size write every Card and publish one event each"
     (mt/with-temp [:model/Collection {coll-id :id} {}]
       (mt/with-model-cleanup [:model/Card]
-        (with-redefs [app-db.query/create-partition-size 2
-                      app-db.query/update-partition-size 2
-                      app-db.query/delete-partition-size 2]
+        (mt/with-partition-size 2
           (let [ids    (atom [])
                 topics (events.tu/published-topics!
                         (fn []
@@ -2750,7 +2747,7 @@
          (is (every? #(= "One of your alerts has stopped working" (:subject %)) emails)))))))
 
 (defn- hydrated-values
-  "The statements hydrating `k` on `cards` takes and what `f` reads from each hydrated card."
+  "The number of statements hydrating `k` on `cards` takes and what `f` reads from each hydrated card."
   [cards k f]
   (t2/with-call-count [call-count]
     (let [hydrated (doall (t2/hydrate (vec cards) k))]

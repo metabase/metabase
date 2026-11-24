@@ -1,7 +1,6 @@
 (ns metabase.query-permissions.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.query :as mdb.query]
    [metabase.query-permissions.db :as query-permissions.db]
    [metabase.test :as mt]))
 
@@ -14,4 +13,4 @@
         single    (reads)]
     (is (= 4 (count (:field-tables single))))
     (is (= table-ids (set (keys (:databases single)))))
-    (is (= single (with-redefs [mdb.query/select-partition-size 2] (reads))))))
+    (is (= single (mt/with-partition-size 2 (reads))))))

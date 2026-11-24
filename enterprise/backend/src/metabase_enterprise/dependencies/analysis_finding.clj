@@ -50,12 +50,6 @@
        :entity-id   (:id entity)
        :analysis    {:result (empty? results) :finding-details results}})))
 
-(mu/defn upsert-analysis!
-  "Analyze the Toucan entity `entity` with the `:analysis` of its spec and insert or replace its AnalysisFinding."
-  [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
-  (let [{:keys [entity-type entity-id analysis]} (analyze-entity entity)]
-    (models.analysis-finding/upsert-analyses! entity-type {entity-id analysis})))
-
 (mu/defn record-failed-finding! :- :nil
   "Record `e` as the failed finding of the entity `entity-type` `entity-id`. Logs instead of throwing when that fails."
   [entity-type :- ::deps.dependency-types/dependency-types

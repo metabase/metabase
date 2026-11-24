@@ -229,8 +229,8 @@
 (defn- collection-writable-fn
   "A function from one of `actions` to whether the current user can write the Collection it goes in: its own or its
   model's, the default root for an Action of a model outside one, and otherwise the data actions root, whose Actions
-  remote sync keeps read-only on a read-only instance; the models and Collections of `actions` are read once, when
-  first asked, and a missing one is a 404."
+  remote sync keeps read-only on a read-only instance, with the models and Collections of `actions` read once, when
+  first asked, and a missing one answered with a 404."
   [actions]
   (let [loaded       (delay
                        (let [model-ids   (into [] (comp (keep :model_id) (distinct)) actions)

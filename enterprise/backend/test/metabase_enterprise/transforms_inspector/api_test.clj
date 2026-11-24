@@ -23,7 +23,8 @@
                                          (format "ee/transforms/%d/inspect/no-such-lens" transform-id))))))))))
 
 (defn- inspect-call-count!
-  "App-DB statements of one inspect request of a Python transform reading `n` source tables, as a user who may inspect."
+  "The number of app DB statements of one inspect request of a Python transform reading `n` source tables, as a user
+  who may inspect."
   [n]
   (let [table-ids (mapv (fn [i]
                           (let [table-id (t2/insert-returning-pk! :model/Table {:db_id (mt/id)

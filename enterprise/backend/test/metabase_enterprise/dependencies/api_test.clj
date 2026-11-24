@@ -8,6 +8,7 @@
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.actions.models :as action]
    [metabase.collections.models.collection :as collection]
@@ -129,7 +130,8 @@
   "Run analysis for a specific card to detect broken references.
    Must be called within lib-be/with-metadata-provider-cache."
   [card-id]
-  (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Card :id card-id)))
+  (models.analysis-finding/upsert-analyses!
+   :card {card-id (:analysis (deps.analysis-finding/analyze-entity (t2/select-one :model/Card :id card-id)))}))
 
 (deftest graph-test
   (testing "GET /api/ee/dependencies/graph"

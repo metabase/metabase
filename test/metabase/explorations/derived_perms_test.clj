@@ -455,8 +455,8 @@
                                (mapv mi/can-write? (t2/hydrate docs :can_write))))))))))))))))
 
 (defn- summary-documents-statement-count!
-  "The statements of asking `:can_write` of `n` Summary documents whose Explorations have a thread each, as rasta, who
-  writes their Collection."
+  "The number of statements of asking `:can_write` of `n` Summary documents whose Explorations have a thread each, as
+  rasta, who writes their Collection."
   [n]
   (let [lucky (mt/user->id :lucky)]
     (mt/with-temp [:model/Collection {coll-id :id} {}]

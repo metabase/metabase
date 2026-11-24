@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sso.db :as sso.db]
-   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]))
 
 (deftest group-ids-by-name-partitions-test
@@ -11,4 +10,4 @@
     (let [names  #{name-a name-b "no such group" "nor this one" "nor that one"}
           single (sso.db/group-ids-by-name names)]
       (is (= #{group-a group-b} single))
-      (is (= single (with-redefs [mdb.query/select-partition-size 2] (sso.db/group-ids-by-name names)))))))
+      (is (= single (mt/with-partition-size 2 (sso.db/group-ids-by-name names)))))))

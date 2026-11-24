@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.tenants.db :as tenants.db]
-   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -18,8 +17,8 @@
           single (reads)]
       (testing "existence over several partitions answers as one statement does"
         (is (= {:name-or-slug true :no-name-or-slug false :named-outside false :named-other true} single))
-        (is (= single (with-redefs [mdb.query/select-partition-size 2] (reads))))))
+        (is (= single (mt/with-partition-size 2 (reads))))))
     (testing "deactivating more Tenants than one partition updates and counts all of them"
-      (is (= 3 (with-redefs [mdb.query/update-partition-size 2]
+      (is (= 3 (mt/with-partition-size 2
                  (tenants.db/deactivate-tenants! [tenant-a tenant-b tenant-c]))))
       (is (= #{false} (t2/select-fn-set :is_active :model/Tenant :id [:in [tenant-a tenant-b tenant-c]]))))))

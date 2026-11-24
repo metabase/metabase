@@ -1205,7 +1205,7 @@
 (defn- insert-managed-databases!
   "Inserts a Database with a Table for each of `managed?`, with one readable and one internal setting, gives All Users
   nothing on them, and gives the group with `group-id` query access to all of them and management of those whose
-  `managed?` is true; returns their ids."
+  `managed?` is true, and returns their ids."
   [group-id managed?]
   (vec (for [manage? managed?]
          (let [db-id (first (t2/insert-returning-pks! :model/Database

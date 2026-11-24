@@ -2,8 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.db :as analytics.db]
-   [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -23,6 +21,5 @@
                    :model/Card _ {:type :metric, :collection_id c3, :dataset_query metric}]
       (let [collection-ids #{c1 c2 c3}]
         (is (= 4 (analytics.db/unarchived-metric-count-in-collections collection-ids)))
-        (with-redefs [mdb.query/select-partition-size 2
-                      mdb/select-partition-size       2]
+        (mt/with-partition-size 2
           (is (= 4 (analytics.db/unarchived-metric-count-in-collections collection-ids))))))))

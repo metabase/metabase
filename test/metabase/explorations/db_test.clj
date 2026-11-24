@@ -1,7 +1,6 @@
 (ns metabase.explorations.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.query :as mdb.query]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration-query :as exploration-query]
    [metabase.lib.core :as lib]
@@ -48,5 +47,5 @@
         (testing read-name
           (let [whole (read-fn)]
             (is (seq whole))
-            (is (= whole (with-redefs [mdb.query/select-partition-size 2]
+            (is (= whole (mt/with-partition-size 2
                            (read-fn))))))))))

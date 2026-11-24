@@ -1646,7 +1646,7 @@
 (defn- insert-fk-star!
   "Inserts a Database with a center Table and `n` other Tables, each other Table with an FK Field to the center's PK
   and the center with an FK Field to each other Table's PK, gives All Users nothing on it and the group with
-  `group-id` full query access; returns `{:db-id :center-id :pk-id}`."
+  `group-id` full query access, and returns `{:db-id :center-id :pk-id}`."
   [n group-id]
   (let [db-id    (first (t2/insert-returning-pks! :model/Database
                                                   [(merge (mt/with-temp-defaults :model/Database)

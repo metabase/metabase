@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.app-db.query :as mdb.query]
    [metabase.session.core :as session]
    [metabase.session.db :as session.db]
    [metabase.session.models.session :as models.session]
@@ -114,7 +113,7 @@
                  :model/User {user-b :id} {}
                  :model/User {user-c :id} {}]
     (let [ids (vec (for [user-id [user-a user-b user-c user-a user-b]] (first (insert-session! user-id))))]
-      (with-redefs [mdb.query/update-partition-size 2]
+      (mt/with-partition-size 2
         (testing "every live session of the users is ended, whatever the number of statements"
           (is (= 4 (session.db/end-sessions-for-users! [user-a user-b] "admin" nil)))
           (is (= 1 (session.db/end-sessions! ids "admin" nil)))

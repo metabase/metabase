@@ -957,7 +957,7 @@
 (mu/defn collection-graph-rows
   "Reducible group/collection/writable/readable rows of the collection permissions graph for `collection-namespace`,
   restricted to `ids-without-root` (or every Collection when empty) and `group-ids` (or every group when empty).
-  `include-root?` controls whether the root-collection rows are included; `admin-group-id` is the id of the
+  `include-root?` controls whether the root-collection rows are included, and `admin-group-id` is the id of the
   Administrators group, which implicitly has write access to every Collection."
   [collection-namespace :- [:maybe [:or :keyword :string]]
    include-root?        :- :boolean
