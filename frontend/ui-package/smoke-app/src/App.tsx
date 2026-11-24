@@ -28,7 +28,16 @@ export const App = () => {
   const highOverlay = params.has("high-overlay");
   const tooltipOverride = params.has("tooltip-override")
     ? { Tooltip: { defaultProps: { zIndex: 11000 } } }
-    : undefined;
+    : params.has("tooltip-callback")
+      ? {
+          Tooltip: {
+            defaultProps: () => ({
+              zIndex: 11000,
+              "data-testid": "callback-tooltip",
+            }),
+          },
+        }
+      : undefined;
   return (
     <MetabaseUIProvider
       colorScheme={colorScheme}
@@ -91,6 +100,11 @@ export const App = () => {
           title="Modal title"
         >
           <Text>Modal body</Text>
+          {highOverlay && (
+            <Tooltip.Floating label="Floating tooltip">
+              <Button>Floating tooltip target</Button>
+            </Tooltip.Floating>
+          )}
           {highOverlay && (
             <Tooltip label="Modal tooltip" opened position="top">
               <Button>Modal tooltip target</Button>

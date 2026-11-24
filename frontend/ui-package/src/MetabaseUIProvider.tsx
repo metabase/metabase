@@ -1,4 +1,6 @@
 import {
+  type MantineTheme,
+  type MantineThemeComponent,
   type MantineThemeOverride,
   getDefaultZIndex,
   useMantineTheme,
@@ -51,36 +53,43 @@ const getThemeOverride = (
   } = theme ?? {};
   const { colorScheme: _scheme, ...otherRest } = other ?? {};
   const overlayZIndex = readOverlayZIndex(otherRest.popover);
-  const defaultTooltipZIndex = getDefaultZIndex("popover") + 1;
-  const tooltip = rest.components?.Tooltip;
-  const defaultProps: unknown = tooltip?.defaultProps;
-  if (
-    overlayZIndex < defaultTooltipZIndex ||
-    (defaultProps &&
-      typeof defaultProps === "object" &&
-      "zIndex" in defaultProps &&
-      defaultProps.zIndex != null)
-  ) {
-    return { ...rest, other: otherRest };
+  const popoverLayer = getDefaultZIndex("popover");
+  const components = { ...rest.components };
+  if (overlayZIndex >= popoverLayer + 1) {
+    components.Tooltip = withTooltipLayer(
+      components.Tooltip,
+      overlayZIndex + 1,
+    );
   }
-
-  return {
-    ...rest,
-    other: otherRest,
-    components: {
-      ...rest.components,
-      Tooltip: {
-        ...tooltip,
-        defaultProps: {
-          ...(defaultProps && typeof defaultProps === "object"
-            ? defaultProps
-            : {}),
-          zIndex: overlayZIndex + 1,
-        },
-      },
-    },
-  };
+  if (overlayZIndex >= popoverLayer) {
+    components.TooltipFloating = withTooltipLayer(
+      components.TooltipFloating,
+      overlayZIndex + 1,
+    );
+  }
+  return { ...rest, other: otherRest, components };
 };
+
+function withTooltipLayer(
+  component: MantineThemeComponent | undefined,
+  zIndex: number,
+): MantineThemeComponent {
+  const defaults: unknown = component?.defaultProps;
+  const withFallback = (props: unknown) => {
+    const overrides = props && typeof props === "object" ? props : {};
+    return {
+      ...overrides,
+      zIndex: "zIndex" in overrides ? (overrides.zIndex ?? zIndex) : zIndex,
+    };
+  };
+  return {
+    ...component,
+    defaultProps:
+      typeof defaults === "function"
+        ? (theme: MantineTheme) => withFallback(defaults(theme))
+        : withFallback(defaults),
+  };
+}
 
 function readOverlayZIndex(popover: unknown) {
   return popover &&

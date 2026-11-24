@@ -259,6 +259,27 @@ test("a custom tooltip z-index takes precedence", async ({ page }) => {
   ).toHaveCSS("z-index", "11000");
 });
 
+test("preserves tooltip defaults returned by a theme callback", async ({
+  page,
+}) => {
+  await page.goto("/?high-overlay&tooltip-callback");
+  await page.getByTestId("open-modal").click();
+  await expect(
+    page.getByTestId("callback-tooltip").filter({ hasText: "Modal tooltip" }),
+  ).toHaveCSS("z-index", "11000");
+});
+
+test("a floating tooltip stays above a custom modal layer", async ({
+  page,
+}) => {
+  await page.goto("/?high-overlay");
+  await page.getByTestId("open-modal").click();
+  await page.getByRole("button", { name: "Floating tooltip target" }).hover();
+  const tooltip = page.getByText("Floating tooltip", { exact: true });
+  await expect(tooltip).toBeVisible();
+  await expect.poll(() => isOnTop(tooltip)).toBe(true);
+});
+
 test("@release light and dark resolve different colors", async ({ page }) => {
   const resolved: string[] = [];
   for (const scheme of SCHEMES) {
