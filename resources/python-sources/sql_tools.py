@@ -516,6 +516,8 @@ def _unsupported_join(join):
     return (
         (join.method or "").upper() == "POSITIONAL"
         or (join.kind or "").upper() in ("ANTI", "ANY")
+        # sqlglot reads `INNER ANY JOIN` with ANY as the side.
+        or (join.side or "").upper() == "ANY"
         or bool(join.args.get("match_condition"))
     )
 

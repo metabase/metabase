@@ -308,6 +308,10 @@
    :dialect "clickhouse",
    :sql "SELECT * FROM a LEFT ANY JOIN b ON a.x = b.x",
    :expected {:status "unsupported", :reason "unsupported-join"}}
+  {:name "a ClickHouse INNER ANY join, which sqlglot reads with ANY as the side, is refused",
+   :dialect "clickhouse",
+   :sql "SELECT * FROM a INNER ANY JOIN b ON a.x = b.x",
+   :expected {:status "unsupported", :reason "unsupported-join"}}
   {:name "a placeholder in a clause the steps leave out does not matter",
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN b ON a.x = b.x WHERE a.y = ?",

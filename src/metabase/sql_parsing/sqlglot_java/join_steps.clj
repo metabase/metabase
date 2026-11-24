@@ -112,6 +112,8 @@
   ;; Snowflake's ASOF join keeps unmatched left rows like a LEFT join, and has no INNER form to count its matches.
   (or (= "POSITIONAL" (upper-arg join "method"))
       (#{"ANTI" "ANY"} (upper-arg join "kind"))
+      ;; sqlglot reads `INNER ANY JOIN` with ANY as the side.
+      (= "ANY" (upper-arg join "side"))
       (some? (ast/arg join "match_condition"))))
 
 (defn- with-clause
