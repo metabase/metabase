@@ -12,9 +12,11 @@ import * as Urls from "metabase/urls";
 import type { Transform, TransformId } from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockPythonTransformSource,
   createMockTransform,
   createMockTransformOwner,
   createMockTransformRun,
+  createMockTransformTarget,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -82,6 +84,20 @@ function getLastOwnerUpdateBody(transformId: TransformId) {
 }
 
 describe("TransformSettingsSection", () => {
+  it("should show the target schema of a transform whose table does not exist yet (metabase#68378)", async () => {
+    setup({
+      transform: createMockTransform({
+        source: createMockPythonTransformSource({ sourceDatabase: 1 }),
+        target: createMockTransformTarget({ schema: "empty_schema" }),
+        table: null,
+      }),
+    });
+
+    expect(await screen.findByTestId("schema-link")).toHaveTextContent(
+      "empty_schema",
+    );
+  });
+
   it("should disable the change target button when the transform is running", () => {
     setup({
       transform: createMockTransform({
