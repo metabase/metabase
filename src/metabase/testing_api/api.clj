@@ -619,10 +619,13 @@
                                                                    [:second_tenant_id {:optional true} [:maybe ms/PositiveInt]]]]
   (seed-usage-auditing-data! user_id second_user_id tenant_id second_tenant_id))
 
+(mr/def ::retriever-arguments
+  "The arguments of a retrieval tool, passed through as they arrived: the selected tool's own schema validates them."
+  [:map {:closed false, :description "retrieval tool arguments"}])
+
 (api.macros/defendpoint :post "/metabot/retrieve" :- [:map {:closed true} [:output :string]]
   "Run one of Metabot's read-only retrieval tools with fixed arguments and no model, for search evals.
   Admins only, because the testing routes are not behind the authentication middleware.
-  The selected tool validates `arguments`, so they pass through as they arrived.
   Answers 400 when the tool rejects the arguments, and 502 when the call or any of its queries fails.
   That way a caller can tell a failed or partial search from one that found nothing.
   The 502 for a partial search still carries the other queries' `output`, for debugging."
@@ -630,7 +633,7 @@
    _query-params
    {:keys [retriever arguments]} :- [:map {:closed true}
                                      [:retriever (into [:enum] metabot.tools/retriever-names)]
-                                     [:arguments [:map {:closed false}]]]]
+                                     [:arguments ::retriever-arguments]]]
   (api/check-superuser)
   (let [{:keys [output error failed-queries]} (metabot.tools/run-retriever retriever arguments
                                                                            (metabot.config/resolve-metabot nil))]
