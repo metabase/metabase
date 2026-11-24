@@ -1,16 +1,29 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCollectionTreeEndpoint,
   setupDatabaseListEndpoint,
+  setupListTransformsEndpoint,
   setupPropertiesEndpoints,
   setupStoreEEBillingEndpoint,
   setupStoreEECloudAddOnsEndpoint,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import type { DispatchFn } from "metabase/redux/hooks";
 import { Route } from "metabase/router";
+import { refetchSiteSettings } from "metabase/settings";
+import { TransformListPage } from "metabase/transforms/pages/TransformListPage";
 import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -42,6 +55,7 @@ const setup = ({
   canAccessDbDetails = false,
   databases = [],
   databasesError = false,
+  withTransformListPage = false,
 }: {
   isHosted?: boolean;
   hasTransformFeature?: boolean;
@@ -52,6 +66,7 @@ const setup = ({
   canAccessDbDetails?: boolean;
   databases?: Database[];
   databasesError?: boolean;
+  withTransformListPage?: boolean;
 } = {}) => {
   if (databasesError) {
     fetchMock.get("path:/api/database", 500);
@@ -83,6 +98,21 @@ const setup = ({
   const settings = mockSettings(settingsValues);
 
   setupPropertiesEndpoints(settingsValues);
+  // Stands in for the backend: enabling transforms also completes the setup.
+  fetchMock.put("path:/api/setting/transforms-enabled", () => {
+    setupPropertiesEndpoints({
+      ...settingsValues,
+      "transforms-enabled": true,
+      "transforms-setup-complete": true,
+    });
+    return 204;
+  });
+
+  if (withTransformListPage) {
+    setupCollectionTreeEndpoint([]);
+    setupListTransformsEndpoint([]);
+    setupUserMetabotPermissionsEndpoint();
+  }
 
   if (isHosted || hasTransformFeature) {
     setupEnterpriseOnlyPlugin("transforms");
@@ -90,9 +120,18 @@ const setup = ({
 
   const path = "/transforms";
 
-  renderWithProviders(
+  return renderWithProviders(
     <Route path={path} element={<TransformsSectionLayout />}>
-      <Route index element={<div>List of transforms</div>} />
+      <Route
+        index
+        element={
+          withTransformListPage ? (
+            <TransformListPage />
+          ) : (
+            <div>List of transforms</div>
+          )
+        }
+      />
     </Route>,
     {
       storeInitialState: createMockState({
@@ -152,6 +191,82 @@ describe("TransformSectionLayout", () => {
       });
       await assertInApp();
     });
+  });
+
+  describe("enabling transforms", () => {
+    it.each([
+      { edition: "OSS", hasTransformFeature: false, showsPython: false },
+      {
+        edition: "Pro self-hosted",
+        hasTransformFeature: true,
+        showsPython: true,
+      },
+    ])(
+      "enables transforms and opens the transform list in $edition",
+      async ({ hasTransformFeature, showsPython }) => {
+        const { store } = setup({
+          isAdmin: true,
+          hasTransformFeature,
+          withTransformListPage: true,
+          databases: [
+            createTransformSupportedDatabase({
+              transforms_permissions: "write",
+            }),
+          ],
+        });
+
+        // The app keeps a session properties subscription from startup
+        // (app.tsx), so the settings refresh after the setting is saved.
+        await act(async () => {
+          // The store's test-harness dispatch type isn't thunk-aware,
+          // the app DispatchFn is.
+          await (store.dispatch as DispatchFn)(refetchSiteSettings());
+        });
+
+        const enablePage = await screen.findByTestId("enable-transform-page");
+        await userEvent.click(
+          within(enablePage).getByRole("button", { name: "Enable transforms" }),
+        );
+
+        await waitFor(() => {
+          expect(
+            fetchMock.callHistory.called(
+              "path:/api/setting/transforms-enabled",
+              { method: "PUT" },
+            ),
+          ).toBe(true);
+        });
+        const call = fetchMock.callHistory.lastCall(
+          "path:/api/setting/transforms-enabled",
+          { method: "PUT" },
+        );
+        const body: unknown = JSON.parse(String(call?.options.body));
+        expect(body).toEqual({ value: true });
+
+        expect(
+          await screen.findByTestId("transforms-list"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("enable-transform-page"),
+        ).not.toBeInTheDocument();
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "Create a transform" }),
+        );
+        expect(
+          await screen.findByRole("menuitem", { name: /Query builder/ }),
+        ).toBeInTheDocument();
+        if (showsPython) {
+          expect(
+            screen.getByRole("menuitem", { name: /Python/ }),
+          ).toBeInTheDocument();
+        } else {
+          expect(
+            screen.queryByRole("menuitem", { name: /Python/ }),
+          ).not.toBeInTheDocument();
+        }
+      },
+    );
   });
 
   describe("Pro Hosted", () => {
@@ -266,6 +381,44 @@ describe("TransformSectionLayout", () => {
           name: "View your database connections",
         }),
       ).not.toBeInTheDocument();
+    });
+
+    it("should show the empty state with a header but no tabs in pro self-hosted when only the sample database exists", async () => {
+      setup({
+        hasTransformFeature: true,
+        transformsEnabled: true,
+        transformsSetupComplete: true,
+        isAdmin: true,
+        databases: [
+          createTransformSupportedDatabase({
+            id: 1,
+            name: "Sample Database",
+            is_sample: true,
+            transforms_permissions: "write",
+          }),
+        ],
+      });
+
+      expect(
+        await screen.findByRole("heading", {
+          name: "No compatible database connection",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "View your database connections" }),
+      ).toHaveAttribute("href", "/admin/databases");
+      const sectionHeader = screen.getByTestId("transforms-section-header");
+      expect(sectionHeader).toBeInTheDocument();
+      expect(
+        within(sectionHeader).queryByRole("tab", { name: "Transforms" }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(sectionHeader).queryByRole("tab", { name: "Jobs" }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(sectionHeader).queryByRole("tab", { name: "Runs" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("List of transforms")).not.toBeInTheDocument();
     });
 
     it("should show an error UI (not the empty state) when the databases request fails", async () => {

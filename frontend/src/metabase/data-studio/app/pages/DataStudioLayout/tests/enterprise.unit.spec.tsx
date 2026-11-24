@@ -149,6 +149,37 @@ describe("DataStudioLayout", () => {
     });
   });
 
+  describe("upsell gems", () => {
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("does not mark Data transformation as gated in pro self-hosted", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        enterprisePlugins: [
+          ...(DEFAULT_EE_SETTINGS.enterprisePlugins ?? []),
+          "transforms",
+        ],
+        tokenFeatures: {
+          ...DEFAULT_EE_SETTINGS.tokenFeatures,
+          "transforms-basic": true,
+        },
+      });
+
+      const nav = await screen.findByTestId("data-studio-nav");
+      const dataAppsTab = within(nav).getByRole("link", { name: "Data apps" });
+      expect(within(dataAppsTab).getByTestId("upsell-gem")).toBeInTheDocument();
+
+      const transformsTab = within(nav).getByRole("link", {
+        name: /Data transformation/,
+      });
+      expect(
+        within(transformsTab).queryByTestId("upsell-gem"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("data apps tab", () => {
     const enterprisePlugins = [
       ...(DEFAULT_EE_SETTINGS.enterprisePlugins ?? []),

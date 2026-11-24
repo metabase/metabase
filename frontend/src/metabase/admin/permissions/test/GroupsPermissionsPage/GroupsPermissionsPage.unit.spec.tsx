@@ -9,6 +9,7 @@ import {
   setupPermissionsGraphEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -19,9 +20,12 @@ import { delay } from "__support__/utils";
 import { DataPermissionsPage } from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
-import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
+  reinitialize,
+} from "metabase/plugins";
 import { Route } from "metabase/router";
-import type { Database } from "metabase-types/api";
+import type { Database, EnterpriseSettings } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTokenFeatures,
@@ -41,10 +45,17 @@ const TEST_GROUPS = [
   }),
 ];
 
+type SetupOpts = {
+  initialRoute?: string;
+  databases?: Database[];
+  settings?: Partial<EnterpriseSettings>;
+};
+
 const setup = async ({
   initialRoute = `/admin/permissions/data/group/${TEST_GROUPS[1].id}`,
   databases = [TEST_DATABASE],
-}: { initialRoute?: string; databases?: Database[] } = {}) => {
+  settings,
+}: SetupOpts = {}) => {
   setupDatabasesEndpoints(databases);
   setupPermissionsGraphEndpoints(TEST_GROUPS, databases);
   setupGroupsEndpoint(TEST_GROUPS);
@@ -77,6 +88,10 @@ const setup = async ({
     {
       withRouter: true,
       initialRoute,
+      storeInitialState:
+        settings != null
+          ? createMockState({ settings: mockSettings(settings) })
+          : undefined,
     },
   );
 
@@ -139,6 +154,68 @@ describe("GroupsPermissionsPage", () => {
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(mockEvent.returnValue).toBe(undefined);
     });
+  });
+
+  describe("transforms permission column", () => {
+    afterEach(() => {
+      reinitialize();
+    });
+
+    async function expectDatabaseNameColumn() {
+      expect(
+        await screen.findByRole("columnheader", { name: "Database name" }),
+      ).toBeInTheDocument();
+    }
+
+    it("does not show the Transforms column in OSS, even with transforms enabled", async () => {
+      await setup({
+        settings: {
+          "transforms-enabled": true,
+          "token-features": createMockTokenFeatures(),
+        },
+      });
+
+      await expectDatabaseNameColumn();
+      expect(
+        screen.queryByRole("columnheader", { name: /Transforms/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it.each([
+      { transformsEnabled: false, showsColumn: false },
+      { transformsEnabled: true, showsColumn: true },
+    ])(
+      "shows the Transforms column in pro self-hosted only when transforms are enabled (enabled: $transformsEnabled)",
+      async ({ transformsEnabled, showsColumn }) => {
+        const tokenFeatures = createMockTokenFeatures({
+          advanced_permissions: true,
+          "transforms-basic": true,
+        });
+        mockSettings({ "token-features": tokenFeatures });
+        setupEnterpriseOnlyPlugin("feature_level_permissions");
+
+        await setup({
+          settings: {
+            "transforms-enabled": transformsEnabled,
+            "token-features": tokenFeatures,
+          },
+        });
+
+        await expectDatabaseNameColumn();
+        expect(
+          screen.getByRole("columnheader", { name: /Manage database/ }),
+        ).toBeInTheDocument();
+        if (showsColumn) {
+          expect(
+            screen.getByRole("columnheader", { name: /Transforms/ }),
+          ).toBeInTheDocument();
+        } else {
+          expect(
+            screen.queryByRole("columnheader", { name: /Transforms/ }),
+          ).not.toBeInTheDocument();
+        }
+      },
+    );
   });
 
   // Initializing the plugin is global for this file, so this block runs last

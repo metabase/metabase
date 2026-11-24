@@ -120,6 +120,28 @@ describe("DataStudioLayout", () => {
       expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
     });
   });
+  describe("upsell gems", () => {
+    it("marks Remote sync as gated but not Data transformation in OSS", async () => {
+      setup();
+
+      const nav = await screen.findByTestId("data-studio-nav");
+      const remoteSyncTab = within(nav).getByRole("link", {
+        name: /Remote sync/,
+      });
+      expect(
+        within(remoteSyncTab).getByTestId("upsell-gem"),
+      ).toBeInTheDocument();
+
+      const transformsTab = within(nav).getByRole("link", {
+        name: /Data transformation/,
+      });
+      expect(transformsTab).toHaveAttribute("href", Urls.transformList());
+      expect(
+        within(transformsTab).queryByTestId("upsell-gem"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("settings tab", () => {
     it("shows Settings for admins after transform setup is complete", async () => {
       setup({ isAdmin: true, transformsSetupComplete: true });
