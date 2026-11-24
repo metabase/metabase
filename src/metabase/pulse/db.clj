@@ -111,11 +111,6 @@
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one-pk :model/Pulse :id pulse-id))
 
-(mu/defn pulse-id-of-channel
-  "The id of the Pulse of the PulseChannel with `pulse-channel-id`, or nil."
-  [pulse-channel-id :- ms/PositiveInt]
-  (t2/select-one-fn :pulse_id :model/PulseChannel :id [:auto/param pulse-channel-id]))
-
 (mu/defn unarchived-pulse
   "The unarchived Pulse with `pulse-id`, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
