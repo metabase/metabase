@@ -869,12 +869,11 @@
        (cons "These subscriptions already used filters the dashboard no longer had, and were archived too:"
              (map describe broken)))
      (when (seq unreadable)
-       (let [n    (count unreadable)
-             noun (u/format-plural n "subscription")]
-         (if (seq readable)
-           (str "The save also archived " n " more " noun " the user can't see.")
-           (str "The save archived " n " " noun " the user can't see, which used filters the dashboard "
-                "no longer has."))))
+       ;; Unreadable ones aren't split into caused and already-broken, so the line says either could apply.
+       (let [n (count unreadable)]
+         (str "The save " (when (seq readable) "also ") "archived " n " " (u/format-plural n "subscription")
+              " the user can't see, which used filters the dashboard no longer has. This change or an earlier one "
+              "removed those filters.")))
      (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email is set "
           "up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]))
 

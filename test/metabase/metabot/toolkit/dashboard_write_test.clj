@@ -273,7 +273,11 @@
                                                    :creator_id   (mt/user->id :crowberto)
                                                    :parameters   [{:id "gone", :name "Gone", :value ["b"]}]}]
         (mt/with-current-user (mt/user->id :rasta)
-          (is (=? {:effects {:archived-subscriptions [{:id own, :readable? true, :already-broken? false}
-                                                      {:readable? false}]}}
-                  (dashboard-write/write! {:dashboard (hydrated (:id dash))
-                                           :ops       [{:op "remove_parameter", :parameter_id "gone"}]}))))))))
+          (let [archived (-> (dashboard-write/write! {:dashboard (hydrated (:id dash))
+                                                      :ops       [{:op "remove_parameter", :parameter_id "gone"}]})
+                             :effects
+                             :archived-subscriptions)]
+            (is (=? [{:id own, :readable? true, :already-broken? false}
+                     ;; Exact, so an id or the stored filters on the unreadable entry fail the test.
+                     (mt/exactly=? {:readable? false})]
+                    archived))))))))
