@@ -13,8 +13,10 @@ import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import {
+  type MentionProps,
   MetabotMentionExtension,
   MetabotMentionPluginKey,
+  insertMentionSmartLink,
 } from "metabase/metabot/components/editor-extensions/MetabotMention/MetabotMentionExtension";
 import { createMetabotMentionSuggestionNew } from "metabase/metabot/components/editor-extensions/MetabotMention/MetabotSuggestionNew";
 import { useSelector } from "metabase/redux";
@@ -40,6 +42,8 @@ export interface MetabotPromptInputProps {
   onChange: (value: string) => void;
   onSubmit?: () => void;
   onStop: () => void;
+  /** When set, picking an @-mention calls this instead of inserting an inline link. */
+  onMentionSelect?: (mention: MentionProps) => void;
   suggestionConfig: {
     suggestionModels: SuggestionModel[];
     onlyDatabaseId?: DatabaseId;
@@ -59,6 +63,7 @@ export const MetabotPromptInput = forwardRef<
       onChange,
       onSubmit,
       onStop,
+      onMentionSelect,
       ...props
     },
     ref,
@@ -73,6 +78,8 @@ export const MetabotPromptInput = forwardRef<
     onSubmitRef.current = onSubmit;
     const onStopRef = useRef(onStop);
     onStopRef.current = onStop;
+    const onMentionSelectRef = useRef(onMentionSelect);
+    onMentionSelectRef.current = onMentionSelect;
 
     const extensions = [
       Document,
@@ -92,6 +99,15 @@ export const MetabotPromptInput = forwardRef<
               onlyDatabaseId: suggestionConfig.onlyDatabaseId,
             }),
           ),
+          command: (args: Parameters<typeof insertMentionSmartLink>[0]) => {
+            const handleMentionSelect = onMentionSelectRef.current;
+            if (!handleMentionSelect) {
+              insertMentionSmartLink(args);
+              return;
+            }
+            args.editor.chain().focus().deleteRange(args.range).run();
+            handleMentionSelect(args.props);
+          },
         },
       }),
     ];
@@ -210,6 +226,22 @@ export const MetabotPromptInput = forwardRef<
         focus: () => editor.commands.focus("end"),
         clear: () => editor.commands.clearContent(),
         getValue: () => serializeTiptapToMetabotMessage(editor.getJSON()),
+        openMentionMenu: () => {
+          // The suggestion plugin only triggers on an "@" at a word boundary.
+          const { from } = editor.state.selection;
+          const charBefore = editor.state.doc.textBetween(
+            Math.max(from - 1, 0),
+            from,
+            "\n",
+            " ",
+          );
+          const needsSpace = charBefore !== "" && !/\s/.test(charBefore);
+          editor
+            .chain()
+            .focus()
+            .insertContent(needsSpace ? " @" : "@")
+            .run();
+        },
       });
 
       // Install the size accessors with `defineProperties` rather than through

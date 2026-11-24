@@ -21,6 +21,33 @@ export interface MentionProps {
 
 export const MetabotMentionPluginKey = new PluginKey("metabot-mention");
 
+export function insertMentionSmartLink({
+  editor,
+  range,
+  props,
+}: {
+  editor: Editor;
+  range: Range;
+  props: MentionProps;
+}) {
+  if (props.id && props.model) {
+    editor
+      .chain()
+      .focus()
+      .deleteRange(range)
+      .insertContent({
+        type: "smartLink",
+        attrs: {
+          entityId: props.id,
+          model: props.model,
+          label: props.label,
+        },
+      })
+      .insertContent(" ") // Add space after mention
+      .run();
+  }
+}
+
 export const MetabotMentionExtension = Extension.create<MentionOptions>({
   name: "metabot-mention",
 
@@ -35,32 +62,7 @@ export const MetabotMentionExtension = Extension.create<MentionOptions>({
         pluginKey: MetabotMentionPluginKey,
         allowSpaces: true,
         items: ({ query: _query }: { query: string }) => [],
-        command: ({
-          editor,
-          range,
-          props,
-        }: {
-          editor: Editor;
-          range: Range;
-          props: MentionProps;
-        }) => {
-          if (props.id && props.model) {
-            editor
-              .chain()
-              .focus()
-              .deleteRange(range)
-              .insertContent({
-                type: "smartLink",
-                attrs: {
-                  entityId: props.id,
-                  model: props.model,
-                  label: props.label,
-                },
-              })
-              .insertContent(" ") // Add space after mention
-              .run();
-          }
-        },
+        command: insertMentionSmartLink,
       },
     };
   },

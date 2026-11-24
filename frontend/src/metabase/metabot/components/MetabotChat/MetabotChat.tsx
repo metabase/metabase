@@ -8,15 +8,7 @@ import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProv
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
 import { useSetting } from "metabase/settings";
-import {
-  Box,
-  Flex,
-  Icon,
-  Paper,
-  Stack,
-  Text,
-  UnstyledButton,
-} from "metabase/ui";
+import { Box, Flex, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
 
 import { useGetSuggestedMetabotPromptsQuery } from "../../api";
 import {
@@ -29,8 +21,8 @@ import type { MetabotChatConfig } from "../Metabot";
 import { METABOT_HOVER_CARD_BOUNDARY_ATTR } from "../MetabotHoverCard";
 
 import Styles from "./MetabotChat.module.css";
-import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
+import { MetabotContextComposerPrototype } from "./MetabotContextTokensPrototype/MetabotContextComposerPrototype";
 import { MetabotContextUsageRing } from "./MetabotContextUsageRing";
 import { useScrollManager } from "./hooks";
 
@@ -242,25 +234,15 @@ export const MetabotChat = ({
               />
             )}
             {!metabot.isContextWindowFull && (
-              <Paper
-                className={cx(
-                  Styles.inputContainer,
-                  metabot.isDoingScience && Styles.inputContainerLoading,
-                )}
-              >
-                <MetabotChatEditor
-                  ref={metabot.promptInputRef}
-                  value={metabot.prompt}
-                  autoFocus
-                  isResponding={metabot.isDoingScience}
-                  onChange={metabot.setPrompt}
-                  onSubmit={() => metabot.submitInput(metabot.prompt)}
-                  onStop={metabot.cancelRequest}
-                  suggestionConfig={{
-                    suggestionModels: config.suggestionModels,
-                  }}
-                />
-              </Paper>
+              <MetabotContextComposerPrototype
+                prompt={metabot.prompt}
+                onPromptChange={metabot.setPrompt}
+                promptInputRef={metabot.promptInputRef}
+                isResponding={metabot.isDoingScience}
+                onSubmit={(message) => metabot.submitInput(message)}
+                onStop={metabot.cancelRequest}
+                suggestionModels={config.suggestionModels}
+              />
             )}
           </Box>
           <Box className={Styles.footerRow}>

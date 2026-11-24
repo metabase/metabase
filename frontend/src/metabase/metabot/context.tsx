@@ -30,6 +30,8 @@ export type DeregisterChatContextProviderFn = () => void;
 export type MetabotPromptInputRef = {
   focus: () => void;
   getValue?: () => string;
+  /** Inserts an "@" at the cursor, opening the mention picker. */
+  openMentionMenu?: () => void;
   scrollHeight: number;
   scrollTop: number;
 };
