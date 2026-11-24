@@ -14,8 +14,9 @@ import {
 } from "__support__/ui";
 import { Api } from "metabase/api";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import type { RowValues } from "metabase-types/api";
+import type { Dataset, RowValues } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatabase,
@@ -97,6 +98,41 @@ const ROWS: RowValues[] = [
   [2, "Bravo", 20, "2020-02-02", "2020-02-02T10:00:00", false],
   [3, "Charlie", 30, "2020-02-03", "2020-02-03T10:00:00", false],
 ];
+
+// The grid shows the category name in place of `category_id`, from a column of its own
+const CATEGORY_COLS = [
+  ...COLS,
+  createMockColumn({
+    id: 107,
+    table_id: TABLE_ID,
+    name: "category_id",
+    display_name: "Category ID",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    semantic_type: "type/FK",
+    source: "fields",
+    field_ref: ["field", 107, null],
+    remapped_to: "category_name",
+  }),
+  createMockColumn({
+    name: "category_name",
+    display_name: "Category",
+    base_type: "type/Text",
+    effective_type: "type/Text",
+    source: "fields",
+    remapped_from: "category_id",
+  }),
+];
+
+function createCategoryDataset(categories: [id: number, name: string][]) {
+  return createMockDataset({
+    data: {
+      cols: CATEGORY_COLS,
+      rows: ROWS.map((row, index) => [...row, ...categories[index]]),
+    },
+    row_count: ROWS.length,
+  });
+}
 
 const UPDATE_FORM: DescribeActionFormResponse = {
   title: "Update",
@@ -200,17 +236,24 @@ function toServerRow(row: Record<string, unknown>) {
   return "score" in row ? { ...row, score: Number(row.score) } : row;
 }
 
+type SetupOpts = {
+  isAdmin?: boolean;
+  isTableEditingEnabled?: boolean;
+  isTableWritable?: boolean;
+  initialRoute?: string;
+  dataset?: Dataset;
+};
+
 function setup({
   isAdmin = true,
   isTableEditingEnabled = true,
   isTableWritable = true,
   initialRoute = EDIT_PATH,
-}: {
-  isAdmin?: boolean;
-  isTableEditingEnabled?: boolean;
-  isTableWritable?: boolean;
-  initialRoute?: string;
-} = {}) {
+  dataset = createMockDataset({
+    data: { cols: COLS, rows: ROWS },
+    row_count: ROWS.length,
+  }),
+}: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 1000 });
   // Edit mode builds its filter and sort URLs from `window.location`.
   window.history.pushState({}, "", EDIT_PATH);
@@ -225,11 +268,7 @@ function setup({
 
   setupDatabaseEndpoints(database);
   fetchMock.get("path:/api/database", { data: [database], total: 1 });
-  fetchMock.post(
-    "path:/api/dataset",
-    createMockDataset({ data: { cols: COLS, rows: ROWS }, row_count: 3 }),
-    { name: "dataset" },
-  );
+  fetchMock.post("path:/api/dataset", dataset, { name: "dataset" });
   fetchMock.post("path:/api/ee/action-v2/execute-form", UPDATE_FORM, {
     body: { action: TableActionId.UpdateRow },
     matchPartialBody: true,
@@ -259,7 +298,7 @@ function setup({
   );
 }
 
-async function setupGrid(options?: Parameters<typeof setup>[0]) {
+async function setupGrid(options?: SetupOpts) {
   const view = setup(options);
   await waitForGridToSettle(view.store, { datasetRequests: 1 });
   expect(screen.getByText("Bravo")).toBeInTheDocument();
@@ -544,6 +583,40 @@ describe("EditTableDataContainer", () => {
       expect(getCell(1, "active")).toHaveTextContent("true");
     });
 
+    it("keeps text typed into a cell while another cell's save lands", async () => {
+      await setupGrid();
+      const saveResponse = defer<void>();
+      fetchMock.modifyRoute("execute-bulk", {
+        response: async (callLog: CallLog) => {
+          await saveResponse.promise;
+          return executeBulk(callLog);
+        },
+      });
+
+      await userEvent.click(getCell(1, "score"));
+      const scoreInput = within(getCell(1, "score")).getByRole("textbox");
+      await userEvent.clear(scoreInput);
+      await userEvent.type(scoreInput, "25{Enter}");
+      await waitFor(() =>
+        expect(fetchMock.callHistory.calls("execute-bulk")).toHaveLength(1),
+      );
+      await userEvent.click(getCell(2, "name"));
+      await userEvent.type(
+        within(getCell(2, "name")).getByRole("textbox"),
+        " Delta",
+      );
+      expect(screen.queryByTestId("toast-undo")).not.toBeInTheDocument();
+      saveResponse.resolve();
+
+      expect(
+        await screen.findByText("Successfully updated"),
+      ).toBeInTheDocument();
+      expect(getCell(1, "score")).toHaveTextContent("25");
+      expect(within(getCell(2, "name")).getByRole("textbox")).toHaveValue(
+        "Charlie Delta",
+      );
+    });
+
     it("does not make a cell editable when the form description marks its column readonly", async () => {
       await setupGrid();
 
@@ -649,6 +722,29 @@ describe("EditTableDataContainer", () => {
 
       expect(nameCellContent).toBeInTheDocument();
       expect(rowCheckbox).toBeInTheDocument();
+    });
+
+    it("shows foreign key display names from a refetched dataset", async () => {
+      const { store } = await setupGrid({
+        dataset: createCategoryDataset([
+          [1, "Asian"],
+          [1, "Asian"],
+          [1, "Asian"],
+        ]),
+      });
+      expect(getCell(2, "category_id")).toHaveTextContent("Asian");
+      fetchMock.modifyRoute("dataset", {
+        response: createCategoryDataset([
+          [1, "Asian"],
+          [1, "Asian"],
+          [2, "Burger"],
+        ]),
+      });
+
+      await userEvent.click(getHeader().getByText("Score"));
+      await waitForGridToSettle(store, { datasetRequests: 2 });
+
+      expect(getCell(2, "category_id")).toHaveTextContent("Burger");
     });
 
     it("adds a filter and keeps filter and sort in the URL across reloads", async () => {

@@ -1,9 +1,11 @@
 import type { CellContext } from "@tanstack/react-table";
 import cx from "classnames";
+import { useCallback } from "react";
 
 import { BodyCell } from "metabase/data-grid";
 import { useDataGridTheme } from "metabase/data-grid/hooks";
 import { getDefaultCellBackgroundColor } from "metabase/data-grid/utils/striped-background-color";
+import { formatValue } from "metabase/value-formatting";
 import { ParameterActionInput } from "metabase-enterprise/table-editing/inputs/ParameterActionInput";
 import type { RowValue, RowValues } from "metabase-types/api";
 
@@ -24,6 +26,7 @@ export function EditTableDataGridBodyCell({
   isStriped,
 }: EditTableDataGridBodyCellProps) {
   const {
+    columnsByName,
     parametersByName,
     editingCell,
     getCellState,
@@ -31,6 +34,12 @@ export function EditTableDataGridBodyCell({
     onValueUpdated,
   } = useEditTableDataGridContext();
   const theme = useDataGridTheme();
+  const datasetColumn = columnsByName.get(column.id);
+  // Each dataset's column carries the foreign key display names of its own rows
+  const formatter = useCallback(
+    (value: RowValue) => formatValue(value, { column: datasetColumn }),
+    [datasetColumn],
+  );
   const value = getValue();
   const parameter = parametersByName.get(column.id);
   const isEditing =
@@ -64,12 +73,7 @@ export function EditTableDataGridBodyCell({
     );
   }
 
-  const {
-    formatter,
-    wrap,
-    isTruncated = false,
-    onExpand,
-  } = column.columnDef.meta ?? {};
+  const { wrap, isTruncated = false, onExpand } = column.columnDef.meta ?? {};
   const isReadonly = Boolean(parameter?.readonly);
   const cellState = getCellState(column.id, row.index);
 
