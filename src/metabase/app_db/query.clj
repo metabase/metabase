@@ -258,9 +258,11 @@
     (into [] (comp (map pk->changes) (distinct) (map (juxt identity changes->pks))) pks)))
 
 (defn update-grouped!
-  "Apply each of `updates`, the primary key of a row of `model` and the columns to change, with one update through the
-  model for each [[update-partition-size]] of the rows that get the same changes, or one update per row for a model
-  with a composite primary key, in the order the changes first appear."
+  "Apply each of `updates`, the primary key of a row of `model` and the columns to change.
+  The rows of one key merge first, so the last value of a column wins.
+  The updates run through the model in the order their changes first appear.
+  With a one-column primary key, keys that end with the same changes share one update per [[update-partition-size]]
+  of them; others update one by one."
   [model updates]
   (let [pk-columns (t2/primary-keys model)]
     (if (= (count pk-columns) 1)
