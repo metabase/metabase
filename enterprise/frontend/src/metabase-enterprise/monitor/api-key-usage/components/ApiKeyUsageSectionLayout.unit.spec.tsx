@@ -323,8 +323,16 @@ async function selectApiKey(label: string) {
   await userEvent.click(await screen.findByRole("option", { name: label }));
 }
 
-/** Wait until every request has its response, so a negative check sees the loaded page. */
-const settleRequests = () => act(() => fetchMock.callHistory.flush(true));
+/**
+ * Wait until every request has its response and the store has handled it, so a negative check
+ * sees the loaded page. RTK Query handles a response a few promise steps after fetch resolves, so
+ * wait one macrotask after the flush.
+ */
+const settleRequests = () =>
+  act(async () => {
+    await fetchMock.callHistory.flush(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 
 const keyActivityTable = () => screen.findByTestId("api-key-activity-table");
 
