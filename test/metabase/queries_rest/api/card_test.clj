@@ -2471,6 +2471,12 @@
 ;;; |                                        Card updates that impact alerts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- do-with-after-commit-now
+  "Calls `thunk` with the work that waits for a commit run at once, since the transaction of a test never commits."
+  [thunk]
+  (mt/with-dynamic-fn-redefs [mdb/do-after-commit (fn [after-commit] (after-commit))]
+    (thunk)))
+
 (defn- test-alert-deletion! [{:keys [message card deleted? disable-links? expected-email-re should-re-not-match? f]}]
   (testing message
     (notification.tu/with-channel-fixtures [:channel/email]
@@ -2487,9 +2493,8 @@
                          :notification-card {:disable_links (boolean disable-links?)}}]
           (when deleted?
             (let [[email] (notification.tu/with-mock-inbox-email!
-                            ;; The transaction of a test never commits, so run the work that waits for the commit now.
-                            (mt/with-dynamic-fn-redefs [mdb/do-after-commit (fn [thunk] (thunk))]
-                              (f (t2/select-one :model/Card :id (-> notification :payload :card_id)))))]
+                            (do-with-after-commit-now
+                             #(f (t2/select-one :model/Card :id (-> notification :payload :card_id)))))]
               (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
                        :subject "One of your alerts has stopped working"
                        :body    [{(str expected-email-re) (not should-re-not-match?)}]}
@@ -2624,12 +2629,12 @@
      (fn [card-id notification-id]
        (mt/with-test-user :crowberto
          (is (empty? (notification.tu/with-mock-inbox-email!
-                       (mt/with-dynamic-fn-redefs [mdb/do-after-commit (fn [thunk] (thunk))]
-                         (card/update-cards! [{:id card-id, :archived false}]))))))
+                       (do-with-after-commit-now
+                        #(card/update-cards! [{:id card-id, :archived false}]))))))
        (is (t2/exists? :model/Notification :id notification-id))))))
 
 (deftest alert-stopped-email-waits-for-the-commit-test
-  (testing "A rolled-back change that would delete an alert keeps the alert and emails nobody"
+  (testing "The email for a change that deletes an alert waits for the outermost commit; a rollback keeps the alert"
     (do-with-goal-alert!
      nil
      (fn [card-id notification-id]

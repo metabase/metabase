@@ -1786,11 +1786,15 @@
     (when (seq all)
       (actions.models/delete-actions! (actions.models/action-ids-of-models all)))))
 
+(def ^:private alert-content-columns
+  "The columns of a Card whose change can invalidate the alerts of the Card."
+  [:display :visualization_settings :dataset_query])
+
 (defn- change-invalidates-alerts?
   "Whether `changes` to the Card `before` touch what its alerts depend on and invalidate them, `after` holding the Cards
   by id as they are after their writes."
   [before changes after]
-  (and (some #(contains? changes %) [:display :visualization_settings :dataset_query])
+  (and (some #(contains? changes %) alert-content-columns)
        (pulse/card-change-invalidates-alerts? before (get after (:id before)))))
 
 (defn- delete-alerts-of-changed-cards!
@@ -1961,8 +1965,8 @@
             all-dep-ids))))
 
 (def ^:private alert-affecting-columns
-  "The columns of a Card whose change can delete the alerts of the Card."
-  [:archived :display :visualization_settings :dataset_query])
+  "The columns of a Card whose change can delete its alerts: archiving, and the columns that can invalidate them."
+  (conj alert-content-columns :archived))
 
 (defn- assoc-updated-result-metadata
   "`[updates futures]`: the `updates`, each of a Card that gives a query with the result metadata of the query when
