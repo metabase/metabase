@@ -104,10 +104,12 @@
 (api.macros/defendpoint :post "/preview/session" :- [:map
                                                      [:id         ms/PositiveInt]
                                                      [:token      :string]
-                                                     [:expires_at :any]]
+                                                     [:expires_at :any]
+                                                     [:user_id    ms/PositiveInt]]
   "Start a read-only preview as the user `user_id`, or as the group `group_id` with the attribute values `attributes`
   that its rules read, through the group's stand-in user: the last preview of a group to start sets the values of
-  every open preview of it. Returns the preview's `id` and `token`, which is shown only here: send it as the
+  every open preview of it. Returns the preview's `id`, `token` and `user_id` (the person, or the group's stand-in),
+  the token being shown only here: send it as the
   `X-Metabase-Preview-Token` header, and every request that carries it runs as that person. A preview lasts 30 minutes,
   renewed by a request when fewer than 20 are left, and ends with the admin's session."
   [_route-params
@@ -125,9 +127,10 @@
                                                                  :attributes             attributes
                                                                  :admin-user-id          api/*current-user-id*
                                                                  :admin-session-key-hash admin-session-key-hash})
-                                 (session/start-preview! {:user-id                user_id
-                                                          :admin-user-id          api/*current-user-id*
-                                                          :admin-session-key-hash admin-session-key-hash}))]
+                                 (assoc (session/start-preview! {:user-id                user_id
+                                                                 :admin-user-id          api/*current-user-id*
+                                                                 :admin-session-key-hash admin-session-key-hash})
+                                        :user_id user_id))]
     (events/publish-event! :event/permission-preview-start
                            {:user-id  api/*current-user-id*
                             :model    (if group_id :model/PermissionsGroup :model/User)
