@@ -47,7 +47,7 @@
   secret everywhere: it is masked on the way out of the API and preserved when a client echoes the mask back."
   [{:type          "anthropic"
     :label         (deferred-tru "Anthropic")
-    :default-model "claude-haiku-5-5"
+    :default-model "claude-sonnet-5-5"
     :mini-model    "claude-haiku-5-5"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")

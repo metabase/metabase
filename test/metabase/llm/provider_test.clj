@@ -819,7 +819,7 @@
 
 (deftest ^:parallel provider-type-models-test
   (testing "every type's default model, which is what a first connection of that type gets selected for it"
-    (is (= {"anthropic"  "claude-haiku-5-5"
+    (is (= {"anthropic"  "claude-sonnet-5-5"
             "openai"     "gpt-5.4"
             "openrouter" "anthropic/claude-sonnet-4.6"
             "mistral"    "mistral-medium-3-5"

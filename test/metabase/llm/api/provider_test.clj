@@ -74,7 +74,7 @@
                :label         "Anthropic"
                :managed       false
                :available     true
-               :default_model "claude-haiku-5-5"
+               :default_model "claude-sonnet-5-5"
                :fields        [{:key      "api-key"
                                 :label    "API key"
                                 :type     "password"
@@ -276,13 +276,13 @@
 
 (deftest create-selects-a-model-for-the-first-connection-test
   (mt/with-dynamic-fn-redefs [metabot.self/list-models
-                              (fn [& _] {:models [{:id "claude-haiku-5-5" :display_name "Claude Haiku 5.5"}]})]
+                              (fn [& _] {:models [{:id "claude-sonnet-5-5" :display_name "Claude Sonnet 5.5"}]})]
     (testing "connecting the first provider leaves Metabot pointed at one of its models"
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
           (mt/user-http-request :crowberto :post 200 "llm/providers"
                                 {:type "anthropic" :config {:api-key "sk-ant-valid"}})
-          (is (= "anthropic/claude-haiku-5-5" (metabot.settings/llm-metabot-provider)))
+          (is (= "anthropic/claude-sonnet-5-5" (metabot.settings/llm-metabot-provider)))
           (is (true? (metabot.settings/llm-metabot-configured?))))))
     (testing "an explicitly requested model wins over the provider type's default"
       (mt/with-temporary-setting-values [llm-providers []]
@@ -308,9 +308,8 @@
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
                                                llm-mini-model nil]
-          ;; Metabot runs on Sonnet here because Haiku 5.5 is now both the default and the mini model. If Metabot also
-          ;; ran on Haiku, the mini-model fallback would give the same answer, and the test couldn't tell whether the
-          ;; mini model was recorded.
+          ;; Metabot runs on a model other than the mini model, so the mini-model fallback can't give the same answer
+          ;; and hide whether the mini model was recorded.
           (mt/user-http-request :crowberto :post 200 "llm/providers"
                                 {:type   "anthropic"
                                  :model  "claude-sonnet-4-6"
