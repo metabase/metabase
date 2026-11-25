@@ -146,6 +146,48 @@ async function setup({
 }
 
 describe("DataPickerModal", () => {
+  it("should open the databases by default, with no table selected", async () => {
+    const tableNames = ["Accounts", "Orders", "People", "Reviews"];
+    await setup({
+      databases: [
+        createMockDatabase({ id: 1, name: "Other Database" }),
+        createMockDatabase({
+          id: 2,
+          name: "Sample Database",
+          tables: tableNames.map((name, index) =>
+            createMockTable({
+              id: 20 + index,
+              db_id: 2,
+              schema: "PUBLIC",
+              display_name: name,
+            }),
+          ),
+        }),
+      ],
+      collections: [ROOT],
+      collectionItems: [{ collection: ROOT, items: [] }],
+    });
+
+    await waitFor(() =>
+      expect(getPickerItem(0, "Databases")).toHaveAttribute(
+        "data-active",
+        "true",
+      ),
+    );
+    expect(getPickerItem(0, "Our analytics")).not.toHaveAttribute(
+      "data-active",
+    );
+
+    await userEvent.click(getPickerItem(1, "Sample Database"));
+    for (const name of tableNames) {
+      expect(await findPickerItem(2, name)).not.toHaveAttribute("data-active");
+    }
+    expect(getPickerItem(1, "Sample Database")).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+  });
+
   describe("recents", () => {
     const recentItems = [
       createMockRecentTableItem({
@@ -952,3 +994,14 @@ describe("DataPickerModal > library", () => {
     expect(await findItem(0, "Library")).toHaveAttribute("data-active", "true");
   });
 });
+
+function getPickerItem(level: number, name: string) {
+  const levelElement = screen.getByTestId(`item-picker-level-${level}`);
+  return checkNotNull(within(levelElement).getByText(name).closest("a"));
+}
+
+async function findPickerItem(level: number, name: string) {
+  const levelElement = await screen.findByTestId(`item-picker-level-${level}`);
+  const item = await within(levelElement).findByText(name);
+  return checkNotNull(item.closest("a"));
+}
