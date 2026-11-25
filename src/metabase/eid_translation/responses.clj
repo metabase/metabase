@@ -127,6 +127,19 @@
       (when (every? string? refs)
         (apply str "/" (map #(str % "/") refs))))))
 
+(defn- own-ref
+  "The ref of `row`, a row of `model`, from its own columns when it has them, so that naming it needs no read: its entity
+  id, or a Database's name or a User's email. Nil when the row lacks them, such as a Table, whose ref holds its
+  Database's name."
+  [model row]
+  (let [v (case model
+            :model/Database (:name row)
+            :model/User     (:email row)
+            (when-not (contains? natural-key-models model)
+              (:entity_id row)))]
+    (when (and (string? v) (seq v))
+      v)))
+
 (defn- row-replacements
   "The map from each key of `row`, a map of `model` with `references`, holding ids to its value with `visit`, a fn of
   a model and an id, applied to them."
@@ -142,7 +155,14 @@
 
                       :else
                       replacements)))]
-    (cond-> (reduce-kv replace (if (ref-model? model) (replace {} :id model) {}) references)
+    (cond-> (reduce-kv replace
+                       (cond
+                         (not (ref-model? model)) {}
+                         (pos-int? (:id row))     (if-let [own (own-ref model row)]
+                                                    {:id own}
+                                                    (replace {} :id model))
+                         :else                    {})
+                       references)
       (= model :model/Collection)
       (into (keep (fn [k] (some->> (location-ref (get row k) visit) (vector k))))
             [:location :effective_location]))))
@@ -160,8 +180,8 @@
 
 (defn- walker
   "A walk for [[serialization.resolve/walk-in-bulk]] of a response body, with `columns` the memoized [[model-columns]]
-  and `export` a fn of a model, a column, the row of the body holding it and its value, returning the value the walk
-  gives the column, for the columns of the `:exports` of the model."
+  and `export` a fn of the walk's visitor, a model, a column, the row of the body holding it and its value, returning
+  the value the walk gives the column, for the columns of the `:exports` of the model."
   [columns export]
   (fn walk [visit body]
     (letfn [(row-model [holder-references k m]
@@ -185,7 +205,7 @@
                                                                 :else               nil)
                       x                                       (reduce-kv (fn [m k' v]
                                                                            (let [v' (cond
-                                                                                      (contains? exports k')    (export model k' x v)
+                                                                                      (contains? exports k')    (export visit model k' x v)
                                                                                       (contains? structures k') v
                                                                                       :else                     (visit-x references k' v))]
                                                                              (if (identical? v v') m (assoc m k' v'))))
@@ -208,11 +228,11 @@
     (into [] (filter #(nil? (.put seen % true))) xs)))
 
 (defn- export-values
-  "The values of `column` of `rows` of `model` exported by `export-fn`, a serialization `:export` fn, as a vector in
-  the order of `rows`, with `::failed` for each value that fails to export. A failing batch is exported again one row
+  "The values of `column` of `rows` of `model` exported by `export-fn`, a serialization `:export` fn reading `store`, as
+  a vector in the order of `rows`, with `::failed` for each value that fails to export. A failing batch is exported again one row
   at a time, so that one value that fails, such as a broken query, does not fail the others."
-  [model column export-fn rows]
-  (let [export (fn [rows] (export-fn serialization/app-db-store rows (mapv #(get % column) rows) {}))]
+  [store model column export-fn rows]
+  (let [export (fn [rows] (export-fn store rows (mapv #(get % column) rows) {}))]
     (try
       (vec (export rows))
       (catch Throwable _
@@ -224,42 +244,49 @@
                     ::failed)))
               rows)))))
 
-(defn- exported-structures
-  "The map from each row of `body` holding a column of its model's `:exports` (see [[model-columns]]), by identity, to
-  the map from that column to its value exported, with the values of each model and column exported a batch at a
-  time."
-  [body columns]
-  (let [rows    (volatile! {})
-        collect (fn [model column row v]
-                  (when (some? v)
-                    (vswap! rows update [model column] (fnil conj []) row))
-                  v)
-        result  (IdentityHashMap.)]
-    ((walker columns collect) (fn [_model id] id) body)
-    (doseq [[[model column] rows]  @rows
-            :let                   [export-fn (get-in (columns model) [:exports column])]
-            batch                  (partition-all serialization/batch-size (distinct-by-identity rows))
-            [row v]                (map vector batch (export-values model column export-fn (vec batch)))
-            :when                  (not= ::failed v)]
+(defn- export-structures
+  "The map from each row of `rows-by-column`, a map from `[model column]` to the rows holding that column, by
+  identity, to the map from that column to its value exported, with the values of each model and column exported a
+  batch at a time (see [[model-columns]]), reading `store`."
+  [store rows-by-column columns]
+  (let [result (IdentityHashMap.)]
+    (doseq [[[model column] rows] rows-by-column
+            :let                  [export-fn (get-in (columns model) [:exports column])]
+            batch                 (partition-all serialization/batch-size (distinct-by-identity rows))
+            [row v]               (map vector batch (export-values store model column export-fn (vec batch)))
+            :when                 (not= ::failed v)]
       (.put result row (assoc (.get result row) column v)))
     result))
 
 (defn ->entity-ids
   "`body`, an API response body, with each numeric id of a row with a ref, and each such id a row references, replaced
-  by that row's ref, and each structure column of its model's `:exports` given as serialization exports it."
+  by that row's ref, and each structure column of its model's `:exports` given as serialization exports it.
+
+  The body is walked twice, by [[serialization.resolve/walk-in-bulk]]. The first walk collects the ids to resolve and
+  the rows holding structure columns; the structures are exported, a batch per model and column, when the second walk
+  first needs one, after the first walk has collected them all."
   [body]
   (let [columns  (memoize model-columns)
-        exported (exported-structures body columns)
-        walk     (walker columns (fn [_model column row v]
-                                   (let [row-exports (.get ^IdentityHashMap exported row)]
-                                     (if (contains? row-exports column)
-                                       (get row-exports column)
-                                       v))))]
+        ;; one store for the walks and every export, so that a row they all name is read once
+        store    (serialization/memoized-store serialization/app-db-store)
+        rows     (volatile! {})
+        exported (delay (export-structures store @rows columns))
+        walk     (walker columns (fn [visit model column row v]
+                                   (if (serialization.resolve/collecting? visit)
+                                     (do (when (some? v)
+                                           (vswap! rows update [model column] (fnil conj []) row))
+                                         v)
+                                     (let [row-exports (.get ^IdentityHashMap @exported row)]
+                                       (if (contains? row-exports column)
+                                         (get row-exports column)
+                                         v)))))]
     (first (serialization.resolve/walk-in-bulk
             [body]
             (fn [visit form]
-              (walk (fn [model id]
-                      (or (serialization.resolve/found-or-nil #(visit model id)) id))
+              ;; the visitor keeps the metadata that tells the walks apart
+              (walk (with-meta (fn [model id]
+                                 (or (serialization.resolve/found-or-nil #(visit model id)) id))
+                               (meta visit))
                     form))
             (fn [model ids]
-              (serialization.resolve/row-refs serialization/app-db-store model ids))))))
+              (serialization.resolve/row-refs store model ids))))))

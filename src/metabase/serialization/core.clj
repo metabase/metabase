@@ -30,6 +30,7 @@
    [metabase.serialization.mbql :as serialization.mbql]
    [metabase.serialization.parameters :as serialization.parameters]
    [metabase.serialization.protocol.app-db :as protocol.app-db]
+   [metabase.serialization.protocol.memoized :as protocol.memoized]
    [metabase.serialization.resolve :as resolve]
    [metabase.serialization.spec :as serialization.spec]
    [metabase.serialization.storage :as serialization.storage]
@@ -162,3 +163,9 @@
 (def app-db-store
   "The store of the application database."
   protocol.app-db/store)
+
+(defn memoized-store
+  "A store of the rows of `store` that reads each row once, for one piece of work such as one API response. It never
+  sees later writes, so it must not outlive that work."
+  [store]
+  (protocol.memoized/store store))
