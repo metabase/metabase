@@ -5,7 +5,6 @@
   (dump-statements [dumper server conn]
     "The statements that recreate the DB behind `conn`, DATABASECHANGELOG rows included.
 
-    The `server` argument is what [[metabase.app-db.snapshot-test-util.server/do-with-server!]] yields, or nil for
-    dialects dumped through `conn` alone.
-    Its `:exec!` runs a command inside the container the DB is running in, and its `:details` name the database and
-    user to dump."))
+    The `server` map supplies `:exec!` to run the dump client and `:details` with the database and user.
+    Optional `:dump-details` supplies the host and port seen by the client. Defaults address a local server.
+    Dialects that dump through `conn` alone accept nil."))

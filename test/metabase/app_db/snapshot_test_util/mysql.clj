@@ -1,5 +1,5 @@
 (ns metabase.app-db.snapshot-test-util.mysql
-  "Dumps a MySQL-family app DB with the dump client shipped in the server's own container.
+  "Dumps a MySQL-family app DB with mysqldump or mariadb-dump.
   It covers MariaDB too: the dump is taken the same way, and only the client and a couple of flags differ."
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -77,12 +77,11 @@
 
 (defrecord MysqlDumper [flavor]
   dump/Dumper
-  (dump-statements [_dumper {:keys [exec!] {:keys [db user]} :details} conn]
+  (dump-statements [_dumper {:keys [exec! dump-details] {:keys [db user]} :details} conn]
     ;; TCP is forced because the MySQL client silently ignores `--port` and uses a unix socket when the host is
     ;; `localhost`. Autocommit toggling is skipped because mariadb-dump otherwise wraps the inserts in it, and the SETs
     ;; around them are dropped as noise while the COMMIT between them is not. Only MySQL knows `--set-gtid-purged`, so
-    ;; it is passed only for MySQL. The host and port are the ones the server listens on inside its container, not the
-    ;; ones this JVM reaches it by, because `exec!` runs there.
+    ;; it is passed only for MySQL.
     (let [dumped (dump-util/lines->statements
                   (drop-version-gated-blocks
                    (drop-sandbox-directive
@@ -93,7 +92,8 @@
                                      "--skip-disable-keys" "--skip-set-charset" "--complete-insert"
                                      "--no-tablespaces" "--protocol=TCP" "--skip-no-autocommit"]
                                     (when (= flavor :mysql) ["--set-gtid-purged=OFF"])
-                                    ["--host=127.0.0.1" "--port=3306"
+                                    [(str "--host=" (:host dump-details "127.0.0.1"))
+                                     (str "--port=" (:port dump-details 3306))
                                      (str "--user=" user) (str db)])))))
                   :backslash-escapes? true)]
       (-> [(database-charset-statement conn db)]

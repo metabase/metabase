@@ -20,6 +20,8 @@
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.snapshot-test-util :as snapshot]
+   [metabase.app-db.snapshot-test-util.cache :as snapshot.cache]
+   [metabase.app-db.snapshot-test-util.local :as snapshot.local]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -36,6 +38,10 @@
    (liquibase.changelog.filter ChangeSetFilter ChangeSetFilterResult ShouldRunChangeSetFilter)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private ^:dynamic *snapshot-connection-details*
+  "Connection details for the current temporary database, used by local dump clients."
+  nil)
 
 (defmulti do-with-temp-empty-app-db*
   "Create a new completely empty app DB for `driver`, then call `(f jdbc-spec)` with a spec for that DB. Should clean up
@@ -56,7 +62,8 @@
       (tx/create-db! driver dbdef)
       (let [connection-details (tx/dbdef->connection-details driver :db dbdef)
             jdbc-spec          (sql-jdbc.conn/connection-details->spec driver connection-details)]
-        (f (mdb.test-util/->ClojureJDBCSpecDataSource jdbc-spec)))
+        (binding [*snapshot-connection-details* connection-details]
+          (f (mdb.test-util/->ClojureJDBCSpecDataSource jdbc-spec))))
       (finally
         (log/debugf "Destroying empty %s app db..." driver)
         (tx/destroy-db! driver dbdef)))))
@@ -182,7 +189,7 @@
       (when track-versions?
         (mdb.test-util/split-legacy-majors-into-deployments! conn changelog-table)))))
 
-(defn- migrate-to-start!
+(defn- migrate-to-start-uncached!
   "Bring an empty app DB up to, but not including, `start-id`, without sample content.
   It loads the checked-in snapshot first when `start-id` falls after the snapshot's boundary changeset."
   [^java.sql.Connection conn driver start-id]
@@ -197,6 +204,36 @@
       (snapshot/load-snapshot! conn driver))
     (log/debugf "Finding and running migrations before %s..." start-id)
     (run-migrations-in-range! conn ["v00.00-000" start-id] {:inclusive-end? false, :skip-ran? true})))
+
+(defn- previous-changeset-id [conn start-id]
+  (let [ids (mapv first (snapshot/changesets conn))
+        index (.indexOf ^java.util.List ids start-id)]
+    (when (neg? index)
+      (throw (ex-info (format "Migration ID not found in changelog: %s" start-id) {:id start-id})))
+    (when (pos? index)
+      (nth ids (dec index)))))
+
+(defn- setup-snapshot! [driver start-id flavor dump-options]
+  (let [sql (with-temp-empty-app-db [conn driver]
+              (migrate-to-start-uncached! conn driver start-id)
+              (.commit conn)
+              (snapshot.local/dump! dump-options conn))]
+    (with-temp-empty-app-db [conn driver]
+      (snapshot/load-sql! conn flavor sql)
+      (liquibase/with-liquibase [lb conn]
+        (.validate lb)))
+    sql))
+
+(defn- migrate-to-start! [conn driver start-id]
+  (let [boundary (previous-changeset-id conn start-id)
+        flavor (snapshot/flavor conn driver)
+        dump-options (when (and boundary (snapshot/matches-environment?))
+                       (snapshot.local/dump-options flavor *snapshot-connection-details*))]
+    (if dump-options
+      (let [file (snapshot.cache/ensure-snapshot!
+                  flavor boundary #(setup-snapshot! driver start-id flavor dump-options))]
+        (snapshot/load-sql! conn flavor (slurp file)))
+      (migrate-to-start-uncached! conn driver start-id))))
 
 (defn test-migrations-for-driver! [driver [start-id end-id] f]
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))
