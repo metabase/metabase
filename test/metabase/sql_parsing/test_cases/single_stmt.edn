@@ -322,15 +322,42 @@
 
   ;; Postgres with `standard_conforming_strings` off reads a backslash in '...' as an escape, so `\'` does not end
   ;; the literal there. For a caller that executes the rebuild, a rebuild that Postgres reads as more than one
-  ;; statement with the setting on is refused ("rebuild-differs"); for "read-only", so is one it reads as more than
-  ;; one statement only with the setting off ("backslash-quote"). Each refused case below is one statement to
-  ;; SQLGlot. A caller that only reads the verdict gets neither check.
+  ;; statement with the setting on is refused ("rebuild-differs"), and so is one it reads as more than one statement
+  ;; only with the setting off ("backslash-quote"). Each refused case below is one statement to SQLGlot. A caller
+  ;; that only reads the verdict gets neither check.
 
-  {:name              "an executed read with a backslash before a quote is not checked for the setting off"
+  {:name              "an executed read with a backslash before a quote and a later semicolon is refused"
    :dialect           "postgres"
    :sql               "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
    :stmt-type         "read"
-   :expected          {:verdict :allowed :single-stmt? true}}
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "an executed read in which a quote after a backslash hides statements from Postgres with the setting off is refused"
+   :dialect           "postgres"
+   :sql               "SELECT 'a\\'' ; RESET ROLE; INSERT INTO public.orders VALUES (87670); SELECT current_user --'"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "an executed write in which a quote after a backslash hides statements from Postgres with the setting off is refused"
+   :dialect           "postgres"
+   :sql               "INSERT INTO public.t VALUES ('a\\'' ); RESET ROLE; INSERT INTO public.orders VALUES (2) --')"
+   :stmt-type         "write"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name       "an executed read whose literal ends in a backslash, with no semicolon after it, is allowed"
+   :dialect    "postgres"
+   :sql        "SELECT 'C:\\' AS note"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed :single-stmt? true :sql "SELECT 'C:\\' AS note"}}
+
+  {:name       "an executed write whose literal ends in a backslash, with no semicolon after it, is allowed"
+   :dialect    "postgres"
+   :sql        "INSERT INTO t VALUES ('C:\\')"
+   :stmt-type  "write"
+   :expected   {:verdict :allowed :single-stmt? true :sql "INSERT INTO t VALUES ('C:\\')"}}
 
   {:name              "an executed read whose dollar-quoted alias SQLGlot writes back bare, hiding a second statement, is refused"
    :dialect           "postgres"

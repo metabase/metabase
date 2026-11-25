@@ -537,10 +537,9 @@
   {:max-sql-chars        nil
    :literal-list-ceiling executable-literal-list-ceiling
    :require-dialect?     true
-   ;; The caller runs the rebuild, so every type has it checked. Three parts refuse ordinary SQL and are kept to
+   ;; The caller runs the rebuild, so every type has it checked. Two parts refuse ordinary SQL and are kept to
    ;; "read-only", which only data tests send: the rule that the rebuild rebuilds to itself (a `--` comment opening a
-   ;; CTE's body), the Postgres count with `standard_conforming_strings` off (a literal '\' followed by a ';'
-   ;; literal), and the refusal of forms the rebuild gives another value.
+   ;; CTE's body), and the refusal of forms the rebuild gives another value.
    :check-rebuild        {"read-only" "rebuild-strict"
                           "read"      "rebuild"
                           "write"     "rebuild"}})
@@ -608,12 +607,11 @@
   The `:sql` must itself pass the same checks; otherwise the verdict is `:disallowed` with `:reason
   \"rebuild-differs\"` and the reconstruction's own reason as `:detail`. On Postgres, it must also read as one
   statement with `standard_conforming_strings` on (else `:reason \"rebuild-differs\"` with `:detail
-  \"multiple-statements\"`). For `\"read-only\"`, it must also reconstruct to itself (else `:reason
-  \"rebuild-differs\"`) and read as one statement on Postgres with the setting off (else `:reason
-  \"backslash-quote\"`). A `\"read-only\"` statement must also hold no form that the reconstruction gives another
-  value: on Postgres a hexadecimal, binary or octal number or one with underscores (`:reason \"number-literal\"`, the
-  literal as `:detail`), on MySQL the `DIV` operator (`:reason \"div-operator\"`). Such a form is refused even in
-  `sql` that does not parse."
+  \"multiple-statements\"`) and with it off (else `:reason \"backslash-quote\"`). For `\"read-only\"`, it must
+  also reconstruct to itself (else `:reason \"rebuild-differs\"`), and `sql` must hold no form that the
+  reconstruction gives another value: on Postgres a hexadecimal, binary or octal number or one with underscores
+  (`:reason \"number-literal\"`, the literal as `:detail`), on MySQL the `DIV` operator (`:reason
+  \"div-operator\"`). Such a form is refused even in `sql` that does not parse."
   [parser dialect sql stmt-type]
   (classify-single-stmt parser dialect sql stmt-type executable-limits))
 

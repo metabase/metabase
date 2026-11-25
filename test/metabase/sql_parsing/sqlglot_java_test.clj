@@ -142,8 +142,12 @@
                ;; The MySQL DIV operator, whose rebuild rounds (VER-184).
                ["mysql"    "read-only" "rebuild-strict" "SELECT a DIV 3 AS q FROM t"                                     "div-operator"]
                ["mysql"    "read-only" "rebuild-strict" "SELECT 'DIV' AS a /* a DIV 3 */"                                nil]
-               ;; "rebuild" counts the statements with the setting on only.
-               ["postgres" "read"      "rebuild"               "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       nil]
+               ;; "rebuild" counts the statements under either setting too.
+               ["postgres" "read"      "rebuild"        "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       "backslash-quote"]
+               ["postgres" "read"      "rebuild"        "SELECT 'a\\'' ; RESET ROLE; INSERT INTO public.orders VALUES (87670); SELECT current_user --'" "backslash-quote"]
+               ["postgres" "write"     "rebuild"        "INSERT INTO public.t VALUES ('a\\'' ); RESET ROLE; INSERT INTO public.orders VALUES (2) --')" "backslash-quote"]
+               ["postgres" "read"      "rebuild"        "SELECT 'C:\\' AS note"                                               nil]
+               ["postgres" "write"     "rebuild"        "INSERT INTO t VALUES ('C:\\')"                                       nil]
                ["postgres" "read"      "rebuild"               "SELECT 1 AS $q$a;SELECT 2$q$"                                          "rebuild-differs"]
                ["postgres" "write"     "rebuild"               "INSERT INTO t SELECT 1 AS $q$a;SELECT 2$q$"                            "rebuild-differs"]
                ["postgres" "write"     "rebuild"               "UPDATE t SET a = E'a\\\\'"                                            "rebuild-differs"]

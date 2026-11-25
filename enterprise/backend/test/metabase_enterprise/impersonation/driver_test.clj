@@ -1419,7 +1419,12 @@
         (testing "control: a plain SELECT runs"
           (is (= :ok (outcome "SELECT id, name FROM venues WHERE price > 2"))))
         (testing "a dollar-quoted alias, which SQLGlot writes back bare"
-          (is (= :rejected (outcome "SELECT 1 AS $q$a; RESET ROLE; SELECT current_user$q$")))))
+          (is (= :rejected (outcome "SELECT 1 AS $q$a; RESET ROLE; SELECT current_user$q$"))))
+        (testing "a quote after a backslash, which ends the literal only with standard_conforming_strings on"
+          (is (= :rejected (outcome (str "SELECT 'a\\'' ; RESET ROLE; INSERT INTO public.orders VALUES (87670);"
+                                         " SELECT current_user --'")))))
+        (testing "a literal ending in a backslash, with no semicolon after it, runs"
+          (is (= :ok (outcome "SELECT 'C:\\' AS note")))))
       (binding [driver.settings/*impersonation-allow-write?* true]
         (testing "write"
           (testing "control: a plain INSERT, UPDATE and DELETE run"
@@ -1427,7 +1432,10 @@
             (is (= :ok (outcome "UPDATE venues SET name = 'x' WHERE id = 1")))
             (is (= :ok (outcome "DELETE FROM venues WHERE id = 1"))))
           (testing "a dollar-quoted alias, which SQLGlot writes back bare"
-            (is (= :rejected (outcome "INSERT INTO venues (name) SELECT 'x' AS $q$a; RESET ROLE; SELECT 1$q$")))))))))
+            (is (= :rejected (outcome "INSERT INTO venues (name) SELECT 'x' AS $q$a; RESET ROLE; SELECT 1$q$"))))
+          (testing "a quote after a backslash, which ends the literal only with standard_conforming_strings on"
+            (is (= :rejected (outcome (str "INSERT INTO public.t VALUES ('a\\'' ); RESET ROLE;"
+                                           " INSERT INTO public.orders VALUES (2) --')"))))))))))
 
 (deftest ^:parallel impersonated-native-query-rebuild-need-not-rebuild-to-itself-test
   (testing "an impersonated native query runs when its rebuild passes the checks, even if the rebuild does not rebuild to itself"

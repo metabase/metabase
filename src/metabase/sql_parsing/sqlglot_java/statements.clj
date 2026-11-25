@@ -480,7 +480,7 @@
               ["rebuild-differs" (:reason again)])))
         (when (and (= dialect "postgres") (> (postgres-statement-count rebuilt true) 1))
           ["rebuild-differs" "multiple-statements"])
-        (when (and strict? (= dialect "postgres") (> (postgres-statement-count rebuilt false) 1))
+        (when (and (= dialect "postgres") (> (postgres-statement-count rebuilt false) 1))
           ["backslash-quote" nil]))))
 
 (defn single-stmt-of-type
@@ -494,11 +494,10 @@
   `check-rebuild` is nil, `\"rebuild\"` or `\"rebuild-strict\"`. With either string, the regenerated SQL of a
   statement of the allowed type must also pass the same checks (`:reason` `\"rebuild-differs\"`, with the regenerated
   SQL's own reason as `:reason_detail`), and for `\"postgres\"`, Postgres must read it as one statement with
-  `standard_conforming_strings` on (`:reason` `\"rebuild-differs\"`, `:reason_detail` `\"multiple-statements\"`).
-  With `\"rebuild-strict\"`, it must also regenerate to itself (`:reason` `\"rebuild-differs\"`), read as one
-  statement with the setting off (`:reason` `\"backslash-quote\"`), and `sql` must hold no form that the regenerated
-  SQL gives another value (see [[value-changing-form]]), which is the reason even when `sql` does not parse. Port of
-  `is_single_stmt_of_type`."
+  `standard_conforming_strings` on (`:reason` `\"rebuild-differs\"`, `:reason_detail` `\"multiple-statements\"`)
+  and with it off (`:reason` `\"backslash-quote\"`). With `\"rebuild-strict\"`, it must also regenerate to itself
+  (`:reason` `\"rebuild-differs\"`), and `sql` must hold no form that the regenerated SQL gives another value (see
+  [[value-changing-form]]), which is the reason even when `sql` does not parse. Port of `is_single_stmt_of_type`."
   [dialect sql stmt-type check-rebuild]
   (let [read-only-type? (= stmt-type "read-only")
         ;; Filled in as it goes, so a failure part way keeps what was found before it.
