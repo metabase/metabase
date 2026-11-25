@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
-import type { Dashboard } from "metabase-types/api";
+import type { CreateUserRequest, Dashboard } from "metabase-types/api";
 import {
   createMockDashboardCard,
   createMockDashboardTab,
@@ -396,7 +396,15 @@ describe("DashboardSharingMenu", () => {
     const inviteAndGetRequestBody = async (dashboard: Partial<Dashboard>) => {
       fetchMock.get("path:/api/permissions/group", []);
       fetchMock.get("path:/api/permissions/invite-group-ids", []);
-      fetchMock.post("path:/api/user", createMockUser({ id: 99 }));
+      fetchMock.post("path:/api/user", async ({ options }) => {
+        const body: CreateUserRequest = JSON.parse(
+          // Unjustified type cast. FIXME
+          await (options.body as unknown as Promise<string>),
+        );
+        return body.email === "newbie@metabase.com"
+          ? createMockUser({ id: 99, email: body.email })
+          : { status: 400 };
+      });
       setupDashboardSharingMenu({
         isAdmin: true,
         isEmailSetup: true,
@@ -452,8 +460,9 @@ describe("DashboardSharingMenu", () => {
       ).toBeInTheDocument();
     });
 
-    it("sends the dashboard as the invite_target", async () => {
+    it("sends the typed email and the dashboard as the invite_target", async () => {
       const body = await inviteAndGetRequestBody({ id: 42, name: "Q3 KPIs" });
+      expect(body.email).toBe("newbie@metabase.com");
       expect(body.invite_target).toEqual({
         type: "dashboard",
         id: 42,

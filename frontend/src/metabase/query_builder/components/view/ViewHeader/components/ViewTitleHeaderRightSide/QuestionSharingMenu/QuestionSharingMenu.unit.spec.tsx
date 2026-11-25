@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
+import type { CreateUserRequest } from "metabase-types/api";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
@@ -297,6 +299,65 @@ describe("QuestionSharingMenu", () => {
       expect(
         await screen.findByText("Invite someone to view this question"),
       ).toBeInTheDocument();
+    });
+
+    it("invites with a temporary password and shares the question link when email is not set up", async () => {
+      const QUESTION_ID = 42;
+      const EMAIL = "newbie@metabase.com";
+      fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.get("path:/api/permissions/invite-group-ids", []);
+      fetchMock.post("path:/api/user", async ({ options }) => {
+        const body: CreateUserRequest = JSON.parse(
+          // Unjustified type cast. FIXME
+          await (options.body as unknown as Promise<string>),
+        );
+        return body.invite_target?.type === "question" &&
+          body.invite_target.id === QUESTION_ID
+          ? createMockUser({ id: 99, email: body.email })
+          : { status: 400 };
+      });
+      await setupQuestionSharingMenu({
+        isAdmin: true,
+        isEmailSetup: false,
+        question: { id: QUESTION_ID, name: "Orders by month" },
+      });
+
+      await openMenu();
+      await userEvent.click(screen.getByText("Invite someone to view this"));
+      await userEvent.type(await screen.findByLabelText(/Email/), EMAIL);
+      await userEvent.click(
+        screen.getByRole("button", { name: "Send invitation" }),
+      );
+
+      const modal = await screen.findByRole("dialog");
+      expect(
+        await within(modal).findByText(/We couldn't send an email invitation/),
+      ).toBeInTheDocument();
+      expect(within(modal).getByText(EMAIL)).toBeInTheDocument();
+
+      const call = fetchMock.callHistory.lastCall("path:/api/user", {
+        method: "POST",
+      });
+      const body: CreateUserRequest = JSON.parse(
+        // Unjustified type cast. FIXME
+        await (call?.options.body as unknown as Promise<string>),
+      );
+      expect(body.email).toBe(EMAIL);
+      expect(body.invite_target).toEqual({
+        type: "question",
+        id: QUESTION_ID,
+        name: "Orders by month",
+      });
+      expect(body.password).toEqual(expect.any(String));
+      expect(body.password).not.toBe("");
+
+      // The password shown is the one sent to the backend.
+      expect(within(modal).getByLabelText("Temporary password")).toHaveValue(
+        body.password,
+      );
+      expect(within(modal).getByLabelText("Link to share")).toHaveValue(
+        `http://localhost:3000/question/${QUESTION_ID}-orders-by-month`,
+      );
     });
   });
 });
