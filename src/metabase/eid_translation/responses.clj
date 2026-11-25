@@ -56,7 +56,29 @@
    :db_id          :model/Database
    :field_id       :model/Field
    :last_editor_id :model/User
-   :table_id       :model/Table})
+   :table_id       :model/Table
+   :transform_id   :model/Transform
+   :user_id        :model/User})
+
+(def ^:private dispatched-references
+  "The reference columns of a plain map of unknown model whose model depends on another of its columns, as
+  `{dispatch-column {value {column model}}}`: a run summary of the Transform runs listing names the job or Transform
+  it ran by `:entity_id`, as its `:run_type` says."
+  {:run_type {"job"       {:entity_id :model/TransformJob}
+              "dag"       {:entity_id :model/Transform}
+              "transform" {:entity_id :model/Transform}}})
+
+(defn- plain-map-row-references
+  "The references of `m`, a plain map of unknown model: [[plain-map-references]], and those of
+  [[dispatched-references]] that its columns pick."
+  [m]
+  (reduce-kv (fn [references column value->references]
+               (let [v (get m column)]
+                 (merge references
+                        (when (or (string? v) (keyword? v))
+                          (get value->references (name v))))))
+             plain-map-references
+             dispatched-references))
 
 (defn- model-columns
   "For `model`, `{:references {column model-of-the-rows-it-names} :structures #{column} :exports {column export-fn}}`:
@@ -159,7 +181,7 @@
                 (let [model                                   (row-model holder-references k x)
                       {:keys [references structures exports]} (cond
                                                                 model               (columns model)
-                                                                (nil? (t2/model x)) {:references plain-map-references}
+                                                                (nil? (t2/model x)) {:references (plain-map-row-references x)}
                                                                 :else               nil)
                       x                                       (reduce-kv (fn [m k' v]
                                                                            (let [v' (cond

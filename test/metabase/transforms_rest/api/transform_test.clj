@@ -2425,3 +2425,47 @@
                                     {:entity "transform" :id id :revision_id legacy-id})
               (is (=? {:name "Edited" :last_checkpoint_value "9" :target_table_id table-id}
                       (t2/select-one :model/Transform :id id))))))))))
+
+(deftest entity-id-responses-test
+  (testing "with the X-Metabase-Ids: entity header, Transforms, their runs and jobs name the rows they refer to by refs"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+        (let [headers   {:request-options {:headers {"x-metabase-ids" "entity"}}}
+              get       (fn [url & params] (apply mt/user-http-request :crowberto :get 200 url headers params))
+              mp        (mt/metadata-provider)
+              schema    (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+              venues    (t2/select-one :model/Table :id (mt/id :venues))
+              table-ref [(:name (mt/db)) (:schema venues) (:name venues)]]
+          (with-transform-cleanup! [{target-name :name :as target} {:type "table" :schema schema :name "eid_refs_out"}]
+            (mt/with-temp [:model/TransformTag {tag-id :id tag-eid :entity_id} {:name (mt/random-name)}
+                           :model/Transform    {transform-id :id transform-eid :entity_id}
+                           {:name   "eid refs transform"
+                            :source {:type  :query
+                                     :query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                            :target target}
+                           :model/TransformTransformTag _ {:transform_id transform-id :tag_id tag-id :position 0}
+                           :model/TransformJob {job-id :id} {:name (mt/random-name) :schedule "0 0 0 * * ? *"}
+                           :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 0}]
+              (mt/user-http-request :crowberto :post 202 (str "transform/" transform-id "/run"))
+              (wait-for-table target-name 20000)
+              (let [run-user (:user_id (t2/select-one :model/TransformRun :transform_id transform-id))
+                    email    (t2/select-one-fn :email :model/User :id run-user)]
+                (testing "a Transform names its tags, and its last run its Transform and User"
+                  (is (=? {:tag_ids  [tag-eid]
+                           :last_run {:transform_id transform-eid :user_id email}}
+                          (get (str "transform/" transform-id)))))
+                (testing "a DAG preview names its Transforms by entity id"
+                  (is (= [transform-eid]
+                         (map :id (get (str "transform/" transform-id "/dag-transforms") :direction "downstream")))))
+                (testing "a run names its Transform and User"
+                  (is (=? {:data [{:transform_id transform-eid :user_id email}]}
+                          (get "transform/run" :transform-ids [transform-id]))))
+                (testing "a run summary names the Transform it ran"
+                  (is (=? [{:run_type "transform" :entity_id transform-eid :user_id email}]
+                          (filter #(= "transform" (:run_type %))
+                                  (:data (get "transform/runs" :transform-ids [transform-id]))))))
+                (testing "a job names its tags, and the Transforms it runs their table dependencies"
+                  (is (=? {:tag_ids [tag-eid]}
+                          (get (str "transform-job/" job-id))))
+                  (is (=? [{:id transform-eid :table_dependencies [{:table table-ref}]}]
+                          (get (str "transform-job/" job-id "/transforms")))))))))))))
