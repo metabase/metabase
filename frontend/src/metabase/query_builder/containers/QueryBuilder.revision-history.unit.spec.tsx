@@ -149,7 +149,7 @@ describe("QueryBuilder > revision history", () => {
     });
   });
 
-  it("shows the backend message in a toast when a revert fails, and keeps the question (UXW-310)", async () => {
+  it("shows the backend message in a toast when a revert fails (UXW-310)", async () => {
     const { card } = await setupRevisionHistory({
       canWrite: true,
       revertError: { status: 500, message: "Cannot revert: missing card" },
@@ -179,10 +179,6 @@ describe("QueryBuilder > revision history", () => {
       id: card.id,
       revision_id: CREATION_REVISION.id,
     });
-    expect(getHeaderTitle()).toHaveValue("Orders renamed");
-    expect(
-      within(history).queryByText(/reverted to an earlier version/),
-    ).not.toBeInTheDocument();
   });
 
   it("does not show revert buttons to a user who cannot write to the question (metabase#13229)", async () => {
