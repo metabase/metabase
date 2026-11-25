@@ -182,6 +182,12 @@
   [_driver _feat db]
   (and (driver.common/json-unfolding-default db) (not (mariadb? db))))
 
+;; MySQL and MariaDB stop a `SELECT DISTINCT ... LIMIT n` once they have `n` values, and read the whole table for a
+;; `GROUP BY ... LIMIT n`.
+(defmethod driver/database-supports? [:mysql :field-values/distinct-stops-at-limit]
+  [driver _feat _db]
+  (= driver :mysql))
+
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
   ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)

@@ -47,6 +47,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [toucan2.core :as t2])
   (:import
    (java.io File)
@@ -1479,3 +1480,18 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest value-list-scan-uses-select-distinct-test
+  (mt/test-driver :mysql
+    (testing "MySQL and MariaDB stop a SELECT DISTINCT ... LIMIT at the limit, so the value-list scan uses that form"
+      (is (true? (driver.u/supports? :mysql :field-values/distinct-stops-at-limit (mt/db)))))
+    (testing "a scan of a column with more values than a list holds returns a full list"
+      (let [table  (t2/select-one :model/Table :id (mt/id :people))
+            fields [(t2/select-one :model/Field :id (mt/id :people :email))
+                    (t2/select-one :model/Field :id (mt/id :people :source))]
+            ;; as sync runs it
+            result (mt/with-test-user :crowberto
+                     (distinct-batch/run-distinct-batch :mysql table fields (mt/db)))]
+        (is (= 1000 (get-in result [(mt/id :people :email) :raw-count])))
+        (is (= ["Affiliate" "Facebook" "Google" "Organic" "Twitter"]
+               (sort (get-in result [(mt/id :people :source) :values]))))))))
