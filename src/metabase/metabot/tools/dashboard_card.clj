@@ -8,6 +8,7 @@
    The values come from the viewing context the frontend sent this turn, never from the model."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
@@ -16,6 +17,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
+   [metabase.parameters.params :as params]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -30,12 +32,19 @@
   (some #(when (= "dashboard" (some-> (:type %) name)) %)
         (:user_is_viewing (shared/current-context))))
 
-(defn- reads-metabot-sql?
-  "Whether `card` is SQL that Metabot saved, or reads such a question at any depth."
-  [card]
-  (or (run-query/metabot-sql-card? card)
-      (boolean (some #(some-> % run-query/metabot-sql-card?)
-                     (some-> (:dataset_query card) not-empty run-query/saved-questions-read)))))
+(defn- check-questions-read!
+  "Refuse unless the current user can read every saved question that `card` reads, and none of them, nor `card`,
+   is SQL that Metabot saved."
+  [dashcard-id card]
+  (let [questions (some-> (:dataset_query card) not-empty run-query/saved-questions-read)]
+    ;; Checked first, so that the refusal of Metabot's SQL says nothing about a question the user can't read
+    (when-not (every? #(some-> % mi/can-read?) questions)
+      (throw (run-query/refusal (no-permission-message dashcard-id))))
+    (when (some run-query/metabot-sql-card? (cons card questions))
+      (throw (run-query/refusal
+              (str "Dashcard " dashcard-id " runs SQL that you wrote, and SQL you wrote doesn't run with"
+                   " dashboard filter values. Tell the user you can't read this card's results with the"
+                   " dashboard's filters applied."))))))
 
 (defn- visible-card?
   "Whether the current user can see `card` on a dashboard, as the dashboard's items list it: it exists, is not
@@ -67,29 +76,33 @@
     (let [card (metabot.db/card (:card_id dashcard))]
       (when-not (visible-card? card)
         (throw not-found))
-      (when (reads-metabot-sql? card)
-        (throw (run-query/refusal
-                (str "Dashcard " dashcard-id " runs SQL that you wrote, and SQL you wrote doesn't run with"
-                     " dashboard filter values. Tell the user you can't read this card's results with the"
-                     " dashboard's filters applied."))))
+      (check-questions-read! dashcard-id card)
       {:dashboard dashboard
        :dashcard  dashcard
        :card      card})))
 
 (defn- filter-values
-  "The `{:id :value}` filter values of the viewed dashboard `item` for the filters `dashboard` has, or nil when the
-   frontend sent none, so the values on screen are unknown."
+  "The filter values of the viewed dashboard `item` for the filters `dashboard` has, as the dashboard's runner takes
+   them, or nil when the frontend sent none, so the values on screen are unknown.
+   A filter sent without a `:value` is left out, so its value is unknown too.
+   A text filter that matches part of a value gets the options the dashboard runs it with, which ignore case."
   [item dashboard]
   (when-let [values (:parameters item)]
-    (let [ids (into #{} (map :id) (:parameters dashboard))]
-      (into [] (comp (filter #(contains? ids (:id %)))
-                     (map #(select-keys % [:id :value])))
+    (let [id->type (into {} (map (juxt :id :type)) (:parameters dashboard))]
+      (into []
+            (keep (fn [{:keys [id] :as value}]
+                    (when (and (contains? id->type id) (contains? value :value))
+                      (m/assoc-some {:id id, :value (:value value)}
+                                    :options (params/param-type->default-options (keyword (id->type id)))))))
             values))))
 
 (defn- filters-note
-  "The line saying which filter values the run applied to `dashcard`: those of the filters connected to it."
-  [dashboard dashcard values]
-  (let [connected (into #{} (map :parameter_id) (:parameter_mappings dashcard))
+  "The line saying which filter values the run applied to `card` on `dashcard`: those of the filters connected to it."
+  [dashboard dashcard card values]
+  (let [connected (into #{}
+                        (comp (filter #(= (:id card) (:card_id %)))
+                              (map :parameter_id))
+                        (:parameter_mappings dashcard))
         id->value (into {} (map (juxt :id :value)) values)
         filters   (filter #(contains? connected (:id %)) (:parameters dashboard))
         applied   (for [{:keys [id name]} filters
@@ -103,12 +116,12 @@
                         :when (not (contains? id->value id))]
                     (llm-shape/escape-xml name))]
     (cond
+      (empty? filters)
+      "No dashboard filter is connected to this card, so it ran as it shows on the user's screen."
+
       (nil? values)
       (str "No dashboard filter values were applied: the values on the user's screen are unknown, so these rows can"
            " differ from the card on screen.")
-
-      (empty? filters)
-      "No dashboard filter is connected to this card, so it ran as it shows on the user's screen."
 
       :else
       (str/join " " (remove nil?
@@ -116,8 +129,20 @@
                                (str "This ran the card with the dashboard filter values on the user's screen: "
                                     (str/join "; " applied) "."))
                              (when (seq unknown)
-                               (str "No value was applied for " (str/join ", " unknown) ": its value on the user's"
-                                    " screen is unknown, so these rows can differ from the card on screen."))])))))
+                               (str "No value was applied for " (str/join ", " unknown) ": "
+                                    (if (next unknown) "their values" "its value")
+                                    " on the user's screen "
+                                    (if (next unknown) "are" "is")
+                                    " unknown, so these rows can differ from the card on screen."))])))))
+
+(defn- combined-note
+  "The line saying that only `card` ran, when `dashcard` shows more than one question on the user's screen, or nil."
+  [dashcard card]
+  (when (or (get-in dashcard [:visualization_settings :visualization])
+            (metabot.db/dashcard-has-series? (:id dashcard)))
+    (format (str "This card combines more than one question on the user's screen, and these rows are only those of"
+                 " its main question, %s %d.")
+            (name (:type card)) (:id card))))
 
 (defn- run-dashcard-page!
   "Run `dashcard` for one page of at most `row-limit` rows, refusing it when the runner's own read checks do."
@@ -138,10 +163,15 @@
      (run-query/check-rows-may-reach-model!)
      (let [item         (viewed-dashboard)
            dashboard-id (:id item)]
-       (when-not (pos-int? dashboard-id)
+       (cond
+         (nil? item)
          (throw (run-query/refusal
                  (str "The user is not viewing a dashboard, and this tool only runs cards on the dashboard they are"
-                      " viewing. To read a saved question's values, call `run_query` with the question's ID."))))
+                      " viewing. To read a saved question's values, call `run_query` with the question's ID.")))
+
+         (not (pos-int? dashboard-id))
+         (throw (run-query/refusal (str "The user is viewing an automatically generated dashboard, and its cards"
+                                        " can't be run with its filters."))))
        (let [{:keys [dashboard dashcard card]} (runnable-dashcard dashboard-id dashcard_id)
              values                            (filter-values item dashboard)
              page                              (run-dashcard-page! {:dashboard  dashboard
@@ -155,7 +185,8 @@
              (run-query/rows-output
               (format "<query_results dashcard_id=\"%d\" %s_id=\"%d\"" dashcard_id card-type (:id card))
               page
-              [(filters-note dashboard dashcard values)
+              [(filters-note dashboard dashcard card values)
+               (combined-note dashcard card)
                (format "Link to the %s as `metabase://%s/%d`." card-type card-type (:id card))]
               false)]
          {:output            output

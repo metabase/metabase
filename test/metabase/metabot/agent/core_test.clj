@@ -165,7 +165,8 @@
                                :profile-id      profile-id
                                :conversation-id conversation-id
                                :context         {:capabilities capabilities}}))]
-    {:tool?       (contains? tools "run_query")
+    {:tool?           (contains? tools "run_query")
+     :dashboard-card? (contains? tools "run_dashboard_card")
      :prompt?     (str/includes? (pr-str system-msg) "You can see results only")
      :show-chart? (-> (get tools "construct_notebook_query")
                       :declaration
@@ -194,15 +195,15 @@
                    :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
       (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
         (mt/with-current-user rasta
-          (testing "the user's own conversation offers run_query, says results can be read, and declares show_chart"
-            (is (= {:tool? true, :prompt? true, :show-chart? true} (offered own))))
+          (testing "the user's own conversation offers both row tools, readable results and show_chart"
+            (is (= {:tool? true, :dashboard-card? true, :prompt? true, :show-chart? true} (offered own))))
           (testing "a conversation other people can read does none of them"
             (testing "a Slack thread"
-              (is (= {:tool? false, :prompt? false, :show-chart? false} (offered thread))))
+              (is (= {:tool? false, :dashboard-card? false, :prompt? false, :show-chart? false} (offered thread))))
             (testing "a conversation someone else started"
-              (is (= {:tool? false, :prompt? false, :show-chart? false} (offered someone)))))
+              (is (= {:tool? false, :dashboard-card? false, :prompt? false, :show-chart? false} (offered someone)))))
           (testing "no conversation does none of them"
-            (is (= {:tool? false, :prompt? false, :show-chart? false} (offered nil)))))))))
+            (is (= {:tool? false, :dashboard-card? false, :prompt? false, :show-chart? false} (offered nil)))))))))
 
 (deftest run-query-not-offered-to-embedded-metabot-test
   ;; The request names the profile, so an embedded Metabot can ask for one that offers run_query.

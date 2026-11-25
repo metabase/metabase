@@ -128,7 +128,7 @@
     "create_sql_query" "edit_sql_query" "replace_sql_query" "construct_notebook_query"
     "document_schema_collect" "document_construct_sql_chart" "document_construct_model_chart"
     "create_alert" "create_dashboard_subscription" "static_viz"
-    "read_resource" "run_query"})
+    "read_resource" "run_query" "run_dashboard_card"})
 
 (def ^:private query-result-tool-names
   "Names of the tools that return query results: those that need `:feature-query-execution`."

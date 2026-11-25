@@ -976,6 +976,11 @@
    dashcard-id  :- ::lib.schema.id/dashcard]
   (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id] :dashboard_id [:auto/param dashboard-id]))
 
+(mu/defn dashcard-has-series?
+  "Whether the DashboardCard with `dashcard-id` shows other Cards as series beside its own."
+  [dashcard-id :- ::lib.schema.id/dashcard]
+  (t2/exists? :model/DashboardCardSeries :dashboardcard_id dashcard-id))
+
 (mu/defn dashcards
   "The ID, Card, action, tab, and settings of the DashboardCards of the Dashboard with `dashboard-id`, in grid
   order."

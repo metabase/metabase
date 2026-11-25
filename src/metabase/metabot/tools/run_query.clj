@@ -164,7 +164,7 @@
 
 (defn- shared-conversation-refusal
   []
-  (refusal (str "run_query is not available in a conversation other people can read, because they would see "
+  (refusal (str "This tool is not available in a conversation other people can read, because they would see "
                 "the rows too. Ask the user to continue in their own Metabot chat.")))
 
 (defn- check-private-conversation!
@@ -175,7 +175,7 @@
   (let [conversation-id (shared/current-conversation-id)]
     (cond
       (not (and conversation-id api/*current-user-id*))
-      (throw (refusal "run_query is only available in a Metabot conversation."))
+      (throw (refusal "This tool is only available in a Metabot conversation."))
 
       (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*)
       (throw (shared-conversation-refusal)))))
@@ -584,7 +584,8 @@
    that text shows, and whether the run has more rows than it shows.
    The text opens with `open-tag`, the `<query_results ...` start of the opening tag, which this closes with the
    counts, and the lines `notes` follow the rows.
-   A truncated page gets advice to aggregate the query and run it again only with `rerun-advice?`."
+   A truncated page, or one whose rows are too long to show, gets advice to change the query and run it again only
+   with `rerun-advice?`."
   [open-tag {:keys [cols rows truncated?]} notes rerun-advice?]
   (let [shown-cols            (vec (take max-columns cols))
         {:keys [table shown]} (rows-table shown-cols rows)
@@ -609,7 +610,8 @@
                          [(cond
                             none-fit?
                             (str "The query returned rows, but one row is longer than the output limit."
-                                 " Select fewer columns and run it again.")
+                                 (when rerun-advice?
+                                   " Select fewer columns and run it again."))
 
                             truncated?
                             (str "Only the first " shown " rows are shown, so do not count or total them to answer."

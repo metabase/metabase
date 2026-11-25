@@ -51,7 +51,8 @@
     (let [user-id (or user-id api/*current-user-id*)]
       ;; we don't want to count pinned card views or document cards
       (when (and user-id
-                 (not (#{:collection :dashboard :dashboard-subscription} context))
+                 ;; nor Metabot reading a card for the user
+                 (not (#{:collection :dashboard :dashboard-subscription :metabot} context))
                  (not (activity-feed.db/card-document-id card-id)))
         (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e

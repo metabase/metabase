@@ -190,7 +190,7 @@
   (let [rasta   (mt/user->id :rasta)
         lucky   (mt/user->id :lucky)
         run-in  #(call-tool! {:conversation-id %, :state {:queries {"q1" (venues-count)}}} {:query_id "q1"})
-        refusal {:output #"run_query is not available in a conversation other people can read.*"}]
+        refusal {:output #"This tool is not available in a conversation other people can read.*"}]
     (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id rasta}
                    :model/MetabotMessage      _            {:conversation_id own, :user_id rasta}
                    :model/MetabotConversation {joined :id} {:user_id rasta}
@@ -214,7 +214,7 @@
         (testing "a Slack thread stored without its thread id is refused"
           (is (=? refusal (run-in legacy))))
         (testing "a run outside a conversation is refused"
-          (is (= {:output "run_query is only available in a Metabot conversation."}
+          (is (= {:output "This tool is only available in a Metabot conversation."}
                  (call-tool! {:state {:queries {"q1" (venues-count)}}} {:query_id "q1"}))))))))
 
 (deftest result-output-bounds-test
