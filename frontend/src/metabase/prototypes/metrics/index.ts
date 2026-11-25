@@ -1,7 +1,10 @@
 import type { PrototypeDefinition } from "../types";
 
 import { BaselinePrototype } from "./baseline/BaselinePrototype";
-import { MetricEditorPrototype } from "./explorer/MetricEditorPrototype";
+import {
+  MetricEditorBlocksPrototype,
+  MetricEditorPrototype,
+} from "./explorer/MetricEditorPrototype";
 import { MetricExplorerPrototype } from "./explorer/MetricExplorerPrototype";
 import { MetricDependencyTreePrototype } from "./tree/MetricDependencyTreePrototype";
 import { MetricTreeHiFiPrototype } from "./tree/MetricTreeHiFiPrototype";
@@ -21,6 +24,14 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
       "A metric's Definition tab is the Metric Explorer: its bar is the definition, math over measures with filters per measure and on the whole metric. Edit it and save. New metric opens the same page, empty.",
     group: "Iteration 1",
     Component: MetricEditorPrototype,
+  },
+  {
+    id: "metric-editor-blocks",
+    name: "Definition with blocks",
+    description:
+      "Same as the expression bar, but the definition is built from large blocks like the Metric Tree's cards: pick operators between them, and each measure's filters show as rows in its block.",
+    group: "Iteration 1",
+    Component: MetricEditorBlocksPrototype,
   },
   {
     id: "metric-explorer",

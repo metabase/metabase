@@ -10,6 +10,7 @@ import {
   PaneHeaderInput,
   PanelHeaderTitle,
 } from "metabase/common/data-studio/components/PaneHeader";
+import { dayjs } from "metabase/dayjs";
 import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
 import { DimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
 import {
@@ -44,11 +45,13 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { formatValue } from "metabase/value-formatting";
 import type * as LibMetric from "metabase-lib/metric";
 import type { Card as CardType, MathOperator } from "metabase-types/api";
 
 import { MetricTabContent, isRealTab } from "../MetricTabContent";
 
+import { BlockDefinitionEditor } from "./BlockDefinitionEditor";
 import { DefinitionEditor } from "./DefinitionEditor";
 import { EXAMPLE_PARAM_PREFIX, ExamplesBar } from "./ExamplesBar";
 import { MetricsList, useMetrics } from "./MetricExplorerPrototype";
@@ -184,7 +187,13 @@ const signature = ({ name, formula, where }: MetricDraft) =>
  * Definition tab is the Explorer opened on it; its bar holds the definition,
  * filters included. "New metric" opens the same page, empty.
  */
-export function MetricEditorPrototype() {
+type EditorKind = "bar" | "blocks";
+
+export function MetricEditorPrototype({
+  editor = "bar",
+}: {
+  editor?: EditorKind;
+}) {
   const sources = useSourceItems();
   const { metrics, isLoading } = sources;
   const { pathname, search } = useLocation();
@@ -270,6 +279,7 @@ export function MetricEditorPrototype() {
               param && setSaved((prev) => ({ ...prev, [param]: draft }))
             }
             onCancelNew={() => setView("list")}
+            editor={editor}
           />
         ) : (
           <Text p="xl" c="text-secondary">
@@ -279,6 +289,10 @@ export function MetricEditorPrototype() {
       </Box>
     </Stack>
   );
+}
+
+export function MetricEditorBlocksPrototype() {
+  return <MetricEditorPrototype editor="blocks" />;
 }
 
 /** The examples use Sample Database measures made by hand on each instance. */
@@ -313,7 +327,9 @@ function MetricEditorPage({
   tableOf,
   onSave,
   onCancelNew,
+  editor,
 }: {
+  editor: EditorKind;
   cardId: CardType["id"] | undefined;
   collection: string;
   isNew: boolean;
@@ -414,14 +430,16 @@ function MetricEditorPage({
         <MetricTabContent tab={tab} cardId={cardId} />
       )}
       <Card
-        withBorder
+        withBorder={editor !== "blocks"}
         shadow="none"
         p={0}
-        h={680}
+        bg={editor === "blocks" ? "transparent" : undefined}
+        h={editor === "blocks" ? 720 : 680}
         display={tab === "Definition" || isNew ? undefined : "none"}
       >
         <EmbeddedExplorer
           key={revision}
+          editor={editor}
           draft={draft}
           items={items}
           nameOf={nameOf}
@@ -500,12 +518,14 @@ function toFormulaEntities(
  * Filter button. Everything under the bar is the Explorer's own.
  */
 function EmbeddedExplorer({
+  editor,
   draft,
   items,
   nameOf,
   tableOf,
   onChange,
 }: {
+  editor: EditorKind;
   draft: MetricDraft;
   items: BarItem[];
   nameOf: (id: string) => string;
@@ -586,28 +606,94 @@ function EmbeddedExplorer({
 
   return (
     <MetricsViewerProvider value={viewerState}>
-      <Stack px="3rem" h="100%" gap={0} className={PageS.root}>
-        <Box pt="lg" flex="0 0 auto">
-          <Text fw={700} size="lg" mb="md">
-            Definition
-          </Text>
-          <DefinitionEditor
-            draft={draft}
-            onChange={onChange}
-            measureItems={items}
-            measureName={nameOf}
-            layout="explorer"
-            whereFilters={(query, exclude) =>
-              suggestFilters(tables, query, exclude)
+      {editor === "blocks" ? (
+        <Flex h="100%" gap="xl" pt="md">
+          <Stack
+            w="22rem"
+            gap="md"
+            style={{ flexShrink: 0, overflowY: "auto" }}
+          >
+            <BlockDefinitionEditor
+              draft={draft}
+              onChange={onChange}
+              measureItems={items}
+              measureName={nameOf}
+              filtersForTerm={(id, query, exclude) =>
+                suggestFilters([tableOf(id) ?? ""], query, exclude, nameOf(id))
+              }
+            />
+          </Stack>
+          <Stack flex={1} miw={0} gap="md">
+            <Card withBorder shadow="none" p={0} flex={1} mih={0}>
+              <Stack px="xl" h="100%" gap={0} className={PageS.root}>
+                <LatestValue name={draft.name || "New metric"} />
+                <ExplorerBody />
+              </Stack>
+            </Card>
+          </Stack>
+        </Flex>
+      ) : (
+        <Stack px="3rem" h="100%" gap={0} className={PageS.root}>
+          <Box pt="lg" flex="0 0 auto">
+            {
+              <DefinitionEditor
+                draft={draft}
+                onChange={onChange}
+                measureItems={items}
+                measureName={nameOf}
+                layout="explorer"
+                whereFilters={(query, exclude) =>
+                  suggestFilters(tables, query, exclude)
+                }
+                filtersForTerm={(id, query, exclude) =>
+                  suggestFilters(
+                    [tableOf(id) ?? ""],
+                    query,
+                    exclude,
+                    nameOf(id),
+                  )
+                }
+              />
             }
-            filtersForTerm={(id, query, exclude) =>
-              suggestFilters([tableOf(id) ?? ""], query, exclude, nameOf(id))
-            }
-          />
-        </Box>
-        <ExplorerBody />
-      </Stack>
+          </Box>
+          <ExplorerBody />
+        </Stack>
+      )}
     </MetricsViewerProvider>
+  );
+}
+
+const UNIT_FORMATS: Record<string, string> = {
+  year: "YYYY",
+  quarter: "[Q]Q YYYY",
+  month: "MMMM YYYY",
+};
+
+/** The chart's last point, big, with its date: "Net revenue in April 2029". */
+function LatestValue({ name }: { name: string }) {
+  const { series } = useMetricsViewerContext();
+  const data = series[0]?.data;
+  const lastRow = data?.rows.at(-1);
+  if (!data || !lastRow) {
+    return null;
+  }
+  const valueIndex = data.cols.length - 1;
+  const value = lastRow[valueIndex];
+  const dateCol = data.cols.length > 1 ? data.cols[0] : undefined;
+  const date = dateCol ? dayjs(String(lastRow[0])) : null;
+  const when =
+    date?.isValid() && dateCol
+      ? date.format(UNIT_FORMATS[dateCol.unit ?? ""] ?? "MMMM D, YYYY")
+      : null;
+  return (
+    <Stack gap={0} pt="lg">
+      <Text fz="sm" c="text-secondary">
+        {when ? `${name} in ${when}` : name}
+      </Text>
+      <Text fz={40} lh={1.1} fw={700} c="text-primary">
+        {formatValue(value, { column: data.cols[valueIndex] })}
+      </Text>
+    </Stack>
   );
 }
 

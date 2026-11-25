@@ -497,9 +497,13 @@ export const EXAMPLES: MetricExample[] = [
   {
     id: "gizmo-average-order-value",
     name: "Gizmo average order value",
-    hint: "A filter on the whole metric, in the Where row.",
-    formula: ["Revenue", "÷", "Orders"],
-    where: ["Product category = Gizmo"],
+    hint: "The same filter on each measure.",
+    formula: [
+      { measure: "Revenue", filters: ["Product category = Gizmo"] },
+      "÷",
+      { measure: "Orders", filters: ["Product category = Gizmo"] },
+    ],
+    where: [],
   },
   {
     id: "revenue-per-new-customer",
