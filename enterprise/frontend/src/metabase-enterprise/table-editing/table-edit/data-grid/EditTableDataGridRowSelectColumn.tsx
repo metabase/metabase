@@ -1,4 +1,5 @@
 import type { CellContext, HeaderContext } from "@tanstack/react-table";
+import { t } from "ttag";
 
 import { BaseCell } from "metabase/data-grid";
 import { Checkbox, Flex, Group, Icon, Tooltip } from "metabase/ui";
@@ -20,11 +21,7 @@ function RowSelectHeader({ table }: RowSelectHeaderProps) {
         indeterminate={table.getIsSomeRowsSelected()}
         onChange={table.getToggleAllRowsSelectedHandler()}
         data-testid="row-select-all-checkbox"
-        styles={{
-          input: {
-            borderColor: "var(--mb-color-border-neutral)",
-          },
-        }}
+        classNames={{ input: S.checkboxInput }}
       />
     </Flex>
   );
@@ -43,16 +40,12 @@ function RowSelectCell({ row, table }: RowSelectCellProps) {
           disabled={!row.getCanSelect()}
           onChange={row.getToggleSelectedHandler()}
           data-testid="row-select-checkbox"
-          styles={{
-            input: {
-              borderColor: "var(--mb-color-border-neutral)",
-            },
-          }}
+          classNames={{ input: S.checkboxInput }}
         />
 
         {/* Only show the edit icon when no rows are selected */}
         {!table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected() && (
-          <Tooltip label="Edit record">
+          <Tooltip label={t`Edit record`}>
             <Icon
               name="pencil"
               data-testid="row-edit-icon"
