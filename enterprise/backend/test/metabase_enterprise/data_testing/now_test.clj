@@ -189,7 +189,7 @@
                                                             :database (mt/id)}}
                    :model/TransformTest {test-id :id} (merge {:transform_id (:id transform)
                                                               :inputs       inputs
-                                                              :expectations [(expectation-of (str schema "." target-name))]}
+                                                              :expectations [(expectation-of (data-testing.test-util/qualified schema target-name))]}
                                                              test-fields)]
       (outcome! :transform transform :model/TransformTest test-id))))
 

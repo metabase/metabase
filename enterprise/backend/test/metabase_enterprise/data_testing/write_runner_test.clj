@@ -134,26 +134,30 @@
             (is (not (str/includes? (u/lower-case-en statement) (u/lower-case-en (data-testing.test-util/qualified :people)))))))))))
 
 (deftest write-qualifying-columns-by-the-written-table-test
-  (let [people-name (:name (data-testing.test-util/table-ref :people))
-        people      (data-testing.test-util/qualified :people)
-        passed      {:status       :passed
-                     :expectations [{:name "only person 1 is refunded" :status :passed}]}]
+  (let [passed {:status       :passed
+                :expectations [{:name "only person 1 is refunded" :status :passed}]}]
     (mt/test-drivers (drivers-that-write)
-      (testing "a column qualified by the name of the table the statement writes resolves to the input"
-        (is (=? passed
-                (run-write! (str "UPDATE " people " SET name = ? WHERE " people-name ".id = ?")
-                            ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))
-      (testing "so does one qualified by the schema and the name"
-        (is (=? passed
-                (run-write! (str "UPDATE " people " SET name = ? WHERE " people ".id = ?")
-                            ["refunded" 1] [(people-rows)] [(reading refunded-only-1)])))))
+      (let [{people-schema :schema people-name :name} (data-testing.test-util/table-ref :people)
+            people                                    (data-testing.test-util/qualified :people)]
+        (testing "a column qualified by the name of the table the statement writes resolves to the input"
+          (is (=? passed
+                  (run-write! (str "UPDATE " people " SET name = ? WHERE " people-name ".id = ?")
+                              ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))
+        ;; A MySQL table has no schema: there this case would repeat the one above.
+        (when-not (str/blank? people-schema)
+          (testing "so does one qualified by the schema and the name"
+            (is (=? passed
+                    (run-write! (str "UPDATE " people " SET name = ? WHERE " people ".id = ?")
+                                ["refunded" 1] [(people-rows)] [(reading refunded-only-1)])))))))
     ;; MySQL refuses a subquery that reads the table the statement writes.
     (mt/test-driver :postgres
-      (testing "a subquery that reads the written table by name: its qualifier names the table the subquery reads"
-        (is (=? passed
-                (run-write! (str "UPDATE " people " SET name = ? WHERE " people-name ".id = "
-                                 "(SELECT min(" people-name ".id) FROM " people ")")
-                            ["refunded"] [(people-rows)] [(reading refunded-only-1)])))))))
+      (let [people-name (:name (data-testing.test-util/table-ref :people))
+            people      (data-testing.test-util/qualified :people)]
+        (testing "a subquery that reads the written table by name: its qualifier names the table the subquery reads"
+          (is (=? passed
+                  (run-write! (str "UPDATE " people " SET name = ? WHERE " people-name ".id = "
+                                   "(SELECT min(" people-name ".id) FROM " people ")")
+                              ["refunded"] [(people-rows)] [(reading refunded-only-1)]))))))))
 
 (deftest write-to-an-undeclared-table-is-refused-test
   (mt/test-drivers (drivers-that-write)

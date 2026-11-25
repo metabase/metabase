@@ -215,7 +215,7 @@
                                                               (data-testing.test-util/from-google-segment)
                                                               [(people-rows three-people)]
                                                               [{:type :empty :name "reads orders"
-                                                                :sql  (str "SELECT * FROM {{output}} o JOIN " schema "." table " r ON 1 = 1")}])))))))))
+                                                                :sql  (str "SELECT * FROM {{output}} o JOIN " (data-testing.test-util/qualified schema table) " r ON 1 = 1")}])))))))))
 
 (deftest segment-run-is-persisted-test
   (mt/test-drivers (data-testing.test-util/data-test-drivers)

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.test-util
   "Helpers shared by the data-testing tests."
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase.driver :as driver]
@@ -29,10 +30,15 @@
     {:schema schema :name name}))
 
 (defn qualified
-  "`schema.name` of the test-data table `table-key`, for SQL, or `name` when the table has no schema."
-  [table-key]
-  (let [{:keys [schema name]} (table-ref table-key)]
-    (if schema (str schema "." name) name)))
+  "`schema.name` for native SQL, or `name` alone when `schema` is blank (a MySQL table has none). With a `table-key`
+  alone, of that test-data table."
+  ([table-key]
+   (let [{:keys [schema name]} (table-ref table-key)]
+     (qualified schema name)))
+  ([schema name]
+   (if (str/blank? schema)
+     name
+     (str schema "." name))))
 
 (defn table-query
   "An MBQL query of the test-data table `table-key`."
