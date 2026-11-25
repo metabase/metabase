@@ -112,6 +112,20 @@
         (dimension/delete-dimensions! (mapv :id (warehouse-schema.db/dimensions-of-field id :internal))))
       writes)))
 
+(defn- write-fields!
+  "Write each of `field-rows`, the `:id` of a Field and the columns to change, onto its Field, outside a remote sync
+  worktree, which leaves the main app's Fields as they are."
+  [field-rows]
+  (when-not (mdb/worktree-id)
+    (field/update-fields! field-rows)))
+
+(defn- write-custom-positions!
+  "Set the `custom_position` of each Field in `field-id->position`, outside a remote sync worktree, which leaves the
+  main app's Fields as they are."
+  [field-id->position]
+  (when-not (mdb/worktree-id)
+    (field/set-custom-positions! field-id->position)))
+
 (defn- mirror-onto-fields!
   "Write the columns each of the settings `rows` says a user set onto its Field, in one update."
   [rows]
@@ -122,7 +136,7 @@
                                                            (select-keys settings (user-settings/user-set-field-columns settings)))]
                                          (assoc changes :id field_id))))
                                rows))]
-    (field/update-fields! field-rows)))
+    (write-fields! field-rows)))
 
 (mu/defn create-field-user-settings! :- [:sequential ::warehouse-schema.schema/field-user-settings]
   "Insert the FieldUserSettings `rows`, write the columns they say a user set onto their Fields, and return the
@@ -174,8 +188,9 @@
           (throw e))))))
 
 (mu/defn upsert-field-user-settings!
-  "Record the user-settable Field columns present in `settings` as the user values of `field`, in its settings and its
-  row; a nil for a column without a set flag unsets it."
+  "Record the user-settable Field columns present in `settings` as the user values of `field`: in its settings, and in
+  its row outside a remote sync worktree, which reads them through the settings. A nil for a column without a set flag
+  unsets it."
   [{:keys [id] :as field} :- ::warehouse-schema.schema/field
    settings               :- (mut/dissoc ::warehouse-schema.schema/field.update :id)]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-field-columns)]
@@ -189,7 +204,7 @@
                         (user-settings-writes/add-updated writes writes-spec [stored] (constantly changes))
                         (user-settings-writes/add-created writes [inserted]))
               writes  (user-settings-writes/delete-empty! writes writes-spec [id])]
-          (field/update-fields! [(assoc settings :id id)])
+          (write-fields! [(assoc settings :id id)])
           (user-settings-writes/publish-writes! writes writes-spec)
           1)))))
 
@@ -260,12 +275,13 @@
           (let [writes (-> writes
                            (user-settings-writes/add-updated writes-spec stored (comp changes-of :field_id))
                            (user-settings-writes/delete-empty! writes-spec ids))]
-            (field/update-fields! (mapv (fn [[field settings]] (assoc settings :id (:id field))) field+settings))
+            (write-fields! (mapv (fn [[field settings]] (assoc settings :id (:id field))) field+settings))
             (user-settings-writes/publish-writes! writes writes-spec)
             (count field+settings)))))))
 
 (mu/defn set-custom-positions!
-  "Record `field-id->position` as the Fields' user `custom_position`s, in their settings and their rows."
+  "Record `field-id->position` as the Fields' user `custom_position`s: in their settings, and in their rows outside a
+  remote sync worktree, which reads them through the settings."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
   (t2/with-transaction [_conn]
     (let [existing (warehouse-schema.db/field-user-settings-for-fields (vec (keys field-id->position)))
@@ -278,7 +294,7 @@
       (when (seq existing)
         (warehouse-schema.db/update-field-user-settings-custom-positions!
          (select-keys field-id->position (map :field_id existing))))
-      (u/prog1 (field/set-custom-positions! field-id->position)
+      (u/prog1 (write-custom-positions! field-id->position)
         (user-settings-writes/publish-writes!
          (user-settings-writes/add-updated writes writes-spec existing #(hash-map :custom_position (field-id->position (:field_id %))))
          writes-spec)))))

@@ -212,11 +212,12 @@
   With `:in-place? true`, empties and repopulates the active index instead.
   Runs asynchronously and returns a future.
   Runs synchronously and returns a delivered promise when `:async?` is false or
-  [[search.ingestion/*force-sync*]] is true."
+  [[search.ingestion/*force-sync*]] is true. It indexes the main app's rows whichever worktree the caller works in."
   [& {:keys [async?] :or {async? true} :as opts}]
   (let [f (fn []
             (try
-              (reindex-logic! opts)
+              (mdb/with-worktree-scope {:type :main}
+                (reindex-logic! opts))
               (catch Exception e
                 (log/errorf "Reindex failed: %s" (ex-message e))
                 (analytics/inc! :metabase-search/index-error)
