@@ -72,7 +72,9 @@ import {
   TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
   TEST_UNSAVED_STRUCTURED_CARD,
   setup,
+  triggerNotebookQueryChange,
   waitForFaviconReady,
+  waitForQueryToFinish,
   waitForSaveToBeEnabled,
 } from "./test-utils";
 
@@ -115,6 +117,56 @@ describe("QueryBuilder", () => {
         });
 
         expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
+      });
+
+      describe("visualizing a saved question from the notebook (metabase#13470)", () => {
+        mockGetBoundingClientRect();
+
+        async function setupSavedQuestionNotebook() {
+          const { router, store } = await setup({
+            card: TEST_STRUCTURED_CARD,
+            dataset: TEST_MODEL_DATASET,
+            initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
+          });
+          return { router, store };
+        }
+
+        async function visualize(
+          store: Parameters<typeof waitForQueryToFinish>[0],
+        ) {
+          await userEvent.click(
+            await screen.findByRole("button", { name: "Visualize" }),
+          );
+          expect(await screen.findByTestId("table-root")).toBeInTheDocument();
+          await waitForQueryToFinish(store);
+        }
+
+        it("does not offer to save the question when nothing changed", async () => {
+          const { router, store } = await setupSavedQuestionNotebook();
+
+          await visualize(store);
+
+          expect(router.location.pathname).not.toContain("/notebook");
+          expect(
+            within(screen.getByTestId("qb-header")).queryByRole("button", {
+              name: "Save",
+            }),
+          ).not.toBeInTheDocument();
+        });
+
+        it("offers to save the question after a change", async () => {
+          const { router, store } = await setupSavedQuestionNotebook();
+
+          await triggerNotebookQueryChange();
+          await visualize(store);
+
+          expect(router.location.pathname).not.toContain("/notebook");
+          expect(
+            within(screen.getByTestId("qb-header")).getByRole("button", {
+              name: "Save",
+            }),
+          ).toBeInTheDocument();
+        });
       });
 
       it("renders the notebook of a question whose custom column references a missing field (metabase#28221)", async () => {
@@ -792,6 +844,119 @@ describe("QueryBuilder", () => {
         ],
       });
     });
+  });
+
+  describe("filter pills and the filter picker", () => {
+    it("should show the values and the operators of a between filter when its pill is clicked (metabase#14726)", async () => {
+      const card = createMockUnsavedCard({
+        display: "table",
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
+                filters: [
+                  {
+                    type: "operator",
+                    operator: "between",
+                    args: [
+                      { type: "column", name: "ID" },
+                      { type: "literal", value: 96 },
+                      { type: "literal", value: 97 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+      });
+      await setup({ card });
+
+      const filtersPanel = await screen.findByTestId("qb-filters-panel");
+      await userEvent.click(
+        within(filtersPanel).getByText("ID is between 96 and 97"),
+      );
+      const popover = await screen.findByRole("dialog");
+      expect(within(popover).getByDisplayValue("96")).toBeInTheDocument();
+      expect(within(popover).getByDisplayValue("97")).toBeInTheDocument();
+
+      await userEvent.click(within(popover).getByText("Between"));
+      const menu = await screen.findByRole("menu");
+      expect(within(menu).getByText("Is not")).toBeInTheDocument();
+      expect(within(menu).getByText("Greater than")).toBeInTheDocument();
+      expect(within(menu).getByText("Less than")).toBeInTheDocument();
+    });
+
+    it.each([
+      {
+        issue: "metabase#21973",
+        tableId: PEOPLE_ID,
+        operator: "max" as const,
+        columnName: "NAME",
+        breakoutName: "SOURCE",
+        aggregationName: "Max of Name",
+        filterOperator: "Starts with",
+      },
+      {
+        issue: "metabase#22154",
+        tableId: PRODUCTS_ID,
+        operator: "min" as const,
+        columnName: "VENDOR",
+        breakoutName: "CATEGORY",
+        aggregationName: "Min of Vendor",
+        filterOperator: "Ends with",
+      },
+    ])(
+      "should filter $aggregationName as text ($issue)",
+      async ({
+        tableId,
+        operator,
+        columnName,
+        breakoutName,
+        aggregationName,
+        filterOperator,
+      }) => {
+        const card = createMockUnsavedCard({
+          display: "table",
+          dataset_query: Lib.toJsQuery(
+            Lib.createTestQuery(SAMPLE_PROVIDER, {
+              stages: [
+                {
+                  source: { type: "table", id: tableId },
+                  aggregations: [
+                    {
+                      type: "operator",
+                      operator,
+                      args: [{ type: "column", name: columnName }],
+                    },
+                  ],
+                  breakouts: [{ type: "column", name: breakoutName }],
+                },
+              ],
+            }),
+          ),
+        });
+        await setup({ card });
+
+        await userEvent.click(
+          await screen.findByTestId("question-filter-header"),
+        );
+        const popover = await screen.findByRole("dialog");
+        await userEvent.click(within(popover).getByText("Summaries"));
+        await userEvent.click(within(popover).getByText(aggregationName));
+        await userEvent.click(
+          await within(popover).findByLabelText("Filter operator"),
+        );
+        await userEvent.click(
+          within(await screen.findByRole("menu")).getByText(filterOperator),
+        );
+
+        expect(
+          await within(popover).findByPlaceholderText("Enter some text"),
+        ).toBeInTheDocument();
+      },
+    );
   });
 
   describe("filtering from the header and going back", () => {
