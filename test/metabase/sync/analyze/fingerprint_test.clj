@@ -2,6 +2,7 @@
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.analyze.db :as analyze.db]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.app-db.core :as app-db]
@@ -480,3 +481,48 @@
             (is (thrown? StackOverflowError
                          (fingerprint-db! (driver.u/lib-database (u/the-id db))))))
           (is (= 1 @saves)))))))
+
+(deftest empty-table-is-sampled-again-once-a-day-test
+  (mt/test-driver :h2
+    (testing "a Table whose sample had no rows is not sampled again for a day, unless its row count estimate is above zero"
+      (mt/with-temp [:model/Database db       {:engine :h2}
+                     :model/Table    empty-t  {:db_id (u/the-id db) :name "EMPTY"}
+                     :model/Table    full-t   {:db_id (u/the-id db) :name "FULL"}
+                     :model/Field    _        {:table_id (u/the-id empty-t) :base_type :type/Text :fingerprint_version 0}
+                     :model/Field    _        {:table_id (u/the-id full-t) :base_type :type/Text :fingerprint_version 0}]
+        (let [sampled (atom [])
+              rows?   (atom #{"FULL"})
+              sample  (fn [table fields]
+                        (swap! sampled conj (:name table))
+                        (if (@rows? (:name table))
+                          (stub-sample-fingerprints table fields)
+                          {:rows  []
+                           :stats (assoc (sync.fingerprint/empty-stats-map (count fields))
+                                         :no-data-fingerprints (count fields))}))
+              run!    (fn []
+                        (reset! sampled [])
+                        (fingerprint-db! (driver.u/lib-database (u/the-id db)))
+                        (sort @sampled))
+              mark    #(t2/select-one-fn :last_empty_sample_at :model/Table :id (u/the-id empty-t))]
+          (mt/with-dynamic-fn-redefs [sync.fingerprint/sample-fingerprints sample]
+            (testing "first sync: both Tables are sampled, and the empty one is marked"
+              (is (= ["EMPTY" "FULL"] (run!)))
+              (is (some? (mark)))
+              (is (nil? (t2/select-one-fn :last_empty_sample_at :model/Table :id (u/the-id full-t)))))
+            (testing "the next sync does not sample the empty Table again"
+              (is (= [] (run!))))
+            (testing "its row count estimate going above zero samples it at once"
+              (t2/update! :model/Table :id (u/the-id empty-t) {:estimated_row_count 10})
+              (is (= ["EMPTY"] (run!)))
+              (t2/update! :model/Table :id (u/the-id empty-t) {:estimated_row_count nil}))
+            (testing "a day after the last try it is sampled again"
+              (t2/update! :model/Table :id (u/the-id empty-t) {:last_empty_sample_at (t/minus (t/offset-date-time) (t/hours 25))})
+              (is (= ["EMPTY"] (run!))))
+            (testing "fingerprinting the Table on its own does not skip it"
+              (is (=? {:fingerprints-attempted 1}
+                      (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (u/the-id empty-t))))))
+            (testing "once a sample has rows, the mark is cleared"
+              (swap! rows? conj "EMPTY")
+              (t2/update! :model/Table :id (u/the-id empty-t) {:last_empty_sample_at (t/minus (t/offset-date-time) (t/hours 25))})
+              (is (= ["EMPTY"] (run!)))
+              (is (nil? (mark))))))))))
