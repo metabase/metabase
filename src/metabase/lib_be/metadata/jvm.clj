@@ -93,7 +93,8 @@
 
 (def ^:private metadata-type->schema
   {:metadata/card   ::lib.schema.metadata/card
-   :metadata/column ::lib.schema.metadata/column})
+   :metadata/column ::lib.schema.metadata/column
+   :metadata/table  ::lib.schema.metadata/table})
 
 (def ^:private metadata-type->lib-schema
   {:metadata/card                 ::lib.schema.metadata/card
@@ -222,7 +223,9 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter
+                   :table_role :grain :grain_description :period_granularity :mutability :load_strategy :scd_type
+                   :history_definition :eav_definition]
           :from   [(t2/table-name :model/Table)]}))
 
 (t2/define-after-select :metadata/table
