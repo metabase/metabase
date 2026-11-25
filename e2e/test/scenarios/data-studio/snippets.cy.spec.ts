@@ -44,16 +44,23 @@ describe("scenarios > data studio > snippets", () => {
     });
   });
 
-  describe("archiving", () => {
-    it("should archive and unarchive a snippet", () => {
+  describe("description and archiving", () => {
+    it("should render markdown in the description, and archive and unarchive a snippet", () => {
       H.createSnippet({
         name: "Test snippet",
         content: "SELECT * FROM orders",
+        description: "**Bold text** and *italic text*",
       });
 
       H.DataStudio.Snippets.visitList();
 
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
+
+      cy.log("Verify markdown in the description");
+      H.DataStudio.Snippets.editPage().within(() => {
+        cy.findByText("Bold text").should("have.css", "font-weight", "700");
+        cy.findByText("italic text").should("have.css", "font-style", "italic");
+      });
 
       cy.log("Archive the snippet");
       cy.findByTestId("snippet-header")
