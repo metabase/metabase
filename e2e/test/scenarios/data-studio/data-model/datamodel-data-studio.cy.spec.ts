@@ -595,9 +595,18 @@ describe("scenarios > data studio > datamodel > table editing", () => {
         .should("have.text", "Bobby Tables");
 
       cy.log("publish and unpublish multiple tables");
-      TablePicker.getTable("Orders").findByRole("checkbox").check();
-      TablePicker.getTable("Products").findByRole("checkbox").check();
-      TablePicker.getTable("Reviews").findByRole("checkbox").check();
+      TablePicker.getTable("Orders")
+        .findByRole("checkbox")
+        .scrollIntoView()
+        .check();
+      TablePicker.getTable("Products")
+        .findByRole("checkbox")
+        .scrollIntoView()
+        .check();
+      TablePicker.getTable("Reviews")
+        .findByRole("checkbox")
+        .scrollIntoView()
+        .check();
 
       cy.log("publish the tables and verify they are published");
       cy.findByRole("button", { name: /Publish/ }).click();
@@ -613,8 +622,14 @@ describe("scenarios > data studio > datamodel > table editing", () => {
       cy.go("back");
 
       cy.log("unpublish some tables and verify they are unpublished");
-      TablePicker.getTable("Orders").findByRole("checkbox").check();
-      TablePicker.getTable("Products").findByRole("checkbox").check();
+      TablePicker.getTable("Orders")
+        .findByRole("checkbox")
+        .scrollIntoView()
+        .check();
+      TablePicker.getTable("Products")
+        .findByRole("checkbox")
+        .scrollIntoView()
+        .check();
       cy.findByRole("button", { name: /Unpublish/ }).click();
       H.modal().findByText("Unpublish these tables").click();
       cy.wait("@unpublishTables");
