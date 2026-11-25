@@ -100,7 +100,8 @@
    [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]
    [:jwt_attributes          {:optional true} [:maybe LoginAttributes]]
    [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
-   [:is_data_analyst         {:optional true} [:maybe :boolean]]])
+   [:is_data_analyst         {:optional true} [:maybe :boolean]]
+   [:current_worktree_id     {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::user.update-row
   "What one row of an update of Users takes: the id of a User and the columns to set."

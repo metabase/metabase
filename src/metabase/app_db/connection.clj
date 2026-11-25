@@ -141,6 +141,11 @@
   []
   (.db-type (current-application-db)))
 
+(defn worktrees-supported?
+  "Whether the application DB can hold remote sync worktrees, which only Postgres can."
+  []
+  (= :postgres (db-type)))
+
 (defn quoting-style
   "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
   uppercase all identifiers (since this is H2's default behavior) whereas in the SQL QP we stick with the case we got

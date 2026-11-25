@@ -47,6 +47,7 @@
     :model/BookmarkOrdering
     :model/CacheConfig
     :model/CardBookmark
+    :model/ChangeLog
     :model/ChannelTemplate
     :model/CollectionBookmark
     ;; Content Diagnostics findings are scan-snapshot runtime data (its `entity_id` column is a
@@ -121,6 +122,7 @@
     :model/RecentViews
     :model/ReplacementRun
     :model/RemoteSyncTask
+    :model/RemoteSyncWorktree
     :model/ResultMetadataStatus
     :model/Revision
     :model/SemanticSearchTokenTracking

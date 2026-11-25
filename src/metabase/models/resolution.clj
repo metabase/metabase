@@ -29,6 +29,7 @@
     :model/Card                              metabase.queries.models.card
     :model/CardTest                          metabase-enterprise.data-testing.models.card-test
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
+    :model/ChangeLog                         metabase.change-log.models.change-log
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
     :model/CloudMigration                    metabase.cloud-migration.models.cloud-migration
@@ -129,6 +130,7 @@
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
+    :model/RemoteSyncWorktree                metabase-enterprise.remote-sync.models.remote-sync-worktree
     :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/ResultMetadataStatus              metabase-enterprise.dependencies.models.result-metadata-status
     :model/Revision                          metabase.revisions.models.revision

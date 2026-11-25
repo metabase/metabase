@@ -44,6 +44,7 @@
   db-type
   do-with-application-db
   with-application-db
+  worktrees-supported?
   do-before-commit
   do-after-commit
   in-transaction?

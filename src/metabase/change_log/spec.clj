@@ -27,8 +27,10 @@
       (spec model))))
 
 (def implicit-columns
-  "The columns that no spec lists: the key, which never changes, and the timestamps that every write sets."
-  #{:id :created_at :updated_at})
+  "The columns that no spec lists: the key, which never changes, the timestamps that every write sets, the remote sync
+  worktree of the row, which the connection picks, and the worktree a user works in, both only on an app DB with
+  worktrees."
+  #{:id :created_at :updated_at :worktree_id :current_worktree_id})
 
 (defn tracked?
   "Whether the change log tracks `model`."

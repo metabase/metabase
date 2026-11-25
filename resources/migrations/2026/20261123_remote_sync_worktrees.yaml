@@ -1,0 +1,1103 @@
+## Remote sync worktrees: checkouts of other branches whose content lives in the same tables as the main app, told
+## apart by worktree_id, 1 for the default worktree that is the main app. Every table that can reach content remote
+## sync syncs has the column. On PostgreSQL references between rows stay in one worktree, unique keys are unique per
+## worktree, and new rows land in the worktree the metabase.worktree_id setting of the connection names.
+
+databaseChangeLog:
+  - changeSet:
+      id: wtw01tb
+      author: ranquild
+      comment: Add remote_sync_worktree, a checkout of a remote sync branch whose content lives in the same tables as the main app
+      changes:
+        - createTable:
+            tableName: remote_sync_worktree
+            remarks: A checkout of a remote sync branch whose content lives in the same tables as the main app
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique ID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: The remote sync branch the worktree checks out, empty for the default worktree
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_default
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether this is the default worktree, the main app
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The user who created the worktree
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp of when the worktree was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp of when the worktree was last updated
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: wtw02df
+      author: ranquild
+      comment: Add the default worktree, the main app, which the new table gives id 1
+      changes:
+        - insert:
+            tableName: remote_sync_worktree
+            columns:
+              - column:
+                  name: branch
+                  value: ''
+              - column:
+                  name: is_default
+                  valueBoolean: true
+      rollback:
+        - delete:
+            tableName: remote_sync_worktree
+            where: is_default = TRUE
+  - changeSet:
+      id: wtw05us
+      author: ranquild
+      comment: Add core_user.current_worktree_id, the worktree other than the default one the user works in, on PostgreSQL, where worktrees exist
+      dbms: postgresql
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: current_worktree_id
+                  type: int
+                  remarks: The worktree other than the default one the user works in, or null for the main app
+  - changeSet:
+      id: wtw06ix
+      author: ranquild
+      comment: Index the users of a worktree, which deleting the worktree updates, on PostgreSQL, where worktrees exist
+      dbms: postgresql
+      changes:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_core_user_current_worktree_id
+            columns:
+              - column:
+                  name: current_worktree_id
+  - changeSet:
+      id: wtw07fk
+      author: ranquild
+      comment: Move the users of a deleted worktree back to the main app, on PostgreSQL, where worktrees exist
+      dbms: postgresql
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_user
+            baseColumnNames: current_worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_core_user_current_worktree_id
+            onDelete: SET NULL
+  - changeSet:
+      id: wtw08fn
+      author: ranquild
+      comment: Add metabase_worktree_id(), the worktree the metabase.worktree_id setting of a connection names, the default one (1) when it is unset or empty, or 0 for every worktree
+      dbms: postgresql
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE FUNCTION metabase_worktree_id() RETURNS INTEGER LANGUAGE sql STABLE PARALLEL SAFE AS
+                $$ SELECT COALESCE(NULLIF(current_setting('metabase.worktree_id', true), '')::INTEGER, 1) $$;
+      rollback:
+        - sql:
+            sql: DROP FUNCTION metabase_worktree_id();
+  - changeSet:
+      id: wtw09co
+      author: ranquild
+      comment: Add worktree_id, the worktree of a row, the default one (1) for the main app, on PostgreSQL, where worktrees exist, to every table that can reach content remote sync syncs, deleting the rows of a worktree with it, but for the logs of what people and jobs did (audit_log, data_test_run, query_execution, source_replacement_run, task_history, task_run, test_suite_run, transform_dag_run, transform_job_run, transform_run, view_log), and putting new rows in the worktree of the connection
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE action ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_action_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE action ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE analysis_finding ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_analysis_finding_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE analysis_finding ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE analysis_finding_error ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_analysis_finding_error_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE analysis_finding_error ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE analysis_finding_status ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_analysis_finding_status_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE analysis_finding_status ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE audit_log ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1;
+              ALTER TABLE audit_log ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE bookmark_ordering ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_bookmark_ordering_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE bookmark_ordering ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE cache_config ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_cache_config_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE cache_config ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE card_bookmark ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_card_bookmark_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE card_bookmark ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE card_label ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_card_label_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE card_label ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE card_test ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_card_test_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE card_test ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE change_log ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_change_log_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE change_log ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE collection ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_collection_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE collection ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE collection_bookmark ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_collection_bookmark_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE collection_bookmark ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE comment ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_comment_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE comment ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE comment_reaction ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_comment_reaction_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE comment_reaction ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE content_diagnostics_finding ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_content_diagnostics_finding_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE content_diagnostics_finding ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE dashboard_bookmark ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_dashboard_bookmark_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE dashboard_bookmark ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE dashboard_favorite ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_dashboard_favorite_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE dashboard_favorite ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE dashboard_tab ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_dashboard_tab_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE dashboard_tab ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE dashboardcard_series ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_dashboardcard_series_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE dashboardcard_series ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE data_app ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_data_app_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE data_app ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE data_test_run ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1;
+              ALTER TABLE data_test_run ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE dependency ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_dependency_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE dependency ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE dependency_status ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_dependency_status_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE dependency_status ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE dimension ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_dimension_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE dimension ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE document ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_document_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE document ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE document_bookmark ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_document_bookmark_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE document_bookmark ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE exploration ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_exploration_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE exploration ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE exploration_block ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_exploration_block_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE exploration_block ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE exploration_bookmark ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_exploration_bookmark_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE exploration_bookmark ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE exploration_page ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_exploration_page_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE exploration_page ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE exploration_query ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_exploration_query_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE exploration_query ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE exploration_query_result ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_exploration_query_result_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE exploration_query_result ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE exploration_thread ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_exploration_thread_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE exploration_thread ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE exploration_thread_timeline ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_exploration_thread_timeline_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE exploration_thread_timeline ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE glossary ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_glossary_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE glossary ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE implicit_action ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_implicit_action_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE implicit_action ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE measure ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_measure_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE measure ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE metabase_field_user_settings ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_mb_field_user_settings_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE metabase_field_user_settings ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE metabase_table_indexes ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_mb_table_indexes_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE metabase_table_indexes ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE metabase_table_user_settings ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_mb_table_user_settings_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE metabase_table_user_settings ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE metabot ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_metabot_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE metabot ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE metabot_prompt ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_metabot_prompt_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE metabot_prompt ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE metabot_source_feedback ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_metabot_source_feedback_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE metabot_source_feedback ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE model_index ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_model_index_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE model_index ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE model_index_value ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_model_index_value_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE model_index_value ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE moderation_review ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_moderation_review_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE moderation_review ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE native_query_snippet ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_native_query_snippet_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE native_query_snippet ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE notification ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_notification_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE notification ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE notification_card ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_notification_card_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE notification_card ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE notification_handler ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_notification_handler_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE notification_handler ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE notification_recipient ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_notification_recipient_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE notification_recipient ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE notification_subscription ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_notification_subscription_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE notification_subscription ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE osi_ai_context ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_osi_ai_context_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE osi_ai_context ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE parameter_card ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_parameter_card_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE parameter_card ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE permissions ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_permissions_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE permissions ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE persisted_info ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_persisted_info_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE persisted_info ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE pulse ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_pulse_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE pulse ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE pulse_card ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_pulse_card_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE pulse_card ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE pulse_channel ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_pulse_channel_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE pulse_channel ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE pulse_channel_recipient ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_pulse_channel_recipient_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE pulse_channel_recipient ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE python_library ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_python_library_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE python_library ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE query_action ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_query_action_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE query_action ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE query_execution ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1;
+              ALTER TABLE query_execution ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE query_field ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_query_field_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE query_field ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE query_table ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_query_table_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE query_table ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE recent_views ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_recent_views_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE recent_views ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE remote_sync_task ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_remote_sync_task_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE remote_sync_task ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE report_card ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_report_card_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE report_card ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE report_cardfavorite ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_report_cardfavorite_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE report_cardfavorite ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE report_dashboard ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_report_dashboard_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE report_dashboard ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE report_dashboardcard ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_report_dashboardcard_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE report_dashboardcard ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE result_metadata_status ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_result_metadata_status_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE result_metadata_status ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE revision ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_revision_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE revision ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE sandboxes ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_sandboxes_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE sandboxes ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE segment ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_segment_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE segment ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE segment_test ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_segment_test_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE segment_test ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE source_dimension_daily ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_source_dimension_daily_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE source_dimension_daily ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE source_dimension_profile_daily ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_source_dimension_profile_daily_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE source_dimension_profile_daily ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE source_metric_daily ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_source_metric_daily_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE source_metric_daily ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE source_replacement_run ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1;
+              ALTER TABLE source_replacement_run ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE source_segment_composite_daily ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_source_segment_composite_daily_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE source_segment_composite_daily ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE source_segment_daily ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_source_segment_daily_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE source_segment_daily ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE stored_result_use ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_stored_result_use_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE stored_result_use ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE task_history ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1;
+              ALTER TABLE task_history ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE task_run ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1;
+              ALTER TABLE task_run ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE test_suite ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_test_suite_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE test_suite ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE test_suite_member ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_test_suite_member_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE test_suite_member ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE test_suite_run ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1;
+              ALTER TABLE test_suite_run ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE timeline ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_timeline_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE timeline ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE timeline_event ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_timeline_event_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE timeline_event ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE transform ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_transform_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE transform ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE transform_dag_run ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1;
+              ALTER TABLE transform_dag_run ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE transform_job_run ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1;
+              ALTER TABLE transform_job_run ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE transform_job_transform_tag ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_transform_job_transform_tag_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE transform_job_transform_tag ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE transform_run ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1;
+              ALTER TABLE transform_run ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE transform_run_cancelation ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_transform_run_cancelation_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE transform_run_cancelation ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE transform_tag ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_transform_tag_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE transform_tag ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE transform_test ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_transform_test_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE transform_test ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE transform_transform_tag ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_transform_transform_tag_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE transform_transform_tag ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE user_parameter_value ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1 CONSTRAINT fk_user_parameter_value_worktree_id REFERENCES remote_sync_worktree (id) ON DELETE CASCADE;
+              ALTER TABLE user_parameter_value ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+              ALTER TABLE view_log ADD COLUMN worktree_id INTEGER NOT NULL DEFAULT 1;
+              ALTER TABLE view_log ALTER COLUMN worktree_id SET DEFAULT GREATEST(metabase_worktree_id(), 1);
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE action DROP COLUMN worktree_id;
+              ALTER TABLE analysis_finding DROP COLUMN worktree_id;
+              ALTER TABLE analysis_finding_error DROP COLUMN worktree_id;
+              ALTER TABLE analysis_finding_status DROP COLUMN worktree_id;
+              ALTER TABLE audit_log DROP COLUMN worktree_id;
+              ALTER TABLE bookmark_ordering DROP COLUMN worktree_id;
+              ALTER TABLE cache_config DROP COLUMN worktree_id;
+              ALTER TABLE card_bookmark DROP COLUMN worktree_id;
+              ALTER TABLE card_label DROP COLUMN worktree_id;
+              ALTER TABLE card_test DROP COLUMN worktree_id;
+              ALTER TABLE change_log DROP COLUMN worktree_id;
+              ALTER TABLE collection DROP COLUMN worktree_id;
+              ALTER TABLE collection_bookmark DROP COLUMN worktree_id;
+              ALTER TABLE comment DROP COLUMN worktree_id;
+              ALTER TABLE comment_reaction DROP COLUMN worktree_id;
+              ALTER TABLE content_diagnostics_finding DROP COLUMN worktree_id;
+              ALTER TABLE dashboard_bookmark DROP COLUMN worktree_id;
+              ALTER TABLE dashboard_favorite DROP COLUMN worktree_id;
+              ALTER TABLE dashboard_tab DROP COLUMN worktree_id;
+              ALTER TABLE dashboardcard_series DROP COLUMN worktree_id;
+              ALTER TABLE data_app DROP COLUMN worktree_id;
+              ALTER TABLE data_test_run DROP COLUMN worktree_id;
+              ALTER TABLE dependency DROP COLUMN worktree_id;
+              ALTER TABLE dependency_status DROP COLUMN worktree_id;
+              ALTER TABLE dimension DROP COLUMN worktree_id;
+              ALTER TABLE document DROP COLUMN worktree_id;
+              ALTER TABLE document_bookmark DROP COLUMN worktree_id;
+              ALTER TABLE exploration DROP COLUMN worktree_id;
+              ALTER TABLE exploration_block DROP COLUMN worktree_id;
+              ALTER TABLE exploration_bookmark DROP COLUMN worktree_id;
+              ALTER TABLE exploration_page DROP COLUMN worktree_id;
+              ALTER TABLE exploration_query DROP COLUMN worktree_id;
+              ALTER TABLE exploration_query_result DROP COLUMN worktree_id;
+              ALTER TABLE exploration_thread DROP COLUMN worktree_id;
+              ALTER TABLE exploration_thread_timeline DROP COLUMN worktree_id;
+              ALTER TABLE glossary DROP COLUMN worktree_id;
+              ALTER TABLE implicit_action DROP COLUMN worktree_id;
+              ALTER TABLE measure DROP COLUMN worktree_id;
+              ALTER TABLE metabase_field_user_settings DROP COLUMN worktree_id;
+              ALTER TABLE metabase_table_indexes DROP COLUMN worktree_id;
+              ALTER TABLE metabase_table_user_settings DROP COLUMN worktree_id;
+              ALTER TABLE metabot DROP COLUMN worktree_id;
+              ALTER TABLE metabot_prompt DROP COLUMN worktree_id;
+              ALTER TABLE metabot_source_feedback DROP COLUMN worktree_id;
+              ALTER TABLE model_index DROP COLUMN worktree_id;
+              ALTER TABLE model_index_value DROP COLUMN worktree_id;
+              ALTER TABLE moderation_review DROP COLUMN worktree_id;
+              ALTER TABLE native_query_snippet DROP COLUMN worktree_id;
+              ALTER TABLE notification DROP COLUMN worktree_id;
+              ALTER TABLE notification_card DROP COLUMN worktree_id;
+              ALTER TABLE notification_handler DROP COLUMN worktree_id;
+              ALTER TABLE notification_recipient DROP COLUMN worktree_id;
+              ALTER TABLE notification_subscription DROP COLUMN worktree_id;
+              ALTER TABLE osi_ai_context DROP COLUMN worktree_id;
+              ALTER TABLE parameter_card DROP COLUMN worktree_id;
+              ALTER TABLE permissions DROP COLUMN worktree_id;
+              ALTER TABLE persisted_info DROP COLUMN worktree_id;
+              ALTER TABLE pulse DROP COLUMN worktree_id;
+              ALTER TABLE pulse_card DROP COLUMN worktree_id;
+              ALTER TABLE pulse_channel DROP COLUMN worktree_id;
+              ALTER TABLE pulse_channel_recipient DROP COLUMN worktree_id;
+              ALTER TABLE python_library DROP COLUMN worktree_id;
+              ALTER TABLE query_action DROP COLUMN worktree_id;
+              ALTER TABLE query_execution DROP COLUMN worktree_id;
+              ALTER TABLE query_field DROP COLUMN worktree_id;
+              ALTER TABLE query_table DROP COLUMN worktree_id;
+              ALTER TABLE recent_views DROP COLUMN worktree_id;
+              ALTER TABLE remote_sync_task DROP COLUMN worktree_id;
+              ALTER TABLE report_card DROP COLUMN worktree_id;
+              ALTER TABLE report_cardfavorite DROP COLUMN worktree_id;
+              ALTER TABLE report_dashboard DROP COLUMN worktree_id;
+              ALTER TABLE report_dashboardcard DROP COLUMN worktree_id;
+              ALTER TABLE result_metadata_status DROP COLUMN worktree_id;
+              ALTER TABLE revision DROP COLUMN worktree_id;
+              ALTER TABLE sandboxes DROP COLUMN worktree_id;
+              ALTER TABLE segment DROP COLUMN worktree_id;
+              ALTER TABLE segment_test DROP COLUMN worktree_id;
+              ALTER TABLE source_dimension_daily DROP COLUMN worktree_id;
+              ALTER TABLE source_dimension_profile_daily DROP COLUMN worktree_id;
+              ALTER TABLE source_metric_daily DROP COLUMN worktree_id;
+              ALTER TABLE source_replacement_run DROP COLUMN worktree_id;
+              ALTER TABLE source_segment_composite_daily DROP COLUMN worktree_id;
+              ALTER TABLE source_segment_daily DROP COLUMN worktree_id;
+              ALTER TABLE stored_result_use DROP COLUMN worktree_id;
+              ALTER TABLE task_history DROP COLUMN worktree_id;
+              ALTER TABLE task_run DROP COLUMN worktree_id;
+              ALTER TABLE test_suite DROP COLUMN worktree_id;
+              ALTER TABLE test_suite_member DROP COLUMN worktree_id;
+              ALTER TABLE test_suite_run DROP COLUMN worktree_id;
+              ALTER TABLE timeline DROP COLUMN worktree_id;
+              ALTER TABLE timeline_event DROP COLUMN worktree_id;
+              ALTER TABLE transform DROP COLUMN worktree_id;
+              ALTER TABLE transform_dag_run DROP COLUMN worktree_id;
+              ALTER TABLE transform_job_run DROP COLUMN worktree_id;
+              ALTER TABLE transform_job_transform_tag DROP COLUMN worktree_id;
+              ALTER TABLE transform_run DROP COLUMN worktree_id;
+              ALTER TABLE transform_run_cancelation DROP COLUMN worktree_id;
+              ALTER TABLE transform_tag DROP COLUMN worktree_id;
+              ALTER TABLE transform_test DROP COLUMN worktree_id;
+              ALTER TABLE transform_transform_tag DROP COLUMN worktree_id;
+              ALTER TABLE user_parameter_value DROP COLUMN worktree_id;
+              ALTER TABLE view_log DROP COLUMN worktree_id;
+  - changeSet:
+      id: wtw10ix
+      author: ranquild
+      comment: Index the rows of each worktree, which deleting a worktree deletes
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX idx_action_worktree_id ON action (worktree_id);
+              CREATE INDEX idx_analysis_finding_worktree_id ON analysis_finding (worktree_id);
+              CREATE INDEX idx_analysis_finding_error_worktree_id ON analysis_finding_error (worktree_id);
+              CREATE INDEX idx_analysis_finding_status_worktree_id ON analysis_finding_status (worktree_id);
+              CREATE INDEX idx_audit_log_worktree_id ON audit_log (worktree_id);
+              CREATE INDEX idx_bookmark_ordering_worktree_id ON bookmark_ordering (worktree_id);
+              CREATE INDEX idx_cache_config_worktree_id ON cache_config (worktree_id);
+              CREATE INDEX idx_card_bookmark_worktree_id ON card_bookmark (worktree_id);
+              CREATE INDEX idx_card_label_worktree_id ON card_label (worktree_id);
+              CREATE INDEX idx_card_test_worktree_id ON card_test (worktree_id);
+              CREATE INDEX idx_change_log_worktree_id ON change_log (worktree_id);
+              CREATE INDEX idx_collection_worktree_id ON collection (worktree_id);
+              CREATE INDEX idx_collection_bookmark_worktree_id ON collection_bookmark (worktree_id);
+              CREATE INDEX idx_comment_worktree_id ON comment (worktree_id);
+              CREATE INDEX idx_comment_reaction_worktree_id ON comment_reaction (worktree_id);
+              CREATE INDEX idx_content_diagnostics_finding_worktree_id ON content_diagnostics_finding (worktree_id);
+              CREATE INDEX idx_dashboard_bookmark_worktree_id ON dashboard_bookmark (worktree_id);
+              CREATE INDEX idx_dashboard_favorite_worktree_id ON dashboard_favorite (worktree_id);
+              CREATE INDEX idx_dashboard_tab_worktree_id ON dashboard_tab (worktree_id);
+              CREATE INDEX idx_dashboardcard_series_worktree_id ON dashboardcard_series (worktree_id);
+              CREATE INDEX idx_data_app_worktree_id ON data_app (worktree_id);
+              CREATE INDEX idx_data_test_run_worktree_id ON data_test_run (worktree_id);
+              CREATE INDEX idx_dependency_worktree_id ON dependency (worktree_id);
+              CREATE INDEX idx_dependency_status_worktree_id ON dependency_status (worktree_id);
+              CREATE INDEX idx_dimension_worktree_id ON dimension (worktree_id);
+              CREATE INDEX idx_document_worktree_id ON document (worktree_id);
+              CREATE INDEX idx_document_bookmark_worktree_id ON document_bookmark (worktree_id);
+              CREATE INDEX idx_exploration_worktree_id ON exploration (worktree_id);
+              CREATE INDEX idx_exploration_block_worktree_id ON exploration_block (worktree_id);
+              CREATE INDEX idx_exploration_bookmark_worktree_id ON exploration_bookmark (worktree_id);
+              CREATE INDEX idx_exploration_page_worktree_id ON exploration_page (worktree_id);
+              CREATE INDEX idx_exploration_query_worktree_id ON exploration_query (worktree_id);
+              CREATE INDEX idx_exploration_query_result_worktree_id ON exploration_query_result (worktree_id);
+              CREATE INDEX idx_exploration_thread_worktree_id ON exploration_thread (worktree_id);
+              CREATE INDEX idx_exploration_thread_timeline_worktree_id ON exploration_thread_timeline (worktree_id);
+              CREATE INDEX idx_glossary_worktree_id ON glossary (worktree_id);
+              CREATE INDEX idx_implicit_action_worktree_id ON implicit_action (worktree_id);
+              CREATE INDEX idx_measure_worktree_id ON measure (worktree_id);
+              CREATE INDEX idx_mb_field_user_settings_worktree_id ON metabase_field_user_settings (worktree_id);
+              CREATE INDEX idx_mb_table_indexes_worktree_id ON metabase_table_indexes (worktree_id);
+              CREATE INDEX idx_mb_table_user_settings_worktree_id ON metabase_table_user_settings (worktree_id);
+              CREATE INDEX idx_metabot_worktree_id ON metabot (worktree_id);
+              CREATE INDEX idx_metabot_prompt_worktree_id ON metabot_prompt (worktree_id);
+              CREATE INDEX idx_metabot_source_feedback_worktree_id ON metabot_source_feedback (worktree_id);
+              CREATE INDEX idx_model_index_worktree_id ON model_index (worktree_id);
+              CREATE INDEX idx_model_index_value_worktree_id ON model_index_value (worktree_id);
+              CREATE INDEX idx_moderation_review_worktree_id ON moderation_review (worktree_id);
+              CREATE INDEX idx_native_query_snippet_worktree_id ON native_query_snippet (worktree_id);
+              CREATE INDEX idx_notification_worktree_id ON notification (worktree_id);
+              CREATE INDEX idx_notification_card_worktree_id ON notification_card (worktree_id);
+              CREATE INDEX idx_notification_handler_worktree_id ON notification_handler (worktree_id);
+              CREATE INDEX idx_notification_recipient_worktree_id ON notification_recipient (worktree_id);
+              CREATE INDEX idx_notification_subscription_worktree_id ON notification_subscription (worktree_id);
+              CREATE INDEX idx_osi_ai_context_worktree_id ON osi_ai_context (worktree_id);
+              CREATE INDEX idx_parameter_card_worktree_id ON parameter_card (worktree_id);
+              CREATE INDEX idx_permissions_worktree_id ON permissions (worktree_id);
+              CREATE INDEX idx_persisted_info_worktree_id ON persisted_info (worktree_id);
+              CREATE INDEX idx_pulse_worktree_id ON pulse (worktree_id);
+              CREATE INDEX idx_pulse_card_worktree_id ON pulse_card (worktree_id);
+              CREATE INDEX idx_pulse_channel_worktree_id ON pulse_channel (worktree_id);
+              CREATE INDEX idx_pulse_channel_recipient_worktree_id ON pulse_channel_recipient (worktree_id);
+              CREATE INDEX idx_python_library_worktree_id ON python_library (worktree_id);
+              CREATE INDEX idx_query_action_worktree_id ON query_action (worktree_id);
+              CREATE INDEX idx_query_execution_worktree_id ON query_execution (worktree_id);
+              CREATE INDEX idx_query_field_worktree_id ON query_field (worktree_id);
+              CREATE INDEX idx_query_table_worktree_id ON query_table (worktree_id);
+              CREATE INDEX idx_recent_views_worktree_id ON recent_views (worktree_id);
+              CREATE INDEX idx_remote_sync_task_worktree_id ON remote_sync_task (worktree_id);
+              CREATE INDEX idx_report_card_worktree_id ON report_card (worktree_id);
+              CREATE INDEX idx_report_cardfavorite_worktree_id ON report_cardfavorite (worktree_id);
+              CREATE INDEX idx_report_dashboard_worktree_id ON report_dashboard (worktree_id);
+              CREATE INDEX idx_report_dashboardcard_worktree_id ON report_dashboardcard (worktree_id);
+              CREATE INDEX idx_result_metadata_status_worktree_id ON result_metadata_status (worktree_id);
+              CREATE INDEX idx_revision_worktree_id ON revision (worktree_id);
+              CREATE INDEX idx_sandboxes_worktree_id ON sandboxes (worktree_id);
+              CREATE INDEX idx_segment_worktree_id ON segment (worktree_id);
+              CREATE INDEX idx_segment_test_worktree_id ON segment_test (worktree_id);
+              CREATE INDEX idx_source_dimension_daily_worktree_id ON source_dimension_daily (worktree_id);
+              CREATE INDEX idx_source_dimension_profile_daily_worktree_id ON source_dimension_profile_daily (worktree_id);
+              CREATE INDEX idx_source_metric_daily_worktree_id ON source_metric_daily (worktree_id);
+              CREATE INDEX idx_source_replacement_run_worktree_id ON source_replacement_run (worktree_id);
+              CREATE INDEX idx_source_segment_composite_daily_worktree_id ON source_segment_composite_daily (worktree_id);
+              CREATE INDEX idx_source_segment_daily_worktree_id ON source_segment_daily (worktree_id);
+              CREATE INDEX idx_stored_result_use_worktree_id ON stored_result_use (worktree_id);
+              CREATE INDEX idx_task_history_worktree_id ON task_history (worktree_id);
+              CREATE INDEX idx_task_run_worktree_id ON task_run (worktree_id);
+              CREATE INDEX idx_test_suite_worktree_id ON test_suite (worktree_id);
+              CREATE INDEX idx_test_suite_member_worktree_id ON test_suite_member (worktree_id);
+              CREATE INDEX idx_test_suite_run_worktree_id ON test_suite_run (worktree_id);
+              CREATE INDEX idx_timeline_worktree_id ON timeline (worktree_id);
+              CREATE INDEX idx_timeline_event_worktree_id ON timeline_event (worktree_id);
+              CREATE INDEX idx_transform_worktree_id ON transform (worktree_id);
+              CREATE INDEX idx_transform_dag_run_worktree_id ON transform_dag_run (worktree_id);
+              CREATE INDEX idx_transform_job_run_worktree_id ON transform_job_run (worktree_id);
+              CREATE INDEX idx_transform_job_transform_tag_worktree_id ON transform_job_transform_tag (worktree_id);
+              CREATE INDEX idx_transform_run_worktree_id ON transform_run (worktree_id);
+              CREATE INDEX idx_transform_run_cancelation_worktree_id ON transform_run_cancelation (worktree_id);
+              CREATE INDEX idx_transform_tag_worktree_id ON transform_tag (worktree_id);
+              CREATE INDEX idx_transform_test_worktree_id ON transform_test (worktree_id);
+              CREATE INDEX idx_transform_transform_tag_worktree_id ON transform_transform_tag (worktree_id);
+              CREATE INDEX idx_user_parameter_value_worktree_id ON user_parameter_value (worktree_id);
+              CREATE INDEX idx_view_log_worktree_id ON view_log (worktree_id);
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX idx_action_worktree_id;
+              DROP INDEX idx_analysis_finding_worktree_id;
+              DROP INDEX idx_analysis_finding_error_worktree_id;
+              DROP INDEX idx_analysis_finding_status_worktree_id;
+              DROP INDEX idx_audit_log_worktree_id;
+              DROP INDEX idx_bookmark_ordering_worktree_id;
+              DROP INDEX idx_cache_config_worktree_id;
+              DROP INDEX idx_card_bookmark_worktree_id;
+              DROP INDEX idx_card_label_worktree_id;
+              DROP INDEX idx_card_test_worktree_id;
+              DROP INDEX idx_change_log_worktree_id;
+              DROP INDEX idx_collection_worktree_id;
+              DROP INDEX idx_collection_bookmark_worktree_id;
+              DROP INDEX idx_comment_worktree_id;
+              DROP INDEX idx_comment_reaction_worktree_id;
+              DROP INDEX idx_content_diagnostics_finding_worktree_id;
+              DROP INDEX idx_dashboard_bookmark_worktree_id;
+              DROP INDEX idx_dashboard_favorite_worktree_id;
+              DROP INDEX idx_dashboard_tab_worktree_id;
+              DROP INDEX idx_dashboardcard_series_worktree_id;
+              DROP INDEX idx_data_app_worktree_id;
+              DROP INDEX idx_data_test_run_worktree_id;
+              DROP INDEX idx_dependency_worktree_id;
+              DROP INDEX idx_dependency_status_worktree_id;
+              DROP INDEX idx_dimension_worktree_id;
+              DROP INDEX idx_document_worktree_id;
+              DROP INDEX idx_document_bookmark_worktree_id;
+              DROP INDEX idx_exploration_worktree_id;
+              DROP INDEX idx_exploration_block_worktree_id;
+              DROP INDEX idx_exploration_bookmark_worktree_id;
+              DROP INDEX idx_exploration_page_worktree_id;
+              DROP INDEX idx_exploration_query_worktree_id;
+              DROP INDEX idx_exploration_query_result_worktree_id;
+              DROP INDEX idx_exploration_thread_worktree_id;
+              DROP INDEX idx_exploration_thread_timeline_worktree_id;
+              DROP INDEX idx_glossary_worktree_id;
+              DROP INDEX idx_implicit_action_worktree_id;
+              DROP INDEX idx_measure_worktree_id;
+              DROP INDEX idx_mb_field_user_settings_worktree_id;
+              DROP INDEX idx_mb_table_indexes_worktree_id;
+              DROP INDEX idx_mb_table_user_settings_worktree_id;
+              DROP INDEX idx_metabot_worktree_id;
+              DROP INDEX idx_metabot_prompt_worktree_id;
+              DROP INDEX idx_metabot_source_feedback_worktree_id;
+              DROP INDEX idx_model_index_worktree_id;
+              DROP INDEX idx_model_index_value_worktree_id;
+              DROP INDEX idx_moderation_review_worktree_id;
+              DROP INDEX idx_native_query_snippet_worktree_id;
+              DROP INDEX idx_notification_worktree_id;
+              DROP INDEX idx_notification_card_worktree_id;
+              DROP INDEX idx_notification_handler_worktree_id;
+              DROP INDEX idx_notification_recipient_worktree_id;
+              DROP INDEX idx_notification_subscription_worktree_id;
+              DROP INDEX idx_osi_ai_context_worktree_id;
+              DROP INDEX idx_parameter_card_worktree_id;
+              DROP INDEX idx_permissions_worktree_id;
+              DROP INDEX idx_persisted_info_worktree_id;
+              DROP INDEX idx_pulse_worktree_id;
+              DROP INDEX idx_pulse_card_worktree_id;
+              DROP INDEX idx_pulse_channel_worktree_id;
+              DROP INDEX idx_pulse_channel_recipient_worktree_id;
+              DROP INDEX idx_python_library_worktree_id;
+              DROP INDEX idx_query_action_worktree_id;
+              DROP INDEX idx_query_execution_worktree_id;
+              DROP INDEX idx_query_field_worktree_id;
+              DROP INDEX idx_query_table_worktree_id;
+              DROP INDEX idx_recent_views_worktree_id;
+              DROP INDEX idx_remote_sync_task_worktree_id;
+              DROP INDEX idx_report_card_worktree_id;
+              DROP INDEX idx_report_cardfavorite_worktree_id;
+              DROP INDEX idx_report_dashboard_worktree_id;
+              DROP INDEX idx_report_dashboardcard_worktree_id;
+              DROP INDEX idx_result_metadata_status_worktree_id;
+              DROP INDEX idx_revision_worktree_id;
+              DROP INDEX idx_sandboxes_worktree_id;
+              DROP INDEX idx_segment_worktree_id;
+              DROP INDEX idx_segment_test_worktree_id;
+              DROP INDEX idx_source_dimension_daily_worktree_id;
+              DROP INDEX idx_source_dimension_profile_daily_worktree_id;
+              DROP INDEX idx_source_metric_daily_worktree_id;
+              DROP INDEX idx_source_replacement_run_worktree_id;
+              DROP INDEX idx_source_segment_composite_daily_worktree_id;
+              DROP INDEX idx_source_segment_daily_worktree_id;
+              DROP INDEX idx_stored_result_use_worktree_id;
+              DROP INDEX idx_task_history_worktree_id;
+              DROP INDEX idx_task_run_worktree_id;
+              DROP INDEX idx_test_suite_worktree_id;
+              DROP INDEX idx_test_suite_member_worktree_id;
+              DROP INDEX idx_test_suite_run_worktree_id;
+              DROP INDEX idx_timeline_worktree_id;
+              DROP INDEX idx_timeline_event_worktree_id;
+              DROP INDEX idx_transform_worktree_id;
+              DROP INDEX idx_transform_dag_run_worktree_id;
+              DROP INDEX idx_transform_job_run_worktree_id;
+              DROP INDEX idx_transform_job_transform_tag_worktree_id;
+              DROP INDEX idx_transform_run_worktree_id;
+              DROP INDEX idx_transform_run_cancelation_worktree_id;
+              DROP INDEX idx_transform_tag_worktree_id;
+              DROP INDEX idx_transform_test_worktree_id;
+              DROP INDEX idx_transform_transform_tag_worktree_id;
+              DROP INDEX idx_user_parameter_value_worktree_id;
+              DROP INDEX idx_view_log_worktree_id;
+  - changeSet:
+      id: wtw11uq
+      author: ranquild
+      comment: Make the id and worktree of the rows other rows reference unique, which the foreign keys keeping a reference in its worktree need
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE action ADD CONSTRAINT uq_action_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE collection ADD CONSTRAINT uq_collection_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE comment ADD CONSTRAINT uq_comment_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE dashboard_tab ADD CONSTRAINT uq_dashboard_tab_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE document ADD CONSTRAINT uq_document_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE exploration ADD CONSTRAINT uq_exploration_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE exploration_block ADD CONSTRAINT uq_exploration_block_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE exploration_page ADD CONSTRAINT uq_exploration_page_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE exploration_query ADD CONSTRAINT uq_exploration_query_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE exploration_thread ADD CONSTRAINT uq_exploration_thread_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE metabot ADD CONSTRAINT uq_metabot_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE model_index ADD CONSTRAINT uq_model_index_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE notification ADD CONSTRAINT uq_notification_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE notification_handler ADD CONSTRAINT uq_notification_handler_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE pulse ADD CONSTRAINT uq_pulse_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE pulse_channel ADD CONSTRAINT uq_pulse_channel_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE report_card ADD CONSTRAINT uq_report_card_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE report_dashboard ADD CONSTRAINT uq_report_dashboard_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE report_dashboardcard ADD CONSTRAINT uq_report_dashboardcard_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE segment ADD CONSTRAINT uq_segment_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE task_run ADD CONSTRAINT uq_task_run_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE test_suite ADD CONSTRAINT uq_test_suite_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE timeline ADD CONSTRAINT uq_timeline_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE transform ADD CONSTRAINT uq_transform_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE transform_run ADD CONSTRAINT uq_transform_run_id_worktree_id UNIQUE (id, worktree_id);
+              ALTER TABLE transform_tag ADD CONSTRAINT uq_transform_tag_id_worktree_id UNIQUE (id, worktree_id);
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE action DROP CONSTRAINT uq_action_id_worktree_id;
+              ALTER TABLE collection DROP CONSTRAINT uq_collection_id_worktree_id;
+              ALTER TABLE comment DROP CONSTRAINT uq_comment_id_worktree_id;
+              ALTER TABLE dashboard_tab DROP CONSTRAINT uq_dashboard_tab_id_worktree_id;
+              ALTER TABLE document DROP CONSTRAINT uq_document_id_worktree_id;
+              ALTER TABLE exploration DROP CONSTRAINT uq_exploration_id_worktree_id;
+              ALTER TABLE exploration_block DROP CONSTRAINT uq_exploration_block_id_worktree_id;
+              ALTER TABLE exploration_page DROP CONSTRAINT uq_exploration_page_id_worktree_id;
+              ALTER TABLE exploration_query DROP CONSTRAINT uq_exploration_query_id_worktree_id;
+              ALTER TABLE exploration_thread DROP CONSTRAINT uq_exploration_thread_id_worktree_id;
+              ALTER TABLE metabot DROP CONSTRAINT uq_metabot_id_worktree_id;
+              ALTER TABLE model_index DROP CONSTRAINT uq_model_index_id_worktree_id;
+              ALTER TABLE notification DROP CONSTRAINT uq_notification_id_worktree_id;
+              ALTER TABLE notification_handler DROP CONSTRAINT uq_notification_handler_id_worktree_id;
+              ALTER TABLE pulse DROP CONSTRAINT uq_pulse_id_worktree_id;
+              ALTER TABLE pulse_channel DROP CONSTRAINT uq_pulse_channel_id_worktree_id;
+              ALTER TABLE report_card DROP CONSTRAINT uq_report_card_id_worktree_id;
+              ALTER TABLE report_dashboard DROP CONSTRAINT uq_report_dashboard_id_worktree_id;
+              ALTER TABLE report_dashboardcard DROP CONSTRAINT uq_report_dashboardcard_id_worktree_id;
+              ALTER TABLE segment DROP CONSTRAINT uq_segment_id_worktree_id;
+              ALTER TABLE task_run DROP CONSTRAINT uq_task_run_id_worktree_id;
+              ALTER TABLE test_suite DROP CONSTRAINT uq_test_suite_id_worktree_id;
+              ALTER TABLE timeline DROP CONSTRAINT uq_timeline_id_worktree_id;
+              ALTER TABLE transform DROP CONSTRAINT uq_transform_id_worktree_id;
+              ALTER TABLE transform_run DROP CONSTRAINT uq_transform_run_id_worktree_id;
+              ALTER TABLE transform_tag DROP CONSTRAINT uq_transform_tag_id_worktree_id;
+  - changeSet:
+      id: wtw12fk
+      author: ranquild
+      comment: Keep each reference between rows in one worktree, with a foreign key over the reference and the worktree beside each one, cascading like it, or checked at commit where it sets null
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE action ADD CONSTRAINT fk_action_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE action ADD CONSTRAINT fk_action_model_wt FOREIGN KEY (model_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE card_bookmark ADD CONSTRAINT fk_card_bookmark_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE card_label ADD CONSTRAINT fk_card_label_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE card_test ADD CONSTRAINT fk_card_test_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE collection_bookmark ADD CONSTRAINT fk_collection_bookmark_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE comment ADD CONSTRAINT fk_comment_parent_comment_wt FOREIGN KEY (parent_comment_id, worktree_id) REFERENCES comment (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE comment_reaction ADD CONSTRAINT fk_comment_reaction_comment_wt FOREIGN KEY (comment_id, worktree_id) REFERENCES comment (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE dashboard_bookmark ADD CONSTRAINT fk_dashboard_bookmark_dashboard_wt FOREIGN KEY (dashboard_id, worktree_id) REFERENCES report_dashboard (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE dashboard_favorite ADD CONSTRAINT fk_dashboard_favorite_dashboard_wt FOREIGN KEY (dashboard_id, worktree_id) REFERENCES report_dashboard (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE dashboard_tab ADD CONSTRAINT fk_dashboard_tab_dashboard_wt FOREIGN KEY (dashboard_id, worktree_id) REFERENCES report_dashboard (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE dashboardcard_series ADD CONSTRAINT fk_dashboardcard_series_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE dashboardcard_series ADD CONSTRAINT fk_dashboardcard_series_dashboardcard_wt FOREIGN KEY (dashboardcard_id, worktree_id) REFERENCES report_dashboardcard (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE data_app ADD CONSTRAINT fk_data_app_resource_collection_wt FOREIGN KEY (resource_collection_id, worktree_id) REFERENCES collection (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE document ADD CONSTRAINT fk_document_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE document ADD CONSTRAINT fk_document_exploration_wt FOREIGN KEY (exploration_id, worktree_id) REFERENCES exploration (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE document_bookmark ADD CONSTRAINT fk_document_bookmark_document_wt FOREIGN KEY (document_id, worktree_id) REFERENCES document (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration ADD CONSTRAINT fk_exploration_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE exploration_block ADD CONSTRAINT fk_exploration_block_exploration_thread_wt FOREIGN KEY (exploration_thread_id, worktree_id) REFERENCES exploration_thread (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration_bookmark ADD CONSTRAINT fk_exploration_bookmark_exploration_wt FOREIGN KEY (exploration_id, worktree_id) REFERENCES exploration (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration_page ADD CONSTRAINT fk_exploration_page_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration_page ADD CONSTRAINT fk_exploration_page_exploration_block_wt FOREIGN KEY (exploration_block_id, worktree_id) REFERENCES exploration_block (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration_query ADD CONSTRAINT fk_exploration_query_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration_query ADD CONSTRAINT fk_exploration_query_exploration_thread_wt FOREIGN KEY (exploration_thread_id, worktree_id) REFERENCES exploration_thread (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration_query ADD CONSTRAINT fk_exploration_query_page_wt FOREIGN KEY (page_id, worktree_id) REFERENCES exploration_page (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration_query ADD CONSTRAINT fk_exploration_query_segment_wt FOREIGN KEY (segment_id, worktree_id) REFERENCES segment (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration_query_result ADD CONSTRAINT fk_exploration_query_result_exploration_query_wt FOREIGN KEY (exploration_query_id, worktree_id) REFERENCES exploration_query (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration_thread ADD CONSTRAINT fk_exploration_thread_exploration_wt FOREIGN KEY (exploration_id, worktree_id) REFERENCES exploration (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration_thread ADD CONSTRAINT fk_exploration_thread_source_page_wt FOREIGN KEY (source_page_id, worktree_id) REFERENCES exploration_page (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE exploration_thread_timeline ADD CONSTRAINT fk_exploration_thread_timeline_exploration_thread_wt FOREIGN KEY (exploration_thread_id, worktree_id) REFERENCES exploration_thread (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE exploration_thread_timeline ADD CONSTRAINT fk_exploration_thread_timeline_timeline_wt FOREIGN KEY (timeline_id, worktree_id) REFERENCES timeline (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE implicit_action ADD CONSTRAINT fk_implicit_action_action_wt FOREIGN KEY (action_id, worktree_id) REFERENCES action (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE metabase_table_indexes ADD CONSTRAINT fk_mb_table_indexes_transform_wt FOREIGN KEY (transform_id, worktree_id) REFERENCES transform (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE metabase_table_user_settings ADD CONSTRAINT fk_mb_table_user_settings_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE metabot_prompt ADD CONSTRAINT fk_metabot_prompt_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE metabot_prompt ADD CONSTRAINT fk_metabot_prompt_metabot_wt FOREIGN KEY (metabot_id, worktree_id) REFERENCES metabot (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE model_index ADD CONSTRAINT fk_model_index_model_wt FOREIGN KEY (model_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE model_index_value ADD CONSTRAINT fk_model_index_value_model_index_wt FOREIGN KEY (model_index_id, worktree_id) REFERENCES model_index (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE native_query_snippet ADD CONSTRAINT fk_native_query_snippet_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE notification_card ADD CONSTRAINT fk_notification_card_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE notification_handler ADD CONSTRAINT fk_notification_handler_notification_wt FOREIGN KEY (notification_id, worktree_id) REFERENCES notification (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE notification_recipient ADD CONSTRAINT fk_notification_recipient_notification_handler_wt FOREIGN KEY (notification_handler_id, worktree_id) REFERENCES notification_handler (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE notification_subscription ADD CONSTRAINT fk_notification_subscription_notification_wt FOREIGN KEY (notification_id, worktree_id) REFERENCES notification (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE parameter_card ADD CONSTRAINT fk_parameter_card_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE permissions ADD CONSTRAINT fk_permissions_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE persisted_info ADD CONSTRAINT fk_persisted_info_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE pulse ADD CONSTRAINT fk_pulse_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE pulse ADD CONSTRAINT fk_pulse_dashboard_wt FOREIGN KEY (dashboard_id, worktree_id) REFERENCES report_dashboard (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE pulse_card ADD CONSTRAINT fk_pulse_card_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE pulse_card ADD CONSTRAINT fk_pulse_card_dashboard_card_wt FOREIGN KEY (dashboard_card_id, worktree_id) REFERENCES report_dashboardcard (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE pulse_card ADD CONSTRAINT fk_pulse_card_pulse_wt FOREIGN KEY (pulse_id, worktree_id) REFERENCES pulse (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE pulse_channel ADD CONSTRAINT fk_pulse_channel_pulse_wt FOREIGN KEY (pulse_id, worktree_id) REFERENCES pulse (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE pulse_channel_recipient ADD CONSTRAINT fk_pulse_channel_recipient_pulse_channel_wt FOREIGN KEY (pulse_channel_id, worktree_id) REFERENCES pulse_channel (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE query_action ADD CONSTRAINT fk_query_action_action_wt FOREIGN KEY (action_id, worktree_id) REFERENCES action (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE query_field ADD CONSTRAINT fk_query_field_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE query_table ADD CONSTRAINT fk_query_table_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE report_card ADD CONSTRAINT fk_report_card_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE report_card ADD CONSTRAINT fk_report_card_dashboard_wt FOREIGN KEY (dashboard_id, worktree_id) REFERENCES report_dashboard (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE report_card ADD CONSTRAINT fk_report_card_document_wt FOREIGN KEY (document_id, worktree_id) REFERENCES document (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE report_card ADD CONSTRAINT fk_report_card_source_card_wt FOREIGN KEY (source_card_id, worktree_id) REFERENCES report_card (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE report_cardfavorite ADD CONSTRAINT fk_report_cardfavorite_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE report_dashboard ADD CONSTRAINT fk_report_dashboard_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE report_dashboardcard ADD CONSTRAINT fk_report_dashboardcard_action_wt FOREIGN KEY (action_id, worktree_id) REFERENCES action (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE report_dashboardcard ADD CONSTRAINT fk_report_dashboardcard_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE report_dashboardcard ADD CONSTRAINT fk_report_dashboardcard_dashboard_wt FOREIGN KEY (dashboard_id, worktree_id) REFERENCES report_dashboard (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE report_dashboardcard ADD CONSTRAINT fk_report_dashboardcard_dashboard_tab_wt FOREIGN KEY (dashboard_tab_id, worktree_id) REFERENCES dashboard_tab (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE sandboxes ADD CONSTRAINT fk_sandboxes_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE segment_test ADD CONSTRAINT fk_segment_test_segment_wt FOREIGN KEY (segment_id, worktree_id) REFERENCES segment (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE stored_result_use ADD CONSTRAINT fk_stored_result_use_card_wt FOREIGN KEY (card_id, worktree_id) REFERENCES report_card (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE stored_result_use ADD CONSTRAINT fk_stored_result_use_exploration_wt FOREIGN KEY (exploration_id, worktree_id) REFERENCES exploration (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE task_history ADD CONSTRAINT fk_task_history_run_wt FOREIGN KEY (run_id, worktree_id) REFERENCES task_run (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE test_suite_member ADD CONSTRAINT fk_test_suite_member_suite_wt FOREIGN KEY (suite_id, worktree_id) REFERENCES test_suite (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE test_suite_run ADD CONSTRAINT fk_test_suite_run_suite_wt FOREIGN KEY (suite_id, worktree_id) REFERENCES test_suite (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE timeline ADD CONSTRAINT fk_timeline_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE timeline_event ADD CONSTRAINT fk_timeline_event_timeline_wt FOREIGN KEY (timeline_id, worktree_id) REFERENCES timeline (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE transform ADD CONSTRAINT fk_transform_collection_wt FOREIGN KEY (collection_id, worktree_id) REFERENCES collection (id, worktree_id);
+              ALTER TABLE transform_dag_run ADD CONSTRAINT fk_transform_dag_run_source_transform_wt FOREIGN KEY (source_transform_id, worktree_id) REFERENCES transform (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE transform_job_transform_tag ADD CONSTRAINT fk_transform_job_transform_tag_tag_wt FOREIGN KEY (tag_id, worktree_id) REFERENCES transform_tag (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE transform_run ADD CONSTRAINT fk_transform_run_transform_wt FOREIGN KEY (transform_id, worktree_id) REFERENCES transform (id, worktree_id) DEFERRABLE INITIALLY DEFERRED;
+              ALTER TABLE transform_run_cancelation ADD CONSTRAINT fk_transform_run_cancelation_run_wt FOREIGN KEY (run_id, worktree_id) REFERENCES transform_run (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE transform_test ADD CONSTRAINT fk_transform_test_transform_wt FOREIGN KEY (transform_id, worktree_id) REFERENCES transform (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE transform_transform_tag ADD CONSTRAINT fk_transform_transform_tag_tag_wt FOREIGN KEY (tag_id, worktree_id) REFERENCES transform_tag (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE transform_transform_tag ADD CONSTRAINT fk_transform_transform_tag_transform_wt FOREIGN KEY (transform_id, worktree_id) REFERENCES transform (id, worktree_id) ON DELETE CASCADE;
+              ALTER TABLE user_parameter_value ADD CONSTRAINT fk_user_parameter_value_dashboard_wt FOREIGN KEY (dashboard_id, worktree_id) REFERENCES report_dashboard (id, worktree_id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE action DROP CONSTRAINT fk_action_collection_wt;
+              ALTER TABLE action DROP CONSTRAINT fk_action_model_wt;
+              ALTER TABLE card_bookmark DROP CONSTRAINT fk_card_bookmark_card_wt;
+              ALTER TABLE card_label DROP CONSTRAINT fk_card_label_card_wt;
+              ALTER TABLE card_test DROP CONSTRAINT fk_card_test_card_wt;
+              ALTER TABLE collection_bookmark DROP CONSTRAINT fk_collection_bookmark_collection_wt;
+              ALTER TABLE comment DROP CONSTRAINT fk_comment_parent_comment_wt;
+              ALTER TABLE comment_reaction DROP CONSTRAINT fk_comment_reaction_comment_wt;
+              ALTER TABLE dashboard_bookmark DROP CONSTRAINT fk_dashboard_bookmark_dashboard_wt;
+              ALTER TABLE dashboard_favorite DROP CONSTRAINT fk_dashboard_favorite_dashboard_wt;
+              ALTER TABLE dashboard_tab DROP CONSTRAINT fk_dashboard_tab_dashboard_wt;
+              ALTER TABLE dashboardcard_series DROP CONSTRAINT fk_dashboardcard_series_card_wt;
+              ALTER TABLE dashboardcard_series DROP CONSTRAINT fk_dashboardcard_series_dashboardcard_wt;
+              ALTER TABLE data_app DROP CONSTRAINT fk_data_app_resource_collection_wt;
+              ALTER TABLE document DROP CONSTRAINT fk_document_collection_wt;
+              ALTER TABLE document DROP CONSTRAINT fk_document_exploration_wt;
+              ALTER TABLE document_bookmark DROP CONSTRAINT fk_document_bookmark_document_wt;
+              ALTER TABLE exploration DROP CONSTRAINT fk_exploration_collection_wt;
+              ALTER TABLE exploration_block DROP CONSTRAINT fk_exploration_block_exploration_thread_wt;
+              ALTER TABLE exploration_bookmark DROP CONSTRAINT fk_exploration_bookmark_exploration_wt;
+              ALTER TABLE exploration_page DROP CONSTRAINT fk_exploration_page_card_wt;
+              ALTER TABLE exploration_page DROP CONSTRAINT fk_exploration_page_exploration_block_wt;
+              ALTER TABLE exploration_query DROP CONSTRAINT fk_exploration_query_card_wt;
+              ALTER TABLE exploration_query DROP CONSTRAINT fk_exploration_query_exploration_thread_wt;
+              ALTER TABLE exploration_query DROP CONSTRAINT fk_exploration_query_page_wt;
+              ALTER TABLE exploration_query DROP CONSTRAINT fk_exploration_query_segment_wt;
+              ALTER TABLE exploration_query_result DROP CONSTRAINT fk_exploration_query_result_exploration_query_wt;
+              ALTER TABLE exploration_thread DROP CONSTRAINT fk_exploration_thread_exploration_wt;
+              ALTER TABLE exploration_thread DROP CONSTRAINT fk_exploration_thread_source_page_wt;
+              ALTER TABLE exploration_thread_timeline DROP CONSTRAINT fk_exploration_thread_timeline_exploration_thread_wt;
+              ALTER TABLE exploration_thread_timeline DROP CONSTRAINT fk_exploration_thread_timeline_timeline_wt;
+              ALTER TABLE implicit_action DROP CONSTRAINT fk_implicit_action_action_wt;
+              ALTER TABLE metabase_table_indexes DROP CONSTRAINT fk_mb_table_indexes_transform_wt;
+              ALTER TABLE metabase_table_user_settings DROP CONSTRAINT fk_mb_table_user_settings_collection_wt;
+              ALTER TABLE metabot_prompt DROP CONSTRAINT fk_metabot_prompt_card_wt;
+              ALTER TABLE metabot_prompt DROP CONSTRAINT fk_metabot_prompt_metabot_wt;
+              ALTER TABLE model_index DROP CONSTRAINT fk_model_index_model_wt;
+              ALTER TABLE model_index_value DROP CONSTRAINT fk_model_index_value_model_index_wt;
+              ALTER TABLE native_query_snippet DROP CONSTRAINT fk_native_query_snippet_collection_wt;
+              ALTER TABLE notification_card DROP CONSTRAINT fk_notification_card_card_wt;
+              ALTER TABLE notification_handler DROP CONSTRAINT fk_notification_handler_notification_wt;
+              ALTER TABLE notification_recipient DROP CONSTRAINT fk_notification_recipient_notification_handler_wt;
+              ALTER TABLE notification_subscription DROP CONSTRAINT fk_notification_subscription_notification_wt;
+              ALTER TABLE parameter_card DROP CONSTRAINT fk_parameter_card_card_wt;
+              ALTER TABLE permissions DROP CONSTRAINT fk_permissions_collection_wt;
+              ALTER TABLE persisted_info DROP CONSTRAINT fk_persisted_info_card_wt;
+              ALTER TABLE pulse DROP CONSTRAINT fk_pulse_collection_wt;
+              ALTER TABLE pulse DROP CONSTRAINT fk_pulse_dashboard_wt;
+              ALTER TABLE pulse_card DROP CONSTRAINT fk_pulse_card_card_wt;
+              ALTER TABLE pulse_card DROP CONSTRAINT fk_pulse_card_dashboard_card_wt;
+              ALTER TABLE pulse_card DROP CONSTRAINT fk_pulse_card_pulse_wt;
+              ALTER TABLE pulse_channel DROP CONSTRAINT fk_pulse_channel_pulse_wt;
+              ALTER TABLE pulse_channel_recipient DROP CONSTRAINT fk_pulse_channel_recipient_pulse_channel_wt;
+              ALTER TABLE query_action DROP CONSTRAINT fk_query_action_action_wt;
+              ALTER TABLE query_field DROP CONSTRAINT fk_query_field_card_wt;
+              ALTER TABLE query_table DROP CONSTRAINT fk_query_table_card_wt;
+              ALTER TABLE report_card DROP CONSTRAINT fk_report_card_collection_wt;
+              ALTER TABLE report_card DROP CONSTRAINT fk_report_card_dashboard_wt;
+              ALTER TABLE report_card DROP CONSTRAINT fk_report_card_document_wt;
+              ALTER TABLE report_card DROP CONSTRAINT fk_report_card_source_card_wt;
+              ALTER TABLE report_cardfavorite DROP CONSTRAINT fk_report_cardfavorite_card_wt;
+              ALTER TABLE report_dashboard DROP CONSTRAINT fk_report_dashboard_collection_wt;
+              ALTER TABLE report_dashboardcard DROP CONSTRAINT fk_report_dashboardcard_action_wt;
+              ALTER TABLE report_dashboardcard DROP CONSTRAINT fk_report_dashboardcard_card_wt;
+              ALTER TABLE report_dashboardcard DROP CONSTRAINT fk_report_dashboardcard_dashboard_wt;
+              ALTER TABLE report_dashboardcard DROP CONSTRAINT fk_report_dashboardcard_dashboard_tab_wt;
+              ALTER TABLE sandboxes DROP CONSTRAINT fk_sandboxes_card_wt;
+              ALTER TABLE segment_test DROP CONSTRAINT fk_segment_test_segment_wt;
+              ALTER TABLE stored_result_use DROP CONSTRAINT fk_stored_result_use_card_wt;
+              ALTER TABLE stored_result_use DROP CONSTRAINT fk_stored_result_use_exploration_wt;
+              ALTER TABLE task_history DROP CONSTRAINT fk_task_history_run_wt;
+              ALTER TABLE test_suite_member DROP CONSTRAINT fk_test_suite_member_suite_wt;
+              ALTER TABLE test_suite_run DROP CONSTRAINT fk_test_suite_run_suite_wt;
+              ALTER TABLE timeline DROP CONSTRAINT fk_timeline_collection_wt;
+              ALTER TABLE timeline_event DROP CONSTRAINT fk_timeline_event_timeline_wt;
+              ALTER TABLE transform DROP CONSTRAINT fk_transform_collection_wt;
+              ALTER TABLE transform_dag_run DROP CONSTRAINT fk_transform_dag_run_source_transform_wt;
+              ALTER TABLE transform_job_transform_tag DROP CONSTRAINT fk_transform_job_transform_tag_tag_wt;
+              ALTER TABLE transform_run DROP CONSTRAINT fk_transform_run_transform_wt;
+              ALTER TABLE transform_run_cancelation DROP CONSTRAINT fk_transform_run_cancelation_run_wt;
+              ALTER TABLE transform_test DROP CONSTRAINT fk_transform_test_transform_wt;
+              ALTER TABLE transform_transform_tag DROP CONSTRAINT fk_transform_transform_tag_tag_wt;
+              ALTER TABLE transform_transform_tag DROP CONSTRAINT fk_transform_transform_tag_transform_wt;
+              ALTER TABLE user_parameter_value DROP CONSTRAINT fk_user_parameter_value_dashboard_wt;
+  - changeSet:
+      id: wtw12rn
+      author: ranquild
+      comment: Give the unique personal collection owner key the name the next changeset drops, on the app DBs that ran a 2018 development build, whose Liquibase ignored its name and left the name PostgreSQL generates
+      dbms: postgresql
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 1
+            sql: >-
+              SELECT COUNT(*) FROM pg_constraint
+              WHERE conrelid = 'collection'::regclass AND conname = 'collection_personal_owner_id_key'
+      changes:
+        - sql:
+            sql: ALTER TABLE collection RENAME CONSTRAINT collection_personal_owner_id_key TO unique_collection_personal_owner_id;
+      rollback:
+  - changeSet:
+      id: wtw13uq
+      author: ranquild
+      comment: Make the unique keys of worktree rows unique per worktree; rolling back deletes the worktrees and their rows first, since the keys it restores are not unique across worktrees
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE action DROP CONSTRAINT action_entity_id_key, ADD CONSTRAINT action_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE action DROP CONSTRAINT action_public_uuid_key, ADD CONSTRAINT action_public_uuid_key UNIQUE (public_uuid, worktree_id);
+              ALTER TABLE analysis_finding DROP CONSTRAINT idx_unique_analysis_finding, ADD CONSTRAINT idx_unique_analysis_finding UNIQUE (entity_type, entity_id, worktree_id);
+              ALTER TABLE analysis_finding_status DROP CONSTRAINT idx_unique_analysis_finding_status, ADD CONSTRAINT idx_unique_analysis_finding_status UNIQUE (entity_type, entity_id, worktree_id);
+              ALTER TABLE bookmark_ordering DROP CONSTRAINT unique_bookmark_user_id_ordering, ADD CONSTRAINT unique_bookmark_user_id_ordering UNIQUE (user_id, ordering, worktree_id);
+              ALTER TABLE bookmark_ordering DROP CONSTRAINT unique_bookmark_user_id_type_item_id, ADD CONSTRAINT unique_bookmark_user_id_type_item_id UNIQUE (user_id, type, item_id, worktree_id);
+              ALTER TABLE cache_config DROP CONSTRAINT idx_cache_config_unique_model, ADD CONSTRAINT idx_cache_config_unique_model UNIQUE (model, model_id, worktree_id);
+              ALTER TABLE card_bookmark DROP CONSTRAINT unique_card_bookmark_user_id_card_id, ADD CONSTRAINT unique_card_bookmark_user_id_card_id UNIQUE (user_id, card_id, worktree_id);
+              ALTER TABLE card_label DROP CONSTRAINT unique_card_label_card_id_label_id, ADD CONSTRAINT unique_card_label_card_id_label_id UNIQUE (card_id, label_id, worktree_id);
+              ALTER TABLE card_test DROP CONSTRAINT card_test_entity_id_key, ADD CONSTRAINT card_test_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE change_log DROP CONSTRAINT idx_change_log_position, ADD CONSTRAINT idx_change_log_position UNIQUE ("position", worktree_id);
+              ALTER TABLE collection DROP CONSTRAINT collection_entity_id_key, ADD CONSTRAINT collection_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE collection DROP CONSTRAINT unique_collection_personal_owner_id, ADD CONSTRAINT unique_collection_personal_owner_id UNIQUE (personal_owner_id, worktree_id);
+              ALTER TABLE collection_bookmark DROP CONSTRAINT unique_collection_bookmark_user_id_collection_id, ADD CONSTRAINT unique_collection_bookmark_user_id_collection_id UNIQUE (user_id, collection_id, worktree_id);
+              ALTER TABLE comment_reaction DROP CONSTRAINT unique_user_comment_emoji, ADD CONSTRAINT unique_user_comment_emoji UNIQUE (comment_id, user_id, emoji, worktree_id);
+              ALTER TABLE content_diagnostics_finding DROP CONSTRAINT idx_uniq_cd_finding, ADD CONSTRAINT idx_uniq_cd_finding UNIQUE (scan_id, entity_type, entity_id, finding_type, worktree_id);
+              ALTER TABLE dashboard_bookmark DROP CONSTRAINT unique_dashboard_bookmark_user_id_dashboard_id, ADD CONSTRAINT unique_dashboard_bookmark_user_id_dashboard_id UNIQUE (user_id, dashboard_id, worktree_id);
+              ALTER TABLE dashboard_favorite DROP CONSTRAINT unique_dashboard_favorite_user_id_dashboard_id, ADD CONSTRAINT unique_dashboard_favorite_user_id_dashboard_id UNIQUE (user_id, dashboard_id, worktree_id);
+              ALTER TABLE dashboard_tab DROP CONSTRAINT dashboard_tab_entity_id_key, ADD CONSTRAINT dashboard_tab_entity_id_key UNIQUE (entity_id, worktree_id);
+              DROP INDEX idx_dashboardcard_series_position_dashboardcard_id;
+              CREATE UNIQUE INDEX idx_dashboardcard_series_position_dashboardcard_id ON dashboardcard_series ("position", dashboardcard_id, worktree_id);
+              ALTER TABLE data_app DROP CONSTRAINT data_app_name_key, ADD CONSTRAINT data_app_name_key UNIQUE (slug, worktree_id);
+              ALTER TABLE data_app DROP CONSTRAINT uq_data_app_entity_id, ADD CONSTRAINT uq_data_app_entity_id UNIQUE (entity_id, worktree_id);
+              ALTER TABLE data_app DROP CONSTRAINT uq_data_app_resource_collection_id, ADD CONSTRAINT uq_data_app_resource_collection_id UNIQUE (resource_collection_id, worktree_id);
+              ALTER TABLE dependency DROP CONSTRAINT idx_unique_dependency, ADD CONSTRAINT idx_unique_dependency UNIQUE (from_entity_type, from_entity_id, to_entity_type, to_entity_id, worktree_id);
+              ALTER TABLE dependency_status DROP CONSTRAINT idx_unique_dependency_status, ADD CONSTRAINT idx_unique_dependency_status UNIQUE (entity_type, entity_id, worktree_id);
+              ALTER TABLE dimension DROP CONSTRAINT dimension_entity_id_key, ADD CONSTRAINT dimension_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE dimension DROP CONSTRAINT unique_dimension_field_id, ADD CONSTRAINT unique_dimension_field_id UNIQUE (field_id, worktree_id);
+              ALTER TABLE document DROP CONSTRAINT document_entity_id_key, ADD CONSTRAINT document_entity_id_key UNIQUE (entity_id, worktree_id);
+              DROP INDEX idx_document_public_uuid;
+              CREATE UNIQUE INDEX idx_document_public_uuid ON document (public_uuid, worktree_id);
+              ALTER TABLE document_bookmark DROP CONSTRAINT idx_document_bookmark_user_document_unique, ADD CONSTRAINT idx_document_bookmark_user_document_unique UNIQUE (user_id, document_id, worktree_id);
+              ALTER TABLE exploration DROP CONSTRAINT exploration_entity_id_key, ADD CONSTRAINT exploration_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE exploration_bookmark DROP CONSTRAINT idx_exploration_bookmark_user_exploration_unique, ADD CONSTRAINT idx_exploration_bookmark_user_exploration_unique UNIQUE (user_id, exploration_id, worktree_id);
+              ALTER TABLE exploration_page DROP CONSTRAINT exploration_page_entity_id_key, ADD CONSTRAINT exploration_page_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE exploration_query DROP CONSTRAINT exploration_query_entity_id_key, ADD CONSTRAINT exploration_query_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE exploration_query_result DROP CONSTRAINT uq_exploration_query_result_query_id, ADD CONSTRAINT uq_exploration_query_result_query_id UNIQUE (exploration_query_id, worktree_id);
+              ALTER TABLE exploration_thread DROP CONSTRAINT exploration_thread_entity_id_key, ADD CONSTRAINT exploration_thread_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE exploration_thread_timeline DROP CONSTRAINT uq_exploration_thread_timeline_thread_timeline, ADD CONSTRAINT uq_exploration_thread_timeline_thread_timeline UNIQUE (exploration_thread_id, timeline_id, worktree_id);
+              ALTER TABLE glossary DROP CONSTRAINT glossary_term_key, ADD CONSTRAINT glossary_term_key UNIQUE (term, worktree_id);
+              ALTER TABLE glossary DROP CONSTRAINT uq_glossary_entity_id, ADD CONSTRAINT uq_glossary_entity_id UNIQUE (entity_id, worktree_id);
+              ALTER TABLE measure DROP CONSTRAINT measure_entity_id_key, ADD CONSTRAINT measure_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE metabase_field_user_settings DROP CONSTRAINT idx_uniq_metabase_field_user_settings_field_id, ADD CONSTRAINT idx_uniq_metabase_field_user_settings_field_id UNIQUE (field_id, worktree_id);
+              ALTER TABLE metabase_table_indexes DROP CONSTRAINT uq_table_indexes_transform_id_index_name, ADD CONSTRAINT uq_table_indexes_transform_id_index_name UNIQUE (transform_id, index_name, worktree_id);
+              ALTER TABLE metabase_table_user_settings DROP CONSTRAINT idx_uniq_metabase_table_user_settings_table_id, ADD CONSTRAINT idx_uniq_metabase_table_user_settings_table_id UNIQUE (table_id, worktree_id);
+              ALTER TABLE metabot DROP CONSTRAINT metabot_entity_id_key, ADD CONSTRAINT metabot_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE metabot_prompt DROP CONSTRAINT metabot_prompt_entity_id_key, ADD CONSTRAINT metabot_prompt_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE metabot_source_feedback DROP CONSTRAINT uq_metabot_source_feedback_message_user_source, ADD CONSTRAINT uq_metabot_source_feedback_message_user_source UNIQUE (message_id, user_id, source_type, source_id, worktree_id);
+              ALTER TABLE model_index_value DROP CONSTRAINT unique_model_index_value_model_index_id_model_pk, ADD CONSTRAINT unique_model_index_value_model_index_id_model_pk UNIQUE (model_index_id, model_pk, worktree_id);
+              ALTER TABLE native_query_snippet DROP CONSTRAINT native_query_snippet_entity_id_key, ADD CONSTRAINT native_query_snippet_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE native_query_snippet DROP CONSTRAINT native_query_snippet_name_key, ADD CONSTRAINT native_query_snippet_name_key UNIQUE (name, worktree_id);
+              ALTER TABLE notification DROP CONSTRAINT notification_internal_id_key, ADD CONSTRAINT notification_internal_id_key UNIQUE (internal_id, worktree_id);
+              ALTER TABLE osi_ai_context DROP CONSTRAINT idx_uniq_osi_ai_context_entity, ADD CONSTRAINT idx_uniq_osi_ai_context_entity UNIQUE (entity_type, entity_local_id, worktree_id);
+              ALTER TABLE osi_ai_context DROP CONSTRAINT uq_osi_ai_context_entity_id, ADD CONSTRAINT uq_osi_ai_context_entity_id UNIQUE (entity_id, worktree_id);
+              ALTER TABLE parameter_card DROP CONSTRAINT unique_parameterized_object_card_parameter, ADD CONSTRAINT unique_parameterized_object_card_parameter UNIQUE (parameterized_object_id, parameterized_object_type, parameter_id, worktree_id);
+              ALTER TABLE permissions DROP CONSTRAINT permissions_group_id_object_key, ADD CONSTRAINT permissions_group_id_object_key UNIQUE (group_id, object, worktree_id);
+              ALTER TABLE persisted_info DROP CONSTRAINT persisted_info_card_id_key, ADD CONSTRAINT persisted_info_card_id_key UNIQUE (card_id, worktree_id);
+              ALTER TABLE pulse DROP CONSTRAINT pulse_entity_id_key, ADD CONSTRAINT pulse_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE pulse_card DROP CONSTRAINT pulse_card_entity_id_key, ADD CONSTRAINT pulse_card_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE pulse_channel DROP CONSTRAINT pulse_channel_entity_id_key, ADD CONSTRAINT pulse_channel_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE python_library DROP CONSTRAINT uk_python_library_path, ADD CONSTRAINT uk_python_library_path UNIQUE (path, worktree_id);
+              ALTER TABLE python_library DROP CONSTRAINT unique_python_library_entity_id, ADD CONSTRAINT unique_python_library_entity_id UNIQUE (entity_id, worktree_id);
+              ALTER TABLE report_card DROP CONSTRAINT report_card_entity_id_key, ADD CONSTRAINT report_card_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE report_card DROP CONSTRAINT report_card_public_uuid_key, ADD CONSTRAINT report_card_public_uuid_key UNIQUE (public_uuid, worktree_id);
+              ALTER TABLE report_cardfavorite DROP CONSTRAINT idx_unique_cardfavorite_card_id_owner_id, ADD CONSTRAINT idx_unique_cardfavorite_card_id_owner_id UNIQUE (card_id, owner_id, worktree_id);
+              ALTER TABLE report_dashboard DROP CONSTRAINT report_dashboard_entity_id_key, ADD CONSTRAINT report_dashboard_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE report_dashboard DROP CONSTRAINT report_dashboard_public_uuid_key, ADD CONSTRAINT report_dashboard_public_uuid_key UNIQUE (public_uuid, worktree_id);
+              ALTER TABLE report_dashboardcard DROP CONSTRAINT report_dashboardcard_entity_id_key, ADD CONSTRAINT report_dashboardcard_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE result_metadata_status DROP CONSTRAINT idx_unique_result_metadata_status, ADD CONSTRAINT idx_unique_result_metadata_status UNIQUE (entity_type, entity_id, worktree_id);
+              ALTER TABLE sandboxes DROP CONSTRAINT unique_gtap_table_id_group_id, ADD CONSTRAINT unique_gtap_table_id_group_id UNIQUE (table_id, group_id, worktree_id);
+              ALTER TABLE segment DROP CONSTRAINT segment_entity_id_key, ADD CONSTRAINT segment_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE segment_test DROP CONSTRAINT segment_test_entity_id_key, ADD CONSTRAINT segment_test_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE source_replacement_run DROP CONSTRAINT idx_unique_active_source_replacement_run, ADD CONSTRAINT idx_unique_active_source_replacement_run UNIQUE (is_active, worktree_id);
+              ALTER TABLE test_suite DROP CONSTRAINT test_suite_entity_id_key, ADD CONSTRAINT test_suite_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE test_suite_member DROP CONSTRAINT uq_test_suite_member_suite_test, ADD CONSTRAINT uq_test_suite_member_suite_test UNIQUE (suite_id, test_type, test_entity_id, worktree_id);
+              ALTER TABLE timeline DROP CONSTRAINT timeline_entity_id_key, ADD CONSTRAINT timeline_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE timeline_event DROP CONSTRAINT uq_timeline_event_entity_id, ADD CONSTRAINT uq_timeline_event_entity_id UNIQUE (entity_id, worktree_id);
+              ALTER TABLE transform DROP CONSTRAINT transform_entity_id_key, ADD CONSTRAINT transform_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE transform_dag_run DROP CONSTRAINT idx_unique_active_transform_dag_run, ADD CONSTRAINT idx_unique_active_transform_dag_run UNIQUE (source_transform_id, is_active, worktree_id);
+              ALTER TABLE transform_job_transform_tag DROP CONSTRAINT transform_job_transform_tag_entity_id_key, ADD CONSTRAINT transform_job_transform_tag_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE transform_job_transform_tag DROP CONSTRAINT unique_job_tag, ADD CONSTRAINT unique_job_tag UNIQUE (job_id, tag_id, worktree_id);
+              ALTER TABLE transform_run DROP CONSTRAINT idx_unique_active_transform_run, ADD CONSTRAINT idx_unique_active_transform_run UNIQUE (transform_id, is_active, worktree_id);
+              DROP INDEX idx_transform_tag_name;
+              CREATE UNIQUE INDEX idx_transform_tag_name ON transform_tag (name, worktree_id);
+              ALTER TABLE transform_tag DROP CONSTRAINT transform_tag_entity_id_key, ADD CONSTRAINT transform_tag_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE transform_test DROP CONSTRAINT transform_test_entity_id_key, ADD CONSTRAINT transform_test_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE transform_transform_tag DROP CONSTRAINT transform_transform_tag_entity_id_key, ADD CONSTRAINT transform_transform_tag_entity_id_key UNIQUE (entity_id, worktree_id);
+              ALTER TABLE transform_transform_tag DROP CONSTRAINT unique_transform_tag, ADD CONSTRAINT unique_transform_tag UNIQUE (transform_id, tag_id, worktree_id);
+      rollback:
+        - sql:
+            sql: |
+              DELETE FROM remote_sync_worktree WHERE NOT is_default;
+              SET CONSTRAINTS ALL IMMEDIATE;
+              ALTER TABLE action DROP CONSTRAINT action_entity_id_key, ADD CONSTRAINT action_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE action DROP CONSTRAINT action_public_uuid_key, ADD CONSTRAINT action_public_uuid_key UNIQUE (public_uuid);
+              ALTER TABLE analysis_finding DROP CONSTRAINT idx_unique_analysis_finding, ADD CONSTRAINT idx_unique_analysis_finding UNIQUE (entity_type, entity_id);
+              ALTER TABLE analysis_finding_status DROP CONSTRAINT idx_unique_analysis_finding_status, ADD CONSTRAINT idx_unique_analysis_finding_status UNIQUE (entity_type, entity_id);
+              ALTER TABLE bookmark_ordering DROP CONSTRAINT unique_bookmark_user_id_ordering, ADD CONSTRAINT unique_bookmark_user_id_ordering UNIQUE (user_id, ordering);
+              ALTER TABLE bookmark_ordering DROP CONSTRAINT unique_bookmark_user_id_type_item_id, ADD CONSTRAINT unique_bookmark_user_id_type_item_id UNIQUE (user_id, type, item_id);
+              ALTER TABLE cache_config DROP CONSTRAINT idx_cache_config_unique_model, ADD CONSTRAINT idx_cache_config_unique_model UNIQUE (model, model_id);
+              ALTER TABLE card_bookmark DROP CONSTRAINT unique_card_bookmark_user_id_card_id, ADD CONSTRAINT unique_card_bookmark_user_id_card_id UNIQUE (user_id, card_id);
+              ALTER TABLE card_label DROP CONSTRAINT unique_card_label_card_id_label_id, ADD CONSTRAINT unique_card_label_card_id_label_id UNIQUE (card_id, label_id);
+              ALTER TABLE card_test DROP CONSTRAINT card_test_entity_id_key, ADD CONSTRAINT card_test_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE change_log DROP CONSTRAINT idx_change_log_position, ADD CONSTRAINT idx_change_log_position UNIQUE ("position");
+              ALTER TABLE collection DROP CONSTRAINT collection_entity_id_key, ADD CONSTRAINT collection_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE collection DROP CONSTRAINT unique_collection_personal_owner_id, ADD CONSTRAINT unique_collection_personal_owner_id UNIQUE (personal_owner_id);
+              ALTER TABLE collection_bookmark DROP CONSTRAINT unique_collection_bookmark_user_id_collection_id, ADD CONSTRAINT unique_collection_bookmark_user_id_collection_id UNIQUE (user_id, collection_id);
+              ALTER TABLE comment_reaction DROP CONSTRAINT unique_user_comment_emoji, ADD CONSTRAINT unique_user_comment_emoji UNIQUE (comment_id, user_id, emoji);
+              ALTER TABLE content_diagnostics_finding DROP CONSTRAINT idx_uniq_cd_finding, ADD CONSTRAINT idx_uniq_cd_finding UNIQUE (scan_id, entity_type, entity_id, finding_type);
+              ALTER TABLE dashboard_bookmark DROP CONSTRAINT unique_dashboard_bookmark_user_id_dashboard_id, ADD CONSTRAINT unique_dashboard_bookmark_user_id_dashboard_id UNIQUE (user_id, dashboard_id);
+              ALTER TABLE dashboard_favorite DROP CONSTRAINT unique_dashboard_favorite_user_id_dashboard_id, ADD CONSTRAINT unique_dashboard_favorite_user_id_dashboard_id UNIQUE (user_id, dashboard_id);
+              ALTER TABLE dashboard_tab DROP CONSTRAINT dashboard_tab_entity_id_key, ADD CONSTRAINT dashboard_tab_entity_id_key UNIQUE (entity_id);
+              DROP INDEX idx_dashboardcard_series_position_dashboardcard_id;
+              CREATE UNIQUE INDEX idx_dashboardcard_series_position_dashboardcard_id ON dashboardcard_series ("position", dashboardcard_id);
+              ALTER TABLE data_app DROP CONSTRAINT data_app_name_key, ADD CONSTRAINT data_app_name_key UNIQUE (slug);
+              ALTER TABLE data_app DROP CONSTRAINT uq_data_app_entity_id, ADD CONSTRAINT uq_data_app_entity_id UNIQUE (entity_id);
+              ALTER TABLE data_app DROP CONSTRAINT uq_data_app_resource_collection_id, ADD CONSTRAINT uq_data_app_resource_collection_id UNIQUE (resource_collection_id);
+              ALTER TABLE dependency DROP CONSTRAINT idx_unique_dependency, ADD CONSTRAINT idx_unique_dependency UNIQUE (from_entity_type, from_entity_id, to_entity_type, to_entity_id);
+              ALTER TABLE dependency_status DROP CONSTRAINT idx_unique_dependency_status, ADD CONSTRAINT idx_unique_dependency_status UNIQUE (entity_type, entity_id);
+              ALTER TABLE dimension DROP CONSTRAINT dimension_entity_id_key, ADD CONSTRAINT dimension_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE dimension DROP CONSTRAINT unique_dimension_field_id, ADD CONSTRAINT unique_dimension_field_id UNIQUE (field_id);
+              ALTER TABLE document DROP CONSTRAINT document_entity_id_key, ADD CONSTRAINT document_entity_id_key UNIQUE (entity_id);
+              DROP INDEX idx_document_public_uuid;
+              CREATE UNIQUE INDEX idx_document_public_uuid ON document (public_uuid);
+              ALTER TABLE document_bookmark DROP CONSTRAINT idx_document_bookmark_user_document_unique, ADD CONSTRAINT idx_document_bookmark_user_document_unique UNIQUE (user_id, document_id);
+              ALTER TABLE exploration DROP CONSTRAINT exploration_entity_id_key, ADD CONSTRAINT exploration_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE exploration_bookmark DROP CONSTRAINT idx_exploration_bookmark_user_exploration_unique, ADD CONSTRAINT idx_exploration_bookmark_user_exploration_unique UNIQUE (user_id, exploration_id);
+              ALTER TABLE exploration_page DROP CONSTRAINT exploration_page_entity_id_key, ADD CONSTRAINT exploration_page_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE exploration_query DROP CONSTRAINT exploration_query_entity_id_key, ADD CONSTRAINT exploration_query_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE exploration_query_result DROP CONSTRAINT uq_exploration_query_result_query_id, ADD CONSTRAINT uq_exploration_query_result_query_id UNIQUE (exploration_query_id);
+              ALTER TABLE exploration_thread DROP CONSTRAINT exploration_thread_entity_id_key, ADD CONSTRAINT exploration_thread_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE exploration_thread_timeline DROP CONSTRAINT uq_exploration_thread_timeline_thread_timeline, ADD CONSTRAINT uq_exploration_thread_timeline_thread_timeline UNIQUE (exploration_thread_id, timeline_id);
+              ALTER TABLE glossary DROP CONSTRAINT glossary_term_key, ADD CONSTRAINT glossary_term_key UNIQUE (term);
+              ALTER TABLE glossary DROP CONSTRAINT uq_glossary_entity_id, ADD CONSTRAINT uq_glossary_entity_id UNIQUE (entity_id);
+              ALTER TABLE measure DROP CONSTRAINT measure_entity_id_key, ADD CONSTRAINT measure_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE metabase_field_user_settings DROP CONSTRAINT idx_uniq_metabase_field_user_settings_field_id, ADD CONSTRAINT idx_uniq_metabase_field_user_settings_field_id UNIQUE (field_id);
+              ALTER TABLE metabase_table_indexes DROP CONSTRAINT uq_table_indexes_transform_id_index_name, ADD CONSTRAINT uq_table_indexes_transform_id_index_name UNIQUE (transform_id, index_name);
+              ALTER TABLE metabase_table_user_settings DROP CONSTRAINT idx_uniq_metabase_table_user_settings_table_id, ADD CONSTRAINT idx_uniq_metabase_table_user_settings_table_id UNIQUE (table_id);
+              ALTER TABLE metabot DROP CONSTRAINT metabot_entity_id_key, ADD CONSTRAINT metabot_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE metabot_prompt DROP CONSTRAINT metabot_prompt_entity_id_key, ADD CONSTRAINT metabot_prompt_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE metabot_source_feedback DROP CONSTRAINT uq_metabot_source_feedback_message_user_source, ADD CONSTRAINT uq_metabot_source_feedback_message_user_source UNIQUE (message_id, user_id, source_type, source_id);
+              ALTER TABLE model_index_value DROP CONSTRAINT unique_model_index_value_model_index_id_model_pk, ADD CONSTRAINT unique_model_index_value_model_index_id_model_pk UNIQUE (model_index_id, model_pk);
+              ALTER TABLE native_query_snippet DROP CONSTRAINT native_query_snippet_entity_id_key, ADD CONSTRAINT native_query_snippet_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE native_query_snippet DROP CONSTRAINT native_query_snippet_name_key, ADD CONSTRAINT native_query_snippet_name_key UNIQUE (name);
+              ALTER TABLE notification DROP CONSTRAINT notification_internal_id_key, ADD CONSTRAINT notification_internal_id_key UNIQUE (internal_id);
+              ALTER TABLE osi_ai_context DROP CONSTRAINT idx_uniq_osi_ai_context_entity, ADD CONSTRAINT idx_uniq_osi_ai_context_entity UNIQUE (entity_type, entity_local_id);
+              ALTER TABLE osi_ai_context DROP CONSTRAINT uq_osi_ai_context_entity_id, ADD CONSTRAINT uq_osi_ai_context_entity_id UNIQUE (entity_id);
+              ALTER TABLE parameter_card DROP CONSTRAINT unique_parameterized_object_card_parameter, ADD CONSTRAINT unique_parameterized_object_card_parameter UNIQUE (parameterized_object_id, parameterized_object_type, parameter_id);
+              ALTER TABLE permissions DROP CONSTRAINT permissions_group_id_object_key, ADD CONSTRAINT permissions_group_id_object_key UNIQUE (group_id, object);
+              ALTER TABLE persisted_info DROP CONSTRAINT persisted_info_card_id_key, ADD CONSTRAINT persisted_info_card_id_key UNIQUE (card_id);
+              ALTER TABLE pulse DROP CONSTRAINT pulse_entity_id_key, ADD CONSTRAINT pulse_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE pulse_card DROP CONSTRAINT pulse_card_entity_id_key, ADD CONSTRAINT pulse_card_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE pulse_channel DROP CONSTRAINT pulse_channel_entity_id_key, ADD CONSTRAINT pulse_channel_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE python_library DROP CONSTRAINT uk_python_library_path, ADD CONSTRAINT uk_python_library_path UNIQUE (path);
+              ALTER TABLE python_library DROP CONSTRAINT unique_python_library_entity_id, ADD CONSTRAINT unique_python_library_entity_id UNIQUE (entity_id);
+              ALTER TABLE report_card DROP CONSTRAINT report_card_entity_id_key, ADD CONSTRAINT report_card_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE report_card DROP CONSTRAINT report_card_public_uuid_key, ADD CONSTRAINT report_card_public_uuid_key UNIQUE (public_uuid);
+              ALTER TABLE report_cardfavorite DROP CONSTRAINT idx_unique_cardfavorite_card_id_owner_id, ADD CONSTRAINT idx_unique_cardfavorite_card_id_owner_id UNIQUE (card_id, owner_id);
+              ALTER TABLE report_dashboard DROP CONSTRAINT report_dashboard_entity_id_key, ADD CONSTRAINT report_dashboard_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE report_dashboard DROP CONSTRAINT report_dashboard_public_uuid_key, ADD CONSTRAINT report_dashboard_public_uuid_key UNIQUE (public_uuid);
+              ALTER TABLE report_dashboardcard DROP CONSTRAINT report_dashboardcard_entity_id_key, ADD CONSTRAINT report_dashboardcard_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE result_metadata_status DROP CONSTRAINT idx_unique_result_metadata_status, ADD CONSTRAINT idx_unique_result_metadata_status UNIQUE (entity_type, entity_id);
+              ALTER TABLE sandboxes DROP CONSTRAINT unique_gtap_table_id_group_id, ADD CONSTRAINT unique_gtap_table_id_group_id UNIQUE (table_id, group_id);
+              ALTER TABLE segment DROP CONSTRAINT segment_entity_id_key, ADD CONSTRAINT segment_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE segment_test DROP CONSTRAINT segment_test_entity_id_key, ADD CONSTRAINT segment_test_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE source_replacement_run DROP CONSTRAINT idx_unique_active_source_replacement_run, ADD CONSTRAINT idx_unique_active_source_replacement_run UNIQUE (is_active);
+              ALTER TABLE test_suite DROP CONSTRAINT test_suite_entity_id_key, ADD CONSTRAINT test_suite_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE test_suite_member DROP CONSTRAINT uq_test_suite_member_suite_test, ADD CONSTRAINT uq_test_suite_member_suite_test UNIQUE (suite_id, test_type, test_entity_id);
+              ALTER TABLE timeline DROP CONSTRAINT timeline_entity_id_key, ADD CONSTRAINT timeline_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE timeline_event DROP CONSTRAINT uq_timeline_event_entity_id, ADD CONSTRAINT uq_timeline_event_entity_id UNIQUE (entity_id);
+              ALTER TABLE transform DROP CONSTRAINT transform_entity_id_key, ADD CONSTRAINT transform_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE transform_dag_run DROP CONSTRAINT idx_unique_active_transform_dag_run, ADD CONSTRAINT idx_unique_active_transform_dag_run UNIQUE (source_transform_id, is_active);
+              ALTER TABLE transform_job_transform_tag DROP CONSTRAINT transform_job_transform_tag_entity_id_key, ADD CONSTRAINT transform_job_transform_tag_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE transform_job_transform_tag DROP CONSTRAINT unique_job_tag, ADD CONSTRAINT unique_job_tag UNIQUE (job_id, tag_id);
+              ALTER TABLE transform_run DROP CONSTRAINT idx_unique_active_transform_run, ADD CONSTRAINT idx_unique_active_transform_run UNIQUE (transform_id, is_active);
+              DROP INDEX idx_transform_tag_name;
+              CREATE UNIQUE INDEX idx_transform_tag_name ON transform_tag (name);
+              ALTER TABLE transform_tag DROP CONSTRAINT transform_tag_entity_id_key, ADD CONSTRAINT transform_tag_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE transform_test DROP CONSTRAINT transform_test_entity_id_key, ADD CONSTRAINT transform_test_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE transform_transform_tag DROP CONSTRAINT transform_transform_tag_entity_id_key, ADD CONSTRAINT transform_transform_tag_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE transform_transform_tag DROP CONSTRAINT unique_transform_tag, ADD CONSTRAINT unique_transform_tag UNIQUE (transform_id, tag_id);

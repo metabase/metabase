@@ -693,6 +693,13 @@
                                    (next-method rf query-type model parsed-args resolved-query)))
    ::uniform-update-guard))
 
+(methodical/defmethod t2.pipeline/results-transform :around [:toucan.result-type/instances :metabase/model]
+  "Leaves `worktree_id`, the remote sync worktree a row belongs to, which the app DB connection already picks, out of
+  the rows of every model before its after-select hooks see them."
+  [query-type model]
+  (comp (map #(dissoc % :worktree_id))
+        (next-method query-type model)))
+
 (when (or config/is-dev? config/is-test?)
   (install-hook-statement-guard!)
   (install-uniform-update-guard!))

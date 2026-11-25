@@ -373,17 +373,18 @@
   "Insert the `row` of `table` or, when a row with the same values of the unique `key-columns` exists, set its other
   columns to those of `row`, in one statement (`ON CONFLICT` on Postgres, `ON DUPLICATE KEY UPDATE` on MySQL and
   MariaDB, `MERGE ... KEY` on H2), binding the values and taking every identifier from the constants of this
-  namespace."
-  [table key-columns row]
+  namespace. `per-worktree?` says the table has `worktree_id`, which ends its unique keys on Postgres."
+  [table key-columns row & {:keys [per-worktree?]}]
   (let [columns     (vec (keys row))
         names       (mapv name columns)
         updated     (mapv name (remove (set key-columns) columns))
         placeholder (str/join ", " (repeat (count columns) "?"))
         column-list (str/join ", " names)
         key-list    (str/join ", " (map name key-columns))
+        pg-key-list (cond-> key-list per-worktree? (str ", worktree_id"))
         sql         (case (mdb/db-type)
                       :postgres (str "INSERT INTO " (name table) " (" column-list ") VALUES (" placeholder ")"
-                                     " ON CONFLICT (" key-list ") DO UPDATE SET "
+                                     " ON CONFLICT (" pg-key-list ") DO UPDATE SET "
                                      (str/join ", " (map #(str % " = EXCLUDED." %) updated)))
                       :mysql    (str "INSERT INTO " (name table) " (" column-list ") VALUES (" placeholder ")"
                                      " ON DUPLICATE KEY UPDATE "
@@ -413,7 +414,8 @@
    columns           :- (mut/select-keys ::metabot.schema/metabot-source-feedback.update [:positive :updated_at])]
   (upsert-row! :metabot_source_feedback [:message_id :user_id :source_id :source_type]
                (assoc columns :message_id message-id :user_id submitter-user-id
-                      :source_id source-id :source_type source-type))
+                      :source_id source-id :source_type source-type)
+               :per-worktree? true)
   (t2/select-one-pk :model/MetabotSourceFeedback
                     :message_id message-id :user_id submitter-user-id :source_id source-id :source_type source-type))
 

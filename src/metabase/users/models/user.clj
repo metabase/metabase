@@ -716,7 +716,8 @@
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/User [_model]
-  {:skip? false})
+  {:skip?     false
+   :transform (fn [user _opts] (dissoc user :current_worktree_id))})
 
 (defmethod change-log/spec :model/User [_model]
   {:track [:email :first_name :last_name :password :password_salt :date_joined :last_login :is_superuser :is_active
