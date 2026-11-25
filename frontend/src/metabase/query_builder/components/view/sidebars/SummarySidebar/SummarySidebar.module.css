@@ -96,10 +96,19 @@
   padding: var(--mantine-spacing-xs);
 }
 
+.searchDropdown .searchGroup {
+  padding: 0;
+
+  & + & {
+    border-top: none;
+  }
+}
+
 .searchDropdown .searchGroupLabel {
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-sm)
     var(--mantine-spacing-xxs);
   font-size: 0.75rem;
+  line-height: normal;
   font-weight: bold;
   text-transform: uppercase;
   color: var(--mb-color-text-secondary);
@@ -116,6 +125,13 @@
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
   border-radius: var(--mantine-radius-xs);
   line-height: 1.25rem;
+}
+
+.searchDropdown .searchOption:not([data-combobox-disabled]):hover,
+.searchDropdown
+  .searchOption[data-combobox-selected]:not([data-combobox-disabled]) {
+  color: var(--mb-color-core-brand);
+  background-color: var(--mb-color-background_surface-hover);
 }
 
 .searchOptionIcon {
