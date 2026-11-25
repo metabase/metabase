@@ -365,7 +365,7 @@
 
   Throws the run's typed refusals — a current user whose connection to the database is impersonated, an untestable
   subject or driver, SQL that will not parse, a table reference that cannot be replaced in the SQL's text, SQL of an
-  input that is not one checkable SELECT, SQL that uses a form data tests do not support, placeholders that are not
+  input that is not one checkable SELECT or uses a form data tests do not support, placeholders that are not
   one per parameter value, a test the validator rejects — so a caller that only wants the answer to \"could this
   run?\" gets it by asking for the plan and discarding it."
   [subject-type                         :- ::data-testing.subject/subject-type
@@ -375,7 +375,6 @@
         (subject-plan subject-type subject inputs now)
         _              (check-not-impersonated database)
         driver         (keyword (:engine database))
-        _              (data-testing.validator/ensure-supported-forms driver (:query compiled) nil)
         source-tables  (source-tables driver (:query compiled))
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
         output-table   (driver/temp-table-name driver)

@@ -232,19 +232,6 @@
 
     nil))
 
-(mu/defn ensure-supported-forms :- :nil
-  "Throws `::data-testing.errors/unsupported-sql` when `sql`, the SQL of `source` as its author wrote it, uses a form
-  whose rebuild has another value. [[ensure-single-select]] refuses these forms too, but a table rewrite rebuilds the
-  SQL it is given, so the rewrite of `sql` no longer holds them. A form in SQL that the check refuses for another
-  reason first is left to [[ensure-single-select]], which reads the rewrite."
-  [driver :- :keyword
-   sql    :- :string
-   source :- ::sql-source]
-  (let [{:keys [verdict reason detail]} (sql-tools/validate-executable-stmt driver sql "read-only")]
-    (when-let [refusal (when (= :disallowed verdict)
-                         (unsupported-form-refusal reason detail source))]
-      (throw refusal))))
-
 (mu/defn ensure-single-select :- :string
   "Returns the SQL a run executes for `sql`: SQLGlot's rebuild of `sql` in `driver`'s dialect. `sql` must be one
   SELECT that passes the `\"read-only\"` check of [[sql-tools/validate-executable-stmt]], which refuses anything that
@@ -299,9 +286,6 @@
    replacements     :- ::data-testing.compile/table-replacements
    output-token     :- [:maybe ::data-testing.compile/output-token]
    temp-tables      :- [:set :string]]
-  (ensure-supported-forms driver
-                          (cond-> sql output-token (data-testing.compile/replace-output-token output-token))
-                          [:expectation expectation-name])
   (try
     (let [query (data-testing.compile/replace-tables driver sql replacements output-token)]
       (check-rewrite driver query temp-tables [:expectation expectation-name])
