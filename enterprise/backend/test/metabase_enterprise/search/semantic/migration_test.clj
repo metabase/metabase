@@ -311,6 +311,7 @@
                       "curated"
                       "dashboardcard_count"
                       "database_id"
+                      "data_authority"
                       "data_layer"
                       "display_type"
                       "embedding"
@@ -544,9 +545,8 @@
                 :inactive           (contains? ids (str inactive))
                 :unpublished        (contains? ids (str plain))}))))))
 
-(deftest migration-7-drops-data-authority-test
-  (testing "migration 7 un-curates tables indexed as authoritative unless they are published-final, and drops the
-            data_authority column (BOT-2735)"
+(deftest migration-7-uncurates-authoritative-tables-test
+  (testing "migration 7 un-curates tables indexed as authoritative unless they are published-final (BOT-2735)"
     (mt/with-premium-features #{:semantic-search}
       (semantic.tu/with-test-db! {:mode :mock-initialized}
         (mt/with-temp [:model/Database {db-id :id} {}
@@ -559,15 +559,11 @@
                 meta-tbl       (keyword (:metadata-table-name index-metadata))
                 table-name     (active-index-table-name! pgvector index-metadata)
                 kw-tbl         (keyword table-name)
-                query!         #(jdbc/execute! pgvector % {:builder-fn jdbc.rs/as-unqualified-maps})
-                columns        #(into #{} (map :column_name)
-                                      (query! ["SELECT column_name FROM information_schema.columns WHERE table_name = ?"
-                                               (semantic.util/table-name-part table-name)]))
-                rows           #(query! (sql/format {:select [:model_id :curated :legacy_input] :from [kw-tbl]}
-                                                    :quoted true))]
-            ;; an index table from before migration 7 still has the column
-            (jdbc/execute! pgvector [(format "ALTER TABLE %s ADD COLUMN data_authority text"
-                                             (semantic.util/quote-table table-name))])
+                rows           #(jdbc/execute! pgvector
+                                               (sql/format {:select [:model_id :curated :data_authority :legacy_input]
+                                                            :from   [kw-tbl]}
+                                                           :quoted true)
+                                               {:builder-fn jdbc.rs/as-unqualified-maps})]
             ;; the last flag stores legacy_input double-encoded, as a JSON string, which some older rows hold
             (doseq [[model model-id authority double-encoded?] [["table" (str pub)       "authoritative" false]
                                                                 ["table" (str pub-plain) "unconfigured"  false]
@@ -593,11 +589,12 @@
                         "999998"        [true true]
                         "1"             [true true]}
                        (update-vals by-id (juxt :curated (comp :curated :legacy_input))))))
-              (testing "and legacy_input no longer carries the retired authoritative"
-                (is (not-any? #(= "authoritative" (get-in % [:legacy_input :data_authority])) (vals by-id))))
+              (testing "and neither the column nor legacy_input carries the retired authoritative"
+                (is (not-any? #(= "authoritative" (or (:data_authority %) (get-in % [:legacy_input :data_authority])))
+                              (vals by-id))))
               (testing "but rows that weren't authoritative are left as they were"
-                (is (= "unconfigured" (get-in by-id [(str pub-plain) :legacy_input :data_authority])))))
-            (is (not (contains? (columns) "data_authority")))))))))
+                (is (= ["unconfigured" "unconfigured"]
+                       ((juxt :data_authority (comp :data_authority :legacy_input)) (get by-id (str pub-plain)))))))))))))
 
 (deftest official-collection-dashboard-ids-test
   (testing "Migration 5 backfills official-only dashboards (official_collection is new on the spec, so
