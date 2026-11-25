@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
+   [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
@@ -14,7 +15,8 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -388,3 +390,74 @@
       (is (=? {:status       :passed
                :expectations [{:name "person 1 has the name" :status :passed}]}
               (write-name-1! "E'a\\\\nb'" "'a' || chr(92) || 'nb'"))))))
+
+(deftest suite-run-of-a-writing-test-test
+  (mt/test-drivers (drivers-that-write)
+    (mt/with-premium-features #{:transforms-testing}
+      (mt/with-temp [:model/Card      {card-id :id}         (people-card)
+                     :model/CardTest  {pass-id  :id
+                                       pass-eid :entity_id} {:card_id      card-id
+                                                             :name         "Refunds 1"
+                                                             :inputs       [(people-rows)]
+                                                             :expectations [(reading refunded-only-1)]}
+                     :model/CardTest  {fail-id  :id
+                                       fail-eid :entity_id} {:card_id      card-id
+                                                             :name         "Refunds nobody"
+                                                             :inputs       [(people-rows)]
+                                                             :expectations [(reading {:type :empty
+                                                                                      :name "everybody is paid"
+                                                                                      :sql  "SELECT * FROM %s WHERE name <> 'paid'"})]}
+                     :model/TestSuite {suite-id :id}        {}]
+        (data-testing.test-util/add-members! suite-id [[:card pass-eid] [:card fail-eid]])
+        (do-with-write-plan!
+         (mt/id) (refund-1) ["refunded" 1]
+         (fn [_asked]
+           (testing "each member runs the write on its inputs, and its expectations read them after it"
+             (is (=? {:status  "failed"
+                      :members [{:status "passed" :test_id pass-id :data_test_run_id pos-int?}
+                                {:status "failed" :test_id fail-id :data_test_run_id pos-int?}]}
+                     (mt/user-http-request :crowberto :post 200 (str "ee/test-suite/" suite-id "/run")))))))))))
+
+(deftest revert-of-a-writing-test-is-validated-test
+  (mt/test-drivers (drivers-that-write)
+    (mt/with-premium-features #{:transforms-testing}
+      (mt/with-temp [:model/Card {card-id :id} (people-card)]
+        (do-with-write-plan!
+         (mt/id) (refund-1) ["refunded" 1]
+         (fn [_asked]
+           ;; Created through the model, which does not validate, so that its creation revision compares an output.
+           ;; A revision is recorded only under a current user.
+           (let [test-id   (mt/with-current-user (mt/user->id :crowberto)
+                             (:id (first (data-testing.models.card-test/create-card-tests!
+                                          [{:card_id      card-id
+                                            :name         "Refund"
+                                            :inputs       [(people-rows)]
+                                            :expectations [{:type    :equals
+                                                            :name    "person 1 only"
+                                                            :format  :rows
+                                                            :columns [{:name      "id"
+                                                                       :cast_type (first (data-testing.test-util/cast-types))}]
+                                                            :rows    [{"id" 1}]}]
+                                            :creator_id   (mt/user->id :crowberto)}]))))
+                 path      (str "ee/card-test/" test-id)
+                 revisions #(mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id))
+                 revert!   (fn [status revision]
+                             (mt/user-http-request :crowberto :post status "revision/revert"
+                                                   {:entity "card-test" :id test-id :revision_id (:id revision)}))
+                 names     #(mapv :name (t2/select-one-fn :expectations :model/CardTest :id test-id))]
+             (try
+               (mt/user-http-request :crowberto :put 200 path {:expectations [(reading refunded-only-1)]})
+               (let [creation (last (revisions))
+                     reads    (first (revisions))]
+                 (testing "a revert to expectations that compare an output is refused, as the edit would be"
+                   (is (=? {:error-code "card-test.no-output"} (revert! 400 creation)))
+                   (is (= ["only person 1 is refunded"] (names))))
+                 (mt/user-http-request :crowberto :put 200 path
+                                       {:expectations [(reading {:type :empty
+                                                                 :name "person 2 is paid"
+                                                                 :sql  "SELECT * FROM %s WHERE id = 2 AND name <> 'paid'"})]})
+                 (testing "control: a revert to expectations that read the written table is done"
+                   (revert! 200 reads)
+                   (is (= ["only person 1 is refunded"] (names)))))
+               (finally
+                 (t2/delete! :model/CardTest :id test-id))))))))))
