@@ -90,7 +90,9 @@
 
 (defn- app-db-table-names []
   (t2/with-connection [^java.sql.Connection connection]
-    (with-open [tables (.getTables (.getMetaData connection) nil (.getSchema connection) nil (into-array String ["TABLE"]))]
+    ;; Postgres lists a partitioned table, such as query_execution, only under its own table type.
+    (with-open [tables (.getTables (.getMetaData connection) nil (.getSchema connection) nil
+                                   (into-array String ["TABLE" "PARTITIONED TABLE"]))]
       (->> (loop [names []]
              (if (.next tables)
                (recur (conj names (.getString tables "TABLE_NAME")))
@@ -141,6 +143,16 @@
   "The tables a read may change in a preview, because their view counts and last-used times are shared counters that
   show as nobody's activity (the tech doc, \"5. Audit and logging\")."
   #{"report_card" "report_dashboard" "metabase_table"})
+
+(def ^:private shared-counter-lock-names
+  "The `metabase_cluster_lock` rows that updating the `shared-tables` counters adds the first time it takes each lock."
+  #{;; card view counts (metabase.view-log.events.view-log) and card last-used times
+    ;; (metabase.query-processor.middleware.update-used-cards)
+    "metabase.app-db.cluster-lock/statistics-lock"
+    ;; dashboard view counts and last-viewed times (metabase.view-log.events.view-log)
+    "metabase.view-log.events.view-log/dashboard-statistics-lock"
+    ;; table view counts (metabase.view-log.events.view-log)
+    "metabase.events.view_log/metabase_table-view-count"})
 
 (defn- read-everything!
   "Do the main reads with `request-fn`, which takes the method, the status, the endpoint and a body: open a question
@@ -209,8 +221,12 @@
                             row                                  (set/union added removed)
                             :when                                (tied-to-user? person-id row)]
                         [table-name row]))))
-          (testing "only the tables of shared counters change"
-            (is (= #{} (set/difference (set (keys changes)) shared-tables)))))
+          (testing "only the tables of shared counters and the cluster locks change"
+            (is (= #{} (set/difference (set (keys changes)) shared-tables #{"metabase_cluster_lock"}))))
+          (testing "the only cluster lock rows added are the shared counters', and none is removed"
+            (let [{:keys [added removed]} (get changes "metabase_cluster_lock")]
+              (is (= #{} (set/difference (set (map :lock_name added)) shared-counter-lock-names)))
+              (is (empty? removed)))))
         (testing "guard: the same reads by the person themself write to those logs"
           (let [snapshot (app-db-snapshot)]
             (read-everything! (partial mt/user-http-request :rasta) ids)
