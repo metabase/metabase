@@ -382,14 +382,14 @@
 (defmethod driver/table-change-tokens :postgres
   [_driver database tables]
   (let [schemas (into [] (comp (keep :schema) (distinct)) tables)]
-    (if (empty? schemas)
-      {}
+    (if (seq schemas)
       (let [schema+name->token (into {}
                                      (map (juxt (juxt :schema :name) change-token))
                                      (sql-jdbc.execute/reducible-query database (change-tokens-sql schemas)))]
         (into {}
               (map (juxt :id #(schema+name->token [(:schema %) (:name %)])))
-              tables)))))
+              tables))
+      {})))
 
 (defn- nullable-in
   "Build a HoneySQL clause that handles nil values in `xs` correctly.
