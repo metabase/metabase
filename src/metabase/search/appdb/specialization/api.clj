@@ -9,6 +9,20 @@
   {:arglists '([base-schema])}
   db-type)
 
+(defmulti table-options
+  "Options for the statement that creates the index table, such as MySQL's storage engine and collation."
+  {:arglists '([])}
+  db-type)
+
+(defmethod table-options :default [] {})
+
+(defmulti with-table-creation-settings
+  "Call `thunk`, which creates an index table, with any session settings the table needs."
+  {:arglists '([thunk])}
+  db-type)
+
+(defmethod with-table-creation-settings :default [thunk] (thunk))
+
 (defmulti post-create-statements
   "Any SQL statements that should be issued after the table is created, e.g. to create indexes."
   {:arglists '([unique-prefix table-name])}

@@ -46,6 +46,19 @@
         (map base-column)
         base-schema))
 
+;; Liquibase creates the app DB's tables with this charset and collation, so the index joins them without conversion.
+(defmethod specialization/table-options :mysql []
+  {:engine :innodb, :character-set :utf8mb4, :collate :utf8mb4_unicode_ci})
+
+;; Full-text indexes take their stopword setting from the session that creates them, and search keeps stopwords.
+(defmethod specialization/with-table-creation-settings :mysql [thunk]
+  (let [stopwords? (pos? (:stopwords (search.db/mysql-fulltext-options)))]
+    (try
+      (search.db/set-mysql-fulltext-stopwords! false)
+      (thunk)
+      (finally
+        (search.db/set-mysql-fulltext-stopwords! stopwords?)))))
+
 (def ^:private index-statements
   "The suffix of each index name, and the statement that creates the index from its name and the table name."
   [["identity_idx"       "CREATE UNIQUE INDEX %s ON %s (model, model_id)"]

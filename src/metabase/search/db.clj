@@ -184,11 +184,9 @@
   as shaped by the active search engine specialization, then that specialization's post-creation statements (index
   creation and the like)."
   [table-name :- [:or :keyword :string]]
-  (t2/query (cond-> (-> (sql.helpers/create-table table-name)
-                        (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema)))
-              (= :mysql (mdb/db-type)) (assoc :engine        :innodb
-                                              :character-set :utf8mb4
-                                              :collate       :utf8mb4_unicode_ci)))
+  (t2/query (merge (-> (sql.helpers/create-table table-name)
+                       (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema)))
+                   (specialization/table-options)))
   (let [table-name (name table-name)]
     (doseq [statement (specialization/post-create-statements table-name table-name)]
       (t2/query statement))))
@@ -304,12 +302,16 @@
   [index-table :- [:or :keyword :string]]
   (t2/count index-table))
 
+(defn- current-schema
+  "The SQL expression for the schema, or the MySQL database, that holds the app DB's tables."
+  []
+  (if (= :mysql (mdb/db-type)) :%database :%current_schema))
+
 (mu/defn table-exists?
   "Whether a table named `table-name` exists in the app DB."
   [table-name :- :string]
   ;; MySQL's `information_schema` lists the tables of every database the user can see.
-  (t2/exists? :information_schema.tables {:where (cond-> [:and [:= :table_name table-name]]
-                                                   (= :mysql (mdb/db-type)) (conj [:= :table_schema :%database]))}))
+  (t2/exists? :information_schema.tables :table_schema (current-schema) :table_name table-name))
 
 (mu/defn mysql-index-names :- [:set :string]
   "The names of the indexes on the table `table-name` in the current MySQL database."
@@ -329,7 +331,7 @@
   (t2/query {:select [:ist.table_name]
              :from   [[:information_schema.tables :ist]]
              :where  [:and
-                      [:= :ist.table_schema (if (= :mysql (mdb/db-type)) :%database :%current_schema)]
+                      [:= :ist.table_schema (current-schema)]
                       [:or
                        [:like [:lower :ist.table_name] "search\\_index\\_\\_%"]
                        ;; legacy table names

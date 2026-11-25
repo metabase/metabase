@@ -215,14 +215,7 @@
   ;; Create with a separate transaction so that postgresql will complete the index creations before returning,
   ;; even when already running in a transaction
   (t2/with-transaction [_ (mdb/app-db)]
-    (if (= :mysql (mdb/db-type))
-      (let [stopwords? (pos? (:stopwords (search.db/mysql-fulltext-options)))]
-        (try
-          (search.db/set-mysql-fulltext-stopwords! false)
-          (search.db/create-search-index-table! table-name)
-          (finally
-            (search.db/set-mysql-fulltext-stopwords! stopwords?))))
-      (search.db/create-search-index-table! table-name))))
+    (specialization/with-table-creation-settings #(search.db/create-search-index-table! table-name))))
 
 (defn- discard-incomplete!
   "The pending index `table-name`, or nil after dropping it and its metadata because it lacks indexes."
