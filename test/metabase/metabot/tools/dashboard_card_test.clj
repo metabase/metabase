@@ -41,6 +41,13 @@
    :type    "category"
    :default [4]})
 
+(defn- price-mapping
+  "The mapping of [[price-filter]] to the venue price of the card with `card-id`."
+  [card-id]
+  {:parameter_id "price"
+   :card_id      card-id
+   :target       [:dimension (mt/$ids venues $price)]})
+
 (defn- do-with-venues-dashboard
   "Call `f` with `{:dashboard-id :dashcard-id :text-dashcard-id :card-id}` for a dashboard with a Price filter
    (default 4) connected to a card that counts venues, and a text card."
@@ -49,10 +56,7 @@
                  :model/Dashboard     {dashboard-id :id}     {:parameters [price-filter]}
                  :model/DashboardCard {dashcard-id :id}      {:dashboard_id       dashboard-id
                                                               :card_id            card-id
-                                                              :parameter_mappings [{:parameter_id "price"
-                                                                                    :card_id      card-id
-                                                                                    :target       (mt/$ids venues
-                                                                                                    [:dimension $price])}]}
+                                                              :parameter_mappings [(price-mapping card-id)]}
                  :model/DashboardCard {text-dashcard-id :id} {:dashboard_id           dashboard-id
                                                               :visualization_settings {:text "Hello"}}]
     (f {:dashboard-id     dashboard-id
