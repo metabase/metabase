@@ -1,8 +1,12 @@
 (ns metabase.permissions.models.permissions-revision
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -28,3 +32,15 @@
   []
   (or (permissions.db/latest-permissions-revision-id)
       0))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-permissions-revisions!
+  "Insert the PermissionsRevision `rows` in one transaction and return them in order."
+  [rows :- [:sequential ::permissions.schema/permissions-revision.create]]
+  (app-db/create-batched! :model/PermissionsRevision rows {}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/PermissionsRevision [_model]
+  {:skip? false})

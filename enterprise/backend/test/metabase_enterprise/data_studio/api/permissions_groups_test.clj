@@ -1,8 +1,8 @@
 (ns metabase-enterprise.data-studio.api.permissions-groups-test
   (:require
    [clojure.test :refer [deftest testing is]]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -26,7 +26,7 @@
   [user-id]
   ;; additions are gated on the feature, so grant it for the setup
   (mt/with-premium-features #{:advanced-permissions}
-    (perms/add-user-to-group! user-id (:id (perms-group/data-analyst)))))
+    (perms-group-membership/add-users-to-groups! [{:user user-id :group (:id (perms-group/data-analyst))}])))
 
 (def ^:private no-permissions-message "You don't have permissions to do that.")
 
@@ -49,7 +49,7 @@
 (deftest superuser-keeps-data-studio-access-without-the-feature-test
   (testing "a superuser reaches Data Studio on a feature-less instance"
     (mt/with-temp [:model/Database {db-id :id}    {}
-                   :model/Table    {table-id :id} {:db_id db-id}]
+                   :model/Table    {table-id :id} {:db_id db-id :display_name "Test Table"}]
       (mt/with-premium-features #{}
         (is (= {} (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                                         {:table_ids  [table-id]
@@ -62,7 +62,7 @@
   (testing "a Data Analysts member reaches Data Studio while the feature is present"
     (mt/with-temp [:model/User     {analyst-id :id} {}
                    :model/Database {db-id :id}      {}
-                   :model/Table    {table-id :id}   {:db_id db-id}]
+                   :model/Table    {table-id :id}   {:db_id db-id :display_name "Test Table"}]
       (add-data-analyst! analyst-id)
       (mt/with-premium-features #{:advanced-permissions}
         (is (= {} (mt/user-http-request analyst-id :post 200 "data-studio/table/edit"
@@ -93,7 +93,7 @@
                    :model/Table    {table-id :id}   {:db_id db-id}]
       (add-data-analyst! analyst-id)
       (mt/with-premium-features #{}
-        (perms/remove-user-from-group! analyst-id (:id (perms-group/data-analyst)))
+        (perms-group-membership/remove-users-from-groups! [analyst-id] [(:id (perms-group/data-analyst))])
         (is (not (t2/exists? :model/PermissionsGroupMembership
                              :user_id analyst-id :group_id (:id (perms-group/data-analyst)))))
         (is (= no-permissions-message

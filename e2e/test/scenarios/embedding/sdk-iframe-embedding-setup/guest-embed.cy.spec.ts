@@ -121,8 +121,6 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
 
       setupGuestEmbedContent();
-
-      H.mockEmbedJsToDevServer();
     });
 
     afterEach(() => {
@@ -315,8 +313,6 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
 
       setupGuestEmbedContent();
-
-      H.mockEmbedJsToDevServer();
     });
 
     afterEach(() => {

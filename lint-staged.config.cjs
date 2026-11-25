@@ -2,9 +2,6 @@ const lintFix =
   "oxlint --disable-nested-config --no-error-on-unmatched-pattern --max-warnings 0 --report-unused-disable-directives --fix";
 
 module.exports = {
-  "+(frontend|enterprise)/**/*.styled.tsx": [
-    "stylelint --customSyntax postcss-styled-syntax --fix",
-  ],
   "+(frontend|enterprise/frontend|e2e)/**/*.css": [
     "stylelint --fix",
     "oxfmt --write",

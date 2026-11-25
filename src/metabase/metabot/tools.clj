@@ -173,3 +173,48 @@
           :runs-alone?         (:metabot/runs-alone? declaration)
           :fn                  (fn [arguments]
                                  (tools.runtime/invoke entries ctx tool-name arguments))})))))
+
+(def ^:private retrievers
+  "The read-only retrieval tools [[run-retriever]] can run, each with a profile that offers it."
+  {"general" {:tool search-tool,                    :profile-id :internal}
+   "library" {:tool retrieve-library-entities-tool, :profile-id :nlq}
+   "nlq"     {:tool nlq-search-tool,                :profile-id :nlq}
+   "sql"     {:tool sql-search-tool,                :profile-id :sql}})
+
+(def retriever-names
+  "The names [[run-retriever]] accepts."
+  (sort (keys retrievers)))
+
+(def ^:private retriever-caller-error-codes
+  "Codes of the recoverable errors the retrieval tools raise for arguments that pass their schema but name nothing
+  to search."
+  #{::tools.entity-retrieval/blank-search-prompt
+    ::tools.search/missing-query
+    ::tools.search/unavailable-database})
+
+(defn retriever-caller-error?
+  "Whether `error`, the `:error` of a [[run-retriever]] outcome, is the caller's mistake rather than a failure to
+  search."
+  [{:keys [class code]}]
+  (or (= :validation class)
+      (contains? retriever-caller-error-codes code)))
+
+(defn run-retriever
+  "Run the named retrieval tool once with `args`, as `metabot` and the current user, with no model.
+  Returns the `metabase.metabot.tools.runtime/invoke` outcome, which carries `:error` when the call failed.
+  A call that succeeded with some of its queries failing also carries those queries as `:failed-queries`."
+  [retriever args metabot]
+  (let [{:keys [tool profile-id]} (get retrievers retriever)
+        entries                   (tools.core/entries (tools.legacy/adapt-all [tool]))
+        [tool-name]               (keys entries)
+        outcome                   (tools.runtime/invoke entries
+                                                        {:profile-id  profile-id
+                                                         :metabot     metabot
+                                                         :user-scope  #{scope/agent-search}
+                                                         :tool-names  #{tool-name}
+                                                         :memory-atom (atom {})}
+                                                        tool-name
+                                                        args)
+        failed-queries            (-> outcome :structured-output :data meta :failed-queries not-empty)]
+    (cond-> outcome
+      failed-queries (assoc :failed-queries failed-queries))))

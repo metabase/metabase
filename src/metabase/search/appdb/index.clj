@@ -241,7 +241,7 @@
                     (log/errorf "Error creating pending index table, cleaning up metadata: %s" (ex-message e))
                     (try
                       (t2/with-connection [safe-conn (mdb/app-db)]
-                        (search.db/delete-index-metadata-by-name! safe-conn (name table-name)))
+                        (search-index-metadata/delete-search-index-metadata-for-index! safe-conn (name table-name)))
                       (catch Exception del-e
                         (log/warnf "Error clearing out search metadata after failure: %s" (ex-message del-e))))
                     (sync-tracking-atoms!))))
@@ -510,16 +510,16 @@
         (mc/binding indexes-component {:active table-name}
                     (fn []
                       (try
-                        (search.db/insert-index-metadata! {:engine     :appdb
-                                                           :version    version
-                                                           :lang_code  (i18n/site-locale-string)
-                                                           :status     :pending
-                                                           :index_name (name table-name)})
+                        (search-index-metadata/create-search-index-metadata! {:engine     :appdb
+                                                                              :version    version
+                                                                              :lang_code  (i18n/site-locale-string)
+                                                                              :status     :pending
+                                                                              :index_name (name table-name)})
                         (create-table! table-name)
                         (thunk)
                         (finally
                           (drop-table! table-name)
-                          (search.db/delete-index-metadata-by-version! version)))))))))
+                          (search-index-metadata/delete-search-index-metadata-for-version! version)))))))))
 
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."

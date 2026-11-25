@@ -1,24 +1,24 @@
 (ns metabase.metabot.models.metabot-conversation
   (:require
+   [malli.util :as mut]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/MetabotConversation [_model] :metabot_conversation)
 
 (doto :model/MetabotConversation
-  (derive :metabase/model)
-  (derive :hook/events))
-
-(defmethod events/spec :model/MetabotConversation
-  [_model]
-  {:create :event/metabot-conversation-create
-   :update :event/metabot-conversation-update
-   :delete :event/metabot-conversation-delete})
+  (derive :metabase/model))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
@@ -62,3 +62,62 @@
    conversations k
    #(metabot.db/user-summaries-by-id (keep :user_id conversations))
    :user_id {:default nil}))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-metabot-conversations! :- [:sequential ::metabot.schema/metabot-conversation]
+  "Insert the MetabotConversation `rows`, each under its client-generated `:id`, and return them in order, publishing
+  the event of the write."
+  [rows :- [:sequential ::metabot.schema/metabot-conversation.create]]
+  (mdb/create-batched! :model/MetabotConversation rows
+                       {:after-create #(events/publish-event! :event/metabot-conversation-create (events/create-event %))}))
+
+(mu/defn upsert-metabot-conversation!
+  "Insert the MetabotConversation with `conversation-id` for the User `user-id` with the `columns`, or when it exists
+  set those of `columns` it has no value for; its `:user_id` is never overwritten."
+  [conversation-id :- :string
+   user-id         :- [:maybe ::lib.schema.id/user]
+   columns         :- (mut/dissoc ::metabot.schema/metabot-conversation.update :user_id)]
+  (mdb/with-conflict-retry
+    (t2/with-transaction [_conn]
+      (if-let [existing (metabot.db/conversation conversation-id)]
+        (let [changes (into {} (filter (fn [[k _]] (nil? (get existing k)))) columns)]
+          (metabot.db/update-conversation! conversation-id changes)
+          (events/publish-event! :event/metabot-conversation-update
+                                 (events/update-event {(:id existing) existing} [(assoc changes :id (:id existing))])))
+        (let [created (metabot.db/insert-upserted-conversation! conversation-id (assoc columns :user_id user-id))]
+          (events/publish-event! :event/metabot-conversation-create (events/create-event [created]))))
+      conversation-id)))
+
+(mu/defn set-metabot-conversation-title-if-missing! :- :int
+  "Set the title of the MetabotConversation with `conversation-id` when it has none, returning the number of rows
+  updated."
+  [conversation-id :- :string
+   title           :- :string]
+  (t2/with-transaction [_conn]
+    (if-let [previous (metabot.db/titleless-conversation conversation-id)]
+      (let [changes {:title title}]
+        (metabot.db/update-conversation! conversation-id changes)
+        (events/publish-event! :event/metabot-conversation-update
+                               (events/update-event {(:id previous) previous} [(assoc changes :id (:id previous))]))
+        1)
+      0)))
+
+(mu/defn seed-metabot-conversation!
+  "Insert the MetabotConversation `row` as given, its id and timestamps included, which the testing API seeds."
+  [row :- ::metabot.schema/metabot-conversation]
+  (t2/with-transaction [_conn]
+    (u/prog1 (metabot.db/insert-conversation-row! row)
+      (events/publish-event! :event/metabot-conversation-create (events/create-event [<>])))))
+
+(mu/defn delete-metabot-conversations! :- :nil
+  "Delete the MetabotConversations with `conversation-ids` in one transaction, publishing their delete event."
+  [conversation-ids :- [:sequential :string]]
+  (mdb/delete-batched! :model/MetabotConversation conversation-ids
+                       {:before-delete #(events/publish-event! :event/metabot-conversation-delete (events/delete-event %))}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotConversation [_model]
+  {:skip?    false
+   :sequence false})

@@ -3,8 +3,8 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.comments.schema :as comments.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.core :as users]
@@ -46,10 +46,16 @@
              :deleted_at nil
              {:group-by [:child_target_id]}))
 
-(mu/defn active-user-ids
-  "The ids among `user-ids` of active Users, or nil."
+(mu/defn active-users
+  "The `:user-id`, `:is-superuser?` and `:is-data-analyst?` of the active Users among `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pks-set :model/User :id [:in user-ids] :is_active true))
+  (app-db/select-batched #(t2/select [:model/User
+                                      [:id :user-id]
+                                      [:is_superuser :is-superuser?]
+                                      [:is_data_analyst :is-data-analyst?]]
+                                     :id [:in %]
+                                     :is_active true)
+                         user-ids))
 
 (mu/defn document
   "The Document with `id`, or nil."
@@ -71,9 +77,7 @@
   "The `model` rows with `ids` Comments target."
   [model :- [:enum :model/Document :model/Exploration]
    ids   :- [:set ms/PositiveInt]]
-  (if (seq ids)
-    (t2/select model :id [:in ids])
-    []))
+  (app-db/select-batched #(t2/select model :id [:in %]) ids))
 
 (mu/defn comment-by-id
   "The Comment with `id`, or nil."
@@ -86,33 +90,20 @@
   [creator-id        :- ::lib.schema.id/user
    parent-comment-id :- [:maybe ms/PositiveInt]
    mention-ids       :- [:maybe [:sequential ms/PositiveInt]]]
-  (t2/select-fn-set :email [:model/User :email]
-                    {:where [:or
-                             (if parent-comment-id
-                               [:in :id ^:allow-subquery {:from   [:comment]
-                                                          :select [:creator_id]
-                                                          :where  [:or
-                                                                   [:= :id parent-comment-id]
-                                                                   [:= :parent_comment_id parent-comment-id]]}]
-                               [:= :id creator-id])
-                             (when (seq mention-ids)
-                               [:in :id mention-ids])]}))
-
-(mu/defn insert-comment!
-  "Insert the Comment `row` and return the inserted instance."
-  [row :- ::comments.schema/comment.update]
-  (t2/insert-returning-instance! :model/Comment row))
-
-(mu/defn update-comment!
-  "Apply `changes` to the Comment with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::comments.schema/comment.update [:content :is_resolved])]
-  (t2/update! :model/Comment :id id changes))
-
-(mu/defn soft-delete-comment!
-  "Mark the Comment with `id` deleted now, returning the number updated."
-  [id :- ms/PositiveInt]
-  (t2/update! :model/Comment :id id {:deleted_at [:now]}))
+  (let [recipients (if parent-comment-id
+                     [:in :id ^:allow-subquery {:from   [:comment]
+                                                :select [:creator_id]
+                                                :where  [:or
+                                                         [:= :id parent-comment-id]
+                                                         [:= :parent_comment_id parent-comment-id]]}]
+                     [:= :id creator-id])]
+    (into #{}
+          (mapcat #(t2/select-fn-set :email [:model/User :email]
+                                     {:where [:or
+                                              recipients
+                                              (when (seq %)
+                                                [:in :id %])]}))
+          (or (seq (app-db/select-partitions mention-ids)) [nil]))))
 
 (defn- restrict-to-visible-users
   "Narrow `clauses` (from `user/filter-clauses`) to the users the current user should see: superusers see
@@ -154,33 +145,30 @@
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in %]) user-ids))
 
-(mu/defn reaction-exists?
-  "Whether the User with `user-id` has reacted to the Comment with `comment-id` with `emoji`."
+(mu/defn reaction-id
+  "The id of the CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`, or nil."
   [comment-id :- ms/PositiveInt
    user-id    :- ::lib.schema.id/user
    emoji      :- :string]
-  (t2/exists? :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
+  (t2/select-one-pk :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
 
-(mu/defn insert-reaction!
-  "Insert a CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`."
-  [comment-id :- ms/PositiveInt
-   user-id    :- ::lib.schema.id/user
-   emoji      :- :string]
-  (t2/insert! :model/CommentReaction {:comment_id comment-id, :user_id user-id, :emoji emoji}))
+(mu/defn insert-reactions!
+  "Insert the CommentReaction `rows` and return the inserted instances, in the order of `rows`."
+  [rows :- [:sequential ::comments.schema/comment-reaction.create]]
+  (app-db/insert-returning-instances! :model/CommentReaction rows))
 
-(mu/defn delete-reaction!
-  "Delete the CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`, returning
-  the number deleted."
-  [comment-id :- ms/PositiveInt
-   user-id    :- ::lib.schema.id/user
-   emoji      :- :string]
-  (t2/delete! :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
+(mu/defn delete-reactions!
+  "Delete the CommentReactions with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/CommentReaction :id [:in %]) ids))
 
 (mu/defn reactions-for-comments
   "The CommentReactions on the Comments with `comment-ids`, ordered by comment, time, and emoji."
   [comment-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/CommentReaction
-             {:where    [:in :comment_id comment-ids]
-              :order-by [[:comment_id :asc] [:created_at :asc] [:emoji :asc]]}))
+  (vec (sort-by :comment_id
+                (app-db/select-batched #(t2/select :model/CommentReaction
+                                                   {:where    [:in :comment_id %]
+                                                    :order-by [[:comment_id :asc] [:created_at :asc] [:emoji :asc]]})
+                                       comment-ids))))

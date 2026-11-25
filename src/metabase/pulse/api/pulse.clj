@@ -9,6 +9,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
+   [metabase.collections.models.collection :as collection]
    [metabase.embedding.util :as embed.util]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -59,30 +60,33 @@
        [:archived             {:default false} [:maybe ms/BooleanValue]]
        [:dashboard_id         {:optional true} [:maybe ms/PositiveInt]]
        [:creator_or_recipient {:default false} [:maybe ms/BooleanValue]]]]
-  (let [creator-or-recipient creator-or-recipient
-        archived?            archived
-        pulses               (->> (models.pulse/retrieve-pulses {:archived?    archived?
-                                                                 :dashboard-id dashboard-id
-                                                                 :user-id      (when creator-or-recipient api/*current-user-id*)})
-                                  (#(if creator-or-recipient
-                                      (mi/readable %)
-                                      (mi/writable %)))
-                                  models.pulse/maybe-filter-pulses-recipients)
-        pulses               (if creator-or-recipient
-                               (map models.pulse/maybe-strip-sensitive-metadata pulses)
-                               pulses)]
+  (let [pulses  (->> (models.pulse/retrieve-pulses {:archived?    archived
+                                                    :dashboard-id dashboard-id
+                                                    :user-id      (when creator-or-recipient api/*current-user-id*)})
+                     (#(if creator-or-recipient
+                         (mi/readable %)
+                         (mi/writable %)))
+                     models.pulse/maybe-filter-pulses-recipients)
+        pulses  (if creator-or-recipient
+                  (models.pulse/maybe-strip-pulses-sensitive-metadata pulses)
+                  pulses)
+        pulses  (t2/hydrate pulses :can_write)
+        queries (pulse.db/card-queries (into #{}
+                                             (comp (mapcat :cards) (remove :dataset_query) (map :id))
+                                             pulses))
+        card-query   (fn [card] (or (:dataset_query card) (get queries (:id card))))
+        card-queries (into [] (comp (mapcat :cards) (map card-query) (distinct)) pulses)
+        query->level (zipmap card-queries (perms/download-perms-levels card-queries api/*current-user-id*))]
     (mapv
      (fn [pulse]
        (update pulse :cards
                (fn [cards]
-                 (mapv (fn [card] (assoc card :download_perms (case (perms/download-perms-level
-                                                                     (or (:dataset_query card) (pulse.db/card-query (:id card)))
-                                                                     api/*current-user-id*)
+                 (mapv (fn [card] (assoc card :download_perms (case (query->level (card-query card))
                                                                 :no :none
                                                                 :ten-thousand-rows :limited
                                                                 :one-million-rows :full
                                                                 :full :full))) cards))))
-     (t2/hydrate pulses :can_write))))
+     pulses)))
 
 (defn- without-collection-for-dashboard-subscription
   "Set `:collection_id` and `:collection_position` in `pulse-data` to nil when it is a dashboard subscription.
@@ -127,11 +131,12 @@
     (t2/with-transaction [_conn]
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
       ;; check that and fix it if needed
-      (api/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
+      (collection/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
       ;; ok, now create the Pulse
-      (let [pulse (api/check-500
-                   (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
-        pulse))))
+      (api/check-500
+       (first (models.pulse/create-pulses! [(assoc pulse-data
+                                                   :cards    (mapv models.pulse/card->ref cards)
+                                                   :channels channels)]))))))
 
 (def ^:private PulseChannelRecipient
   [:map {:closed true}
@@ -164,7 +169,7 @@
    [:schedule_frame {:optional true}   [:maybe ::pulse.schema/pulse-channel.schedule-frame]]])
 
 (def ^:private PulseChannel
-  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
+  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channels!]] reads off a channel."
   (into [:map {:closed true :decode/normalize {:leave pulse.schema/check-schedule}}]
         (drop 2 TestPulseChannel)))
 
@@ -222,7 +227,7 @@
 (defn- maybe-add-recipients
   "Merge back the recipients the current user was not allowed to see before writing `pulse-updates`.
 
-  The `:channels` submitted to an update are authoritative — [[metabase.pulse.models.pulse/update-notification-channels!]]
+  The `:channels` submitted to an update are authoritative — [[metabase.pulse.models.pulse/update-notification-channels*]]
   deletes any recipient not present — so every recipient hidden on the read path must be restored on
   the write path, or a caller who reads a pulse and submits it back silently deletes recipients it
   never saw. Two read filters hide recipients, and each is compensated here:
@@ -308,12 +313,10 @@
         (t2/with-transaction [_conn]
           ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
           ;; depending on what changed.
-          (api/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
+          (collection/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
           ;; ok, now update the Pulse
-          (models.pulse/update-pulse!
-           (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                              :archived :parameters])
-                  :id id))))))
+          (models.pulse/update-pulse! id (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id
+                                                                     :collection_position :archived :parameters]))))))
   (models.pulse/retrieve-pulse id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -423,7 +426,7 @@
                 pc-id    (pulse.db/email-pulse-channel-id pulse-id)
                 pcr-id   (pulse.db/pulse-channel-recipient-id pc-id api/*current-user-id*)]
     (binding [api/*current-user-id* nil]
-      (pulse.db/delete-pulse-channel-recipient! pcr-id)))
+      (models.pulse/delete-pulse-channel-recipients! [pcr-id])))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

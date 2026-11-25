@@ -1,4 +1,4 @@
-/* Doubled selector for higher specificity to override the inner styled UserAvatar */
+/* Doubled selector so this beats UserAvatar's own size rule */
 .avatar.avatar {
   width: 3em;
   height: 3em;

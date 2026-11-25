@@ -37,6 +37,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
+   [metabase.secrets.models.secret :as models.secret]
    [metabase.sync.core :as sync]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
@@ -902,9 +903,10 @@
                            (format "GRANT SELECT ON %s TO PUBLIC;" (identifier db-name schema-name table-name))])]
              (jdbc/execute! {:connection conn} [stmt] {:transaction? false}))))
         ;; fetch metadata
-        (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
-          (is (=? {:tables #{{:name table-name, :schema schema-name, :description nil}}}
-                  (driver/describe-database :snowflake (driver.u/ensure-lib-database database)))))))))
+        (mt/with-model-cleanup [:model/Database :model/Secret]
+          (let [[database] (database/create-databases! [{:name db-name, :engine :snowflake, :details details}])]
+            (is (=? {:tables #{{:name table-name, :schema schema-name, :description nil}}}
+                    (driver/describe-database :snowflake (driver.u/ensure-lib-database database))))))))))
 
 (deftest describe-database-views-test
   (mt/test-driver :snowflake
@@ -917,8 +919,9 @@
                       (format "CREATE DATABASE \"%s\";" db-name)]]
           (jdbc/execute! spec [stmt] {:transaction? false}))
         ;; create the DB object
-        (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
-          (let [sync! #(sync/sync-database! (:id database))]
+        (mt/with-model-cleanup [:model/Database :model/Secret]
+          (let [[database] (database/create-databases! [{:name db-name, :engine :snowflake, :details details}])
+                sync!      #(sync/sync-database! (:id database))]
             ;; create a view
             (doseq [statement [(format "CREATE VIEW \"%s\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";" db-name)
                                (format "GRANT SELECT ON \"%s\".\"PUBLIC\".\"example_view\" TO PUBLIC;" db-name)]]
@@ -1410,7 +1413,7 @@
                                                                 #{:private-key-id :private-key-path :private-key-value}))]]
                 ;; Looping over all-possible-details and succeeding on details-to-succeed is stateful:
                 ;;  If a password detail succeeds it will delete the secret, this resets it.
-                (let [updated-secret (secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))]
+                (let [updated-secret (models.secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))]
                   (when (not= (:id updated-secret) secret-id)
                     (t2/update! :model/Secret :id (:id updated-secret) {:id secret-id})))
                 (with-redefs [driver/can-connect? (fn [_ d] (= d (assoc details-to-succeed :engine :snowflake)))]
@@ -1720,25 +1723,26 @@
         (is (= {:account "my-instance.us-west-1"}
                (:details db)))))))
 
-(deftest ^:parallel normalize-use-password-test
+(deftest normalize-use-password-test
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"
-      (mt/with-temp [:model/Database db1 {:name    "Legacy Snowflake DB"
-                                          :engine  :snowflake,
-                                          :details {:password "abc"}}
-                     :model/Database db2 {:name    "Legacy Snowflake DB"
-                                          :engine  :snowflake,
-                                          :details {:password "abc"
-                                                    :private-key-path "def"}}
-                     :model/Database db3 {:name    "Legacy Snowflake DB"
-                                          :engine  :snowflake,
-                                          :details {:use-password false
-                                                    :password "abc"}}]
-        (is (= {:password "abc" :use-password true :auth-mode "password"} (:details db1)))
-        (is (=? {:password "abc" :private-key-id int? :use-password :hawk/key-not-present
-                 :auth-mode "key-pair"}
-                (:details db2)))
-        (is (= {:password "abc" :use-password false :auth-mode "key-pair"} (:details db3)))))))
+      (mt/with-model-cleanup [:model/Database :model/Secret]
+        (mt/with-temp [:model/Database db1 {:name    "Legacy Snowflake DB"
+                                            :engine  :snowflake,
+                                            :details {:password "abc"}}
+                       :model/Database db3 {:name    "Legacy Snowflake DB"
+                                            :engine  :snowflake,
+                                            :details {:use-password false
+                                                      :password "abc"}}]
+          (let [[db2] (database/create-databases! [{:name    "Legacy Snowflake DB"
+                                                    :engine  :snowflake
+                                                    :details {:password         "abc"
+                                                              :private-key-path "def"}}])]
+            (is (= {:password "abc" :use-password true :auth-mode "password"} (:details db1)))
+            (is (=? {:password "abc" :private-key-id int? :use-password :hawk/key-not-present
+                     :auth-mode "key-pair"}
+                    (:details db2)))
+            (is (= {:password "abc" :use-password false :auth-mode "key-pair"} (:details db3)))))))))
 
 (deftest ^:parallel normalize-write-data-details-test
   (mt/test-driver :snowflake
@@ -2312,24 +2316,25 @@
     (mt/test-driver :snowflake
       (mt/dataset airports
         (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
-          (let [priv-key-val (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))]
-            (mt/with-temp [:model/Database db {:engine :snowflake
-                                               :details (-> (:details (mt/db))
-                                                            (dissoc :private-key-id)
-                                                            (assoc :private-key-options "uploaded")
-                                                            (assoc :private-key-value priv-key-val)
-                                                            (assoc :use-password false)
-                                                            (assoc :dbname nil))}]
-              ;; we would ideally check = here, but there are some other completely
-              ;; unrelated tests which create tables in the PUBLIC schema and
-              ;; fail to clean them up correctly, manifesting as failure here
-              (is (set/subset?
-                   #{{:name "continent",    :schema "PUBLIC", :description nil}
-                     {:name "municipality", :schema "PUBLIC", :description nil}
-                     {:name "region",       :schema "PUBLIC", :description nil}
-                     {:name "country",      :schema "PUBLIC", :description nil}
-                     {:name "airport",      :schema "PUBLIC", :description nil}}
-                   (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database db))))))))))))
+          (let [priv-key-val (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
+                details      (-> (:details (mt/db))
+                                 (dissoc :private-key-id)
+                                 (assoc :private-key-options "uploaded")
+                                 (assoc :private-key-value priv-key-val)
+                                 (assoc :use-password false)
+                                 (assoc :dbname nil))]
+            (mt/with-model-cleanup [:model/Database :model/Secret]
+              (let [[db] (database/create-databases! [{:name (mt/random-name), :engine :snowflake, :details details}])]
+                ;; we would ideally check = here, but there are some other completely
+                ;; unrelated tests which create tables in the PUBLIC schema and
+                ;; fail to clean them up correctly, manifesting as failure here
+                (is (set/subset?
+                     #{{:name "continent",    :schema "PUBLIC", :description nil}
+                       {:name "municipality", :schema "PUBLIC", :description nil}
+                       {:name "region",       :schema "PUBLIC", :description nil}
+                       {:name "country",      :schema "PUBLIC", :description nil}
+                       {:name "airport",      :schema "PUBLIC", :description nil}}
+                     (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database db)))))))))))))
 
 ;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
 ;; Tests to validate that fake sync produces correct metadata for Snowflake.

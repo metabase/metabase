@@ -33,8 +33,16 @@
 (defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-materialized-view-fields]
   [_driver _feature _db] false)
 
+(defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-pks]
+  [_driver _feature _db] true)
+
 (defmethod driver/database-supports? [:clickhouse :metabase.query-processor.parameters-test/get-parameter-count]
   [_driver _feature _db] false)
+
+;; Python transforms swap in a new table with a drop and then a rename, since this driver doesn't support
+;; `:atomic-renames`.
+(defmethod driver/database-supports? [:clickhouse :test/python-transforms-without-atomic-renames]
+  [_driver _feature _database] true)
 
 (defmethod qp.alternative-date-test/iso-8601-text-fields-expected-rows :clickhouse
   [_driver]

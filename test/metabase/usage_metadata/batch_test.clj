@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.hash :as lib-be.hash]
    [metabase.lib.core :as lib]
@@ -390,3 +391,32 @@
         (doseq [day [day-a day-b]]
           (delete-query-executions-for-day! day)
           (delete-day! day))))))
+
+(deftest profile-rows-for-dimensions-statement-count-test
+  (testing "profiling the dimension rows of 10 fields runs as many statements as profiling those of 40"
+    (mt/with-temp [:model/Table {table-id :id} {}]
+      (let [profile! (fn [n]
+                       (let [field-ids (t2/insert-returning-pks!
+                                        :model/Field
+                                        (for [i (range n)]
+                                          (merge (mt/with-temp-defaults :model/Field)
+                                                 {:table_id    table-id
+                                                  :name        (str "profiled_" n "_" i)
+                                                  :fingerprint {:global {:distinct-count 3, :nil% 0.0}}})))
+                             rows      (for [field-id field-ids]
+                                         {:source_type :table, :source_id table-id, :ownership_mode :direct
+                                          :field_id field-id, :count 2})]
+                         (try
+                           (let [result (atom nil)
+                                 stmts  (events.tu/real-statement-count!
+                                         #(reset! result (#'usage-metadata.batch/profile-rows-for-dimensions
+                                                          (t/local-date 2026 1 1) rows)))]
+                             {:count stmts
+                              :rows  (count @result)})
+                           (finally
+                             (t2/delete! :model/Field :id [:in field-ids])))))]
+        (profile! 2)
+        (let [small (profile! 10)
+              large (profile! 40)]
+          (is (= (:count small) (:count large)))
+          (is (= [10 40] [(:rows small) (:rows large)])))))))

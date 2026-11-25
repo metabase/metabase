@@ -1076,9 +1076,6 @@
    [:data-layer              {:optional true} [:maybe [:or :keyword :string]]]
    [:owner-email             {:optional true} [:maybe :string]]
    [:owner-user-id           {:optional true} [:maybe ::lib.schema.id/user]]
-   [:collection-id           {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:is-published            {:optional true} [:maybe :boolean]]
-   [:transform-id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:transform-target        {:optional true} [:maybe :boolean]]])
 
 (mr/def ::database

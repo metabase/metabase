@@ -113,7 +113,7 @@
 
 (mu/defmethod channel/render-notification [:channel/http :notification/card]
   [_channel-type {:keys [payload creator]} _handler]
-  (let [{:keys [card notification_card card_part]} payload
+  (let [{:keys [card notification_card card_part timezone]} payload
         card_part                        (channel.shared/maybe-realize-data-rows card_part)
         request-body {:type               "alert"
                       ;; TODO: can we rename this???
@@ -126,7 +126,7 @@
                                            :question_url  (urls/card-url (:id card))
                                            :visualization (let [{:keys [card dashcard result]} card_part]
                                                             (channel.render/render-pulse-card-to-base64
-                                                             (channel.render/defaulted-timezone card) card dashcard result image-width))
+                                                             (or timezone (channel.render/defaulted-timezone card)) card dashcard result image-width))
                                            :raw_data      (qp-result->raw-data (:result card_part))}
                       :sent_at            (t/offset-date-time)}]
     [{:body request-body}]))

@@ -18,6 +18,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.config :as metabot.config]
@@ -27,6 +28,7 @@
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.features :as features]
+   [metabase.metabot.self.google :as google]
    [metabase.metabot.self.google.stream-generate-content :as gemini]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
@@ -79,6 +81,17 @@
     (is (not (#'agent/has-tool-calls? [{:type :text :text "hello"}])))
     (is (#'agent/has-tool-calls? [{:type :text :text "hi"}
                                   {:type :tool-input :id "t1"}]))))
+
+(deftest step-parts-test
+  (testing "memory keeps text as history replays it: deltas merged first, blank text dropped after"
+    (let [tool-input {:type :tool-input :id "t1" :function "search" :arguments {}}]
+      (is (= [{:type :text :text "Hello world"} tool-input]
+             (#'agent/step-parts [{:type :text :text "Hello"}
+                                  {:type :text :text " "}
+                                  {:type :text :text "world"}
+                                  tool-input
+                                  {:type :text :text "\n"}
+                                  {:type :text :text "\n"}]))))))
 
 (deftest should-continue-test
   (let [max-iter 3
@@ -1082,6 +1095,28 @@
                      {:type :finish :finish-reason :max-iterations}]
                     (take-last 3 parts)))))))))
 
+(deftest step-limit-reply-input-test
+  (mt/as-admin
+    (testing "the last call of a turn at its step limit sends what the previous call sent, then the new step and the
+             instruction, and does not build the history again"
+      (let [build-history (mt/original-fn #'messages/build-message-history)
+            builds        (atom 0)
+            {:keys [requests]}
+            (mt/with-dynamic-fn-redefs [messages/build-message-history (fn [& args]
+                                                                         (swap! builds inc)
+                                                                         (apply build-history args))]
+              (step-limit-turn! :document-generate-content
+                                #(mut/mock-llm-response [{:type :text :text "The orders table has no revenue."}])))
+            [_ {input-2 :input} {input-3 :input}] requests
+            added (drop (count input-2) input-3)]
+        (is (= [1 3] [@builds (count requests)]))
+        (is (= input-2 (take (count input-2) input-3)))
+        (is (= 3 (count added)))
+        (is (=? [{:type :tool-input :id "t2"}
+                 {:type :tool-output :id "t2"}
+                 {:role :user :content #(str/includes? % "step limit")}]
+                added))))))
+
 (deftest step-limit-reply-fallback-test
   (mt/as-admin
     (testing "a last call that fails, throws or answers with no text leaves the fixed reply"
@@ -1213,21 +1248,27 @@
           (is (not-any? #(= :error (:type %)) parts))
           (is (= {:type :finish :finish-reason :max-iterations} (last parts))))))))
 
-(deftest step-limit-reply-history-failure-test
-  (testing "a failure while the last call's history is built leaves the fixed reply and the earlier usage"
+(deftest step-limit-reply-input-failure-test
+  (testing "a failure while the last call's input is built leaves the fixed reply and the earlier usage"
     (mt/as-admin
       (let [build-history (mt/original-fn #'messages/build-message-history)
+            steps->parts  (mt/original-fn #'messages/steps->parts)
             builds        (atom 0)
-            third-fails   (fn [& args]
-                            (if (= 3 (swap! builds inc))
-                              (throw (ex-info "The viewing context is gone" {}))
-                              (apply build-history args)))
+            conversions   (atom 0)
             {:keys [parts requests]}
-            (mt/with-dynamic-fn-redefs [messages/build-message-history third-fails]
+            (mt/with-dynamic-fn-redefs [messages/build-message-history (fn [& args]
+                                                                         (swap! builds inc)
+                                                                         (apply build-history args))
+                                        ;; The first call converts the steps of the history it builds, the second
+                                        ;; the step added since, and the third, the call at the step limit, fails.
+                                        messages/steps->parts           (fn [steps]
+                                                                          (if (= 3 (swap! conversions inc))
+                                                                            (throw (ex-info "A step can't be converted" {}))
+                                                                            (steps->parts steps)))]
               (mt/with-log-level [metabase.metabot.agent.core :fatal]
                 (step-limit-turn! :document-generate-content
                                   #(mut/mock-llm-response [{:type :text :text "Unexpected"}]))))]
-        (is (= [3 2] [@builds (count requests)]))
+        (is (= [1 3 2] [@builds @conversions (count requests)]))
         (is (=? [{:type :text :text step-limit-text}
                  {:type :data :data-type "state"}
                  {:type :finish :finish-reason :max-iterations}]
@@ -1503,7 +1544,7 @@
                                       :charts  map?}}
                          {:type :finish :finish-reason :stop}]
                         (mt/with-log-level [metabase.metabot.agent.core :warn]
-                          (into [] (metabot.persistence/combine-text-parts-xf)
+                          (into [] (streaming/combine-text-parts-xf)
                                 (run-agent-loop
                                  {:messages   [{:role    :user
                                                 :content "Show me the first 10 orders"}]
@@ -1673,6 +1714,71 @@
                   (is (=? [{:role "assistant" :content [{:type "tool_use" :name "load_skill"}]}
                            {:role "user" :content [{:type "tool_result"}]}]
                           (drop (count messages-1) messages-2))))))))))))
+
+(deftest later-calls-do-not-render-the-context-again-test
+  (testing "only the first call of a turn renders the context, and each later call sends what the previous call sent,
+           then the new steps"
+    (doseq [[case-name context preload?]
+            [["without a SQL dialect"
+              {:current_user_time "2026-10-05T12:00:00Z"}
+              false]
+             ["with a SQL dialect preload"
+              {:current_user_time "2026-10-05T12:00:00Z"
+               :capabilities      ["permission:write_sql_queries"]
+               :user_is_viewing   [{:type       "adhoc"
+                                    :sql_engine "postgres"
+                                    :query      (lib/native-query (mt/metadata-provider) "SELECT 1")}]}
+              true]]]
+      (testing case-name
+        (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                           llm-metabot-provider test-provider]
+          (let [inputs      (atom [])
+                renders     (atom 0)
+                orig-render (mt/original-fn #'user-context/enrich-context-for-template)]
+            (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                        (fn [ctx] (swap! renders inc) (orig-render ctx))
+                                        openrouter/openrouter
+                                        (fn [{:keys [input]}]
+                                          (mut/mock-llm-response
+                                           ;; The links fill the registry, so the tails of calls 2 and 3 go
+                                           ;; through a real inversion.
+                                           (case (count (swap! inputs conj input))
+                                             1 [{:type :text :text "See [Orders](metabase://model/1)."}
+                                                {:type      :tool-input
+                                                 :id        "call-1"
+                                                 :function  "search"
+                                                 :arguments {:keyword_queries ["orders"]}}]
+                                             2 [{:type :text :text "See [Ops](metabase://dashboard/2)."}
+                                                {:type      :tool-input
+                                                 :id        "call-2"
+                                                 :function  "search"
+                                                 :arguments {:keyword_queries ["people"]}}]
+                                             [{:type :text :text "Found them."}])))
+                                        metabot-search/search (constantly [])]
+              (run-agent-loop! {:messages   [{:role :user :content "Show me orders and people"}]
+                                :state      {}
+                                :profile-id :internal
+                                :context    context})
+              (let [[input-1 input-2 input-3] @inputs]
+                (is (= 3 (count @inputs)))
+                (is (= 1 @renders))
+                (is (= preload? (boolean (some #(= "load_skill" (:function %)) input-1))))
+                (is (= input-1 (take (count input-1) input-2)))
+                (is (= input-2 (take (count input-2) input-3)))
+                (is (=? [{:type :text :text "See [Orders](metabase://model/1)."}
+                         {:type :tool-input :id "call-1" :function "search" :arguments {:keyword_queries ["orders"]}}
+                         {:type     :tool-output
+                          :id       "call-1"
+                          :function "search"
+                          :result   {:structured-output {:result-type :search}}}]
+                        (drop (count input-1) input-2)))
+                (is (=? [{:type :text :text "See [Ops](metabase://dashboard/2)."}
+                         {:type :tool-input :id "call-2" :function "search" :arguments {:keyword_queries ["people"]}}
+                         {:type     :tool-output
+                          :id       "call-2"
+                          :function "search"
+                          :result   {:structured-output {:result-type :search}}}]
+                        (drop (count input-2) input-3)))))))))))
 
 (deftest eval-tracing-nesting-test
   (testing "capture-reducible over the real agent loop builds a turn -> llm -> tool span tree"
@@ -1845,7 +1951,7 @@
                      {:type :data :data-type "state"}
                      {:type :finish :finish-reason :stop}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
-                      (into [] (metabot.persistence/combine-text-parts-xf)
+                      (into [] (streaming/combine-text-parts-xf)
                             (run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}
@@ -1884,11 +1990,12 @@
       (is (=? [{:error {:error-code "ai_provider_billing" :message #"The AI provider rejected the request .*"}}]
               (mt/with-current-user (mt/user->id :rasta)
                 (error-parts "anthropic/claude-sonnet-4-6" throw-credit)))))
-    (testing "on the managed provider, the error part keeps today's generic shape"
-      (is (= [{:type  :error
-               :error {:message (ex-message credit-error)
-                       :type    (str (type credit-error))
-                       :data    (ex-data credit-error)}}]
+    (testing "on the managed provider, the error part keeps today's generic shape, and still says the provider failed"
+      (is (= [{:type             :error
+               :error            {:message (ex-message credit-error)
+                                  :type    (str (type credit-error))
+                                  :data    (ex-data credit-error)}
+               :provider-failure :billing}]
              (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" throw-credit)))))
     (testing "an outage says to try again later on either connection, whether the request failed or the stream did"
       (doseq [claude-fn [(fn [_] (throw (api-error 529 overloaded)))
@@ -1993,17 +2100,25 @@
     :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}])
 
 (defn- agent-loop-streamed-error-parts!
-  "The `:error` parts of an agent loop on OpenRouter whose stream sends the raw Chat Completions `chunks`."
-  [chunks]
-  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                     llm-metabot-provider "openrouter/anthropic/claude-haiku-4.5"]
-    (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
-                                                        (eduction (openrouter/openrouter->aisdk-chunks-xf) chunks))]
-      (filterv #(= :error (:type %))
-               (run-agent-loop {:messages   [{:role :user :content "Hi"}]
-                                :state      {}
-                                :profile-id :embedding_next
-                                :context    {}})))))
+  "The `:error` parts of an agent loop on OpenRouter whose stream sends the raw Chat Completions `chunks`.
+  With `model-ref` and `xf`, the loop runs on that OpenRouter, OpenAI, Google or Claude model, and its stream sends
+  `chunks` through `xf`."
+  ([chunks]
+   (agent-loop-streamed-error-parts! "openrouter/anthropic/claude-haiku-4.5"
+                                     (openrouter/openrouter->aisdk-chunks-xf) chunks))
+  ([model-ref xf chunks]
+   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                      llm-metabot-provider model-ref]
+     (let [stream (fn [_] (eduction xf chunks))]
+       (mt/with-dynamic-fn-redefs [openrouter/openrouter stream
+                                   openai/openai         stream
+                                   google/google         stream
+                                   claude/claude         stream]
+         (filterv #(= :error (:type %))
+                  (run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                   :state      {}
+                                   :profile-id :embedding_next
+                                   :context    {}})))))))
 
 (deftest agent-loop-streamed-context-overflow-error-part-test
   (testing "an overflow OpenRouter streams after its 200 becomes a \"full\" error part with the web copy"
@@ -2014,9 +2129,17 @@
       (is (= errors (map :error (mt/as-admin (agent-loop-streamed-error-parts! chunks)))))
       (is (= errors (map :error (mt/with-current-user (mt/user->id :rasta)
                                   (agent-loop-streamed-error-parts! chunks)))))))
-  (testing "any other streamed error keeps no error code"
+  (testing "an overflow that is streamed with a 5xx status is the request's fault, not a provider failure"
+    (is (= [{:error {:error-code "ai_provider_context_full" :message context-full-copy}}]
+           (map #(select-keys % [:error :provider-failure])
+                (mt/as-admin (agent-loop-streamed-error-parts!
+                              (openrouter-midstream-error-chunks
+                               {:code     502
+                                :message  "Provider returned error"
+                                :metadata {:error_type "context_length_exceeded"}})))))))
+  (testing "any other streamed error keeps only its message"
     (let [error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}]
-      (is (= [error]
+      (is (= [{:message "string too long"}]
              (map :error (mt/as-admin (agent-loop-streamed-error-parts! (openrouter-midstream-error-chunks error)))))))))
 
 (deftest agent-loop-other-400s-keep-the-generic-error-part-test
@@ -2033,6 +2156,109 @@
                            :type    (str (type e))
                            :data    (ex-data e)}}]
                  (mt/as-admin (agent-loop-error-parts! model-ref e)))))))))
+
+(deftest agent-loop-error-part-without-a-message-test
+  (testing "an exception with no message gets the generic text, and no provider failure kind"
+    (let [parts (mt/as-admin (agent-loop-error-parts! "openrouter/anthropic/claude-haiku-4.5"
+                                                      (NullPointerException.)))]
+      (is (=? [{:type  :error
+                :error {:message "Something went wrong." :type "class java.lang.NullPointerException"}}]
+              parts))
+      (is (= [nil] (map :provider-failure parts))))))
+
+(deftest agent-loop-provider-failure-error-part-test
+  (testing "a provider call that throws for a provider failure tags the error part with its kind"
+    (are [kind e] (= [kind] (map :provider-failure (mt/as-admin (agent-loop-error-parts!
+                                                                 "openrouter/anthropic/claude-haiku-4.5" e))))
+      :not-found      (rethrown-api-error! "openrouter" 404 {:error {:code 404 :message "No endpoints found"}})
+      :auth           (rethrown-api-error! "openrouter" 401 {:error {:code 401 :message "No auth credentials found"}})
+      :not-configured (self.core/missing-api-key-ex "OpenRouter")
+      ;; a 400 for a request that Metabot made has no kind
+      nil             (rethrown-api-error! "openrouter" 400 openrouter-overflow-body))))
+
+(deftest agent-loop-streamed-error-part-keeps-only-the-message-test
+  (testing "a streamed provider error keeps its message and its kind, not the `details`, which can name a GCP project"
+    (is (= [{:error {:message "Permission denied."} :provider-failure :auth}]
+           (map #(select-keys % [:error :provider-failure])
+                (mt/as-admin (agent-loop-streamed-error-parts!
+                              "google/google/gemini-3.5-flash" (gemini/->aisdk-chunks-xf)
+                              [{:responseId "r1" :candidates [{:content {:role "model" :parts [{:text "Hi"}]}}]}
+                               {:error {:code    403
+                                        :message "Permission denied."
+                                        :status  "PERMISSION_DENIED"
+                                        :details [{:reason   "IAM_PERMISSION_DENIED"
+                                                   :metadata {:resource "projects/my-project"}}]}}])))))))
+
+(defn- streamed-failure-kinds!
+  "The `:provider-failure` of each error part of [[agent-loop-streamed-error-parts!]], run as an admin."
+  [& args]
+  (map :provider-failure (mt/as-admin (apply agent-loop-streamed-error-parts! args))))
+
+(deftest agent-loop-failed-finish-reason-error-part-test
+  (testing "a finish reason that reports a failure upstream of the provider tags the error part with its kind"
+    (is (= [:unavailable]
+           (streamed-failure-kinds!
+            "openrouter/anthropic/claude-haiku-4.5" (zai/zai->aisdk-chunks-xf)
+            [{:id "msg-1" :choices [{:index 0 :delta {:content "Hi"}}]}
+             {:id "msg-1" :choices [{:index 0 :delta {} :finish_reason "network_error"}]}]))))
+  (testing "a plain `error` finish reason has no kind"
+    (is (= [nil]
+           (streamed-failure-kinds!
+            "openrouter/anthropic/claude-haiku-4.5"
+            (chat-completions/chat-completions->aisdk-chunks-xf (assoc chat-completions/stop-reasons "error" "error"))
+            [{:id "msg-1" :choices [{:index 0 :delta {:content "Hi"}}]}
+             {:id "msg-1" :choices [{:index 0 :delta {} :finish_reason "error"}]}])))))
+
+(deftest agent-loop-streamed-provider-failure-error-part-test
+  (testing "a provider failure that OpenRouter streams after its 200 tags the error part with its kind"
+    (are [kind error]
+         (= [kind] (streamed-failure-kinds! (openrouter-midstream-error-chunks error)))
+      :rate-limit {:code 429 :message "Rate limit exceeded"}
+      ;; Input that OpenRouter's moderation flags is not a credentials failure.
+      ;; https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors
+      nil         {:code     403
+                   :message  "anthropic/claude-haiku-4.5 requires moderation"
+                   :metadata {:reasons ["harassment"] :flagged_input "..."}}
+      ;; a model refusal that the provider streams as an error
+      nil         {:code 403 :message "The model refused the request" :metadata {:error_type "refusal"}}
+      ;; a streamed error that is not a provider failure
+      nil         {:code 400 :message "Bad request"}
+      ;; An integer code outside the HTTP status range is the vendor's own code, not a status.
+      ;; https://docs.z.ai/api-reference/api-code (1113 "Insufficient balance or no resource package")
+      nil         {:code 1113 :message "Insufficient balance"}))
+  (testing "a streamed HTTP status gets the same user-facing error as the status of a failed request"
+    (is (=? [{:error {:error-code "ai_provider_rate_limit"} :provider-failure :rate-limit}]
+            (mt/as-admin (agent-loop-streamed-error-parts!
+                          (openrouter-midstream-error-chunks {:code 429 :message "Rate limit exceeded"}))))))
+  (testing "a provider failure that OpenAI's Responses API streams after its 200 tags the error part with its kind"
+    (are [kind event]
+         (= [kind] (streamed-failure-kinds!
+                    "openai/gpt-5.5" (openai/openai->aisdk-chunks-xf)
+                    [{:type "response.created" :response {:id "resp_1" :model "gpt-5.5"}}
+                     event]))
+      :unavailable {:type     "response.failed"
+                    :response {:id "resp_1" :error {:code "server_error" :message "The server had an error."}}}
+      :rate-limit  {:type "error" :code "rate_limit_exceeded" :message "Rate limit reached." :param nil}
+      nil          {:type "error" :code "invalid_prompt" :message "Invalid prompt." :param nil}))
+  (testing "a provider failure that Gemini streams after its 200 tags the error part with its kind"
+    (are [kind error]
+         (= [kind] (streamed-failure-kinds!
+                    "google/google/gemini-3.5-flash" (gemini/->aisdk-chunks-xf)
+                    [{:responseId "r1" :candidates [{:content {:role "model" :parts [{:text "Hi"}]}}]}
+                     {:error error}]))
+      :rate-limit  {:code 429 :message "Resource exhausted." :status "RESOURCE_EXHAUSTED"}
+      :unavailable {:code 503 :message "The model is overloaded." :status "UNAVAILABLE"}))
+  (testing "an exception that Bedrock streams after its 200, as `bedrock/runtime-event` gives it, has its kind"
+    (are [kind exception-type]
+         (= [kind] (streamed-failure-kinds!
+                    "anthropic/claude-sonnet-4-6" (claude/claude->aisdk-chunks-xf)
+                    [{:type "message_start" :message {:id "msg_1"}}
+                     {:type "error" :error {:type exception-type :message "Too many requests"}}]))
+      :rate-limit  "throttlingException"
+      :unavailable "serviceUnavailableException"
+      :unavailable "internalServerException"
+      :unavailable "modelTimeoutException"
+      :unavailable "modelStreamErrorException")))
 
 ;;; ===================== Prometheus Metrics Tests =====================
 

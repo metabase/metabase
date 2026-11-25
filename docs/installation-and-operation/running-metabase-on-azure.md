@@ -7,8 +7,6 @@ redirect_from:
 
 # Running Metabase on Microsoft Azure
 
-This guide covers the basics for running your Metabase instance in Microsoft Azure using Docker.
-
 ## Step 1: Create the resource group (resource grouping)
 
 On the Azure management console, click on the **Resource Groups** icon at the top of the page (or just search for Resource Groups). If you already have a resource group, you can go straight to [Step 2](#step-2-create-the-vnet-virtual-network).
@@ -198,4 +196,4 @@ In the example above the connection string would be
 postgresql://10.0.2.4:5432/metabase?user=metabase@metabase-app-database&password=Password1!&ssl=true&sslmode=require
 ```
 
-If you have trouble connecting, refer to the [postgres configuration instructions](../installation-and-operation/configuring-application-database.md#postgresql) as you may run into a problem with an `@` symbol in the username portion of the connection string. Using a combination of `MB_DB_CONNECTION_URI` with separate `MB_DB_USER` and `MB_DB_PASS` fields also works.
+If you have trouble connecting, refer to the [postgres configuration instructions](../installation-and-operation/configuring-application-database.md#postgresql) as you may run into a problem with an `@` symbol in the username portion of the connection string. Using a combination of `MB_DB_CONNECTION_URI` with separate [`MB_DB_USER`](../configuring-metabase/environment-variables.md#mb_db_user) and [`MB_DB_PASS`](../configuring-metabase/environment-variables.md#mb_db_pass) fields also works.

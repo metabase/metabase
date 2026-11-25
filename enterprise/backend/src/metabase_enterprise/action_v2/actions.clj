@@ -47,7 +47,7 @@
 
 (defmethod actions/normalize-action-arg-map :data-grid.row/common
   [_action input]
-  (-> (assoc input :database (:id (actions/cached-database-via-table-id (:table-id input))))
+  (-> (assoc input :database (or (:database input) (:id (actions/cached-database-via-table-id (:table-id input)))))
       (update :row #(update-keys % u/qualified-name))))
 
 (defmethod actions/action-arg-map-schema :data-editing/undo [_action] :map)

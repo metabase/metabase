@@ -24,11 +24,12 @@
       (update :settings perf/not-empty)))
 
 (methodical/defmethod events/publish-event! ::event
-  [topic {:keys [object previous-object]}]
-  (try
-    (when (or (= topic :event/database-delete)
-              (not= (connection-state object) (connection-state previous-object)))
-      (let [database (or object previous-object)]
-        (driver/notify-database-updated (:engine database) (driver.u/ensure-lib-database database))))
-    (catch Throwable e
-      (log/warnf "Failed to process driver notifications event %s: %s" topic (ex-message e)))))
+  [topic {:keys [changes]}]
+  (doseq [{:keys [object previous-object]} changes]
+    (try
+      (when (or (= topic :event/database-delete)
+                (not= (connection-state object) (connection-state previous-object)))
+        (let [database (or object previous-object)]
+          (driver/notify-database-updated (:engine database) (driver.u/ensure-lib-database database))))
+      (catch Throwable e
+        (log/warnf "Failed to process driver notifications event %s: %s" topic (ex-message e))))))

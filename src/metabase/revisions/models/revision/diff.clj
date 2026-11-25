@@ -126,6 +126,9 @@
     [:expectations _ _]
     (deferred-tru "changed the expectations")
 
+    [:now _ _]
+    (deferred-tru "changed the time the test reads as now")
+
     [(subject-key :guard data-test-subject-models) _ _]
     (let [model (data-test-subject-models subject-key)]
       (deferred-tru "moved {0} from {1} to {2}"

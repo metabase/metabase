@@ -405,7 +405,11 @@ async function getCollectionPathFromValue({
   }
 
   const isCollectionValue = isCollection(item, value);
-  const parentCollectionId = isCollectionValue ? item.id : item?.collection_id;
+  const parentCollectionId = isCollectionValue
+    ? item.id
+    : "collection_id" in item
+      ? item.collection_id
+      : item.collection?.id;
 
   const itemNamespace = value.namespace ?? getNamespace(item);
 

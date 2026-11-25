@@ -49,17 +49,19 @@
 (mu/defn published-table-count-in-collections
   "The number of published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/count :model/Table {:where [:and
-                                  [:= :is_published true]
-                                  [:in :collection_id collection-ids]]}))
+  (transduce (map #(t2/count :model/TableUserSettings {:where [:and
+                                                               [:= :is_published true]
+                                                               [:in :collection_id %]]}))
+             + 0 (app-db/select-partitions collection-ids)))
 
 (mu/defn unarchived-metric-count-in-collections
   "The number of unarchived metric Cards in the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/count :model/Card {:where [:and
-                                 [:= :type "metric"]
-                                 [:= :archived false]
-                                 [:in :collection_id collection-ids]]}))
+  (transduce (map #(t2/count :model/Card {:where [:and
+                                                  [:= :type "metric"]
+                                                  [:= :archived false]
+                                                  [:in :collection_id %]]}))
+             + 0 (app-db/select-partitions collection-ids)))
 
 (mu/defn permissions-group-count
   "The number of PermissionsGroups."
@@ -70,7 +72,7 @@
   "The creator, public uuid, parameters, and embedding columns of the non-internal Dashboards."
   []
   (t2/select [:model/Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params]
-             {:where (mi/exclude-internal-content-hsql :model/Dashboard)}))
+             {:where (mi/non-internal-filter-clause :model/Dashboard :report_dashboard)}))
 
 (mu/defn dashcards-of-dashboards
   "The DashboardCards of the non-internal Dashboards."
@@ -78,7 +80,7 @@
   (t2/query {:select :dc.*
              :from [[(t2/table-name :model/DashboardCard) :dc]]
              :join [[(t2/table-name :model/Dashboard) :d] [:= :d.id :dc.dashboard_id]]
-             :where (mi/exclude-internal-content-hsql :model/Dashboard :table-alias :d)}))
+             :where (mi/non-internal-filter-clause :model/Dashboard :d)}))
 
 (defn- notification-frequencies-by-column*
   [model column alerts? left-join?]
@@ -144,18 +146,18 @@
 (mu/defn collection-count
   "The number of non-internal Collections."
   []
-  (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)}))
+  (t2/count :model/Collection {:where (mi/non-internal-filter-clause :model/Collection :collection)}))
 
 (mu/defn card-collection-ids
   "The Collection id of the non-internal Cards."
   []
-  (t2/select [:model/Card :collection_id] {:where [:and (mi/exclude-internal-content-hsql :model/Card)]}))
+  (t2/select [:model/Card :collection_id] {:where [:and (mi/non-internal-filter-clause :model/Card :report_card)]}))
 
 (mu/defn database-stats-columns
   "The sync, engine, and DBMS version of the non-internal Databases."
   []
   (t2/select [:model/Database :is_full_sync :engine :dbms_version]
-             {:where (mi/exclude-internal-content-hsql :model/Database)}))
+             {:where (mi/non-internal-filter-clause :model/Database :metabase_database)}))
 
 (mu/defn table-database-and-schema
   "The Database id and schema of the Tables of the non-internal Databases."
@@ -163,7 +165,7 @@
   (t2/query {:select [:t.db_id :t.schema]
              :from      [[(t2/table-name :model/Table) :t]]
              :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-             :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
+             :where  (mi/non-internal-filter-clause :model/Database :d)}))
 
 (mu/defn field-table-ids
   "The Table id of the Fields of the non-internal Databases."
@@ -172,7 +174,7 @@
              :from      [[(t2/table-name :model/Field) :f]]
              :join [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]
                     [(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-             :where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
+             :where (mi/non-internal-filter-clause :model/Database :d)}))
 
 (mu/defn segment-count
   "The number of Segments."
@@ -252,7 +254,7 @@
    limit         :- ms/PositiveInt]
   (t2/count :model/User {:where [:and
                                  [:<= :date_joined joined-before]
-                                 (mi/exclude-internal-content-hsql :model/User)]
+                                 (mi/non-internal-filter-clause :model/User :core_user)]
                          :limit limit}))
 
 (mu/defn query-execution-ids-excluding-database

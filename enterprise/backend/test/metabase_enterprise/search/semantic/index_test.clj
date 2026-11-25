@@ -806,6 +806,50 @@
         (testing "handles empty input"
           (is (= [] (#'semantic.index/filter-read-permitted []))))))))
 
+(deftest ^:synchronized analytics-cards-filter-test
+  (testing "Cards in the audit app's collections are dropped in SQL, so they cannot take the slots under the results limit"
+    (mt/with-premium-features #{:semantic-search :audit-app}
+      (with-open [_ (semantic.tu/open-temp-index!)]
+        ;; The audit card matches "puppy" exactly, so it ranks above the other card and takes the only slot unless
+        ;; the query drops it. The filter-first strategy shows that; the default HNSW one post-filters its candidates
+        ;; for every structural filter alike.
+        (semantic.tu/with-mock-embeddings {"Puppy Guide"        (get semantic.tu/mock-embeddings "puppy")
+                                           "Dog Training Guide" [0.12 -0.34 0.56 -0.78]}
+          (let [card  (first (semantic.tu/mock-documents))
+                found (fn [context]
+                        (->> (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
+                                                         semantic.tu/mock-index
+                                                         {:search-string          "puppy"
+                                                          :context                context
+                                                          :vector-search-strategy :brute-force})
+                             :results
+                             (map :id)))]
+            (semantic.tu/upsert-index!
+             [(assoc card
+                     :id                   1
+                     :name                 "Puppy Guide"
+                     :searchable_text      "Puppy Guide"
+                     :embeddable_text      "Puppy Guide"
+                     :legacy_input         (assoc (:legacy_input card) :id 1)
+                     :root_collection_type collection/instance-analytics-collection-type)
+              (assoc card :id 2 :legacy_input (assoc (:legacy_input card) :id 2))])
+            ;; Every row is readable, so only the index query decides what comes back.
+            (mt/with-dynamic-fn-redefs [semantic.index/filter-read-permitted identity]
+              (mt/with-temporary-setting-values [semantic-search-results-limit 1]
+                (testing "Broad search returns the audit card first"
+                  (is (= [1] (found :command-palette))))
+                (testing "Other contexts, and searches without one, return the other card"
+                  (doseq [context [:data-picker :embedding-setup nil]]
+                    (testing context
+                      (is (= [2] (found context))))))
+                (mt/with-premium-features #{:semantic-search}
+                  (testing "Without the audit app, broad search drops it too"
+                    (is (= [2] (found :command-palette)))))
+                (testing "Diagnose names the filter that drops it"
+                  (is (=? {:type :filtered, :details {:excluded-by :analytics-cards}}
+                          (semantic.index/diagnose-row (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
+                                                       {:context :data-picker} "card" 1))))))))))))
+
 (deftest filter-read-permitted-document-scoped-cards-test
   (mt/with-premium-features #{:semantic-search}
     (testing "card scoped to document is filtered by that document, though filter loads only few columns"

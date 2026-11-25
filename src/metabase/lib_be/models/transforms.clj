@@ -86,6 +86,17 @@
       (log/errorf "Error normalizing query: %s" (ex-message e))
       {}))))
 
+(defn query-first-stage
+  "The first stage of `query`, a query in MBQL 5 or legacy form, read without a metadata provider or the app DB; nil for
+  an empty query."
+  [query]
+  (when (and (map? query) (seq query))
+    (let [query (normalize-mbql query)]
+      (-> (cond-> query
+            (= :mbql-version/legacy (lib/normalized-mbql-version query)) lib/->mbql5)
+          :stages
+          first))))
+
 (defn- transform-query-in [query]
   (when-not (map? query)
     (throw (ex-info (format "Query must be a map, got ^%s %s" (.getCanonicalName (class query)) (pr-str query))

@@ -254,12 +254,12 @@
     (events/publish-event! :event/sessions-revoked
                            {:user-id api/*current-user-id*
                             :details {:criteria criteria, :count revoked, :remaining remaining}})
-    (doseq [[user-id revoked-for-user] (frequencies user-ids)]
+    (when (seq user-ids)
       (events/publish-event! :event/session-revoked
-                             {:user-id  api/*current-user-id*
-                              :model    :model/User
-                              :model-id user-id
-                              :details  {:criteria criteria, :count revoked-for-user}}))
+                             {:user-id api/*current-user-id*
+                              :details {:criteria criteria}
+                              :objects (for [[user-id revoked-for-user] (frequencies user-ids)]
+                                         {:id user-id :count revoked-for-user})}))
     (catch Throwable e
       (log/warn e "Error recording a session revocation in the audit log"))))
 

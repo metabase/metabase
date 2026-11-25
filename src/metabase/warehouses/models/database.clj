@@ -4,9 +4,10 @@
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
-   [metabase.cache.core :as cache]
+   [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -14,14 +15,13 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.search.core :as search]
-   [metabase.search.spec :as search.spec]
    [metabase.secrets.core :as secret]
+   [metabase.secrets.models.secret :as models.secret]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
@@ -31,10 +31,13 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouses.app-db-copy :as warehouses.app-db-copy]
    [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.provider-detection :as provider-detection]
    [metabase.warehouses.schema :as warehouses.schema]
+   [metabase.warehouses.serialization :as warehouses.serialization]
    [metabase.warehouses.settings :as warehouses.settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -74,28 +77,24 @@
 (doto :model/Database
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/events)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
-
-(defmethod events/spec :model/Database
-  [_model]
-  {:create :event/database-create
-   :update :event/database-update
-   :delete :event/database-delete})
 
 (defn is-destination?
   "Is this database a destination database for some router database?"
   [db]
   (boolean (:router_database_id db)))
 
+(declare ^:private set-new-databases-permissions!)
+
 (methodical/defmethod t2.with-temp/do-with-temp* :before :model/Database
   [_model _explicit-attributes f]
   (fn [temp-object]
     ;; Grant All Users full perms so tests don't have to set permissions — but skip destination
     ;; databases, which must never carry data_permissions rows (they are reached only via routing).
+    (set-new-databases-permissions! [temp-object])
     (when-not (is-destination? temp-object)
       (perms/set-database-permission! (perms/all-users-group) temp-object :perms/view-data :unrestricted)
       (perms/set-database-permission! (perms/all-users-group) temp-object :perms/create-queries :query-builder-and-native)
@@ -105,9 +104,9 @@
       (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/download-results :no))
     (f temp-object)))
 
-(defmethod mi/exclude-internal-content-hsql :model/Database
-  [_model & {:keys [table-alias]}]
-  (let [maybe-alias #(h2x/identifier :field table-alias %)]
+(defmethod mi/non-internal-filter-clause :model/Database
+  [_model alias]
+  (let [maybe-alias #(h2x/identifier :field alias %)]
     [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit)]]))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
@@ -153,11 +152,17 @@
   (and (should-sync? database-id)
        (not (warehouses.settings/disable-auto-sync))))
 
+(defn- auto-syncable?
+  "Whether `database`, a stored row, is synced automatically, as [[should-auto-sync?]] answers it from its id."
+  [database]
+  (and (not (is-destination? database))
+       (not (warehouses.settings/disable-auto-sync))))
+
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
-    (when (should-auto-sync? (u/the-id database))
+    (when (auto-syncable? database)
       (sync-databases-trigger/check-and-schedule-tasks-for-db! database))
     (catch Throwable e
       (log/errorf "Error scheduling tasks for DB: %s" (ex-message e)))))
@@ -174,25 +179,21 @@
       (log/errorf "Error unscheduling tasks for DB: %s" (ex-message e)))))
 
 ;; TODO -- consider whether this should live HERE or inside the `permissions` module.
-(defn- set-new-database-permissions!
-  [database]
-  (when-not (is-destination? database)
-    (perms/with-db-scoped-permissions-lock (u/the-id database)
-      (let [all-users-group          (perms/all-users-group)
-            all-external-users-group (perms/all-external-users-group)
-            non-magic-groups         (perms/non-magic-groups)
-            non-admin-groups         (conj non-magic-groups all-users-group all-external-users-group)]
-        (perms/set-default-database-permissions! database non-admin-groups)))))
-
-(t2/define-after-insert :model/Database
-  [database]
-  (u/prog1 database
-    (set-new-database-permissions! database)
-    ;; schedule the Database sync & analyze tasks This will not do anything when coming
-    ;; from [[metabase-enterprise.advanced-config.file/initialize!]], since the scheduler will not be up yet. Thus, we
-    ;; call [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]] from [[metabase.core.core/init!]] to
-    ;; self-heal.
-    (check-and-schedule-tasks-for-db! (t2.realize/realize database))))
+(defn- set-new-databases-permissions!
+  "Give the groups the default permissions of the new `databases` but routing destinations, in one insert."
+  [databases]
+  (when-let [databases (not-empty (vec (remove is-destination? databases)))]
+    (let [set-defaults! (fn []
+                          (let [all-users-group          (perms/all-users-group)
+                                all-external-users-group (perms/all-external-users-group)
+                                non-magic-groups         (perms/non-magic-groups)
+                                non-admin-groups         (conj non-magic-groups all-users-group all-external-users-group)]
+                            (perms/set-default-databases-permissions! databases non-admin-groups)))]
+      (if (= 1 (count databases))
+        (perms/with-db-scoped-permissions-lock (u/the-id (first databases))
+          (set-defaults!))
+        (perms/with-global-permissions-lock
+          (set-defaults!))))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *normalizing-details*
@@ -222,94 +223,6 @@
            (map? (:details database))
            (not *normalizing-details*))
       normalize-details)))
-
-(defenterprise reconcile-workspace-database-refs-before-delete!
-  "Hook called from the `:model/Database` before-delete. In workspaces mode this refuses
-   the delete (409) if any non-`:unprovisioned` `workspace_database` rows reference `db-id`,
-   and explicitly removes any `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS
-   implementation is a no-op: OSS has nothing to reconcile."
-  metabase-enterprise.workspaces.models.workspace-database
-  [_db-id]
-  nil)
-
-(mu/defn- delete-database-fields!
-  [database-id :- ::lib.schema.id/database]
-  {:pre [(pos-int? database-id)]}
-  ;; Field has `define-before-delete` deleting children, but we'll delete them all at once because they refer same
-  ;; database - iteratively, deleting those that no one depends on first
-  ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
-  ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
-  ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
-  (when (warehouses.db/fields-exist-for-database? database-id)
-    (loop []
-      (let [deleted (warehouses.db/delete-childless-fields-for-database! database-id)]
-        (when (pos? deleted)
-          (recur))))))
-
-(def ^:private tombstone-chunk-size
-  "Card ids per [[metabase.search.core/after-commit!]] step when tombstoning a deleted database's cards."
-  1000)
-
-(t2/define-before-delete :model/Database
-  [{id :id, driver :engine, :as database}]
-  ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
-  ;; rows must be cleaned up explicitly, and non-:unprovisioned rows must refuse the delete.
-  ;; Runs before any other cleanup so we don't partially unwind sync tasks / secrets
-  ;; / fields for a Database whose deletion is about to be refused.
-  (reconcile-workspace-database-refs-before-delete! id)
-  (unschedule-tasks! database)
-  (secret/delete-orphaned-secrets! database)
-  (delete-database-fields! id)
-  (warehouses.db/delete-actions-for-database! id)
-  (warehouses.db/delete-transforms-for-database! id)
-  (cache/delete-target-configs! "database" [id])
-  ;; Cards are deleted by id in bounded statements, bypassing their row-level delete hook and delete capture, so
-  ;; their search documents are enumerated first.
-  ;; The database cascade then removes rows that hang off those cards, such as their remaining actions and model
-  ;; indexes, which Toucan never sees.
-  (let [{:keys [gone cascading]}
-        (reduce (fn [{:keys [gone cascading]} batch]
-                  (let [ids    (mapv :id batch)
-                        ;; A search error must not fail the database delete; those documents are left to the reindex.
-                        merged (try
-                                 (search/add-cascading-documents cascading (mapv #(t2/instance :model/Card %) batch))
-                                 (catch Exception e
-                                   (log/errorf e "Skipping search cascade enumeration for database %s" id)
-                                   cascading))]
-                    ;; A card that moved to another database since the scan survives, and keeps its documents.
-                    ;; Only a short count says one did, so a full batch skips the check.
-                    {:gone      (if (= (count ids) (warehouses.db/delete-cards! id ids))
-                                  (into gone ids)
-                                  (into gone (remove (warehouses.db/existing-card-ids ids)) ids))
-                     :cascading merged}))
-                {:gone [], :cascading nil}
-                (eduction
-                 (map t2.realize/realize)
-                 (partition-all 1000)
-                 (warehouses.db/card-ids-for-database-reducible id)))]
-    (doseq [card-ids (partition-all tombstone-chunk-size gone)]
-      (cache/delete-target-configs! "question" card-ids))
-    ;; Index mutations must see committed state. The shared ingestion queue serializes these tombstones after any
-    ;; older re-index that may already have read a soon-to-be-deleted card.
-    (when (or (seq gone) (seq cascading))
-      (apply search/after-commit! "database delete"
-             ;; Each chunk is its own step, and after-commit! catches each step's failure separately.
-             ;; Without an ingestion worker a step deletes at once, so a failed chunk costs only its own ids.
-             ;; With a worker the steps only queue tombstones, and the worker applies adjacent ones as one run.
-             (concat (for [chunk (partition-all tombstone-chunk-size gone)]
-                       (fn [] (search/delete! :model/Card chunk)))
-                     [(fn [] (search/reconcile-cascading-documents! cascading))]))))
-  (try
-    (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
-    (catch Throwable e
-      (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
-
-(defn- maybe-disable-uploads-for-all-dbs!
-  "This function maintains the invariant that only one database can have uploads_enabled=true."
-  [db]
-  (when (:uploads_enabled db)
-    (warehouses.db/disable-uploads-for-all-databases!))
-  db)
 
 (defn- assert-router-database-id-not-mutated!
   "Throws if `database`'s pending update changes `router_database_id`. A destination's link to its
@@ -446,34 +359,10 @@
        (get-in database [:details :let-user-control-scheduling])
        ;; if there is a changes in schedules, make sure it respects the settings
        (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
-      infer-db-schedules
-
-      (or (some? (:details changes))
-          (some? (:write_data_details changes))
-          (some? (:admin_details changes)))
-      secret/handle-incoming-client-secrets!
-
-      (:uploads_enabled changes)
-      maybe-disable-uploads-for-all-dbs!)))
-
-(t2/define-after-update :model/Database
-  [database]
-  ;; This will not do anything when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
-  ;; scheduler will not be up yet. Thus, we call [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]]
-  ;; from [[metabase.core/init!]] to self-heal.
-  (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
-
-(defn- check-router-not-destination
-  "Throws a 400 when the router of `database` is itself a destination, since a destination cannot route on to another
-  one."
-  [{:keys [router_database_id]}]
-  (when (and router_database_id (warehouses.db/router-database-id router_database_id))
-    (throw (ex-info (tru "A destination database cannot be the router of another destination database.")
-                    {:status-code 400}))))
+      infer-db-schedules)))
 
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status engine], :as database}]
-  (check-router-not-destination database)
   (validate-connection-details! engine database details-keys)
   (check-destination-overlays database database)
   (check-settings-driver-features database (changed-settings (:settings database) nil))
@@ -484,8 +373,6 @@
        (not details)             (assoc :details {})
        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
       (assoc :provider_name (provider-name database))
-      secret/handle-incoming-client-secrets!
-      maybe-disable-uploads-for-all-dbs!
       infer-db-schedules))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
@@ -495,22 +382,19 @@
   [database-id]
   (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
 
-(def ^{:arglists '([db-id])
-       :private  true} db-id->router-db-id
-  (mdb/memoize-for-application-db
-   (fn [db-id]
-     (warehouses.db/router-database-id db-id))))
+(defn- router-database-ids
+  "`{database-id router-id}` of the destinations among `databases`, read from the rows when they all have the column."
+  [databases]
+  (if (every? #(contains? % :router_database_id) databases)
+    (into {}
+          (keep (fn [{:keys [id router_database_id]}] (when router_database_id [id router_database_id])))
+          databases)
+    (warehouses.db/router-database-ids (into [] (comp (map :id) (distinct)) databases))))
 
 (defn- check-permission-keys
   "Throws unless `database` has the `:id` its permission hydrations read."
   [database]
   (api/check-500 (some? (:id database)) "No :id is set for a Database."))
-
-(defn- permission-database-id
-  "The id of the Database whose permissions answer for the Database with `database-id`: its router's for a
-  destination Database, and its own otherwise."
-  [database-id]
-  (or (db-id->router-db-id database-id) database-id))
 
 (defn- queryable-database-ids
   "The ids among `database-ids` of the Databases the current user can query: those with query builder access on some
@@ -542,17 +426,19 @@
   "Sets the flag `k` on each of `databases`: whether its permission Database, never the audit Database while the audit
   app is off, is among the ids `allowed-ids`, a function of the candidate ids, returns."
   [k databases allowed-ids]
-  (let [rows       (into [] (remove nil?) databases)
-        _          (run! check-permission-keys rows)
-        candidates (into #{}
-                         (comp (map :id) (remove should-read-audit-db?) (map permission-database-id)
-                               (remove should-read-audit-db?))
-                         rows)
-        allowed    (if (seq candidates) (allowed-ids candidates) #{})]
+  (let [rows          (into [] (remove nil?) databases)
+        _             (run! check-permission-keys rows)
+        routers       (when (seq rows) (router-database-ids rows))
+        permission-id (fn [database-id] (get routers database-id database-id))
+        candidates    (into #{}
+                            (comp (map :id) (remove should-read-audit-db?) (map permission-id)
+                                  (remove should-read-audit-db?))
+                            rows)
+        allowed       (if (seq candidates) (allowed-ids candidates) #{})]
     (for [database databases]
       (when database
         (let [answer (boolean (and (not (should-read-audit-db? (:id database)))
-                                   (contains? allowed (permission-database-id (:id database)))))]
+                                   (contains? allowed (permission-id (:id database)))))]
           (if (= k :can_read)
             (vary-meta database assoc k answer)
             (assoc database k answer)))))))
@@ -599,7 +485,7 @@
                    (check-permission-keys database)
                    (api/check-500 (contains? database :is_attached_dwh) "No :is_attached_dwh is set for a Database."))
         ids      (into [] (comp (map :id) (distinct)) rows)
-        writable (writable-database-ids ids (warehouses.db/router-database-ids ids))]
+        writable (writable-database-ids ids (if (seq rows) (router-database-ids rows) {}))]
     (for [database databases]
       (when database
         (assoc database k (database-writable? writable database))))))
@@ -654,6 +540,18 @@
   [_model k databases]
   (hydrate-router-user-attribute k databases))
 
+(defenterprise hydrate-router-anonymous-access-granted
+  "OSS implementation. Hydrates the router's anonymous-access grant on the databases."
+  metabase-enterprise.database-routing.models
+  [_k databases]
+  (for [database databases]
+    (assoc database :router_anonymous_access_granted nil)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :router_anonymous_access_granted]
+  "Batch hydrate the router's anonymous-access grant for the given `Database`."
+  [_model k databases]
+  (hydrate-router-anonymous-access-granted k databases))
+
 (defn sensitive-fields-for-db
   "Gets all sensitive fields that should be redacted in API responses for a given database. Delegates to
   driver.u/sensitive-fields using the given database's driver (if valid), so refer to that for full details. If a valid
@@ -668,12 +566,42 @@
         driver.u/default-sensitive-fields))
     driver.u/default-sensitive-fields))
 
+(defn- json-access
+  "What the JSON encoding of each of `databases` reads about the current user, answered once for all of them: whether
+  they can change it, and a delay of the setting visibilities they read."
+  [databases]
+  (let [rows         (into [] (remove nil?) databases)
+        ids          (into [] (comp (map u/the-id) (distinct)) rows)
+        writable     (if (seq rows) (writable-database-ids ids (router-database-ids rows)) #{})
+        visibilities (delay (setting/current-user-readable-visibilities))]
+    (for [database databases]
+      (when database
+        {:writable?    (database-writable? writable database)
+         :visibilities visibilities}))))
+
+(defn add-json-access
+  "Stores on each of `databases`, in its metadata, what its JSON encoding reads about the current user, answered once
+  for all of them."
+  [databases]
+  (map (fn [database access]
+         (cond-> database
+           database (vary-meta assoc ::json-access access)))
+       databases
+       (json-access databases)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :json_access]
+  "Stores on each of `databases`, in its metadata, what its JSON encoding reads about the current user, as
+  [[add-json-access]] does."
+  [_model _k databases]
+  (add-json-access databases))
+
 (methodical/defmethod mi/to-json :model/Database
   "When encoding a Database as JSON remove the `details`, `write_data_details`, `admin_details`, and
   `initial_sync_error` for any User without write perms for the DB. Users with write perms can see the details but remove anything resembling a
   password. No one gets to see this in an API response!
 
-  Also remove settings that the User doesn't have read perms for."
+  Also remove settings that the User doesn't have read perms for. Reads what [[add-json-access]] or the `:json_access`
+  hydration stored on `db`, and otherwise answers for `db` alone."
   [db json-generator]
   (letfn [(redact-sensitive-fields [details]
             (reduce
@@ -681,8 +609,8 @@
              details
              (sensitive-fields-for-db db)))]
     (next-method
-     (let [db-id (u/the-id db)
-           db    (if (not (database-writable? (writable-database-ids [db-id] {db-id (db-id->router-db-id db-id)}) db))
+     (let [{:keys [writable? visibilities]} (or (::json-access (meta db)) (first (json-access [db])))
+           db    (if (not writable?)
                    (do (log/debug "Fully redacting database details during json encoding.")
                        (dissoc db :details :write_data_details :admin_details :initial_sync_error))
                    (do (log/debug "Redacting sensitive fields within database details during json encoding.")
@@ -698,8 +626,7 @@
                      (m/filter-keys
                       (fn [setting-name]
                         (try
-                          (setting/can-read-setting? setting-name
-                                                     (setting/current-user-readable-visibilities))
+                          (setting/can-read-setting? setting-name @visibilities)
                           (catch Throwable e
                             ;; there is an known issue with exception is ignored when render API response (#32822)
                             ;; If you see this error, you probably need to define a setting for `setting-name`.
@@ -717,131 +644,9 @@
                        (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
      json-generator)))
 
-(def ^{:arglists '([table-id])} table-id->database-id
-  "Retrieve the `Database` ID for the given table-id."
-  (mdb/memoize-for-application-db
-   (fn [table-id]
-     {:pre [(integer? table-id)]}
-     (warehouses.db/table-database-id table-id))))
-
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defn- import-constantly
-  "A transform fn importing every value as `v`."
-  [v]
-  (fn [_store _entities values _opts]
-    (mapv (constantly v) values)))
-
-(def ^:private instance-local-settings
-  "Database-local settings that hold names in this instance's warehouse, not content: an export leaves them out, and an
-  import keeps the values of the database it updates. A copied workspace schema would point the target's transforms
-  at another schema while its remap rows still point at the old one."
-  [:database-workspace-schema])
-
-(def ^:private settings-transform
-  "The serialization transform of `:settings`, which leaves out [[instance-local-settings]]. An import normalizes the
-  value by the `:settings` schema of [[warehouses.schema/external-database]], as it would if `:settings` were copied.
-  Settings the model could not decrypt are the raw ciphertext string, which passes through unchanged."
-  {:export (fn [_store _rows values _opts]
-             (mapv #(if (map? %) (not-empty (apply dissoc % instance-local-settings)) %) values))
-   :import (fn [_store entities values _opts]
-             (mapv (fn [{db-name :name} settings]
-                     (let [settings (lib/normalize [:maybe ::warehouses.schema/database.settings] settings)
-                           target   (warehouses.db/database-settings-by-name db-name)
-                           kept     (when (map? target) (select-keys target instance-local-settings))]
-                       (if (map? settings)
-                         (not-empty (merge (apply dissoc settings instance-local-settings) kept))
-                         settings)))
-                   entities values))})
-
-(defmethod serialization/spec :model/Database [_]
-  {:schema    ::warehouses.schema/external-database
-   :identity  [:name]
-   :copy      [:auto_run_queries :caveats
-               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
-               :default_schema :name :points_of_interest :refingerprint :timezone :uploads_enabled
-               :uploads_schema_name :uploads_table_prefix]
-   :skip      [:cache_ttl :initial_sync_error :dbms_version :provider_name]
-   :transform {:details                     serialization/import-only-transform
-               :write_data_details          serialization/import-only-transform
-               :admin_details               serialization/import-only-transform
-               :cache_field_values_schedule serialization/import-only-transform
-               :metadata_sync_schedule      serialization/import-only-transform
-               :initial_sync_status         {:import (import-constantly "complete")}
-               :is_sample                   {:import (import-constantly false)}
-               :is_stub                     {:import (import-constantly false)}
-               :creator_id                  serialization/user-transform
-               :router_database_id          serialization/database-transform
-               :settings                    settings-transform}
-   :defaults  {:auto_run_queries true
-               :is_attached_dwh  false
-               :is_audit         false
-               :is_full_sync     true
-               :is_on_demand     false
-               :uploads_enabled  false}})
-
-(defmethod serialization/storage-paths :model/Database [_ entities _]
-  (mapv (fn [{:keys [name]}]
-          ;; directory for the database with same-named file inside.
-          [{:label "databases"} {:label name :key name} {:label name :key name}])
-        entities))
-
-(defn assert-not-h2!
-  "Validate db is not h2 for serialization import"
-  [row]
-  (when (= :h2 (keyword (:engine row)))
-    (throw (ex-info "h2 is not supported for serialization import"
-                    {:engine (:engine row) :name (:name row)}))))
-
-(defn assert-sqlite-not-hosted!
-  "Refuse to import a SQLite Database on a hosted instance. SQLite is blocked as a warehouse on Metabase Cloud (only
-  the bundled Sample Database, which serdes never exports, is allowed); serialization import is the one write path
-  that never tests the connection, so without this an archive could persist a SQLite row whose attacker-chosen `:db`
-  path is later opened by sync. Mirrors [[assert-not-h2!]]. Self-hosted instances import SQLite normally."
-  [row]
-  (when (and (= :sqlite (keyword (:engine row)))
-             (premium-features/is-hosted?))
-    (throw (ex-info "SQLite is not available as a data warehouse on Metabase Cloud."
-                    {:engine (:engine row) :name (:name row) :status-code 400}))))
-
-(defn- keep-local-audit-columns
-  "The load `item` of a Database, keeping the local values of the columns its entity lacks when it is the internal
-  analytics Database, whose engine, details and timezone belong to this instance."
-  [{:keys [entity local] :as item}]
-  (if (and local (:is_audit entity))
-    (update item :row #(apply dissoc % (remove (set (keys entity)) (keys %))))
-    item))
-
-(defmethod serialization/before-load :model/Database [_ items]
-  (doseq [{:keys [row]} items]
-    (assert-not-h2! row)
-    (assert-sqlite-not-hosted! row))
-  (mapv (fn [item]
-          (-> item
-              keep-local-audit-columns
-              (update :row #(cond-> %
-                              (:details %)            (update :details driver/sanitize-db-details)
-                              (:write_data_details %) (update :write_data_details driver/sanitize-db-details)
-                              (:admin_details %)      (update :admin_details driver/sanitize-db-details)))))
-        items))
-
-;;; ----------------------------------------------------- Search -----------------------------------------------------
-
-(search.spec/define-spec "database"
-  {:model        :model/Database
-   :attrs        {:archived      false
-                  :collection-id false
-                  :creator-id    false
-                  ;; not sure if this is another bug
-                  :database-id   false
-                  :created-at    true
-                  :updated-at    true}
-   :search-terms {:name        search.spec/explode-camel-case
-                  :description true}
-   :where [:and [:= :router_database_id nil] [:= :is_stub false]]
-   :render-terms {:initial-sync-status true}})
-
 ;;; ------------------------------------------------- Health checks --------------------------------------------------
+
+(declare update-databases!)
 
 (defn maybe-test-and-migrate-details!
   "When a driver has db-details to test and migrate:
@@ -856,7 +661,7 @@
                                   (let [keys-remaining (-> test-details keys set)
                                         [_ removed _] (data/diff keys-remaining (-> details keys set))]
                                     (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
-                                    (warehouses.db/set-database-details! (:id database) test-details)
+                                    (update-databases! [{:id (:id database) :details test-details}])
                                     test-details)
                                   (recur tail))
                                 ;; if we go through the list and we can't fine a working detail to test, keep original value
@@ -899,7 +704,7 @@
       (try
         (log/infof "Provider detection: updating database {:id %d} from '%s' to '%s'"
                    (:id database) (:provider_name database) provider)
-        (warehouses.db/set-database-provider-name! (:id database) provider)
+        (update-databases! [{:id (:id database) :provider_name provider}])
         (catch Throwable e
           (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message e)))))))
 
@@ -953,3 +758,359 @@
   (analytics/clear! :metabase-database/status)
   (doseq [database (health-check-candidates)]
     (health-check-database! database)))
+
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- check-routers-not-destinations
+  "Throws a 400 when the router of one of the Database `rows` is itself a destination, since a destination cannot route
+  on to another one: the routers are read in one query."
+  [rows]
+  (when-let [router-ids (not-empty (into [] (comp (keep :router_database_id) (distinct)) rows))]
+    (when (seq (warehouses.db/router-database-ids router-ids))
+      (throw (ex-info (tru "A destination database cannot be the router of another destination database.")
+                      {:status-code 400})))))
+
+(def ^:private uploads-disabled
+  "The changes that disable uploads on a Database."
+  {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil})
+
+(defn- disable-uploads-changes!
+  "Disable uploads on every Database that has them enabled, returning the change of each as `{id change}`, the change
+  a `{:previous-object :object}` map."
+  []
+  (let [enabled (warehouses.db/databases-with-uploads-enabled)]
+    (when (seq enabled)
+      (warehouses.db/disable-uploads-for-databases! (mapv :id enabled)))
+    (into {}
+          (map (fn [database]
+                 [(:id database) {:previous-object database
+                                  :object          (merge database uploads-disabled)}]))
+          enabled)))
+
+(defn- publish-database-updates!
+  "Publish the `:event/database-update` event of `changes`, `{id {:previous-object :object}}`, with the `:context` and
+  `:writer` of `opts`, leaving out the changes that change nothing."
+  [changes opts]
+  (events/publish-event! :event/database-update
+                         (events/update-event (update-vals changes :previous-object)
+                                              (mapv #(hash-map :id %) (keys changes))
+                                              (assoc opts :objects (update-vals changes :object)))))
+
+(mr/def ::write-opts
+  "The options of a write of Databases: `:writer` `:import` for a SerDes import, which refuses H2 and hosted SQLite and
+  sanitizes connection details; `:databases`, for an update, the Databases the caller already read, as the rows
+  before it, so that it reads none; `:context` for the events."
+  [:maybe [:map {:closed true}
+           [:writer    {:optional true} [:enum :import]]
+           [:databases {:optional true} [:sequential ::warehouses.schema/database]]
+           [:context   {:optional true} [:maybe :metabase.events.schema/context]]]])
+
+(defn- check-new-databases
+  "Throw unless every one of the new Database `rows` satisfies these rules, the routers read in one query:
+
+  - in an import, `writer` `:import`, it is not H2, nor SQLite on a hosted instance
+  - its router is not itself a destination"
+  [rows writer]
+  (when (= :import writer)
+    (run! warehouses.serialization/check-imported-row rows))
+  (check-routers-not-destinations rows))
+
+(defn- insert-databases!
+  "Insert the Database `rows`, sanitized in an import, `writer` `:import`, with their client secrets stored as Secrets,
+  and return the inserted instances, with the default permissions of each and their sync triggers scheduled."
+  [rows writer]
+  (let [rows (cond->> rows (= :import writer) (mapv warehouses.serialization/sanitized-row))
+        rows (mapv #(models.secret/handle-incoming-client-secrets! % nil) rows)]
+    (u/prog1 (vec (warehouses.db/insert-databases! rows))
+      (set-new-databases-permissions! <>)
+      (run! (comp check-and-schedule-tasks-for-db! t2.realize/realize) <>))))
+
+(defn- create-database-batch!
+  "Check and insert `rows`, one batch of a call, uploads disabled on every other Database first when one of them enables
+  them, and return the inserted Databases with the changes of the uploads disabled, `{id {:previous-object :object}}`."
+  [rows writer]
+  (check-new-databases rows writer)
+  (let [disabled (when (some :uploads_enabled rows)
+                   (disable-uploads-changes!))]
+    {:inserted (insert-databases! rows writer)
+     :disabled disabled}))
+
+(mu/defn create-databases! :- [:sequential ::warehouses.schema/database]
+  "Insert the Database `rows` in one transaction, publishing their create event, and return the inserted Databases:
+  uploads disabled on every other Database when one of them enables them, the groups given the default permissions of
+  each, and their sync triggers scheduled; an import refuses H2 and hosted SQLite and sanitizes the connection
+  details."
+  ([rows :- [:sequential ::warehouses.schema/database.create]]
+   (create-databases! rows nil))
+  ([rows                      :- [:sequential ::warehouses.schema/database.create]
+    {:keys [writer] :as opts} :- ::write-opts]
+   (t2/with-transaction [_conn]
+     (let [batches  (mapv #(create-database-batch! (vec %) writer) (partition-all mdb/create-partition-size rows))
+           inserted (into [] (mapcat :inserted) batches)]
+       (when (seq inserted)
+         (events/publish-event! :event/database-create (events/create-event inserted opts))
+         (publish-database-updates! (into {} (map :disabled) batches) opts))
+       inserted))))
+
+(def ^:private trigger-columns
+  "The columns whose change can move the sync triggers of a Database, as written or as its before-update derives the
+  schedules from them."
+  #{:details :engine :is_stub :is_full_sync :is_on_demand :metadata_sync_schedule :cache_field_values_schedule})
+
+(defn- add-client-secrets
+  "`changes` to the stored Database `stored`, with the client secrets of the connection details they change stored as
+  Secrets."
+  [stored changes]
+  (if-let [ks (not-empty (filterv #(and (some? (get changes %)) (not= (get changes %) (get stored %))) details-keys))]
+    (merge changes
+           (select-keys (models.secret/handle-incoming-client-secrets!
+                         (merge (select-keys stored [:name :engine]) (select-keys changes (into [:name :engine] ks)))
+                         stored)
+                        ks))
+    changes))
+
+(defn- add-update
+  "`changes`, `{id change}`, with the update of the Database `previous` to `object` added, a Database changed twice
+  keeping the row it had before the first change."
+  [changes previous object]
+  (update changes (:id object) (fn [change]
+                                 {:previous-object (or (:previous-object change) previous)
+                                  :object          object})))
+
+(defn- databases-by-ids
+  "The Databases with `ids` by id."
+  [ids]
+  (warehouses.db/databases-by-ids (vec ids)))
+
+(defn- stored-databases
+  "The stored Databases that `updates` change, by id: those of `held`, the Databases the caller read, and the others
+  read in one query."
+  [updates held]
+  (let [id->held (into {} (map (juxt :id identity)) held)
+        missing  (into [] (comp (map :id) (distinct) (remove id->held)) updates)]
+    (cond-> id->held
+      (seq missing) (merge (warehouses.db/databases-by-ids missing)))))
+
+(defn- check-database-updates
+  "Throw unless every one of `updates`, the id of one of the `id->stored` Databases and its changes, satisfies this
+  rule:
+
+  - in an import, `writer` `:import`, the Database it leaves is not H2, nor SQLite on a hosted instance"
+  [updates id->stored writer]
+  (when (= :import writer)
+    (doseq [row updates]
+      (warehouses.serialization/check-imported-row (merge (select-keys (get id->stored (:id row)) [:engine :name]) row)))))
+
+(defn- enables-uploads?
+  "Whether one of `updates`, the id of one of the `id->stored` Databases and its changes, enables uploads on it."
+  [updates id->stored]
+  (some (fn [{:keys [id uploads_enabled]}]
+          (and uploads_enabled (not (:uploads_enabled (id->stored id)))))
+        updates))
+
+(defn- prepared-updates!
+  "Each of `updates` whose Database is one of `id->stored`, sanitized in an import, `writer` `:import`, with the client
+  secrets of the connection details it changes stored as Secrets."
+  [updates id->stored writer]
+  (into []
+        (keep (fn [{:keys [id] :as row}]
+                (when-let [database (id->stored id)]
+                  (let [row (cond-> row (= :import writer) warehouses.serialization/sanitized-row)]
+                    (assoc (add-client-secrets database (dissoc row :id)) :id id)))))
+        updates))
+
+(defn- reschedule-databases!
+  "Reschedule the sync triggers of the Databases that `updates` change a trigger column of, returning those Databases
+  as read again, by id."
+  [updates]
+  (let [trigger-ids (into []
+                          (comp (filter (fn [row] (some #(contains? row %) trigger-columns)))
+                                (map :id)
+                                (distinct))
+                          updates)]
+    (u/prog1 (databases-by-ids trigger-ids)
+      (run! (comp check-and-schedule-tasks-for-db! t2.realize/realize) (vals <>)))))
+
+(defn- database-changes
+  "The changes, `{id {:previous-object :object}}`, of `disabled`, the uploads the update disabled, and of each of
+  `updates` over its `id->stored` Database, as `id->reread` after the update when it is there."
+  [disabled id->stored id->reread updates]
+  (reduce (fn [changes {:keys [id] :as row}]
+            (let [previous (or (get-in changes [id :object]) (id->stored id))]
+              (add-update changes (id->stored id) (or (get id->reread id) (merge previous (dissoc row :id))))))
+          (or disabled {})
+          updates))
+
+(defn- update-database-batch!
+  "Check and write `updates`, one batch of a call, with `held`, the Databases the caller read, uploads disabled on every
+  other Database first when one of them enables them and the sync triggers rescheduled, and return the changes of the
+  Databases, `{id {:previous-object :object}}`."
+  [updates held writer]
+  (let [id->stored (stored-databases updates held)]
+    (check-database-updates updates id->stored writer)
+    (let [disabled (when (enables-uploads? updates id->stored)
+                     (disable-uploads-changes!))
+          written  (prepared-updates! updates id->stored writer)]
+      (warehouses.db/update-databases! written)
+      (database-changes disabled id->stored (reschedule-databases! written) written))))
+
+(mu/defn update-databases! :- :nil
+  "Apply `updates`, each the `:id` of a Database and the columns to change, in one transaction, publishing their update
+  event: the stored rows are read unless the caller gives them as `:databases`, changes of connection details store
+  their client secrets as Secrets, enabling uploads disables them on every other Database, the sync triggers of the
+  Databases whose schedules can have moved are rescheduled, and an import refuses H2 and hosted SQLite and sanitizes
+  the connection details."
+  ([updates :- [:sequential ::warehouses.schema/database.update]]
+   (update-databases! updates nil))
+  ([updates                             :- [:sequential ::warehouses.schema/database.update]
+    {:keys [writer databases] :as opts} :- ::write-opts]
+   (t2/with-transaction [_conn]
+     (publish-database-updates! (into {}
+                                      (map #(update-database-batch! (vec %) databases writer))
+                                      (partition-all mdb/update-partition-size updates))
+                                (dissoc opts :databases)))
+   nil))
+
+(mu/defn disable-uploads! :- :int
+  "Disable uploads on every Database that has them enabled, returning the number updated."
+  []
+  (t2/with-transaction [_conn]
+    (let [changes (disable-uploads-changes!)]
+      (publish-database-updates! changes nil)
+      (count changes))))
+
+(defmulti delete-for-databases!
+  "Delete the rows of `model` that belong to the Database rows `databases`, through the write functions of `model`, as
+  [[delete-databases!]] deletes those Databases. Each model whose rows belong to a Database implements it in its own
+  model file."
+  {:arglists '([model databases])}
+  (fn [model _databases] model))
+
+(def ^:private refusing-follower-models
+  "The models that implement [[delete-for-databases!]] and may refuse the delete, so they go before the sync triggers
+  are unscheduled, as a WorkspaceDatabase in use refuses it, which only an EE build has."
+  (if config/ee-available? [:model/WorkspaceDatabase] []))
+
+(def ^:private follower-models
+  "The other models that implement [[delete-for-databases!]], in the order their rows are deleted."
+  [:model/Field :model/Action :model/Transform :model/CacheConfig :model/Card])
+
+(defn- delete-followers!
+  "Delete the rows of each of `models`, in order, that belong to the Database rows `databases`."
+  [models databases]
+  (doseq [model models]
+    (t2/resolve-model model)
+    (delete-for-databases! model databases)))
+
+(defn- notify-database-deleted!
+  "Tells the driver of `database` that it is being deleted, so that it releases what it holds for it, such as its
+  connection pool; a failure is logged."
+  [{driver :engine, :as database}]
+  (try
+    (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
+    (catch Throwable e
+      (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
+
+(mu/defn call-locking-databases
+  "Call `thunk` in a transaction that first locks the Database rows with the ids `(database-ids)` returns, as their
+  delete does, so that a write over the rows of many of their Tables never waits for that delete while holding some of
+  them; within a transaction the caller opened, whose locks are its own business, call it as it is."
+  [database-ids :- ifn?
+   thunk        :- ifn?]
+  (if (mdb/in-transaction?)
+    (thunk)
+    (t2/with-transaction [_conn]
+      (when-let [ids (seq (database-ids))]
+        (warehouses.db/lock-databases! (vec ids)))
+      (thunk))))
+
+(defn- delete-database-content-and-publish!
+  "Lock the Database rows `databases`, then delete their Secrets and what else belongs to them, with their sync triggers
+  unscheduled once the followers that may refuse the delete have accepted it, then publish their delete event and tell
+  their drivers."
+  [databases]
+  (warehouses.db/lock-databases! (mapv :id databases))
+  (delete-followers! refusing-follower-models databases)
+  (run! unschedule-tasks! databases)
+  (models.secret/delete-secrets-for-databases! databases)
+  (delete-followers! follower-models databases)
+  (events/publish-event! :event/database-delete (events/delete-event databases))
+  (run! notify-database-deleted! databases))
+
+(mu/defn delete-databases! :- :nil
+  "Delete the Databases with `database-ids` in one transaction, after their Secrets and what else belongs to them (see
+  [[delete-for-databases!]]), publishing their delete event and telling their drivers before their own statements."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (mdb/delete-batched! :model/Database (distinct database-ids)
+                       {:before-delete delete-database-content-and-publish!}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Database [_model]
+  {:skip?     false
+   :transform warehouses.app-db-copy/transform-database})
+
+(defmethod change-log/spec :model/Database [_model]
+  {:track [:name :description :details :engine :is_sample :is_full_sync :points_of_interest :caveats
+           :metadata_sync_schedule :cache_field_values_schedule :timezone :is_on_demand :auto_run_queries
+           :refingerprint :cache_ttl :initial_sync_status :creator_id :settings :dbms_version :is_audit
+           :uploads_enabled :uploads_schema_name :uploads_table_prefix :is_attached_dwh :router_database_id
+           :provider_name :write_data_details :is_stub :default_schema :initial_sync_error :admin_details]
+   :skip  []})
+
+(defmethod serialization/spec :model/Database [_]
+  {:schema        ::warehouses.schema/external-database
+   :identity      [:name]
+   :copy          [:auto_run_queries :caveats
+                   :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
+                   :default_schema :name :points_of_interest :refingerprint :timezone :uploads_enabled
+                   :uploads_schema_name :uploads_table_prefix]
+   :skip          [:cache_ttl :initial_sync_error :dbms_version :provider_name]
+   :transform     {:details                     serialization/import-only-transform
+                   :write_data_details          serialization/import-only-transform
+                   :admin_details               serialization/import-only-transform
+                   :cache_field_values_schedule serialization/import-only-transform
+                   :metadata_sync_schedule      serialization/import-only-transform
+                   :initial_sync_status         {:import warehouses.serialization/import-complete}
+                   :is_sample                   {:import warehouses.serialization/import-false}
+                   :is_stub                     {:import warehouses.serialization/import-false}
+                   :creator_id                  serialization/user-transform
+                   :router_database_id          serialization/database-transform
+                   :settings                    warehouses.serialization/settings-transform}
+   :defaults      {:auto_run_queries true
+                   :is_attached_dwh  false
+                   :is_audit         false
+                   :is_full_sync     true
+                   :is_on_demand     false
+                   :uploads_enabled  false}
+   :storage-paths warehouses.serialization/storage-paths
+   :before-load   warehouses.serialization/before-load
+   :insert!       #(create-databases! % {:writer :import})
+   :update!       #(do (update-databases! % {:writer :import}) %)
+   :delete!       delete-databases!
+   :rows-by-refs  serialization/database-rows-by-refs})
+
+(defmethod audit/spec :model/Database [_model]
+  {:track            [:id :name :engine]
+   :track-redacted   [:admin_details :auto_run_queries :cache_field_values_schedule :cache_ttl :caveats :creator_id
+                      :default_schema :description :details :initial_sync_error :is_attached_dwh :is_audit
+                      :is_full_sync :is_on_demand :is_sample :is_stub :metadata_sync_schedule :points_of_interest
+                      :provider_name :refingerprint :router_database_id :settings :uploads_enabled
+                      :uploads_schema_name :uploads_table_prefix :write_data_details]
+   :skip             [:dbms_version :initial_sync_status :timezone]
+   :context-details? true})
+
+(defmethod search/spec :model/Database
+  [_model]
+  {"database"
+   {:attrs        {:archived      false
+                   :collection-id false
+                   :creator-id    false
+                   ;; not sure if this is another bug
+                   :database-id   false
+                   :created-at    true
+                   :updated-at    true}
+    :search-terms {:name        search/explode-camel-case
+                   :description true}
+    :where [:and [:= :router_database_id nil] [:= :is_stub false]]
+    :render-terms {:initial-sync-status true}}})

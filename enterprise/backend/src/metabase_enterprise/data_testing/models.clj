@@ -1,17 +1,25 @@
 (ns metabase-enterprise.data-testing.models
   (:require
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
+   [metabase-enterprise.data-testing.models.test-suite :as test-suite]
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase.audit-app.core :as audit-app]
+   [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase-enterprise.data-testing.util :as data-testing.util]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util :as u]
@@ -28,29 +36,39 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/events)
   (derive ::saved-test))
 
-(defmethod events/spec :model/TransformTest
-  [_model]
-  {:create :event/transform-test-create
-   :update :event/transform-test-update
-   :delete :event/transform-test-delete})
+(def now-column
+  "A Toucan transform for the `now` column of a saved test: a value of [[::data-testing.schema/now]], normalized and
+  validated on its way in and normalized on its way out."
+  {:in  #(some->> % (lib/normalize ::data-testing.schema/now) (mu/validate-throw ::data-testing.schema/now))
+   :out #(some->> % (lib/normalize ::data-testing.schema/now))})
 
-(mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
-  "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
-  way out."
-  [schema :- :keyword]
-  {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
-   :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})
+(def now-transform
+  "The serialization transform of a saved test's `now`, written in UTC so that a moment exports as the same text on
+  every app DB."
+  {:export (fn [store batch values opts]
+             (serialization/export-dates store batch
+                                         (mapv #(some-> % t/instant (t/offset-date-time (t/zone-offset 0))) values)
+                                         opts))
+   :import serialization/import-dates})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/TransformTest :transform]
   [_original-model _k]
   :model/Transform)
 
 (t2/deftransforms :model/TransformTest
-  {:inputs       (json-column ::data-testing.schema/inputs)
-   :expectations (json-column ::data-testing.schema/expectations)})
+  {:now          now-column
+   :inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
+   :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
+
+(mu/defn- remove-deleted-tests-from-suites! :- :nil
+  "Remove the deleted `test-type` tests with `entity-ids` from every suite, publishing the delete event of their
+  members, and do nothing on an instance where remote sync keeps synced content read-only."
+  [test-type  :- ::data-testing.schema/test-type
+   entity-ids :- [:sequential :string]]
+  (when-not (or (remote-sync/read-only?) (empty? entity-ids))
+    (test-suite/delete-test-suite-members-for-tests! test-type (vec entity-ids))))
 
 (defn with-last-runs
   "`tests`, saved tests of `test-type`, each with its newest run, or nil, under `:last_run`."
@@ -68,199 +86,304 @@
   [_model _k transform-tests]
   (with-last-runs :transform transform-tests))
 
-(defmethod audit-app/model-details :model/TransformTest
-  [transform-test _event-type]
-  (select-keys transform-test [:transform_id :name :description]))
-
-;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(t2/define-before-delete :model/TransformTest [transform-test]
-  (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
-  transform-test)
-
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defn can-run-native-query?
   "Whether the current user may run native SQL against the Database with `db-id`, as the input and expectation SQL of a
   test does."
   [db-id]
-  (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))
+  (contains? (query-perms/native-query-database-ids [db-id]) db-id))
 
-(defn query-subject-allows?
-  "Whether `subject-check` holds for `subject`, a card or a segment, hydrated with `k`, and the current user may run
-  `query`, the subject's query, and write the native SQL of a test against the Database of `query`. False when
-  `subject` is nil."
-  [subject-check k subject query]
-  (boolean
-   (when subject
-     (and (subject-check (t2/hydrate subject k))
-          ;; A run compiles the query with the cards, snippets and segments it includes, and a run's errors can quote
-          ;; their SQL, so the user must be allowed to run the query, not only to read the subject.
-          (query-perms/can-run-query? query)
-          (or (mi/superuser?)
-              (some-> (not-empty query) lib/database-id can-run-native-query?))))))
+(defn query-database-id
+  "The id of the Database of `query`, a card's or a segment's query, or nil when it has none."
+  [query]
+  (some-> (not-empty query) lib/database-id))
 
-(defn- can-save-for-transform?
-  "Whether the current user may save or delete a test of `transform`: they may edit it, as `transform-writable?` says,
-  and run the native SQL of a test against its source Database, as `can-run-native-query?` says."
-  [transform transform-writable? can-run-native-query?]
-  (boolean
-   (and transform
-        transform-writable?
-        (or (mi/superuser?)
-            (some-> (transforms-base.i/source-db-id transform) can-run-native-query?)))))
+(def ^:private native-columns
+  "The columns of a saved test holding SQL or rows that a run sends to the subject's Database: a change to them needs
+  native queries there."
+  [:inputs :expectations])
 
-(mu/defn- can-save? :- :boolean
-  "Whether the current user may save or delete a test of the Transform `transform-id` (see [[can-save-for-transform?]])."
-  [transform-id :- ::lib.schema.id/transform]
-  (let [transform (data-testing.db/transform transform-id)]
-    (can-save-for-transform? transform (some-> transform (t2/hydrate :can_write) mi/can-write?) can-run-native-query?)))
+(defn- subject-native?
+  "Whether the current user, unless a superuser, may run native SQL against the Database that `db-id` gives for
+  `subject`, false when there is no subject."
+  [db-id subject]
+  (boolean (and subject
+                (or (mi/superuser?)
+                    (some-> (db-id subject) can-run-native-query?)))))
 
-(mu/defn can-run-test? :- :boolean
-  "Whether the current user may run a test of the Transform `transform-id`: they may read it, and run the native SQL of
-  a test against its source Database."
-  [transform-id :- ::lib.schema.id/transform]
-  (let [transform (data-testing.db/transform transform-id)]
+(defn- subject-can-query?
+  "Whether the current user may run `subject`, as its `:can_query` says, false when there is no subject."
+  [subject]
+  (boolean (some-> subject (t2/hydrate :can_query) mi/can-query?)))
+
+(defn- subject-writable-where-read-only?
+  "Whether `subject` may take tests on an instance where remote sync keeps synced content read-only, which then needs
+  that the current user may edit it, as its `:can_write` says, since that refuses a synced subject there."
+  [subject]
+  (boolean (or (not (remote-sync/read-only?))
+               (some-> subject (t2/hydrate :can_write) mi/can-write?))))
+
+(defn can-create-test?
+  "Whether the current user may create a test of `subject`: they may run native SQL against its Database, which
+  `db-id` gives, run the subject, and edit it on a read-only instance."
+  [subject db-id]
+  (and (subject-native? db-id subject)
+       (subject-can-query? subject)
+       (subject-writable-where-read-only? subject)))
+
+(defn can-update-test?
+  "Whether the current user may apply `changes` to the saved `test`, whose subject `subject-key` names and
+  `load-subject` loads by id: `writable?` holds, a change to its inputs or expectations needs native SQL on the
+  Database of its new subject, which `db-id` gives, and a change of subject needs that they may run the new one and,
+  on a read-only instance, edit it."
+  [test changes {:keys [subject-key load-subject db-id writable?]}]
+  (let [changes?    #(and (contains? changes %) (not= (get changes %) (get test %)))
+        new-subject (delay (some-> (get changes subject-key (get test subject-key)) load-subject))]
     (boolean
-     (and transform
-          (mi/can-read? (t2/hydrate transform :can_read))
-          (or (mi/superuser?)
-              (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
+     (and writable?
+          (or (not-any? changes? native-columns)
+              (subject-native? db-id @new-subject))
+          (or (not (changes? subject-key))
+              (and (subject-can-query? @new-subject)
+                   (subject-writable-where-read-only? @new-subject)))))))
 
-(methodical/defmethod t2/simple-hydrate [:model/TransformTest :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (data-testing.db/transform (:transform_id instance)) (t2/hydrate :can_read) mi/can-read?))))
+(defn assoc-subject-answers
+  "Each of the saved `tests`, nil ones left nil, with under `k` whether the subject its `subject-key` names among
+  `subjects` exists and passes `subject-check` once all are hydrated with `subject-k`."
+  [tests k {:keys [subject-key subjects subject-k subject-check]}]
+  (let [id->subject (u/index-by :id (t2/hydrate subjects subject-k))]
+    (for [saved-test tests]
+      (when saved-test
+        (assoc saved-test k (boolean (some-> (get id->subject (subject-key saved-test)) subject-check)))))))
+
+(defn assoc-can-query
+  "Each of the saved `tests`, nil ones left nil, with under `k` whether the current user reads the test, as its
+  `:can_read` says, and may run its subject, the one its `subject-key` names among `subjects`, as the subject's
+  `:can_query` says, all answered at once."
+  [tests k subject-key subjects]
+  (let [id->subject (u/index-by :id (t2/hydrate subjects :can_query))]
+    (for [saved-test (t2/hydrate tests :can_read)]
+      (when saved-test
+        (assoc saved-test k (boolean (and (mi/can-read? saved-test)
+                                          (some-> (get id->subject (subject-key saved-test)) mi/can-query?))))))))
+
+(defn with-readable-subjects
+  "Add to each of the saved `tests` whether the current user can read its subject, as `:can_read` in its metadata, the
+  `subjects` of all the tests loaded together, the subject of a test being the one whose id its `subject-key` holds,
+  and none, which no one can read, when it has been deleted."
+  [k tests subject-key subjects]
+  (let [id->subject (u/index-by :id (t2/hydrate subjects :can_read))]
+    (for [saved-test tests]
+      (when saved-test
+        (vary-meta saved-test assoc k (boolean (some-> (get id->subject (subject-key saved-test)) mi/can-read?)))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_read]
+  "Add whether the current user can read the transform of each transform test, loading the transforms at once."
+  [_model k transform-tests]
+  (with-readable-subjects k transform-tests :transform_id
+    (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
-  "Add whether the current user can write each transform test, loading their transforms at once and checking each
-  source Database once."
+  "Add whether the current user can write each transform test: they may edit its transform, on an instance where remote
+  sync does not keep synced content read-only, loading the transforms at once."
   [_model k transform-tests]
-  (mi/instances-with-hydrated-data
-   transform-tests k
-   #(let [transforms (u/index-by :id (t2/hydrate (data-testing.db/transforms
-                                                  (into [] (comp (keep :transform_id) (distinct)) transform-tests))
-                                                 :can_write))
-          native?    (memoize can-run-native-query?)]
-      (into {}
-            (map (fn [{:keys [id transform_id]}]
-                   [id (and (not (remote-sync/read-only?))
-                            (let [transform (get transforms transform_id)]
-                              (can-save-for-transform? transform (:can_write transform) native?)))]))
-            (remove nil? transform-tests)))
-   :id
-   {:default false}))
+  (let [read-only? (remote-sync/read-only?)]
+    (assoc-subject-answers transform-tests k
+                           {:subject-key   :transform_id
+                            :subjects      (data-testing.db/transforms
+                                            (into [] (comp (keep :transform_id) (distinct)) transform-tests))
+                            :subject-k     :can_write
+                            :subject-check #(and (not read-only?) (mi/can-write? %))})))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_query]
+  "Add whether the current user may run each transform test: they read it and may run its transform, as its
+  `:can_query` says, loading the transforms at once."
+  [_model k transform-tests]
+  (assoc-can-query transform-tests k :transform_id
+                   (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
 
 (defmethod mi/can-create? :model/TransformTest
   [_model instance]
-  (can-save? (:transform_id instance)))
+  (can-create-test? (some-> (:transform_id instance) data-testing.db/transform) transforms-base.i/source-db-id))
 
-(defn- unsynced-change-writable?
-  "Whether the current user can apply `changes` that touch no synced column of `instance`, which a read-only instance
-  still accepts."
-  [instance changes]
-  (and (not (remote-sync/synced-changes? :model/TransformTest instance changes))
-       (can-save? (:transform_id instance))))
+(defn- transform-writable?
+  "Whether the current user may edit the Transform `transform-id`."
+  [transform-id]
+  (boolean (some-> transform-id data-testing.db/transform (t2/hydrate :can_write) mi/can-write?)))
 
 (defmethod mi/can-update? :model/TransformTest
   [instance changes]
-  (and (or (mi/can-write? instance)
-           (unsynced-change-writable? instance changes))
-       (can-save? (:transform_id changes (:transform_id instance)))))
+  (can-update-test? instance changes
+                    {:subject-key  :transform_id
+                     :load-subject data-testing.db/transform
+                     :db-id        transforms-base.i/source-db-id
+                     :writable?    (or (mi/can-write? instance)
+                                       (and (not (remote-sync/synced-changes? :model/TransformTest instance changes))
+                                            (transform-writable? (:transform_id instance))))}))
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
-(mu/defn create-transform-test! :- ::data-testing.schema/transform-test
-  "Insert the TransformTest `transform-test` returning the inserted test."
-  [transform-test :- [:merge
-                      ::data-testing.schema/transform-test.create
-                      [:map {:closed true}
-                       [:creator_id ::lib.schema.id/user]]]]
-  (data-testing.db/insert-transform-test! transform-test))
+(def ^:private saved-test-topics
+  "The lifecycle event topics of each saved test model."
+  {:model/TransformTest {:create :event/transform-test-create
+                         :update :event/transform-test-update
+                         :delete :event/transform-test-delete}
+   :model/CardTest      {:create :event/card-test-create
+                         :update :event/card-test-update
+                         :delete :event/card-test-delete}
+   :model/SegmentTest   {:create :event/segment-test-create
+                         :update :event/segment-test-update
+                         :delete :event/segment-test-delete}})
 
-(mu/defn update-transform-test! :- :nil
-  "Apply `changes` to the TransformTest with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::data-testing.schema/transform-test.update]
-  (data-testing.db/update-transform-test! id changes)
-  nil)
+(mu/defn create-saved-tests! :- [:sequential ::data-testing.schema/saved-test]
+  "Insert the `rows` of the saved tests of `model` in one transaction, publishing their create event, and return the
+  inserted tests."
+  [model :- :keyword
+   rows  :- [:sequential ::data-testing.schema/saved-test.create]]
+  (mdb/create-batched! model rows
+                       {:after-create #(events/publish-event! (get-in saved-test-topics [model :create])
+                                                              (events/create-event %))}))
 
-(mu/defn delete-transform-test! :- :nil
-  "Delete the TransformTest with `id`."
-  [id :- ms/PositiveInt]
-  (data-testing.db/delete-transform-test! id)
-  nil)
+(mu/defn update-saved-tests! :- :nil
+  "Apply the changes in each of `rows`, the id of a test of `model` and the columns to change, in one transaction,
+  publishing their update event."
+  [model :- :keyword
+   rows  :- [:sequential ::data-testing.schema/saved-test.update]
+   opts  :- :metabase.events.schema/write-opts]
+  (mdb/update-batched! model rows
+                       {:reread?      true
+                        :after-update (fn [updates id->stored id->updated]
+                                        (events/publish-event! (get-in saved-test-topics [model :update])
+                                                               (events/update-event id->stored updates
+                                                                                    (assoc opts :objects id->updated))))}))
 
-(defenterprise delete-transform-tests!
-  "Deletes the tests of the transform `transform-id` whatever the token says,
+(defn- delete-and-publish!
+  "Set the test id of the runs of the deleted `test-type` `tests` of `model` to nil and remove them from the suites, then
+  publish their delete event."
+  [test-type model tests]
+  (data-testing.models.data-test-run/clear-test-ids-of-runs! test-type (mapv :id tests))
+  (remove-deleted-tests-from-suites! test-type (mapv :entity_id tests))
+  (events/publish-event! (get-in saved-test-topics [model :delete]) (events/delete-event tests)))
+
+(mu/defn delete-saved-tests! :- :nil
+  "Delete the saved tests of `model`, a `test-type` test, with `ids`, in one transaction, publishing their delete
+  event right before the statement, so that a run of a deleted test no longer names it and a suite no longer holds
+  it."
+  [test-type :- ::data-testing.schema/test-type
+   model     :- :keyword
+   ids       :- [:sequential ms/PositiveInt]]
+  (mdb/delete-batched! model ids {:before-delete #(delete-and-publish! test-type model %)}))
+
+(mu/defn create-transform-tests! :- [:sequential ::data-testing.schema/transform-test]
+  "Insert the TransformTests `rows`, returning the inserted tests, each row normalized and validated by the column
+  transforms of the model."
+  [rows :- [:sequential ::data-testing.schema/transform-test.create]]
+  (create-saved-tests! :model/TransformTest rows))
+
+(mu/defn update-transform-tests! :- :nil
+  "Apply the changes in each of `rows`, the id of a TransformTest and the columns to change, which the column
+  transforms of the model normalize and validate, publishing one update event for all."
+  ([rows :- [:sequential ::data-testing.schema/transform-test.update]]
+   (update-transform-tests! rows nil))
+  ([rows :- [:sequential ::data-testing.schema/transform-test.update]
+    opts :- :metabase.events.schema/write-opts]
+   (update-saved-tests! :model/TransformTest rows opts)))
+
+(mu/defn delete-transform-tests! :- :nil
+  "Delete the TransformTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (delete-saved-tests! :transform :model/TransformTest ids))
+
+(defenterprise delete-transform-tests-for-transforms!
+  "Deletes the tests of the transforms with `transform-ids` whatever the token says,
   since the rows outlive the feature."
   :feature :none
-  [transform-id]
-  (data-testing.db/delete-transform-tests! transform-id))
+  [transform-ids]
+  (delete-transform-tests! (data-testing.db/saved-test-ids-of-subjects :model/TransformTest :transform_id (vec transform-ids))))
+
+(defmethod data-testing.test-type/spec :transform [_test-type]
+  {:model      :model/TransformTest
+   :run-topics {:start   :event/transform-test-run-start
+                :timeout :event/transform-test-run-timeout}
+   :subject    #(data-testing.db/transform (:transform_id %))})
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
-  [:transform_id :name :description :inputs :expectations])
+  [:transform_id :name :description :now :inputs :expectations])
 
-(defmethod revision/serialize-instance :model/TransformTest
-  [_model _id transform-test]
-  (select-keys transform-test revision-columns))
-
-(defmethod revision/revisions-readable? :model/TransformTest
-  [_model objects]
-  (mapv mi/can-read? (t2/hydrate (mapv #(t2/instance :model/TransformTest %) objects) :can_read)))
-
-(defmethod revision/check-revert-available ::saved-test
-  [_model]
+(defn check-revert-available
+  "Throw a 402 unless the token has the premium feature that a revert of a saved test needs."
+  []
   (premium-features/assert-has-feature :transforms-testing (tru "Transforms Testing")))
 
-(defmethod revision/revert-to-revision! :model/TransformTest
-  [_model id _user-id serialized-instance]
-  (update-transform-test! id (select-keys serialized-instance revision-columns)))
+(defn validates-edit?
+  "Whether an edit that sets the keys `edited-keys` of a saved test, whose subject `subject-key` names, is checked as
+  a new test would be: it sets the subject, or one of the [[data-testing.runner/definition-keys]]."
+  [subject-key edited-keys]
+  (boolean (some (set (cons subject-key data-testing.runner/definition-keys)) edited-keys)))
 
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+(defn- comparable
+  "`v` as compared for a revert: a moment as its instant, since the app DB can read back another offset."
+  [v]
+  (cond-> v
+    (instance? java.time.OffsetDateTime v) t/instant))
+
+(defn reverted-keys
+  "The keys of `snapshot` whose values a revert of the saved test `current` to `snapshot` changes."
+  [current snapshot]
+  (into []
+        (remove #(= (comparable (get current %)) (comparable (get snapshot %))))
+        (keys snapshot)))
+
+(defn- revert-transform-test!
+  [id _user-id snapshot]
+  (update-transform-tests! [(assoc snapshot :id id)] {:writer :revert}))
+
+(defn- check-revert
+  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
+  [id _user-id snapshot]
+  (check-revert-available)
+  (when (validates-edit? :transform_id (reverted-keys (data-testing.db/transform-test id) snapshot))
+    (data-testing.errors/refusing
+     "transform-test"
+     #(data-testing.runner/validate-test :transform
+                                         (data-testing.db/transform (:transform_id snapshot))
+                                         (data-testing.runner/test-definition snapshot))))
+  snapshot)
+
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformTest [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/TransformTest [_]
-  {:schema    ::data-testing.schema/external-transform-test
-   :copy      [:entity_id :name :description :inputs :expectations]
-   :transform {:transform_id (serialization/fk-transform :model/Transform)
-               :creator_id   serialization/user-transform}})
-
-(defn subject-storage-paths
-  "The storage path of each of `tests`, saved tests whose `subject-key` holds the entity id of a row of
-  `subject-model`: the path of the subject's file, as a directory, then the test's name. `fk-models` maps each column of
-  the subject that the subject's storage path reads to the model the column references."
-  [tests subject-model subject-key fk-models]
-  (let [rows     (vals (serialization/rows-by-refs subject-model
-                                                   (into #{} (keep subject-key) tests)
-                                                   (into [:entity_id :name] (keys fk-models))))
-        fk-refs  (into {}
-                       (map (fn [[k model]]
-                              [k (zipmap (map :entity_id rows)
-                                         (serialization/column-refs serialization/app-db-store model (map k rows)))]))
-                       fk-models)
-        subjects (into {}
-                       (map (fn [{eid :entity_id subject-name :name}]
-                              [eid (into {:serdes/meta [{:model (name subject-model)}]
-                                          :name        subject-name
-                                          :entity_id   eid}
-                                         (map (fn [[k refs]] [k (get refs eid)]))
-                                         fk-refs)]))
-                       rows)
-        paths    (serialization/batch-storage-paths (mapv #(get subjects (subject-key %)) tests))]
-    (mapv (fn [saved-test path]
-            (conj path {:label (:name saved-test) :key (:entity_id saved-test)}))
-          tests paths)))
-
-(defmethod serialization/storage-paths :model/TransformTest [_ entities _ctx]
-  (subject-storage-paths entities :model/Transform :transform_id {:collection_id :model/Collection}))
-
-(defmethod serialization/import-dependencies :model/TransformTest [_ entities]
-  (mapv (fn [{:keys [transform_id]}]
-          #{[:model/Transform transform_id]})
-        entities))
+  {:schema              ::data-testing.schema/external-transform-test
+   :insert!             create-transform-tests!
+   :update!             #(update-transform-tests! % {:writer :import})
+   :delete!             delete-transform-tests!
+   :copy                [:entity_id :name :description :inputs :expectations]
+   :transform           {:transform_id (serialization/fk-transform :model/Transform)
+                         :creator_id   serialization/user-transform
+                         :now          now-transform}
+   :storage-paths       data-testing.serialization/transform-test-storage-paths
+   :import-dependencies data-testing.serialization/transform-test-import-dependencies})
 
 (defmethod remote-sync/spec :model/TransformTest
   [_model]
   {:synced-items         data-testing.db/synced-transform-test-items
    :synced-filter-clause data-testing.db/synced-transform-tests-clause})
+
+(defmethod revisions/spec :model/TransformTest [_model]
+  {:track         revision-columns
+   :skip          [:creator_id :entity_id]
+   :schema        ::data-testing.schema/transform-test.revision
+   :authorize     :snapshot
+   :before-revert check-revert
+   :revert!       revert-transform-test!})
+
+(defmethod audit/spec :model/TransformTest [_model]
+  {:track          [:transform_id :name :description :now]
+   :track-redacted [:creator_id :expectations :inputs]
+   :skip           [:entity_id]})

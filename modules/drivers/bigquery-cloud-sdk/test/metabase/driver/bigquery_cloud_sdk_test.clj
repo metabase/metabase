@@ -1114,7 +1114,7 @@
                                                 (reset! captured-sql sql)
                                                 (throw (Exception. "Done.")))]
             (try
-              (distinct-batch/run-distinct-batch table [field])
+              (distinct-batch/run-distinct-batch :bigquery-cloud-sdk table [field])
               (catch Exception _)))
           (is (str/includes? (str @captured-sql) "`data-project.my_dataset.my_table`")))))))
 

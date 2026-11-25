@@ -2,8 +2,15 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.config.core :as config]
+   [metabase.events.test-util :as events.tu]
+   [metabase.metabot.models.metabot-message :as metabot-message]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(def ^:private per-row-update-growth
+  "The statements an update of one more row adds when the rows are in different stored states, so that Toucan writes
+  them one at a time: the before-update SELECT and the UPDATE, 2 for each of the 4 rows between 2 and 6."
+  8)
 
 (deftest after-select-migrates-v1-data-test
   (mt/with-temp [:model/MetabotConversation conv {}
@@ -111,3 +118,43 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid metabot_message.data"
                                 (t2/update! :model/MetabotMessage :id id {:data [{:type "text"}]})))
           (is (pos? (t2/update! :model/MetabotMessage :id id {:data [{:type "text" :text "hi"}]}))))))))
+
+(deftest create-with-different-columns-keeps-defaults-test
+  (mt/with-temp [:model/MetabotConversation conv {}]
+    (mt/with-model-cleanup [:model/MetabotMessage]
+      (let [[plain explicit] (metabot-message/create-metabot-messages!
+                              [{:conversation_id (:id conv) :profile_id "p" :total_tokens 0 :role :user :data [] :data_version 2}
+                               {:conversation_id (:id conv) :profile_id "p" :total_tokens 0 :role :assistant :data [] :data_version 2 :finished false}])]
+        (testing "rows come back in the order given"
+          (is (= [:user :assistant] [(:role plain) (:role explicit)])))
+        (testing "a row that leaves a column out keeps its default"
+          (is (=? {:finished true}
+                  (t2/query-one {:select [:finished] :from [:metabot_message] :where [:= :id (:id plain)]}))))
+        (testing "a row that gives the column keeps its value"
+          (is (=? {:finished false}
+                  (t2/query-one {:select [:finished] :from [:metabot_message] :where [:= :id (:id explicit)]}))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {}]
+    (mt/with-model-cleanup [:model/MetabotMessage]
+      (let [row     (fn [finished?] {:conversation_id conversation-id :role "user" :profile_id "test" :data [] :data_version 2 :total_tokens 0 :finished finished?})
+            create! (fn [n] (events.tu/statement-count! #(metabot-message/create-metabot-messages! (vec (repeat n (row false))))))
+            mixed   (fn [n]
+                      (mapv :id (metabot-message/create-metabot-messages! (vec (mapcat (fn [_] [(row true) (row false)]) (range n))))))]
+        (testing "creating messages"
+          (create! 1)
+          (is (= (create! 2) (create! 6))))
+        (testing "updating messages that are in different states"
+          (let [counted (fn [ids]
+                          (events.tu/statement-count!
+                           #(metabot-message/update-metabot-messages! (mapv (fn [row-id] (assoc {:finished true :total_tokens 7} :id row-id)) ids))))]
+            (counted (mixed 1))
+            (is (<= (counted (mixed 3)) (+ (counted (mixed 1)) per-row-update-growth)))))
+        (testing "soft-deleting messages, some of them already soft-deleted by the same user"
+          (let [counted (fn [n]
+                          (let [ids (mixed n)]
+                            (metabot-message/soft-delete-metabot-messages! {:id (vec (take n ids))} (mt/user->id :rasta))
+                            (events.tu/statement-count!
+                             #(metabot-message/soft-delete-metabot-messages! {:id ids} (mt/user->id :rasta)))))]
+            (counted 1)
+            (is (= (counted 1) (counted 3)))))))))

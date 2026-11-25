@@ -70,7 +70,7 @@ config:
   settings:
     admin-email: null
     aggregated-query-row-limit: null
-    ai-features-enabled: true
+    ai-features-enabled?: true
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -105,7 +105,7 @@ config:
     application-name: Metabase
     attachment-row-limit: null
     attachment-table-row-limit: 20
-    bcc-enabled: true
+    bcc-enabled?: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
     check-for-updates: true
@@ -142,7 +142,7 @@ config:
     email-smtp-security-override: ssl
     email-smtp-username: null
     email-smtp-username-override: null
-    embedded-metabot-enabled: true
+    embedded-metabot-enabled?: true
     embedding-app-origins-interactive: null
     embedding-app-origins-sdk: ''
     embedding-homepage: hidden
@@ -184,7 +184,7 @@ config:
     jwt-group-sync: false
     jwt-identity-provider-uri: null
     jwt-shared-secret: null
-    jwt-user-provisioning-enabled: true
+    jwt-user-provisioning-enabled?: true
     landing-page: ''
     landing-page-illustration: default
     landing-page-illustration-custom: null
@@ -208,7 +208,7 @@ config:
     ldap-trust-store: null
     ldap-user-base: null
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
-    ldap-user-provisioning-enabled: true
+    ldap-user-provisioning-enabled?: true
     license-token-missing-banner-dismissal-timestamp: []
     llm-anthropic-api-base-url: https://api.anthropic.com
     llm-anthropic-api-key: null
@@ -263,18 +263,18 @@ config:
     metabot-advanced-permissions: false
     metabot-chat-system-prompt: ''
     metabot-chat-turn-async-timeout-ms: 1800000
-    metabot-enabled: true
+    metabot-enabled?: true
     metabot-icon: metabot
     metabot-limit-reset-rate: monthly
     metabot-limit-unit: tokens
     metabot-name: Metabot
     metabot-nlq-system-prompt: ''
-    metabot-query-execution-enabled: true
+    metabot-query-execution-enabled?: true
     metabot-quota-reached-message: You have reached your AI usage limit for the current period. Please contact your administrator.
-    metabot-recent-views-enabled: true
+    metabot-recent-views-enabled?: true
     metabot-show-illustrations: true
     metabot-slack-signing-secret: null
-    metabot-sql-execution-enabled: true
+    metabot-sql-execution-enabled?: true
     metabot-sql-system-prompt: ''
     mfa-challenge-signing-key: null
     mfa-enforcement: 'off'
@@ -291,7 +291,7 @@ config:
     notification-system-event-thread-pool-size: 5
     notification-thread-pool-size: 3
     oidc-providers: []
-    oidc-user-provisioning-enabled: true
+    oidc-user-provisioning-enabled?: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     pivot-max-result-rows: 200000
@@ -335,13 +335,13 @@ config:
     saml-keystore-password: changeit
     saml-keystore-path: null
     saml-slo-enabled: false
-    saml-user-provisioning-enabled: true
+    saml-user-provisioning-enabled?: true
     scan-max-fields-per-table: 10000
     scim-enabled: null
     sdk-encryption-validation-key: null
     search-language: null
     search-typeahead-enabled: true
-    send-new-sso-user-admin-email: null
+    send-new-sso-user-admin-email?: null
     session-cookie-samesite: lax
     session-cookies: false
     session-timeout: null
@@ -381,7 +381,7 @@ config:
     transforms-enabled: null
     unaggregated-query-row-limit: null
     uploads-settings: null
-    usage-metadata-enabled: false
+    usage-metadata-enabled?: false
     usage-metadata-last-completed-day: null
     usage-metadata-retention-days: 90
     usage-metadata-schedule: 0 0 2 * * ? *

@@ -41,7 +41,6 @@ const DEFAULT_PURE_CALLEES = [
     ],
   },
   { module: "@mantine/dates", names: ["extend"] },
-  { module: "@emotion/styled", names: "*" },
   { module: "classnames", names: "*" },
   { module: "clsx", names: "*" },
   { module: "ttag", names: ["t", "c", "jt", "ngettext", "msgid"] },
