@@ -840,8 +840,41 @@
            (sql-jdbc.common/handle-additional-options details)
            (set-local-infile false))))))
 
+(defn- row-count-estimates
+  "A map of table name to row count estimate, from the `TABLE_NAME` and `TABLE_ROWS` of `rows` of
+  `information_schema.TABLES`. A table with no estimate or an estimate of 0 is left out, as on Postgres: InnoDB often
+  gives 0 for a table it has not analyzed."
+  [rows]
+  (into {}
+        (keep (fn [{:keys [table_name table_rows]}]
+                (when (some-> table_rows pos?)
+                  [table_name (long table_rows)])))
+        rows))
+
+(defn- query-row-count-estimates
+  "The row count estimates of the base tables of the database of `conn`. The schema is the database name without a
+  Vitess routing suffix such as `@replica`, which `DATABASE()` can return (see the `active-tables` method below)."
+  [^java.sql.Connection conn]
+  (row-count-estimates
+   (jdbc/query {:connection conn}
+               [(str "SELECT TABLE_NAME AS table_name, TABLE_ROWS AS table_rows FROM information_schema.TABLES"
+                     " WHERE TABLE_SCHEMA = SUBSTRING_INDEX(DATABASE(), '@', 1) AND TABLE_TYPE = 'BASE TABLE'")])))
+
+(defn- with-row-count-estimates
+  "`tables` with the `:estimated_row_count` of each base table. The estimate is extra information, so a failure to
+  read it is logged and the tables are returned without it."
+  [conn tables]
+  (let [estimates (try
+                    (query-row-count-estimates conn)
+                    (catch Throwable e
+                      (log/warn e "Could not read the row count estimates of the tables")
+                      {}))]
+    (eduction (map (fn [table]
+                     (m/assoc-some table :estimated_row_count (get estimates (:name table)))))
+              tables)))
+
 (defmethod sql-jdbc.sync/active-tables :mysql
-  [& args]
+  [driver conn & args]
   ;; Pass `nil` for the catalog filter (the default). Our MySQL/MariaDB JDBC driver defaults to
   ;; `nullCatalogMeansCurrent=true`, so a `nil` catalog already scopes `getTables()` to the connection's
   ;; current (bound) database — it does NOT enumerate every DB the user can read.
@@ -856,7 +889,7 @@
   ;;
   ;; (If no database is bound, current-DB scoping resolves to nothing and `getTables` returns zero tables;
   ;; this fails safe and is unreachable in practice since a MySQL Database always has `:dbname`.)
-  (apply sql-jdbc.sync/post-filtered-active-tables args))
+  (with-row-count-estimates conn (apply sql-jdbc.sync/post-filtered-active-tables driver conn args)))
 
 (defmethod sql-jdbc.sync/excluded-schemas :mysql
   [_]

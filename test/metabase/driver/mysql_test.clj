@@ -1479,3 +1479,15 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest table-row-count-estimates-test
+  (mt/test-driver :mysql
+    (testing "describe-database gives the row count estimate of each base table, from information_schema.TABLES"
+      (let [tables (into [] (:tables (driver/describe-database :mysql (lib.metadata/database (mt/metadata-provider)))))
+            venues (m/find-first (comp #{"venues"} :name) tables)]
+        (is (pos-int? (:estimated_row_count venues)))))
+    (testing "an empty table gets no estimate, as on Postgres, since InnoDB often gives 0 for a table it has not analyzed"
+      (is (= {"venues" 100}
+             (#'mysql/row-count-estimates [{:table_name "venues" :table_rows 100}
+                                           {:table_name "empty" :table_rows 0}
+                                           {:table_name "a_view" :table_rows nil}]))))))
