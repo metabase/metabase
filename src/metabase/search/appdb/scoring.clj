@@ -21,7 +21,8 @@
                                        1))))
 
 ;; MySQL's `name` column has the table's accent-insensitive `utf8mb4_unicode_ci` collation, while its text match is
-;; accent-sensitive. A binary collation on the lower-cased title keeps the title scorers case-insensitive only.
+;; accent-sensitive. A binary collation on the lower-cased title makes the title scorers ignore case but not accents.
+;; MySQL's `LOWER` turns a final sigma into `σ`, unlike the JVM, so a Greek title ending in `Σ` misses these scores.
 (defn- normalized-title-expr []
   (let [title (search.scoring/normalize-text-expr :search_index.name)]
     (if (= :mysql (mdb/db-type))

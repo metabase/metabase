@@ -55,7 +55,7 @@
 ;; over a `BIT` column, and MariaDB sometimes as the byte `"0"` or `"1"`. Clojure treats each of them as true.
 ;; PostgreSQL and H2 return booleans.
 (defn- coerce-booleans
-  "The row with each boolean attribute it has converted by [[api/bit->boolean]]."
+  "The row, with [[api/bit->boolean]] applied to each boolean attribute it has."
   [row]
   (reduce (fn [row column]
             (cond-> row

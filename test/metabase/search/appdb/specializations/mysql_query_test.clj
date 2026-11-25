@@ -77,15 +77,16 @@
     (is (= [[{:tokens ["revenue"], :phrase? false, :negated? false, :prefix? true}]]
            (#'mysql/query-terms "revenue -")))
     (is (= [] (#'mysql/query-terms "-_")))
-    ;; The emoji's variation selector (U+FE0F) is a combining mark, which does not start a word.
     (is (= [[{:tokens ["revenue"], :phrase? false, :negated? false, :prefix? true}]]
-           (#'mysql/query-terms "revenue 📈️")))
-    (is (= "nrevenue srevenue qrevenue"
-           (:prefix_terms (#'mysql/entry-fields {:name "revenue 📈️"} 84))))
+           (#'mysql/query-terms "revenue 📈\uFE0F")))
     (is (= [] (#'mysql/query-terms "& or \"&\"")))))
 
 (deftest ^:parallel combining-marks-test
   (testing "vowel signs and the virama stay inside a Devanagari word"
     (is (= ["मासिक" "हिन्दी"] (#'mysql/words "मासिक हिन्दी")))
     (is (= #{"nमासिक" "nहिन्दी" "sमासिक" "sहिन्दी" "qमासिक" "qहिन्दी"}
-           (set (str/split (:prefix_terms (#'mysql/entry-fields {:name "मासिक हिन्दी"} 84)) #" "))))))
+           (set (str/split (:prefix_terms (#'mysql/entry-fields {:name "मासिक हिन्दी"} 84)) #" ")))))
+  (testing "a mark alone, such as an emoji's variation selector, is not a word"
+    (is (= ["revenue"] (#'mysql/words "revenue 📈\uFE0F")))
+    (is (= "nrevenue srevenue qrevenue"
+           (:prefix_terms (#'mysql/entry-fields {:name "revenue 📈\uFE0F"} 84))))))
