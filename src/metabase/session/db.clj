@@ -257,8 +257,8 @@
 
 (mu/defn permission-preview-user-info
   "The person and the admin of the preview with `token-hash`, or nil when there is none, it has expired, its person is
-  no longer an active non-admin user (a stand-in user is never active), or its admin's Session is no longer live. The
-  person's fields are the ones a Session's lookup returns."
+  no longer an active non-admin user (a stand-in user is never active), its admin's Session is no longer live, or its
+  admin is no longer an admin. The person's fields are the ones a Session's lookup returns."
   [token-hash                   :- :string
    liveness                     :- ::session.schema/liveness-params
    enable-advanced-permissions? :- :boolean]
@@ -280,7 +280,8 @@
                                 [:or
                                  [:= :person.is_active true]
                                  [:= :person.type "permission-preview"]]
-                                [:= :person.is_superuser false]]
+                                [:= :person.is_superuser false]
+                                [:= :user.is_superuser true]]
                                (session.query/live-session-conditions liveness))
               :limit     [:inline 1]}
        enable-advanced-permissions?

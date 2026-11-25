@@ -182,6 +182,29 @@
       (is (= "preview-token-invalid"
              (:error-code (as-preview token :get 401 "user/current")))))))
 
+(defn- demote-by-user-update! [admin-id]
+  (mt/user-http-request :crowberto :put 200 (str "user/" admin-id) {:is_superuser false}))
+
+(defn- demote-by-membership-removal! [admin-id]
+  (mt/user-http-request :crowberto :delete 204
+                        (str "permissions/membership/"
+                             (t2/select-one-pk :model/PermissionsGroupMembership
+                                               :user_id admin-id
+                                               :group_id (:id (perms/admin-group))))))
+
+(deftest demoted-admin-voids-the-preview-test
+  (doseq [[way demote!] {"updating the user"                      demote-by-user-update!
+                         "removing the Administrators membership" demote-by-membership-removal!}]
+    (testing (str "once the admin is demoted by " way ", the token is refused")
+      (mt/with-temp [:model/User {admin-id :id} {}]
+        (mt/user-http-request :crowberto :post 200 "permissions/membership"
+                              {:group_id (:id (perms/admin-group)) :user_id admin-id})
+        (let [{:keys [token]} (start-preview! (insert-session! admin-id) (mt/user->id :rasta))]
+          (is (= "rasta@metabase.com" (:email (as-preview token :get 200 "user/current"))))
+          (demote! admin-id)
+          (is (= "preview-token-invalid"
+                 (:error-code (as-preview token :get 401 "user/current")))))))))
+
 (deftest deactivated-person-voids-the-preview-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (let [{:keys [token]} (start-preview! (insert-admin-session!) user-id)]
