@@ -10,6 +10,7 @@ import { MetricExplorerPrototype } from "./explorer/MetricExplorerPrototype";
 import { MetricDependencyTreePrototype } from "./tree/MetricDependencyTreePrototype";
 import { MetricTreeHiFiPrototype } from "./tree/MetricTreeHiFiPrototype";
 import { MetricTreePrototype } from "./tree/MetricTreePrototype";
+import { MetricsMapPrototype } from "./tree/MetricsMapPrototype";
 
 export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
   {
@@ -59,6 +60,14 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
       "On a metric's Dependencies tab: how it breaks down into measures, with values and trends, in the schema viewer's visual language. Click a card for details.",
     group: "Iteration 1",
     Component: MetricTreeHiFiPrototype,
+  },
+  {
+    id: "metrics-map",
+    name: "Metrics map",
+    description:
+      "Every metric on one top-down canvas, each above the metrics and measures it's built from, like a company KPI tree. Select a card to light up what drives it and what it drives.",
+    group: "Iteration 1",
+    Component: MetricsMapPrototype,
   },
   {
     id: "metric-dependency-tree",

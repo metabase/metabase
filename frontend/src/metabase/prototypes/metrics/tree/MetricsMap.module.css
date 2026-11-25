@@ -1,0 +1,30 @@
+.dimmed {
+  opacity: 0.35;
+}
+
+.search {
+  width: 18rem;
+}
+
+.toolbar {
+  padding: 0.375rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+  background: var(--mb-color-core-white);
+  box-shadow: 0 0.25rem 1.25rem 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Doubled class beats `.card.selected` from the HiFi module. */
+.metricCard.metricCard {
+  --node-border-color: var(--mb-color-core-brand);
+}
+
+.measureCard.measureCard {
+  --node-border-color: var(--mb-color-core-summarize);
+}
+
+.measureCard.measureSelected {
+  box-shadow:
+    0 0 0 1px var(--mb-color-core-summarize),
+    0 0.25rem 1.25rem 0 rgba(0, 0, 0, 0.05);
+}
