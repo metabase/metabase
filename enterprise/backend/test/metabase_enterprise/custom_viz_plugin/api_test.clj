@@ -11,7 +11,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -57,8 +56,7 @@
   [rows f]
   (let [now (java.time.OffsetDateTime/now)
         ids (mapv #(t2/insert-returning-pk! (t2/table-name :model/CustomVizPlugin)
-                                            (merge {:created_at now :updated_at now :status "active" :enabled true
-                                                    :entity_id (u/generate-nano-id)} %))
+                                            (merge {:created_at now :updated_at now :status "active" :enabled true} %))
                   rows)]
     (try
       (f ids)

@@ -1,9 +1,10 @@
 (ns metabase-enterprise.custom-viz-plugin.serialization
   "The SerDes of CustomVizPlugins. A plugin serializes as `custom_viz_plugins/<slug>/custom_viz_plugin.yaml` with its
-  unpacked bundle beside it, and is identified by its `entity_id`, which the YAML carries as `data_app.yaml` does.
-  `enabled` is per-instance, so it isn't serialized."
+  unpacked bundle beside it, and is identified by its `identifier`, as it is wherever it is registered: two instances
+  that each registered a plugin hold the same one. `enabled` is per-instance, so it isn't serialized."
   (:require
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase.util :as u])
   (:import
@@ -81,12 +82,12 @@
     (:serdes/resources entity) (assoc :files (vec (sort (keys (:serdes/resources entity)))))))
 
 (defn storage-paths
-  "The storage path of each of the CustomVizPlugin `entities`, slugified and deduplicated by `entity_id` like a
+  "The storage path of each of the CustomVizPlugin `entities`, slugified and deduplicated by identifier like a
   collection's directory, so identifiers that slugify alike (`my-viz`, `my_viz`) get distinct directories."
   [entities _ctx]
-  (mapv (fn [{:keys [identifier entity_id]}]
+  (mapv (fn [{:keys [identifier]}]
           [{:label "custom_viz_plugins"}
-           {:label identifier :key entity_id}
+           {:label identifier :key identifier}
            {:label "custom_viz_plugin"}])
         entities))
 
@@ -129,16 +130,36 @@
                             identifier cache/max-bundle-mib)
                     {:identifier identifier :status-code 413}))))
 
+(defn entity-ref
+  "The `:entity-ref` of CustomVizPlugins: the identifier in lower case, since identifiers are unique ignoring case, so
+  a plugin under another case of its identifier is the same plugin. Surrounding whitespace is kept, since identifiers
+  may differ only in it."
+  [entity]
+  (some-> (:identifier entity) u/lower-case-en))
+
+(defn rows-by-refs
+  "The `:rows-by-refs` of CustomVizPlugins, whose refs are their identifiers in lower case."
+  [refs columns]
+  (if-let [identifiers (not-empty (filterv some? refs))]
+    (into {}
+          (map (juxt entity-ref identity))
+          (custom-viz-plugin.db/plugins-by-lower-case-identifiers
+           identifiers
+           (some->> columns (concat [:id :identifier]) distinct vec)))
+    {}))
+
 (defn- check-registration!
   "Throws unless the imported plugin `row`, loaded over its `local` row or as new when nil, may hold its identifier."
   [{:keys [identifier]} local]
   ;; a `:` identifier never gets here: the spec's `:schema` refuses it, aborting the import
   ;; the unique index would refuse the write anyway, but with an error that doesn't say what to do
   (cache/check-identifier-free! identifier (:id local)
-                                (format (str "A custom viz plugin \"%s\" already exists on this instance. Delete it and pull "
-                                             "again: cards reference the plugin by its identifier, so they keep working "
-                                             "once it is pulled.")
-                                        identifier)))
+                                (format "A custom viz plugin \"%s\" already exists on this instance." identifier)))
+
+(defn- dev-only?
+  "Whether the plugin `local` holds no bundle and is served from a dev URL."
+  [local]
+  (and (nil? (:bundle_hash local)) (some? (:dev_bundle_url local))))
 
 (defn before-load
   "The CustomVizPlugin load `items`, refusing ones that can't be registered, without the bundles their local rows
@@ -149,7 +170,10 @@
           (check-bundle-size! row)
           (if (and local (some-> ^bytes (:bundle row) cache/bytes-hash (= (:bundle_hash local))))
             (update item :row dissoc :bundle)
-            (update item :row #(merge % (bundle-columns %)))))
+            ;; a dev-only plugin becomes the file's plugin, so it stops being served from its dev URL; a plugin with a
+            ;; bundle keeps the dev URL an admin set over it
+            (update item :row #(cond-> (merge % (bundle-columns %))
+                                 (dev-only? local) (assoc :dev_bundle_url nil)))))
         items))
 
 (defn after-load

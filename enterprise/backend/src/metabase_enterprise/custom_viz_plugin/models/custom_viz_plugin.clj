@@ -56,12 +56,11 @@
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
-  (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/timestamped?))
 
 (def non-blob-columns
   "Columns to select for normal plugin metadata reads, excluding the raw bundle blob."
-  [:id :entity_id :identifier :display_name :icon :status :error_message :enabled
+  [:id :identifier :display_name :icon :status :error_message :enabled
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
 
@@ -186,7 +185,8 @@
 
 (defmethod serialization/spec :model/CustomVizPlugin [_]
   {:schema            ::custom-viz-plugin.schema/external-custom-viz-plugin
-   :copy              [:entity_id :identifier]
+   :identity          [:identifier]
+   :copy              [:identifier]
    :skip              [;; derived from the bundle at import time, exactly as on upload
                        :display_name :icon :manifest :metabase_version :bundle_hash :status :error_message
                        ;; admin-owned state of this instance
@@ -198,6 +198,8 @@
    :after-export-keys [:files]
    :storage-paths     custom-viz-plugin.serialization/storage-paths
    :resource-paths    custom-viz-plugin.serialization/resource-paths
+   :entity-ref        custom-viz-plugin.serialization/entity-ref
+   :rows-by-refs      custom-viz-plugin.serialization/rows-by-refs
    :before-load       custom-viz-plugin.serialization/before-load
    :after-load        custom-viz-plugin.serialization/after-load
    :insert!           create-custom-viz-plugins!
@@ -207,7 +209,7 @@
 (defmethod audit/spec :model/CustomVizPlugin [_model]
   {:track          [:identifier :display_name :status :enabled :bundle_hash]
    :track-redacted [:bundle :dev_bundle_url :error_message :icon :manifest :metabase_version]
-   :skip           [:entity_id]})
+   :skip           []})
 
 (defmethod remote-sync/spec :model/CustomVizPlugin
   [_model]

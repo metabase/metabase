@@ -125,20 +125,18 @@
           icon       "<svg xmlns=\"http://www.w3.org/2000/svg\"><title>Thumbs up – 👍</title></svg>"]
       (.mkdirs plugin-dir)
       (spit (io/file plugin-dir "custom_viz_plugin.yaml")
-            (yaml/generate-string {:entity_id "tHuMbSpLuGiN00000001x"
-                                   :identifier "thumbs"
+            (yaml/generate-string {:identifier "thumbs"
                                    :files ["metabase-plugin.json" "dist/index.js" "dist/assets/icon.svg"]
                                    :serdes/meta [{:model "CustomVizPlugin"}]}))
       (spit (io/file plugin-dir "metabase-plugin.json") "{\"name\": \"thumbs\", \"icon\": \"icon.svg\"}")
       (io/make-parents (io/file plugin-dir "dist" "assets" "icon.svg"))
       (spit (io/file plugin-dir "dist" "assets" "icon.svg") icon)
-      (let [ingested (first (ingest/ingest-many (ingest/ingest-yaml dump-dir) [[:model/CustomVizPlugin "tHuMbSpLuGiN00000001x"]]))]
+      (let [ingested (first (ingest/ingest-many (ingest/ingest-yaml dump-dir) [[:model/CustomVizPlugin "thumbs"]]))]
         (is (= icon (get-in ingested [:serdes/resources "dist/assets/icon.svg"])) "a declared file is read as UTF-8")
         (is (contains? (:serdes/resources ingested) "dist/index.js") "missing resources retain their keys")
         (is (nil? (get-in ingested [:serdes/resources "dist/index.js"])))
         (testing "the stored entity is the YAML as written"
-          (is (= {:entity_id "tHuMbSpLuGiN00000001x"
-                  :identifier "thumbs"
+          (is (= {:identifier "thumbs"
                   :files ["metabase-plugin.json" "dist/index.js" "dist/assets/icon.svg"]
                   :serdes/meta [{:model "CustomVizPlugin"}]}
                  (serialization/storable (dissoc ingested :serdes/resources)))))))))

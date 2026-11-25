@@ -11,7 +11,7 @@
 
 (def ^:private non-blob-columns
   "Columns to select for normal plugin reads, excluding the bundle blob."
-  [:model/CustomVizPlugin :id :entity_id :identifier :display_name :icon :status :error_message :enabled
+  [:model/CustomVizPlugin :id :identifier :display_name :icon :status :error_message :enabled
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
 
@@ -73,6 +73,14 @@
   "Delete the CustomVizPlugins with `plugin-ids`, returning the number deleted."
   [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/CustomVizPlugin :id [:in [:auto/param %]]) plugin-ids))
+
+(mu/defn plugins-by-lower-case-identifiers :- [:sequential :map]
+  "The plugins whose identifier in lower case is one of `identifiers`, with only `columns` unless nil."
+  [identifiers :- [:sequential {:min 1} :string]
+   columns     :- [:maybe [:sequential :keyword]]]
+  (app-db/select-batched #(t2/select (if columns (into [:model/CustomVizPlugin] columns) :model/CustomVizPlugin)
+                                     {:where [:in [:lower :identifier] [:auto/param %]]})
+                         identifiers))
 
 (mu/defn synced-custom-viz-plugin-items :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin]
   "The CustomVizPlugins with `ids`, as remote sync lists them."

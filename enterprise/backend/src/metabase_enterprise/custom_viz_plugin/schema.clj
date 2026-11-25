@@ -28,7 +28,6 @@
   "What an update of a custom viz plugin takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
    [:id               ms/PositiveInt]
-   [:entity_id        {:optional true} [:maybe :string]]
    [:identifier       {:optional true} ::custom-viz-plugin.identifier]
    [:display_name     {:optional true} [:maybe :string]]
    [:status           {:optional true} [:maybe [:or :keyword :string]]]
@@ -60,7 +59,7 @@
   files, and those files as resources."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys ::custom-viz-plugin [:entity_id :identifier]]
+    [:select-keys ::custom-viz-plugin [:identifier]]
     [:map {:closed true}
      [:serdes/meta      {:optional true} ::models.schema/external-meta]
      [:files            {:optional true} [:sequential :string]]

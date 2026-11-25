@@ -18,7 +18,6 @@
 (def ^:private not-translated-models
   "The models with entity ids whose entity ids the API does not translate."
   #{:model/CardTest
-    :model/CustomVizPlugin
     :model/DataApp
     :model/EmbeddingTheme
     :model/ExplorationPage

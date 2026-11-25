@@ -14,7 +14,6 @@
    [metabase-enterprise.serialization.v2.storage.tar :as storage.tar]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.json :as json]
    [metabase.util.yaml :as yaml]
@@ -71,14 +70,12 @@
   (update-vals (cache/bundle->files (t2/select-one-fn :bundle :model/CustomVizPlugin :identifier identifier)) seq))
 
 (defn- write-plugin-files!
-  "Write a plugin's YAML, under a fresh entity_id unless `yaml-fields` gives one, and its `files` (path -> bytes or
-  string) into `dir` under `custom_viz_plugins`."
+  "Write a plugin's YAML and its `files` (path -> bytes or string) into `dir` under `custom_viz_plugins`."
   [dump-dir dir yaml-fields files]
   (let [plugin-dir (io/file dump-dir "custom_viz_plugins" dir)]
     (.mkdirs plugin-dir)
     (spit (io/file plugin-dir "custom_viz_plugin.yaml")
           (yaml/generate-string (merge {:serdes/meta [{:model "CustomVizPlugin"}]
-                                        :entity_id   (u/generate-nano-id)
                                         :files       (vec (sort (keys (plugin-files "_"))))}
                                        yaml-fields)))
     (doseq [[path content] files
@@ -90,13 +87,12 @@
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-export-"]
       (let [files  (plugin-files "Thumbs")
-            plugin (insert-plugin! "Thumbs" (cv.tu/make-tgz-bytes (assoc files "dist/index.js.map" "{}" "README.md" "x"))
+            _      (insert-plugin! "Thumbs" (cv.tu/make-tgz-bytes (assoc files "dist/index.js.map" "{}" "README.md" "x"))
                                    :enabled false)
             dir    (io/file dump-dir "custom_viz_plugins" "thumbs")]
         (export! dump-dir)
         (testing "the YAML declares the files, not this instance's `enabled` state"
           (is (= {:serdes/meta [{:model "CustomVizPlugin"}]
-                  :entity_id   (:entity_id plugin)
                   :identifier  "Thumbs"
                   :files       (vec (sort (keys files)))}
                  (yaml/from-file (io/file dir "custom_viz_plugin.yaml")))))
@@ -165,8 +161,8 @@
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
       (let [healthy (cache/files->bundle (plugin-files "thumbs"))
-            {:keys [id entity_id]} (insert-plugin! "thumbs" healthy :icon "icon.svg" :metabase_version ">=1.60")]
-        (write-plugin-files! dump-dir "thumbs" {:identifier "thumbs" :entity_id entity_id} {})
+            {:keys [id]} (insert-plugin! "thumbs" healthy :icon "icon.svg" :metabase_version ">=1.60")]
+        (write-plugin-files! dump-dir "thumbs" {:identifier "thumbs"} {})
         (import! dump-dir)
         (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
           (is (=? {:status           :error
@@ -187,13 +183,46 @@
         (t2/delete! :model/CustomVizPlugin :id (:id plugin))
         (import! dump-dir)
         (let [imported (t2/select-one :model/CustomVizPlugin :identifier "Calendar Heatmap")]
-          (testing "the plugin keeps its entity_id and its files"
-            (is (= (:entity_id plugin) (:entity_id imported)))
+          (testing "the plugin keeps its files"
             (is (= (update-vals files seq) (stored-files "Calendar Heatmap"))))
           (testing "importing again updates the row in place and settles the hash"
             (import! dump-dir)
-            (is (= ((juxt :id :entity_id :bundle_hash) imported)
-                   ((juxt :id :entity_id :bundle_hash) (t2/select-one :model/CustomVizPlugin :identifier "Calendar Heatmap"))))))))))
+            (is (= ((juxt :id :bundle_hash) imported)
+                   ((juxt :id :bundle_hash) (t2/select-one :model/CustomVizPlugin :identifier "Calendar Heatmap"))))))))))
+
+(deftest import-over-a-plugin-registered-separately-test
+  (testing "two instances that each registered the same plugin hold the same plugin"
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (ts/with-random-dump-dir [dump-dir "custom-viz-upgrade-"]
+        (let [staging-files (assoc (plugin-files "thumbs") "dist/index.js" (.getBytes "export default 2;" "UTF-8"))
+              staging       (insert-plugin! "thumbs" (cv.tu/make-tgz-bytes staging-files))]
+          (export! dump-dir)
+          (t2/delete! :model/CustomVizPlugin :id (:id staging))
+          (let [prod (insert-plugin! "thumbs" (cv.tu/make-tgz-bytes (plugin-files "thumbs")))]
+            (import! dump-dir)
+            (testing "the import updates the plugin with that identifier in place"
+              (is (= [(:id prod)] (t2/select-pks-vec :model/CustomVizPlugin :identifier "thumbs")))
+              (is (= (update-vals staging-files seq) (stored-files "thumbs"))))))))))
+
+(deftest identifiers-differing-in-surrounding-whitespace-round-trip-test
+  (testing "plugins whose identifiers differ only in surrounding whitespace stay two plugins"
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (ts/with-random-dump-dir [dump-dir "custom-viz-whitespace-"]
+        (let [files   (fn [identifier js]
+                        (assoc (plugin-files identifier) "dist/index.js" (.getBytes ^String js "UTF-8")))
+              v1      {"thumbs" (files "thumbs" "plain();") " thumbs" (files " thumbs" "padded();")}
+              plugins (update-vals v1 #(cv.tu/make-tgz-bytes %))
+              ids     (into {} (map (fn [[identifier bundle]] [identifier (:id (insert-plugin! identifier bundle))])) plugins)]
+          (is (= #{[:model/CustomVizPlugin "thumbs"] [:model/CustomVizPlugin " thumbs"]}
+                 (into #{} (map serialization/key-of) (exported-plugins))))
+          (export! dump-dir)
+          (doseq [[identifier id] ids]
+            (t2/update! :model/CustomVizPlugin :id id {:bundle (cv.tu/make-tgz-bytes (files identifier "stale();"))}))
+          (import! dump-dir)
+          (doseq [[identifier id] ids]
+            (testing (pr-str identifier)
+              (is (= [id] (t2/select-pks-vec :model/CustomVizPlugin :identifier identifier)))
+              (is (= (update-vals (get v1 identifier) seq) (stored-files identifier))))))))))
 
 (deftest tar-export-holds-the-bundles-files-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]

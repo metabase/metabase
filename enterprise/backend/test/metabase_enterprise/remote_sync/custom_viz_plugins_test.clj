@@ -27,20 +27,14 @@
         (map #(str "custom_viz_plugins/" identifier "/" %))
         (keys (plugin-files identifier ""))))
 
-(defn- entity-id
-  "A stable entity_id for plugin `identifier`: the identifier padded to the 21 characters of a NanoID."
-  [identifier]
-  (subs (str identifier "000000000000000000000") 0 21))
-
 (defn- plugin-tree
   "Repository files for plugin `identifier`: its YAML, as an export writes it so that a pulled plugin counts as
   unchanged, and the files of its bundle."
-  [identifier js & {:keys [entity-id] :or {entity-id (entity-id identifier)}}]
+  [identifier js]
   (let [dir   (str "custom_viz_plugins/" identifier "/")
         files (plugin-files identifier js)]
     (into {(str dir "custom_viz_plugin.yaml")
            (ee.serialization/entity-yaml {:serdes/meta [{:model "CustomVizPlugin"}]
-                                          :entity_id   entity-id
                                           :identifier  identifier
                                           :files       (vec (sort (keys files)))})}
           (map (fn [[path content]] [(str dir path) content]))
@@ -108,12 +102,12 @@
   [[url sync-type] & body]
   `(do-with-plugin-sync! ~sync-type (fn [~url] ~@body)))
 
-(deftest pull-imports-updates-renames-and-removes-plugins-test
+(deftest pull-imports-updates-and-removes-plugins-test
   (with-plugin-sync [url :read-write]
     (let [v0 (remote-sync.tu/commit! url "main" (plugin-tree "thumbs" "v1();"))]
-      (testing "a pull registers the plugin under the repository's entity_id"
+      (testing "a pull registers the plugin"
         (pull-ok! url nil)
-        (is (=? {:status :active :enabled true :entity_id (entity-id "thumbs")}
+        (is (=? {:status :active :enabled true}
                 (t2/select-one :model/CustomVizPlugin :identifier "thumbs"))))
       (let [id (plugin-id "thumbs")]
         (testing "a changed bundle updates the plugin in place, leaving `enabled` to the instance"
@@ -122,27 +116,36 @@
             (pull-ok! url v0)
             (is (=? {:id id :enabled false} (t2/select-one :model/CustomVizPlugin :identifier "thumbs")))
             (is (= "v2();" (stored-js "thumbs")))
-            (testing "a new identifier under the same entity_id renames the plugin in place"
-              (let [v2 (remote-sync.tu/commit! url "main" (merge (removed (plugin-tree "thumbs" "v2();"))
-                                                                 (plugin-tree "Thumbs2" "v2();" :entity-id (entity-id "thumbs"))))]
-                (pull-ok! url v1)
-                (is (= id (plugin-id "Thumbs2")))
-                (testing "a plugin whose directory is gone is deleted"
-                  (remote-sync.tu/commit! url "main" (removed (plugin-tree "Thumbs2" "v2();")))
-                  (pull-ok! url v2)
-                  (is (not (t2/exists? :model/CustomVizPlugin :id id))))))))))))
+            (testing "a plugin whose directory is gone is deleted, and one under a new identifier is another plugin"
+              (remote-sync.tu/commit! url "main" (merge (removed (plugin-tree "thumbs" "v2();"))
+                                                        (plugin-tree "Thumbs2" "v2();")))
+              (pull-ok! url v1)
+              (is (not (t2/exists? :model/CustomVizPlugin :id id)))
+              (is (= "v2();" (stored-js "Thumbs2"))))))))))
 
-(deftest pull-refuses-a-plugin-whose-identifier-is-taken-test
-  (with-plugin-sync [url :read-write]
-    (remote-sync.tu/commit! url "main" (plugin-tree "thumbs" "v1();"))
-    (upload! 200 (plugin-files "thumbs" "local();"))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to load"
-                          (remote-sync.tu/pull! url nil {:force? true})))
-    (is (= "local();" (stored-js "thumbs")))
-    (testing "once the local plugin is deleted, the pull lands the repository's"
-      (delete-plugin! 204 (plugin-id "thumbs"))
-      (pull-ok! url nil)
-      (is (= "v1();" (stored-js "thumbs"))))))
+(deftest pull-renames-a-plugin-whose-identifier-changes-case-test
+  (testing "identifiers are unique ignoring case, so a plugin under another case of its identifier is the same plugin"
+    (with-plugin-sync [url :read-write]
+      (let [v0 (remote-sync.tu/commit! url "main" (plugin-tree "thumbs" "v1();"))
+            _  (pull-ok! url nil)
+            id (plugin-id "thumbs")]
+        (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id) {:enabled false})
+        (remote-sync.tu/commit! url "main" (merge (removed (plugin-tree "thumbs" "v1();"))
+                                                  (plugin-tree "Thumbs" "v2();")))
+        (pull-ok! url v0)
+        (is (=? [{:id id :identifier "Thumbs" :enabled false}]
+                (t2/select :model/CustomVizPlugin {:where [:= [:lower :identifier] "thumbs"]})))
+        (is (= "v2();" (stored-js "Thumbs")))))))
+
+(deftest pull-updates-a-plugin-registered-here-test
+  (testing "a plugin uploaded here is the repository's plugin of that identifier, so a pull updates it in place"
+    (with-plugin-sync [url :read-write]
+      (remote-sync.tu/commit! url "main" (plugin-tree "thumbs" "v1();"))
+      (upload! 200 (plugin-files "thumbs" "local();"))
+      (let [id (plugin-id "thumbs")]
+        (remote-sync.tu/pull! url nil {:force? true})
+        (is (= id (plugin-id "thumbs")))
+        (is (= "v1();" (stored-js "thumbs")))))))
 
 (deftest push-writes-and-removes-only-plugin-files-test
   (with-plugin-sync [url :read-write]
@@ -152,7 +155,7 @@
           paths   #(set (filter (partial re-find #"^custom_viz_plugins/") (remote-sync.tu/files! url "main")))]
       (upload! 200 (plugin-files "thumbs" "v1();"))
       (testing "an uploaded plugin is a change to push, named by its identifier"
-        (is (=? [{:key [:model/CustomVizPlugin (t2/select-one-fn :entity_id :model/CustomVizPlugin :identifier "thumbs")]
+        (is (=? [{:key [:model/CustomVizPlugin "thumbs"]
                   :status "create"}]
                 (remote-sync.tu/local-changes! url v0))))
       (testing "a push writes the plugin's YAML and bundle files, beside the files it does not own"
@@ -178,6 +181,23 @@
         (is (not-any? #(re-find #"dev_only" %) (remote-sync.tu/files! url "main")))
         (pull-ok! url v0)
         (is (t2/exists? :model/CustomVizPlugin :id dev-id))))))
+
+(deftest pull-replaces-a-dev-only-plugin-test
+  (with-plugin-sync [url :read-write]
+    (let [{id :id} (register-dev-plugin! "thumbs")
+          v0       (remote-sync.tu/commit! url "main" (plugin-tree "thumbs" "v1();"))]
+      (testing "a dev-only plugin of a pulled identifier becomes the repository's plugin, no longer served from its dev URL"
+        (remote-sync.tu/pull! url nil {:force? true})
+        (is (=? {:id id :status :active :bundle_hash some? :dev_bundle_url nil}
+                (t2/select-one :model/CustomVizPlugin :identifier "thumbs")))
+        (is (= "v1();" (stored-js "thumbs"))))
+      (testing "a dev URL an admin then sets over the bundle survives the next pull"
+        (t2/update! :model/CustomVizPlugin :id id {:dev_bundle_url "http://localhost:5173"})
+        (remote-sync.tu/commit! url "main" (plugin-tree "thumbs" "v2();"))
+        (pull-ok! url v0)
+        (is (=? {:id id :dev_bundle_url "http://localhost:5173"}
+                (t2/select-one :model/CustomVizPlugin :identifier "thumbs")))
+        (is (= "v2();" (stored-js "thumbs")))))))
 
 (deftest read-only-instance-refuses-plugin-changes-test
   (with-plugin-sync [url :read-only]
