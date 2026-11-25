@@ -16,12 +16,13 @@
    [toucan2.core :as t2]))
 
 (defn- run-card!
-  "Call `run_dashboard_card` as rasta with `args`, in a conversation of rasta's own with query execution on, while
-   rasta views `viewing` (the `user_is_viewing` items). Returns the tool's result, or its refusal as
-   `{:output :error}`."
-  [viewing args]
+  "Call `run_dashboard_card` as rasta with `args`, in a conversation of rasta's own, while rasta views `viewing` (the
+   `user_is_viewing` items).
+   Query execution is on unless `query-execution?` is false.
+   Returns the tool's result, or its refusal as `{:output :error}`."
+  [viewing args & {:keys [query-execution?] :or {query-execution? true}}]
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
-    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? query-execution?]
       (mt/with-current-user (mt/user->id :rasta)
         (let [memory  {:conversation-id conversation-id
                        :context         {:user_is_viewing viewing}}
@@ -96,24 +97,37 @@
          (let [{:keys [output]} (run nil)]
            (is (= 100 (count-shown output)))
            (is (str/includes? output "the values on the user's screen are unknown"))))
+       (testing "a list of nothing but nils is cleared too"
+         (let [{:keys [output]} (run [{:id "price", :value [nil]}])]
+           (is (= 100 (count-shown output)))
+           (is (str/includes? output "Price = (cleared)."))))
        (testing "a connected filter the frontend sent no value for is named as unknown"
          (let [{:keys [output]} (run [])]
            (is (= 100 (count-shown output)))
            (is (str/includes? output "No value was applied for Price: its value on the user's screen is unknown"))
            (is (not (str/includes? output "No dashboard filter is connected")))))
+       (testing "a filter sent without a value is unknown, not cleared"
+         (let [{:keys [output]} (run [{:id "price"}])]
+           (is (= 100 (count-shown output)))
+           (is (str/includes? output "No value was applied for Price: its value on the user's screen is unknown"))))
        (testing "a value for a filter the dashboard doesn't have is dropped rather than failing the run"
          (is (= 22 (count-shown (:output (run [{:id "price", :value [1]} {:id "gone", :value "x"}]))))))))))
 
-(deftest does-not-store-last-used-values-test
-  (testing "Metabot's run leaves the user's last-used filter values alone"
+(deftest leaves-user-state-alone-test
+  (testing "Metabot's run stores no last-used filter values and adds no recent view of the card"
     (do-with-venues-dashboard
-     (fn [{:keys [dashboard-id dashcard-id]}]
+     (fn [{:keys [dashboard-id dashcard-id card-id]}]
+       (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta))
        (let [stored (atom [])]
          (mt/with-dynamic-fn-redefs [user-parameter-value/store! (fn [& args] (swap! stored conj args))]
            (is (= 22 (count-shown (:output (run-card! [{:type "dashboard", :id dashboard-id
                                                         :parameters [{:id "price", :value [1]}]}]
                                                       {:dashcard_id dashcard-id})))))
-           (is (= [] @stored))))))))
+           (is (= [] @stored))
+           (is (not (t2/exists? :model/RecentViews
+                                :user_id  (mt/user->id :rasta)
+                                :model    "card"
+                                :model_id card-id)))))))))
 
 (deftest refusals-test
   (do-with-venues-dashboard
@@ -130,15 +144,31 @@
        (is (=? {:error {:code ::dashboard-card/dashcard-not-runnable}}
                (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id text-dashcard-id}))))
      (testing "query execution is off"
-       (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
-         (is (=? {:error {:code :metabase.metabot.tools.run-query/query-execution-off}}
-                 (mt/with-current-user (mt/user->id :rasta)
-                   (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
-                                   (tools/->entries [#'tools/run-dashboard-card-tool]
-                                                    (atom {:context {:user_is_viewing [{:type "dashboard"
-                                                                                        :id   dashboard-id}]}})
-                                                    nil :internal))]
-                     ((:fn (get entries "run_dashboard_card")) {:dashcard_id dashcard-id}))))))))))
+       (is (=? {:error {:code :metabase.metabot.tools.run-query/query-execution-off}}
+               (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}
+                          :query-execution? false)))))))
+
+(deftest action-dashcard-not-runnable-test
+  (testing "an action button on a model's card holds no question to run"
+    (mt/with-actions-enabled
+      (mt/with-actions [{:keys [action-id model-id]} {:type :query, :visualization_settings {}}]
+        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                       :model/DashboardCard {dashcard-id :id}  {:dashboard_id           dashboard-id
+                                                                :card_id                model-id
+                                                                :action_id              action-id
+                                                                :visualization_settings {}}]
+          (is (=? {:error {:code ::dashboard-card/dashcard-not-runnable}}
+                  (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))))))))
+
+(deftest unreadable-dashboard-not-found-test
+  (testing "a card on a dashboard the user can't read is not found"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection    {closed-id :id}    {}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-count)}
+                     :model/Dashboard     {dashboard-id :id} {:collection_id closed-id}
+                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+        (is (=? {:error {:code ::dashboard-card/dashcard-not-found}}
+                (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id})))))))
 
 (deftest unreadable-card-not-found-test
   (testing "a card the user can't read, on a dashboard they can, is not found"
@@ -191,15 +221,6 @@
                                                     :parameters [{:id "name", :value ["red"]}]}]
                                                   {:dashcard_id dashcard-id})))))))))
 
-(deftest filter-without-value-is-unknown-test
-  (testing "a filter sent without a value is unknown, not cleared"
-    (do-with-venues-dashboard
-     (fn [{:keys [dashboard-id dashcard-id]}]
-       (let [{:keys [output]} (run-card! [{:type "dashboard", :id dashboard-id, :parameters [{:id "price"}]}]
-                                         {:dashcard_id dashcard-id})]
-         (is (= 100 (count-shown output)))
-         (is (str/includes? output "No value was applied for Price: its value on the user's screen is unknown")))))))
-
 (deftest series-dashcard-test
   (testing "on a dashcard with series, only the main card's filters count, and the result says only it ran"
     (mt/with-temp [:model/Card                {card-id :id}      {:dataset_query (venues-count)}
@@ -218,6 +239,16 @@
         (is (= 100 (count-shown output)))
         (is (str/includes? output "No dashboard filter is connected to this card"))
         (is (str/includes? output (str "these rows are only those of its main question, question " card-id ".")))))))
+
+(deftest visualizer-dashcard-test
+  (testing "a dashcard that the visualizer built from several questions says that only its main question ran"
+    (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query (venues-count)}
+                   :model/Dashboard     {dashboard-id :id} {}
+                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id           dashboard-id
+                                                            :card_id                card-id
+                                                            :visualization_settings {:visualization {:display "bar"}}}]
+      (is (str/includes? (:output (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))
+                         (str "these rows are only those of its main question, question " card-id "."))))))
 
 (deftest pivot-card-runs-as-plain-query-test
   (testing "a pivot card runs through the plain QP, which keeps the row limit"
@@ -257,15 +288,3 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
         (is (=? {:error {:code ::dashboard-card/no-permission}}
                 (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id})))))))
-
-(deftest does-not-add-recent-view-test
-  (testing "Metabot running a card doesn't add it to the user's recent views"
-    (do-with-venues-dashboard
-     (fn [{:keys [dashboard-id dashcard-id card-id]}]
-       (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta))
-       (is (= 100 (count-shown (:output (run-card! [{:type "dashboard", :id dashboard-id}]
-                                                   {:dashcard_id dashcard-id})))))
-       (is (not (t2/exists? :model/RecentViews
-                            :user_id  (mt/user->id :rasta)
-                            :model    "card"
-                            :model_id card-id)))))))
