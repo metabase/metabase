@@ -1,0 +1,46 @@
+/* Shown only on row hover: trash on added dimensions, plus on available ones. */
+.hoverAction {
+  opacity: 0;
+}
+
+.row:hover .hoverAction,
+.hoverAction:focus-visible {
+  opacity: 1;
+}
+
+.row {
+  cursor: pointer;
+}
+
+.availableRow {
+  border-style: dashed;
+}
+
+.grab {
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.dragging {
+  opacity: 0.4;
+}
+
+.dropBefore {
+  box-shadow: 0 -2px 0 0 var(--mb-color-core-brand);
+}
+
+.zone {
+  border-radius: var(--mantine-radius-sm);
+  outline: 2px dashed transparent;
+  outline-offset: 4px;
+}
+
+.zoneOver {
+  outline-color: var(--mb-color-core-brand);
+}
+
+.emptyZone {
+  padding: var(--mantine-spacing-sm);
+  border: 1px dashed var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-sm);
+}

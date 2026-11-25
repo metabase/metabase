@@ -1,6 +1,7 @@
 import type { PrototypeDefinition } from "../types";
 
 import { BaselinePrototype } from "./baseline/BaselinePrototype";
+import { ImprovedDimensionsPrototype } from "./dimensions/ImprovedDimensionsPrototype";
 import {
   MetricEditorBlocksPrototype,
   MetricEditorPrototype,
@@ -67,5 +68,13 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
     group: "Iteration 1",
     draft: true,
     Component: MetricDependencyTreePrototype,
+  },
+  {
+    id: "improved-dimensions",
+    name: "Improved Dimensions tab",
+    description:
+      "Dimensions in and not in the metric, in two sections on the left. Move them with the arrows, by dragging, or in bulk by checking several. A dimension is always selected, so its settings always fill the right.",
+    group: "Iteration 1",
+    Component: ImprovedDimensionsPrototype,
   },
 ];
