@@ -752,6 +752,9 @@
                      {:description "Shadow SQL parser comparisons running or waiting to run, by shadow parser."
                       :labels [:parser]})
    ;; SQL tools operation metrics
+   (prometheus/gauge :metabase-sql-tools/parser-backend
+                     {:description "Whether a given parser is the sql-tools parser backend of this instance."
+                      :labels [:parser]})
    (prometheus/counter :metabase-sql-tools/operations-total
                        {:description "Total number of sql-tools operations started."
                         :labels [:parser :operation]})

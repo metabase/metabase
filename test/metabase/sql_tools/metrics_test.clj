@@ -2,8 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.sql-tools.metrics :as metrics]
+   [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -81,3 +83,15 @@
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-creations)))
       (analytics/inc! :metabase-sql-parsing/context-disposals-expired)
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-disposals-expired))))))
+
+(deftest parser-backend-initial-values-test
+  (testing "parser-backend is 1 for the configured parser and 0 for the others"
+    (doseq [backend [:sqlglot :sqlglot-java-shadow :macaw]]
+      (binding [sql-tools.settings/*parser-backend-override* backend]
+        (let [metric :metabase-sql-tools/parser-backend
+              values (into {}
+                           (for [labels (analytics.core/known-labels metric)]
+                             [(:parser labels) (analytics.core/initial-value metric labels)]))]
+          (is (= 1 (get values (name backend))))
+          (is (= 1 (reduce + (vals values))))
+          (is (contains? values "sqlglot-shadow")))))))

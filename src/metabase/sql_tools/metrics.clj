@@ -8,6 +8,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -36,6 +37,15 @@
 (defmethod analytics.core/known-labels :metabase-sql-tools/operations-total [_] operation-labels)
 (defmethod analytics.core/known-labels :metabase-sql-tools/operations-completed [_] operation-labels)
 (defmethod analytics.core/known-labels :metabase-sql-tools/operations-failed [_] operation-labels)
+
+(defmethod analytics.core/known-labels :metabase-sql-tools/parser-backend
+  [_]
+  (for [parser parsers]
+    {:parser parser}))
+
+(defmethod analytics.core/initial-value :metabase-sql-tools/parser-backend
+  [_ {:keys [parser]}]
+  (if (= parser (name (sql-tools.settings/current-parser-backend))) 1 0))
 
 ;;; -------------------------------------------------- Recording fns --------------------------------------------------
 
