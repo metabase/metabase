@@ -133,6 +133,9 @@
      "ambiguous-table-name"
      (tru "The SQL reads more than one table named {0} without an alias, and the test stands in for each with its own table. Give each an alias, such as `FROM my_schema.my_table AS a`, and qualify its columns by the alias."
           detail)
+     "unaliased-name-reused"
+     (tru "The SQL names the table {0} without an alias where it can take none, as the table it writes, and also gives that name to an alias, a CTE or another table. The test cannot tell which of them a column qualified by that name belongs to. Rename the alias or the CTE."
+          detail)
      (if detail
        (tru "The test could not point the SQL''s reference to {0} at a test table: it could not find the reference exactly in the SQL''s text. Write it as a plain name, such as `my_schema.my_table`, with no comment inside the name."
             detail)
@@ -143,7 +146,8 @@
 (mu/defn replace-tables :- :string
   "`sql` reading from the temp tables of `replacements` instead of the tables they replace, and every other character
   as written. A replaced table that has no alias takes its own name as its alias, so a column qualified by the table's
-  name still resolves; a qualifier that also names the schema loses the schema.
+  name still resolves; a qualifier that also names the schema loses the schema. A table that `sql` writes without an
+  alias takes none: the columns qualified by its name are qualified by its temp table's name.
 
   With `output-token`, every occurrence of it, whitespace inside its braces allowed, first becomes [[output-name]],
   string literals included.

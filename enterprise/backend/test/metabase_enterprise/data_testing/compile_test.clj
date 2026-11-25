@@ -255,4 +255,15 @@
               :detail     "orders"}
              (refusal "SELECT a.orders.id FROM a.orders JOIN b.orders ON a.orders.id = b.orders.id"
                       {{:schema "a" :table "orders"} {:db nil :schema nil :table "mb_a"}
-                       {:schema "b" :table "orders"} {:db nil :schema nil :table "mb_b"}}))))))
+                       {:schema "b" :table "orders"} {:db nil :schema nil :table "mb_b"}}))))
+    (testing "control: a column qualified by the table an UPDATE writes is qualified by the temp table"
+      (is (= "UPDATE mb_tmp SET total = 0 WHERE mb_tmp.id = 1"
+             (refusal "UPDATE orders SET total = 0 WHERE orders.id = 1"
+                      {{:table "orders"} {:db nil :schema nil :table "mb_tmp"}}))))
+    (testing "a column qualified by the written table's name, which an alias in the statement also has"
+      (is (= {:error-type ::data-testing.errors/unreplaceable-reference
+              :reason     "unaliased-name-reused"
+              :detail     "orders"}
+             (refusal "UPDATE orders SET total = (SELECT max(orders.total) FROM staging AS orders)"
+                      {{:table "orders"}  {:db nil :schema nil :table "mb_tmp"}
+                       {:table "staging"} {:db nil :schema nil :table "mb_staging"}}))))))

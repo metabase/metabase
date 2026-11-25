@@ -521,11 +521,14 @@
 (defn swap-tables
   "`sql` with each table reference that the `:tables` of `replacements` (a [[replace-names]] map) replace written as
   its replacement, and every other character as given. A replaced table in FROM or a JOIN that has no alias takes its
-  own name as alias, so `orders.id` still resolves; `public.orders.id` loses its schema.
+  own name as alias, so `orders.id` still resolves; `public.orders.id` loses its schema. Where a statement names a
+  replaced table with no alias in a place that takes none, as the table it writes, no unaliased reference to a table
+  of that name takes an alias in that statement, and `orders.id` becomes `<replacement>.id`.
 
   Returns `{:sql swapped}`, or `{:reason reason :detail detail}` when a reference cannot be replaced in the text:
-  `\"reference-not-located\"`, or `\"ambiguous-table-name\"` when two unaliased references share a table name and
-  have different replacements.
+  `\"reference-not-located\"`; `\"ambiguous-table-name\"` when two unaliased references share a table name and
+  have different replacements; `\"unaliased-name-reused\"` when `orders.id` would become `<replacement>.id` and the
+  statement also has an alias, a CTE or an unreplaced table named `orders`.
 
   SECURITY: as for [[replace-names]], replacement values must be system-generated."
   [parser dialect sql replacements]

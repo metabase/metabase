@@ -762,6 +762,23 @@ def _query_source(table):
     return isinstance(parent, (exp.From, exp.Join))
 
 
+def _swapped_name(node, table_arg, replacement, dialect):
+    """The name that `node`, a table reference or a column whose qualifier names a table, takes under `replacement`,
+    as SQL in `dialect`. `node` keeps the table's name under `table_arg`."""
+    swapped = exp.Table(
+        **{to: exp.Identifier(this=part.this, quoted=part.quoted)
+           for arg, to in (("catalog", "catalog"), ("db", "db"), (table_arg, "this"))
+           for part in [node.args.get(arg)]
+           if isinstance(part, exp.Identifier)}
+    )
+    _replace_table(swapped, replacement, "catalog", "db", "this", dialect)
+    return swapped.sql(dialect=dialect)
+
+
+def _swap_refusal(reason, detail):
+    return json.dumps({"reason": reason, "reason_detail": detail})
+
+
 def swap_tables(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     `sql` with each table reference that the `tables` of `replacements_json` replace (as `replace_names` reads
@@ -775,16 +792,23 @@ def swap_tables(sql: str, replacements_json: str, dialect: str = None) -> str:
         `replace_names` would give it, written by the dialect's generator.
       - A replaced reference in FROM or a JOIN that has no alias takes its own table name, as written, as its alias:
         `FROM public.orders` becomes `FROM mb_tmp AS orders`. Column qualifiers that name the table, `orders.id`,
-        then resolve as they did, and are not changed.
-      - A column qualifier that names a replaced table with its schema, `public.orders.id`, loses the schema, since
-        an alias has none.
+        then resolve as they did, and are not changed. A qualifier that names the table with its schema,
+        `public.orders.id`, loses the schema, since an alias has none.
+      - A replaced reference that has no alias and stands where it can take none, as the table an INSERT, UPDATE or
+        DELETE writes does, makes its table name a renamed one in its statement. No reference without an alias to
+        a replaced table of that name takes an alias there, and each column qualifier that names such a table,
+        `orders.id` or `public.orders.id`, becomes the replacement's name: `UPDATE orders SET n = 0 WHERE
+        orders.id = 1` becomes `UPDATE mb_tmp SET n = 0 WHERE mb_tmp.id = 1`.
 
     Reasons:
       - "reference-not-located", detail the table: the parser recorded no position for one of the reference's
         name parts, the text at that position is not that name, something other than a dot stands between two
         parts (a comment), or the reference is a T-SQL `#` temp table.
       - "ambiguous-table-name", detail the table name: two references without an alias have the same table name and
-        different replacements, so one alias cannot stand for both.
+        different replacements, and one alias cannot stand for both, or a column qualifier without a schema names
+        both.
+      - "unaliased-name-reused", detail the table name: a column qualifier without a schema has a renamed name
+        that the statement also gives to an alias, a CTE or a table that is not replaced.
 
     Raises ValueError when `replacements_json` holds `schemas` or `columns`.
     """
@@ -798,55 +822,77 @@ def swap_tables(sql: str, replacements_json: str, dialect: str = None) -> str:
     # The replacements of the references that take their table name as alias, by that name folded.
     alias_replacements = {}
     for ast in statements(_split_placeholder_casts(sql, dialect), dialect):
+        replaced = []
         for table in table_references(ast, dialect):
             replacement = _find_table_replacement(
                 table_map, table.catalog or None, table.db, table.name, _quoted_parts(table, "this")
             )
-            if not replacement:
-                continue
+            if replacement:
+                replaced.append((table, replacement))
+        unaliased = [(table, replacement) for table, replacement in replaced if table.args.get("alias") is None]
+        # The table names, folded, of the references that can take no alias. An alias on another reference of that
+        # name would take over the qualifiers that name this one.
+        renamed = {table.name.lower() for table, _ in unaliased if not _query_source(table)}
+        for table, replacement in replaced:
             label = ".".join(part for part in table_parts(table) if part)
             try:
                 if temp_table_prefix(table):
                     raise _NotLocated()
                 spans = _located_parts(table, ("catalog", "db", "this"), sql, tokens_by_start, inserts)
             except _NotLocated:
-                return json.dumps({"reason": "reference-not-located", "reason_detail": label})
-            swapped = exp.Table(
-                **{arg: exp.Identifier(this=part.this, quoted=part.quoted)
-                   for arg in ("catalog", "db", "this")
-                   for part in [table.args.get(arg)]
-                   if part is not None}
-            )
-            _replace_table(swapped, replacement, "catalog", "db", "this", dialect)
-            text = swapped.sql(dialect=dialect)
-            if table.args.get("alias") is None and _query_source(table):
+                return _swap_refusal("reference-not-located", label)
+            text = _swapped_name(table, "this", replacement, dialect)
+            if table.args.get("alias") is None and table.name.lower() not in renamed:
                 name_start, name_end = spans[-1]
                 # Oracle takes no AS before a table alias.
                 text += (" " if dialect == "oracle" else " AS ") + sql[name_start:name_end]
                 alias_replacements.setdefault(table.name.lower(), set()).add(json.dumps(replacement, sort_keys=True))
             edits.append((spans[0][0], spans[-1][1], text))
+        # What else a qualifier with a renamed name could name: an alias, a CTE, or a table that is not replaced.
+        replaced_ids = {id(table) for table, _ in replaced}
+        other_names = {alias.name.lower() for alias in ast.find_all(exp.TableAlias)} | {
+            table.name.lower()
+            for table in ast.find_all(exp.Table)
+            if table.args.get("alias") is None and id(table) not in replaced_ids
+        }
         for column in ast.find_all(exp.Column):
-            # A qualifier without a schema names the table as the reference's alias does, and stays as written.
-            if not (column.table and column.db):
+            if not column.table:
                 continue
-            if not _find_table_replacement(
-                table_map, column.catalog or None, column.db, column.table, _quoted_parts(column, "table")
-            ):
+            name = column.table.lower()
+            if column.db:
+                replacement = _find_table_replacement(
+                    table_map, column.catalog or None, column.db, column.table, _quoted_parts(column, "table")
+                )
+                if not replacement:
+                    continue
+            elif name in renamed:
+                if name in other_names:
+                    return _swap_refusal("unaliased-name-reused", name)
+                candidates = {json.dumps(r, sort_keys=True) for table, r in unaliased if table.name.lower() == name}
+                if len(candidates) > 1:
+                    return _swap_refusal("ambiguous-table-name", name)
+                replacement = json.loads(candidates.pop())
+            else:
+                # A qualifier without a schema names the table as the reference's alias does, and stays as written.
                 continue
             try:
                 spans = _located_parts(column, ("catalog", "db", "table"), sql, tokens_by_start, inserts)
             except _NotLocated:
                 label = ".".join(part for part in (column.catalog, column.db, column.table) if part)
-                return json.dumps({"reason": "reference-not-located", "reason_detail": label})
-            edits.append((spans[0][0], spans[-1][0], ""))
+                return _swap_refusal("reference-not-located", label)
+            if name in renamed:
+                edits.append((spans[0][0], spans[-1][1], _swapped_name(column, "table", replacement, dialect)))
+            else:
+                # The reference took the table's name as its alias, and an alias has no schema.
+                edits.append((spans[0][0], spans[-1][0], ""))
     for name, replaced_by in sorted(alias_replacements.items()):
         if len(replaced_by) > 1:
-            return json.dumps({"reason": "ambiguous-table-name", "reason_detail": name})
+            return _swap_refusal("ambiguous-table-name", name)
     edits.sort()
     parts, last = [], 0
     for start, end, text in edits:
         if start < last:
-            return json.dumps({"reason": "reference-not-located", "reason_detail": None})
+            return _swap_refusal("reference-not-located", None)
         parts.extend((sql[last:start], text))
         last = end
     parts.append(sql[last:])

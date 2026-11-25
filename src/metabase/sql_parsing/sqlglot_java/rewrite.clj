@@ -8,7 +8,8 @@
   (:import
    (com.metabase.sqlglot.ast Expressions$Alias Expressions$Column Expressions$CTE Expressions$Final Expressions$From
                              Expressions$Identifier Expressions$Join Expressions$Query Expressions$Select
-                             Expressions$SetOperation Expressions$Subquery Expressions$Table)
+                             Expressions$SetOperation Expressions$Subquery Expressions$Table
+                             Expressions$TableAlias)
    (com.metabase.sqlglot.reference Scope)
    (java.util Collections IdentityHashMap Set)))
 
@@ -336,62 +337,121 @@
         parent (if (instance? Expressions$Final parent) (ast/parent parent) parent)]
     (or (instance? Expressions$From parent) (instance? Expressions$Join parent))))
 
-(defn- swapped-reference
-  "The name the table reference `table` takes under `replacement`, as SQL in `dialect`."
-  [table replacement dialect]
+(defn- swapped-name
+  "The name that `node`, a table reference or a column whose qualifier names a table, takes under `replacement`, as
+  SQL in `dialect`. `node` keeps the table's name under `table-arg`. Port of `_swapped_name`."
+  [node table-arg replacement dialect]
   (let [swapped (ast/create "Table" (into {}
-                                          (for [arg  ["catalog" "db" "this"]
-                                                :let [part (ast/arg table arg)]
-                                                :when part]
-                                            [arg (ast/identifier (ast/node-name part) (ast/quoted? part))])))]
+                                          (for [[arg to] [["catalog" "catalog"] ["db" "db"] [table-arg "this"]]
+                                                :let     [part (ast/arg node arg)]
+                                                :when    (instance? Expressions$Identifier part)]
+                                            [to (ast/identifier (ast/node-name part) (ast/quoted? part))])))]
     (replace-table! swapped replacement "this" dialect)
     (ast/sql swapped dialect)))
 
+(defn- refusal [reason detail]
+  {:refusal {:reason reason :reason_detail detail}})
+
 (defn- not-located [label]
-  {:reason "reference-not-located" :reason_detail label})
+  (refusal "reference-not-located" label))
 
 (defn- table-edit
   "For the table reference `table`, which `replacement` replaces: `{:edit [start end text]}`, with
   `:alias [name replacement]`, the name lower-cased, when the reference takes its table name as its alias, or
-  `{:refusal result}`."
-  [table replacement ^String sql token-spans inserts dialect]
+  `{:refusal result}`. `renamed` holds the table names whose references take no alias."
+  [table replacement renamed ^String sql token-spans inserts dialect]
   (let [spans (when (empty? (references/temp-table-prefix table))
                 (located-parts table ["catalog" "db" "this"] sql token-spans inserts))]
     (if-not spans
-      {:refusal (not-located (str/join "." (remove nil? (references/table-parts table))))}
+      (not-located (str/join "." (remove nil? (references/table-parts table))))
       (let [[name-start name-end] (peek spans)
-            aliased?              (and (nil? (ast/arg table "alias")) (query-source? table))]
+            table-name            (ast/lower (ast/node-name table))
+            aliased?              (and (nil? (ast/arg table "alias")) (not (contains? renamed table-name)))]
         (cond-> {:edit [(ffirst spans)
                         name-end
-                        (cond-> (swapped-reference table replacement dialect)
+                        (cond-> (swapped-name table "this" replacement dialect)
                           ;; Oracle takes no AS before a table alias.
                           aliased? (str (if (= dialect "oracle") " " " AS ") (subs sql name-start name-end)))]}
-          aliased? (assoc :alias [(ast/lower (ast/node-name table)) replacement]))))))
+          aliased? (assoc :alias [table-name replacement]))))))
 
 (defn- qualifier-edit
-  "For `column`, whose qualifier names a replaced table with its schema: `{:edit [start end \"\"]}`, which removes the
-  schema, or `{:refusal result}`."
-  [column ^String sql token-spans inserts]
+  "For `column`, whose qualifier names a table that `replacement` replaces: `{:edit [start end text]}`, or
+  `{:refusal result}`. When `renamed?`, the qualifier becomes the replacement's name; otherwise it loses its schema,
+  for the alias its table took."
+  [column replacement renamed? ^String sql token-spans inserts dialect]
   (if-let [spans (located-parts column ["catalog" "db" "table"] sql token-spans inserts)]
-    {:edit [(ffirst spans) (first (peek spans)) ""]}
-    {:refusal (not-located (str/join "." (filter seq (map #(ast/text column %) ["catalog" "db" "table"]))))}))
+    {:edit (if renamed?
+             [(ffirst spans) (second (peek spans)) (swapped-name column "table" replacement dialect)]
+             [(ffirst spans) (first (peek spans)) ""])}
+    (not-located (str/join "." (filter seq (map #(ast/text column %) ["catalog" "db" "table"]))))))
+
+(defn- statement-edits
+  "The [[table-edit]] and [[qualifier-edit]] results for the statement `stmt` of `sql`."
+  [stmt table-map ^String sql token-spans inserts dialect]
+  (let [replaced    (vec (for [table (references/table-references stmt dialect)
+                               :let  [replacement (usable (find-table-replacement
+                                                           table-map
+                                                           (not-empty (ast/text table "catalog"))
+                                                           (ast/text table "db")
+                                                           (ast/node-name table)
+                                                           (quoted-parts table "this")))]
+                               :when replacement]
+                           [table replacement]))
+        table-name  #(ast/lower (ast/node-name %))
+        unaliased   (filterv (fn [[table _]] (nil? (ast/arg table "alias"))) replaced)
+        ;; The table names, lower-cased, of the references that can take no alias. An alias on another reference of
+        ;; that name would take over the qualifiers that name this one.
+        renamed     (into #{} (comp (remove (comp query-source? first)) (map (comp table-name first))) unaliased)
+        ;; What else a qualifier with a renamed name could name: an alias, a CTE, or a table that is not replaced.
+        other-names (delay
+                      (into (into #{} (map table-name) (ast/find-all stmt Expressions$TableAlias))
+                            (comp (filter #(nil? (ast/arg % "alias")))
+                                  (remove (fn [table] (some #(identical? table (first %)) replaced)))
+                                  (map table-name))
+                            (ast/find-all stmt Expressions$Table)))]
+    (concat
+     (for [[table replacement] replaced]
+       (table-edit table replacement renamed sql token-spans inserts dialect))
+     (for [column (ast/find-all stmt Expressions$Column)
+           :let   [qualifier (ast/lower (ast/text column "table"))
+                   renamed?  (contains? renamed qualifier)
+                   result    (cond
+                               (empty? qualifier)
+                               nil
+
+                               (seq (ast/text column "db"))
+                               (when-let [replacement (usable (find-table-replacement
+                                                               table-map
+                                                               (not-empty (ast/text column "catalog"))
+                                                               (ast/text column "db")
+                                                               (ast/text column "table")
+                                                               (quoted-parts column "table")))]
+                                 (qualifier-edit column replacement renamed? sql token-spans inserts dialect))
+
+                               ;; A qualifier without a schema that names an aliased table names it as the alias
+                               ;; does, and stays as written.
+                               (not renamed?)
+                               nil
+
+                               (contains? @other-names qualifier)
+                               (refusal "unaliased-name-reused" qualifier)
+
+                               :else
+                               (let [candidates (distinct (for [[table replacement] unaliased
+                                                                :when (= qualifier (table-name table))]
+                                                            replacement))]
+                                 (if (next candidates)
+                                   (refusal "ambiguous-table-name" qualifier)
+                                   (qualifier-edit column (first candidates) true sql token-spans inserts dialect))))]
+           :when  result]
+       result))))
 
 (defn swap-tables
   "`sql` with each table reference that the `tables` of `replacements` replace (as [[replace-names]] reads them, and
   for the same references) written as its replacement, and every other character as given: `{:sql ...}`, or
-  `{:reason ... :reason_detail ...}` when a reference cannot be replaced in the text. Nothing in `sql` is
-  reconstructed from the parsed tree: the tree only says where each name is.
-
-  What changes in the text:
-  - The whole name of a replaced reference becomes the name [[replace-names]] would give it.
-  - A replaced reference in FROM or a JOIN that has no alias takes its own table name, as written, as its alias, so
-    that column qualifiers naming the table resolve as they did.
-  - A column qualifier that names a replaced table with its schema loses the schema.
-
-  Reasons: `\"reference-not-located\"` (the parser recorded no position for a name part, the text there is not that
-  name, something other than a dot stands between two parts, or the reference is a T-SQL `#` temp table) and
-  `\"ambiguous-table-name\"` (two references without an alias have the same table name and different
-  replacements). A `replacements` holding `schemas` or `columns` is a ValueError. Port of `swap_tables`."
+  `{:reason ... :reason_detail ...}` when a reference cannot be replaced in the text. A `replacements` holding
+  `schemas` or `columns` is a ValueError. Port of `swap_tables`, whose docstring says what changes in the text and
+  gives the reasons."
   [dialect ^String sql replacements]
   (when (or (seq (get replacements "schemas")) (seq (get replacements "columns")))
     (throw (ast/python-error "ValueError" "swap_tables replaces tables only")))
@@ -401,27 +461,7 @@
         token-spans (ast/token-spans sql dialect)
         results     (vec
                      (for [stmt   (references/statements (statements/split-placeholder-casts sql dialect) dialect)
-                           result (concat
-                                   (for [table (references/table-references stmt dialect)
-                                         :let  [replacement (usable (find-table-replacement
-                                                                     table-map
-                                                                     (not-empty (ast/text table "catalog"))
-                                                                     (ast/text table "db")
-                                                                     (ast/node-name table)
-                                                                     (quoted-parts table "this")))]
-                                         :when replacement]
-                                     (table-edit table replacement sql token-spans inserts dialect))
-                                   ;; A qualifier without a schema names the table as the reference's alias does,
-                                   ;; and stays as written.
-                                   (for [column (ast/find-all stmt Expressions$Column)
-                                         :when  (and (seq (ast/text column "table")) (seq (ast/text column "db")))
-                                         :when  (usable (find-table-replacement
-                                                         table-map
-                                                         (not-empty (ast/text column "catalog"))
-                                                         (ast/text column "db")
-                                                         (ast/text column "table")
-                                                         (quoted-parts column "table")))]
-                                     (qualifier-edit column sql token-spans inserts)))]
+                           result (statement-edits stmt table-map sql token-spans inserts dialect)]
                        result))
         ambiguous   (first (sort (for [[table-name aliases] (group-by first (keep :alias results))
                                        :when (< 1 (count (distinct (map second aliases))))]
@@ -441,4 +481,4 @@
                                edits)]
           (if last-end
             {:sql (str (.append sb sql (int last-end) (int (count sql))))}
-            (not-located nil))))))
+            (:refusal (not-located nil)))))))
