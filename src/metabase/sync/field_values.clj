@@ -330,7 +330,8 @@
                             (let [fv (get fvs-map (u/the-id field))]
                               (and (syncable? last-used-at field fv)
                                    (or (:rescan? opts) (not (too-large-scanned-recently? fv))))))
-        tokens            (change-tokens database tables)
+        due-table-ids     (into #{} (comp (filter due?) (map :table_id)) to-sync)
+        tokens            (change-tokens database (filterv (comp due-table-ids :id) tables))
         unchanged         (if (:rescan? opts)
                             #{}
                             (unchanged-tables tables tokens
@@ -341,7 +342,7 @@
                                               (sync.settings/full-pass-period database)))
         table-id->to-sync (group-by :table_id (filter #(and (not (unchanged (:table_id %))) (due? %)) to-sync))
         scan-counts       (sync-fields-of-tables! tables (constantly database) table-id->to-sync fvs-map opts)]
-    (record-value-scan-tokens! tables tokens (into #{} (comp (map :id) (remove unchanged)) tables) scan-counts)
+    (record-value-scan-tokens! tables tokens (into #{} (remove unchanged) due-table-ids) scan-counts)
     (merge-with + clear-counts scan-counts
                 {:tables-changed   (count (filter (fn [{:keys [id value_scan_token]}]
                                                     (let [token (get tokens id)]
