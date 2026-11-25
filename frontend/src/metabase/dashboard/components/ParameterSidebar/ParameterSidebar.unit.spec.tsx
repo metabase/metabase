@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import { setupSubscriptionsEndpoint } from "__support__/server-mocks";
@@ -23,6 +24,7 @@ interface SetupOpts {
   otherParameters: UiParameter[];
   hasMapping?: boolean;
   subscriptions?: DashboardSubscription[];
+  subscriptionsDelay?: number;
   removeParameter?: (parameterId: string) => Promise<any>;
 }
 
@@ -32,11 +34,12 @@ const setup = ({
   otherParameters,
   hasMapping,
   subscriptions = [],
+  subscriptionsDelay,
   removeParameter,
 }: SetupOpts): {
   clickNextParameterButton: () => Promise<void>;
 } => {
-  setupSubscriptionsEndpoint(subscriptions);
+  setupSubscriptionsEndpoint(subscriptions, { delay: subscriptionsDelay });
 
   const NEXT_PARAMETER_BUTTON_ID = "parameter-sidebar-test-change";
 
@@ -274,6 +277,68 @@ describe("ParameterSidebar", () => {
       const dialog = await screen.findByRole("dialog");
       expect(dialog).toHaveTextContent(/active subscription/i);
       expect(dialog).toHaveTextContent(/archive/i);
+    });
+
+    it("removes the parameter immediately when active subscriptions only reference another parameter", async () => {
+      const removeParameter = jest.fn();
+      const vendorParameter = createMockUiParameter({
+        id: "vendor-id",
+        name: "Vendor",
+        slug: "vendor",
+        sectionId: "string",
+      });
+      const subscription = createMockDashboardSubscription({
+        id: 42,
+        dashboard_id: 1,
+        parameters: [createMockParameter({ id: "filter-id" })],
+      });
+
+      setup({
+        initialParameter: vendorParameter,
+        otherParameters: [filterParameter],
+        subscriptions: [subscription],
+        removeParameter,
+      });
+
+      await clickRemove();
+      expect(removeParameter).toHaveBeenCalledTimes(1);
+      expect(removeParameter).toHaveBeenCalledWith("vendor-id");
+      expect(
+        screen.queryByRole("dialog", { name: /remove this filter/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps 'Remove' disabled until the dashboard's active subscriptions load, then warns", async () => {
+      const removeParameter = jest.fn();
+      const subscription = createMockDashboardSubscription({
+        id: 42,
+        dashboard_id: 1,
+        parameters: [createMockParameter({ id: "filter-id" })],
+      });
+
+      setup({
+        initialParameter: filterParameter,
+        otherParameters: [],
+        subscriptions: [subscription],
+        subscriptionsDelay: 200,
+        removeParameter,
+      });
+
+      const button = await screen.findByRole("button", { name: "Remove" });
+      expect(button).toBeDisabled();
+      await waitFor(() => expect(button).toBeEnabled());
+
+      const [url] = fetchMock.callHistory
+        .calls("path:/api/pulse")
+        .map((call) => new URL(call.url));
+      expect(url.searchParams.get("dashboard_id")).toBe("1");
+      expect(url.searchParams.get("archived")).toBe("false");
+
+      await userEvent.click(button);
+      expect(
+        await screen.findByRole("dialog", { name: /remove this filter/i }),
+      ).toHaveTextContent("Remove this filter?");
+      expect(removeParameter).not.toHaveBeenCalled();
     });
 
     it("removes the parameter when the user confirms in the warning dialog", async () => {

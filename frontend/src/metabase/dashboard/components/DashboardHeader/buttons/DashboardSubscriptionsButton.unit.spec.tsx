@@ -1,10 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
+import {
+  setupNotificationChannelsEndpoints,
+  setupSubscriptionsEndpoint,
+} from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import { createMockDashboardState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { DashboardSidebars } from "metabase/dashboard/components/DashboardSidebars";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { getIsSharing } from "metabase/dashboard/selectors";
 import { Route } from "metabase/router";
@@ -30,6 +35,7 @@ const setup = ({
   canManageSubscriptions,
   isEnterprise = false,
   dashboard: dashboardOverrides = {},
+  withSidebars = false,
 }: {
   isAdmin?: boolean;
   hasEmailSetup?: boolean;
@@ -37,6 +43,7 @@ const setup = ({
   canManageSubscriptions?: boolean;
   isEnterprise?: boolean;
   dashboard?: Partial<ReturnType<typeof createMockDashboard>>;
+  withSidebars?: boolean;
 } = {}) => {
   const dashboard = createMockDashboard({
     dashcards: [DASHCARD],
@@ -51,6 +58,8 @@ const setup = ({
     is_superuser: isAdmin,
   });
 
+  setupSubscriptionsEndpoint([]);
+  setupUserRecipientsEndpoint({ users: [] });
   setupNotificationChannelsEndpoints({
     email: { configured: hasEmailSetup },
     slack: { configured: hasSlackSetup },
@@ -68,6 +77,7 @@ const setup = ({
           parameterQueryParams={{}}
         >
           <DashboardSubscriptionsButton />
+          {withSidebars && <DashboardSidebars />}
         </MockDashboardContext>
       }
     />,
@@ -146,6 +156,44 @@ describe("DashboardSubscriptionsButton", () => {
 
       await userEvent.click(getButton());
       expect(getIsSharing(store.getState())).toBe(false);
+    });
+
+    it("should open a sidebar that links to the email and Slack settings, and close it on a second click", async () => {
+      setup({
+        isAdmin: true,
+        hasEmailSetup: false,
+        hasSlackSetup: false,
+        withSidebars: true,
+      });
+
+      await userEvent.click(
+        await screen.findByTestId("dashboard-subscriptions-button"),
+      );
+
+      expect(
+        await screen.findByRole("link", { name: /set up email/i }),
+      ).toHaveAttribute("href", "/admin/settings/email");
+      expect(
+        screen.getByRole("link", { name: /configure slack/i }),
+      ).toHaveAttribute("href", "/admin/settings/slack");
+
+      await userEvent.click(getButton());
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("link", { name: /set up email/i }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(
+        screen.queryByRole("link", { name: /configure slack/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not render for a dashboard without cards (metabase#15077)", () => {
+      setup({ isAdmin: true, dashboard: { dashcards: [] } });
+      expect(
+        screen.queryByTestId("dashboard-subscriptions-button"),
+      ).not.toBeInTheDocument();
     });
 
     it("should not render if there are no data cards", () => {
