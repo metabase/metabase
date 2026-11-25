@@ -92,9 +92,15 @@
             dimensions)))
 
 (defn- project-visible-columns
-  "Return all visible columns (implicitly joinable ones included)."
+  "Project the stage's visible columns, dropping each implicit-join target that an FK on the stage already carries."
   [query]
-  (lib/with-fields query -1 (lib/visible-columns query -1)))
+  (let [visible    (lib/visible-columns query -1)
+        fk-targets (into #{} (keep :fk-target-field-id) visible)
+        kept       (remove (fn [col]
+                             (and (= :source/implicitly-joinable (:lib/source col))
+                                  (fk-targets (:id col))))
+                           visible)]
+    (lib/with-fields query -1 kept)))
 
 (defn- drill->mbql
   "The query `drill` asks for, from `actors-query`, whose last stage has a row per actor and the columns the drill's

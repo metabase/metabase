@@ -143,10 +143,11 @@
                            :breakout    (symbol "nil #_\"key is not present.\"")
                            :filters     [[:= {} [:field {} "periods"] 6]]}]}
                 query))
-        (testing "and includes the actor table's columns via the person FK"
-          ;; USER_ID is an FK to PEOPLE.ID, so the drill's stage projects the People row.
+        (testing "and includes the actor table's columns via the person FK, minus the FK's target"
+          ;; USER_ID is an FK to PEOPLE.ID, so the drill projects the People row. PEOPLE.ID duplicates
+          ;; USER_ID's value, so it's dropped.
           (is (= ["USER_ID" "periods"
-                  "ID" "ADDRESS" "EMAIL" "PASSWORD" "NAME" "CITY" "LONGITUDE" "STATE"
+                  "ADDRESS" "EMAIL" "PASSWORD" "NAME" "CITY" "LONGITUDE" "STATE"
                   "SOURCE" "BIRTH_DATE" "ZIP" "LATITUDE" "CREATED_AT"]
                  (map :name (lib/returned-columns query)))))))
     (testing "the drill can come in as JSON, with a legacy ref — the shape `DatasetColumn.field_ref` has on the FE"
