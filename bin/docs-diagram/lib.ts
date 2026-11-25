@@ -150,6 +150,9 @@ const SMALL: TextStyle = { size: 12, letterSpacing: 0.8, weight: 500 };
 const textWidth = (text: string, style: TextStyle) =>
   text.length * (style.size * 0.6 + style.letterSpacing);
 
+const escapeXml = (text: string) =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 const textElement = ({
   text,
   x,
@@ -158,7 +161,7 @@ const textElement = ({
   color,
   anchor = "middle",
 }: TextLine & { anchor?: "start" | "middle" }) =>
-  `<text x="${x}" y="${baseline}" text-anchor="${anchor}" font-family="${FONT}" font-size="${style.size}" font-weight="${style.weight}" letter-spacing="${style.letterSpacing}" fill="${color}">${text}</text>`;
+  `<text x="${x}" y="${baseline}" text-anchor="${anchor}" font-family="${FONT}" font-size="${style.size}" font-weight="${style.weight}" letter-spacing="${style.letterSpacing}" fill="${color}">${escapeXml(text)}</text>`;
 
 const textBox = ({ text, x, baseline, style }: TextLine): NamedBox => {
   const halfWidth = textWidth(text, style) / 2;
@@ -673,14 +676,19 @@ export function render({
   const problems = findProblems(parts, height);
   const { png, preview } = outputPaths(out);
 
+  const isClean = problems.length === 0;
+
+  // A diagram with problems gets only a preview, so a failed run leaves the PNG as it was.
   mkdirSync(path.dirname(preview), { recursive: true });
   takeScreenshots(pageHtml(title, parts, height), height, [
-    { file: png, scale: 2 },
+    ...(isClean ? [{ file: png, scale: 2 }] : []),
     { file: preview, scale: PREVIEW_WIDTH / CANVAS_WIDTH },
   ]);
 
-  console.log(`Wrote ${png}\nPreview at docs width: ${preview}`);
-  if (problems.length > 0) {
+  if (isClean) {
+    console.log(`Wrote ${png}\nPreview at docs width: ${preview}`);
+  } else {
+    console.log(`Didn't write ${png}\nPreview at docs width: ${preview}`);
     console.error(problems.map((problem) => `Problem: ${problem}`).join("\n"));
     process.exitCode = 1;
   }

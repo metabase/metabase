@@ -81,7 +81,7 @@ render({ out, title, parts }); // out: the path of the PNG, from the root of the
 
 ## Look at both images
 
-The script reports labels that overlap, run off the canvas, or cover their connector, and connectors that run through a label or a tile. Fix each problem until the script exits without an error. Then read the PNG and the preview yourself. The script can't see whether connectors cross, or whether the diagram says what the page says. You must be able to read every label in the preview.
+The script reports labels that overlap, run off the canvas, or cover their connector, and connectors that run through a label or a tile. When the script reports a problem, it writes only the preview, and leaves the PNG as it was. Fix each problem until the script exits without an error. Then read the PNG and the preview yourself. The script can't see whether connectors cross, or whether the diagram says what the page says. You must be able to read every label in the preview.
 
 ## Put the PNG after the paragraph that explains it
 
