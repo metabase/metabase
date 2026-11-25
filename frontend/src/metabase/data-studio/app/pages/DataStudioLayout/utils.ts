@@ -12,6 +12,7 @@ type TabName =
   | "schema-viewer"
   | "glossary"
   | "git-sync"
+  | "worktrees"
   | "settings";
 
 export const getCurrentTab = (pathname: string): TabName => {
@@ -22,6 +23,8 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "glossary";
     case pathname.startsWith(Urls.dataStudioGitSync()):
       return "git-sync";
+    case pathname.startsWith(Urls.dataStudioWorktrees()):
+      return "worktrees";
     case pathname.startsWith(Urls.dependencyGraph()):
       return "dependencies";
     case pathname.startsWith(Urls.dataStudioSchemaViewer()):
