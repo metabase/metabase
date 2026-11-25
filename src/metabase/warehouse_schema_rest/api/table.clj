@@ -361,7 +361,7 @@
       ;; async so as not to block the UI
       (quick-task/submit-task!
        (fn []
-         (sync/update-field-values-for-table! table))))
+         (sync/rescan-field-values-for-table! table))))
     {:status :success}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
