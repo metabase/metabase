@@ -48,7 +48,7 @@ describe("DashboardSharingMenu", () => {
       ],
     },
   ])("dashboard $description (metabase#15077)", ({ dashcards }) => {
-    it("should still allow sharing with a public link and an embed", async () => {
+    it("should still allow sharing with a public link", async () => {
       setupDashboardPublicLinkEndpoints(1);
       setupDashboardSharingMenu({
         isAdmin: true,
