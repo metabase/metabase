@@ -1014,6 +1014,50 @@
                             :from   [[table-identifier]]}]
       (sql-jdbc/query driver database query))))
 
+(defn- row-count-estimates
+  "A map of `[schema name]` to row count, from the `schema_name`, `name` and `rows` of `rows` of `SHOW TABLES`. A table
+  with no count, such as an external table, or a count of 0 is left out, as on Postgres and MySQL."
+  [rows]
+  (into {}
+        (keep (fn [{:keys [schema_name name] row-count :rows}]
+                (when (some-> row-count pos?)
+                  [[schema_name name] (long row-count)])))
+        rows))
+
+(def ^:private show-tables-max-rows
+  "The most rows `SHOW TABLES` returns. Without a `LIMIT`, it fails when there are more."
+  10000)
+
+(defn- row-count-estimates-sql
+  "`SHOW TABLES` for the database `db`, quoted as for `SHOW SCHEMAS`. It reads metadata and needs no running warehouse.
+  Views are not in it."
+  [db]
+  (format "SHOW TABLES IN DATABASE %s LIMIT %d" (quote-schema db) show-tables-max-rows))
+
+(def ^:private row-count-estimates-timeout-seconds
+  "The time limit of the row count estimate query."
+  15)
+
+(defn- query-row-count-estimates
+  "The row count estimates of the tables of the database `db`, with the connection `conn`."
+  [^Connection conn db]
+  (row-count-estimates
+   (jdbc/query {:connection conn} [(row-count-estimates-sql db)] {:timeout row-count-estimates-timeout-seconds})))
+
+(defn- with-row-count-estimates
+  "`tables` with the `:estimated_row_count` of each table. The estimate is extra information, so a failure to read it
+  is logged and the tables are returned without it. A table past the first [[show-tables-max-rows]] tables of the
+  database gets none."
+  [conn db tables]
+  (let [estimates (try
+                    (query-row-count-estimates conn db)
+                    (catch Exception e
+                      (log/warn e "Could not read the row count estimates of the tables")
+                      {}))]
+    (eduction (map (fn [{:keys [schema name] :as table}]
+                     (m/assoc-some table :estimated_row_count (get estimates [schema name]))))
+              tables)))
+
 (defmethod driver/describe-database* :snowflake
   [driver database]
   (let [db-name          (db-name database)
@@ -1036,20 +1080,22 @@
          ;; for each of the schemas we wanted to sync. Right now we're fetching EVERY table, including ones from schemas
          ;; we aren't interested in.
          (fn [^Connection conn]
-           {:tables (into #{}
-                          (comp (filter (fn [{schema :schema table-name :name}]
-                                          (and (not (contains? excluded-schemas schema))
-                                               (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns
-                                                                                                            exclusion-patterns
-                                                                                                            schema)
-                                               (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
-                                (map #(dissoc % :type)))
-                          ;; The Snowflake JDBC drivers is dumb and broken, it will narrow the results to the current
-                          ;; session schema pass in `nil` for `schema-or-nil` to `getTables()`... `%` seems to fix it.
-                          ;; See [[metabase.driver.snowflake/describe-database-default-schema-test]] and
-                          ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
-                          ;; for more info.
-                          (vec (sql-jdbc.sync.interface/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
+           (let [readable? (fn [{schema :schema table-name :name}]
+                             (and (not (contains? excluded-schemas schema))
+                                  (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns
+                                                                                               exclusion-patterns
+                                                                                               schema)
+                                  (sql-jdbc.sync/have-select-privilege? driver conn schema table-name)))
+                 ;; The Snowflake JDBC drivers is dumb and broken, it will narrow the results to the current
+                 ;; session schema pass in `nil` for `schema-or-nil` to `getTables()`... `%` seems to fix it.
+                 ;; See [[metabase.driver.snowflake/describe-database-default-schema-test]] and
+                 ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
+                 ;; for more info.
+                 tables    (into []
+                                 (comp (filter readable?)
+                                       (map #(dissoc % :type)))
+                                 (sql-jdbc.sync.interface/db-tables driver (.getMetaData conn) "%" db-name))]
+             {:tables (into #{} (with-row-count-estimates conn db-name tables))})))))))
 
 (defn- fallback-fields-metadata
   "When JDBC DatabaseMetaData.getColumns() fails (e.g. due to unsupported column types like UUID),

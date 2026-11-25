@@ -863,17 +863,43 @@
                                   {:name "country", :schema "PUBLIC", :description nil}
                                   {:name "airport", :schema "PUBLIC", :description nil}}]
             (testing "should work with normal details"
-              (is (= expected-tables
-                     (into #{} (:tables (driver/describe-database :snowflake (lib.metadata/database (mt/metadata-provider))))))))
+              (let [tables (:tables (driver/describe-database :snowflake (lib.metadata/database (mt/metadata-provider))))]
+                (is (= expected-tables
+                       (into #{} (map #(dissoc % :estimated_row_count)) tables)))
+                (testing "with the row count estimate of each table"
+                  (is (every? (comp pos-int? :estimated_row_count) tables)))))
             (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
               (is (= expected-tables
-                     (into #{} (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database (update (mt/db) :details set/rename-keys {:db :dbname}))))))))
+                     (into #{} (map #(dissoc % :estimated_row_count))
+                           (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database (update (mt/db) :details set/rename-keys {:db :dbname}))))))))
             (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
               (is (thrown? Exception
                            (driver/describe-database :snowflake (driver.u/ensure-lib-database (update (mt/db) :details set/rename-keys {:db :xyz}))))))
             (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
               (is (= expected-tables
-                     (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database (assoc (mt/db) :name "ABC")))))))))))))
+                     (into #{} (map #(dissoc % :estimated_row_count))
+                           (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database (assoc (mt/db) :name "ABC"))))))))))))))
+
+(deftest ^:parallel row-count-estimates-test
+  (testing "The estimates of `SHOW TABLES` rows, by schema and name, without the tables that have none or 0"
+    (is (= {["PUBLIC" "a"] 5
+            ["OTHER" "a"]  7}
+           (#'driver.snowflake/row-count-estimates
+            [{:schema_name "PUBLIC", :name "a", :rows 5}
+             {:schema_name "OTHER", :name "a", :rows 7M}
+             {:schema_name "PUBLIC", :name "empty", :rows 0}
+             {:schema_name "PUBLIC", :name "external", :rows nil}])))))
+
+(deftest ^:parallel row-count-estimates-sql-test
+  (testing "One SHOW TABLES for the database, with the most rows SHOW can return, so that it does not fail above that"
+    (is (= "SHOW TABLES IN DATABASE \"my \"\"db\"\"\" LIMIT 10000"
+           (#'driver.snowflake/row-count-estimates-sql "my \"db\"")))))
+
+(deftest with-row-count-estimates-failure-test
+  (testing "A failure to read the estimates gives the tables without them"
+    (mt/with-dynamic-fn-redefs [driver.snowflake/query-row-count-estimates (fn [& _] (throw (ex-info "no" {})))]
+      (is (= [{:schema "PUBLIC", :name "a"}]
+             (into [] (#'driver.snowflake/with-row-count-estimates nil "db" [{:schema "PUBLIC", :name "a"}])))))))
 
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
@@ -2334,7 +2360,8 @@
                        {:name "region",       :schema "PUBLIC", :description nil}
                        {:name "country",      :schema "PUBLIC", :description nil}
                        {:name "airport",      :schema "PUBLIC", :description nil}}
-                     (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database db)))))))))))))
+                     (into #{} (map #(dissoc % :estimated_row_count))
+                           (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database db))))))))))))))
 
 ;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
 ;; Tests to validate that fake sync produces correct metadata for Snowflake.
