@@ -48,6 +48,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { question as ML_getUrl } from "metabase/urls/questions";
@@ -147,7 +148,8 @@ export function ConversationDetailPage() {
   }
 
   const {
-    total_tokens,
+    uncached_tokens,
+    cache_read_tokens,
     message_count,
     search_count,
     query_count,
@@ -174,14 +176,10 @@ export function ConversationDetailPage() {
           <Stack gap="xxl">
             <ConversationHeader conversation={conversation} />
 
-            <SimpleGrid cols={4}>
+            <SimpleGrid cols={3}>
               <StatCard
                 label={t`Messages`}
                 value={formatNumber(message_count)}
-              />
-              <StatCard
-                label={t`Total tokens`}
-                value={formatNumber(total_tokens)}
               />
               <StatCard
                 label={t`Queries run`}
@@ -190,6 +188,16 @@ export function ConversationDetailPage() {
               <StatCard
                 label={t`Searches`}
                 value={formatNumber(search_count)}
+              />
+              <StatCard
+                label={t`Tokens`}
+                tooltip={t`Sum of input tokens and output tokens, without cached tokens.`}
+                value={formatNumber(uncached_tokens)}
+              />
+              <StatCard
+                label={t`Cached tokens`}
+                tooltip={t`Cached input tokens. Not part of Tokens.`}
+                value={formatNumber(cache_read_tokens)}
               />
             </SimpleGrid>
 
@@ -266,12 +274,22 @@ export function ConversationDetailPage() {
 }
 
 /** A labelled stat. Without a `value`, shows a placeholder in its place. */
-function StatCard({ label, value }: { label: string; value?: string }) {
+function StatCard({
+  label,
+  value,
+  tooltip,
+}: {
+  label: string;
+  value?: string;
+  tooltip?: string;
+}) {
   return (
     <Card withBorder shadow="none" p="lg">
-      <Text size="sm" c="text-secondary">
-        {label}
-      </Text>
+      <Tooltip label={tooltip} disabled={!tooltip}>
+        <Text size="sm" c="text-secondary" display="inline-block">
+          {label}
+        </Text>
+      </Tooltip>
       {value != null ? (
         <Title order={2} mt="xxs">
           {value}
@@ -295,11 +313,12 @@ function ConversationDetailSkeleton() {
           <Skeleton h={14} w={120} radius="xs" />
         </Flex>
       </Stack>
-      <SimpleGrid cols={4}>
+      <SimpleGrid cols={3}>
         <StatCard label={t`Messages`} />
-        <StatCard label={t`Total tokens`} />
         <StatCard label={t`Queries run`} />
         <StatCard label={t`Searches`} />
+        <StatCard label={t`Tokens`} />
+        <StatCard label={t`Cached tokens`} />
       </SimpleGrid>
       <Stack gap="lg">
         <Title order={3}>{t`Conversation`}</Title>

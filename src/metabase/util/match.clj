@@ -4,7 +4,7 @@
   (:refer-clojure :exclude [every? run! some mapv replace empty?])
   (:require
    [metabase.util.match.impl]
-   [metabase.util.performance :as perf :refer [empty? every? mapv run! some dropv]]))
+   [metabase.util.performance :as perf :refer [empty? every? mapv run! some]]))
 
 (defn- parse-pattern
   "Parse a pattern vector into bindings and conditions"
@@ -88,7 +88,7 @@
                 (vswap! bindings conj [(:symbol parsed) value]))
       :vector (let [s (if (symbol? value) value (gensym "vec"))
                     cnt (count parts)]
-                (vswap! bindings conj (with-meta [s `(metabase.util.match.impl/vector! ~value)]
+                (vswap! bindings conj (with-meta [s `(metabase.util.match.impl/sequential! ~value)]
                                                  {:vector-check true}))
                 (dorun (map-indexed #(process-pattern %2 (with-meta (list `nth s %1 nil) (or (meta s)
                                                                                              {:depends-on s}))
@@ -99,7 +99,7 @@
                                                              `metabase.util.match.impl/count=) s cnt)
                                                      {:depends-on s})))
                 (when rest-part
-                  (process-pattern rest-part `(dropv ~cnt ~s) bindings conditions false)))
+                  (process-pattern rest-part `(metabase.util.match.impl/drop-rest ~cnt ~s) bindings conditions false)))
       :map (let [s (if (symbol? value) value (gensym "map"))]
              (vswap! bindings conj [s `(metabase.util.match.impl/map! ~value)])
              (run! (fn [[k v]]
@@ -198,11 +198,11 @@
   (let [same-return? (and (apply = returns)
                           ;; Only allow extracting same result if there are no individual bindings in branches.
                           (every? empty? all-bindings))
-        ;; If all clauses check for vector, hoist the check into the let binding.
+        ;; If all clauses check for a sequential collection, hoist the check into the let binding.
         common-vector-check? (some #(and (= % value-sym) (:vector-check (meta %))) common-bindings)
         common-bindings (remove #(and (= % value-sym) (:vector-check (meta %))) common-bindings)
         value-binding (if common-vector-check?
-                        `(metabase.util.match.impl/vector! ~(or value-binding value-sym))
+                        `(metabase.util.match.impl/sequential! ~(or value-binding value-sym))
                         value-binding)]
     `(let [~@(when (and (some? value-binding) (not= value-sym value-binding))
                [value-sym value-binding])
@@ -273,7 +273,8 @@
   "Pattern matching macro, simplified version of [[clojure.core.match]].
 
   Return a single thing that matches one of the match `clauses` inside `value`. If none of the clauses matched, return
-  `nil`. Recurses through maps and sequences. A clause is a pair of a match pattern and a return expression. Usage:
+  `nil`. Recurses through maps (both keys and values), sequences and sets. A clause is a pair of a match pattern and
+  a return expression. Usage:
 
   (match-one value
     pattern1 result1
@@ -290,7 +291,9 @@
                                   check for collection length.
   - #'pred - same as (_ :guard pred) - just a predicate check without binding to a symbol. Note that even though it
              looks like a var, nothing is resolved this way, and you can even use it as #'local-fn, but you shouldn't.
-  - vector - binds positional values inside a sequence against other patterns. Can have & to bind remaining elements.
+  - vector - binds positional values inside a sequential collection (vector, list or seq) against other patterns. Can
+             have & to bind remaining elements: a vector for vectors, and the remaining seq for lists and seqs.
+             Matching a list or a seq is slower than a vector, because `nth` and `count` walk it.
   - map - binds associative values inside a map against other patterns. Special symbols can be used as patterns:
           `&truthy` - matches if the map contains any truthy value for the key
           `_` - matches if the map contains any value (including `nil`) for the key, but not if key is missing
@@ -431,8 +434,8 @@
 (defmacro match-all
   "Like [[match-many]], keeps looking recursively inside the matched values too. Returns a vector of all non-nil return
   values, outer matches before inner ones, or `nil` if nothing matched. See [[match-one]] for pattern and return
-  expression syntax. Like the rest match macros, looks into map values and sequential collections, but not into map
-  keys or sets.
+  expression syntax. Like the rest match macros, looks into maps (both keys and values), sequential collections and
+  sets.
 
   Differences from [[match-many]]:
 
@@ -449,23 +452,27 @@
 
 (defmacro replace
   "Walk `form` recursively and replace all patterns matched with `match-one` by the respective return expressions. The
-  same pattern options are supported, and `&parents` and `&match` anaphors are available in the same way."
+  same pattern options are supported, and `&parents` and `&match` anaphors are available in the same way. Map keys are
+  walked too, so make sure that a pattern doesn't replace a map key by accident."
   [form & clauses]
   (let [replace-fn-symb (gensym "replace-")
         contains-&parents? (contains-symbol? clauses '&parents)]
-    `((fn ~replace-fn-symb [~'&match ~'&parents]
-        (match-one ~'&match
-          ~@clauses
-          ~'_ (metabase.util.match.impl/replace-in-collection
-               ~replace-fn-symb ~'&match ~(when contains-&parents?
-                                            '&parents))))
-      ~form
-      ~(when contains-&parents? []))))
+    (if contains-&parents?
+      `((fn ~replace-fn-symb [~'&match ~'&parents]
+          (match-one ~'&match
+            ~@clauses
+            ~'_ (metabase.util.match.impl/replace-in-collection ~replace-fn-symb ~'&match ~'&parents)))
+        ~form
+        [])
+      `((fn ~replace-fn-symb [~'&match]
+          (match-one ~'&match
+            ~@clauses
+            ~'_ (perf/walk ~replace-fn-symb identity ~'&match)))
+        ~form))))
 
 (defmacro replace-all
   "Like [[replace]], but walks the `form` from the inside outwards, thus applying the transform multiple times (in a
-  \"postwalk\" fashion). Doesn't support `&parents` anaphora yet. NB: unlike [[replace]], this macro walks map keys
-  individually. Make sure that the match body doesn't trigger on map keys. "
+  \"postwalk\" fashion). Doesn't support `&parents` anaphora yet."
   [form & clauses]
   (let [replace-fn-symb (gensym "replace-")
         contains-&parents? (contains-symbol? clauses '&parents)]

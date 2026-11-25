@@ -30,7 +30,6 @@ export type {
 export { createQuestionAndAddToDashboard } from "./createQuestionAndAddToDashboard";
 export { createQuestionAndDashboard } from "./createQuestionAndDashboard";
 export { createSnippet } from "./createSnippet";
-export { createSnippetFolder } from "./createSnippetFolder";
 export { createTestNativeQuery, createTestQuery } from "./createTestQuery";
 export { createTimeline } from "./createTimeline";
 export { createTimelineEvent } from "./createTimelineEvent";
