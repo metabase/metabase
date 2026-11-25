@@ -364,8 +364,9 @@
   message renders them as.
 
   Throws the run's typed refusals — a current user whose connection to the database is impersonated, an untestable
-  subject or driver, SQL that will not parse, SQL of the query under test or of an input that is not one SELECT, a
-  test the validator rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the
+  subject or driver, SQL that will not parse, SQL of the query under test or of an input that is not one checkable
+  SELECT or uses a form data tests do not support, parameters the rewrite does not keep, a test the validator
+  rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the
   plan and discarding it."
   [subject-type                         :- ::data-testing.subject/subject-type
    subject                              :- ::data-testing.subject/subject

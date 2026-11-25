@@ -275,21 +275,18 @@
   The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
   parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk the parser
   running out of memory) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
-  original one. Only `:verdict :allowed` is permission to proceed. The `:sql` must also pass the same checks
-  (`:reason \"rebuild-differs\"`), and on Postgres read as one statement with `standard_conforming_strings` on. For
-  `\"read-only\"`, it must also reconstruct to itself (`:reason \"rebuild-differs\"`), read as one statement with
-  the setting off (`:reason \"backslash-quote\"` when only off splits it), and hold no form that the reconstruction
-  gives another value.
+  original one. Only `:verdict :allowed` is permission to proceed.
 
-  See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape, and [[classify-stmt]]
-  for the same question asked by a caller that only needs a verdict."
+  See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape and the checks the `:sql` itself
+  must pass, and [[classify-stmt]] for the same question asked by a caller that only needs a verdict."
   [driver sql stmt-type]
   (sql-parsing/validate-executable-stmt (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
 
 (defn name-placeholders
   "`sql` with each positional placeholder `?` replaced by the bare name `<prefix><i>`, `i` counting from 0 in the order
   the placeholders appear, as `{:sql :count}`, `:count` the placeholders replaced. A `?` that `driver`'s dialect reads
-  inside a string literal, a quoted name or a comment is not a placeholder, and stays."
+  inside a string literal, a quoted name or a comment is not a placeholder, and stays. `:sql` can also differ from
+  `sql` in the space between a placeholder and a `::` cast after it."
   [driver sql prefix]
   (sql-parsing/name-placeholders (sqlglot-parser) (sqlglot/driver->dialect driver) sql prefix))
 

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-testing.validator
   "May this test run? [[validate]] answers, once, for the whole test: it throws a typed refusal when the answer is no,
-  and returns the SQL a run executes for each expectation when it is yes. Pure: it parses and rewrites SQL, and opens
-  no connection.
+  and when it is yes returns the SQL a run executes for each expectation written in SQL. Pure: it parses and rewrites
+  SQL, and opens no connection.
 
   Two guards, run against the test as a whole:
 
@@ -232,9 +232,8 @@
 
 (mu/defn ensure-single-select :- :string
   "Returns the SQL a run executes for `sql`: SQLGlot's rebuild of `sql` in `driver`'s dialect. `sql` must be one
-  SELECT that passes the read-only statement check, which refuses anything that writes or locks (a data-modifying CTE,
-  `SELECT ... INTO`, `FOR UPDATE`). The rebuild must pass the check too and rebuild to itself, and on Postgres read as
-  one statement whatever `standard_conforming_strings` is.
+  SELECT that passes the `\"read-only\"` check of [[sql-tools/validate-executable-stmt]], which refuses anything that
+  writes or locks (a data-modifying CTE, `SELECT ... INTO`, `FOR UPDATE`) and checks the rebuild too.
 
   Throws `::data-testing.errors/not-a-single-select` when `sql` is not such a statement,
   `::data-testing.errors/unsupported-sql` when it uses a form whose rebuild has another value,
@@ -372,8 +371,9 @@
 
 (mu/defn validate :- [:map-of :string :string]
   "Refuse the test unless it is complete against the query it tests, every query it will run reads only the run's
-  temp tables, and it has at least one expectation. Returns, by expectation name, the SQL a run executes for each
-  expectation written in SQL, and otherwise throws a typed refusal from [[metabase-enterprise.data-testing.errors]].
+  temp tables, and it has at least one expectation. When nothing is refused, returns, by expectation name, the SQL a
+  run executes for each expectation written in SQL; otherwise throws a typed refusal from
+  [[metabase-enterprise.data-testing.errors]].
 
   `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-query`
   is that query after it; `replacements` is the map both it and the expectations are rewritten with, whose values name

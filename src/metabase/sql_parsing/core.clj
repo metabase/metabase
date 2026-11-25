@@ -537,9 +537,10 @@
   {:max-sql-chars        nil
    :literal-list-ceiling executable-literal-list-ceiling
    :require-dialect?     true
-   ;; The caller runs the rebuild, so every type has it checked. The Postgres count with
-   ;; `standard_conforming_strings` off also refuses ordinary SQL such as `replace(path, '\\', '/')`, and so does
-   ;; the refusal of forms the rebuild gives another value; both are kept to "read-only", which only data tests send.
+   ;; The caller runs the rebuild, so every type has it checked. Three parts refuse ordinary SQL and are kept to
+   ;; "read-only", which only data tests send: the rule that the rebuild rebuilds to itself (a `--` comment opening a
+   ;; CTE's body), the Postgres count with `standard_conforming_strings` off (a literal '\' followed by a ';'
+   ;; literal), and the refusal of forms the rebuild gives another value.
    :check-rebuild        {"read-only" "rebuild-strict"
                           "read"      "rebuild"
                           "write"     "rebuild"}})
@@ -629,7 +630,8 @@
 (defn name-placeholders
   "`sql` with each positional placeholder `?` replaced by the bare name `<prefix><i>`, `i` counting from 0 in the order
   the placeholders appear, as `{:sql :count}`, `:count` the placeholders replaced. A `?` that `dialect` reads inside
-  a string literal, a quoted name or a comment is not a placeholder, and stays."
+  a string literal, a quoted name or a comment is not a placeholder, and stays. `:sql` can also differ from `sql` in
+  the space between a placeholder and a `::` cast after it."
   [parser dialect sql prefix]
   (protocol/name-placeholders parser dialect sql prefix))
 

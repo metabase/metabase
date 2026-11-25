@@ -321,10 +321,10 @@
    :expected   {:verdict :unknown :reason "unparseable" :error "Unknown dialect 'mariadb'."}}
 
   ;; Postgres with `standard_conforming_strings` off reads a backslash in '...' as an escape, so `\'` does not end
-  ;; the literal there. A caller that executes the rebuild is refused a rebuild that Postgres reads as more than one
-  ;; statement with the setting on ("rebuild-differs"), and for "read-only" also one it reads so with the setting off
-  ;; only ("backslash-quote"). Each refused case below is one statement to SQLGlot. A caller that only reads the
-  ;; verdict is not checked for it.
+  ;; the literal there. For a caller that executes the rebuild, a rebuild that Postgres reads as more than one
+  ;; statement with the setting on is refused ("rebuild-differs"); for "read-only", so is one it reads as more than
+  ;; one statement only with the setting off ("backslash-quote"). Each refused case below is one statement to
+  ;; SQLGlot. A caller that only reads the verdict gets neither check.
 
   {:name              "an executed read with a backslash before a quote is not checked for the setting off"
    :dialect           "postgres"

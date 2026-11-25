@@ -302,7 +302,8 @@
     (when (.lookingAt m)
       [(.group m) (.end m)])))
 
-;; The characters Postgres reads as whitespace. It reads any other character from U+0080 up as part of a name.
+;; The characters Postgres reads as whitespace, and `\v`, which it refuses outside a literal or a comment. It reads any
+;; other character from U+0080 up as part of a name.
 (def ^:private pg-space #{\space \tab \newline \return \formfeed (char 11)})
 
 (defn- index-after

@@ -1719,8 +1719,9 @@ def _split_placeholder_casts(sql: str, dialect: str = None) -> str:
 
 
 def name_placeholders(sql: str, prefix: str, dialect: str = None) -> str:
-    """`sql` with each positional placeholder `?` replaced by the bare name `<prefix><i>`, `i` counting from 0 in the
-    order the placeholders appear, as JSON `{"sql": ..., "count": <placeholders replaced>}`. A `?` that the dialect's
+    """`sql`, with a space put between a placeholder and a `::` cast after it, and each positional placeholder `?`
+    replaced by the bare name `<prefix><i>`, `i` counting from 0 in the order the placeholders appear, as JSON
+    `{"sql": ..., "count": <placeholders replaced>}`. A `?` that the dialect's
     tokenizer reads inside a string literal, a quoted name or a comment is not a placeholder, and stays."""
     sql = _split_placeholder_casts(sql, dialect)
     parts, last, count = [], 0, 0
@@ -2006,7 +2007,8 @@ def _hidden_sql(sql: str, dialect: str, select: bool):
 _PG_WORD = re.compile(r"[A-Za-z_\x80-\U0010ffff][A-Za-z_0-9$\x80-\U0010ffff]*")
 _PG_DOLLAR_QUOTE = re.compile(r"\$(?:[A-Za-z_\x80-\U0010ffff][A-Za-z_0-9\x80-\U0010ffff]*)?\$")
 _LINE_END = re.compile(r"[\n\r]")
-# The characters Postgres reads as whitespace. It reads any other character from U+0080 up as part of a name.
+# The characters Postgres reads as whitespace, and `\v`, which it refuses outside a literal or a comment. It reads any
+# other character from U+0080 up as part of a name.
 _PG_SPACE = frozenset(" \t\n\r\f\v")
 
 
