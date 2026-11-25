@@ -44,3 +44,20 @@
   border: 1px dashed var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-sm);
 }
+
+/* Table name column; the hover actions take its place. */
+.trailing {
+  position: relative;
+  flex: none;
+  width: min(var(--table-col-width), 10rem);
+}
+
+.actions {
+  position: absolute;
+  inset: 0 0 0 auto;
+  justify-content: flex-end;
+}
+
+.row:hover .table {
+  visibility: hidden;
+}

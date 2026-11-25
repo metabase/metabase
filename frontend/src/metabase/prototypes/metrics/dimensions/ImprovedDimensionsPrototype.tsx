@@ -1,6 +1,6 @@
 /* eslint-disable boundaries/element-types -- throwaway prototype: reuses the real Dimensions tab's pieces. */
 import cx from "classnames";
-import { useState } from "react";
+import { type CSSProperties, useState } from "react";
 
 import { useListCardsQuery } from "metabase/api";
 import {
@@ -133,6 +133,13 @@ function ImprovedDimensions({
     ({ group, dimensions }) =>
       dimensions.map((dimension) => ({ group, dimension })),
   );
+  // CSSProperties has no index signature for custom properties.
+  const tableColumnStyle = {
+    "--table-col-width": `${getTableColumnWidth([
+      ...added.map((d) => d.group?.display_name),
+      ...available.map(({ group }) => group.display_name),
+    ])}px`,
+  } as CSSProperties;
   const isSearchActive = search.length > 0 || Boolean(debouncedSearch);
   const selected = added.find((d) => d.id === selectedId) ?? added[0];
   const checkedAdded = added.filter((d) => checked.has(d.id)).map((d) => d.id);
@@ -258,7 +265,7 @@ function ImprovedDimensions({
                 root: RealS.scrollArea,
               }}
             >
-              <Stack gap="xl">
+              <Stack gap="xl" style={tableColumnStyle}>
                 <Box {...zoneProps("added", () => dropOnAdded())}>
                   <SectionTitle
                     title="Dimensions of this metric"
@@ -282,6 +289,7 @@ function ImprovedDimensions({
                         section="added"
                         dimension={dimension}
                         label={dimension.display_name}
+                        table={dimension.group?.display_name}
                         checked={checked.has(dimension.id)}
                         active={dimension.id === selected?.id}
                         isDragging={drag?.ids.includes(dimension.id) ?? false}
@@ -318,7 +326,8 @@ function ImprovedDimensions({
                         key={dimension.id}
                         section="available"
                         dimension={dimension}
-                        label={getNewDimensionTitle(group, dimension)}
+                        label={dimension.display_name}
+                        table={group.display_name}
                         checked={checked.has(dimension.id)}
                         isDragging={drag?.ids.includes(dimension.id) ?? false}
                         onToggle={() => toggle(dimension.id)}
@@ -385,6 +394,27 @@ function ImprovedDimensions({
   );
 }
 
+let measureCanvas: HTMLCanvasElement | undefined;
+
+/** Width of the widest table label (icon + gap + text), so the column hugs it. */
+function getTableColumnWidth(tables: (string | undefined)[]): number {
+  measureCanvas ??= document.createElement("canvas");
+  const ctx = measureCanvas.getContext("2d");
+  if (!ctx) {
+    return 0;
+  }
+  const rootPx = parseFloat(
+    getComputedStyle(document.documentElement).fontSize,
+  );
+  ctx.font = `400 ${0.875 * rootPx}px ${getComputedStyle(document.body).fontFamily}`;
+  const text = Math.max(
+    0,
+    ...tables.map((table) => (table ? ctx.measureText(table).width : 0)),
+  );
+  const ACTIONS_W = 56; // the two hover buttons need this much room
+  return Math.max(ACTIONS_W, Math.ceil(text) + 12 + 4);
+}
+
 function SectionTitle({ title, count }: { title: string; count: number }) {
   return (
     <Group gap="xs" mb="sm">
@@ -400,6 +430,7 @@ function DimensionRow({
   section,
   dimension,
   label,
+  table,
   checked,
   active = false,
   isDragging,
@@ -413,6 +444,7 @@ function DimensionRow({
   section: Section;
   dimension: MetricDimension;
   label: string;
+  table?: string;
   checked: boolean;
   active?: boolean;
   isDragging: boolean;
@@ -460,19 +492,20 @@ function DimensionRow({
       <UnstyledButton className={RealS.rowButton} onClick={onClick}>
         <Group gap="sm" wrap="nowrap">
           <Icon name={getDimensionIcon(dimension)} c="text-secondary" />
-          <Text
-            miw={0}
-            truncate="end"
-            c={isAvailable ? "text-secondary" : undefined}
-          >
-            {label}
-          </Text>
-          {dimension.default && (
-            <Badge variant="light" flex="none">
-              Default
-            </Badge>
-          )}
-          <Box flex={1} />
+          <Group gap="sm" wrap="nowrap" flex={1} miw={0}>
+            <Text
+              miw={0}
+              truncate="end"
+              c={isAvailable ? "text-secondary" : undefined}
+            >
+              {label}
+            </Text>
+            {dimension.default && (
+              <Badge variant="light" flex="none">
+                Default
+              </Badge>
+            )}
+          </Group>
           {isOrphaned(dimension) && (
             <Icon
               name="warning"
@@ -482,23 +515,35 @@ function DimensionRow({
           )}
         </Group>
       </UnstyledButton>
-      <Tooltip label={isAvailable ? "Add to metric" : "Remove from metric"}>
-        <ActionIcon
-          className={S.hoverAction}
-          aria-label={isAvailable ? "Add to metric" : "Remove from metric"}
-          variant="subtle"
-          c="text-secondary"
-          size="sm"
-          onClick={onMove}
-        >
-          <Icon name="sort_arrows" size={14} />
-        </ActionIcon>
-      </Tooltip>
-      <Icon
-        name="grabber"
-        c="text-secondary"
-        className={cx(S.hoverAction, S.grab)}
-      />
+      <Box className={S.trailing}>
+        {table && (
+          <Group gap={4} wrap="nowrap" className={S.table}>
+            <Icon name="table" size={12} c="icon-disabled" flex="none" />
+            <Text size="sm" c="text-secondary" truncate="end">
+              {table}
+            </Text>
+          </Group>
+        )}
+        <Group gap="sm" wrap="nowrap" className={cx(S.hoverAction, S.actions)}>
+          <Tooltip label={isAvailable ? "Add to metric" : "Remove from metric"}>
+            <ActionIcon
+              className={S.hoverAction}
+              aria-label={isAvailable ? "Add to metric" : "Remove from metric"}
+              variant="subtle"
+              c="text-secondary"
+              size="sm"
+              onClick={onMove}
+            >
+              <Icon name="sort_arrows" size={14} />
+            </ActionIcon>
+          </Tooltip>
+          <Icon
+            name="grabber"
+            c="text-secondary"
+            className={cx(S.hoverAction, S.grab)}
+          />
+        </Group>
+      </Box>
     </Group>
   );
 }
