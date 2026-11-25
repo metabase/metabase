@@ -709,7 +709,7 @@
               "tell the user that search is unavailable right now.")})
 
 (tools/defrecoverable search-failed!
-  "The appdb search index is missing, for example because its tables are gone.
+  "No search index can serve the query: the search threw an error that `search/index-not-found?` accepts.
 
   Every failure gets [[no-retry-step]], because each retry uses an iteration and logs a stack trace."
   {:payload ::search-scope}

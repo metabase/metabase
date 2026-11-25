@@ -800,6 +800,10 @@
     (doseq [[description ex expected-error]
             [["a missing index" (ex-info "Search Index not found." {:search/index-not-found? true})
               {:class :recoverable :code ::search/search-failed}]
+             ["a missing index in the cause chain, as an engine that wraps its errors throws it"
+              (ex-info "Error executing semantic search" {:type :semantic-search-error}
+                       (ex-info "Search Index not found." {:search/index-not-found? true}))
+              {:class :recoverable :code ::search/search-failed}]
              ["a failure nobody planned for" (ex-info "Boom" {})
               {:class :unrecoverable :code :internal}]]
             queries [["orders"] ["orders" "invoices"]]]
