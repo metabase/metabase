@@ -846,3 +846,134 @@
            (select-keys (t2/select-one :model/Table :id table-id)
                         [:table_role :period_granularity :mutability :load_strategy
                          :history_definition :eav_definition])))))
+
+(defn- definition-error
+  "The `:errors` of the 400 that `thunk` throws, or nil when it throws none; any other exception is rethrown."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (if (= 400 (:status-code (ex-data e)))
+        (:errors (ex-data e))
+        (throw e)))))
+
+(defn- do-with-definition-tables
+  "Call `f` with a map of a Table with four Fields, a definition Table with two Fields in the same Database, and a Table
+  with a Field in another Database."
+  [f]
+  (mt/with-temp [:model/Database {other-db :id}    {}
+                 :model/Table    {table :id}       {:db_id (mt/id) :name "history"}
+                 :model/Field    {f1 :id}          {:table_id table :name "f1"}
+                 :model/Field    {f2 :id}          {:table_id table :name "f2"}
+                 :model/Field    {f3 :id}          {:table_id table :name "f3"}
+                 :model/Field    {f4 :id}          {:table_id table :name "f4"}
+                 :model/Table    {definitions :id} {:db_id (mt/id) :name "definitions"}
+                 :model/Field    {label :id}       {:table_id definitions :name "label"}
+                 :model/Field    {type-field :id}  {:table_id definitions :name "type"}
+                 :model/Table    {elsewhere :id}   {:db_id other-db :name "elsewhere"}
+                 :model/Field    {foreign :id}     {:table_id elsewhere :name "foreign"}]
+    (f {:table table :f1 f1 :f2 f2 :f3 f3 :f4 f4 :definitions definitions :label label :type-field type-field
+        :elsewhere elsewhere :foreign foreign})))
+
+(deftest update-tables-accepts-valid-definitions-test
+  (do-with-definition-tables
+   (fn [{:keys [table f1 f2 f3 f4 definitions label type-field]}]
+     (let [history {:durable_key f1, :valid_from f2, :valid_to f3, :current_flag f4, :version nil}
+           eav     {:entity_key f1, :property_name f2, :property_value f3
+                    :definition_table definitions, :label label, :type type-field}]
+       (table/update-tables! [{:id table :history_definition history :eav_definition eav}])
+       (is (=? {:history_definition history :eav_definition eav}
+               (t2/select-one :model/Table :id table)))
+       (testing "valid_from and version may hold the same Field"
+         (table/update-tables! [{:id table :history_definition {:durable_key f1 :valid_from f2 :version f2}}])
+         (is (= {:durable_key f1 :valid_from f2 :version f2}
+                (t2/select-one-fn :history_definition :model/Table :id table))))))))
+
+(deftest update-tables-rejects-invalid-definitions-test
+  (do-with-definition-tables
+   (fn [{:keys [table f1 f2 f3 definitions label type-field elsewhere foreign]}]
+     (doseq [[description column definition message]
+             [["a Field of another Table"
+               :history_definition {:durable_key label}
+               "durable_key must be a Field of this Table"]
+              ["a Field that does not exist"
+               :history_definition {:valid_to Integer/MAX_VALUE}
+               "valid_to must be a Field of this Table"]
+              ["an entity Field of another Table"
+               :eav_definition {:entity_key label :definition_table definitions}
+               "entity_key must be a Field of this Table"]
+              ["a label that is not a Field of the definition Table"
+               :eav_definition {:entity_key f1 :definition_table definitions :label f2}
+               "label must be a Field of the definition_table"]
+              ["a type without a definition Table"
+               :eav_definition {:entity_key f1 :type type-field}
+               "type must be a Field of the definition_table"]
+              ["a definition Table in another Database"
+               :eav_definition {:entity_key f1 :definition_table elsewhere :label foreign}
+               "definition_table must be a Table of the same Database"]
+              ["a Field in two keys"
+               :history_definition {:durable_key f1 :valid_from f1}
+               (format "durable_key and valid_from cannot share Field %d" f1)]
+              ["valid_from and valid_to sharing a Field"
+               :history_definition {:valid_from f2 :valid_to f2}
+               (format "valid_from and valid_to cannot share Field %d" f2)]
+              ["valid_to and version sharing a Field"
+               :history_definition {:valid_to f3 :version f3}
+               (format "valid_to and version cannot share Field %d" f3)]
+              ["three keys sharing a Field, valid_from and version among them"
+               :history_definition {:valid_from f2 :valid_to f2 :version f2}
+               (format "valid_from and valid_to and version cannot share Field %d" f2)]
+              ["an eav Field in two keys"
+               :eav_definition {:entity_key f1 :property_name f2 :property_value f2}
+               (format "property_name and property_value cannot share Field %d" f2)]]]
+       (testing description
+         (is (= {(keyword (name column)) message}
+                (definition-error #(table/update-tables! [{:id table column definition}]))))
+         (is (nil? (t2/select-one-fn column :model/Table :id table))))))))
+
+(deftest update-tables-checks-only-changed-definitions-test
+  (testing "an update that leaves a stored definition as it is does not check it again"
+    (do-with-definition-tables
+     (fn [{:keys [table label]}]
+       (t2/update! :metabase_table :id table {:history_definition (format "{\"durable_key\":%d}" label)})
+       (table/update-tables! [{:id table :history_definition {:durable_key label} :description "kept"}])
+       (is (= "kept" (t2/select-one-fn :description :model/Table :id table)))))))
+
+(defn- new-table-row
+  "A row for [[table/create-tables!]] with the defaults of a temporary Table and `row`."
+  [row]
+  (merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id (mt/id)} row))
+
+(deftest create-tables-rejects-invalid-definitions-test
+  (do-with-definition-tables
+   (fn [{:keys [f1 definitions elsewhere]}]
+     (testing "a new Table has no Fields yet"
+       (is (= {:history_definition "durable_key must be a Field of this Table"}
+              (definition-error #(table/create-tables! [(new-table-row {:name "new_history"
+                                                                        :history_definition {:durable_key f1}})])))))
+     (testing "a definition Table in another Database"
+       (is (= {:eav_definition "definition_table must be a Table of the same Database"}
+              (definition-error #(table/create-tables!
+                                  [(new-table-row {:name "new_eav" :eav_definition {:definition_table elsewhere}})])))))
+     (testing "a definition Table of the same Database"
+       (let [[{:keys [id]}] (table/create-tables! [(new-table-row {:name "new_eav"
+                                                                   :eav_definition {:definition_table definitions}})])]
+         (try
+           (is (= {:definition_table definitions} (t2/select-one-fn :eav_definition :model/Table :id id)))
+           (finally
+             (t2/delete! :model/Table :id id)))))
+     (is (not (t2/exists? :model/Table :name [:in ["new_history" "new_eav"]]))))))
+
+(deftest serdes-import-rejects-invalid-definitions-test
+  (testing "the write functions the SerDes spec imports Tables with run the definition checks"
+    (do-with-definition-tables
+     (fn [{:keys [table label]}]
+       (let [{:keys [insert! update!]} (serialization/spec :model/Table)]
+         (is (= {:history_definition "durable_key must be a Field of this Table"}
+                (definition-error #(update! [{:id table :history_definition {:durable_key label}}]))))
+         (is (nil? (t2/select-one-fn :history_definition :model/Table :id table)))
+         (is (= {:history_definition "durable_key must be a Field of this Table"}
+                (definition-error #(insert! [(new-table-row {:name "imported_history"
+                                                             :history_definition {:durable_key label}})]))))
+         (is (not (t2/exists? :model/Table :name "imported_history"))))))))

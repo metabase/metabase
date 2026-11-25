@@ -116,7 +116,10 @@
                   [:data_sensitivity   {:optional true} [:maybe FieldDataSensitivity]]
                   [:has_field_values   {:optional true} ::lib.schema.metadata/column.has-field-values]
                   [:settings           {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
-                  [:json_unfolding     {:optional true} :boolean]]]
+                  [:json_unfolding     {:optional true} :boolean]
+                  [:is_grain           {:optional true} [:maybe :boolean]]
+                  [:attribute_scd_type {:optional true} [:maybe ::warehouse-schema.schema/attribute-scd-type]]
+                  [:facets             {:optional true} [:maybe ::warehouse-schema.schema/facets]]]]
   (let [field          (api/write-check (warehouse-schema-rest.db/field id))
         effective-type (cond
                          (not (contains? body :coercion_strategy)) ((some-fn :effective_type :base_type) field)

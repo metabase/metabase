@@ -236,18 +236,36 @@
    :mutability_set true, :load_strategy_set true, :scd_type_set true, :history_definition_set true
    :eav_definition_set true})
 
+(defn- do-with-definition-fields
+  "Call `f` with a Table, and the structural metadata a user and sync write to it, whose definitions hold Fields of the
+  Table and a definition Table of its Database."
+  [f]
+  (mt/with-temp [:model/Table {table-id :id :as table} {:db_id (mt/id)}
+                 :model/Table {definitions-id :id}    {:db_id (mt/id)}
+                 :model/Field {field-1 :id}           {:table_id table-id}
+                 :model/Field {field-2 :id}           {:table_id table-id}]
+    (f table
+       (assoc structural-metadata
+              :history_definition {:valid_from field-1}
+              :eav_definition     {:entity_key field-2, :definition_table definitions-id})
+       (assoc synced-structural-metadata
+              :history_definition {:durable_key field-2}
+              :eav_definition     {:entity_key field-1}))))
+
 (deftest user-structural-metadata-sets-flags-test
-  (mt/with-temp [:model/Table {table-id :id :as table} {}]
-    (table-user-settings/upsert-table-user-settings! table structural-metadata)
-    (is (=? structural-metadata (user-table table-id)))
-    (is (=? (merge structural-metadata structural-metadata-flags)
-            (t2/select-one :model/TableUserSettings :table_id table-id)))))
+  (do-with-definition-fields
+   (fn [{table-id :id :as table} user-metadata _synced-metadata]
+     (table-user-settings/upsert-table-user-settings! table user-metadata)
+     (is (=? user-metadata (user-table table-id)))
+     (is (=? (merge user-metadata structural-metadata-flags)
+             (t2/select-one :model/TableUserSettings :table_id table-id))))))
 
 (deftest sync-skips-user-structural-metadata-test
-  (mt/with-temp [:model/Table {table-id :id :as table} {}]
-    (table-user-settings/upsert-table-user-settings! table structural-metadata)
-    (sync.updates/update-table-unless-user-set! table-id synced-structural-metadata)
-    (is (=? structural-metadata (user-table table-id)))))
+  (do-with-definition-fields
+   (fn [{table-id :id :as table} user-metadata synced-metadata]
+     (table-user-settings/upsert-table-user-settings! table user-metadata)
+     (sync.updates/update-table-unless-user-set! table-id synced-metadata)
+     (is (=? user-metadata (user-table table-id))))))
 
 (deftest user-null-structural-metadata-is-kept-test
   (let [nulls (update-vals structural-metadata (constantly nil))]
@@ -258,14 +276,15 @@
       (is (= nulls (select-keys (user-table table-id) (keys nulls)))))))
 
 (deftest unset-structural-metadata-clears-flags-test
-  (mt/with-temp [:model/Table {table-id :id :as table} {}]
-    (table-user-settings/upsert-table-user-settings! table (assoc structural-metadata :display_name "User Name"))
-    (table-user-settings/unset-table-user-settings! table (vec (keys structural-metadata)))
-    (is (=? (merge (update-vals structural-metadata (constantly nil))
-                   (update-vals structural-metadata-flags (constantly false)))
-            (t2/select-one :model/TableUserSettings :table_id table-id)))
-    (sync.updates/update-table-unless-user-set! table-id synced-structural-metadata)
-    (is (=? synced-structural-metadata (user-table table-id)))))
+  (do-with-definition-fields
+   (fn [{table-id :id :as table} user-metadata synced-metadata]
+     (table-user-settings/upsert-table-user-settings! table (assoc user-metadata :display_name "User Name"))
+     (table-user-settings/unset-table-user-settings! table (vec (keys user-metadata)))
+     (is (=? (merge (update-vals user-metadata (constantly nil))
+                    (update-vals structural-metadata-flags (constantly false)))
+             (t2/select-one :model/TableUserSettings :table_id table-id)))
+     (sync.updates/update-table-unless-user-set! table-id synced-metadata)
+     (is (=? synced-metadata (user-table table-id))))))
 (deftest upsert-after-concurrent-insert-updates-stored-row-test
   (testing "settings another writer inserts between the read and the insert are updated, not duplicated"
     (mt/with-temp [:model/Table {table-id :id :as table} {}]
@@ -279,3 +298,53 @@
       (is (=? [{:display_name "Other Writer" :description "User Description" :description_set true}]
               (t2/select :model/TableUserSettings :table_id table-id)))
       (is (= "User Description" (:description (user-table table-id)))))))
+
+(defn- definition-errors
+  "The `:errors` of the 400 that `thunk` throws, or nil when it throws none; any other exception is rethrown."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (if (= 400 (:status-code (ex-data e)))
+        (:errors (ex-data e))
+        (throw e)))))
+
+(def ^:private misplaced-durable-key
+  "The errors of a `history_definition` whose `durable_key` is a Field of another Table."
+  {:history_definition "durable_key must be a Field of this Table"})
+
+(deftest rejected-definition-leaves-no-settings-test
+  (testing "a definition the Table's write function rejects rolls back the settings written with it"
+    (mt/with-temp [:model/Table {table-id :id :as table} {:db_id (mt/id)}
+                   :model/Table {other-id :id}           {:db_id (mt/id)}
+                   :model/Field {other-field :id}        {:table_id other-id}]
+      (let [bad {:description "User Description" :history_definition {:durable_key other-field}}]
+        (testing "with no settings stored"
+          (is (= misplaced-durable-key
+                 (definition-errors #(table-user-settings/upsert-table-user-settings! table bad))))
+          (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))
+        (testing "with settings stored"
+          (table-user-settings/upsert-table-user-settings! table {:caveats "User Caveats"})
+          (let [stored (t2/select-one :model/TableUserSettings :table_id table-id)]
+            (testing "through upsert-table-user-settings!"
+              (is (= misplaced-durable-key
+                     (definition-errors #(table-user-settings/upsert-table-user-settings! table bad)))))
+            (testing "through upsert-table-user-settings-for-tables!"
+              (is (= misplaced-durable-key
+                     (definition-errors
+                       #(table-user-settings/upsert-table-user-settings-for-tables! #{table-id} bad)))))
+            (testing "through update-table-user-settings!, with the flags an import carries"
+              (is (= misplaced-durable-key
+                     (definition-errors
+                       #(table-user-settings/update-table-user-settings!
+                         [(assoc bad :id (:id stored) :description_set true :history_definition_set true)])))))
+            (is (= stored (t2/select-one :model/TableUserSettings :table_id table-id)))
+            (is (=? {:description nil :caveats "User Caveats" :history_definition nil} (user-table table-id)))))
+        (testing "through create-table-user-settings!"
+          (mt/with-temp [:model/Table {fresh-id :id} {:db_id (mt/id)}]
+            (is (= misplaced-durable-key
+                   (definition-errors
+                     #(table-user-settings/create-table-user-settings!
+                       [(assoc bad :table_id fresh-id :history_definition_set true)]))))
+            (is (nil? (t2/select-one :model/TableUserSettings :table_id fresh-id)))))))))

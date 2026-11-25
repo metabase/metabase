@@ -19,6 +19,7 @@
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
+   [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.upload.core :as upload]
@@ -1720,3 +1721,94 @@
         (let [small (request-statement-count :get 200 "table")]
           (dotimes [_ 4] (insert-fk-star! 0 group-id))
           (is (= small (request-statement-count :get 200 "table"))))))))
+
+(deftest structural-metadata-get-and-put-test
+  (testing "GET and PUT /api/table/:id read and write the structural metadata keys"
+    (mt/with-temp [:model/Table {table-id :id}       {:db_id (mt/id) :name "history"}
+                   :model/Field {f1 :id}             {:table_id table-id :name "f1"}
+                   :model/Field {f2 :id}             {:table_id table-id :name "f2"}
+                   :model/Field {f3 :id}             {:table_id table-id :name "f3"}
+                   :model/Table {definitions :id}    {:db_id (mt/id) :name "definitions"}
+                   :model/Field {label :id}          {:table_id definitions :name "label"}]
+      (let [body {:table_role         "role/Fact"
+                  :grain              "order line"
+                  :grain_description  "One row for each line of an order"
+                  :period_granularity "day"
+                  :mutability         "append_only"
+                  :load_strategy      "incremental"
+                  :scd_type           2
+                  :history_definition {:durable_key f1, :valid_from f2, :version f2}
+                  :eav_definition     {:entity_key f1, :property_name f2, :property_value f3
+                                       :definition_table definitions, :label label}}]
+        (is (=? body (mt/user-http-request :crowberto :put 200 (format "table/%d" table-id) body)))
+        (is (=? body (mt/user-http-request :crowberto :get 200 (format "table/%d" table-id))))
+        (testing "the user settings record each key as set, so sync skips them"
+          (is (=? {:table_role_set true, :grain_set true, :grain_description_set true, :period_granularity_set true
+                   :mutability_set true, :load_strategy_set true, :scd_type_set true
+                   :history_definition_set true, :eav_definition_set true}
+                  (t2/select-one :model/TableUserSettings :table_id table-id)))
+          (sync.updates/update-table-unless-user-set! table-id {:table_role :role/Dimension, :scd_type 1
+                                                                :history_definition {:durable_key f3}})
+          (is (=? {:table_role :role/Fact, :scd_type 2, :history_definition {:durable_key f1}}
+                  (t2/select-one :model/Table :id table-id))))
+        (testing "a NULL is recorded as set too"
+          (mt/user-http-request :crowberto :put 200 (format "table/%d" table-id) {:history_definition nil})
+          (is (=? {:history_definition nil, :history_definition_set true}
+                  (t2/select-one :model/TableUserSettings :table_id table-id))))))))
+
+(deftest structural-metadata-put-rejects-invalid-values-test
+  (testing "PUT /api/table/:id returns a 400 for a value its request schema rejects"
+    (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id)}]
+      (doseq [[column value] [[:table_role "entity/UserTable"]
+                              [:table_role "role/NotARole"]
+                              [:table_role 1]
+                              [:table_role true]
+                              [:period_granularity "fortnight"]
+                              [:period_granularity "minute"]
+                              [:period_granularity 7]
+                              [:mutability "append-only"]
+                              [:load_strategy "upsert"]
+                              [:scd_type -1]
+                              [:scd_type 8]
+                              [:grain (apply str (repeat 255 "x"))]
+                              [:grain 1]
+                              [:history_definition {:surrogate_key 1}]
+                              [:history_definition {:durable_key -1}]
+                              [:history_definition {:durable_key true}]
+                              [:history_definition [1 2]]
+                              [:eav_definition {:entity_key 1 :property_key 2}]
+                              [:eav_definition {:definition_table -1}]]]
+        (testing (pr-str column value)
+          (is (=? {:errors {column some?}}
+                  (mt/user-http-request :crowberto :put 400 (format "table/%d" table-id) {column value})))
+          (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))))))
+
+(deftest structural-metadata-put-accepts-longest-grain-test
+  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id)}]
+    (let [grain (apply str (repeat 254 "x"))]
+      (is (=? {:grain grain}
+              (mt/user-http-request :crowberto :put 200 (format "table/%d" table-id) {:grain grain}))))))
+
+(deftest structural-metadata-put-rejects-invalid-definitions-test
+  (testing "PUT /api/table/:id returns a 400 for a definition that the Table's write function rejects"
+    (mt/with-temp [:model/Database {other-db :id}    {}
+                   :model/Table    {table-id :id}    {:db_id (mt/id) :name "history"}
+                   :model/Field    {f1 :id}          {:table_id table-id :name "f1"}
+                   :model/Field    {f2 :id}          {:table_id table-id :name "f2"}
+                   :model/Table    {definitions :id} {:db_id (mt/id) :name "definitions"}
+                   :model/Field    {label :id}       {:table_id definitions :name "label"}
+                   :model/Table    {elsewhere :id}   {:db_id other-db :name "elsewhere"}]
+      (doseq [[body message] [[{:history_definition {:durable_key label}}
+                               "durable_key must be a Field of this Table"]
+                              [{:eav_definition {:entity_key f1 :definition_table definitions :label f2}}
+                               "label must be a Field of the definition_table"]
+                              [{:eav_definition {:entity_key f1 :definition_table elsewhere}}
+                               "definition_table must be a Table of the same Database"]
+                              [{:history_definition {:durable_key f1 :valid_to f1}}
+                               (format "durable_key and valid_to cannot share Field %d" f1)]]]
+        (testing (pr-str body)
+          (is (= {(key (first body)) message}
+                 (:errors (mt/user-http-request :crowberto :put 400 (format "table/%d" table-id)
+                                                (assoc body :description "User Description")))))
+          (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id)))
+          (is (nil? (t2/select-one-fn :description :model/Table :id table-id))))))))

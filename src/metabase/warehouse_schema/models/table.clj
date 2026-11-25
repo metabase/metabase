@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.table
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions.models :as actions.models]
    [metabase.activity-feed.recent-views.spec :as recent-views]
@@ -533,6 +534,99 @@
       (set-new-table-permissions! (first tables))
       (set-new-tables-permissions! db-id tables))))
 
+(def ^:private definition-table-field-keys
+  "The keys of each definition column that hold a Field of the Table itself."
+  {:history_definition [:durable_key :valid_from :valid_to :current_flag :version]
+   :eav_definition     [:entity_key :property_name :property_value]})
+
+(def ^:private definition-table-of-definitions-field-keys
+  "The keys of `eav_definition` that hold a Field of its `definition_table`."
+  [:label :type])
+
+(def ^:private shared-definition-keys
+  "The pairs of keys of one definition that may hold the same Field: a history Table's date column can both start each
+  version and order the versions."
+  #{#{:valid_from :version}})
+
+(defn- definition-field-ids
+  "The Field ids `definition` holds, by key."
+  [definition]
+  (into {} (filter (comp some? val)) (dissoc definition :definition_table)))
+
+(defn- check-distinct-definition-fields
+  "Throw a 400 unless each Field in `definition`, the value of `column`, fills one key, or two keys that
+  [[shared-definition-keys]] lists."
+  [column definition]
+  (doseq [[field-id entries] (group-by val (definition-field-ids definition))
+          :let  [ks (into (sorted-set) (map key) entries)]
+          :when (> (count ks) 1)]
+    (api/checkp (contains? shared-definition-keys ks)
+                (name column)
+                (tru "{0} cannot share Field {1}" (str/join " and " (map name ks)) (str field-id)))))
+
+(defn- definition-rows
+  "One `[table column definition]` for each non-empty definition of `tables`."
+  [tables]
+  (for [table  tables
+        column (keys definition-table-field-keys)
+        :let   [definition (get table column)]
+        :when  (seq definition)]
+    [table column definition]))
+
+(defn- misplaced-field-key
+  "The first of `ks` whose Field in `definition` is not a Field of the Table with `table-id`, or nil. A nil `table-id`
+  owns no Field."
+  [definition ks table-id field-table-ids]
+  (some (fn [k]
+          (when-some [field-id (get definition k)]
+            (when-not (and (some? table-id) (= table-id (field-table-ids field-id)))
+              k)))
+        ks))
+
+(defn- check-eav-definition-table
+  "Throw a 400 unless the `definition_table` of the `eav_definition` `definition`, when it has one, is a Table of the
+  Database with `db-id`."
+  [definition db-id table-db-ids]
+  (when-some [definition-table (:definition_table definition)]
+    (api/checkp (= db-id (table-db-ids definition-table))
+                "eav_definition"
+                (tru "definition_table must be a Table of the same Database"))))
+
+(defn- check-definitions
+  "Throw a 400 unless every definition of `tables` satisfies these rules, in two reads:
+
+  - each of its Fields fills one key, except for the pairs [[shared-definition-keys]] lists
+  - the `label` and `type` of an `eav_definition` are Fields of its `definition_table`; every other Field is a Field
+    of the Table
+  - the `definition_table` is a Table of the Table's Database
+
+  A new Table has no `:id` yet, so every Field that must be a Field of the Table fails."
+  [tables]
+  (when-let [rows (seq (definition-rows tables))]
+    (let [field-table-ids (warehouse-schema.db/field-table-ids
+                           (into #{}
+                                 (mapcat (fn [[_table _column definition]] (vals (definition-field-ids definition))))
+                                 rows))
+          table-db-ids    (warehouse-schema.db/table-database-ids
+                           (into #{} (keep (fn [[_table _column definition]] (:definition_table definition))) rows))]
+      (doseq [[{:keys [id db_id]} column definition] rows]
+        (check-distinct-definition-fields column definition)
+        (when-some [k (misplaced-field-key definition (definition-table-field-keys column) id field-table-ids)]
+          (api/throw-invalid-param-exception (name column) (tru "{0} must be a Field of this Table" (name k))))
+        (when (= column :eav_definition)
+          (check-eav-definition-table definition db_id table-db-ids)
+          (when-some [k (misplaced-field-key definition definition-table-of-definitions-field-keys
+                                             (:definition_table definition) field-table-ids)]
+            (api/throw-invalid-param-exception (name column)
+                                               (tru "{0} must be a Field of the definition_table" (name k)))))))))
+
+(defn- prepare-new-tables
+  "Throw unless the definitions of the new Table `rows` satisfy [[check-definitions]], and return the rows with the
+  default field order of their driver."
+  [rows]
+  (check-definitions rows)
+  (add-default-field-orders rows))
+
 (defn- tables-created!
   "Give the new `tables` the default permissions of a new Table and publish their create event."
   [tables]
@@ -544,7 +638,7 @@
   default field order of their driver and the default permissions of a new Table."
   [rows :- [:sequential ::warehouse-schema.schema/table.create]]
   (mdb/create-batched! :model/Table rows
-                       {:before-create add-default-field-orders
+                       {:before-create prepare-new-tables
                         :after-create  tables-created!}))
 
 (defn- ordered-field-positions
@@ -601,10 +695,25 @@
   [ids]
   (warehouse-schema.db/tables-by-ids (vec ids)))
 
+(defn- changed-definition-tables
+  "For each of `updates` that changes a stored Table's definition, its `:id`, the stored `:db_id` and only the
+  definitions it changes, so an update that keeps a definition does not check it again."
+  [id->stored updates]
+  (for [{:keys [id] :as row} updates
+        :let  [stored  (id->stored id)
+               changed (into {}
+                             (filter (fn [[column definition]]
+                                       (and (contains? definition-table-field-keys column)
+                                            (not= definition (get stored column)))))
+                             row)]
+        :when (and stored (seq changed))]
+    (assoc changed :id id :db_id (:db_id stored))))
+
 (defn- prepare-table-updates!
-  "Set the positions of the Fields of the Tables, among the `id->stored` ones, that `updates` give another field order,
-  and return `updates`."
+  "Throw unless a definition that `updates` change satisfies [[check-definitions]], set the positions of the Fields of
+  the Tables, among the `id->stored` ones, that `updates` give another field order, and return `updates`."
   [updates id->stored]
+  (check-definitions (changed-definition-tables id->stored updates))
   (update-field-positions! (reordered-tables id->stored updates))
   updates)
 

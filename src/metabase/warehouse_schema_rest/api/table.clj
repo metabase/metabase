@@ -2,6 +2,9 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.util :as mut]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -36,6 +39,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses.models.database :as database]
    [metabase.xrays.core :as xrays]
@@ -182,6 +186,31 @@
                                (fn [response]
                                  (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
+(defn- check-known-keys
+  "Returns `definition`, the value of `column`, or throws a 400 when it is a map with a key that `allowed` does not
+  hold. Runs before the request decoder drops the keys a closed map does not list."
+  [column allowed definition]
+  (when (and (map? definition)
+             (not-every? allowed (keys definition)))
+    (let [message (tru "{0} may only have the keys {1}" (name column) (str/join ", " (sort (map name allowed))))]
+      (throw (ex-info message {:status-code 400 :errors {column message}}))))
+  definition)
+
+(defn- definition-request-schema
+  "The registered closed `:map` `schema`, the value of `column`, as a request schema that refuses a key it does not
+  list rather than dropping it."
+  [column schema]
+  (let [schema (mc/deref-all (mr/schema schema))]
+    (mut/update-properties schema assoc :decode/api (partial check-known-keys column (set (mut/keys schema))))))
+
+(def ^:private HistoryDefinition
+  "Schema for a Table's `history_definition` in a request."
+  (definition-request-schema :history_definition ::warehouse-schema.schema/history-definition))
+
+(def ^:private EavDefinition
+  "Schema for a Table's `eav_definition` in a request."
+  (definition-request-schema :eav_definition ::warehouse-schema.schema/eav-definition))
+
 (def ^:private table-update-entries
   "User-settable Table columns, as optional `:map` entries."
   [[:display_name            {:optional true} [:maybe ms/NonBlankString]]
@@ -197,7 +226,16 @@
    [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe :int]]
-   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
+   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:table_role              {:optional true} [:maybe ::warehouse-schema.schema/table-role]]
+   [:grain                   {:optional true} [:maybe ::warehouse-schema.schema/grain]]
+   [:grain_description       {:optional true} [:maybe :string]]
+   [:period_granularity      {:optional true} [:maybe ::warehouse-schema.schema/period-granularity]]
+   [:mutability              {:optional true} [:maybe ::warehouse-schema.schema/mutability]]
+   [:load_strategy           {:optional true} [:maybe ::warehouse-schema.schema/load-strategy]]
+   [:scd_type                {:optional true} [:maybe ::warehouse-schema.schema/scd-type]]
+   [:history_definition      {:optional true} [:maybe HistoryDefinition]]
+   [:eav_definition          {:optional true} [:maybe EavDefinition]]])
 
 (def ^:private TableUpdateBodySingle
   "Body of `PUT /api/table/:id`."
@@ -218,7 +256,9 @@
                          (u/select-keys-when
                           :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]
                           :present [:description :caveats :points_of_interest :visibility_type
-                                    :data_layer :data_authority :data_source :owner_email :owner_user_id])
+                                    :data_layer :data_authority :data_source :owner_email :owner_user_id
+                                    :table_role :grain :grain_description :period_granularity :mutability
+                                    :load_strategy :scd_type :history_definition :eav_definition])
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
