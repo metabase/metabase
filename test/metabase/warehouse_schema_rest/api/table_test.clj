@@ -54,7 +54,7 @@
    (select-keys (mt/db) [:id :entity_id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
                          :default_schema
                          :cache_field_values_schedule :metadata_sync_schedule :uploads_enabled :uploads_schema_name
-                         :uploads_table_prefix])
+                         :uploads_table_prefix :field_values_scan_due_at])
    {:engine                      "h2"
     :name                        "test-data (h2)"
     :is_attached_dwh             false

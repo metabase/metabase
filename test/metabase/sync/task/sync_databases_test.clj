@@ -248,7 +248,7 @@
             (is (zero? @scans))
             (is (some? (due))))
           (testing "a second mark keeps the first time"
-            (let [earlier (t/minus (t/offset-date-time) (t/hours 2))]
+            (let [earlier (t/truncate-to (t/minus (t/offset-date-time) (t/hours 2)) :seconds)]
               (t2/update! :model/Database :id db-id {:field_values_scan_due_at earlier})
               (#'task.sync-databases/update-field-values! ctx)
               (is (= (t/instant earlier) (t/instant (due))))))
