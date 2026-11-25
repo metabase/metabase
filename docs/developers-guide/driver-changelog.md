@@ -12,7 +12,7 @@ summary: Changes to the Metabase driver interface, listed by release.
   token is an opaque string. When a table's token is the same as at its last value-list scan, the scheduled scan does
   not read the table's value lists again. A token must change whenever the table's rows can have changed. Give `nil`
   for a table whose token is not known, and sync reads it as before. Sync still reads each table at least once in the
-  period of the `field-values-full-scan-days` setting (7 days by default, settable for each database).
+  period of the `change-token-full-pass-days` setting (7 days by default, settable for each database).
 
 - While a data test pins the clock (`metabase.query-processor.timezone/with-pinned-now`),
   `metabase.driver.sql.query-processor/current-datetime-honeysql-form` dispatches to one method for every driver. It

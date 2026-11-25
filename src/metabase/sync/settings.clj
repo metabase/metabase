@@ -1,5 +1,6 @@
 (ns metabase.sync.settings
   (:require
+   [java-time.api :as t]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.db :as sync.db]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -81,10 +82,10 @@
   :doc        "Scans run with the scheduled analyze pass and with Sync database schema now on a database's admin
   page. Fields that already carry a label, including PUBLIC, are not rescanned.")
 
-(defsetting field-values-full-scan-days
+(defsetting change-token-full-pass-days
   (deferred-tru
-   (str "The scheduled scan of filter values reads every table at least once in this many days, also a table whose "
-        "database says it did not change."))
+   (str "Sync skips work for a table that its database says did not change, but still does that work for each table "
+        "at least once in this many days."))
   :visibility     :admin
   :export?        true
   :type           :integer
@@ -92,3 +93,10 @@
   :database-local :allowed
   :audit          :getter
   :encryption     :no)
+
+(defn full-pass-period
+  "How often sync does the work that a change token lets it skip, for each Table of `database`: the
+  [[change-token-full-pass-days]] of `database`, or of the instance."
+  [database]
+  (t/days (or (get-in database [:settings :change-token-full-pass-days])
+              (change-token-full-pass-days))))

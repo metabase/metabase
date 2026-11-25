@@ -267,12 +267,6 @@
         (when (map? tokens)
           tokens)))))
 
-(defn- full-scan-period
-  "How often the scheduled scan reads each Table of `database`, whatever its change token."
-  [database]
-  (t/days (or (get-in database [:settings :field-values-full-scan-days])
-              (sync.settings/field-values-full-scan-days))))
-
 (defn- unchanged-tables
   "The ids of the `tables` whose token in `tokens` is the one at their last scan, and whose lists among `fvs` were all
   read within `period`."
@@ -311,8 +305,9 @@
   "Update the FieldValues of the Fields of `tables` that need it, reading their Fields and FieldValues together, with
   one UNION ALL query per Table on SQL drivers and one DISTINCT query per Field elsewhere. The scheduled scan reads a
   list that was too large at its last scan only once in [[too-large-scan-period]], and does not read the lists of a
-  Table whose change token is the one at its last scan, unless one was read longer ago than [[full-scan-period]]. A
-  manual rescan (`:rescan?`) reads every list, and also stores again the lists that are still too large."
+  Table whose change token is the one at its last scan, unless one was read longer ago than
+  [[sync.settings/full-pass-period]]. A manual rescan (`:rescan?`) reads every list, and also stores again the lists
+  that are still too large."
   [database :- i/DatabaseInstance
    tables   :- [:sequential i/TableInstance]
    opts     :- ::scan-options]
@@ -343,7 +338,7 @@
                                                     :let  [fv (get fvs-map (u/the-id field))]
                                                     :when fv]
                                                 {:field field :fv fv})
-                                              (full-scan-period database)))
+                                              (sync.settings/full-pass-period database)))
         table-id->to-sync (group-by :table_id (filter #(and (not (unchanged (:table_id %))) (due? %)) to-sync))
         scan-counts       (sync-fields-of-tables! tables (constantly database) table-id->to-sync fvs-map opts)]
     (record-value-scan-tokens! tables tokens (into #{} (comp (map :id) (remove unchanged)) tables) scan-counts)
