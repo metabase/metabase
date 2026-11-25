@@ -270,6 +270,7 @@
   (merge
    (next-method query-type model parsed-args honeysql)
    {:select    [:field/active
+                :field/attribute_scd_type
                 :field/base_type
                 :field/coercion_strategy
                 :field/data_sensitivity
@@ -278,9 +279,11 @@
                 :field/description
                 :field/display_name
                 :field/effective_type
+                :field/facets
                 :field/fingerprint
                 :field/fk_target_field_id
                 :field/id
+                :field/is_grain
                 :field/name
                 :field/nfc_path
                 :field/parent_id

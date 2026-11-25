@@ -332,6 +332,21 @@
                  (select-keys table table-structural-metadata-keys)))
           (is (not (me/humanize (mr/explain ::lib.schema.metadata/table table)))))))))
 
+(deftest ^:parallel field-structural-metadata-test
+  (mt/with-temp [:model/Database db    {:engine :h2}
+                 :model/Table    table {:name "USERS" :db_id (:id db)}
+                 :model/Field    grain {:name "ID" :table_id (:id table) :base_type :type/Integer
+                                        :is_grain true :attribute_scd_type 2 :facets [:type/SurrogateKey]}
+                 :model/Field    plain {:name "NAME" :table_id (:id table) :base_type :type/Text}]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:id db))]
+      (testing "the app DB metadata provider carries a Field's structural metadata"
+        (let [col (lib.metadata/field mp (:id grain))]
+          (is (=? {:is-grain true, :attribute-scd-type 2, :facets [:type/SurrogateKey]} col))
+          (is (not (me/humanize (mr/explain ::lib.schema.metadata/column col))))))
+      (testing "a Field without structural metadata carries nil"
+        (is (= {:is-grain nil, :attribute-scd-type nil, :facets nil}
+               (select-keys (lib.metadata/field mp (:id plain)) [:is-grain :attribute-scd-type :facets])))))))
+
 (deftest ^:parallel instance->metadata-normalize-column-test
   (testing "instance->metadata should normalize column metadata"
     (let [legacy-col {:active                                            true
