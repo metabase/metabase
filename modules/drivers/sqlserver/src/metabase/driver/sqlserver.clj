@@ -1054,6 +1054,52 @@
   [_]
   #{"sys" "INFORMATION_SCHEMA"})
 
+(defn- row-count-estimates
+  "A map of `[schema name]` to row count estimate, from `rows` of the row count estimate query. A table with an estimate
+  of 0 is left out, as on Postgres and MySQL."
+  [rows]
+  (into {}
+        (keep (fn [{:keys [table_schema table_name row_count]}]
+                (when (some-> row_count pos?)
+                  [[table_schema table_name] (long row_count)])))
+        rows))
+
+(def ^:private row-count-estimates-timeout-seconds
+  "The time limit of the row count estimate query."
+  15)
+
+(defn- query-row-count-estimates
+  "The row count estimates of the tables of the database of `conn`: the sum of the approximate `rows` of the
+  partitions of each table's heap or clustered index (`index_id` 0 or 1) in `sys.partitions`. Views are not in
+  `sys.tables`. A user sees the rows of the tables they have a permission on."
+  [^Connection conn]
+  (row-count-estimates
+   (jdbc/query {:connection conn}
+               [(str "SELECT s.name AS table_schema, t.name AS table_name, SUM(p.rows) AS row_count"
+                     " FROM sys.tables t"
+                     " JOIN sys.schemas s ON s.schema_id = t.schema_id"
+                     " JOIN sys.partitions p ON p.object_id = t.object_id AND p.index_id IN (0, 1)"
+                     " GROUP BY s.name, t.name")]
+               {:timeout row-count-estimates-timeout-seconds})))
+
+(defn- with-row-count-estimates
+  "`tables` with the `:estimated_row_count` of each table, nil for a table with none. The estimate is extra
+  information, so a failure to read it is logged and the tables are returned without the key."
+  [conn tables]
+  (if-let [estimates (try
+                       (query-row-count-estimates conn)
+                       (catch Exception e
+                         (log/warn e "Could not read the row count estimates of the tables")
+                         nil))]
+    (eduction (map (fn [{:keys [schema name] :as table}]
+                     (assoc table :estimated_row_count (get estimates [schema name]))))
+              tables)
+    tables))
+
+(defmethod sql-jdbc.sync/active-tables :sqlserver
+  [driver conn & args]
+  (with-row-count-estimates conn (apply (get-method sql-jdbc.sync/active-tables :sql-jdbc) driver conn args)))
+
 ;; From the dox:
 ;;
 ;; The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table

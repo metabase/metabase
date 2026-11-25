@@ -2001,3 +2001,31 @@
               "teardown ended the holder's session, so its commit fails")
           (finally
             (driver/destroy-workspace-isolation! :sqlserver database ws)))))))
+
+(deftest table-row-count-estimates-test
+  (mt/test-driver :sqlserver
+    (testing "describe-database gives the row count estimate of each table, from sys.partitions"
+      (let [tables (into [] (:tables (driver/describe-database :sqlserver (lib.metadata/database (mt/metadata-provider)))))
+            venues (m/find-first (comp #{"venues"} :name) tables)]
+        (is (= 100 (:estimated_row_count venues)))))
+    (testing "when the estimates cannot be read, the tables come without them"
+      (mt/with-dynamic-fn-redefs [sqlserver/query-row-count-estimates (fn [_conn] (throw (ex-info "no estimates" {})))]
+        (let [tables (into [] (:tables (driver/describe-database :sqlserver (lib.metadata/database (mt/metadata-provider)))))]
+          (is (seq tables))
+          (is (not-any? #(contains? % :estimated_row_count) tables)))))))
+
+(deftest with-row-count-estimates-test
+  (testing "A table with no estimate gets nil, so that sync clears a stored one"
+    (mt/with-dynamic-fn-redefs [sqlserver/query-row-count-estimates (constantly {["dbo" "venues"] 100})]
+      (is (= [{:schema "dbo" :name "venues" :estimated_row_count 100}
+              {:schema "dbo" :name "empty" :estimated_row_count nil}]
+             (into [] (#'sqlserver/with-row-count-estimates nil [{:schema "dbo" :name "venues"}
+                                                                 {:schema "dbo" :name "empty"}])))))))
+
+(deftest ^:parallel row-count-estimates-test
+  (testing "The estimates by schema and name, without the tables that have none or 0, as on Postgres and MySQL"
+    (is (= {["dbo" "venues"] 100
+            ["other" "venues"] 18000}
+           (#'sqlserver/row-count-estimates [{:table_schema "dbo" :table_name "venues" :row_count 100}
+                                             {:table_schema "other" :table_name "venues" :row_count (biginteger 18000)}
+                                             {:table_schema "dbo" :table_name "empty" :row_count 0}])))))
