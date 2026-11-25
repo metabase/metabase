@@ -3165,3 +3165,55 @@
                 (is (not (str/includes? plan "Seq Scan")))))))
         (testing "the driver declines, so that sync reads the first rows, when there is no row count estimate"
           (is (= {:method :first-rows :sqls []} (sample {:rows 100 :row-count nil}))))))))
+
+(defn- table-random-sample-of!
+  "The method of the sample that the driver reads of a new table made by `ddl` with the rows of `insert`, a table of
+  `row-count` estimated rows, whose Fields are `fields`, a map of name to base type."
+  [table-name ddl insert fields row-count]
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+    (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table-name)])
+    (jdbc/execute! spec [ddl])
+    (try
+      (jdbc/execute! spec [insert])
+      (mt/with-temp [:model/Table table {:db_id (mt/id) :name table-name :schema "public"}]
+        (let [fields (mapv (fn [[field-name base-type]]
+                             (t2/insert-returning-instance! :model/Field {:table_id (:id table) :name field-name :database_type "x"
+                                                                          :base_type base-type}))
+                           fields)
+              sqls   (atom [])
+              execute qp.pipeline/*execute*]
+          (binding [qp.pipeline/*execute* (fn [driver query respond]
+                                            (swap! sqls conj (get-in query [:stages 0 :native]))
+                                            (execute driver query respond))]
+            (let [{:keys [method]} (driver/table-random-sample :postgres table fields (constantly conj)
+                                                               {:rows 20 :runs 4 :row-count row-count :seed 1})]
+              {:method      method
+               :key-blocks? (boolean (some #(str/includes? % "UNION ALL") @sqls))
+               :tablesample? (boolean (some #(str/includes? % "TABLESAMPLE") @sqls))}))))
+      (finally
+        (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table-name)])))))
+
+(deftest table-random-sample-kinds-of-key-test
+  (mt/test-driver :postgres
+    (mt/with-test-user :crowberto
+      (testing "a timestamp key gets key blocks"
+        (is (= {:method :block :key-blocks? true :tablesample? false}
+               (table-random-sample-of! "kb_times" "CREATE TABLE kb_times (k timestamp PRIMARY KEY, v int)"
+                                        (str "INSERT INTO kb_times SELECT timestamp '2026-01-01' + g * interval '1 hour', g"
+                                             " FROM generate_series(1, 300) g")
+                                        {"k" :type/DateTime "v" :type/Integer} 300))))
+      (testing "a table with no primary key gets the block sample"
+        (is (= {:method :block :key-blocks? false :tablesample? true}
+               (table-random-sample-of! "kb_nokey" "CREATE TABLE kb_nokey (k int, v int)"
+                                        "INSERT INTO kb_nokey SELECT g, g FROM generate_series(1, 300) g"
+                                        {"k" :type/Integer "v" :type/Integer} 300))))
+      (testing "a primary key of two columns gets the block sample"
+        (is (= {:method :block :key-blocks? false :tablesample? true}
+               (table-random-sample-of! "kb_two" "CREATE TABLE kb_two (a int, b int, PRIMARY KEY (a, b))"
+                                        "INSERT INTO kb_two SELECT g % 10, g FROM generate_series(1, 300) g"
+                                        {"a" :type/Integer "b" :type/Integer} 300))))
+      (testing "a money key, which compiles to a cast that no index reads, gets the block sample"
+        (is (= {:method :block :key-blocks? false :tablesample? true}
+               (table-random-sample-of! "kb_money" "CREATE TABLE kb_money (k money PRIMARY KEY, v int)"
+                                        "INSERT INTO kb_money SELECT g::numeric::money, g FROM generate_series(1, 300) g"
+                                        {"k" :type/Decimal "v" :type/Integer} 300)))))))
