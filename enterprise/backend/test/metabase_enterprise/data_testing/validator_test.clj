@@ -1,15 +1,13 @@
 (ns metabase-enterprise.data-testing.validator-test
   "The checks of [[validator/validate]]: declared and unused inputs, leftover references after the rewrite, table labels
-  and the required expectation; and the write check, [[validator/ensure-single-write]]. Pure — no warehouse."
+  and the required expectation. Pure — no warehouse."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as errors]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.data-testing.validator :as validator]
-   [metabase.driver :as driver]
-   [metabase.sql-tools.core :as sql-tools]
-   [metabase.test :as mt])
+   [metabase.driver :as driver])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -154,60 +152,6 @@
              (refused (with-sql card-test "SELECT * FROM {{OUTPUT}} WHERE x = '{{ other }}'")))))
     (testing "a transform test has no placeholders: braces in a string literal are its SQL's own"
       (is (nil? (refused (with-sql complete-test "SELECT '{{x}}' AS a FROM PEOPLE")))))))
-
-(defn- write-refusal
-  "The `:error-type`, `:reason` and `:detail` of the refusal [[validator/ensure-single-write]] throws for the Postgres
-  `sql`, or the SQL it returns when it throws none."
-  [sql]
-  (try
-    (validator/ensure-single-write :postgres sql)
-    (catch ExceptionInfo e
-      (select-keys (ex-data e) [:error-type :reason :detail]))))
-
-(deftest refused-write-says-why-test
-  (testing "a write that calls a function that waits is refused, and the refusal's data names the function"
-    (is (= {:error-type ::errors/not-a-single-write :reason "session-function" :detail "pg_sleep"}
-           (write-refusal "UPDATE t SET name = pg_sleep(1)::text WHERE id = 1"))))
-  (testing "a write whose rebuild reads differently is refused for its rebuild, not for what the author wrote"
-    ;; No input known to the parser's SQLGlot version reaches this refusal, so the verdict is stubbed.
-    (mt/with-dynamic-fn-redefs [sql-tools/validate-executable-stmt (constantly {:verdict      :disallowed
-                                                                                :single-stmt? true
-                                                                                :reason       "rebuild-differs"})]
-      (is (= {:error-type ::errors/not-a-single-write
-              :message    (str "The test cannot run this SQL: the parser rebuilds it as SQL that reads differently. "
-                               "Write the statement another way.")
-              :reason     "rebuild-differs"}
-             (data-testing.test-util/refusal #(validator/ensure-single-write :postgres "UPDATE t SET name = 'x'")
-                                             :reason))))))
-
-(deftest write-calling-a-known-writing-function-is-refused-test
-  (testing "control: a plain UPDATE comes back as the SQL to run"
-    (is (= "UPDATE t SET name = 'x' WHERE id = 1"
-           (write-refusal "UPDATE t SET name = 'x' WHERE id = 1"))))
-  (testing "a write that sets a sequence with `setval` is refused, naming the function"
-    (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "setval"}
-           (write-refusal "UPDATE t SET name = (SELECT setval('s', 1))::text"))))
-  (testing "a write that advances a sequence with `nextval` is refused, naming the function"
-    (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "nextval"}
-           (write-refusal "INSERT INTO t (id) VALUES (nextval('s'))"))))
-  (testing "a write that deletes a large object is refused, naming the function"
-    (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "lo_unlink"}
-           (write-refusal "DELETE FROM t WHERE lo_unlink(id) = 1"))))
-  (testing "a write that reads a table named in a string is refused, naming the function"
-    (is (= {:error-type ::errors/not-a-single-write :reason "unconfined-function" :detail "table_to_xml"}
-           (write-refusal "UPDATE t SET name = table_to_xml('secrets', true, false, '')::text WHERE id = 1")))))
-
-(deftest write-with-an-e-string-runs-as-written-test
-  (testing "an E'' string with an escaped quote is rebuilt as written"
-    (is (= "UPDATE t SET name = e'it\\'s' WHERE id = 1"
-           (write-refusal "UPDATE t SET name = E'it\\'s' WHERE id = 1"))))
-  (testing "control: an E'' string ending in a doubled backslash is rebuilt as written, keeping both backslashes"
-    (is (= "UPDATE t SET name = e'a\\\\' WHERE id = 1"
-           (write-refusal "UPDATE t SET name = E'a\\\\' WHERE id = 1"))))
-  (testing "the text after such a string stays a string though it holds `setval`, so the write passes and calls nothing"
-    (is (= "UPDATE t SET name = e'\\\\' || ''' || (SELECT setval($z$s$z$, 1))::text --' WHERE id = 1"
-           (write-refusal (str "UPDATE t SET name = E'\\\\' || $q$' || (SELECT setval($z$s$z$, 1))::text --$q$"
-                               " WHERE id = 1"))))))
 
 ;;; ------------------------------------------------ Missing input columns ------------------------------------------------
 

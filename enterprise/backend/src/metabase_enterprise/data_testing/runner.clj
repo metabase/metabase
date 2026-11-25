@@ -363,9 +363,9 @@
   read them, and the labels a message renders them as.
 
   Throws the run's typed refusals — a current user whose connection to the database is impersonated, an untestable
-  subject or driver, SQL that will not parse, a table reference that cannot be replaced in the SQL's text, a write
-  that is not one INSERT, UPDATE or DELETE, returns rows or cannot be checked, a test the validator rejects — so a
-  caller that only wants the answer to \"could this run?\" gets it by asking for the plan and discarding it."
+  subject or driver, SQL that will not parse, a table reference that cannot be replaced in the SQL's text, a test the
+  validator rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the plan
+  and discarding it."
   [subject-type                                 :- ::data-testing.subject/subject-type
    subject                                      :- ::data-testing.subject/subject
    {:keys [inputs expectations] :as definition} :- ::definition]
@@ -380,8 +380,7 @@
         default-schema (:default-schema database)
         replacements   (data-testing.compile/table-replacements (or output-tables []) input->table output-table
                                                                 default-schema)
-        rewritten      (cond-> (data-testing.compile/rewrite-query driver compiled replacements)
-                         writes? (update :query #(data-testing.validator/ensure-single-write driver %)))
+        rewritten      (data-testing.compile/rewrite-query driver compiled replacements)
         input->query   (into {} (map (fn [input] [input (data-testing.compile/compile-input driver input)])) inputs)
         expectation->query
         (data-testing.validator/validate

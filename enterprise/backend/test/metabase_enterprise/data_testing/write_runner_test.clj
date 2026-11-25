@@ -19,7 +19,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- drivers-that-write
-  "The test drivers that run tests and actions, and whose SQL a write can be checked in. H2 has no such dialect."
+  "The test drivers that run tests and actions. Data tests refuse H2."
   []
   (disj (mt/normal-drivers-with-feature :transforms/testing :actions) :h2))
 
@@ -211,28 +211,61 @@
                   (run-write! (str "WITH " people " AS (SELECT 1 AS id) UPDATE " people " SET name = ? WHERE id = ?")
                               ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))))))
 
-(deftest write-must-be-one-insert-update-or-delete-test
+(defn- validation-refusal!
+  "The `:error-type` and message of the refusal [[data-testing.runner/validate-test]] throws for a test of the write
+  `sql` with `params`, or nil when it throws none."
+  [sql params]
+  (do-with-write-subject!
+   sql params
+   (fn [card _asked]
+     (data-testing.test-util/refusal
+      #(mt/with-test-user :crowberto
+         (data-testing.runner/validate-test :card card {:inputs       [(people-rows)]
+                                                        :expectations [(reading refunded-only-1)]}))))))
+
+(defn- run-refusal!
+  "The `:error-type` and message of the refusal of a test of the write `sql` with `params` over the people input, or
+  nil when it is not refused."
+  [sql params]
+  (data-testing.test-util/refusal #(run-write! sql params [(people-rows)] [(reading refunded-only-1)])))
+
+(deftest write-is-not-checked-by-the-parser-test
   (mt/test-drivers (drivers-that-write)
     (let [people (data-testing.test-util/qualified :people)]
       (testing "control: one UPDATE runs"
-        (is (nil? (refusal! (refund-1) ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))
-      (testing "a procedure call is refused: it names no table, so the input check cannot see what it writes"
-        (is (= ::data-testing.errors/not-a-single-write
-               (refusal! "CALL refund_order(?)" [1] [(people-rows)] [(reading refunded-only-1)]))))
-      (testing "a second statement is refused, even when it writes a declared table"
-        (is (= ::data-testing.errors/not-a-single-write
-               (refusal! (str (refund-1) "; DELETE FROM " people) ["refunded" 1] [(people-rows)]
-                         [(reading refunded-only-1)]))))
-      (testing "a SELECT is not a write"
-        (is (= ::data-testing.errors/not-a-single-write
-               (refusal! (str "SELECT * FROM " people " WHERE id = ?") [1] [(people-rows)]
-                         [(reading refunded-only-1)])))))))
+        (is (nil? (run-refusal! (refund-1) ["refunded" 1]))))
+      (testing "a statement that names no table is refused for the input it does not read, as any subject is"
+        (is (= ::data-testing.errors/unused-inputs
+               (:error-type (run-refusal! "CALL refund_order(?)" [1])))))
+      (testing "a SELECT is sent as written, and the database refuses a statement that returns rows where a write runs"
+        (is (= ::data-testing.errors/query-failed
+               (:error-type (run-refusal! (str "SELECT * FROM " people " WHERE id = ?") [1]))))))))
 
-(deftest write-on-a-database-whose-sql-cannot-be-checked-is-refused-test
-  (mt/test-driver :h2
-    (testing "H2 has no SQL dialect to check a write in, so a subject that modifies tables is refused on H2"
-      (is (= ::data-testing.errors/uncheckable-write
-             (refusal! (refund-1) ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))))
+(deftest write-returning-rows-fails-at-the-database-test
+  (mt/test-driver :postgres
+    (let [returning (str (refund-1) " RETURNING id")]
+      (testing "an UPDATE with RETURNING passes validation: no parser check reads the statement"
+        (is (nil? (validation-refusal! returning ["refunded" 1]))))
+      (testing "its run fails as the query under test, with the database's own message"
+        (let [{:keys [error-type message]} (run-refusal! returning ["refunded" 1])]
+          (is (= ::data-testing.errors/query-failed error-type))
+          (is (= 422 (data-testing.errors/status-code error-type)))
+          (is (re-find #"A result was returned when none was expected" (str message))))))))
+
+(deftest write-runs-as-written-test
+  (mt/test-drivers (drivers-that-write)
+    (testing "the write statement reaches the database as its author wrote it, apart from the table's name"
+      (let [executed (atom [])
+            execute! (mt/original-fn #'data-testing.executor/execute!)
+            ;; SQLGlot's rebuild would change the case of the keywords, the spacing and the comment.
+            sql      (str "update  " (data-testing.test-util/qualified :people) " /* refund */\nset name=?  where id=?")]
+        (mt/with-dynamic-fn-redefs [data-testing.executor/execute! (fn [driver conn query]
+                                                                     (swap! executed conj (:query query))
+                                                                     (execute! driver conn query))]
+          (let [[temp-table] (keys (:tables (run-write! sql ["refunded" 1] [(people-rows)]
+                                                        [(reading refunded-only-1)])))]
+            (is (= [(str/replace sql (data-testing.test-util/qualified :people) temp-table)]
+                   (mapv #(str/replace % #"[`\"]" "") @executed)))))))))
 
 (deftest equals-on-a-write-is-refused-test
   (mt/test-drivers (drivers-that-write)
@@ -246,35 +279,6 @@
         (is (= ::data-testing.errors/no-output error-type))
         (is (re-find #"\"person 1 only\"" message))
         (is (re-find #"has no output" message))))))
-
-(defn- validation-refusal!
-  "The `:error-type` and message of the refusal [[data-testing.runner/validate-test]] throws for a test of the write
-  `sql` with `params`, or nil when it throws none."
-  [sql params]
-  (do-with-write-subject!
-   sql params
-   (fn [card _asked]
-     (data-testing.test-util/refusal
-      #(mt/with-test-user :crowberto
-         (data-testing.runner/validate-test :card card {:inputs       [(people-rows)]
-                                                        :expectations [(reading refunded-only-1)]}))))))
-
-(deftest write-returning-rows-is-refused-test
-  (mt/test-drivers (drivers-that-write)
-    (let [returning (str (refund-1) " RETURNING id")]
-      (testing "control: an UPDATE that returns no rows is not refused"
-        (is (nil? (validation-refusal! (refund-1) ["refunded" 1]))))
-      (testing "an UPDATE with RETURNING is refused when the test is saved, as a 400 that names RETURNING"
-        (let [{:keys [error-type message]} (validation-refusal! returning ["refunded" 1])]
-          (is (= ::data-testing.errors/write-returns-rows error-type))
-          (is (= 400 (data-testing.errors/status-code error-type)))
-          (is (re-find #"RETURNING" (str message)))))
-      (testing "and when it is run, before any temp table is created"
-        (let [created? (atom false)]
-          (mt/with-dynamic-fn-redefs [data-testing.executor/create-temp-table! (fn [& _] (reset! created? true))]
-            (is (= ::data-testing.errors/write-returns-rows
-                   (refusal! returning ["refunded" 1] [(people-rows)] [(reading refunded-only-1)])))
-            (is (false? @created?))))))))
 
 (deftest parameters-reach-the-subject-plan-test
   (mt/test-drivers (drivers-that-write)

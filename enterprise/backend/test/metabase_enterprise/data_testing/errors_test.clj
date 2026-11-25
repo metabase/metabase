@@ -43,9 +43,7 @@
    ::errors/unknown-placeholder        400
    ::errors/missing-input-columns      400
    ::errors/colliding-columns          400
-   ::errors/not-a-single-write         400
    ::errors/no-output                  400
-   ::errors/write-returns-rows         400
    ::errors/parameters-not-taken       400
    ::errors/impersonated-user          403
    ::errors/unsupported-transform      422
@@ -55,7 +53,6 @@
    ::errors/duplicate-output-columns   422
    ::errors/setup-failed               422
    ::errors/expectation-failed         422
-   ::errors/uncheckable-write          422
    ::errors/unsupported-format         501
    ::errors/now-on-native-sql          501})
 
@@ -85,9 +82,7 @@
              ::errors/unknown-placeholder
              ::errors/missing-input-columns
              ::errors/colliding-columns
-             ::errors/not-a-single-write
              ::errors/no-output
-             ::errors/write-returns-rows
              ::errors/parameters-not-taken}
            (types-with-status 400))))
   (testing "permission refusals — the current user may not save or run the test — are 403"
@@ -100,8 +95,7 @@
              ::errors/query-failed
              ::errors/duplicate-output-columns
              ::errors/setup-failed
-             ::errors/expectation-failed
-             ::errors/uncheckable-write}
+             ::errors/expectation-failed}
            (types-with-status 422))))
   (testing "what is not built yet is 501"
     (is (= #{::errors/unsupported-format ::errors/now-on-native-sql}
@@ -135,11 +129,8 @@
    ::errors/unknown-placeholder        "transform-test.unknown-placeholder"
    ::errors/missing-input-columns      "transform-test.missing-input-columns"
    ::errors/colliding-columns          "transform-test.colliding-columns"
-   ::errors/not-a-single-write         "transform-test.not-a-single-write"
    ::errors/no-output                  "transform-test.no-output"
-   ::errors/write-returns-rows         "transform-test.write-returns-rows"
    ::errors/parameters-not-taken       "transform-test.parameters-not-taken"
-   ::errors/uncheckable-write          "transform-test.uncheckable-write"
    ::errors/impersonated-user          "transform-test.impersonated-user"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"

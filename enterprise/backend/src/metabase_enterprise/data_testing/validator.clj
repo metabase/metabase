@@ -15,13 +15,11 @@
     and every expectation that carries the author's own SQL.
 
   The parser reports the table an INSERT, UPDATE or DELETE writes among the tables a query reads, so both guards cover
-  the tables a subject modifies. The parser sees no table inside a procedure or a function, so [[ensure-single-write]]
-  admits only one INSERT, UPDATE or DELETE, and refuses the functions it knows to run SQL text or act outside the
-  statement. A write made inside any other function goes unseen.
+  the tables a subject modifies.
 
-  No guard reads what any other statement does. An input's SQL runs as written, and the query under test and each
+  No guard reads what a statement does. An input's SQL runs as written, and the query under test and each
   expectation's SQL run as written apart from their table references: what they may do is up to the database
-  connection.
+  connection. The guards see no table inside a procedure, a function or SQL text in a string.
 
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
@@ -31,7 +29,6 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -219,54 +216,6 @@
                    expectation-name (str/join ", " unknown) output-token)
               {:placeholders  (vec unknown)
                :response/keys #{:placeholders}})))))
-
-(mu/defn ensure-single-write :- :string
-  "`sql` as SQLGlot rebuilt it, the string the run executes, when it is one INSERT, UPDATE or DELETE statement in
-  `driver`'s dialect that returns no rows, hides no SQL from the parser, assigns no MySQL user variable, calls every
-  function by its name, and calls none of the functions the check knows to run SQL text, read a table named in a
-  string, take a lock, wait, change the session, reach outside the database, or write outside the tables the
-  statement names, such as `nextval` and `setval`; and when its rebuild passes the same checks and rebuilds to itself.
-  Throws
-  `::data-testing.errors/write-returns-rows` when it has a RETURNING clause (OUTPUT in T-SQL),
-  `::data-testing.errors/not-a-single-write` when it is otherwise not such a statement,
-  `::data-testing.errors/unparseable-source` when it does not parse, and `::data-testing.errors/uncheckable-write`
-  when the dialect is unknown or a literal list is too long to parse.
-
-  Any other function passes, including one that writes, reads a table named in a string, or acts outside the
-  database."
-  [driver :- :keyword
-   sql    :- :string]
-  (let [{:keys [verdict error reason detail] checked :sql}
-        (sql-tools/validate-executable-stmt driver sql "confined-write")]
-    (case verdict
-      :allowed
-      checked
-
-      :disallowed
-      (if (= reason "returning")
-        (throw (data-testing.errors/ex
-                ::data-testing.errors/write-returns-rows
-                (tru "The SQL under test has a RETURNING clause (OUTPUT in SQL Server), so it returns rows. A write under test must return none: remove the clause.")
-                {}))
-        (throw (data-testing.errors/ex
-                ::data-testing.errors/not-a-single-write
-                (if (= reason "rebuild-differs")
-                  (tru "The test cannot run this SQL: the parser rebuilds it as SQL that reads differently. Write the statement another way.")
-                  (tru "The SQL under test must be one INSERT, UPDATE or DELETE statement that hides no SQL from the parser, assigns no user variable, calls every function by its name, and calls no function that runs SQL text, reads a table named in a string, takes a lock, waits, changes the session, reaches outside the database, or writes outside the tables the statement names, as `nextval` does."))
-                (cond-> {}
-                  reason (assoc :reason reason)
-                  detail (assoc :detail detail)))))
-
-      :unknown
-      (if error
-        (throw (data-testing.errors/ex
-                ::data-testing.errors/unparseable-source
-                (tru "The SQL under test could not be parsed: {0}" error)
-                {}))
-        (throw (data-testing.errors/ex
-                ::data-testing.errors/uncheckable-write
-                (tru "The SQL under test writes, and the test cannot check which tables it writes to: this database''s SQL dialect is not supported, or the SQL holds a list of values too long to parse.")
-                {:reason reason}))))))
 
 (def ^:private compares-output
   "The expectation types that compare the output of the query under test."
