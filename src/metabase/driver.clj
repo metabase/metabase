@@ -1819,6 +1819,9 @@
   `:method` is an open set: `:block` and `:row` are better samples, `:first-rows` is what a driver reports when it
   falls back for a table, and `:unspecified` is what [[table-rows-sample]] gives. `:fraction` and `:runs` are optional.
 
+  To decline for a table, for example a view, return `{:method :first-rows}` with no `:result`: sync then reads the
+  first rows with [[table-rows-sample]], outside the time limit of the better sample.
+
   `opts` is open; a driver ignores a key it does not know:
   `:rows`: about how many rows to read.
   `:row-count`: the row count estimate of the table, or nil.
