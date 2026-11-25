@@ -87,7 +87,7 @@
    (str "Sync skips work for a table that its database says did not change, but still does that work for each table "
         "at least once in this many days."))
   :visibility     :admin
-  :export?        true
+  :export?        false
   :type           :integer
   :default        7
   :database-local :allowed
