@@ -1128,10 +1128,15 @@ async function selectAttribute(placeholder: string, option: string) {
 }
 
 async function expectRowOwner(tableId: TableId, owner: string) {
+  // anchored: the owner must be the whole cell text, as the e2e `have.text`
+  // checked, so extra text in the cell fails
+  const wholeText = new RegExp(
+    `^${owner.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+  );
   await waitFor(() =>
     expect(
       within(getTableRow(tableId)).getByTestId("table-owner"),
-    ).toHaveTextContent(owner),
+    ).toHaveTextContent(wholeText),
   );
 }
 
