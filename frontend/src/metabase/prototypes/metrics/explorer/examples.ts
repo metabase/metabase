@@ -4,8 +4,9 @@ import type {
   StringFilterOperator,
 } from "metabase-lib/common";
 import * as LibMetric from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
-import type { BarItem } from "./TokenBar";
+import { type BarItem, DRAFT_PREFIX, matchesItem } from "./TokenBar";
 import {
   type FormulaToken,
   type MetricDraft,
@@ -30,128 +31,305 @@ export const MEASURE_TABLES: Record<string, string> = {
   Reviews: "Reviews",
 };
 
-type FilterSpec = {
+type Kind = "string" | "number" | "boolean";
+
+/** A column a filter can read, by the label the bar shows. */
+type ColumnSpec = {
   label: string;
   table: string;
   column: string;
   /** For a column reached through a foreign key, like Product → Category. */
   via?: string;
-} & (
-  | { kind: "string"; operator: StringFilterOperator; values: string[] }
-  | { kind: "number"; operator: NumberFilterOperator; values: number[] }
-  | { kind: "boolean"; operator: BooleanFilterOperator; values: boolean[] }
-);
+  kind: Kind;
+  /** Values to suggest, like a category's. */
+  values?: string[];
+};
 
-/** Real filters on the Sample Database, applied to the measures' definitions. */
-const FILTER_SPECS: FilterSpec[] = [
+const COLUMNS: ColumnSpec[] = [
+  { label: "Total", table: "Orders", column: "Total", kind: "number" },
+  { label: "Subtotal", table: "Orders", column: "Subtotal", kind: "number" },
+  { label: "Tax", table: "Orders", column: "Tax", kind: "number" },
+  { label: "Discount", table: "Orders", column: "Discount", kind: "number" },
+  { label: "Quantity", table: "Orders", column: "Quantity", kind: "number" },
   {
-    label: "Product category = Gizmo",
+    label: "Product category",
     table: "Orders",
     via: "Product",
     column: "Category",
     kind: "string",
-    operator: "=",
-    values: ["Gizmo"],
+    values: ["Doohickey", "Gadget", "Gizmo", "Widget"],
   },
   {
-    label: "Product category = Widget",
-    table: "Orders",
-    via: "Product",
-    column: "Category",
-    kind: "string",
-    operator: "=",
-    values: ["Widget"],
-  },
-  {
-    label: "Discount is not empty",
-    table: "Orders",
-    column: "Discount",
-    kind: "number",
-    operator: "not-null",
-    values: [],
-  },
-  {
-    label: "Quantity ≥ 5",
-    table: "Orders",
-    column: "Quantity",
-    kind: "number",
-    operator: ">=",
-    values: [5],
-  },
-  {
-    label: "Source = Affiliate",
+    label: "Source",
     table: "People",
     column: "Source",
     kind: "string",
-    operator: "=",
-    values: ["Affiliate"],
+    values: ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
   },
   {
-    label: "Source = Google",
-    table: "People",
-    column: "Source",
+    label: "Plan",
+    table: "Accounts",
+    column: "Plan",
     kind: "string",
-    operator: "=",
-    values: ["Google"],
+    values: ["Basic", "Business", "Premium"],
   },
+  { label: "Seats", table: "Accounts", column: "Seats", kind: "number" },
   {
-    label: "Trial converted = true",
+    label: "Trial converted",
     table: "Accounts",
     column: "Trial Converted",
     kind: "boolean",
-    operator: "=",
-    values: [true],
   },
   {
-    label: "Active subscription = true",
+    label: "Active subscription",
     table: "Accounts",
     column: "Active Subscription",
     kind: "boolean",
-    operator: "=",
-    values: [true],
   },
   {
-    label: "Plan = Business",
-    table: "Accounts",
-    column: "Plan",
-    kind: "string",
-    operator: "=",
-    values: ["Business"],
-  },
-  {
-    label: "Plan = Premium",
+    label: "Plan",
     table: "Invoices",
     column: "Plan",
     kind: "string",
-    operator: "=",
-    values: ["Premium"],
+    values: ["Basic", "Business", "Premium"],
+  },
+  { label: "Payment", table: "Invoices", column: "Payment", kind: "number" },
+  { label: "Rating", table: "Reviews", column: "Rating", kind: "number" },
+];
+
+/** The column each measure adds up, offered first when filtering it. */
+const MEASURE_COLUMNS: Record<string, string> = {
+  Revenue: "Total",
+  Discounts: "Discount",
+  Tax: "Tax",
+  "Units sold": "Quantity",
+  Seats: "Seats",
+  Payments: "Payment",
+};
+
+type OpSpec = {
+  /** What the pill shows, like "≥". */
+  symbol: string;
+  label: string;
+  /** Typed shortcuts, like ">=". */
+  aliases?: string[];
+  operator: {
+    string?: StringFilterOperator;
+    number?: NumberFilterOperator;
+    boolean?: BooleanFilterOperator;
+  };
+  hasValue: boolean;
+};
+
+const OPERATORS: OpSpec[] = [
+  {
+    symbol: "=",
+    label: "is",
+    operator: { string: "=", number: "=", boolean: "=" },
+    hasValue: true,
   },
   {
-    label: "Rating ≥ 4",
-    table: "Reviews",
-    column: "Rating",
-    kind: "number",
-    operator: ">=",
-    values: [4],
+    symbol: "≠",
+    label: "is not",
+    aliases: ["!="],
+    operator: { string: "!=", number: "!=" },
+    hasValue: true,
+  },
+  {
+    symbol: ">",
+    label: "is greater than",
+    operator: { number: ">" },
+    hasValue: true,
+  },
+  {
+    symbol: "≥",
+    label: "is greater than or equal to",
+    aliases: [">="],
+    operator: { number: ">=" },
+    hasValue: true,
+  },
+  {
+    symbol: "<",
+    label: "is less than",
+    operator: { number: "<" },
+    hasValue: true,
+  },
+  {
+    symbol: "≤",
+    label: "is less than or equal to",
+    aliases: ["<="],
+    operator: { number: "<=" },
+    hasValue: true,
+  },
+  {
+    symbol: "contains",
+    label: "contains",
+    operator: { string: "contains" },
+    hasValue: true,
+  },
+  {
+    symbol: "is empty",
+    label: "is empty",
+    operator: { string: "is-empty", number: "is-null" },
+    hasValue: false,
+  },
+  {
+    symbol: "is not empty",
+    label: "is not empty",
+    operator: { string: "not-empty", number: "not-null" },
+    hasValue: false,
   },
 ];
 
-const toItem = (spec: FilterSpec): BarItem => ({
-  id: spec.label,
-  label: spec.label,
-  icon: "filter",
-  section: spec.table,
-  sectionIcon: "table",
-});
+const KIND_ICONS: Record<Kind, IconName> = {
+  string: "string",
+  number: "int",
+  boolean: "io",
+};
 
-/** Filters on the given tables, as dropdown options. */
-export const filterItemsFor = (tables: string[]) =>
-  FILTER_SPECS.filter((spec) => tables.includes(spec.table)).map(toItem);
+const normalize = (text: string) =>
+  text.replace(/>=/g, "≥").replace(/<=/g, "≤").replace(/!=/g, "≠");
+
+/** Words need a break after them ("Plan" isn't "Planet"); symbols don't. */
+const startsWithWord = (text: string, word: string) =>
+  text.toLowerCase().startsWith(word.toLowerCase()) &&
+  (!/[a-z]$/i.test(word) ||
+    text.length === word.length ||
+    /^[\s=≠<>≤≥]/.test(text.slice(word.length)));
+
+type Draft = {
+  column?: ColumnSpec;
+  op?: OpSpec;
+  /** The text after the column, or after the operator. */
+  rest: string;
+};
+
+/** Reads typed text, like "Total > 1", into its parts as far as they go. */
+function parseDraft(columns: ColumnSpec[], query: string): Draft {
+  const text = normalize(query).trimStart();
+  const column = [...columns]
+    .sort((a, b) => b.label.length - a.label.length)
+    .find((candidate) => startsWithWord(text, candidate.label));
+  if (!column) {
+    return { rest: text };
+  }
+  const afterColumn = text.slice(column.label.length).trimStart();
+  const op = OPERATORS.filter((candidate) => candidate.operator[column.kind])
+    .sort((a, b) => b.symbol.length - a.symbol.length)
+    .find((candidate) => startsWithWord(afterColumn, candidate.symbol));
+  if (!op) {
+    return { column, rest: afterColumn };
+  }
+  return { column, op, rest: afterColumn.slice(op.symbol.length).trim() };
+}
+
+const labelOf = (column: ColumnSpec, op: OpSpec, value = "") =>
+  op.hasValue
+    ? `${column.label} ${op.symbol} ${value}`
+    : `${column.label} ${op.symbol}`;
+
+/**
+ * The dropdown for a filter being typed, as in the filter bar: a column, then
+ * an operator, then a value. Picking a column or an operator fills the input.
+ */
+export function suggestFilters(
+  tables: string[],
+  query: string,
+  exclude: string[] = [],
+  measureName?: string,
+): BarItem[] {
+  const columns = COLUMNS.filter((column) => tables.includes(column.table));
+  const { column, op, rest } = parseDraft(columns, query);
+  const measureColumn = measureName && MEASURE_COLUMNS[measureName];
+
+  if (!column) {
+    const ordered = [
+      ...columns.filter((c) => c.label === measureColumn),
+      ...columns.filter((c) => c.label !== measureColumn),
+    ];
+    return ordered
+      .map(
+        (c): BarItem => ({
+          id: `${DRAFT_PREFIX}${c.label} `,
+          label: c.label,
+          icon: KIND_ICONS[c.kind],
+          aliases: c.label === measureColumn ? [measureName ?? ""] : [],
+          section: tables.length > 1 ? c.table : undefined,
+          sectionIcon: "table",
+        }),
+      )
+      .filter((item) => matchesItem(item, rest));
+  }
+
+  if (!op) {
+    return OPERATORS.filter((candidate) => candidate.operator[column.kind])
+      .map(
+        (candidate): BarItem => ({
+          id: candidate.hasValue
+            ? `${DRAFT_PREFIX}${labelOf(column, candidate)}`
+            : labelOf(column, candidate),
+          label: candidate.label,
+          hint: candidate.symbol.length <= 2 ? candidate.symbol : undefined,
+          aliases: [candidate.symbol, ...(candidate.aliases ?? [])],
+          section: column.label,
+          sectionIcon: KIND_ICONS[column.kind],
+        }),
+      )
+      .filter(
+        (item) =>
+          !exclude.includes(item.id) &&
+          (rest === "" || matchesItem({ ...item, section: undefined }, rest)),
+      );
+  }
+
+  if (!op.hasValue) {
+    const id = labelOf(column, op);
+    return exclude.includes(id) ? [] : [{ id, label: id, icon: "filter" }];
+  }
+
+  const known =
+    column.kind === "boolean" ? ["true", "false"] : (column.values ?? []);
+  const valueItems = known
+    .filter((value) => value.toLowerCase().includes(rest.toLowerCase()))
+    .map(
+      (value): BarItem => ({
+        id: labelOf(column, op, value),
+        label: value,
+        section: `${column.label} ${op.label}`,
+        sectionIcon: "filter",
+      }),
+    );
+  const isTyped =
+    rest !== "" &&
+    !known.some((value) => value.toLowerCase() === rest.toLowerCase()) &&
+    (column.kind !== "number" || !Number.isNaN(Number(rest)));
+  const typedItem: BarItem[] = isTyped
+    ? [
+        {
+          id: labelOf(column, op, rest),
+          label: labelOf(column, op, rest),
+          icon: "filter",
+        },
+      ]
+    : [];
+  const items = [...typedItem, ...valueItems].filter(
+    (item) => !exclude.includes(item.id),
+  );
+  return items.length > 0
+    ? items
+    : [
+        {
+          id: "hint:value",
+          label: column.kind === "number" ? "Type a number" : "Type a value",
+          disabled: true,
+        },
+      ];
+}
 
 const isSpecDimension = (
   definition: LibMetric.MetricDefinition,
   dimension: LibMetric.DimensionMetadata,
-  spec: FilterSpec,
+  spec: ColumnSpec,
 ) => {
   const info = LibMetric.displayInfo(definition, dimension);
   const sameColumn =
@@ -164,50 +342,58 @@ const isSpecDimension = (
 };
 
 const buildClause = (
-  spec: FilterSpec,
+  column: ColumnSpec,
+  op: OpSpec,
+  value: string,
   dimension: LibMetric.DimensionMetadata,
 ) => {
-  switch (spec.kind) {
+  const values = op.hasValue ? [value] : [];
+  switch (column.kind) {
     case "string":
       return LibMetric.stringFilterClause({
-        operator: spec.operator,
+        operator: op.operator.string ?? "=",
         dimension,
-        values: spec.values,
+        values,
         options: {},
       });
     case "number":
       return LibMetric.numberFilterClause({
-        operator: spec.operator,
+        operator: op.operator.number ?? "=",
         dimension,
-        values: spec.values,
+        values: values.map(Number),
       });
     case "boolean":
       return LibMetric.booleanFilterClause({
-        operator: spec.operator,
+        operator: op.operator.boolean ?? "=",
         dimension,
-        values: spec.values,
+        values: values.map((v) => v === "true"),
       });
   }
 };
 
 /**
- * The definition with the labelled filters added. A filter on a column the
- * measure's table doesn't have is skipped, like a Where on another table.
+ * The definition with the labelled filters added, read like "Total > 1". A
+ * filter on a column the measure's table doesn't have is skipped.
  */
 export function applyFilters(
   definition: LibMetric.MetricDefinition,
   labels: string[],
 ): LibMetric.MetricDefinition {
   return labels.reduce((current, label) => {
-    const spec = FILTER_SPECS.find((candidate) => candidate.label === label);
+    const dimensions = LibMetric.filterableDimensions(current);
+    const columns = COLUMNS.filter((column) =>
+      dimensions.some((d) => isSpecDimension(current, d, column)),
+    );
+    const { column, op, rest } = parseDraft(columns, label);
     const dimension =
-      spec &&
-      LibMetric.filterableDimensions(current).find((candidate) =>
-        isSpecDimension(current, candidate, spec),
+      column &&
+      dimensions.find((candidate) =>
+        isSpecDimension(current, candidate, column),
       );
-    return spec && dimension
-      ? LibMetric.filter(current, buildClause(spec, dimension))
-      : current;
+    if (!column || !op || !dimension || (op.hasValue && rest === "")) {
+      return current;
+    }
+    return LibMetric.filter(current, buildClause(column, op, rest, dimension));
   }, definition);
 }
 

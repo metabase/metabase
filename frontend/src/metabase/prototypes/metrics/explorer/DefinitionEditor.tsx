@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useEffect, useRef, useState } from "react";
+import { t } from "ttag";
 
 import {
   ActionIcon,
@@ -45,8 +46,8 @@ export function DefinitionEditor({
   measureItems = MEASURE_ITEMS,
   measureName = (id) => getMeasure(id).name,
   layout = "stacked",
-  filterItems = FILTER_ITEMS,
-  filtersForTerm = () => filterItems,
+  whereFilters = (query, exclude) => search(FILTER_ITEMS, query, exclude),
+  filtersForTerm = (_measureId, query, exclude) => whereFilters(query, exclude),
 }: {
   draft: MetricDraft;
   onChange: (draft: MetricDraft) => void;
@@ -55,10 +56,14 @@ export function DefinitionEditor({
   measureName?: (id: string) => string;
   /** "explorer": one box like the Explorer's bar, the Where row under it. */
   layout?: "stacked" | "explorer";
-  /** Filters and segments for the whole metric; the mock ones by default. */
-  filterItems?: BarItem[];
-  /** Filters that fit one measure, like the columns of its table. */
-  filtersForTerm?: (measureId: string) => BarItem[];
+  /** Suggestions for a filter on the whole metric; the mock ones by default. */
+  whereFilters?: (query: string, exclude: string[]) => BarItem[];
+  /** Suggestions for a filter on one measure, like its table's columns. */
+  filtersForTerm?: (
+    measureId: string,
+    query: string,
+    exclude: string[],
+  ) => BarItem[];
 }) {
   const { formula, where } = draft;
   const setFormula = (next: FormulaToken[]) =>
@@ -112,7 +117,7 @@ export function DefinitionEditor({
   const getFormulaItems = (query: string, caret: number): BarItem[] => {
     const host = formula.find((token) => token.key === filterHost);
     if (host?.kind === "term") {
-      return search(filtersForTerm(host.measureId), query, host.filters);
+      return filtersForTerm(host.measureId, query, host.filters);
     }
     const before = formula[caret - 1];
     const afterOperand = endsOperand(before);
@@ -331,8 +336,14 @@ export function DefinitionEditor({
               <span className={S.pipe}>|</span>
               <InlineSuggest
                 placeholder={filter}
+                initialQuery={filter}
+                title={t`Filter by`}
                 getItems={(query) =>
-                  search(filtersForTerm(token.measureId), query, token.filters)
+                  filtersForTerm(
+                    token.measureId,
+                    query,
+                    token.filters.filter((f) => f !== filter),
+                  )
                 }
                 onPick={(item) => {
                   updateTerm(token.key, (filters) =>
@@ -402,11 +413,12 @@ export function DefinitionEditor({
         <span className={cx(S.seg, S.segEditing)}>
           <InlineSuggest
             placeholder={token.filter}
+            initialQuery={token.filter}
+            title={t`Filter by`}
             getItems={(query) =>
-              search(
-                filterItems,
+              whereFilters(
                 query,
-                where.map((w) => w.filter),
+                where.filter((w) => w.key !== token.key).map((w) => w.filter),
               )
             }
             onPick={(item) => {
@@ -495,6 +507,7 @@ export function DefinitionEditor({
         return index + 1;
       }}
       inputHostKey={filterHost}
+      title={filterHost != null ? t`Filter by` : undefined}
       hostPrefix={<span className={S.pipe}>|</span>}
       onExitHost={() => setFilterHost(null)}
     />
@@ -510,9 +523,9 @@ export function DefinitionEditor({
           : "Add a filter or segment"
       }
       renderToken={renderWhereToken}
+      title={t`Filter by`}
       getItems={(query) =>
-        search(
-          filterItems,
+        whereFilters(
           query,
           where.map((w) => w.filter),
         )

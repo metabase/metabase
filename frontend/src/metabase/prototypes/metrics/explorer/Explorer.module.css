@@ -428,3 +428,10 @@
   min-height: 2.5rem;
   padding-block: 0.375rem;
 }
+
+.title {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm)
+    var(--mantine-spacing-sm);
+  color: var(--mb-color-text-secondary);
+  font-weight: bold;
+}

@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type RefObject,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -15,6 +16,34 @@ import type { IconName } from "metabase-types/api";
 import S from "./Explorer.module.css";
 
 const DROPDOWN_WIDTH = 360;
+
+/**
+ * How far right of the popover's target its anchor starts, so the popover
+ * lines up with the pill it's about instead of the bar or the input.
+ */
+function useAnchorShift(
+  targetRef: RefObject<HTMLElement | null>,
+  getAnchor: () => HTMLElement | null | undefined,
+) {
+  const [shift, setShift] = useState(0);
+  // Measured after every render; it only sets state when the shift changed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    const target = targetRef.current;
+    const anchor = getAnchor();
+    const next =
+      target && anchor
+        ? Math.round(
+            anchor.getBoundingClientRect().left -
+              target.getBoundingClientRect().left,
+          )
+        : 0;
+    if (next !== shift) {
+      setShift(next);
+    }
+  });
+  return shift;
+}
 
 /** An option in a dropdown, shaped like the filter bar's suggestions. */
 export type BarItem = {
@@ -35,6 +64,9 @@ export type BarItem = {
   /** Behind an info icon that shows on hover, like how a measure is calculated. */
   info?: string;
 };
+
+/** An option whose id starts with this fills the input instead of picking, like a filter's column. */
+export const DRAFT_PREFIX = "draft:";
 
 export type TokenState = {
   index: number;
@@ -81,6 +113,8 @@ type TokenBarProps<T extends { key: string }> = {
   onOpenPart?: (index: number, part: string) => void;
   /** Backspace or Delete on a selected part removes it; returns the caret afterwards. */
   onDeletePart?: (index: number, part: string) => number;
+  /** A heading at the top of the dropdown, like "Filter by". */
+  title?: string;
 };
 
 /**
@@ -107,6 +141,7 @@ export function TokenBar<T extends { key: string }>({
   getParts,
   onOpenPart,
   onDeletePart,
+  title,
 }: TokenBarProps<T>) {
   const [caret, setCaret] = useState(tokens.length);
   const [query, setQuery] = useState("");
@@ -123,6 +158,13 @@ export function TokenBar<T extends { key: string }>({
   };
 
   const clampedCaret = Math.min(caret, tokens.length);
+  const barRef = useRef<HTMLDivElement>(null);
+  const draftRef = useRef<HTMLSpanElement>(null);
+  const hostSlotRef = useRef<HTMLSpanElement>(null);
+  // A filter on a pill opens under that pill; anything else, under the caret.
+  const shift = useAnchorShift(barRef, () =>
+    inputHostKey != null ? hostSlotRef.current : draftRef.current,
+  );
   const items = getItems(query, clampedCaret);
   const list = useSuggestionList(items, query);
   const isDropdownOpen =
@@ -140,6 +182,10 @@ export function TokenBar<T extends { key: string }>({
   };
 
   const pick = (item: BarItem) => {
+    if (item.id.startsWith(DRAFT_PREFIX)) {
+      setQuery(item.id.slice(DRAFT_PREFIX.length));
+      return;
+    }
     const next = onPick(item, clampedCaret);
     setQuery("");
     moveCaret(next);
@@ -294,10 +340,11 @@ export function TokenBar<T extends { key: string }>({
       shadow="md"
       trapFocus={false}
       returnFocus={false}
-      offset={4}
+      offset={{ mainAxis: 4, crossAxis: shift }}
     >
       <Popover.Target>
         <div
+          ref={barRef}
           className={cx(S.bar, {
             [S.barFocused]: isFocused,
             [S.barError]: hasError,
@@ -314,7 +361,11 @@ export function TokenBar<T extends { key: string }>({
               {(index !== clampedCaret || isHosted) && (
                 <Gap order={3 * index} onClick={() => focusAt(index)} />
               )}
-              <span className={S.slot} style={{ order: 3 * index + 1 }}>
+              <span
+                className={S.slot}
+                style={{ order: 3 * index + 1 }}
+                ref={token.key === inputHostKey ? hostSlotRef : undefined}
+              >
                 {renderToken(token, {
                   index,
                   isSelected: selected === index,
@@ -332,6 +383,7 @@ export function TokenBar<T extends { key: string }>({
             />
           )}
           <span
+            ref={draftRef}
             className={cx(S.slot, { [S.draftSeg]: isHosted })}
             style={{
               order: isHosted ? 3 * hostIndex + 2 : 3 * clampedCaret,
@@ -355,6 +407,11 @@ export function TokenBar<T extends { key: string }>({
                 setIsFocused(false);
                 setSelected(null);
                 setPartSel(null);
+                // Left a pill's filter draft without picking: drop the draft.
+                if (inputHostKey != null) {
+                  setQuery("");
+                  onExitHost?.();
+                }
                 onBlur?.();
               }}
             />
@@ -368,6 +425,7 @@ export function TokenBar<T extends { key: string }>({
           isSearching={query.trim() !== ""}
           onHover={list.setHighlight}
           onPick={pick}
+          title={title}
         />
       </Popover.Dropdown>
     </Popover>
@@ -434,7 +492,10 @@ function SuggestionList({
   isSearching,
   onHover,
   onPick,
+  title,
 }: {
+  /** A heading above the options, like "Filter by". */
+  title?: string;
   items: BarItem[];
   highlight: number;
   isSearching: boolean;
@@ -449,11 +510,18 @@ function SuggestionList({
       ?.scrollIntoView({ block: "nearest" });
   }, [highlight]);
 
+  const heading = title && <div className={S.title}>{title}</div>;
   if (items.length === 0) {
-    return <div className={S.empty}>No results</div>;
+    return (
+      <>
+        {heading}
+        <div className={S.empty}>No results</div>
+      </>
+    );
   }
   return (
     <div className={S.options} ref={listRef}>
+      {heading}
       {items.map((item, index) => (
         <Fragment key={item.id}>
           {item.section && item.section !== items[index - 1]?.section && (
@@ -515,7 +583,11 @@ export function InlineSuggest({
   onPick,
   onCancel,
   onBackspaceEmpty,
+  initialQuery = "",
+  title,
 }: {
+  initialQuery?: string;
+  title?: string;
   placeholder: string;
   getItems: (query: string) => BarItem[];
   onPick: (item: BarItem) => void;
@@ -523,9 +595,17 @@ export function InlineSuggest({
   onCancel: (isEscape: boolean) => void;
   onBackspaceEmpty?: () => void;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const shift = useAnchorShift(inputRef, () =>
+    inputRef.current?.closest<HTMLElement>(`.${S.pill}, .${S.connector}`),
+  );
   const items = getItems(query);
   const list = useSuggestionList(items, query);
+  const pick = (item: BarItem) =>
+    item.id.startsWith(DRAFT_PREFIX)
+      ? setQuery(item.id.slice(DRAFT_PREFIX.length))
+      : onPick(item);
 
   return (
     <Popover
@@ -534,10 +614,11 @@ export function InlineSuggest({
       shadow="md"
       trapFocus={false}
       returnFocus={false}
-      offset={6}
+      offset={{ mainAxis: 6, crossAxis: shift }}
     >
       <Popover.Target>
         <input
+          ref={inputRef}
           className={S.input}
           autoFocus
           value={query}
@@ -546,7 +627,7 @@ export function InlineSuggest({
           onChange={(event) => setQuery(event.target.value)}
           onBlur={() => onCancel(false)}
           onKeyDown={(event) => {
-            if (list.handleKeyDown(event, onPick)) {
+            if (list.handleKeyDown(event, pick)) {
               return;
             }
             if (event.key === "Escape") {
@@ -569,7 +650,8 @@ export function InlineSuggest({
           highlight={list.highlight}
           isSearching={query.trim() !== ""}
           onHover={list.setHighlight}
-          onPick={onPick}
+          onPick={pick}
+          title={title}
         />
       </Popover.Dropdown>
     </Popover>

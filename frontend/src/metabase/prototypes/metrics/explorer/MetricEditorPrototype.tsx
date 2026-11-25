@@ -59,7 +59,7 @@ import {
   type MetricExample,
   applyFilters,
   exampleDraft,
-  filterItemsFor,
+  suggestFilters,
 } from "./examples";
 import {
   type FormulaToken,
@@ -597,8 +597,12 @@ function EmbeddedExplorer({
             measureItems={items}
             measureName={nameOf}
             layout="explorer"
-            filterItems={filterItemsFor(tables)}
-            filtersForTerm={(id) => filterItemsFor([tableOf(id) ?? ""])}
+            whereFilters={(query, exclude) =>
+              suggestFilters(tables, query, exclude)
+            }
+            filtersForTerm={(id, query, exclude) =>
+              suggestFilters([tableOf(id) ?? ""], query, exclude, nameOf(id))
+            }
           />
         </Box>
         <ExplorerBody />
