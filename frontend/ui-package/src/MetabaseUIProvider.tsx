@@ -10,6 +10,7 @@ import { createPortal } from "react-dom";
 
 import { deriveFullMetabaseTheme } from "../../src/metabase/ui/colors";
 import { OVERLAY_Z_INDEX } from "../../src/metabase/ui/component-theme";
+import { drawerOverrides } from "../../src/metabase/ui/components/overlays/Drawer/Drawer.config";
 import { PortalContainer } from "../../src/metabase/ui/components/overlays/PortalContainer";
 import { tooltipOverrides } from "../../src/metabase/ui/components/overlays/Tooltip/Tooltip.config";
 import { OverlayStackProvider } from "../../src/metabase/ui/components/overlays/overlay-stack";
@@ -57,16 +58,24 @@ const getThemeOverride = (
   const overlayZIndex = readOverlayZIndex(otherRest.popover);
   const popoverLayer = getDefaultZIndex("popover");
   const components = { ...rest.components };
+  if (overlayZIndex !== getDefaultZIndex("modal")) {
+    components.Drawer = withOverlayDefaults(components.Drawer, overlayZIndex);
+    components.DrawerRoot = withOverlayDefaults(
+      components.DrawerRoot,
+      overlayZIndex,
+      drawerOverrides?.DrawerRoot?.defaultProps,
+    );
+  }
   const raiseTooltip = overlayZIndex >= popoverLayer + 1;
   if (raiseTooltip || typeof components.Tooltip?.defaultProps === "function") {
-    components.Tooltip = withTooltipDefaults(
+    components.Tooltip = withOverlayDefaults(
       components.Tooltip,
       raiseTooltip ? overlayZIndex + 1 : undefined,
       tooltipOverrides?.Tooltip?.defaultProps,
     );
   }
   if (overlayZIndex >= popoverLayer) {
-    components.TooltipFloating = withTooltipDefaults(
+    components.TooltipFloating = withOverlayDefaults(
       components.TooltipFloating,
       overlayZIndex + 1,
     );
@@ -74,7 +83,7 @@ const getThemeOverride = (
   return { ...rest, other: otherRest, components };
 };
 
-function withTooltipDefaults(
+function withOverlayDefaults(
   component: MantineThemeComponent | undefined,
   zIndex: number | undefined,
   baseDefaults?: unknown,

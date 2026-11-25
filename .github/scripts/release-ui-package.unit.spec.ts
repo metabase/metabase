@@ -15,9 +15,59 @@ import { load } from "js-yaml";
 const workflow = load(
   readFileSync(join(__dirname, "../workflows/release-ui-package.yml"), "utf8"),
 ) as { jobs: { publish: { steps: { name: string; run?: string }[] } } };
+const resolver = join(__dirname, "../../bin/ui-package/resolve-release.sh");
 const publish = workflow.jobs.publish.steps.find(
   (step) => step.name === "Publish the tarball to NPM",
 )?.run;
+
+interface ResolveSetupOpts {
+  version?: string;
+}
+
+function resolveRelease({ version }: ResolveSetupOpts) {
+  const cwd = mkdtempSync(join(tmpdir(), "resolve-ui-release-"));
+  try {
+    const manifest = join(cwd, "package.json");
+    writeFileSync(manifest, JSON.stringify({ version }));
+    return spawnSync("bash", [resolver], {
+      encoding: "utf8",
+      env: { ...process.env, UI_PACKAGE_JSON: manifest },
+    });
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+}
+
+it.each([
+  { version: "0.1.0", tag: "latest" },
+  { version: "0.1.0-canary.5", tag: "canary" },
+  { version: "9007199254740991.0.0", tag: "latest" },
+])("resolves release outputs for $version", ({ version, tag }) => {
+  const result = resolveRelease({ version });
+  expect(result.status).toBe(0);
+  expect(result.stdout).toBe(
+    `version=${version}\nnpm_tag=${tag}\ngit_tag=ui-v${version}\n`,
+  );
+});
+
+it.each([
+  { name: "a missing version" },
+  { name: "a trailing newline", version: "0.1.0\n" },
+  { name: "a NUL character", version: "0.1.0\0" },
+  { name: "an unsupported prerelease", version: "0.1.0-beta.5" },
+  { name: "a leading zero", version: "0.01.0" },
+  { name: "an oversized major", version: "9007199254740992.0.0" },
+  { name: "an oversized minor", version: "0.9007199254740992.0" },
+  { name: "an oversized patch", version: "0.1.9007199254740992" },
+  {
+    name: "an oversized version string",
+    version: `0.1.0-canary.${"1".repeat(250)}`,
+  },
+])("does not emit release outputs for $name", ({ version }) => {
+  const result = resolveRelease({ version });
+  expect(result.status).toBe(1);
+  expect(result.stdout).toBe("");
+});
 
 interface SetupOpts {
   name?: string;

@@ -24,21 +24,22 @@ if [ ! -f "$PKG" ]; then
   exit 1
 fi
 
-VERSION=$(jq -r '.version // ""' "$PKG")
-if [ -z "$VERSION" ]; then
-  echo "version missing from $PKG" >&2
+# Validate before Bash command substitution can discard newlines or NULs.
+NUM='(0|[1-9][0-9]*)'
+PATTERN="\A(?<major>$NUM)\.(?<minor>$NUM)\.(?<patch>$NUM)(-canary\.$NUM)?\z"
+if ! VERSION=$(jq -ers --arg pattern "$PATTERN" '
+  select(length == 1) | .[0].version
+  | select(type == "string" and length <= 256)
+  | select(capture($pattern) | [.major, .minor, .patch] | all(tonumber < 9007199254740992))
+' "$PKG"); then
+  echo "version in $PKG must be an npm-compatible X.Y.Z or X.Y.Z-canary.N" >&2
   exit 1
 fi
 
-NUM='(0|[1-9][0-9]*)'
-if [[ "$VERSION" =~ ^$NUM\.$NUM\.$NUM$ ]]; then
-  NPM_TAG="latest"
-elif [[ "$VERSION" =~ ^$NUM\.$NUM\.$NUM-canary\.$NUM$ ]]; then
-  NPM_TAG="canary"
-else
-  echo "version '$VERSION' in $PKG must be X.Y.Z or X.Y.Z-canary.N" >&2
-  exit 1
-fi
+case "$VERSION" in
+  *-canary.*) NPM_TAG="canary" ;;
+  *) NPM_TAG="latest" ;;
+esac
 
 echo "version=$VERSION"
 echo "npm_tag=$NPM_TAG"

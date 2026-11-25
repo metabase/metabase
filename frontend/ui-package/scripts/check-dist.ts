@@ -24,9 +24,6 @@ const REQUIRED_FILES = [
   "dist/fonts/Lato/lato-v16-latin-regular.woff2",
   "dist/fonts/Lato/lato-v16-latin-700.woff2",
   "dist/fonts/Lato/lato-v16-latin-900.woff2",
-  "dist/fonts/Lato/lato-v16-latin-regular.woff",
-  "dist/fonts/Lato/lato-v16-latin-700.woff",
-  "dist/fonts/Lato/lato-v16-latin-900.woff",
   POPOVER_REGISTRATION,
   DAYJS_SETUP,
 ];

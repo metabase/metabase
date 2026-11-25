@@ -5,6 +5,7 @@ import {
   type ColorName,
   Icon,
   type IconName,
+  type MantineTheme,
   MetabaseUIProvider,
   type MetabaseUIProviderProps,
   color,
@@ -61,3 +62,9 @@ export const bad = (
 
 // @ts-expect-error not a ColorName
 export const badColorName: ColorName = "grape";
+
+export function checkColorSettingsCallback(theme: MantineTheme) {
+  theme.other.updateColorSettings?.({});
+  // @ts-expect-error the standalone provider does not supply this callback
+  theme.other.updateColorSettings({});
+}

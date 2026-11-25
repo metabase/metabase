@@ -1,7 +1,9 @@
 /* eslint-disable i18next/no-literal-string -- smoke app, not translated */
+import { MantineProvider, Select as MantineSelect } from "@mantine/core";
 import {
   Box,
   Button,
+  Drawer,
   Ellipsified,
   Group,
   Icon,
@@ -45,6 +47,7 @@ export const App = () => {
     initialColorScheme,
   );
   const [modalOpened, setModalOpened] = useState(false);
+  const [drawerOpened, setDrawerOpened] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
   const highOverlay = params.has("high-overlay");
@@ -60,7 +63,7 @@ export const App = () => {
           },
         }
       : undefined;
-  return (
+  const metabase = (
     <MetabaseUIProvider
       colorScheme={colorScheme}
       fontFamily={
@@ -145,6 +148,20 @@ export const App = () => {
           {highOverlay && (
             <Select label="Modal select" data={["Alpha", "Beta"]} />
           )}
+          {params.has("drawer") && (
+            <>
+              <Button onClick={() => setDrawerOpened(true)}>Open drawer</Button>
+              <Drawer
+                opened={drawerOpened}
+                onClose={() => setDrawerOpened(false)}
+                title="Nested drawer"
+              >
+                <Button onClick={() => setDrawerOpened(false)}>
+                  Close nested drawer
+                </Button>
+              </Drawer>
+            </>
+          )}
           {highOverlay && (
             <Tooltip.Floating label="Floating tooltip">
               <Button>Floating tooltip target</Button>
@@ -158,5 +175,20 @@ export const App = () => {
         </Modal>
       </Stack>
     </MetabaseUIProvider>
+  );
+
+  return (
+    <>
+      {metabase}
+      {params.has("native-select") && (
+        <MantineProvider
+          withCssVariables={false}
+          withGlobalClasses={false}
+          getRootElement={() => undefined}
+        >
+          <MantineSelect label="Native select" data={["Native option"]} />
+        </MantineProvider>
+      )}
+    </>
   );
 };

@@ -245,6 +245,31 @@ for (const scheme of SCHEMES) {
   });
 }
 
+test("@release a native Mantine Select works outside the Metabase provider", async ({
+  page,
+}) => {
+  await page.goto("/?native-select");
+  const select = page.getByRole("textbox", { name: "Native select" });
+  await expect(select).toBeVisible();
+  await select.click();
+  await page.getByRole("option", { name: "Native option" }).click();
+  await expect(select).toHaveValue("Native option");
+});
+
+test("@release a Drawer opened from a custom-layer Modal can be used", async ({
+  page,
+}) => {
+  await page.goto("/?high-overlay&drawer");
+  await page.getByTestId("open-modal").click();
+  await page.getByRole("button", { name: "Open drawer" }).click();
+  const drawer = page.getByRole("dialog", { name: "Nested drawer" });
+  await expect(drawer).toBeVisible();
+  await expect.poll(() => isOnTop(drawer)).toBe(true);
+  await drawer.getByRole("button", { name: "Close nested drawer" }).click();
+  await expect(drawer).toBeHidden();
+  await expect(page.getByRole("dialog", { name: "Modal title" })).toBeVisible();
+});
+
 test("a portalled Select can be used inside a custom modal layer", async ({
   page,
 }) => {

@@ -14,7 +14,7 @@ declare module "@mantine/core" {
   export interface MantineThemeOther {
     colorScheme: "light" | "dark";
     hasCustomChartFontSize?: boolean;
-    updateColorSettings: (settings: ColorSettings) => void;
+    updateColorSettings?: (settings: ColorSettings) => void;
   }
 
   export interface MantineTheme {
