@@ -23,6 +23,10 @@ import type {
 import { filterFieldSections } from "../utils";
 
 import {
+  CUSTOM_FORMULA_OPTION_VALUE,
+  CustomFormulaOption,
+} from "./CustomFormulaOption";
+import {
   GENERATE_OPTION_VALUE,
   GenerateFormulaOption,
   type GenerateFormulaState,
@@ -100,10 +104,17 @@ export function SummaryWellInput({
     canGenerate && formulaGenerator.access === "available";
   const isOtherWellGenerating =
     !isGenerating && formulaGenerator?.isGenerating === true;
+  const isGenerateOptionBlocked =
+    isGenerateOptionShown && isOtherWellGenerating;
 
   const comboboxRef = useLatest(combobox);
   useEffect(() => {
-    if (searchText.length > 0) {
+    if (searchText.length === 0) {
+      return;
+    }
+    if (isGenerateOptionBlocked) {
+      comboboxRef.current.resetSelectedOption();
+    } else {
       comboboxRef.current.selectFirstOption();
     }
   }, [
@@ -111,7 +122,7 @@ export function SummaryWellInput({
     matchingSections,
     searchText,
     isGenerateOptionShown,
-    isOtherWellGenerating,
+    isGenerateOptionBlocked,
   ]);
 
   const handleGenerate = async () => {
@@ -148,6 +159,12 @@ export function SummaryWellInput({
     }
     setSearchText("");
     combobox.closeDropdown();
+    if (optionValue === CUSTOM_FORMULA_OPTION_VALUE) {
+      if (formulaInput && inputRef.current) {
+        formulaInput.start("", inputRef.current, () => setSearchText(""));
+      }
+      return;
+    }
     const item = matchingSections
       .flatMap((section) =>
         section.items.map((item) => ({
@@ -222,6 +239,7 @@ export function SummaryWellInput({
         dropdown: S.searchDropdown,
         options: S.searchOptions,
         option: S.searchOption,
+        group: S.searchGroup,
         groupLabel: S.searchGroupLabel,
         empty: S.searchEmpty,
       }}
@@ -290,6 +308,7 @@ export function SummaryWellInput({
               ))}
             </Combobox.Group>
           ))}
+          {formulaInput && <CustomFormulaOption wellId={wellId} />}
         </Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>

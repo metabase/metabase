@@ -895,6 +895,66 @@ describe("formula modes of the wells", () => {
   });
 });
 
+describe("formula option in the typeahead", () => {
+  it("opens an empty formula from the Custom column option and adds it to Group by", async () => {
+    const { onQueryChange } = await setup();
+    const input = getInput("columns");
+    await userEvent.type(input, "tot");
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Custom column/ }),
+    );
+
+    await screen.findByRole("textbox", { name: "Formula" });
+    expect(getEditor()?.state.doc.toString()).toBe("");
+    expect(input).toHaveValue("");
+    expect(
+      within(screen.getByTestId("summary-well-columns")).getByTestId(
+        "summary-well-draft-formula",
+      ),
+    ).toBeInTheDocument();
+
+    await changeFormula("[Total] * 2");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await expectClosed();
+    expect(onQueryChange).toHaveBeenCalledTimes(1);
+    expect(getChipLabels("columns")).toEqual(["Total * 2"]);
+  });
+
+  it("offers a Custom aggregation option in Summarize by", async () => {
+    await setup();
+    await userEvent.type(getInput("values"), "zzz");
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Custom aggregation/ }),
+    );
+
+    await screen.findByRole("textbox", { name: "Formula" });
+    expect(
+      within(screen.getByTestId("summary-well-values")).getByTestId(
+        "summary-well-draft-formula",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not offer the formula option when formulas are unsupported", async () => {
+    await setup({
+      database: createSampleDatabase({
+        features: COMMON_DATABASE_FEATURES.filter(
+          (feature) =>
+            feature !== "expressions" && feature !== "expression-aggregations",
+        ),
+      }),
+    });
+    await userEvent.type(getInput("columns"), "tot");
+
+    const getOptionTexts = () =>
+      screen.queryAllByRole("option").map((option) => option.textContent);
+    await waitFor(() => expect(getOptionTexts()).toContain("Total"));
+    expect(
+      screen.queryByRole("option", { name: /Custom column/ }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("formulas in Rows", () => {
   it("adds a formula that is written in the Rows typeahead to Rows", async () => {
     await setup();
