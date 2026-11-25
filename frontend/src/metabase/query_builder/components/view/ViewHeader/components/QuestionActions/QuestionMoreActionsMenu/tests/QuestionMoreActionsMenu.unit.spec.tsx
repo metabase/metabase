@@ -108,6 +108,7 @@ describe("QuestionMoreActionsMenu >", () => {
         within(menu).queryByText("Create an alert"),
       ).not.toBeInTheDocument();
       expect(within(menu).queryByText("Edit alerts")).not.toBeInTheDocument();
+      expect(within(menu).queryByText("Loading…")).not.toBeInTheDocument();
     });
 
     it("should not offer alerts for a model that has alerts", async () => {
@@ -129,6 +130,7 @@ describe("QuestionMoreActionsMenu >", () => {
         within(menu).queryByText("Create an alert"),
       ).not.toBeInTheDocument();
       expect(within(menu).queryByText("Edit alerts")).not.toBeInTheDocument();
+      expect(within(menu).queryByText("Loading…")).not.toBeInTheDocument();
     });
   });
 
