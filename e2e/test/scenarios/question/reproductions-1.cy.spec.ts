@@ -661,12 +661,14 @@ describe("Custom columns visualization settings", () => {
     cy.signInAsAdmin();
     H.createQuestion(question).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
+      cy.wrap(id).as("questionId");
 
       H.visitQuestion(id);
     });
   });
 
   it("should not show 'Save' after modifying minibar settings for a custom column", () => {
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
     goToExpressionSidebarVisualizationSettings();
     H.popover().within(() => {
       cy.findByLabelText("Show a mini bar chart")
@@ -674,9 +676,10 @@ describe("Custom columns visualization settings", () => {
         .should("be.checked");
     });
     saveModifiedQuestion();
+    cy.wait("@updateCard");
 
-    cy.log("The saved setting survives a reload");
-    cy.reload();
+    cy.log("The saved setting is there when the question opens again");
+    H.visitQuestion("@questionId");
     cy.findByTestId("qb-header-action-panel")
       .findByText("Save")
       .should("not.exist");
