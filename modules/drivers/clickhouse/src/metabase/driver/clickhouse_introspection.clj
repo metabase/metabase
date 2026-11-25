@@ -1,5 +1,5 @@
 (ns metabase.driver.clickhouse-introspection
-  (:refer-clojure :exclude [empty?])
+  (:refer-clojure :exclude [empty? every? mapv])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -13,7 +13,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [empty?]])
+   [metabase.util.performance :refer [empty? every? mapv]])
   (:import
    (java.sql Connection DatabaseMetaData)))
 
@@ -176,6 +176,11 @@
                  (get-tables-in-db driver db))]
     {:tables tables}))
 
+(defn- unquote-name
+  "The name that the backquoted identifier `quoted` stands for."
+  [quoted]
+  (str/replace (subs quoted 1 (dec (count quoted))) #"\\(.)" "$1"))
+
 (def ^:private type-token
   "A string, a quoted name, one of `(),`, or the text up to the next one of these, in a ClickHouse type."
   #"'(?:[^'\\]++|\\.)*+'|`(?:[^`\\]++|\\.)*+`|[(),]|[^'`(),]+")
@@ -203,6 +208,26 @@
                  (case token "(" (inc depth) ")" (dec depth) depth)
                  (conj argument token)
                  arguments))))))
+
+(defn- named-element
+  "The `[name type]` of a `Tuple` type argument such as `lat Float64`, or nil if it has no name."
+  [argument]
+  (let [token        (str (re-find type-token argument))
+        quoted?      (str/starts-with? token "`")
+        raw-name     (if quoted? token (re-find #"^\w+(?=\s)" token))
+        element-name (cond-> raw-name quoted? unquote-name)
+        element-type (str/trim (subs argument (count raw-name)))]
+    (when element-name
+      [element-name element-type])))
+
+(defn tuple-elements
+  "The `[name type]` of each element of `database-type` if it is a `Tuple` type with named elements, or else nil. For
+  example, `Tuple(lat Float64, lon Float64)` has the elements `[[\"lat\" \"Float64\"] [\"lon\" \"Float64\"]]`."
+  [database-type]
+  (when-let [arguments (type-arguments "Tuple" database-type)]
+    (let [elements (mapv named-element arguments)]
+      (when (every? some? elements)
+        elements))))
 
 (defn- ^:private is-db-required?
   [field]
@@ -242,11 +267,6 @@
      ;; everything up to the next comma, bracket, string or quoted name
      :other       (insta.c/regexp #"[^,()\[\]'`]+")})
    :start :primary-key))
-
-(defn- unquote-name
-  "The name that the backquoted identifier `quoted` stands for."
-  [quoted]
-  (str/replace (subs quoted 1 (dec (count quoted))) #"\\(.)" "$1"))
 
 (defn- primary-key-columns
   "The columns of the ClickHouse primary key `primary-key`, as `system.tables` reports it, that are bare columns."
