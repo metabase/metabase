@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
+   [metabase.queries-rest.db :as queries-rest.db]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -122,6 +123,17 @@
     (testing (str label " " endpoint (when dashboard? " to a dashboard"))
       (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Pulse :model/Document :model/Collection]
         (is (= positions (run-scenario! endpoint dashboard? (get scenarios label))))))))
+
+(deftest ^:synchronous moved-cards-at-one-position-land-in-id-order-test
+  (testing "Pinned Cards from two Collections at one position land in id order, whatever order they load in"
+    (let [load-cards (mt/original-fn #'queries-rest.db/cards-to-move-to-collection)]
+      ;; Reversed, the higher id of the tied a1 and b1 loads first.
+      (mt/with-dynamic-fn-redefs [queries-rest.db/cards-to-move-to-collection
+                                  (fn [card-ids collection-id]
+                                    (reverse (sort-by :id (load-cards card-ids collection-id))))]
+        (mt/with-model-cleanup [:model/Card :model/Collection]
+          (is (=? {:dest [["x" 1] ["z" 2] ["a1" 3] ["b1" 4] ["b3" 5] ["a4" 6]]}
+                  (run-scenario! :card-collections false (get scenarios "S3 two sources")))))))))
 
 (defn- pinned-move-statements
   "The number of statements of moving to an empty Collection, as a non-admin, `n` pinned Cards that sit one in each of
