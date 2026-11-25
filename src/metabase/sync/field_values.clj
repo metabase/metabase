@@ -276,9 +276,9 @@
 
 (defn- unchanged-tables
   "The ids of the `tables` whose token in `tokens` is the one at their last scan, and whose lists among `fvs` were all
-  read within `period`."
+  read within `period`, less [[scan-time-margin]]."
   [tables tokens fvs period]
-  (let [cutoff       (t/minus (t/offset-date-time) period)
+  (let [cutoff       (t/plus (t/minus (t/offset-date-time) period) scan-time-margin)
         table-id->fvs (group-by (comp :table_id :field) fvs)
         recent?      #(some-> (:last_scanned_at %) (t/after? cutoff))]
     (into #{}
