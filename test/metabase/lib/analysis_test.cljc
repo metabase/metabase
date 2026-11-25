@@ -122,3 +122,35 @@
                          :filters     (symbol "nil #_\"key is not present.\"")}
                         {}]}
               (analysis/->mbql (assoc analysis :habit.active nil)))))))
+
+(deftest ^:parallel habit-drill-test
+  (let [base     (orders-query)
+        columns  (m/index-by :name (lib/returned-columns base))
+        analysis {:kind              :habit
+                  :base-query        base
+                  :columns.person    (column/column-unique-key (columns "USER_ID"))
+                  :columns.timestamp (column/column-unique-key (columns "CREATED_AT"))
+                  :habit.values      :count
+                  :granularity       :day}
+        drill    (fn [dimensions] (assoc analysis :drill {:type :actors, :dimensions dimensions}))]
+    (testing "an actors drill lists the people active on that many periods, instead of counting them"
+      (let [query (analysis/->mbql (drill [{:column "periods", :value 6}]))]
+        (is (=? {:stages [{:aggregation [[:distinct {:name "periods"} some?]]}
+                          {:aggregation (symbol "nil #_\"key is not present.\"")
+                           :breakout    (symbol "nil #_\"key is not present.\"")
+                           :filters     [[:= {} [:field {} "periods"] 6]]}]}
+                query))
+        (is (= ["USER_ID" "periods"]
+               (map :name (lib/returned-columns query))))))
+    (testing "the drill can come in as JSON, and its column names keep their spelling"
+      (is (=? {:stages [{} {:filters [[:= {} [:field {} "periods"] 6]]}]}
+              (analysis/->mbql
+               (lib.normalize/normalize ::analysis/analysis-state
+                                        (assoc analysis :drill {"type"       "actors"
+                                                                "dimensions" [{"column" "periods", "value" 6}]}))))))
+    (testing "a drill on a column the analysis doesn't have"
+      (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"names a column the analysis doesn't have"
+                            (analysis/->mbql (drill [{:column "people", :value 6}])))))
+    (testing "an unknown drill type"
+      (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"unsupported drill type"
+                            (analysis/->mbql (assoc analysis :drill {:type :unknown, :dimensions []})))))))
