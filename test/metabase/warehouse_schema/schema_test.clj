@@ -1,7 +1,10 @@
 (ns metabase.warehouse-schema.schema-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
 
@@ -86,6 +89,22 @@
   (testing "the map is closed and holds ids"
     (is (not (mr/validate ::warehouse-schema.schema/eav-definition {:entity_key 31, :value 32})))
     (is (not (mr/validate ::warehouse-schema.schema/eav-definition {:definition_table -9})))))
+
+(defn- map-schema-entries
+  "The entries of map `schema`, as `{key [properties value-schema-form]}`."
+  [schema]
+  (into {}
+        (map (fn [[k properties value-schema]] [k [properties (mc/form value-schema)]]))
+        (mc/children (mr/resolve-schema schema))))
+
+(deftest ^:parallel definition-keys-match-lib-metadata-test
+  (testing "each definition has the entries of its Lib metadata counterpart, whose keys are kebab-case"
+    (doseq [[schema lib-schema]
+            {::warehouse-schema.schema/history-definition ::lib.schema.metadata/table.history-definition
+             ::warehouse-schema.schema/eav-definition     ::lib.schema.metadata/table.eav-definition}]
+      (testing schema
+        (is (= (map-schema-entries lib-schema)
+               (update-keys (map-schema-entries schema) lib.schema.common/memoized-kebab-key)))))))
 
 (deftest ^:parallel facets-schema-test
   (is (mr/validate ::warehouse-schema.schema/facets

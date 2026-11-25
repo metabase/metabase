@@ -288,6 +288,66 @@
           (is (nil? (:data-sensitivity col)))
           (is (not (me/humanize (mr/explain ::lib.schema.metadata/column col)))))))))
 
+(def ^:private table-structural-metadata-keys
+  [:table-role :grain :grain-description :period-granularity :mutability :load-strategy :scd-type
+   :history-definition :eav-definition])
+
+(deftest table-structural-metadata-test
+  (mt/with-temp [:model/Database db      {:engine :h2}
+                 :model/Table    history {:name "USERS_HISTORY" :db_id (:id db)}
+                 :model/Field    user-id {:name "USER_ID" :table_id (:id history) :base_type :type/Integer}
+                 :model/Field    from    {:name "VALID_FROM" :table_id (:id history) :base_type :type/DateTime}
+                 :model/Table    plain   {:name "USERS" :db_id (:id db)}]
+    (t2/update! :model/Table :id (:id history)
+                {:table_role         :role/HistoryDimension
+                 :grain              "user version"
+                 :grain_description  "One row for each version of a user"
+                 :period_granularity :day
+                 :mutability         :versioned
+                 :load_strategy      :merge
+                 :scd_type           2
+                 :history_definition {:durable_key (:id user-id), :valid_from (:id from), :version nil}
+                 :eav_definition     {:entity_key (:id user-id), :definition_table (:id plain)}})
+    (let [mp       (lib.metadata.jvm/application-database-metadata-provider (:id db))
+          expected {:table-role         :role/HistoryDimension
+                    :grain              "user version"
+                    :grain-description  "One row for each version of a user"
+                    :period-granularity :day
+                    :mutability         :versioned
+                    :load-strategy      :merge
+                    :scd-type           2
+                    :history-definition {:durable-key (:id user-id), :valid-from (:id from), :version nil}
+                    :eav-definition     {:entity-key (:id user-id), :definition-table (:id plain)}}]
+      (testing "the app DB metadata provider carries the structural metadata, definitions with kebab-case keys"
+        (let [table (lib.metadata/table mp (:id history))]
+          (is (= expected (select-keys table table-structural-metadata-keys)))
+          (is (not (me/humanize (mr/explain ::lib.schema.metadata/table table))))))
+      (testing "instance->metadata converts a Table instance the same way"
+        (let [instance (t2/select-one :model/Table :id (:id history))
+              table    (lib.metadata.jvm/instance->metadata instance :metadata/table)]
+          (is (= expected (select-keys table table-structural-metadata-keys)))
+          (is (not (me/humanize (mr/explain ::lib.schema.metadata/table table))))))
+      (testing "a Table without structural metadata carries nil"
+        (let [table (lib.metadata/table mp (:id plain))]
+          (is (= (zipmap table-structural-metadata-keys (repeat nil))
+                 (select-keys table table-structural-metadata-keys)))
+          (is (not (me/humanize (mr/explain ::lib.schema.metadata/table table)))))))))
+
+(deftest ^:parallel field-structural-metadata-test
+  (mt/with-temp [:model/Database db    {:engine :h2}
+                 :model/Table    table {:name "USERS" :db_id (:id db)}
+                 :model/Field    grain {:name "ID" :table_id (:id table) :base_type :type/Integer
+                                        :is_grain true :attribute_scd_type 2 :facets [:type/SurrogateKey]}
+                 :model/Field    plain {:name "NAME" :table_id (:id table) :base_type :type/Text}]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:id db))]
+      (testing "the app DB metadata provider carries a Field's structural metadata"
+        (let [col (lib.metadata/field mp (:id grain))]
+          (is (=? {:is-grain true, :attribute-scd-type 2, :facets [:type/SurrogateKey]} col))
+          (is (not (me/humanize (mr/explain ::lib.schema.metadata/column col))))))
+      (testing "a Field without structural metadata carries nil"
+        (is (= {:is-grain nil, :attribute-scd-type nil, :facets nil}
+               (select-keys (lib.metadata/field mp (:id plain)) [:is-grain :attribute-scd-type :facets])))))))
+
 (deftest ^:parallel instance->metadata-normalize-column-test
   (testing "instance->metadata should normalize column metadata"
     (let [legacy-col {:active                                            true

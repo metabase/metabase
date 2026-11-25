@@ -215,3 +215,47 @@
     (doseq [bad [-1 4 "1"]]
       (testing (pr-str bad)
         (is (not (mr/validate ::lib.schema.metadata/column (assoc column :attribute-scd-type bad))))))))
+
+(def ^:private table-with-structural-metadata
+  {:lib/type           :metadata/table
+   :id                 1
+   :name               "USERS_HISTORY"
+   :table-role         :role/HistoryDimension
+   :grain              "user version"
+   :grain-description  "One row for each version of a user"
+   :period-granularity :day
+   :mutability         :versioned
+   :load-strategy      :merge
+   :scd-type           2
+   :history-definition {:durable-key 12, :valid-from 15, :valid-to 16, :current-flag 17, :version nil}
+   :eav-definition     {:entity-key 31, :property-name 32, :property-value 33, :definition-table 9, :label 41, :type 42}})
+
+(deftest ^:parallel table-structural-metadata-test
+  (is (mr/validate ::lib.schema.metadata/table table-with-structural-metadata))
+  (is (mr/validate ::lib.schema.metadata/table
+                   (merge table-with-structural-metadata
+                          (update-vals (dissoc table-with-structural-metadata :lib/type :id :name)
+                                       (constantly nil)))))
+  (doseq [[k bad] [[:table-role :role/NotARole]
+                   [:table-role :entity/UserTable]
+                   [:period-granularity :fortnight]
+                   [:mutability :append-only]
+                   [:load-strategy :upsert]
+                   [:scd-type 8]
+                   [:history-definition {:durable_key 12}]
+                   [:history-definition {:surrogate-key 12}]
+                   [:eav-definition {:definition-table "9"}]]]
+    (testing (pr-str k bad)
+      (is (not (mr/validate ::lib.schema.metadata/table (assoc table-with-structural-metadata k bad)))))))
+
+(deftest ^:parallel normalize-table-structural-metadata-test
+  (testing "normalizing kebab-cases the definitions' snake_case keys and keywordizes the values"
+    (is (= table-with-structural-metadata
+           (lib/normalize ::lib.schema.metadata/table
+                          (assoc table-with-structural-metadata
+                                 :table-role         "role/HistoryDimension"
+                                 :period-granularity "day"
+                                 :mutability         "versioned"
+                                 :load-strategy      "merge"
+                                 :history-definition {"durable_key" 12, "valid_from" 15, "valid_to" 16, "current_flag" 17, "version" nil}
+                                 :eav-definition     {:entity_key 31, :property_name 32, :property_value 33, :definition_table 9, :label 41, :type 42}))))))

@@ -1050,6 +1050,49 @@
    [:collection-id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:template-tags {:optional true} [:maybe [:ref ::lib.schema.template-tag/template-tag-map]]]])
 
+(mr/def ::table.table-role
+  "A Table's `:table-role`: a role in [[types/table-role-hierarchy]]."
+  [:and
+   ::lib.schema.common/keyword
+   [:fn {:error/message "valid table role"}
+    #(isa? types/table-role-hierarchy % :role/*)]])
+
+(mr/def ::table.period-granularity
+  "A Table's `:period-granularity`."
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] types/table-period-granularities))
+
+(mr/def ::table.mutability
+  "A Table's `:mutability`."
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] types/table-mutabilities))
+
+(mr/def ::table.load-strategy
+  "A Table's `:load-strategy`."
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] types/table-load-strategies))
+
+(mr/def ::table.scd-type
+  "A Table's `:scd-type`, the slowly changing dimension type of its rows."
+  [:int {:min 0 :max 7}])
+
+(mr/def ::table.history-definition
+  "A Table's `:history-definition`: the Fields that version its rows. The app DB stores it with snake_case keys."
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map}
+   [:durable-key  {:optional true} [:maybe ::lib.schema.id/field]]
+   [:valid-from   {:optional true} [:maybe ::lib.schema.id/field]]
+   [:valid-to     {:optional true} [:maybe ::lib.schema.id/field]]
+   [:current-flag {:optional true} [:maybe ::lib.schema.id/field]]
+   [:version      {:optional true} [:maybe ::lib.schema.id/field]]])
+
+(mr/def ::table.eav-definition
+  "A Table's `:eav-definition`: the Fields, and the Table of definitions, of an entity-attribute-value table. The app
+  DB stores it with snake_case keys."
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map}
+   [:entity-key       {:optional true} [:maybe ::lib.schema.id/field]]
+   [:property-name    {:optional true} [:maybe ::lib.schema.id/field]]
+   [:property-value   {:optional true} [:maybe ::lib.schema.id/field]]
+   [:definition-table {:optional true} [:maybe ::lib.schema.id/table]]
+   [:label            {:optional true} [:maybe ::lib.schema.id/field]]
+   [:type             {:optional true} [:maybe ::lib.schema.id/field]]])
+
 (mr/def ::table
   "Schema for metadata about a specific [[metabase.warehouse-schema.models.table]]. More or less the same but with
   kebab-case keys."
@@ -1092,7 +1135,16 @@
    [:collection-id           {:optional true} [:maybe ::lib.schema.id/collection]]
    [:is-published            {:optional true} [:maybe :boolean]]
    [:transform-id            {:optional true} [:maybe ::lib.schema.id/transform]]
-   [:transform-target        {:optional true} [:maybe :boolean]]])
+   [:transform-target        {:optional true} [:maybe :boolean]]
+   [:table-role              {:optional true} [:maybe [:ref ::table.table-role]]]
+   [:grain                   {:optional true} [:maybe :string]]
+   [:grain-description       {:optional true} [:maybe :string]]
+   [:period-granularity      {:optional true} [:maybe [:ref ::table.period-granularity]]]
+   [:mutability              {:optional true} [:maybe [:ref ::table.mutability]]]
+   [:load-strategy           {:optional true} [:maybe [:ref ::table.load-strategy]]]
+   [:scd-type                {:optional true} [:maybe [:ref ::table.scd-type]]]
+   [:history-definition      {:optional true} [:maybe [:ref ::table.history-definition]]]
+   [:eav-definition          {:optional true} [:maybe [:ref ::table.eav-definition]]]])
 
 (mr/def ::database
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
