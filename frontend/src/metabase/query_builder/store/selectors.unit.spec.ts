@@ -1,5 +1,3 @@
-import { assoc } from "icepick";
-
 import { createMockMetadata } from "__support__/metadata";
 import {
   createMockQueryBuilderState,
@@ -22,6 +20,7 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
+  Card,
   ColumnNameColumnSplitSetting,
   TableId,
   TestBreakoutSpec,
@@ -53,6 +52,7 @@ import {
   getQuestionDetailsTimelineDrawerState,
   getShouldShowUnsavedChangesWarning,
   getSubmittableQuestion,
+  toMetabotCardBaseline,
 } from "./selectors";
 
 registerVisualizations();
@@ -136,7 +136,7 @@ describe("getQuestion", () => {
       }),
     );
 
-    expect(question?.card()).toEqual(assoc(card, "displayIsLocked", true));
+    expect(question?.card()).toEqual({ ...card, displayIsLocked: true });
   });
 });
 
@@ -581,6 +581,90 @@ describe("getShouldShowUnsavedChangesWarning", () => {
         uiControls: { queryBuilderMode: "view" },
       });
       expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
+    });
+
+    describe("that Metabot opened", () => {
+      const tagQuery = (type: "text" | "number") =>
+        Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+          query: "SELECT {{x}}",
+          templateTags: { x: { type, name: "x", id: "tag-x" } },
+        });
+      const card = createMockCard({
+        query_type: "native",
+        display: "table",
+        dataset_query: tagQuery("text"),
+        parameters: undefined,
+      });
+      const baselineOf = (card: Card) =>
+        toMetabotCardBaseline(
+          checkNotNull(getQuestion(getBaseState({ card }))),
+        );
+
+      const getState = (
+        changes: Partial<Card>,
+        metabotCardBaselines = [baselineOf(card)],
+      ) =>
+        getBaseState({
+          card: { ...card, ...changes },
+          metabotCardBaselines,
+        });
+
+      it("does not warn while the question is Metabot's", () => {
+        expect(getShouldShowUnsavedChangesWarning(getState({}))).toBe(false);
+      });
+
+      it("does not warn on any question Metabot opened, as after Back", () => {
+        const other = { ...card, display: "bar" as const };
+        const state = getState({}, [baselineOf(card), baselineOf(other)]);
+        expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
+      });
+
+      it("does not warn once the query builder writes the variable's parameter", () => {
+        const parameters = checkNotNull(
+          getQuestion(getState({}))?.applyTemplateTagParameters().card()
+            .parameters,
+        );
+        expect(parameters).toHaveLength(1);
+        expect(
+          getShouldShowUnsavedChangesWarning(getState({ parameters })),
+        ).toBe(false);
+      });
+
+      it.each<[string, Partial<Card>]>([
+        [
+          "the query",
+          {
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "SELECT 2",
+            }),
+          },
+        ],
+        ["a variable", { dataset_query: tagQuery("number") }],
+        ["the display", { display: "bar" }],
+        [
+          "the visualization settings",
+          { visualization_settings: { "table.pivot": true } },
+        ],
+        [
+          "where a variable's values come from",
+          {
+            parameters: [
+              {
+                id: "tag-x",
+                name: "x",
+                slug: "x",
+                type: "category",
+                values_source_type: "static-list",
+                values_source_config: { values: ["a"] },
+              },
+            ],
+          },
+        ],
+      ])("warns once the user changes %s", (_name, changes) => {
+        expect(getShouldShowUnsavedChangesWarning(getState(changes))).toBe(
+          true,
+        );
+      });
     });
   });
 });

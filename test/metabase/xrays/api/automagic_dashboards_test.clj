@@ -6,7 +6,10 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.models.collection :as collection]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -20,7 +23,7 @@
    [metabase.xrays.api.automagic-dashboards :as api.magic]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [metabase.xrays.test-util.automagic-dashboards :refer [with-rollback-only-transaction]]
+   [metabase.xrays.test-util.automagic-dashboards :refer [mbql5-cell-query with-rollback-only-transaction]]
    [metabase.xrays.test-util.domain-entities :as test.de]
    [metabase.xrays.test-util.transforms :as transforms.test]
    [metabase.xrays.transforms.core :as tf]
@@ -34,6 +37,13 @@
   (fn [thunk]
     (mt/id)
     (thunk)))
+
+(defn- segment-definition
+  "A full query on `table-id` filtered by `field-id` greater than `value`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
 
 (defn- dashcards-schema-check
   [dashcards]
@@ -125,8 +135,7 @@
                         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))))))))))))
 
 (deftest segment-xray-test
-  (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                  :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+  (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
     (testing "GET /api/automagic-dashboards/segment/:id"
       (is (some? (api-call! "segment/%s" [segment-id]))))
     (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
@@ -136,13 +145,18 @@
   (testing "GET /api/automagic-dashboards/field/:id"
     (is (some? (api-call! "field/%s" [(mt/id :venues :price)])))))
 
+(defn- encoded-cell-query
+  "Base64-encode `legacy-filter-clause` as the MBQL 5 cell query of an X-Ray URL."
+  [legacy-filter-clause]
+  (magic.util/encode-base64-json (mbql5-cell-query legacy-filter-clause)))
+
 (defn- revoke-collection-permissions!
   [collection-id]
   (perms/revoke-collection-permissions! (perms-group/all-users) collection-id))
 
 (deftest question-xray-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
+    (let [cell-query (encoded-cell-query [:> [:field (mt/id :venues :price) nil] 5])]
       (doseq [test-fn
               [(fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id"
@@ -169,7 +183,7 @@
   (testing "The API surface of a model (dataset = true) is very much like that of a question,
   even though the underlying API will assert that dataset is true and the returned dashboard will be different."
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
+      (let [cell-query (encoded-cell-query [:> [:field (mt/id :venues :price) nil] 5])]
         (doseq [test-fn
                 [(fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id"
@@ -214,8 +228,7 @@
   (let [query (magic.util/encode-base64-json
                (mt/mbql-query venues
                  {:filter [:> $price 10]}))
-        cell-query (magic.util/encode-base64-json
-                    [:> [:field (mt/id :venues :price) nil] 5])]
+        cell-query (encoded-cell-query [:> [:field (mt/id :venues :price) nil] 5])]
     (testing "GET /api/automagic-dashboards/adhoc/:query"
       (is (some? (api-call! "adhoc/%s" [query]))))
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query"
@@ -227,8 +240,7 @@
 
 (def ^:private segment
   (delay
-    {:table_id   (mt/id :venues)
-     :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}))
+    {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 10)}))
 
 (deftest comparisons-test
   (mt/with-temp [:model/Segment {segment-id :id} @segment]
@@ -246,39 +258,39 @@
                       [(->> (mt/mbql-query venues
                               {:filter [:> $price 10]})
                             (magic.util/encode-base64-json))
-                       (->> [:= [:field (mt/id :venues :price) nil] 15]
-                            (magic.util/encode-base64-json))
+                       (encoded-cell-query [:= [:field (mt/id :venues :price) nil] 15])
                        segment-id]))))))
 
 (deftest compare-nested-query-test
   (testing "Ad-hoc X-Rays should work for queries have Card source queries (#15655)"
     (let [card-query (mt/native-query {:query "select * from people"})]
-      (mt/with-temp [:model/Collection {collection-id :id} {}
-                     :model/Card       {card-id :id} (merge
-                                                      (mt/card-with-source-metadata-for-query card-query)
-                                                      {:name            "15655_Q1"
-                                                       :collection_id   collection-id})]
-        (let [query      {:database (mt/id)
-                          :type     :query
-                          :query    {:source-table (format "card__%d" card-id)
-                                     :breakout     [[:field "SOURCE" {:base-type :type/Text}]]
-                                     :aggregation  [[:count]]}}
-              cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
-          (testing "X-Ray"
-            (is (some? (api-call! "adhoc/%s/cell/%s"
-                                  (map magic.util/encode-base64-json [query cell-query])
-                                  #(revoke-collection-permissions! collection-id)))))
-          (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
-          (testing "Compare"
-            (is (some? (api-call! "adhoc/%s/cell/%s/compare/table/%s"
-                                  (concat (map magic.util/encode-base64-json [query cell-query])
-                                          [(format "card__%d" card-id)])
-                                  #(revoke-collection-permissions! collection-id)))))
-          (testing "Compare with question"
-            (is (some? (api-call! "adhoc/%s/cell/%s/compare/question/%s"
-                                  (concat (map magic.util/encode-base64-json [query cell-query])
-                                          [card-id])
-                                  #(revoke-collection-permissions! collection-id))))))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [{collection-id :id} (first (collection/create-collections! [{:name (mt/random-name) :location "/"}]))]
+          (mt/with-temp [:model/Card {card-id :id} (merge
+                                                    (mt/card-with-source-metadata-for-query card-query)
+                                                    {:name            "15655_Q1"
+                                                     :collection_id   collection-id})]
+            (let [query      {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (format "card__%d" card-id)
+                                         :breakout     [[:field "SOURCE" {:base-type :type/Text}]]
+                                         :aggregation  [[:count]]}}
+                  cell-query (mbql5-cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"])]
+              (testing "X-Ray"
+                (is (some? (api-call! "adhoc/%s/cell/%s"
+                                      (map magic.util/encode-base64-json [query cell-query])
+                                      #(revoke-collection-permissions! collection-id)))))
+              (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+              (testing "Compare"
+                (is (some? (api-call! "adhoc/%s/cell/%s/compare/table/%s"
+                                      (concat (map magic.util/encode-base64-json [query cell-query])
+                                              [(format "card__%d" card-id)])
+                                      #(revoke-collection-permissions! collection-id)))))
+              (testing "Compare with question"
+                (is (some? (api-call! "adhoc/%s/cell/%s/compare/question/%s"
+                                      (concat (map magic.util/encode-base64-json [query cell-query])
+                                              [card-id])
+                                      #(revoke-collection-permissions! collection-id))))))))))))
 
 ;;; ------------------- Transforms -------------------
 
@@ -333,10 +345,10 @@
   (mt/with-temp [:model/Card model {:type          :model
                                     :dataset_query query}]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [model-index (model-index/create {:model-id   (:id model)
-                                             :pk-ref     pk-ref
-                                             :value-ref  value-ref
-                                             :creator-id (mt/user->id :crowberto)})]
+      (let [model-index (first (model-index/create-model-indexes! [{:model-id   (:id model)
+                                                                    :pk-ref     pk-ref
+                                                                    :value-ref  value-ref
+                                                                    :creator-id (mt/user->id :crowberto)}]))]
         (model-index/add-values! model-index)
         (f {:model       model
             :model-index (t2/select-one :model/ModelIndex :id (:id model-index))
@@ -521,7 +533,7 @@
               (cards-have-filters? (:dashcards dash) pk-filters))))))))
 
 (defn- linked-pk-filter-values
-  "For every query card in `dashcards` (pMBQL over the wire), the value its `=` filter on one of `fk-field-ids`
+  "For every query card in `dashcards` (MBQL 5 over the wire), the value its `=` filter on one of `fk-field-ids`
   compares against, or nil when it has no such filter."
   [dashcards fk-field-ids]
   (for [{:keys [card]} dashcards
@@ -535,13 +547,14 @@
 (deftest model-index-primary-key-endpoint-does-not-expose-indexed-values-test
   (testing "GET /api/automagic-dashboards/model_index/:model-index-id/primary_key/:pk-id"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card model {:type          :model
-                                        :dataset_query (mt/mbql-query products)}]
+      (mt/with-temp [:model/Card model (mt/card-with-metadata {:type          :model
+                                                               :table_id      (mt/id :products)
+                                                               :dataset_query (mt/mbql-query products)})]
         (mt/with-model-cleanup [:model/ModelIndex]
-          (let [model-index  (model-index/create {:model-id   (:id model)
-                                                  :pk-ref     (mt/$ids :products $id)
-                                                  :value-ref  (mt/$ids :products $title)
-                                                  :creator-id (mt/user->id :crowberto)})
+          (let [model-index  (first (model-index/create-model-indexes! [{:model-id   (:id model)
+                                                                         :pk-ref     (mt/$ids :products $id)
+                                                                         :value-ref  (mt/$ids :products $title)
+                                                                         :creator-id (mt/user->id :crowberto)}]))
                 ;; a value no warehouse row carries, so its presence anywhere in a response is unambiguous
                 sentinel     "SENTINEL-INDEXED-VALUE-7f3a"
                 url          (format "automagic-dashboards/model_index/%d/primary_key/1" (:id model-index))
@@ -595,8 +608,7 @@
 
 (deftest ^:parallel segment-xray-show-param-test
   (testing "x-ray of a segment with show set reduces the number of returned cards"
-    (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                    :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
+    (mt/with-temp [:model/Segment {segment-id :id} {:definition (segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
       (let [show-limit 1
             {:keys [base-count show-count]} (card-count-check show-limit "segment/%s" [segment-id])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
@@ -618,7 +630,7 @@
     (mt/with-temp [:model/Card {card-id :id} {:table_id      (mt/id :venues)
                                               :dataset_query (mt/mbql-query venues
                                                                {:filter [:> $price 10]})}]
-      (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])
+      (let [cell-query (encoded-cell-query [:> [:field (mt/id :venues :price) nil] 5])
             show-limit 2
             {:keys [base-count show-count]} (card-count-check show-limit "question/%s/cell/%s" [card-id cell-query])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
@@ -635,8 +647,7 @@
                                                               [(->> (mt/mbql-query venues
                                                                       {:filter [:> $price 10]})
                                                                     (magic.util/encode-base64-json))
-                                                               (->> [:= [:field (mt/id :venues :price) nil] 15]
-                                                                    (magic.util/encode-base64-json))
+                                                               (encoded-cell-query [:= [:field (mt/id :venues :price) nil] 15])
                                                                segment-id])]
         (testing "The slimmed dashboard produces less than the base dashboard"
           ;;NOTE - Comparisons produce multiple dashboards and merge the results, so you don't get exactly `show-limit` cards
@@ -650,8 +661,7 @@
 
 (deftest ^:parallel allow-equals-in-base-64-encoding-for-now-test
   (testing "Allow `=` in the route part of X-Rays API requests... for now"
-    (doseq [schema [::api.magic/base-64-encoded-json
-                    ::api.magic/entity-id-or-query]]
+    (doseq [schema [::api.magic/entity-id-or-query]]
       (testing schema
         (let [pattern (:api/regex (mc/properties (mr/resolve-schema schema)))]
           (assert (instance? java.util.regex.Pattern pattern))
@@ -668,6 +678,52 @@
         (is (map? opts))
         (is (not (contains? opts :a)))
         (is (not (contains? opts :a/b)))))))
+
+(deftest ^:parallel mbql5-cell-query-test
+  (testing "X-Ray endpoints take the cell query the FE sends: an MBQL 5 filter clause as JSON, base64-encoded"
+    (let [mp            (mt/metadata-provider)
+          adhoc-query   (magic.util/encode-base64-json (lib/query mp (lib.metadata/table mp (mt/id :venues))))
+          filter-clause ["=" {"lib/uuid" (str (random-uuid))}
+                         ["field" {"lib/uuid" (str (random-uuid)), "base-type" "type/Integer"} (mt/id :venues :price)]
+                         2]]
+      (testing "the ::cell-query schema"
+        (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?, :base-type :type/Integer} (mt/id :venues :price)] 2]
+                (api.macros/decode-and-validate-params
+                 :query ::api.magic/cell-query (u/encode-base64 (json/encode filter-clause))))))
+      (doseq [template ["adhoc/%s/cell/%s"
+                        "adhoc/%s/cell/%s/rule/example/indepth"
+                        (str "adhoc/%s/cell/%s/compare/table/" (mt/id :venues))
+                        (str "adhoc/%s/cell/%s/rule/example/indepth/compare/table/" (mt/id :venues))]]
+        (testing template
+          (let [url (format (str "automagic-dashboards/" template)
+                            adhoc-query
+                            (magic.util/encode-base64-json filter-clause))]
+            (is (=? {:dashcards seq}
+                    (mt/user-http-request :crowberto :get 200 url)))))))))
+
+(deftest ^:parallel cell-comparison-applies-cell-query-test
+  (testing "Comparing a cell with the rest compares the rows the cell query selects against all rows"
+    (let [mp           (mt/metadata-provider)
+          source-field (lib.metadata/field mp (mt/id :people :source))
+          adhoc-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout source-field))
+          cell-query   (first (lib/filters (lib/filter adhoc-query (lib/= source-field "Affiliate"))))]
+      (doseq [template [(str "adhoc/%s/cell/%s/compare/table/" (mt/id :people))
+                        (str "adhoc/%s/cell/%s/rule/example/indepth/compare/table/" (mt/id :people))]]
+        (testing template
+          (let [dashboard (mt/user-http-request :crowberto :get 200
+                                                (format (str "automagic-dashboards/" template)
+                                                        (magic.util/encode-base64-json adhoc-query)
+                                                        (magic.util/encode-base64-json cell-query)))]
+            (testing "the dashboard is named after the cell"
+              (is (= "Comparison of Number of People where Source is Affiliate and All People"
+                     (:name dashboard))))
+            (testing "the cards on the cell's side are filtered by the cell query"
+              (is (some (fn [dashcard]
+                          (let [[[tag _opts _field value]] (-> dashcard :card :dataset_query :stages first :filters)]
+                            (= ["=" "Affiliate"] [tag value])))
+                        (:dashcards dashboard))))))))))
 
 (deftest adhoc-query-decode-strips-extra-keys-test
   (testing "adhoc queries are validated and stripped of the query processor's internal keys"

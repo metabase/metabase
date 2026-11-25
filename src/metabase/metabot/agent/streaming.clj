@@ -17,6 +17,7 @@
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
 (def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
+(def dashboard-saved-type "AI-SDK data type for a dashboard that a tool saved." "dashboard_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
@@ -28,7 +29,9 @@
   ;; state is diffed separately into the row's state column
   ;; search_results and tool_title render under the client-only chain of
   ;; thought, never rehydrated
-  #{state-type search-results-type tool-title-type})
+  #{search-results-type
+    state-type
+    tool-title-type})
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -127,6 +130,16 @@
    :data-type entity-saved-type
    :data value})
 
+(defn dashboard-saved-part
+  "Create a DASHBOARD_SAVED data part for streaming.
+  The `value` describes a dashboard a tool created, edited, trashed or restored:
+  `{:dashboard_id :action :name :url :collection_id :open :saved_charts}`.
+  The frontend links it, reloads it when it is open, and opens it when `:open` is true."
+  [value]
+  {:type :data
+   :data-type dashboard-saved-type
+   :data value})
+
 (defn search-results-part
   "Data part carrying a search tool's hit list (`:total_count` + `:results`),
   rendered under the search step in the chain of thought."
@@ -193,6 +206,26 @@
                            (cond-> dp
                              (map? (:data dp)) (assoc-in [:data :tool_call_id] (:id part)))))
               [part]))))
+
+(defn combine-text-parts-xf
+  "Transducer that merges each run of consecutive `:text` parts into one `:text` part.
+
+  Other parts pass through unchanged."
+  []
+  (fn [rf]
+    (let [pending (volatile! nil)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [p @pending]
+           (rf (if p (rf result p) result))))
+        ([result part]
+         (let [prev @pending]
+           (if (and prev (= :text (:type prev) (:type part)))
+             (do (vswap! pending update :text str (:text part))
+                 result)
+             (do (vreset! pending part)
+                 (if prev (rf result prev) result)))))))))
 
 (defn post-process-xf
   "Composed transducer for post-processing agent output.

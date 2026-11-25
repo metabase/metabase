@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { getNullDisplayValue } from "metabase/utils/constants";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 import { isDate } from "metabase-lib/v1/types/utils/isa";

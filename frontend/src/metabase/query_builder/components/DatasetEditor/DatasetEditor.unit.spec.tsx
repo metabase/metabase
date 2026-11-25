@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
@@ -75,7 +76,7 @@ const renderDatasetEditor = async (card: Card | UnsavedCard) => {
   setupNativeQuerySnippetEndpoints();
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupUserMetabotPermissionsEndpoint();
-  const question = new Question(card);
+  const question = new Question(card, createMockMetadata());
 
   fetchMock.get("path:/api/search", { body: { data: [] } });
   fetchMock.get("path:/api/model-index", { body: [] });

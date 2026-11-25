@@ -15,7 +15,7 @@ import {
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import MetabaseSettings from "metabase/utils/settings";
 import { checkNotNull } from "metabase/utils/types";
@@ -93,6 +93,75 @@ const FILTERED_GUI_QUESTION: Partial<UnsavedCard> = {
   ),
 };
 
+const FILTERED_MULTI_STAGE_GUI_QUESTION: Partial<Card> = {
+  display: "table",
+  visualization_settings: {},
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          filters: [
+            {
+              type: "operator",
+              operator: ">",
+              args: [
+                { type: "column", name: "SUBTOTAL" },
+                { type: "literal", value: 0 },
+              ],
+            },
+          ],
+          aggregations: [
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
+            {
+              name: "13857_CE",
+              value: {
+                type: "operator",
+                operator: "*",
+                args: [
+                  { type: "operator", operator: "count", args: [] },
+                  { type: "literal", value: 1 },
+                ],
+              },
+            },
+          ],
+          breakouts: [{ type: "column", name: "CREATED_AT", unit: "year" }],
+        },
+        {
+          expressions: [
+            {
+              name: "Double the fun",
+              value: {
+                type: "operator",
+                operator: "*",
+                args: [
+                  { type: "column", name: "sum" },
+                  { type: "literal", value: 2 },
+                ],
+              },
+            },
+            {
+              name: "13857_CC",
+              value: {
+                type: "operator",
+                operator: "*",
+                args: [
+                  { type: "column", name: "13857_CE" },
+                  { type: "literal", value: 1234 },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    }),
+  ),
+};
+
 const SAVED_QUESTION = {
   id: 1,
   name: "Q1",
@@ -146,12 +215,12 @@ function getNativeQuestionCardWithUnmappedTag(
       },
     },
   });
-  const tags = Lib.templateTags(query);
   return createAdHocNativeCard({
     dataset_query: Lib.toJsQuery(
-      Lib.withTemplateTags(query, {
-        my_filter: { ...tags.my_filter, type },
-      }),
+      Lib.withTemplateTags(
+        query,
+        Lib.templateTags(query).map((tag) => ({ ...tag, type })),
+      ),
     ),
   });
 }
@@ -246,10 +315,7 @@ function buildSetup({
   });
 
   const metadata = createMockMetadataFromState(storeInitialState);
-  const question =
-    "id" in card
-      ? checkNotNull(metadata.question(card.id))
-      : new Question(card, metadata);
+  const question = new Question(card, metadata);
 
   const viewTitleHeaderProps: ComponentProps<typeof ViewTitleHeader> = {
     isNavBarOpen: false,
@@ -504,6 +570,30 @@ describe("ViewTitleHeader", () => {
           setup({ card, isObjectDetail: true });
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
         });
+
+        it("offers to view the SQL in notebook mode with native write permissions", () => {
+          setup({
+            card,
+            queryBuilderMode: "notebook",
+            result: createMockDataset(),
+          });
+          expect(
+            screen.getByRole("switch", { name: "View SQL" }),
+          ).toBeInTheDocument();
+        });
+
+        it("does not offer to view the SQL in notebook mode without native write permissions, like on the instance analytics database (metabase#49904)", () => {
+          setup({
+            card,
+            queryBuilderMode: "notebook",
+            result: createMockDataset(),
+            database: createSampleDatabase({ native_permissions: "none" }),
+          });
+          expect(screen.getByTestId("notebook-button")).toBeInTheDocument();
+          expect(
+            screen.queryByRole("switch", { name: "View SQL" }),
+          ).not.toBeInTheDocument();
+        });
       });
     });
   });
@@ -646,11 +736,8 @@ describe("ViewTitleHeader", () => {
 
 describe("ViewHeader | Ad-hoc GUI question", () => {
   it("does not open details sidebar on table name click", async () => {
-    const { question, onOpenModal } = setupAdHoc();
-    const table = checkNotNull(
-      question.metadata().table(Lib.primarySourceTableId(question.query())),
-    );
-    const tableName = table.displayName();
+    const { onOpenModal } = setupAdHoc();
+    const tableName = ORDERS_TABLE.display_name;
 
     fireEvent.click(await screen.findByText(tableName));
 
@@ -784,6 +871,40 @@ describe("View Header | Saved GUI question", () => {
       ).not.toBeInTheDocument();
       expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
     });
+
+    it("keeps custom columns that use aggregations when removing a filter from the previous stage (metabase#13857, metabase#14193)", async () => {
+      const { updateQuestion } = setup({
+        card: getSavedGUIQuestionCard(FILTERED_MULTI_STAGE_GUI_QUESTION),
+        queryBuilderMode: "view",
+      });
+
+      const filtersControl = screen.getByTestId("filters-visibility-control");
+      expect(filtersControl).toHaveTextContent(/^1$/);
+      await userEvent.click(filtersControl);
+
+      const filterPill = await screen.findByText("Subtotal is greater than 0");
+      await userEvent.click(within(filterPill).getByLabelText("Remove"));
+
+      expect(updateQuestion).toHaveBeenCalledTimes(1);
+      const [nextQuestion, options]: Parameters<
+        ComponentProps<typeof ViewTitleHeader>["updateQuestion"]
+      > = updateQuestion.mock.lastCall;
+      expect(options).toEqual({ run: true });
+      const nextQuery = nextQuestion.query();
+      expect(Lib.stageCount(nextQuery)).toBe(2);
+      expect(Lib.filters(nextQuery, 0)).toHaveLength(0);
+      expect(
+        Lib.aggregations(nextQuery, 0).map(
+          (aggregation) =>
+            Lib.displayInfo(nextQuery, 0, aggregation).displayName,
+        ),
+      ).toEqual(["Sum of Total", "13857_CE"]);
+      expect(
+        Lib.expressions(nextQuery, 1).map(
+          (expression) => Lib.displayInfo(nextQuery, 1, expression).displayName,
+        ),
+      ).toEqual(["Double the fun", "13857_CC"]);
+    });
   });
 });
 
@@ -792,7 +913,9 @@ describe("View Header | native question without write permissions on database (e
 
   it("does not display question database", () => {
     const { question } = setupNative({ database });
-    const databaseName = checkNotNull(question.database()).displayName();
+    const databaseName = checkNotNull(
+      Lib.databaseDisplayInfo(question.query()),
+    ).displayName;
     expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
   });
 
@@ -805,7 +928,9 @@ describe("View Header | native question without write permissions on database (e
 describe("View Header | Not saved native question", () => {
   it("does not display question database", () => {
     const { question } = setupNative();
-    const databaseName = checkNotNull(question.database()).displayName();
+    const databaseName = checkNotNull(
+      Lib.databaseDisplayInfo(question.query()),
+    ).displayName;
     expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
   });
 
@@ -877,7 +1002,9 @@ describe("View Header | Not saved native question", () => {
 describe("View Header | Saved native question", () => {
   it("displays database a question is using", () => {
     const { question } = setupSavedNative();
-    const databaseName = checkNotNull(question.database()).displayName();
+    const databaseName = checkNotNull(
+      Lib.databaseDisplayInfo(question.query()),
+    ).displayName;
     expect(screen.getByText(databaseName)).toBeInTheDocument();
   });
 

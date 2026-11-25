@@ -12,14 +12,14 @@
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
-   [metabase.warehouses.models.database :as models.database]
+   [metabase.warehouses.serialization :as warehouses.serialization]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
-                                                  models.database/assert-not-h2! (constantly nil)]
+                                                  warehouses.serialization/assert-not-h2! (constantly nil)]
                         (thunk))))
 
 (def ^:private ingestion-in-memory ts/ingestion-in-memory)
@@ -57,10 +57,10 @@
     (let [orders (mt/id :orders)
           total  (mt/id :orders :total)]
       (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
-                     {:name "M" :table_id orders :creator_id (mt/user->id :crowberto)
+                     {:name "M" :creator_id (mt/user->id :crowberto)
                       :definition (measures.tu/measure-definition orders total)}
                      :model/Segment {segment-id :id segment-eid :entity_id}
-                     {:name "S" :table_id orders :definition (measures.tu/segment-definition orders total 100)}]
+                     {:name "S"}]
         (doseq [[entity-type id eid model] [["measure" measure-id measure-eid :model/Measure]
                                             ["segment" segment-id segment-eid :model/Segment]]]
           (testing entity-type

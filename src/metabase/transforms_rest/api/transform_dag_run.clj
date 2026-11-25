@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.models.interface :as mi]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms-rest.db :as transforms-rest.db]
@@ -41,11 +42,19 @@
                      [:transform :collection :transform_tag_ids])
          (map transforms-base.u/present-run))))
 
+(mu/defn- check-seed-can-query :- ::transforms.schema/transform
+  "The Transform with `id`, after checking that the current user reads it and may run it, as its `:can_query` says."
+  [model :- [:= :model/Transform]
+   id    :- ms/PositiveInt]
+  (let [transform (api/read-check model id)]
+    (api/check-403 (mi/can-query? (t2/hydrate transform :can_query)))
+    transform))
+
 (api.macros/defendpoint :post "/:run-id/cancel" :- :nil
   "Cancel an in-progress manual DAG run and request cancellation of its still-running transforms."
   [{:keys [run-id]} :- [:map {:closed true} [:run-id ms/PositiveInt]]]
   (let [dag-run (api/check-404 (transforms-rest.db/dag-run run-id))]
-    (check-seed-transform api/write-check dag-run)
+    (check-seed-transform check-seed-can-query dag-run)
     (api/check-400 (transforms.core/cancel-dag-run! run-id))
     nil))
 

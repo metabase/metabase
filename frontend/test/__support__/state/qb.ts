@@ -54,6 +54,8 @@ export const createMockQueryBuilderState = (
   opts?: Partial<QueryBuilderState>,
 ): QueryBuilderState => ({
   uiControls: createMockQueryBuilderUIControlsState(),
+  pendingMetabotCard: null,
+  metabotCardBaselines: [],
   loadingControls: {
     showLoadCompleteFavicon: false,
     documentTitle: "",

@@ -21,6 +21,11 @@ on:
         required: false
         default: ""
 
+# Ensures we don't try to run multiple releases for the same version at the same time as this leads to races
+# for tagging/pushing etc.
+concurrency:
+  group: release-auto-${{ inputs.version }}
+
 # This workflow only runs on dispatch. Given a major version and a kind, it
 # infers the next patch or minor to cut and kicks off that release. Cron
 # scheduling lives in the schedule-* trigger workflows, which decide what to

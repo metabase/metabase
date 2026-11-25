@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.graph.core :as graph]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -39,7 +40,7 @@
 
 (mr/def ::entity-with-id
   "Any map with an optional `:id`, whatever else it holds."
-  [:map {::mr/deliberately-open true, :description "a Toucan, metadata, or user-supplied entity"}
+  [:map {:description "a Toucan, metadata, or user-supplied entity"}
    [:id {:optional true} [:maybe ::deps.dependency-types/entity-id]]])
 
 (def ^:private EntitiesMap
@@ -54,7 +55,7 @@
 
 (def ^:private UncheckedEntityId
   "A dependency entity ID as a caller gives it, which [[ensure-entity-id]] checks."
-  [:schema {::mr/deliberately-open true, :description "an unchecked dependency entity id"} :any])
+  :metabase.util.malli/value)
 
 (def ^:private DependenciesByType
   "The dependencies of an entity as `{entity-type #{entity-id}}`, with the IDs not yet checked."
@@ -241,20 +242,56 @@
                     {:status-code 400, :id id})))
   id)
 
-(mu/defn new-dependencies :- [:sequential [:tuple ::dependencies.schema/entity-type ::deps.dependency-types/entity-id]]
-  "The dependencies in `dependencies-by-type` that the entity of type `entity-type` with id `entity-id` doesn't have
-  yet, as `[[entity-type entity-id]]`."
-  [entity-type          :- ::dependencies.schema/entity-type
-   entity-id            :- ms/PositiveInt
-   dependencies-by-type :- DependenciesByType]
-  (let [current (into #{}
-                      (map (juxt :to_entity_type :to_entity_id))
-                      (dependencies.db/dependencies-from entity-type entity-id))]
-    (vec (for [[to-entity-type ids] dependencies-by-type
-               to-entity-id         ids
-               :let                 [node [to-entity-type (ensure-entity-id to-entity-id)]]
-               :when                (not (current node))]
-           node))))
+(mu/defn- current-dependencies-by-entity :- [:map-of ms/PositiveInt [:set [:tuple ::dependencies.schema/entity-type ms/PositiveInt]]]
+  "The dependencies the entities `entity-ids` of type `entity-type` have now, as `[to-entity-type to-entity-id]`, by
+  entity id."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (update-vals (group-by :from_entity_id (dependencies.db/dependencies-from-entities entity-type entity-ids))
+               #(into #{} (map (juxt :to_entity_type :to_entity_id)) %)))
+
+(mu/defn entities-with-new-dependencies :- [:set ms/PositiveInt]
+  "The ids of the entities of type `entity-type` among the keys of `id->dependencies`, which have a dependency in the
+  `dependencies-by-type` they map to that they don't have yet."
+  [entity-type      :- ::dependencies.schema/entity-type
+   id->dependencies :- [:map-of ms/PositiveInt DependenciesByType]]
+  (let [current (current-dependencies-by-entity entity-type (keys id->dependencies))]
+    (into #{}
+          (comp (filter (fn [[entity-id dependencies-by-type]]
+                          (let [existing (get current entity-id #{})]
+                            (some (fn [[to-entity-type ids]]
+                                    (some #(not (existing [to-entity-type (ensure-entity-id %)])) ids))
+                                  dependencies-by-type))))
+                (map key))
+          id->dependencies)))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn replace-dependencies-for-entities! :- [:maybe :int]
+  "Replace the dependencies of the entities of type `entity-type` with the ones that `id->dependencies` maps their ids
+  to, reading, deleting and inserting for all of them together, returning the number inserted, or nil when none are."
+  [entity-type      :- ::dependencies.schema/entity-type
+   id->dependencies :- [:map-of ms/PositiveInt DependenciesByType]]
+  (let [current     (group-by :from_entity_id
+                              (dependencies.db/dependencies-from-entities entity-type (keys id->dependencies)))
+        to-remove   (for [[entity-id dependencies-by-type] id->dependencies
+                          {:keys [id to_entity_type to_entity_id]} (get current entity-id)
+                          :when (not (get-in dependencies-by-type [to_entity_type to_entity_id]))]
+                      id)
+        to-add      (for [[entity-id dependencies-by-type] id->dependencies
+                          :let [current-by-type (-> (group-by :to_entity_type (get current entity-id))
+                                                    (update-vals #(into #{} (map :to_entity_id) %)))]
+                          [to-entity-type ids] dependencies-by-type
+                          to-entity-id         (set/difference ids (current-by-type to-entity-type))]
+                      {:from_entity_type entity-type
+                       :from_entity_id   entity-id
+                       :to_entity_type   to-entity-type
+                       :to_entity_id     (ensure-entity-id to-entity-id)})]
+    (t2/with-transaction [_conn]
+      (when (seq to-remove)
+        (dependencies.db/delete-dependencies! to-remove))
+      (when (seq to-add)
+        (dependencies.db/insert-dependencies! to-add)))))
 
 (mu/defn replace-dependencies! :- [:maybe :int]
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with the ones specified in
@@ -262,44 +299,15 @@
   [entity-type          :- ::dependencies.schema/entity-type
    entity-id            :- ms/PositiveInt
    dependencies-by-type :- DependenciesByType]
-  (let [current-dependencies (dependencies.db/dependencies-from entity-type entity-id)
-        to-remove (keep (fn [{:keys [id to_entity_type to_entity_id]}]
-                          (when-not (get-in dependencies-by-type [to_entity_type to_entity_id])
-                            id))
-                        current-dependencies)
-        current-by-type (-> (group-by :to_entity_type current-dependencies)
-                            (update-vals #(into #{} (map :to_entity_id) %)))
-        to-add (for [[to-entity-type ids] dependencies-by-type
-                     to-entity-id (set/difference ids (current-by-type to-entity-type))]
-                 {:from_entity_type entity-type
-                  :from_entity_id entity-id
-                  :to_entity_type to-entity-type
-                  :to_entity_id (ensure-entity-id to-entity-id)})]
-    (t2/with-transaction [_conn]
-      (when (seq to-remove)
-        (dependencies.db/delete-dependencies! to-remove))
-      (when (seq to-add)
-        (dependencies.db/insert-dependencies! to-add)))))
+  (replace-dependencies-for-entities! entity-type {entity-id dependencies-by-type}))
 
-(mu/defn swap-dependency! :- :int
-  "Efficiently swap a dependency from old-source to new-source during replacement operations.
-  This is more efficient than full dependency analysis since we know exactly what changed.
+(mu/defn delete-dependencies-for-entities!
+  "Delete the Dependencies of the entities `entity-type` `entity-ids`, returning the number deleted."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (dependencies.db/delete-dependencies-for-entities! entity-type entity-ids))
 
-  If the new dependency already exists, we just delete the old one (to avoid duplicate key violation).  If the old
-  dependency doesn't exist, this is a no-op.
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-  Parameters:
-  - entity-type: The type of the entity whose dependency is changing (e.g., :card)
-  - entity-id: The ID of the entity
-  - old-source: The source being replaced, as [source-type source-id] (e.g., [:card 783])
-  - new-source: The new source, as [source-type source-id] (e.g., [:table 164])"
-  [entity-type                     :- ::dependencies.schema/entity-type
-   entity-id                       :- ms/PositiveInt
-   [old-source-type old-source-id] :- [:tuple ::dependencies.schema/entity-type ms/PositiveInt]
-   [new-source-type new-source-id] :- [:tuple ::dependencies.schema/entity-type ms/PositiveInt]]
-  (let [already-present? (dependencies.db/dependency-exists? entity-type entity-id new-source-type new-source-id)]
-    (if already-present?
-      (dependencies.db/delete-dependency! entity-type entity-id old-source-type old-source-id)
-      (dependencies.db/retarget-dependency! entity-type entity-id
-                                            old-source-type old-source-id
-                                            new-source-type new-source-id))))
+(defmethod app-db-copy/spec :model/Dependency [_model]
+  {:skip? true})

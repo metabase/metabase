@@ -7,8 +7,6 @@ redirect_from:
 
 # Organization overview
 
-Tools for finding things and keeping your Metabase organized.
-
 ## [Basic exploration](./exploration.md)
 
 Find data, explore questions and dashboards, and bookmark your favorites.

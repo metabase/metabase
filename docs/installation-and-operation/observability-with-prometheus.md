@@ -16,13 +16,13 @@ To give you an idea of how Metabase and Prometheus would work in your production
 Download the latest [Metabase JAR](https://www.metabase.com/start/oss), and run Metabase using an environment variable to specify the Prometheus server port:
 
 ```sh
-MB_PROMETHEUS_SERVER_PORT=9191 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+MB_PROMETHEUS_SERVER_PORT=9191 java -jar metabase.jar
 ```
 
 The `MB_PROMETHEUS_SERVER_PORT=9191` specifies which port (`9191`) Metabase will use to send data to Prometheus. To clarify the ports that will be involved here:
 
-- Port `3000` is the port Metabase uses to serve the Metabase app. You can set another port with `MB_JETTY_PORT` (e.g., `MB_JETTY_PORT=3001`).
-- Port `9191` (or whichever port you specified with the `MB_PROMETHEUS_SERVER_PORT` environment variable) is the port Prometheus uses to scrape metrics from Metabase.
+- Port `3000` is the port Metabase uses to serve the Metabase app. You can set another port with [`MB_JETTY_PORT`](../configuring-metabase/environment-variables.md#mb_jetty_port) (e.g., `MB_JETTY_PORT=3001`).
+- Port `9191` (or whichever port you specified with the [`MB_PROMETHEUS_SERVER_PORT`](../configuring-metabase/environment-variables.md#mb_prometheus_server_port) environment variable) is the port Prometheus uses to scrape metrics from Metabase.
 - Port `9090` is the port Prometheus uses to serve the Prometheus application.
 
 When you start Metabase, the Metabase logs will tell you that Metabase is starting the `prometheus metrics collector` and `prometheus metrics web-server`.

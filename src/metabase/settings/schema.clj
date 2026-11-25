@@ -23,3 +23,7 @@
    [:serdes/meta {:optional true} ::models.schema/external-meta]
    [:key :string]
    [:value {:optional true} [:maybe :string]]])
+
+(mr/def ::setting-value.object
+  "A JSON object a client sets a Setting to, whose keys the Setting owns."
+  [:map {:closed false, :description "a JSON object setting value"}])

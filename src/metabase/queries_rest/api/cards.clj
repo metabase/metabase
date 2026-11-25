@@ -5,8 +5,16 @@
    [metabase.models.interface :as mi]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries-rest.db :as queries-rest.db]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defn- hydrate-dashboard-permissions
+  "`cards`, each with its `:in_dashboards` hydrated with `:can_read` and `:can_write`, with the permissions read
+  together."
+  [cards]
+  (let [id->dashboard (u/index-by :id (t2/hydrate (vec (mapcat :in_dashboards cards)) :can_read :can_write))]
+    (mapv (fn [card] (update card :in_dashboards #(mapv (comp id->dashboard :id) %))) cards)))
 
 (defn- present-dashboard [dashboard]
   (-> (cond
@@ -32,15 +40,12 @@
     (as-> card_ids $
       (mapv id->card $)
       (t2/hydrate $ :in_dashboards)
+      (hydrate-dashboard-permissions $)
       (mapv (fn [{:keys [id in_dashboards]}]
               {:card_id id :dashboards (map present-dashboard in_dashboards)})
             $))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/move"
+(api.macros/defendpoint :post "/move" :- [:map {:closed true} [:status [:= :success]]]
   "Moves a number of Cards to a single collection or dashboard.
 
   For now, just either succeed or fail as a batch - we can think more about error handling later down the road."
@@ -51,6 +56,5 @@
                                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                     [:dashboard_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (t2/with-transaction [_conn]
-    (doseq [card-id card_ids]
-      (api.card/update-card! card-id (select-keys body [:collection_id :dashboard_id]) true)))
+    (api.card/move-cards! card_ids (select-keys body [:collection_id :dashboard_id])))
   {:status :success})

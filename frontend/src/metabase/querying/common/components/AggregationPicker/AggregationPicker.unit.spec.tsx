@@ -8,18 +8,24 @@ import {
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { JsMetadata } from "metabase-lib";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
+  PRODUCTS_ID,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
@@ -106,6 +112,117 @@ function createQueryWithInlineExpressionWithOperator() {
   });
 }
 
+const ORDERS_METRIC = createMockCard({
+  id: 101,
+  name: "Orders metric",
+  type: "metric",
+  table_id: ORDERS_ID,
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+      },
+    ],
+  }),
+});
+
+const ORDERS_FILTER_METRIC = createMockCard({
+  id: 102,
+  name: "Orders metric with filter",
+  type: "metric",
+  description: "This is a description _with markdown_",
+  table_id: ORDERS_ID,
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        filters: [
+          {
+            type: "operator",
+            operator: ">",
+            args: [
+              { type: "column", fieldId: ORDERS.TOTAL },
+              { type: "literal", value: 100 },
+            ],
+          },
+        ],
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+      },
+    ],
+  }),
+});
+
+const PRODUCTS_METRIC = createMockCard({
+  id: 103,
+  name: "Products metric",
+  type: "metric",
+  table_id: PRODUCTS_ID,
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: PRODUCTS_ID },
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+      },
+    ],
+  }),
+});
+
+const ORDERS_MODEL = createMockCard({
+  id: 104,
+  name: "Orders model",
+  type: "model",
+  table_id: ORDERS_ID,
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
+});
+
+// The API saves the model's table as `table_id` of a model-based metric, and
+// sets `source_card_id`, which the `Card` type does not declare.
+const ORDERS_MODEL_METRIC = {
+  ...createMockCard({
+    id: 105,
+    name: "Orders model metric",
+    type: "metric",
+    table_id: ORDERS_ID,
+    dataset_query: Lib.createTestJsQuery(
+      createMetadataProvider({
+        metadata: createMockMetadata({
+          databases: [createSampleDatabase()],
+          questions: [ORDERS_MODEL],
+        }),
+      }),
+      {
+        stages: [
+          {
+            source: { type: "card", id: ORDERS_MODEL.id },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+          },
+        ],
+      },
+    ),
+  }),
+  source_card_id: ORDERS_MODEL.id,
+};
+
+function createQueryWithMetrics() {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+    questions: [
+      PRODUCTS_METRIC,
+      ORDERS_FILTER_METRIC,
+      ORDERS_MODEL,
+      ORDERS_MODEL_METRIC,
+      ORDERS_METRIC,
+    ],
+  });
+  return Lib.createTestQuery(
+    createMetadataProvider({ metadata }),
+    DEFAULT_TEST_QUERY,
+  );
+}
+
 function createMetadata({
   allowCustomExpressions,
 }: { allowCustomExpressions?: boolean } = {}) {
@@ -129,7 +246,7 @@ function createMetadata({
 type SetupOpts = {
   database?: Database;
   state?: State;
-  metadata?: Metadata;
+  metadata?: JsMetadata;
   query?: Lib.Query;
   allowCustomExpressions?: boolean;
 };
@@ -277,6 +394,72 @@ describe("AggregationPicker", () => {
       });
     });
 
+    it("should only list numeric custom columns for Sum (metabase#18069)", async () => {
+      const column = (name: string) => ({ type: "column", name }) as const;
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            expressions: [
+              { name: "CC_Category", value: column("CATEGORY") },
+              {
+                name: "CC_LowerVendor",
+                value: {
+                  type: "operator",
+                  operator: "lower",
+                  args: [column("VENDOR")],
+                },
+              },
+              {
+                name: "CC_UpperTitle",
+                value: {
+                  type: "operator",
+                  operator: "upper",
+                  args: [column("TITLE")],
+                },
+              },
+              {
+                name: "CC_HalfPrice",
+                value: {
+                  type: "operator",
+                  operator: "/",
+                  args: [column("PRICE"), { type: "literal", value: 2 }],
+                },
+              },
+              {
+                name: "CC_ScaledRating",
+                value: {
+                  type: "operator",
+                  operator: "*",
+                  args: [{ type: "literal", value: 1.5 }, column("RATING")],
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const { getRecentClauseInfo } = setup({ query });
+
+      await userEvent.click(screen.getByText("Sum of ..."));
+
+      expect(screen.getByRole("option", { name: "Price" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "Rating" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "CC_HalfPrice" }),
+      ).toBeInTheDocument();
+      ["CC_Category", "CC_LowerVendor", "CC_UpperTitle"].forEach((name) => {
+        expect(screen.queryByText(name)).not.toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText("CC_ScaledRating"));
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "sum",
+        displayName: "Sum of CC_ScaledRating",
+      });
+    });
+
     it("should highlight selected operator", () => {
       setup({ query: createQueryWithCountAggregation() });
 
@@ -403,6 +586,76 @@ describe("AggregationPicker", () => {
 
       expect(await screen.findByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
+    });
+  });
+  describe("metrics", () => {
+    it("should list only the metrics based on the query's table (metabase#42470)", async () => {
+      setup({ query: createQueryWithMetrics() });
+
+      await userEvent.click(screen.getByText("Metrics"));
+
+      expect(
+        screen.getByRole("option", { name: "Orders metric" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: /Orders metric with filter/ }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Products metric")).not.toBeInTheDocument();
+      expect(screen.queryByText("Orders model metric")).not.toBeInTheDocument();
+    });
+
+    it("should show the metric description on hover", async () => {
+      setup({ query: createQueryWithMetrics() });
+
+      await userEvent.click(screen.getByText("Metrics"));
+      const option = screen.getByRole("option", {
+        name: /Orders metric with filter/,
+      });
+      const moreInfo = within(option).getByLabelText("More info");
+      await userEvent.hover(moreInfo);
+
+      const description = await screen.findByText(/This is a description/);
+      expect(description).toBeInTheDocument();
+      expect(screen.getByText("with markdown").tagName).toBe("EM");
+
+      await userEvent.unhover(moreInfo);
+      await waitFor(() =>
+        expect(
+          screen.queryByText(/This is a description/),
+        ).not.toBeInTheDocument(),
+      );
+    });
+
+    it("should search metrics", async () => {
+      setup({ query: createQueryWithMetrics() });
+
+      await userEvent.type(
+        screen.getByPlaceholderText("Find..."),
+        "with filter",
+      );
+
+      expect(screen.getByText("Metrics")).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: /Orders metric with filter/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "Orders metric" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Products metric")).not.toBeInTheDocument();
+      expect(screen.queryByText("Count of rows")).not.toBeInTheDocument();
+    });
+
+    it("should add an aggregation based on the picked metric", async () => {
+      const { onQueryChange } = setup({ query: createQueryWithMetrics() });
+
+      await userEvent.click(screen.getByText("Metrics"));
+      await userEvent.click(screen.getByText("Orders metric with filter"));
+
+      expect(onQueryChange).toHaveBeenCalledTimes(1);
+      const [nextQuery] = onQueryChange.mock.lastCall;
+      expect(Lib.toJsQuery(nextQuery)).toMatchObject({
+        stages: [{ aggregation: [["metric", {}, ORDERS_FILTER_METRIC.id]] }],
+      });
     });
   });
 });

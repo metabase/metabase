@@ -1,4 +1,4 @@
-(ns metabase.agent-api.api-test
+(ns ^:synchronized metabase.agent-api.api-test
   "Agent API functional tests using session-based authentication.
    JWT and scope-related tests live in metabase-enterprise.agent-api.api-test."
   (:require
@@ -7,13 +7,14 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.agent-api.api :as agent-api.api]
-   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
@@ -30,8 +31,9 @@
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor :as qp]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
@@ -43,6 +45,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.table :as table]
    [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2])
   (:import
@@ -52,6 +55,12 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+;; The Agent API is deprecated and off until an admin opts in. These tests exercise it, so they opt in.
+;; The namespace is `^:synchronized` because this fixture sets a Setting.
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [deprecated-agent-api-enabled? true]
+                        (thunk))))
 
 (defn- orders-count-query
   "Create a simple count query on the orders table using lib functions."
@@ -166,16 +175,34 @@
       (testing "a session request with nil token-scopes is still unrestricted"
         (is (= 200 (status {:metabase-user-id (mt/user->id :rasta)})))))))
 
-(deftest agent-api-enabled-setting-test
-  (testing "External Agent API routes return 403 when disabled"
-    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
-      (is (= "Agent API is not enabled."
-             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+(def ^:private agent-api-off-message
+  "The Agent API is deprecated and off by default. An admin can turn it on in Admin > AI > MCP.")
+
+(deftest deprecated-agent-api-enabled-setting-test
+  (testing "External Agent API routes return 403 until an admin opts in to the deprecated Agent API"
+    (mt/with-temporary-setting-values [deprecated-agent-api-enabled? nil]
+      (is (= agent-api-off-message
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping")))
+      ;; `agent-api-enabled?` is a stub with no effect. An upgraded instance can still hold a value for it: a stored
+      ;; row, or the env var. The rows are written raw, because the setter of the stub stores nothing.
+      (testing "a stored value of the old setting agent-api-enabled? is not an opt-in"
+        (mt/with-temporary-raw-setting-values [:agent-api-enabled? "true"]
+          (is (= agent-api-off-message
+                 (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))
+      (testing "the env var of the old setting agent-api-enabled? is not an opt-in"
+        (mt/with-temp-env-var-value! [mb-agent-api-enabled "true"]
+          (is (= agent-api-off-message
+                 (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))))
+  (testing "External Agent API routes are served after the opt-in, whatever the old agent-api-enabled? holds"
+    (mt/with-temporary-setting-values [deprecated-agent-api-enabled? true]
+      (mt/with-temporary-raw-setting-values [:agent-api-enabled? "false"]
+        (is (= {:message "pong"}
+               (mt/user-http-request :rasta :get 200 "agent/v1/ping")))))))
 
 (deftest ai-features-enabled-setting-test
   (testing "External Agent API routes return 403 when AI features are globally disabled"
-    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
-                                           :agent-api-enabled?   "true"]
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled?          "false"
+                                           :deprecated-agent-api-enabled? "true"]
       (is (= "AI features are not enabled."
              (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
 
@@ -203,7 +230,9 @@
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
     (search.tu/with-appdb-search-if-available-otherwise-legacy
-      (mt/with-temp [:model/Table _ {:name "AgentSearchTestTable"}]
+      (mt/with-model-cleanup [:model/Table]
+        (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at)
+                                      :name "AgentSearchTestTable")])
         (testing "Returns search results for term queries"
           (is (=? {:data        [{:type "table" :name "AgentSearchTestTable"}]
                    :total_count 1}
@@ -214,17 +243,25 @@
   (testing "search surfaces saved questions, dashboards, and collections (not just tables/metrics/models)"
     (binding [search.ingestion/*force-sync* true]
       (search.tu/with-appdb-search-if-available-otherwise-legacy
-        (mt/with-temp [:model/Card      _ {:name "AgentSearchAcmeQuestion"}
-                       :model/Dashboard _ {:name "AgentSearchAcmeDashboard"}
-                       :model/Collection _ {:name "AgentSearchAcmeCollection"}]
-          (let [results (->> (mt/user-http-request :rasta :post 200 "agent/v1/search"
-                                                   {:term_queries ["AgentSearchAcme"]})
-                             :data
-                             (map (juxt :name :type))
-                             set)]
-            (is (contains? results ["AgentSearchAcmeQuestion" "question"]))
-            (is (contains? results ["AgentSearchAcmeDashboard" "dashboard"]))
-            (is (contains? results ["AgentSearchAcmeCollection" "collection"]))))))))
+        (mt/with-model-cleanup [:model/Card]
+          (card/create-cards! [{:name                   "AgentSearchAcmeQuestion"
+                                :creator_id             (mt/user->id :rasta)
+                                :database_id            (mt/id)
+                                :display                :table
+                                :visualization_settings {}
+                                :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}])
+          (mt/with-model-cleanup [:model/Dashboard :model/Collection]
+            (dashboard/create-dashboards! [(assoc (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at :entity_id)
+                                                  :name "AgentSearchAcmeDashboard")])
+            (collection/create-collections! [{:name "AgentSearchAcmeCollection" :location "/"}])
+            (let [results (->> (mt/user-http-request :rasta :post 200 "agent/v1/search"
+                                                     {:term_queries ["AgentSearchAcme"]})
+                               :data
+                               (map (juxt :name :type))
+                               set)]
+              (is (contains? results ["AgentSearchAcmeQuestion" "question"]))
+              (is (contains? results ["AgentSearchAcmeDashboard" "dashboard"]))
+              (is (contains? results ["AgentSearchAcmeCollection" "collection"])))))))))
 
 (deftest coerce-query-list-test
   (let [coerce #'agent-api.api/coerce-query-list]
@@ -855,10 +892,14 @@
 (deftest search-finds-metrics-test
   (binding [search.ingestion/*force-sync* true]
     (search.tu/with-appdb-search-if-available-otherwise-legacy
-      (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"
-                                          :type          :metric
-                                          :database_id   (mt/id)
-                                          :dataset_query (orders-count-query)}]
+      (mt/with-model-cleanup [:model/Card]
+        (card/create-cards! [{:name                   "AgentSearchTestMetric"
+                              :type                   :metric
+                              :creator_id             (mt/user->id :rasta)
+                              :database_id            (mt/id)
+                              :display                :table
+                              :visualization_settings {}
+                              :dataset_query          (orders-count-query)}])
         (testing "Returns metrics in search results"
           (is (=? {:data        [{:type "metric" :name "AgentSearchTestMetric"}]
                    :total_count 1}
@@ -868,10 +909,14 @@
 (deftest search-finds-models-test
   (binding [search.ingestion/*force-sync* true]
     (search.tu/with-appdb-search-if-available-otherwise-legacy
-      (mt/with-temp [:model/Card _model {:name          "AgentSearchTestModel"
-                                         :type          :model
-                                         :database_id   (mt/id)
-                                         :dataset_query (orders-count-query)}]
+      (mt/with-model-cleanup [:model/Card]
+        (card/create-cards! [{:name                   "AgentSearchTestModel"
+                              :type                   :model
+                              :creator_id             (mt/user->id :rasta)
+                              :database_id            (mt/id)
+                              :display                :table
+                              :visualization_settings {}
+                              :dataset_query          (orders-count-query)}])
         (testing "Returns models in search results"
           (is (=? {:data        [{:type "model" :name "AgentSearchTestModel"}]
                    :total_count 1}
@@ -897,10 +942,13 @@
                :description     nil}
               create-resp))
       (is (t2/exists? :model/Card :id (:id create-resp)))
-      (t2/delete! :model/Card :id (:id create-resp))))
+      (t2/delete! :model/Card :id (:id create-resp)))))
+
+(deftest create-question-optional-fields-test
   (testing "Creates a question with optional fields"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Question Collection"}]
-      (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:location "/" :name "Agent Question Collection"}]))
+            construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                                  {:query (orders-query :limit 10)})
             create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
                                                  {:name          "Agent Question With Options"
@@ -915,27 +963,33 @@
                  :collection_path "Our analytics / Agent Question Collection"
                  :description     "A test question"}
                 create-resp))
-        (t2/delete! :model/Card :id (:id create-resp)))))
+        (t2/delete! :model/Card :id (:id create-resp))))))
+
+(deftest create-question-without-run-permissions-test
   (testing "Returns 403 when caller cannot run the proposed query"
     ;; Mirrors retro's data-perms-bypass repro: collection write does not imply the right
     ;; to save a card whose query references data the user cannot run.
     (mt/with-restored-data-perms!
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable For Create-Q"}]
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-id)
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
-          (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
-                                                     {:query (orders-query :limit 10)})]
-            (mt/user-http-request :rasta :post 403 "agent/v1/question"
-                                  {:name          "Should Not Save"
-                                   :query         (:query construct-resp)
-                                   :collection_id writable-id}))))))
+        (mt/with-model-cleanup [:model/Collection]
+          (let [{writable-id :id} (first (collection/create-collections! [{:location "/" :name "Writable For Create-Q"}]))]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-id)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+            (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                       {:query (orders-query :limit 10)})]
+              (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                    {:name          "Should Not Save"
+                                     :query         (:query construct-resp)
+                                     :collection_id writable-id}))))))))
+
+(deftest create-question-without-collection-write-permissions-test
   (testing "Returns 403 when caller cannot write to target collection"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {locked-id :id} {:name "Locked For Create-Q"}]
-        ;; rasta has data perms by default in test setup, but no write on `locked-id`.
-        (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                                   {:query (orders-query :limit 10)})]
+      (mt/with-model-cleanup [:model/Collection]
+        (let [{locked-id :id} (first (collection/create-collections! [{:location "/" :name "Locked For Create-Q"}]))
+              construct-resp  (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                    {:query (orders-query :limit 10)})]
+          ;; rasta has data perms by default in test setup, but no write on `locked-id`.
           (mt/user-http-request :rasta :post 403 "agent/v1/question"
                                 {:name          "Should Not Save"
                                  :query         (:query construct-resp)
@@ -1063,9 +1117,10 @@
 
 (deftest create-question-collection-path-test
   (testing "collection_path is the full breadcrumb, mirroring the app's location"
-    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent Coll"}
-                   :model/Collection {child-id :id}  {:name "Child Coll" :location (format "/%d/" parent-id)}]
-      (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{parent-id :id} (first (collection/create-collections! [{:location "/" :name "Parent Coll"}]))
+            {child-id :id} (first (collection/create-collections! [{:name "Child Coll" :location (format "/%d/" parent-id)}]))
+            construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                                  {:query (orders-query :limit 10)})
             create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
                                                  {:name          "Nested Q"
@@ -1086,22 +1141,23 @@
       (t2/delete! :model/Card :id (:id create-resp))))
   (testing "collection_path omits ancestors the caller can't read — no hidden-name leak"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {a-id :id} {:name "Visible Parent"}
-                     :model/Collection {b-id :id} {:name "Hidden Parent" :location (format "/%d/" a-id)}
-                     :model/Collection {c-id :id} {:name "Leaf Coll" :location (format "/%d/%d/" a-id b-id)}]
-        ;; rasta can write the leaf and read its top ancestor, but has no access to the middle one.
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) a-id)
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c-id)
-        (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                                   {:query (orders-query :limit 10)})
-              create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
-                                                   {:name          "Perm Filtered Q"
-                                                    :query         (:query construct-resp)
-                                                    :collection_id c-id})]
-          ;; rasta can't read the root collection here either, so "Our analytics" is dropped too —
-          ;; the point is that the unreadable middle parent never appears.
-          (is (= "Visible Parent / Leaf Coll" (:collection_path create-resp)))
-          (t2/delete! :model/Card :id (:id create-resp)))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [{a-id :id} (first (collection/create-collections! [{:location "/" :name "Visible Parent"}]))
+              {b-id :id} (first (collection/create-collections! [{:name "Hidden Parent" :location (format "/%d/" a-id)}]))
+              {c-id :id} (first (collection/create-collections! [{:name "Leaf Coll" :location (format "/%d/%d/" a-id b-id)}]))]
+          ;; rasta can write the leaf and read its top ancestor, but has no access to the middle one.
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) a-id)
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c-id)
+          (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                     {:query (orders-query :limit 10)})
+                create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                                     {:name          "Perm Filtered Q"
+                                                      :query         (:query construct-resp)
+                                                      :collection_id c-id})]
+            ;; rasta can't read the root collection here either, so "Our analytics" is dropped too —
+            ;; the point is that the unreadable middle parent never appears.
+            (is (= "Visible Parent / Leaf Coll" (:collection_path create-resp)))
+            (t2/delete! :model/Card :id (:id create-resp))))))))
 
 ;;; ------------------------------------------------ Create Metric Tests --------------------------------------------
 
@@ -1124,8 +1180,9 @@
       (is (=? {:type :metric} (t2/select-one :model/Card :id (:id create-resp))))
       (t2/delete! :model/Card :id (:id create-resp))))
   (testing "Creates a metric with optional fields"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Metric Collection"}]
-      (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:location "/" :name "Agent Metric Collection"}]))
+            construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                                  {:query (orders-query :aggregation [["count" {}]])})
             create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/metric"
                                                  {:name          "Agent Metric With Options"
@@ -1208,17 +1265,18 @@
 
 (deftest update-metric-move-test
   (testing "Moving a metric sets collection_id"
-    (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Metric Move Dest"}
-                   :model/Card       {card-id :id}      {:name          "Metric To Move"
-                                                         :type          :metric
-                                                         :dataset_query (orders-count-query)
-                                                         :display       :scalar}]
-      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
-                                       {:collection_id dest-coll-id})]
-        (is (=? {:collection_id   dest-coll-id
-                 :collection_path "Our analytics / Agent Metric Move Dest"}
-                resp)))
-      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{dest-coll-id :id} (first (collection/create-collections! [{:location "/" :name "Agent Metric Move Dest"}]))]
+        (mt/with-temp [:model/Card {card-id :id} {:name          "Metric To Move"
+                                                  :type          :metric
+                                                  :dataset_query (orders-count-query)
+                                                  :display       :scalar}]
+          (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
+                                           {:collection_id dest-coll-id})]
+            (is (=? {:collection_id   dest-coll-id
+                     :collection_path "Our analytics / Agent Metric Move Dest"}
+                    resp)))
+          (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))))
 
 (deftest update-metric-archive-test
   (testing "Archiving a metric also sets :archived_directly so it lands in the Trash"
@@ -1304,6 +1362,16 @@
 
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
 
+(deftest create-dashboard-tracks-snowplow-test
+  (snowplow-test/with-fake-snowplow-collector
+    (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                     {:name "Agent Snowplow Dashboard"})]
+      (is (some #{{:data    {"dashboard_id" (:id resp)
+                             "event"        "dashboard_created"}
+                   :user-id (str (mt/user->id :rasta))}}
+                (snowplow-test/pop-event-data-and-user-id!)))
+      (t2/delete! :model/Dashboard :id (:id resp)))))
+
 (deftest create-dashboard-test
   (testing "Creates an empty dashboard, defaulting to the caller's personal collection"
     (let [personal-id   (:id (collection/user->personal-collection (mt/user->id :rasta)))
@@ -1342,8 +1410,9 @@
                       dashcards)))
         (t2/delete! :model/Dashboard :id (:id resp)))))
   (testing "Creates a dashboard in a specific collection"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Dashboard Collection"}]
-      (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:location "/" :name "Agent Dashboard Collection"}]))
+            resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
                                        {:name          "Collection Dashboard"
                                         :collection_id coll-id})]
         (is (=? {:collection_id   coll-id
@@ -1395,7 +1464,7 @@
                  :location    "/"
                  :description nil}
                 resp))
-        (t2/delete! :model/Collection :id (:id resp)))))
+        (collection/delete-collections! [(:id resp)]))))
   (testing "Creates a nested collection under a parent"
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Agent Parent Coll"}]
       (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/collection"
@@ -1409,7 +1478,7 @@
                 resp))
         ;; location should encode the parent's id in the materialized path
         (is (= (str "/" parent-id "/") (:location resp)))
-        (t2/delete! :model/Collection :id (:id resp)))))
+        (collection/delete-collections! [(:id resp)]))))
   (testing "Returns 404 when parent_collection_id does not exist"
     (mt/user-http-request :crowberto :post 404 "agent/v1/collection"
                           {:name                 "Bad Parent Coll"
@@ -1449,16 +1518,17 @@
 
 (deftest update-question-move-test
   (testing "Moving a card sets collection_id (subsumes move_card)"
-    (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Move Dest"}
-                   :model/Card       {card-id :id}      {:name          "Card To Move"
-                                                         :dataset_query (orders-count-query)
-                                                         :display       :table}]
-      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
-                                       {:collection_id dest-coll-id})]
-        (is (=? {:collection_id   dest-coll-id
-                 :collection_path "Our analytics / Agent Move Dest"}
-                resp)))
-      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{dest-coll-id :id} (first (collection/create-collections! [{:location "/" :name "Agent Move Dest"}]))]
+        (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Move"
+                                                  :dataset_query (orders-count-query)
+                                                  :display       :table}]
+          (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                           {:collection_id dest-coll-id})]
+            (is (=? {:collection_id   dest-coll-id
+                     :collection_path "Our analytics / Agent Move Dest"}
+                    resp)))
+          (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))))
 
 (deftest update-question-archive-test
   (testing "Archiving a card also sets :archived_directly so it lands in the Trash"
@@ -1569,8 +1639,6 @@
   (testing "Returns 403 when swapping :query to one referencing data the caller cannot run"
     ;; Guard against the gap retro identified in branch review:
     ;; collection write on a card does NOT grant the right to repoint it at forbidden data.
-    ;; REST's `check-allowed-to-modify-query` runs in the REST wrapper above `queries/update-card!`;
-    ;; the agent endpoint calls `update-card!` directly, so we have to gate it ourselves.
     (mt/with-restored-data-perms!
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable For Q-Swap"}
@@ -1611,40 +1679,43 @@
       (is (= "Renamed by Agent" (t2/select-one-fn :name :model/Dashboard :id dash-id)))
       (is (= "Set by agent" (t2/select-one-fn :description :model/Dashboard :id dash-id)))))
   (testing "Moving a dashboard sets collection_id and moves its cards"
-    (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Dash Dest"}
-                   :model/Dashboard  {dash-id :id}      {:name "Dash To Move"}
-                   :model/Card       {card-id :id}      {:name          "Card On Dash"
-                                                         :dataset_query (orders-count-query)
-                                                         :display       :table
-                                                         :dashboard_id  dash-id}]
-      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
-                                       {:collection_id dest-coll-id})]
-        (is (=? {:collection_id   dest-coll-id
-                 :collection_path "Our analytics / Agent Dash Dest"}
-                resp)))
-      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))
-      ;; cards on the dashboard should follow
-      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{dest-coll-id :id} (first (collection/create-collections! [{:location "/" :name "Agent Dash Dest"}]))]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dash To Move"}
+                       :model/Card {card-id :id} {:name          "Card On Dash"
+                                                  :dataset_query (orders-count-query)
+                                                  :display       :table
+                                                  :dashboard_id  dash-id}]
+          (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                           {:collection_id dest-coll-id})]
+            (is (=? {:collection_id   dest-coll-id
+                     :collection_path "Our analytics / Agent Dash Dest"}
+                    resp)))
+          (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))
+          ;; cards on the dashboard should follow
+          (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))))
   (testing "Returns 404 when dashboard does not exist"
     (mt/user-http-request :rasta :put 404 "agent/v1/dashboard/999999"
                           {:name "doesn't matter"}))
   (testing "Returns 403 when caller lacks write access on the dashboard"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {locked-coll-id :id} {:name "Locked Coll For Dash"}
-                     :model/Dashboard  {dash-id :id}        {:name          "Hidden Dash"
-                                                             :collection_id locked-coll-id}]
-        (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
-                              {:name "Forbidden Rename"}))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [{locked-coll-id :id} (first (collection/create-collections! [{:location "/" :name "Locked Coll For Dash"}]))]
+          (mt/with-temp [:model/Dashboard {dash-id :id} {:name          "Hidden Dash"
+                                                         :collection_id locked-coll-id}]
+            (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                                  {:name "Forbidden Rename"}))))))
   (testing "Returns 403 when caller can write source collection but not target"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable Dash Src"}
-                     :model/Collection {locked-id   :id} {:name "Locked Dash Dest"}
-                     :model/Dashboard  {dash-id     :id} {:name          "Dash In Writable"
-                                                          :collection_id writable-id}]
-        (perms/grant-collection-readwrite-permissions!
-         (perms-group/all-users) writable-id)
-        (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
-                              {:collection_id locked-id})))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [{writable-id :id} (first (collection/create-collections! [{:location "/" :name "Writable Dash Src"}]))
+              {locked-id   :id} (first (collection/create-collections! [{:location "/" :name "Locked Dash Dest"}]))]
+          (mt/with-temp [:model/Dashboard {dash-id     :id} {:name          "Dash In Writable"
+                                                             :collection_id writable-id}]
+            (perms/grant-collection-readwrite-permissions!
+             (perms-group/all-users) writable-id)
+            (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                                  {:collection_id locked-id})))))))
 
 (deftest update-dashboard-archive-test
   (testing "Archiving a dashboard cascades to its cards"
@@ -1701,6 +1772,52 @@
           (mt/user-http-request :crowberto :put 200 (str "agent/v1/dashboard/" dash-id)
                                 {:dashcards [{:action "add" :card_id card-id}]})
           (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))
+
+(deftest update-dashboard-dashcards-statements-do-not-grow-with-mutations-test
+  (testing "adds to a shared dashboard and removals cost the same number of statements for any number of mutations"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+        (let [cards!     (fn [n]
+                           (vec (for [i (range n)]
+                                  (:id (first (t2/insert-returning-instances!
+                                               :model/Card
+                                               {:name                   (str "mutation card " i)
+                                                :creator_id             (mt/user->id :crowberto)
+                                                :database_id            (mt/id)
+                                                :collection_id          coll-id
+                                                :display                :line
+                                                :visualization_settings {}
+                                                :dataset_query          (orders-count-query)}))))))
+              dashboard! (fn [existing]
+                           (let [{dash-id :id} (first (t2/insert-returning-instances!
+                                                       :model/Dashboard
+                                                       {:name "Mutations" :creator_id (mt/user->id :crowberto)
+                                                        :collection_id coll-id :public_uuid (str (random-uuid))}))]
+                             (when (pos? existing)
+                               (t2/insert! :model/DashboardCard
+                                           (for [i (range existing)]
+                                             {:dashboard_id dash-id :row (* 4 i) :col 0 :size_x 4 :size_y 4
+                                              :visualization_settings {:virtual_card {:display "text"} :text "hello"}
+                                              :parameter_mappings []})))
+                             dash-id))
+              statements (fn [dash-id mutations]
+                           (t2/with-call-count [call-count]
+                             (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id) {:dashcards mutations})
+                             (call-count)))
+              adds       (fn [n] (mapv (fn [id] {:action "add" :card_id id}) (cards! n)))
+              removes    (fn [dash-id] (mapv (fn [id] {:action "remove" :dashcard_id id})
+                                             (t2/select-pks-vec :model/DashboardCard :dashboard_id dash-id)))]
+          (mt/with-model-cleanup [:model/Card :model/Dashboard]
+            (statements (dashboard! 0) (adds 2))
+            (let [small (statements (dashboard! 0) (adds 3))
+                  large (statements (dashboard! 0) (adds 9))]
+              (is (= small large)))
+            (let [small-dash (dashboard! 3)
+                  large-dash (dashboard! 9)
+                  small      (statements small-dash (removes small-dash))
+                  large      (statements large-dash (removes large-dash))]
+              (is (= small large)))))))))
 
 (deftest update-dashboard-dashcards-multi-add-test
   (testing "Add multiple cards in one call - each one autoplaced w/o overlap"
@@ -2169,7 +2286,7 @@
           (is (str/includes? (:error item) listing-uri))
           (is (not (str/includes? (:error item) "Call `search`"))))))))
 
-(deftest ^:parallel read-resource-tool-description-test
+(deftest read-resource-tool-description-test
   (let [endpoint    (some (fn [[_ endpoint]]
                             (when (= "read_resource" (get-in endpoint [:form :metadata :tool :name]))
                               endpoint))

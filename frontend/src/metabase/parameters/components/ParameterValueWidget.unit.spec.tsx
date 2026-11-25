@@ -9,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type {
   CardId,
   ParameterValueOrArray,
@@ -16,6 +17,7 @@ import type {
   ValuesQueryType,
 } from "metabase-types/api";
 import {
+  createMockField,
   createMockParameter,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
@@ -134,7 +136,7 @@ const NUMBER_PARAMETER: Partial<UiParameter> = { type: "number/=" };
 const FIELD_FILTER_PARAMETER: Partial<UiParameter> = {
   type: "string/=",
   hasVariableTemplateTagTarget: false,
-  fields: [createProductsCategoryField()],
+  fields: [getParameterFieldInfo(createProductsCategoryField())],
 };
 
 describe("ParameterValueWidget", () => {
@@ -148,7 +150,13 @@ describe("ParameterValueWidget", () => {
           slug: "number",
           name: "Number Equals",
         }),
-        fields: [createProductsRatingField({ has_field_values: "none" })],
+        fields: [
+          getParameterFieldInfo(
+            createMockField(
+              createProductsRatingField({ has_field_values: "none" }),
+            ),
+          ),
+        ],
       },
     });
 
@@ -197,6 +205,73 @@ describe("ParameterValueWidget", () => {
 
     // After opening, aria-expanded should be true on the same button
     expect(triggerButton).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("should close a date filter popover after picking a value, and with Escape after reopening it (metabase#54353)", async () => {
+    const { onValueChange } = setupStateful({
+      parameter: { type: "date/all-options" },
+    });
+    const trigger = screen.getByTestId("parameter-value-widget-target");
+
+    await userEvent.click(trigger);
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByText(
+        /Previous 12 months/i,
+      ),
+    );
+    expect(onValueChange).toHaveBeenLastCalledWith("past12months");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(trigger);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  });
+
+  it.each([
+    ["Enter", "{Enter}"],
+    ["Space", " "],
+  ])(
+    "should open a filter popover with %s (metabase#52674)",
+    async (_keyName, key) => {
+      setup({
+        parameter: {
+          type: "number/between",
+          slug: "number",
+          name: "Number",
+        },
+      });
+
+      screen.getByTestId("parameter-value-widget-target").focus();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      await userEvent.keyboard(key);
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    },
+  );
+
+  it("should close an open filter popover when its trigger is clicked again", async () => {
+    setup({
+      parameter: {
+        type: "number/between",
+        slug: "number",
+        name: "Number",
+      },
+    });
+
+    const trigger = screen.getByTestId("parameter-value-widget-target");
+    await userEvent.click(trigger);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    await userEvent.click(trigger);
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
   });
 
   describe("static list source with custom labels in a saved question", () => {
@@ -518,7 +593,7 @@ describe("ParameterValueWidget", () => {
       const { setValue } = setup({
         parameter: {
           ...createMockParameter({ id: "category-param", type: "category" }),
-          fields: [createProductsCategoryField()],
+          fields: [getParameterFieldInfo(createProductsCategoryField())],
         },
       });
 
@@ -588,7 +663,7 @@ describe("ParameterValueWidget", () => {
             required: true,
             default: ["Gizmo"],
           }),
-          fields: [createProductsCategoryField()],
+          fields: [getParameterFieldInfo(createProductsCategoryField())],
         },
         value: ["Widget"],
         enableRequiredBehavior: true,

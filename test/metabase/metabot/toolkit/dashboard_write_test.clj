@@ -25,8 +25,9 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card      card {:name "Orders"}
                      :model/Dashboard dash {:name "Sales"}]
-        (is (=? {:name      "Revenue"
-                 :dashcards [{:card_id (:id card), :card {:name "Orders"}}]}
+        (is (=? {:dashboard {:name      "Revenue"
+                             :dashcards [{:card_id (:id card), :card {:name "Orders"}}]}
+                 :effects   {:pushed-dashcard-ids [], :dropped-connections []}}
                 (dashboard-write/write! {:dashboard (hydrated (:id dash))
                                          :attrs     {:name "Revenue"}
                                          :ops       [{:op "add_card" :id -1 :card_id (:id card)}]})))
@@ -38,8 +39,8 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card      card {:name "Orders"}
                      :model/Dashboard dash {:name "Sales"}]
-        (is (=? {:name      "Revenue"
-                 :dashcards [{:id -1, :card_id (:id card), :card {:name "Orders"}}]}
+        (is (=? {:dashboard {:name      "Revenue"
+                             :dashcards [{:id -1, :card_id (:id card), :card {:name "Orders"}}]}}
                 (dashboard-write/write! {:dashboard      (hydrated (:id dash))
                                          :attrs          {:name "Revenue"}
                                          :ops            [{:op "add_card" :id -1 :card_id (:id card)}]
@@ -51,8 +52,8 @@
   (testing "without a dashboard write! creates one with its ops applied"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {}]
-        (let [dash (dashboard-write/write! {:attrs {:name "Created by the toolkit"}
-                                            :ops   [{:op "add_card" :id -1 :card_id (:id card)}]})]
+        (let [{dash :dashboard} (dashboard-write/write! {:attrs {:name "Created by the toolkit"}
+                                                         :ops   [{:op "add_card" :id -1 :card_id (:id card)}]})]
           (try
             (is (=? {:name "Created by the toolkit", :dashcards [{:card_id (:id card)}]}
                     dash))
@@ -117,7 +118,7 @@
   (testing "attrs left out are none, so an update with only ops saves them and a create reports its missing name"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
-        (is (=? {:name "Sales", :dashcards [{:visualization_settings {:text "Hello"}}]}
+        (is (=? {:dashboard {:name "Sales", :dashcards [{:visualization_settings {:text "Hello"}}]}}
                 (dashboard-write/write! {:dashboard (hydrated (:id dash))
                                          :ops       [{:op "add_text" :id -1 :markdown "Hello"}]}))))
       (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:name some?}}
@@ -164,7 +165,8 @@
       (mt/with-temp [:model/Card          card {}
                      :model/Dashboard     dash {:name "Sales"}
                      :model/DashboardCard dc   {:dashboard_id (:id dash), :card_id (:id card)}]
-        (is (=? {:name "Revenue", :dashcards [{:id (:id dc)}]}
+        (is (=? {:dashboard {:name "Revenue", :dashcards [{:id (:id dc)}]}
+                 :effects   {}}
                 (dashboard-write/write! {:dashboard (hydrated (:id dash)), :attrs {:name "Revenue"}})))))))
 
 (deftest permission-is-checked-first-test
@@ -230,7 +232,7 @@
                      :model/Dashboard           dash    {:name "Sales"}
                      :model/DashboardCard       dc      {:dashboard_id (:id dash), :card_id (:id card)}
                      :model/DashboardCardSeries _       {:dashboardcard_id (:id dc), :card_id (:id overlay)}]
-        (is (=? {:dashcards [{:id (:id dc), :series [{:id (:id overlay), :name "Overlay"}]}]}
+        (is (=? {:dashboard {:dashcards [{:id (:id dc), :series [{:id (:id overlay), :name "Overlay"}]}]}}
                 (dashboard-write/write! {:dashboard      (hydrated (:id dash))
                                          :attrs          {}
                                          :ops            [{:op          "resize"
@@ -248,10 +250,34 @@
                    :model/DashboardCard dc     {:dashboard_id (:id dash), :card_id (:id card), :row 4}]
       (mt/with-non-admin-groups-no-collection-perms locked
         (mt/with-current-user (mt/user->id :rasta)
-          (let [result (dashboard-write/write! {:dashboard      (hydrated (:id dash))
-                                                :ops            [{:op          "set_series"
-                                                                  :dashcard_id (:id dc)
-                                                                  :card_ids    [(:id hidden)]}]
-                                                :validate-only? true})]
+          (let [{result :dashboard} (dashboard-write/write! {:dashboard      (hydrated (:id dash))
+                                                             :ops            [{:op          "set_series"
+                                                                               :dashcard_id (:id dc)
+                                                                               :card_ids    [(:id hidden)]}]
+                                                             :validate-only? true})]
             (is (=? [{:id (:id hidden), :name "Hidden"}]
                     (:series (u/find-first-map (:dashcards result) [:id] (:id dc)))))))))))
+
+(deftest archived-subscriptions-effect-test
+  (testing "a save that archives subscriptions returns readable ones in full and unreadable ones as a bare flag"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard dash      {:name       "Sales"
+                                                 :parameters [{:id   "gone"
+                                                               :name "Gone"
+                                                               :slug "gone"
+                                                               :type "category"}]}
+                     :model/Pulse     {own :id} {:dashboard_id (:id dash)
+                                                 :creator_id   (mt/user->id :rasta)
+                                                 :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
+                     :model/Pulse     _         {:dashboard_id (:id dash)
+                                                 :creator_id   (mt/user->id :crowberto)
+                                                 :parameters   [{:id "gone", :name "Gone", :value ["b"]}]}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [archived (-> (dashboard-write/write! {:dashboard (hydrated (:id dash))
+                                                      :ops       [{:op "remove_parameter", :parameter_id "gone"}]})
+                             :effects
+                             :archived-subscriptions)]
+            (is (=? [{:id own, :readable? true, :already-broken? false}
+                     ;; Exact, so an id or the stored filters on the unreadable entry fail the test.
+                     (mt/exactly=? {:readable? false})]
+                    archived))))))))

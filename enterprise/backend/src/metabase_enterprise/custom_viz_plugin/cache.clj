@@ -31,7 +31,9 @@
 
 ;;; ------------------------------------------------ Hash ------------------------------------------------
 
-(defn- bytes-hash [^bytes b]
+(defn bytes-hash
+  "The SHA-256 of the bundle bytes `b`, hex-encoded, as `bundle_hash` stores it."
+  [^bytes b]
   (-> b buddy-hash/sha256 codecs/bytes->hex))
 
 (defn- string-hash [^String s]
@@ -247,23 +249,6 @@
    :icon             (:icon manifest)
    :metabase_version version-str})
 
-(defn save-bundle!
-  "Persist a validated bundle for an existing plugin row, evict stale on-disk
-   caches, and return the refreshed row."
-  [{:keys [id]} validated]
-  (custom-viz-plugin.db/update-plugin! id (derived-columns validated))
-  (purge-plugin-cache! {:id id})
-  (custom-viz-plugin.db/non-blob-plugin id))
-
-(defn insert-bundle!
-  "Insert a new plugin row from a validated bundle and an `:identifier`. Returns
-   the inserted row."
-  [identifier validated]
-  (custom-viz-plugin.db/insert-plugin!
-   (merge {:identifier identifier
-           :enabled    true}
-          (derived-columns validated))))
-
 ;;; ------------------------------------------------ Read From Cache ------------------------------------------------
 
 (defn- read-cached-bytes
@@ -315,7 +300,7 @@
   (ex-info (str label " must resolve to a loopback or private network address.")
            {:status-code 400 :url url}))
 
-(defn- validate-url!
+(defn validate-url!
   "Validate that a URL uses an allowed scheme and does not name an address the dev fetches would refuse to
    connect to. Throws on invalid input."
   [^String url ^String label]
@@ -424,13 +409,6 @@
                  (throw e)))]
     (check-content-type! resp (some-> (manifest/asset-content-type asset-name) hash-set) base-url)
     (:body resp)))
-
-(defn set-or-clear-dev-bundle!
-  "Set or clear the dev base URL for a plugin. Persists to the database."
-  [id dev-bundle-url]
-  (let [url (not-empty dev-bundle-url)]
-    (some-> url (validate-url! "Dev bundle URL"))
-    (custom-viz-plugin.db/update-plugin! id {:dev_bundle_url url})))
 
 (defn resolve-dev-bundle
   "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil.

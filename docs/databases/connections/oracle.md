@@ -9,6 +9,8 @@ redirect_from:
 
 To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
+If you're running the Open Source edition of Metabase, you'll need to [add the Oracle JDBC driver](#downloading-the-oracle-jdbc-driver-jar) before you can connect to Oracle.
+
 ## Supported versions
 
 Metabase supports the oldest supported version through the latest stable version. See [Oracle's Release Schedule of Current Database Releases](https://support.oracle.com/knowledge/Oracle%20Database%20Products/742060_1.html).
@@ -43,7 +45,7 @@ Optional TNS alias.
 
 ### Username
 
-The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
+The username Metabase uses to connect to your database. Create a dedicated database user for Metabase with read-only access to the schemas and tables you want to analyze. For write operations like uploads, actions, or transforms, use a separate [writable connection](../writable-connection.md). For instructions, see [Database users, roles, and privileges](../users-roles-privileges.md). You can set up multiple connections to the same database using different user accounts, each with different sets of privileges.
 
 ### Password
 
@@ -106,6 +108,8 @@ If you need to connect to other databases using SSL, instead of creating a new t
 
 ## Downloading the Oracle JDBC Driver JAR
 
+Only the Open Source edition of Metabase needs this step. Because of licensing restrictions, Metabase can't include the Oracle JDBC driver in the Open Source edition, so you'll need to download the driver and add it to Metabase as a plugin. Pro and Enterprise editions of Metabase, as well as all Metabase Cloud plans, include the Oracle JDBC driver, so you can skip this step.
+
 You can download a JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html).
 
 We recommend using the `ojdbc8.jar` JAR.
@@ -118,7 +122,7 @@ Move the JAR you just downloaded (`ojdbc8.jar`) into the plugins directory, and 
 
 ### When running from a JAR
 
-By default, the plugins directory is called `plugins`, and lives in the same directory as the Metabase JAR.
+By default, the plugins directory is called `plugins`, and lives in the same directory as the Metabase JAR. To use a different directory, set the [`MB_PLUGINS_DIR`](../../configuring-metabase/environment-variables.md#mb_plugins_dir) environment variable.
 
 For example, if you're running Metabase from a directory called `/app/`, you should move the Oracle JDBC driver JAR to `/app/plugins/`:
 

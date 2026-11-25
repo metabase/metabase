@@ -21,7 +21,7 @@ import {
 import { MODAL_TYPES } from "metabase/querying/constants";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -103,8 +103,7 @@ function setup({
   });
 
   const metadata = createMockMetadataFromState(state);
-  // Unjustified type cast. FIXME
-  const question = metadata.question(card.id) as Question;
+  const question = new Question(card, metadata);
   const onOpenModal = jest.fn();
   const onSetQueryBuilderMode = jest.fn();
 
@@ -179,6 +178,8 @@ describe("QuestionActions", () => {
 
       await openActionsMenu();
 
+      // e.g. models in the instance analytics collection (metabase#36228)
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
       expect(
         screen.queryByText("Edit query definition"),
       ).not.toBeInTheDocument();
@@ -388,6 +389,38 @@ describe("QuestionActions", () => {
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
+  });
+
+  it("should allow to move a dashboard question but not to turn it into a model or add it to a dashboard", async () => {
+    setup({
+      card: createCard({
+        type: "question",
+        can_write: true,
+        dashboard_id: 1,
+      }),
+    });
+
+    await openActionsMenu();
+
+    expect(screen.getByText("Move")).toBeInTheDocument();
+    expect(screen.queryByText("Turn into a model")).not.toBeInTheDocument();
+    expect(screen.queryByText("Add to dashboard")).not.toBeInTheDocument();
+  });
+
+  it("should allow to turn a collection question into a model and add it to a dashboard", async () => {
+    setup({
+      card: createCard({
+        type: "question",
+        can_write: true,
+        dashboard_id: null,
+      }),
+    });
+
+    await openActionsMenu();
+
+    expect(screen.getByText("Move")).toBeInTheDocument();
+    expect(screen.getByText("Turn into a model")).toBeInTheDocument();
+    expect(screen.getByText("Add to dashboard")).toBeInTheDocument();
   });
 
   it("should not render the menu when there are no menu items", () => {

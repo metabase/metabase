@@ -69,6 +69,19 @@
               (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
                                                                     :definition {:aggregation [[:count]]}}))))))
 
+(deftest blank-measure-name-test
+  (testing "a whitespace-only name is refused on create and update"
+    (is (=? {:errors {:name "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :post 400 "measure"
+                                  {:name       "   "
+                                   :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))})))
+    (mt/with-temp [:model/Measure {:keys [id]} {}]
+      (is (contains? (:errors (mt/user-http-request :crowberto :put 400 (str "measure/" id)
+                                                    {:name "   " :revision_message "blank"})) :name))
+      (is (=? {:name "Renamed"}
+              (mt/user-http-request :crowberto :put 200 (str "measure/" id)
+                                    {:name "Renamed" :revision_message "rename"}))))))
+
 (deftest create-measure-test
   (testing "POST /api/measure"
     (is (=? {:name        "A Measure"
@@ -91,8 +104,7 @@
 (deftest update-permissions-test
   (testing "PUT /api/measure/:id"
     (testing "test security. requires superuser perms"
-      (mt/with-temp [:model/Measure measure {:table_id   (mt/id :venues)
-                                             :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-temp [:model/Measure measure {}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "measure/" (:id measure))
                                      {:name             "abc"
@@ -116,8 +128,7 @@
 (deftest update-definition-table-test
   (testing "PUT /api/measure/:id"
     (testing "an updated definition must still be a valid MBQL query with a source table"
-      (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
-                                                  :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-temp [:model/Measure {:keys [id]} {}]
         (let [response (mt/user-http-request :crowberto :put 400 (str "measure/" id)
                                              {:revision_message "no more source table"
                                               :definition       {}})]
@@ -127,8 +138,7 @@
           ;; never reached the caller at all.
           (is (str/includes? (pr-str response) "measure definition must have a source table")))))
     (testing "a definition that moves the Measure to another table keeps table_id in sync"
-      (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
-                                                  :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-temp [:model/Measure {:keys [id]} {:definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
         (mt/user-http-request :crowberto :put 200 (str "measure/" id)
                               {:revision_message "move to checkins"
                                :definition       (mbql5-measure-definition (mt/id :checkins) (mt/id :checkins :user_id))})
@@ -137,8 +147,7 @@
 
 (deftest update-test
   (testing "PUT /api/measure/:id"
-    (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
-                                                :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+    (mt/with-temp [:model/Measure {:keys [id]} {}]
       (is (=? {:name        "Updated Measure"
                :description nil
                :creator_id  (mt/user->id :rasta)
@@ -159,8 +168,7 @@
 (deftest partial-update-test
   (testing "PUT /api/measure/:id"
     (testing "Can I update a measure's name without specifying all fields?"
-      (mt/with-temp [:model/Measure measure {:table_id   (mt/id :venues)
-                                             :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-temp [:model/Measure measure {}]
         ;; just make sure API call doesn't barf
         (is (some? (mt/user-http-request :crowberto :put 200 (str "measure/" (u/the-id measure))
                                          {:name             "Cool name"
@@ -169,8 +177,7 @@
 (deftest archive-test
   (testing "PUT /api/measure/:id"
     (testing "Can we archive a Measure with the PUT endpoint?"
-      (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
-                                                  :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-temp [:model/Measure {:keys [id]} {}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "measure/" id)
                                         {:archived true, :revision_message "Archive the Measure"})))
         (is (true?
@@ -179,9 +186,7 @@
 (deftest unarchive-test
   (testing "PUT /api/measure/:id"
     (testing "Can we unarchive a Measure with the PUT endpoint?"
-      (mt/with-temp [:model/Measure {:keys [id]} {:archived   true
-                                                  :table_id   (mt/id :venues)
-                                                  :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-temp [:model/Measure {:keys [id]} {:archived true}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "measure/" id)
                                         {:archived false, :revision_message "Unarchive the Measure"})))
         (is (= false
@@ -192,8 +197,7 @@
 (deftest fetch-measure-permissions-test
   (testing "GET /api/measure/:id"
     (testing "test security. Requires manage-table-metadata perms for the Table it references"
-      (mt/with-temp [:model/Measure measure {:table_id   (mt/id :venues)
-                                             :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-temp [:model/Measure measure {}]
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "measure/" (u/the-id measure))))))))))
@@ -202,8 +206,7 @@
   (testing "a data-analyst role (manage-table-metadata, not superuser) can read but not write measures
            without unrestricted view-data on the underlying table"
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :venues)
-                                                      :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-temp [:model/Measure {measure-id :id} {}]
         (mt/with-data-analyst-role! (mt/user->id :lucky)
           (testing "GET /api/measure/:id succeeds"
             (is (=? {:id measure-id}
@@ -223,9 +226,7 @@
 
 (deftest fetch-measure-test
   (testing "GET /api/measure/:id"
-    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
-                                                :table_id   (mt/id :venues)
-                                                :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)}]
       (mt/with-full-data-perms-for-all-users!
         (is (=? {:name        "Mock Measure"
                  :description nil
@@ -241,7 +242,6 @@
 (deftest fetch-measure-saves-dimensions-on-read-test
   (testing "GET /api/measure/:id saves dimensions and dimension_mappings to the database"
     (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
-                                                :table_id   (mt/id :venues)
                                                 :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (testing "no dimensions saved initially"
         (let [initial-measure (t2/select-one :model/Measure :id id)]
@@ -261,7 +261,6 @@
 (deftest fetch-measure-dimensions-have-has-field-values-test
   (testing "GET /api/measure/:id returns dimensions with has-field-values populated"
     (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
-                                                :table_id   (mt/id :venues)
                                                 :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (mt/with-full-data-perms-for-all-users!
         (let [response   (mt/user-http-request :rasta :get 200 (format "measure/%d" id))
@@ -278,7 +277,6 @@
 (deftest fetch-measure-dimension-wire-format-test
   (testing "GET /api/measure/:id and GET /api/measure/ serve dimensions and mappings with snake_case keys"
     (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
-                                                :table_id   (mt/id :venues)
                                                 :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (mt/with-full-data-perms-for-all-users!
         (let [check-wire (fn [dimensions mappings]
@@ -315,16 +313,10 @@
 
 (deftest list-test
   (testing "GET /api/measure/"
-    (mt/with-temp [:model/Measure {id-1 :id} {:name       "Measure 1"
-                                              :table_id   (mt/id :venues)
-                                              :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}
-                   :model/Measure {id-2 :id} {:name       "Measure 2"
-                                              :table_id   (mt/id :products)
-                                              :definition (mbql5-measure-definition (mt/id :products) (mt/id :products :price))}
+    (mt/with-temp [:model/Measure {id-1 :id} {:name "Measure 1"}
+                   :model/Measure {id-2 :id} {:name "Measure 2"}
                    ;; archived measures shouldn't show up
-                   :model/Measure {id-3 :id} {:archived   true
-                                              :table_id   (mt/id :venues)
-                                              :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+                   :model/Measure {id-3 :id} {:archived true}]
       (mt/with-full-data-perms-for-all-users!
         (is (=? [{:id                     id-1
                   :name                   "Measure 1"
@@ -374,8 +366,7 @@
 
 (deftest api-accepts-mbql4-on-put-test
   (testing "PUT /api/measure/:id accepts MBQL4 definitions and returns MBQL5"
-    (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :venues)
-                                                    :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+    (mt/with-temp [:model/Measure {measure-id :id} {:definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (testing "an MBQL4 fragment is rejected -- see `api-accepts-mbql4-on-post-test`"
         (is (= "Query must include :lib/type or :type"
                (mt/user-http-request
@@ -420,7 +411,6 @@
 (deftest dimension-values-test
   (testing "GET /api/measure/:id/dimension/:dimension-key/values"
     (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
-                                                :table_id   (mt/id :venues)
                                                 :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (mt/with-full-data-perms-for-all-users!
         (let [hydrated  (hydrate-measure id)
@@ -437,7 +427,6 @@
 (deftest dimension-search-test
   (testing "GET /api/measure/:id/dimension/:dimension-key/search"
     (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
-                                                :table_id   (mt/id :venues)
                                                 :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (mt/with-full-data-perms-for-all-users!
         (let [hydrated (hydrate-measure id)
@@ -452,7 +441,6 @@
 (deftest dimension-remapping-test
   (testing "GET /api/measure/:id/dimension/:dimension-key/remapping"
     (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
-                                                :table_id   (mt/id :venues)
                                                 :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (mt/with-full-data-perms-for-all-users!
         (let [hydrated  (hydrate-measure id)
@@ -463,3 +451,20 @@
                                                  :value "2")]
               ;; Should return [value] or [value, display-name]
               (is (= [2] response)))))))))
+
+(deftest reading-measure-records-no-audit-row-or-revision-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-model-cleanup [:model/Measure]
+      (let [{id :id} (mt/user-http-request :crowberto :post 200 "measure"
+                                           {:name       "Synced measure"
+                                            :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))})
+            audit-id (fn [] (or (t2/select-one-fn :id :model/AuditLog {:order-by [[:id :desc]]}) 0))
+            before   (audit-id)
+            revs     (t2/count :model/Revision :model "Measure" :model_id id)]
+        (t2/update! :model/Measure :id id {:dimensions nil :dimension_mappings nil})
+        (mt/user-http-request :rasta :get 200 (str "measure/" id))
+        (testing "the read syncs the dimensions"
+          (is (seq (t2/select-one-fn :dimensions :model/Measure :id id))))
+        (testing "the sync is not an update by the reader"
+          (is (= [] (t2/select :model/AuditLog :id [:> before])))
+          (is (= revs (t2/count :model/Revision :model "Measure" :model_id id))))))))

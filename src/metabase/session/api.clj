@@ -8,6 +8,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
@@ -294,7 +295,7 @@
   [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
   (api/check-404 (not-empty metabase-session-key))
   (let [session-key-hashed (session/hash-session-key metabase-session-key)
-        rows-ended         (session.db/end-sessions! {:key_hashed session-key-hashed} "logout" :self)]
+        rows-ended         (session/end-session-for-key! session-key-hashed "logout" :self)]
     ;; clear the cookie even when no row matched (e.g. a session hashed under a previous secret), or the browser
     ;; would keep resending the dead cookie
     (request/clear-session-cookie
@@ -321,11 +322,11 @@
     (let [grant-ends-at (get-in auth-identity [:credentials :grant_ends_at])]
       (when (and grant-ends-at (t/before? (t/instant) (t/instant grant-ends-at)))
         (let [token (auth-identity/generate-reset-token user-id)]
-          (session.db/set-auth-identity-credentials! (:id auth-identity)
-                                                     {:token_hash   (u.password/hash-bcrypt token)
-                                                      :expires_at   (t/plus (t/instant) (t/hours 48))
-                                                      :grant_ends_at grant-ends-at
-                                                      :consumed_at  nil})
+          (models.auth-identity/update-auth-identities! [{:id          (:id auth-identity)
+                                                          :credentials {:token_hash    (u.password/hash-bcrypt token)
+                                                                        :expires_at    (t/plus (t/instant) (t/hours 48))
+                                                                        :grant_ends_at grant-ends-at
+                                                                        :consumed_at   nil}}])
           token)))))
 
 (defn- forgot-password-impl
@@ -358,12 +359,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/forgot_password"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/forgot_password" :- ::api/generic-204-no-content
   "Send a reset email when user has forgotten their password."
   [_route-params
    _query-params
@@ -549,11 +546,7 @@
       (call-with-failure-throttling [[(login-throttlers :ip-address) (request/ip-address request)]]
                                     do-login))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/password-check"
+(api.macros/defendpoint :post "/password-check" :- [:map {:closed true} [:valid [:= true]]]
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
   [_route-params
    _query-params

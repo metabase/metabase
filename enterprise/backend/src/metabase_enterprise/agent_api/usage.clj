@@ -7,7 +7,7 @@
   (itself `:audit-app`-gated). Every write is best-effort: a failure is logged and swallowed so
   logging never fails the Agent API request and adds negligible latency."
   (:require
-   [metabase-enterprise.agent-api.db :as agent-api.db]
+   [metabase.agent-api.models.agent-api-call-log :as agent-api-call-log]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.metabot.agent-api.usage :as agent-api.usage]
@@ -38,15 +38,15 @@
           pii (select-keys (analytics/pii-fields-from {:user-agent user-agent
                                                        :ip-address ip-address})
                            [:ip_address])]
-      (agent-api.db/insert-call-log!
-       (merge {:user_id       user-id
-               :tenant_id     tenant-id
-               :client_name   (agent-api.usage/detect-client user-agent)
-               :operation     (some-> operation (u/truncate operation-max-length))
-               :status        status
-               :duration_ms   duration-ms
-               :error_message (when (analytics.settings/analytics-pii-retention-enabled)
-                                (some-> error-message (u/truncate error-message-max-length)))}
-              pii)))
+      (agent-api-call-log/create-agent-api-call-logs!
+       [(merge {:user_id       user-id
+                :tenant_id     tenant-id
+                :client_name   (agent-api.usage/detect-client user-agent)
+                :operation     (some-> operation (u/truncate operation-max-length))
+                :status        status
+                :duration_ms   duration-ms
+                :error_message (when (analytics.settings/analytics-pii-retention-enabled)
+                                 (some-> error-message (u/truncate error-message-max-length)))}
+               pii)]))
     (catch Throwable e
       (log/warn e "Failed to record Agent API call"))))

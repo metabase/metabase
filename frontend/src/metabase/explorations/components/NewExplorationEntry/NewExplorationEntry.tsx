@@ -88,7 +88,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
         {hasNlqAccess && (
           <Button
             component={ForwardRefLink}
-            to={Urls.newQuestion({ mode: "ask" })}
+            to={Urls.askQuestion()}
             variant="subtle"
             color="neutral"
             flex="none"

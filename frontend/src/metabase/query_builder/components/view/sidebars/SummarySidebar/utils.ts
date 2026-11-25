@@ -422,7 +422,7 @@ function getMetricKey(
   stageIndex: number,
   metric: Lib.MetricMetadata,
 ): string {
-  return JSON.stringify(Lib.legacyRef(query, stageIndex, metric));
+  return Lib.displayInfo(query, stageIndex, metric).name;
 }
 
 function getMeasureKey(
@@ -527,10 +527,7 @@ function breakoutAgain(
 export function areQueriesEqual(query: Lib.Query, other: Lib.Query): boolean {
   return (
     query === other ||
-    Lib.areLegacyQueriesEqual(
-      Lib.toLegacyQuery(query),
-      Lib.toLegacyQuery(other),
-    )
+    Lib.areQueriesEqual(Lib.toJsQuery(query), Lib.toJsQuery(other))
   );
 }
 

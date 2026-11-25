@@ -360,9 +360,7 @@ export type TestQuerySpecWithDatabase = TestQuerySpec & {
 };
 
 export type TestTemplateTag = Pick<TemplateTag, "type"> &
-  Partial<Omit<TemplateTag, "dimension" | "type">> & {
-    dimension?: TableId;
-  };
+  Partial<Omit<TemplateTag, "type">>;
 
 export type TestTemplateTags = Record<string, TestTemplateTag>;
 

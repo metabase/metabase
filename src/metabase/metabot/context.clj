@@ -122,7 +122,7 @@
 (def ^:private RowValueSchema
   "One cell value in a chart series, matching the frontend's `RowValue`. The `object` arm is never read by this
   code -- it's forwarded to the interestingness stats/repr code as-is -- so it's opaque rather than typed."
-  [:maybe [:or :string number? :boolean ms/OpaqueJSONObject]])
+  [:maybe [:or :string number? :boolean ::metabot.schema/row-value.object]])
 
 (def ^:private SeriesConfigSchema
   "One series of a chart, pre-materialized by the frontend for `analyze_chart`."
@@ -208,7 +208,9 @@
                                                             [:description     {:optional true} [:maybe :string]]]]]]
    [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
    [:query           {:optional true} ItemQuerySchema]
-   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]])
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]
+   ;; The open tab, sent with a dashboard
+   [:tab_id          {:optional true} [:maybe :int]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."
@@ -260,13 +262,15 @@
    [:user_recently_viewed       {:optional true} [:maybe [:sequential ::recently-viewed-item]]]
    [:current_time_with_timezone {:optional true} [:maybe :string]]
    [:current_user_time          {:optional true} [:maybe :string]]
+   ;; The agent reads the first day of the week from the start-of-week setting, so a value sent by the client has no
+   ;; effect.
    [:first_day_of_week          {:optional true} [:maybe :string]]
    [:capabilities               {:optional true} [:maybe [:or [:set :string] [:sequential :string]]]]
    [:slack_channel_id           {:optional true} [:maybe :string]]
    [:default_database_id        {:optional true} [:maybe :int]]
    [:code_editor                {:optional true} [:maybe CodeEditorContextSchema]]
    [:research_plan              {:optional true} [:maybe ::research-plan]]
-   [:references                 {:optional true} [:maybe ms/OpaqueJSONObject]]
+   [:references                 {:optional true} [:maybe ::metabot.schema/references]]
    ;; The agent-streaming API overwrites this from the request's client header (see [[host-app-request?]]),
    ;; so a value sent by the client has no effect.
    [:in_host_app                {:optional true} [:maybe :boolean]]])
@@ -380,15 +384,17 @@
     context))
 
 (defn- filter-recents-to-curated
-  "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).
-  Delegates to metabot.curation/curated-ids, the source-of-truth check, so recent-view filtering can't drift
-  from the canonical rule and doesn't depend on the search index."
+  "Keep only recents that are curated (verified, official-collection, library/published, or authoritative)."
   [recents]
+  ;; Delegates to `curation/curated-ids`, the source-of-truth check, so recent-view filtering can't drift from the
+  ;; canonical rule and doesn't depend on the search index. A metric needs its own curation signal here, as in search
+  ;; results, though `read_resource` listings also show metrics whose definition passes
+  ;; `curation/usable-metric-ids`: these recents are suggested unasked on every request.
   (let [curated (curation/curated-ids (map (juxt (comp name :model) :id) recents))]
     (filter (fn [{:keys [model id]}] (contains? curated [(name model) id])) recents)))
 
 (def ^:private profiles-excluding-recent-views
-  "Profiles for which recent views are never injected.
+  "Profiles for which a turn's context gets no recent views.
 
   The nlq profile discovers data through the curated library tool rather than general instance search, so arbitrary
   recently-viewed items (which may not be curated) would undermine that guarantee. (A :nlq request served the
@@ -409,8 +415,15 @@
   Skips recents entirely for profiles in [[profiles-excluding-recent-views]]."
   [context {:keys [metabot profile-id] :as _opts}]
   (try
-    ;; When disabled (or excluded for this profile), strip any preexisting :user_recently_viewed so recent
-    ;; views never reach the prompt, even for a caller-supplied context that already carries the key.
+    ;; When disabled (or excluded for this profile), strip any preexisting :user_recently_viewed so this turn's
+    ;; context has no recent views, even for a caller-supplied context that already carries the key.
+    ;; This decides only this turn's context, and a later turn sends no recent views. So the full `<context>` block
+    ;; that the history replays decides the recent views of the whole conversation, in both directions (see
+    ;; `metabase.metabot.persistence/replays-full-context?`), also after a profile switch (`/profile`) or a setting
+    ;; change:
+    ;; - When that block holds recent views, it replays them also in a turn that excludes them here.
+    ;; - When that block was sent without recent views, it still counts as full. So no later turn sends them, also
+    ;;   when that turn allows them.
     (if (or (not (metabot.settings/metabot-recent-views-enabled?))
             (contains? profiles-excluding-recent-views profile-id))
       (dissoc context :user_recently_viewed)

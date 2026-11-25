@@ -5,8 +5,8 @@
 
   Other expressions (`re=`, `=?`, and so forth) are implemented with the Hawk test-runner."
   (:require
-   [clojure.walk :as walk]
-   [metabase.test-runner.assert-exprs.malli-equals]))
+   [metabase.test-runner.assert-exprs.malli-equals]
+   [metabase.util.match :as match]))
 
 (comment metabase.test-runner.assert-exprs.malli-equals/keep-me)
 
@@ -15,9 +15,5 @@
 (defn derecordize
   "Convert all record types in `form` to plain maps, so tests won't fail."
   [form]
-  (walk/postwalk
-   (fn [form]
-     (if (record? form)
-       (into {} form)
-       form))
-   form))
+  (match/replace-all form
+    #'record? (into {} &match)))

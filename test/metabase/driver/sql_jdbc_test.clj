@@ -5,8 +5,12 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.quoting :as quoting]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -456,6 +460,55 @@
                                                                          [[1 true] [2 false]] false))]
           (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
           (is (= [1 true 2 false] params)))))))
+
+(deftest do-with-unpooled-default-connection-test
+  ;; the drivers with a method of their own: a driver that only inherits one, as Redshift does, may not support it
+  (mt/test-drivers (set (keys (methods sql-jdbc.sync/current-user-table-privileges)))
+    (testing "a new connection opened from the details returns the rows that a pooled connection returns"
+      (let [privileges (fn [conn]
+                         (vec (sql-jdbc.sync/current-user-table-privileges driver/*driver* {:connection conn})))]
+        (is (= (set (sql-jdbc.execute/do-with-connection-with-options driver/*driver* (mt/id) nil privileges))
+               (set (driver.sql-jdbc/do-with-unpooled-default-connection (mt/db) privileges))))))))
+
+(deftest do-with-unpooled-default-connection-checks-hosts-first-test
+  (testing "the host check runs on the details before a connection is opened, and its refusal is thrown"
+    (let [checked (atom nil)
+          opened  (atom 0)
+          details {:db "mem:birds"}]
+      (mt/with-dynamic-fn-redefs [driver.u/validate-connection-hosts!
+                                  (fn [driver details]
+                                    (reset! checked [driver details])
+                                    (throw (ex-info "Cannot connect to a private or internal network address." {})))
+                                  sql-jdbc.conn/do-with-unpooled-connection-spec
+                                  (fn [& _] (swap! opened inc) [])]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"private or internal network"
+                              (driver.sql-jdbc/do-with-unpooled-default-connection {:engine :h2, :details details}
+                                                                                   identity)))
+        (is (= [:h2 details] @checked))
+        (is (zero? @opened))))))
+
+(deftest do-with-unpooled-default-connection-uses-primary-details-test
+  (testing "inside a write connection context the connection still uses the primary details, not the write details"
+    (let [used (atom nil)]
+      (mt/with-dynamic-fn-redefs [driver.u/validate-connection-hosts! (fn [_driver _details] nil)
+                                  sql-jdbc.conn/do-with-unpooled-connection-spec
+                                  (fn [_driver details _f] (reset! used details) [])]
+        (driver.conn/with-write-connection
+          (driver.sql-jdbc/do-with-unpooled-default-connection {:engine             :h2
+                                                                :details            {:db "mem:sparrows"}
+                                                                :write-data-details {:db "mem:hawks"}}
+                                                               identity))
+        (is (= {:db "mem:sparrows"} @used))))))
+
+(deftest do-with-unpooled-default-connection-skips-testing-connection-test
+  (testing "the connection does not go through the function of Test connection, so a change made there for testing only
+            does not reach it"
+    (mt/with-dynamic-fn-redefs [sql-jdbc.conn/do-with-connection-spec-for-testing-connection
+                                (fn [& _] (throw (ex-info "Test connection path" {})))]
+      (is (false? (driver.sql-jdbc/do-with-unpooled-default-connection
+                   (mt/db)
+                   (fn [^java.sql.Connection conn] (.isClosed conn))))))))
 
 (deftest ^:parallel dot-qualified-test
   (testing "the whole dotted path lands in the keyword's name, which HoneySQL leaves alone"

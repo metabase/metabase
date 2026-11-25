@@ -1,4 +1,5 @@
 (ns metabase.lib.convert
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.lib.convert/->legacy-MBQL {:namespaces [metabase.lib.convert]}}}}}}
   (:refer-clojure :exclude [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)])
   (:require
    #?@(:cljs [[clojure.data :as data]])
@@ -19,6 +20,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
@@ -314,7 +316,7 @@
 
 (defmethod ->mbql5 :mbql.stage/native
   [stage]
-  (m/update-existing stage :template-tags update-vals (fn [tag] (m/update-existing tag :dimension ->mbql5))))
+  (m/update-existing stage :template-tags update-vals lib.schema.template-tag/normalize-dimension))
 
 (defmethod ->mbql5 :mbql/join
   [join]
@@ -469,13 +471,26 @@
            {:query inner-query
             :type  :query})))
 
-;; TODO (Cam 2026-07-17) Deprecate this in 64
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
-  not already legacy MBQL."
-  {:arglists '([x])}
+  not already legacy MBQL.
+
+  DEPRECATED: conversion of entire queries to legacy MBQL is no longer supported and will be removed in the immediate
+  future. Update your code to use only MBQL 5.
+
+  If you are instead converting a column ref (which we will begrudgingly support for the foreseeable future) update
+  your code to use [[->legacy-MBQL-ref]] instead."
+  {:arglists '([x]), :deprecated "0.64.0"}
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
+
+(mu/defn ->legacy-MBQL-ref :- ::mbql.s/Reference
+  "Convert an MBQL `:field`/`:expression`/`:aggregation` ref to Legacy MBQL. Note that `:aggregation` refs need to
+  UUID => index mapping and thus cannot be converted outside of a [[with-aggregation-list]] context."
+  ;; TODO (Cam 2026-11-16) we should add a schema for this trio of ref types, see my note on
+  ;; `:metabase.lib.schema.ref/ref`.
+  [a-ref :- [:or :mbql.clause/field :mbql.clause/expression :mbql.clause/aggregation]]
+  (->legacy-MBQL a-ref))
 
 (defn- metabase-lib-keyword?
   "Does keyword `k` have a`:lib/`, `:lib.columns/` or a `:metabase.lib.*/` namespace?"

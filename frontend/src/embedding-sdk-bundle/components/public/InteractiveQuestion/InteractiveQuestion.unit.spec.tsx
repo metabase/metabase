@@ -62,6 +62,7 @@ import {
   createMockDataset,
   createMockDatasetData,
   createMockModelResult,
+  createMockSearchResult,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -141,11 +142,9 @@ const setup = async ({
     type: cardType,
     collection_id: COLLECTION_ID,
     collection: TEST_COLLECTION,
-    dataset_query: Lib.toLegacyQuery(
-      Lib.createTestQuery(TEST_PROVIDER, {
-        stages: [{ source: { type: "table", id: TEST_TABLE.id } }],
-      }),
-    ),
+    dataset_query: Lib.createTestJsQuery(TEST_PROVIDER, {
+      stages: [{ source: { type: "table", id: TEST_TABLE.id } }],
+    }),
   });
 
   setupCardEndpoints(card);
@@ -252,11 +251,9 @@ describe("InteractiveQuestion", () => {
       <InteractiveQuestion
         card={{
           // MetabaseQueryObject is the public structural mirror of the opaque internal query type
-          query: Lib.toLegacyQuery(
-            Lib.createTestQuery(TEST_PROVIDER, {
-              stages: [{ source: { type: "table", id: TEST_TABLE.id } }],
-            }),
-          ) as unknown as MetabaseQueryObject,
+          query: Lib.createTestJsQuery(TEST_PROVIDER, {
+            stages: [{ source: { type: "table", id: TEST_TABLE.id } }],
+          }) as unknown as MetabaseQueryObject,
         }}
       />,
       {
@@ -371,6 +368,11 @@ describe('questionId: "new"', () => {
         id: 1,
         name: "Orders model",
       }),
+      createMockSearchResult({
+        id: 2,
+        name: "Revenue",
+        model: "metric",
+      }),
     ]);
 
     renderWithSDKProviders(
@@ -422,6 +424,7 @@ describe('questionId: "new"', () => {
     ).not.toBeInTheDocument();
     expect(withinPopover.getByText("Raw Data")).toBeVisible();
     expect(withinPopover.getByText("Models")).toBeVisible();
+    expect(withinPopover.getByText("Metrics")).toBeVisible();
   });
 });
 
@@ -431,9 +434,7 @@ describe('questionId: "new"', () => {
 describe("native query prop (Metabot SQL editor)", () => {
   const NATIVE_QUERY_PATH = `/question#${utf8_to_b64url(
     JSON.stringify({
-      dataset_query: Lib.toLegacyQuery(
-        Lib.createTestNativeQuery(TEST_PROVIDER, { query: "" }),
-      ),
+      dataset_query: Lib.createTestJsNativeQuery(TEST_PROVIDER, { query: "" }),
     }),
   )}`;
 

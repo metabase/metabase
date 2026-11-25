@@ -11,13 +11,13 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import { ObjectDetail } from "metabase/visualizations/components/ObjectDetail/ObjectDetail";
 import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createProductsTable } from "metabase-types/api/mocks/presets";
 
@@ -49,17 +49,16 @@ async function setup(options?: Partial<ObjectDetailProps>) {
   });
   const metadata = createMockMetadataFromState(state);
 
-  const question = checkNotNull(metadata.question(MOCK_CARD.id));
-  const table = checkNotNull(metadata.table(MOCK_TABLE.id));
+  const question = new Question(MOCK_CARD, metadata);
 
   renderWithProviders(
     <ObjectDetail
       data={testDataset}
       question={question}
-      table={table}
+      table={MOCK_TABLE}
       zoomedRow={testDataset.rows[0]}
       zoomedRowID={0}
-      tableForeignKeys={table.fks}
+      tableForeignKeys={MOCK_TABLE.fks}
       settings={{
         column: () => null,
       }}

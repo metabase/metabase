@@ -9,20 +9,15 @@
    [metabase.search.permissions :as search.permissions]))
 
 (defn add-table-where-clauses
-  "Add a `WHERE` clause to the query to only return tables the current user has access to.
-   Also adds any CTEs required for permission filtering."
+  "Add a `WHERE` clause to the query to only return tables the current user has access to."
   [search-ctx qry]
-  (let [{:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx
-                                                                          (mi/->integer :search_index.model_id))]
-    (cond-> qry
-      (seq with) (update :with (fnil into []) with)
-      true       (sql.helpers/where
-                  [:or
-                   [:= :search_index.model nil]
-                   [:!= :search_index.model "table"]
-                   [:and
-                    [:= :search_index.model "table"]
-                    clause]]))))
+  (sql.helpers/where qry [:or
+                          [:= :search_index.model nil]
+                          [:!= :search_index.model "table"]
+                          [:and
+                           [:= :search_index.model "table"]
+                           (search.permissions/permitted-tables-clause search-ctx
+                                                                       (mi/->integer :search_index.model_id))]]))
 
 (defn add-data-app-where-clauses
   "Add a `WHERE` clause to the query to only return data apps the current user can read."
@@ -38,7 +33,8 @@
   so we can return its `:name`."
   [search-ctx qry]
   (let [collection-id-col :search_index.collection_id
-        permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
+        permitted-clause  (search.permissions/permitted-collections-clause
+                           search-ctx collection-id-col :search_index.model)
         personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
         ;; Tables have their own dedicated permission filter (add-table-where-clauses) that checks both data
         ;; permissions and published-via-collection access, so we exclude them from collection filtering here.

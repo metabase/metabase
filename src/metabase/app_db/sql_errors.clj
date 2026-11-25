@@ -86,6 +86,12 @@
   [e]
   (= :table-not-found (error-kind e)))
 
+(defn duplicate-key?
+  "Whether `e` was caused by an insert of a row whose unique key another row, such as that of a concurrent insert,
+  already holds."
+  [e]
+  (= :duplicate-key (error-kind e)))
+
 (defn row-rejected?
   "Whether `e` was caused by the app DB rejecting a row's data: a data exception (SQLSTATE class 22, e.g. a value too
   long for its column) or an integrity-constraint violation (class 23). Other failures, such as a lost connection or

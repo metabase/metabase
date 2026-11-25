@@ -1,80 +1,61 @@
 import { useField } from "formik";
-import type { ChangeEvent, ReactNode, Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
+import { t } from "ttag";
 
-import type { FileInputProps } from "metabase/common/components/FileInput";
-import { FileInput } from "metabase/common/components/FileInput";
-import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { FormField, type FormFieldProps } from "metabase/forms";
+import { FileInput, type FileInputProps, Icon } from "metabase/ui";
 
 export type FormFileInputEncoding = "base64";
 
-export interface FormFileInputProps
-  extends
-    Omit<FileInputProps, "value" | "onChange" | "onBlur">,
-    Pick<FormFieldProps, "mb" | "gap"> {
+export interface FormFileInputProps extends Omit<
+  FileInputProps<false>,
+  "value" | "onChange" | "onBlur" | "placeholder"
+> {
   name: string;
   encoding?: FormFileInputEncoding;
   title?: string;
   description?: ReactNode;
-  optional?: boolean;
 }
 
 export const FormFileInput = forwardRef(function FormFileInput(
-  {
-    name,
-    encoding,
-    className,
-    style,
-    mb,
-    gap,
-    title,
-    description,
-    optional,
-    ...props
-  }: FormFileInputProps,
-  ref: Ref<HTMLDivElement>,
+  { name, encoding, title, ...props }: FormFileInputProps,
+  ref: Ref<HTMLButtonElement>,
 ) {
-  const id = useUniqueId();
-  const [{ onBlur }, { error, touched }, { setValue }] = useField(name);
+  const [, { error, touched }, { setValue, setTouched }] = useField(name);
 
   const handleChange = useCallback(
-    async (event: ChangeEvent<HTMLInputElement>) => {
-      setValue(await getFieldValue(event.target, encoding));
+    async (file: File | null) => {
+      setValue(await getFieldValue(file, encoding));
     },
     [encoding, setValue],
   );
 
   return (
-    <FormField
+    <FileInput
+      {...props}
       ref={ref}
-      className={className}
-      style={style}
-      mb={mb}
-      gap={gap}
-      title={title}
-      description={description}
-      htmlFor={id}
+      name={name}
+      label={title}
+      // the database form passes placeholders meant for text fields ("/path/to/keystore")
+      placeholder={t`Select a file`}
+      leftSection={<Icon name="upload" />}
       error={touched ? error : undefined}
-      optional={optional}
-    >
-      <FileInput
-        {...props}
-        id={id}
-        name={name}
-        onChange={handleChange}
-        onBlur={onBlur}
-      />
-    </FormField>
+      errorProps={{ role: "alert" }}
+      onChange={handleChange}
+      onBlur={() => setTouched(true)}
+      fileInputProps={{
+        "aria-label": title ? t`${title} file input` : t`File input`,
+      }}
+    />
   );
 });
 
 const getFieldValue = (
-  { files }: HTMLInputElement,
+  file: File | null,
   encoding?: FormFileInputEncoding,
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
-    if (!files?.length) {
+    if (file == null) {
       resolve("");
       return;
     }
@@ -84,9 +65,9 @@ const getFieldValue = (
     reader.onerror = () => reject();
 
     if (encoding === "base64") {
-      reader.readAsDataURL(files[0]);
+      reader.readAsDataURL(file);
     } else {
-      reader.readAsText(files[0]);
+      reader.readAsText(file);
     }
   });
 };

@@ -7,6 +7,8 @@ import {
 } from "__support__/enterprise";
 import {
   setupApiKeyEndpoints,
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupEmailEndpoints,
   setupGroupsEndpoint,
@@ -174,20 +176,19 @@ export const setup = async ({
     email: { configured: false },
     slack: { configured: false },
   });
-  fetchMock.get("path:/api/ee/security-center", {
+  fetchMock.get("path:/api/ee/security-center/advisories", {
     last_checked_at: null,
+    last_sync_attempted_at: null,
+    last_sync_error: null,
     advisories: [],
   });
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
   fetchMock.get("path:/api/ee/sso/oidc", []);
   setupLibraryEndpoints();
-  fetchMock.get("path:/api/ee/remote-sync/dirty", {
-    data: [],
-    metadata: {
-      changed_collections: {},
-      is_dirty: false,
-      has_removed_items: false,
-    },
+  setupCollectionsEndpoints({ collections: [] });
+  setupCollectionItemsEndpoint({
+    collection: { id: "root" },
+    collectionItems: [],
   });
 
   const user = createMockUser({

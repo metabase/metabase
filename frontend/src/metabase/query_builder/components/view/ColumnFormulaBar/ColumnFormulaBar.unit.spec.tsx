@@ -195,12 +195,19 @@ describe("column formula bar", () => {
     expect(Lib.displayInfo(query, -1, expressions[0]).displayName).toBe(
       "Total * 2",
     );
-    expect(Lib.toLegacyQuery(query)).toMatchObject({
-      query: {
-        expressions: {
-          "Total * 2": ["*", ["field", ORDERS.TOTAL, expect.anything()], 2],
+    expect(Lib.toJsQuery(query)).toMatchObject({
+      stages: [
+        {
+          expressions: [
+            [
+              "*",
+              expect.objectContaining({ "lib/expression-name": "Total * 2" }),
+              ["field", expect.anything(), ORDERS.TOTAL],
+              2,
+            ],
+          ],
         },
-      },
+      ],
     });
     await expectClosed();
     expect(trigger).toHaveFocus();
@@ -302,13 +309,27 @@ describe("column formula bar", () => {
 
     await waitFor(() => expect(onQuestionChange).toHaveBeenCalledTimes(1));
     const [nextQuestion] = onQuestionChange.mock.calls[0];
-    expect(Lib.toLegacyQuery(nextQuestion.query())).toMatchObject({
-      query: {
-        expressions: {
-          "Total * 2": ["+", 1, 2],
-          "Total * 2 (1)": ["*", ["field", ORDERS.TOTAL, expect.anything()], 2],
+    expect(Lib.toJsQuery(nextQuestion.query())).toMatchObject({
+      stages: [
+        {
+          expressions: [
+            [
+              "+",
+              expect.objectContaining({ "lib/expression-name": "Total * 2" }),
+              1,
+              2,
+            ],
+            [
+              "*",
+              expect.objectContaining({
+                "lib/expression-name": "Total * 2 (1)",
+              }),
+              ["field", expect.anything(), ORDERS.TOTAL],
+              2,
+            ],
+          ],
         },
-      },
+      ],
     });
     await expectClosed();
   });

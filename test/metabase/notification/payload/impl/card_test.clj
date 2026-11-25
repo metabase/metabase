@@ -574,12 +574,11 @@
     (notification.tu/with-notification-cleanup!
       (mt/with-temp [:model/Card {card-id :id} {:name          notification.tu/default-card-name
                                                 :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
-        (let [notification (models.notification/create-notification!
-                            {:payload_type :notification/card
-                             :payload      {:card_id card-id}
-                             :creator_id   (mt/user->id :crowberto)}
-                            []
-                            [@notification.tu/default-email-handler])]
+        (let [[notification] (models.notification/create-notifications! [{:payload_type :notification/card
+                                                                          :payload      {:card_id card-id}
+                                                                          :creator_id   (mt/user->id :crowberto)
+                                                                          :subscriptions []
+                                                                          :handlers [@notification.tu/default-email-handler]}])]
           (testing "sanity: notification is active"
             (is (true? (t2/select-one-fn :active :model/Notification :id (:id notification)))))
           ;; Simulate an orphaned notification: delete the NotificationCard directly.

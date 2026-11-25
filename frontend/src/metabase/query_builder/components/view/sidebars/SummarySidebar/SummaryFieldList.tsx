@@ -86,7 +86,7 @@ export function SummaryFieldList({
           section: S.searchFieldSection,
         }}
         variant="unstyled"
-        size="xs"
+        size="md"
         placeholder={t`Search…`}
         aria-label={t`Search fields`}
         leftSection={<Icon name="search" />}

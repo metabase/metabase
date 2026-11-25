@@ -12,6 +12,7 @@
    [java-time.api :as t]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.common :as api.embed.common]
+   [metabase.embedding.util :as embedding.util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter-test :as chain-filer-test]
@@ -536,7 +537,7 @@
                                       :id           "_date_"
                                       :type         "dimension"
                                       :default      "Q1-2014"
-                                      :dimension    [:field (mt/id :checkins :date) nil]
+                                      :field-id     (mt/id :checkins :date)
                                       :widget-type  "date/quarter-year"}}}}})
 
 (deftest default-value-card-query-test
@@ -587,7 +588,7 @@
                                                         :display-name "Date"
                                                         :id           "_date_"
                                                         :type         "dimension"
-                                                        :dimension    [:field (mt/id :checkins :date) nil]
+                                                        :field-id     (mt/id :checkins :date)
                                                         :widget-type  "date/quarter-year"}}}}
    :enable_embedding true
    :embedding_params {:date :enabled}})
@@ -719,7 +720,7 @@
                                                                     :name         "category"
                                                                     :display-name "Category"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                    :field-id     (mt/id :venues :category_id)
                                                                     :widget-type  :id}}))}]
           (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
                                 :table_id           (mt/id :venues)
@@ -772,25 +773,25 @@
                                                                     :name         "category"
                                                                     :display-name "Category"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                    :field-id     (mt/id :venues :category_id)
                                                                     :widget-type  :id}
                                                         "id"       {:id           "_ID_"
                                                                     :name         "id"
                                                                     :display-name "ID"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                                                    :field-id     (mt/id :venues :id)
                                                                     :widget-type  :id}
                                                         "name"     {:id           "_NAME_"
                                                                     :name         "name"
                                                                     :display-name "Name"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :name)))
+                                                                    :field-id     (mt/id :venues :name)
                                                                     :widget-type  :id}
                                                         "price"    {:id           "_PRICE_"
                                                                     :name         "price"
                                                                     :display-name "Price"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                                                                    :field-id     (mt/id :venues :price)
                                                                     :widget-type  :id}}))}]
           (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
                                 :table_id           (mt/id :venues)
@@ -849,7 +850,7 @@
                                                          :name         "category"
                                                          :display-name "Category"
                                                          :type         :dimension
-                                                         :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                         :field-id     (mt/id :venues :category_id)
                                                          :widget-type  :id}}))}
             dash-with (fn [status]
                         {:enable_embedding true
@@ -1211,7 +1212,7 @@
 (deftest remove-embedding-params
   (testing "parameters that are not in the `embedding-params` map at all should get removed by `enabled-params`"
     (is (= []
-           (#'api.embed.common/enabled-params [{:id "_FOO_", :type :category, :slug "foo"}] {})))))
+           (embedding.util/enabled-params [{:id "_FOO_", :type :category, :slug "foo"}] {})))))
 
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"
@@ -1348,19 +1349,19 @@
                                                :display-name "Price"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))}
+                                               :field-id     (mt/id :venues :price)}
                                       "cat"   {:id           "c1"
                                                :name         "cat"
                                                :display-name "Cat"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))}
+                                               :field-id     (mt/id :venues :category_id)}
                                       "name"  {:id           "n1"
                                                :name         "name"
                                                :display-name "Name"
                                                :type         :dimension
                                                :widget-type  :string/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :name)))}}))
+                                               :field-id     (mt/id :venues :name)}}))
                                :parameters [{:id "p1" :type :number/= :slug "price" :name "Price"
                                              :target [:dimension [:template-tag "price"]]}
                                             {:id "c1" :type :number/= :slug "cat" :name "Cat"
@@ -1399,13 +1400,13 @@
                                                :display-name "Price"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))}
+                                               :field-id     (mt/id :venues :price)}
                                       "cat"   {:id           "c1"
                                                :name         "cat"
                                                :display-name "Cat"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))}}))
+                                               :field-id     (mt/id :venues :category_id)}}))
                                :parameters [{:id "p1" :type :number/= :slug "price_v2" :name "Price"
                                              :target [:dimension [:template-tag "price"]]}
                                             {:id "c1" :type :number/= :slug "cat" :name "Cat"
@@ -1433,13 +1434,13 @@
                                                                 :display-name "Total"
                                                                 :type         :dimension
                                                                 :widget-type  :number/>=
-                                                                :dimension    [:field (mt/id :orders :total) nil]}
+                                                                :field-id     (mt/id :orders :total)}
                                                        "state" {:id           "s1"
                                                                 :name         "state"
                                                                 :display-name "State"
                                                                 :type         :dimension
                                                                 :widget-type  :string/=
-                                                                :dimension    [:field (mt/id :people :state) nil]}}}}}]
+                                                                :field-id     (mt/id :people :state)}}}}}]
         (let [token (card-token card {:params {:total []}})]
           (is (seq (:values (client/client :get 200 (format "embed/card/%s/params/s1/values" token))))))))))
 
@@ -1891,7 +1892,7 @@
                                                                                                  :name         "NAME"
                                                                                                  :display-name "Name"
                                                                                                  :type         :dimension
-                                                                                                 :dimension    [:field (mt/id :people :name) nil]
+                                                                                                 :field-id     (mt/id :people :name)
                                                                                                  :widget-type  :string/=
                                                                                                  :default      nil}}})
                                                             :enable_embedding true
@@ -2205,13 +2206,13 @@
                                                                             :name         "NAME"
                                                                             :display_name "Name"
                                                                             :type         :dimension
-                                                                            :dimension    [:field (mt/id :venues :name) nil]
+                                                                            :field-id     (mt/id :venues :name)
                                                                             :required     true}
                                                                     "PRICE" {:id           param-not-enabled
                                                                              :name         "PRICE"
                                                                              :display_name "Price"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :venues :price) nil]
+                                                                             :field-id     (mt/id :venues :price)
                                                                              :required     true}}}}
                                         :name       "native card with field filter"
                                         :parameters [{:id     param-field-values
@@ -2235,7 +2236,7 @@
                                                                          :name         "ID"
                                                                          :display_name "Id"
                                                                          :type         :dimension
-                                                                         :dimension    [:field (mt/id :people :id) nil]
+                                                                         :field-id     (mt/id :people :id)
                                                                          :required     true}}}}
                                        :name       "native card with named field filter"
                                        :parameters [{:id     param-labeled-field-values

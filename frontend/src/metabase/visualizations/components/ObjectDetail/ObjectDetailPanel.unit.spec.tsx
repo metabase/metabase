@@ -13,6 +13,7 @@ import { getNextId, waitForRequestsToSettle } from "__support__/utils";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
@@ -154,22 +155,25 @@ const metadata = createMockMetadata({
   ],
 });
 
-const mockQuestion = checkNotNull(metadata.question(mockCard.id));
+const mockQuestion = new Question(mockCard, metadata);
 
-const mockDataset = checkNotNull(metadata.question(mockDatasetCard.id));
+const mockDataset = new Question(mockDatasetCard, metadata);
 
-const mockDatasetNoPk = checkNotNull(metadata.question(mockDatasetNoPkCard.id));
+const mockDatasetNoPk = new Question(mockDatasetNoPkCard, metadata);
 
-const mockDatasetMultiplePks = checkNotNull(
-  metadata.question(mockDatasetMultiplePksCard.id),
+const mockDatasetMultiplePks = new Question(
+  mockDatasetMultiplePksCard,
+  metadata,
 );
 
-const mockDatasetWithClauses = checkNotNull(
-  metadata.question(mockDatasetWithClausesCard.id),
+const mockDatasetWithClauses = new Question(
+  mockDatasetWithClausesCard,
+  metadata,
 );
 
-const mockDatasetNoWritePermission = checkNotNull(
-  metadata.question(mockDatasetNoWritePermissionCard.id),
+const mockDatasetNoWritePermission = new Question(
+  mockDatasetNoWritePermissionCard,
+  metadata,
 );
 
 const implicitCreateAction = createMockImplicitQueryAction({
@@ -328,7 +332,7 @@ describe("ObjectDetailPanel", () => {
   it("should fetch table foreign keys on mount", async () => {
     const { fetchTableFks } = setup({
       question: mockQuestion,
-      table: metadata.table(mockTable.id),
+      table: mockTable,
     });
     await waitFor(() => expect(fetchTableFks).toHaveBeenCalledTimes(1));
   });
@@ -336,7 +340,7 @@ describe("ObjectDetailPanel", () => {
   it("should not fetch table foreign keys in object detail viz (VIZ-1133)", async () => {
     const { fetchTableFks } = setup({
       question: mockQuestion.setDisplay("object"),
-      table: metadata.table(mockTable.id),
+      table: mockTable,
     });
     await waitFor(() => expect(fetchTableFks).not.toHaveBeenCalled());
   });

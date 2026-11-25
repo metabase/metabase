@@ -24,6 +24,7 @@ import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import type { Database, Table, TokenFeatures, User } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockDatabase,
   createMockSchema,
   createMockTable,
@@ -194,6 +195,12 @@ const SEARCH_SEMANTICS_DATABASE = createMockDatabase({
     ORDER_ITEM_DISCOUNT_TABLE,
     LITERAL_SEARCH_TABLE,
   ],
+});
+
+const DATABASE_WITH_NO_TABLES = createMockDatabase({
+  id: nextId(),
+  name: "DATABASE_WITH_NO_TABLES",
+  tables: [],
 });
 
 const MOCK_DATABASES = [
@@ -419,6 +426,17 @@ describe("TablePicker", () => {
       expect(item(QUX)).toBeInTheDocument();
     });
 
+    it("stops loading and hides the chevron when an expanded database has no tables (metabase#79450)", async () => {
+      setup({
+        databases: [DATABASE_WITH_MULTIPLE_SCHEMAS, DATABASE_WITH_NO_TABLES],
+      });
+      await waitLoading();
+
+      await clickItem(DATABASE_WITH_NO_TABLES);
+
+      await expectRowToBeEmpty(DATABASE_WITH_NO_TABLES);
+    });
+
     it("should be possible to navigate with the keyboard", async () => {
       const { onChange } = setup();
 
@@ -593,7 +611,7 @@ describe("TablePicker", () => {
         schema: PUBLIC_SCHEMA.name,
         owner_user_id: currentUser.id,
         estimated_row_count: 3210,
-        is_published: true,
+        collection: createMockCollection(),
       });
 
       const row = await setupMetadataTable(table);
@@ -620,7 +638,7 @@ describe("TablePicker", () => {
         owner_user_id: null,
         owner_email: "owner@example.com",
         estimated_row_count: 0,
-        is_published: false,
+        collection: null,
       });
 
       const row = await setupMetadataTable(table);
@@ -647,7 +665,7 @@ describe("TablePicker", () => {
         owner_user_id: null,
         owner_email: null,
         estimated_row_count: null,
-        is_published: false,
+        collection: null,
       });
 
       const row = await setupMetadataTable(table);
@@ -1122,6 +1140,22 @@ function item(input: string | { display_name?: string; name: string } | null) {
     return null;
   }
   return textElement.closest('[data-testid="tree-item"]') ?? null;
+}
+
+async function expectRowToBeEmpty(database: Database) {
+  const row = screen
+    .getAllByTestId("tree-item")
+    .find((row) => within(row).queryByText(database.name) != null);
+  if (!row) {
+    throw new Error(`No tree item for ${database.name}`);
+  }
+
+  await waitFor(() => {
+    expect(
+      within(row).queryByRole("button", { name: /Expand|Collapse/ }),
+    ).not.toBeInTheDocument();
+  });
+  expect(within(row).queryByLabelText("Loading")).not.toBeInTheDocument();
 }
 
 async function clickItem(

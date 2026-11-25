@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useField } from "formik";
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
@@ -50,9 +51,6 @@ export const FormTextarea = forwardRef(function FormTextarea(
       error={touched ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
-      styles={{
-        ...(props.styles ?? {}),
-      }}
     />
   );
 });

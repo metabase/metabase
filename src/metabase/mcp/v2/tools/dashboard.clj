@@ -15,6 +15,7 @@
    publishing are inherited, never reimplemented. This namespace words the pipeline's errors through
    [[metabase.mcp.v2.dashboard-errors]] and projects the result for the model."
   (:require
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.dashboard-errors :as dashboard-errors]
    [metabase.mcp.v2.message :as message]
@@ -26,6 +27,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.toolkit.dashboard-op-schema :as dashboard-op-schema]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -40,13 +42,50 @@
 
 ;;; ------------------------------------------------ Response ------------------------------------------------------
 
+(defn- archived-subscription-row
+  "A readable archived subscription as the result shows it, from the `:archived-subscriptions` effect of
+   [[dashboard-write/write!]]."
+  [{:keys [id parameters already-broken? creator-name channels recipient-count]}]
+  {:id              id
+   :filters         parameters
+   :already_broken  already-broken?
+   :creator         creator-name
+   :channels        channels
+   :recipient_count recipient-count})
+
 (defn- dashboard-row
-  "The projection row for `dash`, a dashboard from [[dashboard-write/write!]], saved or not.
+  "The projection row for `dash`, the dashboard [[dashboard-write/write!]] returns, saved or not.
    It goes through the same hydration and redaction `get_content` uses, so both tools return the same shape."
   [dash]
   (-> dash
       redaction/redact-dashboard
       projections/dashboard-row))
+
+(defn- visible-connections
+  "The `dropped-connections` that redaction showed on `stored`, the dashboard before the ops, nil on a create.
+   The user must be able to read the stored dashcard's card, unless it has none, and a series entry's card.
+   An entry whose card the user can't read in `dash`, the saved or dry-run dashboard, keeps its filter and dashcard
+   with a nil `:card_id`, unless that card was a series card on the stored dashcard."
+  [stored dash dropped-connections]
+  ;; Redaction empties every mapping of a dashcard whose card is hidden, and drops the mappings to a hidden series
+  ;; card, so a lost connection it hid isn't reported either. A `replace_card` that promotes a hidden series card
+  ;; reports that card's lost connection as the dashcard's own, so the stored series are checked too. A text or
+  ;; heading card has no card, and redaction keeps its mappings.
+  (when (seq dropped-connections)
+    (let [readable        (into (redaction/readable-card-ids stored) (redaction/readable-card-ids dash))
+          shown?          #(or (nil? %) (contains? readable %))
+          stored-card-ids (u/index-by :id :card_id (:dashcards stored))
+          stored-series   (u/index-by :id #(into #{} (keep :id) (:series %)) (:dashcards stored))]
+      (into []
+            (keep (fn [{:keys [dashcard_id card_id series] :as entry}]
+                    (let [card-shown? (shown? card_id)]
+                      (when (and (shown? (stored-card-ids dashcard_id))
+                                 (or card-shown?
+                                     (and (not series)
+                                          (not (contains? (stored-series dashcard_id) card_id)))))
+                        (cond-> entry
+                          (not card-shown?) (assoc :card_id nil))))))
+            dropped-connections))))
 
 ;;; ------------------------------------------------- Schema -------------------------------------------------------
 
@@ -60,7 +99,7 @@
     [:maybe [:or
              [:int {:description "Numeric id of the dashboard to update."}]
              [:string {:description "21-character entity_id of the dashboard to update."}]]]]
-   [:name {:optional true} [:maybe [:string {:min 1 :description "Dashboard title."}]]]
+   [:name {:optional true :description "Dashboard title."} [:maybe ::dashboards.schema/dashboard.name]]
    [:description {:optional true} [:maybe [:string {:description "One or two sentences on what the dashboard answers."}]]]
    [:collection_id {:optional true}
     [:maybe [:or
@@ -68,9 +107,9 @@
              [:string {:description "Collection entity_id, or \"root\" for the top-level collection."}]]]]
    [:collection_position {:optional true}
     [:maybe [:int {:min 1 :description "Pin position within the collection; omit to leave it unpinned."}]]]
-   [:width {:optional true}
-    [:maybe [:enum {:description "\"fixed\" (default) centers the grid; \"full\" stretches it to the browser width."}
-             "fixed" "full"]]]
+   [:width {:optional true
+            :description "\"fixed\" (default) centers the grid; \"full\" stretches it to the browser width."}
+    [:maybe ::dashboards.schema/dashboard.width]]
    [:auto_apply_filters {:optional true}
     [:maybe [:boolean {:description "When false, filter changes wait for the viewer to press Apply. Default true."}]]]
    [:cache_ttl {:optional true} [:maybe [:int {:min 1 :description "Cache lifetime for this dashboard's results, in hours."}]]]
@@ -121,11 +160,14 @@
   add_heading, add_link, add_iframe, add_action, duplicate_card, replace_card, move, resize, remove,
   set_series, patch_dashcard, add_tab, rename_tab, move_tab, duplicate_tab, remove_tab, add_parameter,
   update_parameter, remove_parameter, move_parameter, wire_parameter, unwire_parameter. Before your first
-  add_parameter or wire_parameter, read learn(\"dashboard-filters\") unless already loaded — parameter types,
-  target grammar, linked filters, value sources; learn(\"dashboard-layout\") covers the 24-column grid,
+  add_parameter, remove_parameter or wire_parameter, read learn(\"dashboard-filters\") unless already loaded —
+  parameter types, target grammar, linked filters, value sources; learn(\"dashboard-layout\") covers the 24-column grid,
   per-display default sizes, and layout conventions. validate_only: true returns the layout the ops would
   produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
-  clean dry run can still be rejected. Returns the resulting dashboard, so no follow-up read is needed.
+  clean dry run can still be rejected. A card that move, resize or an explicit position puts over others pushes
+  them down, and pushed_dashcard_ids lists them. Filter connections lost without unwire_parameter or
+  patch_dashcard are listed in dropped_connections; reconnect them or tell the user. Returns the resulting dashboard,
+  so no follow-up read is needed.
   Requires write permission on the dashboard and read permission on each card an op wires. A card an op adds or
   makes a filter's value source needs read permission too, unless the dashboard already uses it."
   {:name           "dashboard_write"
@@ -137,29 +179,41 @@
    :annotations    {:readOnlyHint false :destructiveHint true}
    :args           dashboard-write-args-schema}
   [args {:keys [token-scopes]}]
-  (let [dispatched (v2.write/dispatch-write dashboard-write-entry args)]
-    (common/success-content
-     (v2.write/readback token-scopes [metabot.scope/agent-content-read]
-                        (projections/project
-                         :dashboard :concise
-                         (dashboard-errors/do-with-teaching-errors
-                          #(dashboard-row
-                            (case (first dispatched)
-                              :create
-                              (let [[_ body] dispatched
-                                    attrs    (create-attrs body)]
-                                (when (contains? body :archived)
-                                  (common/throw-teaching-error
-                                   (message/msg [(str "\"archived\" applies to method \"update\" "
-                                                      "only — remove it from this create call.")])))
-                                (dashboard-write/write! {:attrs          attrs
-                                                         :ops            (:ops body)
-                                                         :validate-only? (boolean (:validate_only body))}))
+  (let [dispatched (v2.write/dispatch-write dashboard-write-entry args)
+        written    (dashboard-errors/do-with-teaching-errors
+                    #(case (first dispatched)
+                       :create
+                       (let [[_ body] dispatched
+                             attrs    (create-attrs body)]
+                         (when (contains? body :archived)
+                           (common/throw-teaching-error
+                            (message/msg [(str "\"archived\" applies to method \"update\" "
+                                               "only — remove it from this create call.")])))
+                         (dashboard-write/write! {:attrs          attrs
+                                                  :ops            (:ops body)
+                                                  :validate-only? (boolean (:validate_only body))}))
 
-                              :update
-                              (let [[_ id body] dispatched]
-                                (dashboard-write/write! {:dashboard      (fetch-dashboard id)
+                       :update
+                       (let [[_ id body] dispatched
+                             stored      (fetch-dashboard id)]
+                         (assoc (dashboard-write/write! {:dashboard      stored
                                                          :attrs          (dashboard-attrs body)
                                                          :ops            (:ops body)
-                                                         :validate-only? (boolean (:validate_only body))}))))))
-                        nil))))
+                                                         :validate-only? (boolean (:validate_only body))})
+                                :stored stored))))
+        {dash :dashboard
+         :keys [stored]
+         {:keys [pushed-dashcard-ids dropped-connections archived-subscriptions]} :effects} written
+        dropped    (visible-connections stored dash dropped-connections)
+        ;; Unreadable subscriptions only add to the count.
+        listed     (into [] (comp (filter :readable?) (map archived-subscription-row)) archived-subscriptions)]
+    (common/success-content
+     (v2.write/readback token-scopes [metabot.scope/agent-content-read]
+                        (cond-> (projections/project :dashboard :concise (dashboard-row dash))
+                          (seq pushed-dashcard-ids)    (assoc :pushed_dashcard_ids pushed-dashcard-ids)
+                          (seq dropped)                (assoc :dropped_connections dropped)
+                          (seq listed)                 (assoc :archived_subscriptions listed)
+                          (seq archived-subscriptions) (assoc :archived_subscription_count
+                                                              (count archived-subscriptions)))
+                        ;; A token that can't read the dashboard back still learns that subscriptions were archived.
+                        [:archived_subscription_count]))))

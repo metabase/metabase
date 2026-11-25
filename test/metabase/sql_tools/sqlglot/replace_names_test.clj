@@ -5,7 +5,8 @@
    Tests call sql-parsing/replace-names directly since it doesn't need Metabase metadata."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.sql-parsing.core :as sql-parsing]))
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.core :as sql-tools]))
 
 (defn- replace-names
   "Helper that mirrors sql-tools/replace-names API but calls SQLGlot directly."
@@ -20,7 +21,7 @@
         replacements' (-> replacements
                           (update :tables #(when % (vec %)))
                           (update :columns #(when % (vec %))))]
-    (sql-parsing/replace-names dialect sql-string replacements')))
+    (sql-parsing/replace-names (sql-tools/sqlglot-parser) dialect sql-string replacements')))
 
 (deftest ^:parallel basic-table-rename-test
   (testing "Basic table rename"
@@ -268,3 +269,19 @@
                           "SELECT orders.total FROM orders"
                           {:tables  {{:table "orders"} "transactions"}
                            :columns {{:table "orders" :column "total"} "amount"}})))))
+
+(deftest ^:parallel column-rename-quotes-names-that-need-it-test
+  (testing "A new column name that is not a plain identifier is quoted whole, as a new table name is"
+    (doseq [[new-name expected] [["my-col" "SELECT \"my-col\" FROM orders"]
+                                 ["x,y"    "SELECT \"x,y\" FROM orders"]
+                                 ["select" "SELECT \"select\" FROM orders"]
+                                 ["a.b"    "SELECT \"a.b\" FROM orders"]
+                                 ["\"Id\"" "SELECT \"Id\" FROM orders"]]]
+      (is (= expected
+             (replace-names :postgres
+                            "SELECT id FROM orders"
+                            {:columns {{:table "orders" :column "id"} new-name}}))
+          new-name)))
+  (testing "A new table name that is not a plain identifier is quoted whole"
+    (is (= "SELECT * FROM \"x,y\""
+           (replace-names :postgres "SELECT * FROM people" {:tables {{:table "people"} "x,y"}})))))

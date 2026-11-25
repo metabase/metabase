@@ -15,7 +15,6 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metrics.api-dataset-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -655,7 +654,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
@@ -670,7 +668,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/sum price-col)))]
       (mt/with-temp [:model/Measure measure {:name       "Total Price"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
@@ -685,7 +682,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/avg (lib/case [[(lib/>= rating-col 4) 1]] 0))))]
       (mt/with-temp [:model/Measure measure {:name       "High Rating Ratio"
-                                             :table_id   (mt/id :products)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
@@ -715,7 +711,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated  (hydrate-measure (:id measure))
@@ -733,7 +728,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated  (hydrate-measure (:id measure))
@@ -751,7 +745,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Checkin Count"
-                                             :table_id   (mt/id :checkins)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated (hydrate-measure (:id measure))
@@ -769,7 +762,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated (hydrate-measure (:id measure))
@@ -787,7 +779,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated  (hydrate-measure (:id measure))
@@ -841,7 +832,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Protected Measure"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
@@ -864,7 +854,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Accessible Measure"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
@@ -892,7 +881,6 @@
           mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Protected Measure"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-query}]
         ;; crowberto is admin and can bypass data perms
         (let [response (mt/user-http-request :crowberto :post 202 "metric/dataset"
@@ -1203,11 +1191,13 @@
 
 (deftest dataset-source-card-count-test
   (testing "POST /api/metric/dataset with metric based on a model (source-card)"
-    (mt/with-temp [:model/Card model  {:name          "Orders Model"
-                                       :type          :model
-                                       :dataset_query (mt/mbql-query orders)}
+    (mt/with-temp [:model/Card model  (mt/card-with-metadata {:name          "Orders Model"
+                                                              :type          :model
+                                                              :table_id      (mt/id :orders)
+                                                              :dataset_query (mt/mbql-query orders)})
                    :model/Card metric {:name          "Model Count Metric"
                                        :type          :metric
+                                       :table_id      (mt/id :orders)
                                        :dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (str "card__" (:id model))
@@ -1220,11 +1210,13 @@
 
 (deftest dataset-source-card-with-filter-test
   (testing "POST /api/metric/dataset with source-card metric and dimension filter"
-    (mt/with-temp [:model/Card model  {:name          "Orders Model"
-                                       :type          :model
-                                       :dataset_query (mt/mbql-query orders)}
+    (mt/with-temp [:model/Card model  (mt/card-with-metadata {:name          "Orders Model"
+                                                              :type          :model
+                                                              :table_id      (mt/id :orders)
+                                                              :dataset_query (mt/mbql-query orders)})
                    :model/Card metric {:name          "Model Count Metric"
                                        :type          :metric
+                                       :table_id      (mt/id :orders)
                                        :dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (str "card__" (:id model))
@@ -1240,11 +1232,13 @@
 
 (deftest dataset-source-card-with-projection-test
   (testing "POST /api/metric/dataset with source-card metric and dimension breakout"
-    (mt/with-temp [:model/Card model  {:name          "Orders Model"
-                                       :type          :model
-                                       :dataset_query (mt/mbql-query orders)}
+    (mt/with-temp [:model/Card model  (mt/card-with-metadata {:name          "Orders Model"
+                                                              :type          :model
+                                                              :table_id      (mt/id :orders)
+                                                              :dataset_query (mt/mbql-query orders)})
                    :model/Card metric {:name          "Model Count Metric"
                                        :type          :metric
+                                       :table_id      (mt/id :orders)
                                        :dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (str "card__" (:id model))
@@ -1261,13 +1255,15 @@
 
 (deftest dataset-source-card-expression-dimension-projection-test
   (testing "POST /api/metric/dataset with source-card metric, projecting on a custom column dimension"
-    (mt/with-temp [:model/Card model  {:name          "Orders Model with Expression"
-                                       :type          :model
-                                       :dataset_query (mt/mbql-query orders
-                                                        {:expressions {"Discount Plus One"
-                                                                       [:+ $discount 1]}})}
+    (mt/with-temp [:model/Card model  (mt/card-with-metadata {:name          "Orders Model with Expression"
+                                                              :type          :model
+                                                              :table_id      (mt/id :orders)
+                                                              :dataset_query (mt/mbql-query orders
+                                                                               {:expressions {"Discount Plus One"
+                                                                                              [:+ $discount 1]}})})
                    :model/Card metric {:name          "Model Count Metric"
                                        :type          :metric
+                                       :table_id      (mt/id :orders)
                                        :dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (str "card__" (:id model))
@@ -1297,10 +1293,8 @@
                                               :type          :metric
                                               :dataset_query (-> (lib/query mp orders)
                                                                  (lib/aggregate (lib/count)))}
-                       :model/Segment {sid :id} {:table_id   (mt/id :orders)
-                                                 :definition {:source-table (mt/id :orders)
-                                                              :filter       (lib.convert/->legacy-MBQL
-                                                                             (lib/> total 100))}}]
+                       :model/Segment {sid :id} {:definition (-> (lib/query mp orders)
+                                                                 (lib/filter (lib/> total 100)))}]
           (let [hydrated    (hydrate-metric (:id metric))
                 total-dim   (find-dimension-by-name hydrated "TOTAL")]
             (is (some? total-dim))

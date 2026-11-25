@@ -4,15 +4,25 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Markdown } from "metabase/common/components/Markdown";
 import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { Icon } from "metabase/ui";
+import { Ellipsified, Flex, Icon } from "metabase/ui";
 import { isEmpty } from "metabase/utils/validate";
 import type { UnrestrictedLinkEntity } from "metabase-types/api";
 
-import {
-  EllipsifiedEntityContainer,
-  EntityDisplayContainer,
-  LeftContainer,
-} from "./EntityDisplay.styled";
+type EntityRowProps = {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  info?: React.ReactNode;
+};
+
+const EntityRow = ({ icon, children, info }: EntityRowProps) => (
+  <Flex w="100%" align="center" justify="space-between" gap="sm">
+    <Flex w="100%" miw={0} align="center" gap="sm">
+      {icon}
+      <Ellipsified flex={1}>{children}</Ellipsified>
+    </Flex>
+    {info}
+  </Flex>
+);
 
 export const EntityDisplay = ({
   entity,
@@ -32,33 +42,32 @@ export const EntityDisplay = ({
   };
 
   return (
-    <EntityDisplayContainer>
-      <LeftContainer>
-        <EntityIcon color="core-brand" {...getSearchIcon(entity)} />
-        <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
-      </LeftContainer>
-      {showDescription && entity?.description && (
-        <Icon
-          name="info"
-          c="text-secondary"
-          tooltip={
-            <Markdown dark compact disallowHeading unstyleLinks lineClamp={8}>
-              {entity.description}
-            </Markdown>
-          }
-        />
-      )}
-    </EntityDisplayContainer>
+    <EntityRow
+      icon={<EntityIcon color="core-brand" {...getSearchIcon(entity)} />}
+      info={
+        showDescription &&
+        entity?.description && (
+          <Icon
+            name="info"
+            c="text-secondary"
+            tooltip={
+              <Markdown dark compact disallowHeading unstyleLinks lineClamp={8}>
+                {entity.description}
+              </Markdown>
+            }
+          />
+        )
+      }
+    >
+      {entity?.name}
+    </EntityRow>
   );
 };
 
 export const RestrictedEntityDisplay = () => (
-  <EntityDisplayContainer>
-    <LeftContainer>
-      <Icon name="key" c="text-secondary" />
-      <EllipsifiedEntityContainer>{t`Sorry, you don't have permission to see this link.`}</EllipsifiedEntityContainer>
-    </LeftContainer>
-  </EntityDisplayContainer>
+  <EntityRow icon={<Icon name="key" c="text-secondary" />}>
+    {t`Sorry, you don't have permission to see this link.`}
+  </EntityRow>
 );
 
 export const UrlLinkDisplay = ({ url }: { url?: string }) => {
@@ -66,13 +75,8 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
   const urlIcon = isEmpty(url) ? "question" : "link";
 
   return (
-    <EntityDisplayContainer>
-      <LeftContainer>
-        <Icon c={"core-brand"} name={urlIcon} />
-        <EllipsifiedEntityContainer>
-          {!isEmpty(url) ? url : t`Choose a link`}
-        </EllipsifiedEntityContainer>
-      </LeftContainer>
-    </EntityDisplayContainer>
+    <EntityRow icon={<Icon c="core-brand" name={urlIcon} />}>
+      {!isEmpty(url) ? url : t`Choose a link`}
+    </EntityRow>
   );
 };

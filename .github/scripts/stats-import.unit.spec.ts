@@ -14,7 +14,7 @@ const fail = (status: number) => ({
 const load = (over: Record<string, unknown> = {}) =>
   importStats({
     baseUrl: "https://stats.example.com",
-    table: "emotion_files",
+    table: "bundle_sizes",
     rows: [{ a: 1 }],
     retryDelayMs: 1,
     ...over,
@@ -36,7 +36,7 @@ describe("importStats requests", () => {
     await load({ baseUrl: undefined });
 
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://importer.example.com/api/import/emotion_files",
+      "https://importer.example.com/api/import/bundle_sizes",
     );
   });
 
@@ -47,7 +47,7 @@ describe("importStats requests", () => {
     await load({ baseUrl: "https://importer.example.com/" });
 
     expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://importer.example.com/api/import/emotion_files",
+      "https://importer.example.com/api/import/bundle_sizes",
     );
   });
 
@@ -73,7 +73,7 @@ describe("importStats requests", () => {
     });
 
     const [url, options] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://stats.example.com/api/import/emotion_files");
+    expect(url).toBe("https://stats.example.com/api/import/bundle_sizes");
     expect(options.method).toBe("PUT");
     expect(options.headers).toMatchObject({
       "x-api-key": "secret",

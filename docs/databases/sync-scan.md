@@ -111,7 +111,7 @@ You can use these endpoints by authenticating with a user ID and passing a sessi
 - `/api/notify/db/{id}` to tell Metabase to sync a database, or optionally a specific table.
 - `/api/notify/db/{id}/new-table` to sync a new table, without syncing the whole database. Requires `schema_name` and `table_name`.
 
-To use this endpoint, you must pass a string via the `MB_API_KEY` environment variable. This string is distinct from Metabase's [API keys](../people-and-groups/api-keys.md).
+To use this endpoint, you must pass a string via the [`MB_API_KEY`](../configuring-metabase/environment-variables.md#mb_api_key) environment variable. This string is distinct from Metabase's [API keys](../people-and-groups/api-keys.md).
 
 We created the `notify` endpoint so that people could tell their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/etl-landscape) finishes.
 

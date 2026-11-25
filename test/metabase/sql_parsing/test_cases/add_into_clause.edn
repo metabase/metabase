@@ -1,0 +1,24 @@
+{:cases
+ [{:name       "a SELECT gets the INTO table, and each base table is read through a self-UNION"
+   :dialect    "tsql"
+   :sql        "SELECT id, name FROM users WHERE active = 1"
+   :table-name "#tmp_results"
+   :expected   "SELECT id, name INTO [#tmp_results] FROM (SELECT * FROM users UNION ALL SELECT * FROM users WHERE 1 = 0) AS users WHERE active = 1"}
+
+  {:name       "a UNION takes the INTO in its first SELECT"
+   :dialect    "tsql"
+   :sql        "SELECT id FROM a UNION ALL SELECT id FROM b"
+   :table-name "#tmp_all"
+   :expected   "SELECT id INTO [#tmp_all] FROM (SELECT * FROM a UNION ALL SELECT * FROM a WHERE 1 = 0) AS a UNION ALL SELECT id FROM (SELECT * FROM b UNION ALL SELECT * FROM b WHERE 1 = 0) AS b"}
+
+  {:name       "nested set operations take the INTO in the first SELECT"
+   :dialect    "tsql"
+   :sql        "SELECT id FROM a INTERSECT SELECT id FROM b EXCEPT SELECT id FROM c"
+   :table-name "#tmp_set"
+   :expected   "SELECT id INTO [#tmp_set] FROM (SELECT * FROM a UNION ALL SELECT * FROM a WHERE 1 = 0) AS a INTERSECT SELECT id FROM (SELECT * FROM b UNION ALL SELECT * FROM b WHERE 1 = 0) AS b EXCEPT SELECT id FROM (SELECT * FROM c UNION ALL SELECT * FROM c WHERE 1 = 0) AS c"}
+
+  {:name       "a set operation whose first query is in parentheses fails"
+   :dialect    "tsql"
+   :sql        "(SELECT id FROM a) UNION SELECT id FROM b"
+   :table-name "#tmp_all"
+   :error      "ValueError: SQL must be a SELECT statement, or a set operation whose first query is one"}]}

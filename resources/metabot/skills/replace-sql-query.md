@@ -7,11 +7,12 @@ priority: 50
 ---
 Replace the entire content of an existing SQL query with new SQL. Use for major rewrites or structural changes — more token-efficient than many `edit_sql_query` calls. This updates the query text shown to the user; it does **not** execute the query.
 
-**Usage** — all four arguments are required; the tool rejects a call that omits any of them:
+**Usage** — the first four arguments are required; the tool rejects a call that omits any of them:
 - `query_id` — id of the query to replace (string or integer), taken from the query already in context.
 - `checklist` — a short plain-text note of what you checked before rewriting (columns exist, join keys match, dialect-specific functions). It is not shown to the user, but the call fails without it.
 - `new_query` — the complete replacement SQL. It replaces the whole body, so include everything the query needs.
 - `title` — a short, human-friendly title for the query, shown above its results when the query is handed back as a link rather than proposed in the editor.
+- `show_chart` — optional, and offered only when you can read the results with `run_query`. Pass `false` when you build the query only to read its values: the user is then shown nothing, so give them the values in your answer.
 
 **Example:** `{"query_id": "1", "checklist": "Re-read orders and customers; join is on customer_id", "new_query": "SELECT c.name, COUNT(*) AS order_count FROM customers c JOIN orders o ON o.customer_id = c.id GROUP BY c.name", "title": "Orders per customer"}`
 

@@ -4,7 +4,7 @@
    [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
    [metabase-enterprise.impersonation.util-test :as advanced-perms.api.tu]
    [metabase.driver :as driver]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -12,9 +12,11 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.upload.impl-test :as upload-test]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses-rest.api :as api.database]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
@@ -102,9 +104,8 @@
                     :permissions))]
         (testing "user with collection permission on published table should have can_create_queries true"
           (mt/with-temp [:model/Collection collection {:type          "library-data"}
-                         :model/Table      _table     {:db_id         (mt/id)
-                                                       :is_published  true
-                                                       :collection_id (:id collection)}]
+                         :model/Table      table      {:db_id         (mt/id)}
+                         :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (:id collection)}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) (:id collection))
             (mt/with-no-data-perms-for-all-users!
               (is (partial= {:can_create_queries        true
@@ -171,18 +172,20 @@
         (testing "A new table gets `:blocked` view-data perms if any tables in the DB are `:blocked`"
           (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :blocked)
           (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :unrestricted)
-          (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
-            ;; Check that no DB-level perm is set
-            (is (nil? (perm-value nil)))
-            (is (= :blocked (perm-value table-id-3)))))
+          (mt/with-model-cleanup [:model/Table]
+            (let [[{table-id-3 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+              ;; Check that no DB-level perm is set
+              (is (nil? (perm-value nil)))
+              (is (= :blocked (perm-value table-id-3))))))
         (testing "A new table defaults to `:blocked` if the group has a sandbox for any existing table"
           (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
           (mt/with-temp [:model/Sandbox _ {:group_id group-id
-                                           :table_id table-id-1}
-                         :model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
-            (is (nil? (perm-value nil)))
-            (is (= :unrestricted (perm-value table-id-1)))
-            (is (= :blocked (perm-value table-id-3)))))))))
+                                           :table_id table-id-1}]
+            (mt/with-model-cleanup [:model/Table]
+              (let [[{table-id-3 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+                (is (nil? (perm-value nil)))
+                (is (= :unrestricted (perm-value table-id-1)))
+                (is (= :blocked (perm-value table-id-3)))))))))))
 
 (deftest new-table-view-data-permission-levels-without-premium-features-test
   (testing "A newly-synced table fails CLOSED to :blocked for a sandboxed group even when premium features are unavailable (UXW-4927)"
@@ -202,11 +205,12 @@
         (doseq [features [#{} #{:advanced-permissions} #{:sandboxes}]]
           (testing (format "premium features = %s" (pr-str features))
             (mt/with-premium-features features
-              (mt/with-temp [:model/Table {new-table-id :id} {:db_id db-id :schema "PUBLIC"}]
-                (is (nil? (perm-value nil))
-                    "No DB-level perm is written")
-                (is (= :blocked (perm-value new-table-id))
-                    "New table blocks the sandboxed group instead of leaking :unrestricted")))))))))
+              (mt/with-model-cleanup [:model/Table]
+                (let [[{new-table-id :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+                  (is (nil? (perm-value nil))
+                      "No DB-level perm is written")
+                  (is (= :blocked (perm-value new-table-id))
+                      "New table blocks the sandboxed group instead of leaking :unrestricted"))))))))))
 
 (deftest uploaded-table-without-premium-features-test
   (testing "An *uploaded* table fails CLOSED to :blocked for a sandboxed group even without premium features"
@@ -228,14 +232,13 @@
             (is (= #{group-id}
                    (advanced-permissions.common/new-table-sandboxed-groups db-id [group-id]))
                 "The sandbox guard does not consult the token")
-            (mt/with-temp [:model/Table {new-table-id :id} {:db_id       db-id
-                                                            :schema      "PUBLIC"
-                                                            :data_source :upload}]
-              (is (= :blocked
-                     (t2/select-one-fn :perm_value :model/DataPermissions
-                                       :db_id db-id :group_id group-id
-                                       :table_id new-table-id :perm_type :perms/view-data))
-                  "Uploaded table blocks the sandboxed group instead of inheriting the schema's :unrestricted"))))))))
+            (mt/with-model-cleanup [:model/Table]
+              (let [[{new-table-id :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true :data_source :upload}])]
+                (is (= :blocked
+                       (t2/select-one-fn :perm_value :model/DataPermissions
+                                         :db_id db-id :group_id group-id
+                                         :table_id new-table-id :perm_type :perms/view-data))
+                    "Uploaded table blocks the sandboxed group instead of inheriting the schema's :unrestricted")))))))))
 
 (deftest new-table-in-granted-schema-test
   ;; Grant the "public" schema, block the "blocked" schema -- exactly the upload setup. The group
@@ -252,20 +255,20 @@
              (advanced-permissions.common/new-table-view-data-permission-levels db-id [group-id]))
           "precondition: the DB-wide override would block a new table for this group")
       (testing "Sync (default): a synced table in the granted schema fails safe to :blocked"
-        (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "public"}]
-          (is (= :blocked
-                 (t2/select-one-fn :perm_value :model/DataPermissions
-                                   :db_id db-id :group_id group-id
-                                   :table_id table-id-3 :perm_type :perms/view-data)))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-3 :id}] (table/create-tables! [{:db_id db-id :schema "public" :name "new_table" :active true}])]
+            (is (= :blocked
+                   (t2/select-one-fn :perm_value :model/DataPermissions
+                                     :db_id db-id :group_id group-id
+                                     :table_id table-id-3 :perm_type :perms/view-data))))))
       (testing "Upload (`:data_source :upload`): an uploaded table in the granted schema inherits :unrestricted (UXW-3217)"
-        (mt/with-temp [:model/Table {table-id-3 :id} {:db_id       db-id
-                                                      :schema      "public"
-                                                      :data_source :upload}]
-          (is (= :unrestricted
-                 (t2/select-one-fn :perm_value :model/DataPermissions
-                                   :db_id db-id :group_id group-id
-                                   :table_id table-id-3 :perm_type :perms/view-data))
-              "new table in the granted schema must inherit :unrestricted, not :blocked"))))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-3 :id}] (table/create-tables! [{:db_id db-id :schema "public" :name "new_table" :active true :data_source :upload}])]
+            (is (= :unrestricted
+                   (t2/select-one-fn :perm_value :model/DataPermissions
+                                     :db_id db-id :group_id group-id
+                                     :table_id table-id-3 :perm_type :perms/view-data))
+                "new table in the granted schema must inherit :unrestricted, not :blocked")))))))
 
 (deftest new-group-view-data-permission-levels-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
@@ -360,6 +363,79 @@
         (testing "A non-admin cannot fetch a DB for which they do not not have 'manage' access"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:details :no}}
             (is (= nil (get-test-db)))))))))
+
+(defn- data-model-graph
+  "A permissions graph giving all users data model access to the Tables of `db-id->table-id->access`, `{db-id {table-id
+  :all or :none}}`."
+  [db-id->table-id->access]
+  (update-vals db-id->table-id->access
+               (fn [table-id->access]
+                 {:view-data      :unrestricted
+                  :create-queries :query-builder-and-native
+                  :data-model     {:schemas {"PUBLIC" table-id->access}}})))
+
+(defn- temp-database-tables!
+  "Creates a Database with `n` Tables in the `PUBLIC` schema and returns `[db-id table-ids]`."
+  [n]
+  (let [{db-id :id} (first (t2/insert-returning-instances! :model/Database {:name    (str "data model db " (random-uuid))
+                                                                            :engine  :h2
+                                                                            :details {:db "mem:data-model"}}))
+        table-ids   (vec (t2/insert-returning-pks! :model/Table
+                                                   (for [i (range n)]
+                                                     {:db_id db-id :name (str "T" i) :schema "PUBLIC" :active true})))]
+    [db-id table-ids]))
+
+(deftest data-model-filters-show-editable-tables-and-databases-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-model-cleanup [:model/Table :model/Database]
+      (let [[db-1 tables-1] (temp-database-tables! 5)
+            [db-2 tables-2] (temp-database-tables! 3)
+            editable        (set (take 2 tables-1))]
+        (mt/with-all-users-data-perms-graph! (data-model-graph {db-1 (zipmap tables-1 (map #(if (editable %) :all :none) tables-1))
+                                                                db-2 (zipmap tables-2 (repeat :none))})
+          (mt/with-current-user (mt/user->id :rasta)
+            (testing "tables"
+              (is (= editable
+                     (into #{} (map :id)
+                           (advanced-permissions.common/filter-tables-by-data-model-perms
+                            (t2/select :model/Table :id [:in (concat tables-1 tables-2)]))))))
+            (testing "databases with their tables"
+              (let [dbs (advanced-permissions.common/filter-databases-by-data-model-perms
+                         (t2/hydrate (t2/select :model/Database :id [:in [db-1 db-2]]) :tables))]
+                (is (= [db-1] (mapv :id dbs)))
+                (is (= editable (into #{} (map :id) (:tables (first dbs)))))))))))))
+
+(deftest data-model-endpoints-statements-do-not-grow-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-model-cleanup [:model/Table :model/Database]
+      (let [statements (fn [thunk] (t2/with-call-count [call-count] (thunk) (call-count)))]
+        (testing "schema endpoint"
+          (let [[db-id tables] (temp-database-tables! 2)
+                add-tables!    (fn [n]
+                                 (let [new-ids (t2/insert-returning-pks! :model/Table
+                                                                         (for [i (range n)]
+                                                                           {:db_id db-id :name (str "A" (random-uuid) i) :schema "PUBLIC" :active true}))]
+                                   (into tables new-ids)))
+                url            (str "database/" db-id "/schema/PUBLIC?include_editable_data_model=true")
+                request        #(mt/user-http-request :rasta :get 200 url)
+                small-ids      (add-tables! 3)
+                small          (mt/with-all-users-data-perms-graph! (data-model-graph {db-id (zipmap small-ids (repeat :all))})
+                                 (request)
+                                 (statements request))
+                large-ids      (into small-ids (add-tables! 12))
+                large          (mt/with-all-users-data-perms-graph! (data-model-graph {db-id (zipmap large-ids (repeat :all))})
+                                 (statements request))]
+            (is (= small large))))
+        (testing "database list with tables"
+          (let [make-dbs! (fn [n] (into {} (for [_ (range n)] (let [[db-id tables] (temp-database-tables! 3)] [db-id (zipmap tables (repeat :all))]))))
+                request   #(mt/user-http-request :rasta :get 200 "database?include_editable_data_model=true&include=tables")
+                small-dbs (make-dbs! 2)]
+            (mt/with-all-users-data-perms-graph! (data-model-graph small-dbs)
+              (request)
+              (let [small (statements request)
+                    large-dbs (make-dbs! 8)]
+                (mt/with-all-users-data-perms-graph! (data-model-graph (merge small-dbs large-dbs))
+                  (is (= small (statements request))))))))))))
 
 (deftest fetch-database-test
   (testing "GET /api/database/:id?include_editable_data_model=true"
@@ -956,20 +1032,21 @@
 (deftest settings-managers-can-enable-and-disable-uploads-on-dwh
   (mt/with-premium-features #{:advanced-permissions}
     (with-all-users-as-settings-managers
-      (mt/with-temp [:model/Database {db-id :id} {:is_attached_dwh true}
-                     :model/PermissionsGroup {group-id :id} {}
-                     :model/User {user-id :id} {}
-                     :model/PermissionsGroupMembership {} {:user_id user-id
-                                                           :group_id group-id}]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-restored-data-perms-for-groups! [group-id]
-            (testing "Can enable uploads on DWH"
-              (mt/user-http-request user-id :put 204 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}}))
-            (testing "Can disable uploads on DWH"
-              (mt/user-http-request user-id :put 204 "setting/" {:uploads-settings {}}))
-            (testing "Admins can do this too"
-              (mt/user-http-request :crowberto :put 204 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}})
-              (mt/user-http-request :crowberto :put 204 "setting/" {:uploads-settings {}}))))))))
+      (mt/with-model-cleanup [:model/User]
+        (let [[{user-id :id}] (user/create-users! [{:email "dwh-uploads-manager@example.com"}])]
+          (mt/with-temp [:model/Database {db-id :id} {:is_attached_dwh true}
+                         :model/PermissionsGroup {group-id :id} {}
+                         :model/PermissionsGroupMembership {} {:user_id user-id
+                                                               :group_id group-id}]
+            (mt/with-no-data-perms-for-all-users!
+              (mt/with-restored-data-perms-for-groups! [group-id]
+                (testing "Can enable uploads on DWH"
+                  (mt/user-http-request user-id :put 204 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}}))
+                (testing "Can disable uploads on DWH"
+                  (mt/user-http-request user-id :put 204 "setting/" {:uploads-settings {}}))
+                (testing "Admins can do this too"
+                  (mt/user-http-request :crowberto :put 204 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}})
+                  (mt/user-http-request :crowberto :put 204 "setting/" {:uploads-settings {}}))))))))))
 
 (deftest upload-csv-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
@@ -1040,13 +1117,11 @@
                    (let [uploaded-table  (t2/select-one [:model/Table :id :schema] :id (:table_id model))
                          uploaded-schema (:schema uploaded-table)]
                      (is (= :unrestricted
-                            (data-perms/table-permission-for-groups #{all-users-id} :perms/view-data
-                                                                    db-id (:id uploaded-table)))
+                            (get (data-perms/table-permissions-for-groups #{all-users-id} :perms/view-data {(:id uploaded-table) db-id}) (:id uploaded-table)))
                          "uploaded table in the granted schema must stay :unrestricted")
                      (testing "so the user's effective schema permission stays :unrestricted and they can upload again"
                        (is (= :unrestricted
-                              (data-perms/full-schema-permission-for-user
-                               (mt/user->id :rasta) :perms/view-data db-id uploaded-schema)))))))))))))))
+                              (data-perms/every-table-in-schema-permission-for-user (data-perms/user-info (mt/user->id :rasta)) :perms/view-data db-id uploaded-schema)))))))))))))))
 
 (deftest update-csv-data-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1126,3 +1201,94 @@
                       (testing "GET /api/database/:id"
                         (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
                           (is (= can-upload? (:can_upload result))))))))))))))))
+
+(defn- insert-managed-databases!
+  "Inserts a Database with a Table for each of `managed?`, with one readable and one internal setting, gives All Users
+  nothing on them, and gives the group with `group-id` query access to all of them and management of those whose
+  `managed?` is true, and returns their ids."
+  [group-id managed?]
+  (vec (for [manage? managed?]
+         (let [db-id (first (t2/insert-returning-pks! :model/Database
+                                                      [(merge (mt/with-temp-defaults :model/Database)
+                                                              {:engine   :h2
+                                                               :details  {:db "mem:statement-count-test"}
+                                                               :settings {:unaggregated-query-row-limit 5
+                                                                          :auto-cruft-tables            ["x"]}})]))]
+           (t2/insert! :model/Table (merge (mt/with-temp-defaults :model/Table) {:db_id db-id :active true}))
+           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :blocked)
+           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :no)
+           (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+           (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder)
+           (data-perms/set-database-permission! group-id db-id :perms/manage-database (if manage? :yes :no))
+           db-id))))
+
+(deftest database-list-encodes-each-database-as-alone-test
+  (testing "GET /api/database shows details and settings of each Database as GET /api/database/:id does"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                     :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+        (mt/with-model-cleanup [:model/Database]
+          (let [db-ids (insert-managed-databases! group-id [true false false])
+                listed (into {}
+                             (keep (fn [db] (when (some #{(:id db)} db-ids) [(:id db) db])))
+                             (:data (mt/user-http-request :rasta :get 200 "database")))
+                shown  (fn [db] [(contains? db :details) (set (keys (:settings db)))])]
+            (is (= [[true #{:unaggregated-query-row-limit}]
+                    [false #{:unaggregated-query-row-limit}]
+                    [false #{:unaggregated-query-row-limit}]]
+                   (map (comp shown listed) db-ids)))
+            (doseq [db-id db-ids]
+              (is (= (shown (listed db-id))
+                     (shown (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))))
+            (testing "and GET /api/table shows each Table's Database the same way"
+              (let [table-dbs (into {}
+                                    (keep (fn [table] (when (some #{(:db_id table)} db-ids) [(:db_id table) (:db table)])))
+                                    (mt/user-http-request :rasta :get 200 "table"))]
+                (is (= (map (comp shown listed) db-ids)
+                       (map (comp shown table-dbs) db-ids)))))))))))
+
+(defn- request-statement-count
+  "The number of statements the request `args` of rasta costs."
+  [& args]
+  (t2/with-call-count [call-count]
+    (apply mt/user-http-request :rasta args)
+    (call-count)))
+
+(deftest ^:synchronized database-encoding-statement-count-test
+  (testing "GET /api/database and GET /api/table cost as many statements for 6 Databases with settings as for 2"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                     :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+        (mt/with-model-cleanup [:model/Database]
+          (doseq [path ["database" "database?include=tables" "table"]]
+            (testing path
+              (insert-managed-databases! group-id [true false])
+              (mt/user-http-request :rasta :get 200 path)
+              (let [small (request-statement-count :get 200 path)]
+                (insert-managed-databases! group-id [true false true false])
+                (is (= small (request-statement-count :get 200 path)))))))))))
+
+(deftest schemas-with-editable-data-model-test
+  (testing "filter-schema-by-data-model-perms keeps the schemas whose Table metadata the user manages, in a fixed number of statements"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                     :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}
+                     :model/Database                   {db-id :id}    {}
+                     :model/Table                      {t-a :id}      {:db_id db-id :schema "A"}
+                     :model/Table                      {t-b :id}      {:db_id db-id :schema "B"}
+                     :model/Table                      {t-c :id}      {:db_id db-id :schema nil}]
+        (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/manage-table-metadata :no)
+        (data-perms/set-table-permissions! group-id :perms/manage-table-metadata {t-a :yes t-b :no t-c :yes})
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [schemas  (for [schema ["A" "B" nil ""]] {:db_id db-id :schema schema})
+                per-row  (filter #(advanced-permissions.common/current-user-can-manage-schema-metadata? db-id (:schema %))
+                                 schemas)
+                filtered (t2/with-call-count [call-count]
+                           [(doall (advanced-permissions.common/filter-schema-by-data-model-perms schemas)) (call-count)])
+                bigger   (t2/with-call-count [call-count]
+                           (doall (advanced-permissions.common/filter-schema-by-data-model-perms
+                                   (concat schemas (for [i (range 6)] {:db_id db-id :schema (str "X" i)}))))
+                           (call-count))]
+            (is (= ["A" nil ""] (map :schema per-row)))
+            (is (= per-row (first filtered)))
+            (is (= (second filtered) bigger))))))))

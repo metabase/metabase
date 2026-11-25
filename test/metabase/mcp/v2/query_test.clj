@@ -179,8 +179,8 @@
                                                  [(lib/= (lib.metadata/field (mp) (mt/id :products :id))
                                                          (lib.metadata/field (mp) (mt/id :orders :product_id)))])))
           plain   (lib/query (mp) (lib.metadata/table (mp) (mt/id :products)))]
-      (mt/with-temp [:model/Card {joined-id :id} {:dataset_query (lib/->legacy-MBQL joined)}
-                     :model/Card {plain-id :id}  {:dataset_query (lib/->legacy-MBQL plain)}]
+      (mt/with-temp [:model/Card {joined-id :id} {:dataset_query joined}
+                     :model/Card {plain-id :id}  {:dataset_query plain}]
         (let [sourcing  (fn [card-id]
                           (-> (lib/query (mp) (lib.metadata/card (mp) card-id))
                               (lib/limit 5)

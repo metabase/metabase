@@ -7,6 +7,7 @@ import type {
   CardType,
   CreateCardRequest,
   DashboardId,
+  DashboardTabId,
   DatabaseId,
   DatasetQuery,
   DraftTransform,
@@ -119,6 +120,8 @@ export type MetabotCardInfo = {
 export type MetabotDashboardInfo = {
   type: "dashboard";
   id: DashboardId;
+  // The open tab, on a dashboard with tabs
+  tab_id?: DashboardTabId;
 };
 
 export type MetabotAdhocQueryInfo = {

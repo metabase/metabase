@@ -29,7 +29,6 @@
   See [[try-resolve-card-source-info]]."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
@@ -48,6 +47,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
+   [metabase.util.performance :as perf]
    [metabase.util.quoting :as quoting]))
 
 (set! *warn-on-reflection* true)
@@ -125,7 +125,7 @@
 ;;; matches a real previous-stage column.
 ;;; ============================================================
 
-(defn- dequote-identifier
+(defn dequote-identifier
   "Strip one balanced pair of surrounding ASCII double-quotes from `s`. Idempotent; returns
   non-strings and unquoted strings unchanged."
   [s]
@@ -353,7 +353,7 @@
 ;;; their arity isn't fixed, so a trailing map could be a legitimate arg.
 ;;;
 ;;; Repair condition (all four required):
-;;;   * clause-shaped vector (string head, not a map-entry, not an FK path);
+;;;   * clause-shaped vector (string head, not an FK path);
 ;;;   * head matches a known fixed-arity clause;
 ;;;   * count is exactly `expected + 1` (count off by >=2 is too ambiguous - the
 ;;;     schema validator will reject it with a friendly tuple-shape error);
@@ -854,12 +854,8 @@
 
 (defn- wrap-now-literals*
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (temporal-comparison-clause? node)
-       (maybe-wrap-now-operands node)
-       node))
-   form))
+  (match/replace-all form
+    #'temporal-comparison-clause? (maybe-wrap-now-operands &match)))
 
 ;;; ============================================================
 ;;; Structural predicates -- what a bare map looks like, with no `lib/type` marker to go on.
@@ -1231,7 +1227,8 @@
 (defn- hoist-buckets-in-clauses
   "Rewrite every hoistable comparison at any depth of one stage key's clause vector."
   [clauses]
-  (walk/postwalk (fn [n] (if (hoistable-comparison-node? n) (hoist-bucket-in-clause n) n)) clauses))
+  (match/replace-all clauses
+    #'hoistable-comparison-node? (hoist-bucket-in-clause &match)))
 
 (defn- hoist-temporal-buckets*
   "Hoist each `absolute-datetime` bucket in a stage's `filters` / `expressions` onto the compared ref.
@@ -1243,19 +1240,16 @@
   uses to decide what a stage is, so the hoist's notion of a stage is the one that stamps the marker.
   The pass header says why the scope is those two keys."
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if (stage-like-map? node)
-       (reduce (fn [stage k]
-                 (cond-> stage
-                   ;; belt and braces: Pass 1.5 `normalize-expressions-shape*` has already turned a
-                   ;; map-form `expressions:` into the sequential form, and a stage carrying neither
-                   ;; key falls through untouched
-                   (vector? (get stage k)) (update k hoist-buckets-in-clauses)))
-               node
-               bucket-hoist-stage-keys)
-       node))
-   form))
+  (match/replace-all form
+    #'stage-like-map?
+    (reduce (fn [stage k]
+              (cond-> stage
+                ;; belt and braces: Pass 1.5 `normalize-expressions-shape*` has already turned a
+                ;; map-form `expressions:` into the sequential form, and a stage carrying neither
+                ;; key falls through untouched
+                (vector? (get stage k)) (update k hoist-buckets-in-clauses)))
+            &match
+            bucket-hoist-stage-keys)))
 
 ;;; ============================================================
 ;;; Pass 2.6 -- expand whole-day comparisons outside of filters, expressions and join conditions.
@@ -1322,17 +1316,25 @@
 
 (defn- repair-day-and-default-comparison [node]
   (if (hoistable-comparison-node? node)
-    (let [literals (mapv redundant-bucket-literal (subvec node 3))]
-      (if (every? whole-day-bound? (subvec node 3))
+    (let [operands   (subvec node 3)
+          literals   (mapv redundant-bucket-literal operands)
+          timestamp? #(and % (not (re-matches date-only-pattern %)))]
+      (if (every? whole-day-bound? operands)
         (if (contains? #{"!=" "not-in"} (first node))
           node
           (expand-day-comparison (into (subvec node 0 3) literals)))
         (unwrap-whole-day-start
-         (into (subvec node 0 3)
-               (map (fn [operand literal]
-                      (if (and literal (not (re-matches date-only-pattern literal))) (t-separated literal) operand))
-                    (subvec node 3) literals)))))
+         (if (some timestamp? literals)
+           (into (subvec node 0 3)
+                 (map (fn [operand literal] (if (timestamp? literal) (t-separated literal) operand))
+                      operands literals))
+           node))))
     node))
+
+(def ^:private day-comparison-skipped-keys
+  "Keys that [[repair-day-and-default-comparisons*]] does not descend into, in a map at any depth.
+  Pass 2.95 hoists buckets under the stage keys, and join conditions refuse temporal literals."
+  (conj (set bucket-hoist-stage-keys) "conditions"))
 
 (defn- repair-day-and-default-comparisons*
   "Repair temporal comparisons outside of filters, expressions and join conditions."
@@ -1341,11 +1343,12 @@
     (letfn [(rewrite [node]
               (if (map? node)
                 (reduce-kv (fn [result k v]
-                             (assoc result k (if (or (= k "conditions") (some #{k} bucket-hoist-stage-keys))
-                                               v
-                                               (rewrite v))))
-                           (empty node) node)
-                (walk/walk rewrite repair-day-and-default-comparison node)))]
+                             (if (contains? day-comparison-skipped-keys k)
+                               result
+                               (let [v' (rewrite v)]
+                                 (if (identical? v' v) result (assoc result k v')))))
+                           node node)
+                (perf/walk rewrite repair-day-and-default-comparison node)))]
       (rewrite form))
     form))
 
@@ -1392,18 +1395,16 @@
 
   A unit with no `get-*` equivalent is left as written for validation to report."
   [form]
-  (walk/postwalk
-   (fn [node]
-     (if-let [[getter & mode] (and (vector? node)
-                                   (<= 4 (count node) 5)
-                                   (string? (nth node 0))
-                                   (= "temporal-extract" (u/lower-case-en (nth node 0)))
-                                   (map? (nth node 1))
-                                   (string? (nth node 3))
-                                   (temporal-extract-unit->getter (u/lower-case-en (nth node 3))))]
-       (into [getter (nth node 1) (nth node 2)] mode)
-       node))
-   form))
+  (match/replace-all form
+    [(op :guard (= (u/lower-case-en op) "temporal-extract"))
+     (opts :guard map?)
+     col
+     (unit :guard string?)
+     & more]
+    (if-let [[getter & mode] (and (<= (count more) 1)
+                                  (temporal-extract-unit->getter (u/lower-case-en unit)))]
+      (into [getter opts col] mode)
+      &match)))
 
 ;;; ============================================================
 ;;; Pass 1.55 -- wrap a single `fields:` or `aggregation:` clause in a list
@@ -1839,27 +1840,23 @@
   caller (we don't want to rewrite a stray integer that legitimately means \"the number 0\"
   inside an aggregation's args)."
   [tree index->uuid index->type aggs-for-error]
-  (walk/postwalk
-   (fn [node]
-     (if (integer-index-agg-ref? node)
-       (let [[_ opts idx] node]
-         (if-let [uuid (get index->uuid idx)]
-           (let [inferred-type (get index->type idx)
-                 new-opts      (cond-> opts
-                                 (and inferred-type (not (contains? opts "base-type")))
-                                 (assoc "base-type" inferred-type)
-                                 (and inferred-type (not (contains? opts "effective-type")))
-                                 (assoc "effective-type" inferred-type))]
-             ["aggregation" new-opts uuid])
-           (throw (ex-info (format "Aggregation index %s out of range; stage has %s aggregation(s): %s"
-                                   idx (count index->uuid) (agg-heads-summary aggs-for-error))
-                           {:agent-error? true
-                            :error        :aggregation-ref-out-of-range
-                            :index        idx
-                            :available    (count index->uuid)
-                            :heads        (mapv (fn [a] (when (vector? a) (first a))) aggs-for-error)}))))
-       node))
-   tree))
+  (match/replace-all tree
+    (:and [_ opts idx] #'integer-index-agg-ref?)
+    (if-let [uuid (get index->uuid idx)]
+      (let [inferred-type (get index->type idx)
+            new-opts      (cond-> opts
+                            (and inferred-type (not (contains? opts "base-type")))
+                            (assoc "base-type" inferred-type)
+                            (and inferred-type (not (contains? opts "effective-type")))
+                            (assoc "effective-type" inferred-type))]
+        ["aggregation" new-opts uuid])
+      (throw (ex-info (format "Aggregation index %s out of range; stage has %s aggregation(s): %s"
+                              idx (count index->uuid) (agg-heads-summary aggs-for-error))
+                      {:agent-error? true
+                       :error        :aggregation-ref-out-of-range
+                       :index        idx
+                       :available    (count index->uuid)
+                       :heads        (mapv (fn [a] (when (vector? a) (first a))) aggs-for-error)})))))
 
 (defn- stage-has-integer-agg-ref?
   "Does `stage` contain any `[aggregation, {}, <int>]` clause anywhere? Used to decide
@@ -2061,17 +2058,9 @@
   dropped - downstream Pass 5 (`infer-cross-stage-field-types*`) will re-stamp the field's
   types based on metadata."
   [form uuid->col-name]
-  (walk/postwalk
-   (fn [n]
-     (if (and (vector? n)
-              (= 3 (count n))
-              (= "aggregation" (nth n 0))
-              (map? (nth n 1))
-              (string? (nth n 2))
-              (contains? uuid->col-name (nth n 2)))
-       ["field" {} (get uuid->col-name (nth n 2))]
-       n))
-   form))
+  (match/replace-all form
+    ["aggregation" #'map? (uuid :guard (and (string? uuid) (contains? uuid->col-name uuid)))]
+    ["field" {} (get uuid->col-name uuid)]))
 
 (defn- split-post-agg-filter-stage
   "Split a stage whose filters refer to its own aggregations.
@@ -2174,7 +2163,6 @@
   accepts numeric ids — a numeric field id."
   [v]
   (and (vector? v)
-       (not (map-entry? v))
        (>= (count v) 3)
        (= "field" (nth v 0))
        (map? (nth v 1))
@@ -2468,19 +2456,15 @@
 (defn- resolve-implicit-joins-in-stage
   "Apply implicit-join repair to a single stage map (string-keyed). Returns an updated stage.
 
-  Skips descent into the `\"joins\"` subtree by plucking it out before the postwalk and
+  Skips descent into the `\"joins\"` subtree by plucking it out before the rewrite and
   restoring it afterwards - field clauses inside explicit joins are expected to carry a
   `join-alias` already."
   [stage mp import-store export-store]
   (if-let [source-info (stage-source-info stage mp import-store)]
     (let [joins  (get stage "joins")
           stage' (cond-> stage (contains? stage "joins") (dissoc "joins"))
-          walked (walk/postwalk
-                  (fn [node]
-                    (if (field-clause? node)
-                      (maybe-fill-source-field node mp import-store export-store source-info)
-                      node))
-                  stage')]
+          walked (match/replace-all stage'
+                   #'field-clause? (maybe-fill-source-field &match mp import-store export-store source-info))]
       (cond-> walked
         (contains? stage "joins") (assoc "joins" joins)))
     ;; Can't resolve the source: skip the pass and let validate/resolve surface the error.
@@ -2630,14 +2614,10 @@
             ;; As in Pass 4, do not descend into `joins:` subtree - clauses inside an explicit
             ;; join carry `join-alias` and have their own resolution context.
             stage'            (dissoc stage "joins")
-            walked            (walk/postwalk
-                               (fn [node]
-                                 (if (field-clause? node)
-                                   (maybe-fill-source-field-join-alias
-                                    node mp import-store export-store
-                                    source-table-id outbound-by-target joined-tables)
-                                   node))
-                               stage')]
+            walked            (match/replace-all stage'
+                                #'field-clause? (maybe-fill-source-field-join-alias
+                                                 &match mp import-store export-store
+                                                 source-table-id outbound-by-target joined-tables))]
         (assoc walked "joins" joins)))))
 
 (defn- resolve-source-field-join-alias*
@@ -2705,11 +2685,11 @@
     (update "joins" (partial mapv #(if (map? %) (apply dissoc % (hidden-join-keys %)) %)))))
 
 (defn- postwalk-outside-join-stages
-  "Apply `f` with `walk/postwalk` to the parts of `stage` that [[without-join-stages]] keeps.
+  "Postwalk `f` over the parts of `stage` that [[without-join-stages]] keeps.
   Each join's [[hidden-join-keys]] come back unchanged."
   [f stage]
   (let [joins (get stage "joins")]
-    (cond-> (walk/postwalk f (without-join-stages stage))
+    (cond-> (perf/postwalk f (without-join-stages stage))
       (sequential? joins)
       (update "joins" #(mapv (fn [walked join]
                                (cond-> walked
@@ -2974,11 +2954,12 @@
 ;;; refs whose join or field can't be resolved are left for the resolver to report.
 ;;; ============================================================
 
-(defn- join-alias-string-field-clause? [v]
-  (and (not (map-entry? v))
-       (match/matches? v ["field"
-                          {"join-alias" (_ :guard non-blank-string?)}
-                          (_ :guard non-blank-string?)])))
+(defn- join-alias-string-field-clause?
+  "True if `v` is a field ref by column name through a join alias."
+  [v]
+  (match/matches? v ["field"
+                     {"join-alias" (_ :guard non-blank-string?)}
+                     (_ :guard non-blank-string?)]))
 
 (defn- join-alias-path-field-clause?
   "True if `v` is a concrete-column field ref (portable path or numeric id) through an explicit
@@ -3457,26 +3438,6 @@
 
 ;;; ----- E7: a temporal clause Pass 2.95 could not rewrite ----------------------------
 
-(defn- deferred-to-invalid-temporal-literal?
-  "True for an `absolute-datetime` whose literal cannot parse.
-
-  Resolve's own check names the literal (`:invalid-temporal-literal`,
-  [[metabase.agent-lib.representations.resolve/validate-temporal-literals]]), which is the more
-  useful complaint, so E7 stays quiet and lets that one fire. It does not inspect `during` or
-  `value`, which is why only this head gets the carve-out.
-
-  The carve-out is per *clause*, not per query: a query holding an unparseable literal alongside any
-  other offender still reports that other offender, because E7 throws on the first match anywhere.
-  Deferring the whole query instead would be a worse trade -- `validate-temporal-literals` does not
-  inspect every position, since a bare literal on a comparison head is checked only when an operand
-  is *known* temporal, so an unparseable literal in a position it does not inspect would silence E7
-  with nothing to replace it, and the clause would reach the query engine. The model fixes what E7
-  named and sees the literal complaint on the next turn."
-  [node]
-  (let [literal (nth node 2)]
-    (and (string? literal)
-         (not (parseable-temporal-literal? literal)))))
-
 (defn- unencodable-temporal-clause-error!
   "Reject temporal clauses that the repair passes could not rewrite.
 
@@ -3505,30 +3466,21 @@
 
   Throws `:agent-error?` ex-info on the first offender."
   [form]
-  (walk/postwalk
-   (fn [node]
-     ;; `map-entry?`: a `{\"value\" …}` entry postwalks as a 2-element vector. The arity checks below
-     ;; already exclude it; the guard matches E2 / E6 and survives a head being added at that arity.
-     (when (and (vector? node)
-                (not (map-entry? node))
-                (string? (nth node 0 nil))
-                (map? (nth node 1 nil))
-                (case (u/lower-case-en (nth node 0))
-                  "absolute-datetime" (and (= 4 (count node))
-                                           (not (deferred-to-invalid-temporal-literal? node)))
-                  "during"            (= 5 (count node))
-                  ;; a `nil` unit counts as none, as it does on a ref -- that shape round-trips fine
-                  "value"             (and (= 3 (count node))
-                                           (some? (get (nth node 1) "unit")))
-                  false))
-       (throw (ex-info
-               (format "Move the temporal unit in `%s` off the literal. Write a range with `>=` the first day of the period and `<` the first day after the period, both as plain date strings (not `between`, which drops everything after midnight on its last day). To exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. Join `conditions:` cannot hold an `or`, so a date exclusion cannot be written there; tell the user that it cannot be added to the join. You can instead put the unit on the column with `temporal-unit` in `filters:` and `expressions:`, then compare the column to the first day of the period as a plain date string. Do not put the unit on the column in `aggregation:` or join `conditions:`, where the query engine does not turn it into a range. Use the range for `year` on an `expression` reference, which the query engine reads as a number."
-                       (pr-str node))
-               {:agent-error? true
-                :error        :unencodable-temporal-clause
-                :clause       node})))
-     node)
-   form))
+  (letfn [(err [node]
+            (throw (ex-info
+                    (format "Move the temporal unit in `%s` off the literal. Write a range with `>=` the first day of the period and `<` the first day after the period, both as plain date strings (not `between`, which drops everything after midnight on its last day). To exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. Join `conditions:` cannot hold an `or`, so a date exclusion cannot be written there; tell the user that it cannot be added to the join. You can instead put the unit on the column with `temporal-unit` in `filters:` and `expressions:`, then compare the column to the first day of the period as a plain date string. Do not put the unit on the column in `aggregation:` or join `conditions:`, where the query engine does not turn it into a range. Use the range for `year` on an `expression` reference, which the query engine reads as a number."
+                            (pr-str node))
+                    {:agent-error? true
+                     :error        :unencodable-temporal-clause
+                     :clause       node})))]
+    (match/match-one form
+      (:or [(op :guard (= (u/lower-case-en op) "absolute-datetime"))
+            #'map?
+            (literal :guard (or (not (string? literal)) (parseable-temporal-literal? literal)))
+            _]
+           [(op :guard (= (u/lower-case-en op) "during")) #'map? _ _ _]
+           [(op :guard (= (u/lower-case-en op) "value")) {"unit" &truthy} _])
+      (err &match))))
 
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
 
@@ -3551,39 +3503,73 @@
 ;;; Top-level entry point
 ;;; ============================================================
 
-(defn- normalize-shape*
-  "Pure-shape passes that don't require a metadata provider."
-  [parsed]
-  (-> parsed
-      ;; Run before Pass 1 (`ensure-clause-options*`): a values-list like
-      ;; `["alice" "bob"]` looks like a bare clause to Pass 1, which would corrupt it.
-      normalise-list-value-comparisons*
-      ensure-clause-options*
-      unwrap-boolean-wrappers*
-      unwrap-nested-field-clauses*
-      dequote-field-targets*
-      rewrite-operator-name-aliases*
-      rewrite-temporal-bucket-aliases*
-      drop-unsupported-day-of-week-mode*
-      rewrite-direction-aliases*
-      rewrite-lib-type-aliases*
-      merge-trailing-options*
-      merge-string-filter-trailing-options*
-      wrap-now-literals*
-      rewrite-temporal-extract*
-      swap-between-bounds*
-      normalise-case-clauses*
-      normalise-fields-shape*
-      normalise-aggregation-clauses*
-      split-top-level-and-filters*
-      normalize-expressions-shape*
-      ensure-lib-types*))
-
 (defn- stamp-top-level-database*
   "Idempotent wrapper around [[infer-top-level-database*]] that takes `[query mp]` in the
   arg order matching the other mp-taking passes below."
   [query mp]
   (infer-top-level-database* query mp))
+
+(defn- pass-name
+  "The reported name of the pass in `pass-var`: the name of its function without the `*` at the end."
+  [pass-var]
+  (str/replace (name (symbol pass-var)) #"\*$" ""))
+
+(def ^:private structural-passes
+  "Names of the passes that [[repairs]] never reports. Each one changes a query that follows the prompt contract in
+  its basic form, so it says nothing about what the model wrote.
+
+  - `stamp-top-level-database`: the contract has no top-level `database`.
+  - `infer-field-types`: the contract tells the model not to write `base-type` on a reference by column name.
+  - `normalize-expressions-shape`: the contract prefers the map form of `expressions`.
+  - `ensure-lib-types`: the contract's join has no `lib/type`.
+
+  The set is not all the passes that fire on a contract form. Some reported passes also change a form that the
+  contract documents, for example `resolve-implicit-joins` and `rewrite-temporal-extract`. A reported pass shows
+  that its form occurred in the query, not that the model made a fault."
+  #{"stamp-top-level-database"
+    "infer-field-types"
+    "normalize-expressions-shape"
+    "ensure-lib-types"})
+
+(defn- run-pass
+  "Run the pass in `pass-var` on `query` with `args`. Returns the new query, and `fired` with the name of the pass
+  added when the pass changed the query."
+  [[query fired] pass-var & args]
+  (let [query' (apply pass-var query args)
+        pass   (pass-name pass-var)]
+    [query' (cond-> fired
+              ;; A structural pass is not compared: it is never reported.
+              (and (not (contains? structural-passes pass))
+                   (not= query query'))
+              (conj pass))]))
+
+(defn- normalize-shape*
+  "Pure-shape passes that don't require a metadata provider. Takes and returns the `[query fired]` of [[run-pass]]."
+  [state]
+  (-> state
+      ;; Run before Pass 1 (`ensure-clause-options*`): a values-list like
+      ;; `["alice" "bob"]` looks like a bare clause to Pass 1, which would corrupt it.
+      (run-pass #'normalise-list-value-comparisons*)
+      (run-pass #'ensure-clause-options*)
+      (run-pass #'unwrap-boolean-wrappers*)
+      (run-pass #'unwrap-nested-field-clauses*)
+      (run-pass #'dequote-field-targets*)
+      (run-pass #'rewrite-operator-name-aliases*)
+      (run-pass #'rewrite-temporal-bucket-aliases*)
+      (run-pass #'drop-unsupported-day-of-week-mode*)
+      (run-pass #'rewrite-direction-aliases*)
+      (run-pass #'rewrite-lib-type-aliases*)
+      (run-pass #'merge-trailing-options*)
+      (run-pass #'merge-string-filter-trailing-options*)
+      (run-pass #'wrap-now-literals*)
+      (run-pass #'rewrite-temporal-extract*)
+      (run-pass #'swap-between-bounds*)
+      (run-pass #'normalise-case-clauses*)
+      (run-pass #'normalise-fields-shape*)
+      (run-pass #'normalise-aggregation-clauses*)
+      (run-pass #'split-top-level-and-filters*)
+      (run-pass #'normalize-expressions-shape*)
+      (run-pass #'ensure-lib-types*)))
 
 (defn repair
   "Run the repair pipeline on a parsed (string-keyed, portable) representations query.
@@ -3684,19 +3670,33 @@
   ([mp parsed]
    (repair mp parsed serialization.protocol.mp/unchecked-app-db-content-store))
   ([mp parsed content-store]
-   (-> parsed
-       normalize-shape*
-       (stamp-top-level-database* mp)
-       ;; Before Pass 3: order-by must equal its aggregation, so date bounds are normalized first.
-       repair-day-and-default-comparisons*
-       rewrite-order-by-inline-aggs*
-       resolve-aggregation-ref-indexes*
-       split-post-agg-filters*
-       hoist-temporal-buckets*
-       (resolve-source-field-join-alias* mp content-store)
-       (resolve-implicit-joins* mp content-store)
-       (infer-field-types* mp content-store)
-       friendly-errors*)))
+   (let [[repaired fired] (-> [parsed (sorted-set)]
+                              normalize-shape*
+                              (run-pass #'stamp-top-level-database* mp)
+                              ;; Before Pass 3: order-by must equal its aggregation, so date bounds are normalized first.
+                              (run-pass #'repair-day-and-default-comparisons*)
+                              (run-pass #'rewrite-order-by-inline-aggs*)
+                              (run-pass #'resolve-aggregation-ref-indexes*)
+                              (run-pass #'split-post-agg-filters*)
+                              (run-pass #'hoist-temporal-buckets*)
+                              (run-pass #'resolve-source-field-join-alias* mp content-store)
+                              (run-pass #'resolve-implicit-joins* mp content-store)
+                              (run-pass #'infer-field-types* mp content-store))
+         repaired         (friendly-errors* repaired)]
+     (cond-> repaired
+       (instance? clojure.lang.IObj repaired) (vary-meta assoc ::repairs (vec fired))))))
+
+(defn repairs
+  "The names of the passes that changed the query `repaired`, a return value of [[repair]]: a sorted vector of
+  strings, `[]` when no reported pass changed it. A name is the name of the pass function without the `*`. The
+  passes in [[structural-passes]] are never in it. Nil when `repaired` has no such metadata.
+
+  The list is metadata, so a value derived from a return value of [[repair]] keeps the list of that run. Read it
+  from the direct return value.
+
+  The names are reported in the `agent_used_tool` event, so a rename of a pass changes the reported value."
+  [repaired]
+  (::repairs (meta repaired)))
 
 ;;; ============================================================
 ;;; Post-resolve gate -- expressions the FE expression editor rejects

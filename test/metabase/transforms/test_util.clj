@@ -6,11 +6,14 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.transforms.models.transform :as transform.model]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDateTime ZonedDateTime ZoneId)))
@@ -102,7 +105,7 @@
                      (:schema target) (:name target) driver)))
       ;; Also clean up the Metabase metadata
       (try
-        (t2/delete! :model/Table :name (:name target) :db_id (:id (mt/db)))
+        (table/delete-tables! (vec (t2/select-pks-set :model/Table :name (:name target) :db_id (:id (mt/db)))))
         (catch Exception e
           (log/warnf e "Failed to delete Table metadata for %s" (:name target)))))))
 
@@ -299,3 +302,38 @@
   (let [conn-spec (driver/connection-spec driver (driver.u/ensure-lib-database db))
         sql [[(format "DROP DATABASE IF EXISTS `%s`;" schema)]]]
     (driver/execute-raw-queries! driver/*driver* conn-spec sql)))
+
+(defn count-test-transform-rows
+  "`n` create requests of query transforms reading `query`, each writing a table of its own in the test database, with
+  the `extra` columns."
+  [n query extra]
+  (for [i (range n)]
+    (merge {:name   (str "count test transform " i)
+            :source {:type :query :query query}
+            :target {:type "table" :name (str "count_test_t_" i "_" n) :database (mt/id)}}
+           (if (fn? extra) (extra i) extra))))
+
+(defn create-count-test-transforms!
+  "Create `n` transforms reading the same query, as the superuser, with the `extra` columns, and return their ids."
+  ([n]
+   (create-count-test-transforms! n nil))
+  ([n extra]
+   (mt/with-current-user (mt/user->id :crowberto)
+     (mapv :id (transform.model/create-transforms!
+                (vec (count-test-transform-rows n (lib/native-query (mt/metadata-provider) "SELECT 1 AS num") extra)))))))
+
+(defn statements-at-two-sizes
+  "`[(statements at 3) (statements at 9)]` of the thunk `(make-thunk n)` returns, run once to warm up and then counted
+  after `(before-count)`, with every transform deleted before each size."
+  ([make-thunk]
+   (statements-at-two-sizes make-thunk (constantly nil)))
+  ([make-thunk before-count]
+   (mapv (fn [n]
+           (t2/delete! :model/Transform)
+           (let [f (make-thunk n)]
+             (f)
+             (before-count)
+             (t2/with-call-count [call-count]
+               (f)
+               (call-count))))
+         [3 9])))

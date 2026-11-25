@@ -231,7 +231,7 @@
                                                    :display-name "date"
                                                    :type         :dimension
                                                    :widget-type  :date/all-options
-                                                   :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                                   :field-id     (mt/id :checkins :date)}}}
               :parameters [{:type :date/all-options
                             :target [:dimension [:template-tag "date"]]
                             :value "past30years"}]}))))))
@@ -293,23 +293,21 @@
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
-    (is (= nil (#'h2/check-action-commands-allowed {:database (mt/id) :native {:query nil}})))
     (is (= nil (#'h2/check-action-commands-allowed
-                {:database (mt/id)
-                 :engine :h2
-                 :native {:query (str/join "; "
-                                           ["select 1"
-                                            "update venues set name = 'bill'"
-                                            "delete venues"])}})))
+                (lib/update-query-stage (lib/native-query (mt/metadata-provider) "select 1") 0 dissoc :native))))
+    (is (= nil (#'h2/check-action-commands-allowed
+                (lib/native-query (mt/metadata-provider)
+                                  (str/join "; "
+                                            ["select 1"
+                                             "update venues set name = 'bill'"
+                                             "delete venues"])))))
     (let [trigger-creation-attempt (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
                                                    "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                                                    "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"DDL commands are not allowed to be used with H2."
                             (#'h2/check-action-commands-allowed
-                             {:database (mt/id)
-                              :engine :h2
-                              :native {:query trigger-creation-attempt}}))))))
+                             (lib/native-query (mt/metadata-provider) trigger-creation-attempt)))))))
 
 (defn- check-read-only-statements [query]
   (mt/with-metadata-provider (mt/id)
@@ -323,9 +321,7 @@
     (are [query] (nil?
                   (mt/with-metadata-provider (mt/id)
                     (#'h2/check-read-only-statements
-                     {:database 1
-                      :type     :native
-                      :native   {:query query}})))
+                     (lib/native-query (mt/metadata-provider) query))))
       "select * from orders"
       "select 1; select 2;"
       "explain select * from orders"
@@ -343,9 +339,7 @@
                      (try
                        (mt/with-metadata-provider (mt/id)
                          (#'h2/check-read-only-statements
-                          {:database 1
-                           :type     :native
-                           :native   {:query query}}))
+                          (lib/native-query (mt/metadata-provider) query)))
                        (catch clojure.lang.ExceptionInfo e
                          {:message (ex-message e), :data (ex-data e)})))
       "update venues set name = 'bill'"
@@ -385,9 +379,7 @@
                   #"not supported in native queries"
                   (mt/with-metadata-provider (mt/id)
                     (#'h2/check-read-only-statements
-                     {:database 1
-                      :type     :native
-                      :native   {:query query}})))
+                     (lib/native-query (mt/metadata-provider) query))))
       "SELECT FILE_READ('a','UTF-8')"
       "CALL CSVREAD('a')"
       "CALL LINK_SCHEMA('LK','org.h2.Driver','jdbc:h2:mem:t','sa','','PUBLIC')")))

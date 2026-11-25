@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import querystring from "querystring";
 
 import { t } from "ttag";
@@ -10,7 +11,6 @@ import {
 } from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { normalizeParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -198,14 +198,6 @@ export function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
-export function isNative(card?: UnsavedCard | null | undefined) {
-  if (!card) {
-    return false;
-  }
-  const question = Question.create({ dataset_query: card.dataset_query });
-  return question.isNative();
-}
-
 function cardVisualizationIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   return _.isEqual(
     _.pick(cardA, "display", "visualization_settings"),
@@ -220,7 +212,7 @@ function datasetQueryForComparison(datasetQuery: JsonQuery): JsonQuery {
 export function cardQueryIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   const datasetQueryA = datasetQueryForComparison(cardA.dataset_query);
   const datasetQueryB = datasetQueryForComparison(cardB.dataset_query);
-  return Lib.areLegacyQueriesEqual(datasetQueryA, datasetQueryB);
+  return Lib.areQueriesEqual(datasetQueryA, datasetQueryB);
 }
 
 export function cardParametersAreEquivalent(cardA: Card, cardB: Card) {

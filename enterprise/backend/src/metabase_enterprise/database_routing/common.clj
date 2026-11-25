@@ -5,19 +5,30 @@
    [metabase.driver.util :as driver.u]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic ^:private *anonymous-router-access?*
-  "Whether work with no current user may reach a router itself; see [[do-with-anonymous-router-access]]."
-  false)
+(def ^:dynamic ^:private *anonymous-router-access*
+  "Determines how anonymous traffic (no `api/*current-user-id*` bound) is treated when it tries to access the router database:
+  - `:if-granted` => reject it unless anonymous access has been granted to the database
+  - `:always` => accept it (enables things like sync)
+  - `nil` (or anything else) => reject it with an error"
+  nil)
 
 (defenterprise do-with-anonymous-router-access
-  "Enterprise version. Calls `thunk` with no current user, letting it reach a router itself."
+  "Enterprise version. Calls `thunk` with no current user, always hitting the router database."
   :feature :none
   [thunk]
-  (binding [api/*current-user-id*      nil
-            *anonymous-router-access?* true]
+  (binding [api/*current-user-id*     nil
+            *anonymous-router-access* :always]
+    (thunk)))
+
+(defenterprise do-with-database-routing-off-if-granted
+  "Enterprise version. Calls the function, allowing access to the router database only if an admin has granted anonymous access."
+  :feature :none
+  [thunk]
+  (binding [*anonymous-router-access* :if-granted]
     (thunk)))
 
 (defn- user-attribute
@@ -28,13 +39,28 @@
     (:router-user-attribute db)
     (database-routing.db/router-user-attribute (:id db))))
 
+(defn- refuse-anonymous-access!
+  "The thrown message must not name the database: anonymous viewers see it."
+  [db]
+  (log/warnf (str "Refusing an anonymous query: database %d (%s) has database routing enabled and"
+                  " anonymous_access_granted is false.")
+             (:id db) (:name db))
+  (throw (ex-info (tru "This database does not allow anonymous access.")
+                  {:status-code                  400
+                   :anonymous-access-not-granted true
+                   :router-database-id           (:id db)})))
+
 (defn- router-db->destination-db-id*
   [is-anonymous-user? user-attributes is-superuser? db]
   (when-let [attr-name (user-attribute db)]
     (let [database-name (get user-attributes attr-name)]
       (cond
+        (= :if-granted *anonymous-router-access*)
+        (when-not (database-routing.db/router-anonymous-access-granted? (:id db))
+          (refuse-anonymous-access! db))
+
         is-anonymous-user?
-        (when-not *anonymous-router-access?*
+        (when-not (= :always *anonymous-router-access*)
           (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.")
                           {:status-code              400
                            :database-routing-enabled true
@@ -81,7 +107,7 @@
   they go to `database` itself; with no user bound, a router is refused outside [[do-with-anonymous-router-access]]."
   :feature :none
   [database]
-  (when-not (and (nil? api/*current-user-id*) *anonymous-router-access?*)
+  (when-not (and (nil? api/*current-user-id*) (= :always *anonymous-router-access*))
     (when-let [destination-id (router-db->destination-db-id database)]
       (premium-features/assert-has-feature :database-routing (tru "Database Routing"))
       (driver.u/lib-database destination-id))))
@@ -110,12 +136,11 @@
                                         (when (routes-user? attribute-name)
                                           db-id)))
                                 (database-routing.db/all-router-user-attributes))]
-       (perms/prime-database-perms-cache {:db-ids routing-db-ids})
-       (some (fn [db-id]
-               (not= :blocked
-                     (perms/most-permissive-database-permission-for-user
-                      api/*current-user-id* :perms/view-data db-id)))
-             routing-db-ids))
+       (boolean
+        (some #(not= :blocked %)
+              (vals (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                       :perms/view-data
+                                                                       routing-db-ids)))))
      ;; If no *current-user-id* is bound we can't check for routing, so we should throw in this case to avoid
      ;; returning `false` for users who should actually be routed.
      (throw (ex-info (str (tru "No current user found"))

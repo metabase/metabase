@@ -3,15 +3,23 @@ import { lazyLoaders } from "__support__/lazy-routes";
 import {
   setupContentDiagnosticsCountsEndpoint,
   setupDependencyCountsEndpoint,
+  setupListSessionsEndpoint,
+  setupSessionCountsEndpoint,
   setupTaskCountsEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import { PLUGIN_AUDIT, PLUGIN_DATA_APPS, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TokenFeatures } from "metabase-types/api";
 import {
+  createMockSession,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -24,6 +32,7 @@ type MonitorGuard =
   | "CanAccessContentDiagnostics"
   | "CanAccessMonitoringTools"
   | "CanAccessAlertsManagement"
+  | "CanAccessSessionManagement"
   | "CanAccessAiAuditing";
 
 /**
@@ -51,6 +60,7 @@ jest.mock("./route-guards", () => {
     CanAccessContentDiagnostics: stubGuard("CanAccessContentDiagnostics"),
     CanAccessMonitoringTools: stubGuard("CanAccessMonitoringTools"),
     CanAccessAlertsManagement: stubGuard("CanAccessAlertsManagement"),
+    CanAccessSessionManagement: stubGuard("CanAccessSessionManagement"),
     CanAccessAiAuditing: stubGuard("CanAccessAiAuditing"),
   };
 });
@@ -59,9 +69,35 @@ jest.mock("metabase-enterprise/settings", () => ({
   hasPremiumFeature: jest.fn().mockReturnValue(true),
 }));
 
+const { hasPremiumFeature } = jest.requireMock<{
+  hasPremiumFeature: jest.Mock<boolean, [string]>;
+}>("metabase-enterprise/settings");
+
+jest.mock(
+  "metabase-enterprise/monitor/ai-auditing/mcp-analytics/components/McpAnalyticsSectionLayout",
+  () => {
+    const { Outlet } = jest.requireActual("metabase/router");
+    return {
+      McpAnalyticsSectionLayout: () => (
+        <div>
+          <h1>{"MCP analytics"}</h1>
+          <Outlet />
+        </div>
+      ),
+    };
+  },
+);
+jest.mock(
+  "metabase-enterprise/monitor/ai-auditing/mcp-analytics/components/McpUsagePage",
+  () => ({ McpUsagePage: () => <div>{"MCP usage page"}</div> }),
+);
+
 jest.mock("./components/MonitorLayout", () => {
   const { Outlet } = jest.requireActual("metabase/router");
-  return { MonitorLayout: () => <Outlet /> };
+  const { MonitorMain } = jest.requireActual(
+    "./components/MonitorLayout/MonitorMain",
+  );
+  return { MonitorLayout: () => <Outlet />, MonitorMain };
 });
 jest.mock(
   "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout",
@@ -164,6 +200,8 @@ const UPSELL_TITLE =
   "Find and fix broken dependencies without hunting them down";
 const CONTENT_DIAGNOSTICS_UPSELL_TITLE =
   "Find and clean up stale content without hunting it down";
+const SESSION_MANAGEMENT_UPSELL_DESCRIPTION =
+  /See who is signed in to your Metabase. Revoke individual sessions/;
 
 type SetupOpts = {
   initialRoute: string;
@@ -216,6 +254,7 @@ describe("monitor routes", () => {
   afterEach(() => {
     reinitialize();
     mockDeniedGuards.clear();
+    hasPremiumFeature.mockReturnValue(true);
   });
 
   // Route factories name their page in an `import()`, so nothing type-checks the
@@ -313,6 +352,70 @@ describe("monitor routes", () => {
           await screen.findByText("Stale content page"),
         ).toBeInTheDocument();
       });
+    });
+
+    describe("Session management", () => {
+      /** Initializes the session management plugin with or without its token feature */
+      const setupSessionManagement = ({
+        hasFeature,
+      }: {
+        hasFeature: boolean;
+      }) => {
+        hasPremiumFeature.mockImplementation(
+          (feature) => hasFeature || feature !== "session-management",
+        );
+        setupEnterpriseOnlyPlugin("monitor_session_management");
+        mockGetBoundingClientRect({ height: 800, width: 1000 });
+        setupSessionCountsEndpoint({ active: 1, ended: 0 });
+        setupListSessionsEndpoint([createMockSession({ id: "a-session" })]);
+      };
+
+      it("shows the upsell to an admin whose token lacks the feature", async () => {
+        setupSessionManagement({ hasFeature: false });
+
+        setup({ initialRoute: Urls.monitorSessions() });
+
+        expect(
+          await screen.findByText(SESSION_MANAGEMENT_UPSELL_DESCRIPTION),
+        ).toBeInTheDocument();
+        expect(screen.queryByTestId("sessions-table")).not.toBeInTheDocument();
+      });
+
+      it("shows the sessions instead of the upsell with the feature", async () => {
+        setupSessionManagement({ hasFeature: true });
+
+        setup({ initialRoute: Urls.monitorSessions() });
+
+        expect(
+          await screen.findByTestId("session-row-a-session"),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId("sessions-table")).toBeInTheDocument();
+        expect(
+          screen.queryByText(SESSION_MANAGEMENT_UPSELL_DESCRIPTION),
+        ).not.toBeInTheDocument();
+      });
+
+      it.each([{ hasFeature: true }, { hasFeature: false }])(
+        "blocks the sessions route when its guard denies (feature: $hasFeature)",
+        async ({ hasFeature }) => {
+          setupSessionManagement({ hasFeature });
+
+          setup({
+            initialRoute: Urls.monitorSessions(),
+            deny: ["CanAccessSessionManagement"],
+          });
+
+          expect(
+            await screen.findByTestId("unauthorized-marker"),
+          ).toBeInTheDocument();
+          expect(
+            screen.queryByText(SESSION_MANAGEMENT_UPSELL_DESCRIPTION),
+          ).not.toBeInTheDocument();
+          expect(
+            screen.queryByTestId("sessions-table"),
+          ).not.toBeInTheDocument();
+        },
+      );
     });
 
     describe("index redirect (/monitor)", () => {
@@ -429,6 +532,46 @@ describe("monitor routes", () => {
           screen.queryByTestId("unauthorized-marker"),
         ).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("AI Auditing token gate", () => {
+    // The real audit_app plugin, initialized against the given audit_app feature, so the
+    // route registration it does (or skips) is what the test sees.
+    const setupAuditAppPlugin = (auditApp: boolean) => {
+      hasPremiumFeature.mockImplementation(
+        (feature) => auditApp || feature !== "audit_app",
+      );
+      setupEnterpriseOnlyPlugin("audit_app");
+    };
+
+    it("does not register MCP analytics without the audit_app feature", async () => {
+      setupAuditAppPlugin(false);
+
+      setup({
+        initialRoute: Urls.monitorAiAuditingMcp(),
+        tokenFeatures: { audit_app: false, ai_controls: true },
+      });
+
+      expect(await screen.findByLabelText("error page")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "MCP analytics" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("registers MCP analytics with the audit_app feature", async () => {
+      setupAuditAppPlugin(true);
+
+      setup({
+        initialRoute: Urls.monitorAiAuditingMcp(),
+        tokenFeatures: { audit_app: true, ai_controls: true },
+      });
+
+      expect(
+        await screen.findByRole("heading", { name: "MCP analytics" }),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("MCP usage page")).toBeInTheDocument();
+      expect(screen.queryByLabelText("error page")).not.toBeInTheDocument();
     });
   });
 

@@ -8,6 +8,7 @@
   width: 100%;
   height: 100%;
   font-weight: 400;
+  font-size: var(--public-component-font-size, medium);
   color: var(--mb-color-text-primary);
   font-family: var(--mb-default-font-family);
   -webkit-font-smoothing: antialiased;

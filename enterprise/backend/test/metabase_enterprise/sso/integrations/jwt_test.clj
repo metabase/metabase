@@ -571,7 +571,7 @@
           (testing "non-string group names are ignored"
             (reset! captured nil)
             (#'providers.jwt/group-names->ids ["developers" {:select :x}])
-            (is (= #{"developers"} @captured))
+            (is (= #{"developers"} (set @captured)))
             (let [[query & params] (sql/format {:select [:id]
                                                 :from   [:permissions_group]
                                                 :where  [:in :name @captured]})]

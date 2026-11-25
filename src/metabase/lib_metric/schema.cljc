@@ -287,7 +287,7 @@
     ::expression-leaf
     number?
     [:and
-     vector?
+     [:vector [:maybe [:ref ::lib.schema.common/open-json]]]
      [:fn {:error/message "must be arithmetic expression [op opts expr expr ...] with at least 2 operands"}
       (fn [x]
         (and (>= (count x) 4)

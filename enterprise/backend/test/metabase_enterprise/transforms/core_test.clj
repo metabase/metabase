@@ -2,11 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.transforms.core :as transforms.core]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.transform :as transform]
    [metabase.transforms.models.transform-run :as transform-run]
    [toucan2.core :as t2]))
 
@@ -96,3 +98,21 @@
                         :transform-rolling-advanced-runs 2
                         :transform-rolling-usage-date    "2037-06-15"}
                        (premium-features/transform-stats)))))))))))
+
+(deftest persist-table-dependencies-falls-back-to-each-transform-test
+  (testing "a failed write of the cached table dependencies of one transform leaves those of the others written"
+    (mt/with-temp [:model/Transform {id1 :id} {}
+                   :model/Transform {id2 :id} {}
+                   :model/Transform {id3 :id} {}]
+      (let [ids    [id1 id2 id3]
+            deps   [{:table (mt/id :orders)}]
+            cached #(t2/select-pk->fn :table_dependencies :model/Transform :id [:in ids])
+            before (cached)
+            write  (mt/original-fn #'transform/set-table-dependencies!)]
+        (mt/with-dynamic-fn-redefs [transform/set-table-dependencies!
+                                    (fn [id->deps]
+                                      (when (contains? id->deps id2)
+                                        (throw (ex-info "Write failed" {})))
+                                      (write id->deps))]
+          (transforms.core/persist-table-dependencies! (zipmap ids (repeat deps))))
+        (is (= {id1 deps id2 (get before id2) id3 deps} (cached)))))))
