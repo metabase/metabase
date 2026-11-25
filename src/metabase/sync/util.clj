@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.core :as mdb]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -326,24 +327,27 @@
   (if-let [busy (external-busy)]
     (log/warnf "Skipping %s for database %d: %s"
                (name operation) (u/the-id database) (:reason busy))
-    (let [run-type (operation->run-type operation)]
-      (task-history/with-task-run (when run-type
-                                    {:run_type    run-type
-                                     :entity_type :database
-                                     :entity_id   (u/the-id database)})
-        (let [sync-fn (with-duplicate-ops-prevented
-                       operation database
-                       (with-sync-events
-                        operation database
-                        (with-start-and-finish-logging
-                         message
-                         (with-db-logging-disabled
-                          (sync-in-context database
-                                           (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
-              result (database-routing/with-anonymous-router-access (sync-fn))]
-          (when (instance? Throwable result)
-            (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
-          result)))))
+    (mdb/with-worktree-scope {:type :main}
+      (let [run-type (operation->run-type operation)]
+        (task-history/with-task-run (when run-type
+                                      {:run_type    run-type
+                                       :entity_type :database
+                                       :entity_id   (u/the-id database)})
+          (let [sync-fn (with-duplicate-ops-prevented
+                         operation database
+                         (with-sync-events
+                          operation database
+                          (with-start-and-finish-logging
+                           message
+                           (with-db-logging-disabled
+                            (sync-in-context database
+                                             (partial do-with-error-handling
+                                                      (format "Error in sync step %s" message)
+                                                      f))))))
+                result (database-routing/with-anonymous-router-access (sync-fn))]
+            (when (instance? Throwable result)
+              (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
+            result))))))
 
 (mu/defn do-sync-operation
   "Internal implementation of [[sync-operation]]; use that instead of calling this directly. Runs

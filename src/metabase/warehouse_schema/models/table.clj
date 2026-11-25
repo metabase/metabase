@@ -540,9 +540,10 @@
   "Insert the Table `rows` in one transaction, publishing their create event, and return the inserted Tables, with the
   default field order of their driver and the default permissions of a new Table."
   [rows :- [:sequential ::warehouse-schema.schema/table.create]]
-  (mdb/create-batched! :model/Table rows
-                       {:before-create add-default-field-orders
-                        :after-create  tables-created!}))
+  (mdb/with-worktree-scope {:type :main}
+    (mdb/create-batched! :model/Table rows
+                         {:before-create add-default-field-orders
+                          :after-create  tables-created!})))
 
 (defn- ordered-field-positions
   "The position of each Field of the `tables`, which share `field-order`, in that order: one read."
@@ -612,9 +613,10 @@
    (update-tables! updates nil))
   ([updates :- [:sequential ::warehouse-schema.schema/table.update]
     opts    :- :metabase.events.schema/write-opts]
-   (mdb/update-batched! :model/Table updates
-                        {:before-update prepare-table-updates!
-                         :after-update  (partial publish-table-updates! opts)})))
+   (mdb/with-worktree-scope {:type :main}
+     (mdb/update-batched! :model/Table updates
+                          {:before-update prepare-table-updates!
+                           :after-update  (partial publish-table-updates! opts)}))))
 
 (mu/defn change-case!
   "Set each of `columns`, such as `:name` and `:schema`, of the Tables with `table-ids` to its value in `kase`, `:lower`
@@ -624,14 +626,15 @@
    kase      :- [:enum :lower :upper]
    columns   :- [:sequential [:enum :name :schema :display_name]]]
   (when (seq table-ids)
-    (t2/with-transaction [_conn]
-      (let [stored (tables-by-ids table-ids)]
-        (run! #(warehouse-schema.db/change-tables-case! (vec %) kase columns)
-              (partition-all mdb/update-partition-size table-ids))
-        (events/publish-event! :event/table-update
-                               (events/update-event stored
-                                                    (mapv #(hash-map :id %) (keys stored))
-                                                    {:objects (tables-by-ids (keys stored))}))))))
+    (mdb/with-worktree-scope {:type :main}
+      (t2/with-transaction [_conn]
+        (let [stored (tables-by-ids table-ids)]
+          (run! #(warehouse-schema.db/change-tables-case! (vec %) kase columns)
+                (partition-all mdb/update-partition-size table-ids))
+          (events/publish-event! :event/table-update
+                                 (events/update-event stored
+                                                      (mapv #(hash-map :id %) (keys stored))
+                                                      {:objects (tables-by-ids (keys stored))})))))))
 
 (mu/defn ids-of-database :- [:set ::lib.schema.id/table]
   "The ids of the Tables of the Database with `database-id`."
@@ -651,13 +654,15 @@
   "Delete the Tables with `ids`, their Fields, nested ones first, and the implicit Actions that write to them, in one
   transaction, publishing their delete event after those and before the Tables' own statements."
   [ids :- [:sequential ::lib.schema.id/table]]
-  (mdb/delete-batched! :model/Table ids {:before-delete delete-table-content-and-publish!}))
+  (mdb/with-worktree-scope {:type :main}
+    (mdb/delete-batched! :model/Table ids {:before-delete delete-table-content-and-publish!})))
 
 (mu/defn increment-view-counts! :- :int
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`, in one plain
   statement that publishes no event, for a usage stat no rule reads, returning the number updated."
   [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
-  (warehouse-schema.db/increment-table-view-counts! count->ids))
+  (mdb/with-worktree-scope {:type :main}
+    (warehouse-schema.db/increment-table-view-counts! count->ids)))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

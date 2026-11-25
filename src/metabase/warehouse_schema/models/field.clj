@@ -463,9 +463,10 @@
   "Insert the Field `rows` in one transaction, publishing their create event, and return the inserted Fields, refusing a
   foreign key target outside the Database of a Field's Table."
   [rows :- [:sequential ::warehouse-schema.schema/field.create]]
-  (mdb/create-batched! :model/Field rows
-                       {:before-create check-new-fields
-                        :after-create  #(events/publish-event! :event/field-create (events/create-event %))}))
+  (mdb/with-worktree-scope {:type :main}
+    (mdb/create-batched! :model/Field rows
+                         {:before-create check-new-fields
+                          :after-create  #(events/publish-event! :event/field-create (events/create-event %))})))
 
 (defmulti clear-for-deactivated-fields!
   "Clear what the rows of `model` hold that points at the deactivated Fields with `field-ids`, which a model whose
@@ -693,11 +694,12 @@
    (update-fields! updates nil))
   ([updates          :- [:sequential ::warehouse-schema.schema/field.update]
     {:keys [fields]} :- ::write-opts]
-   (t2/with-transaction [_conn]
-     (publish-field-updates! (transduce (map #(update-field-batch! (vec %) fields))
-                                        (completing merge-changes)
-                                        {}
-                                        (partition-all mdb/update-partition-size updates))))
+   (mdb/with-worktree-scope {:type :main}
+     (t2/with-transaction [_conn]
+       (publish-field-updates! (transduce (map #(update-field-batch! (vec %) fields))
+                                          (completing merge-changes)
+                                          {}
+                                          (partition-all mdb/update-partition-size updates)))))
    nil))
 
 (mu/defn change-case!
@@ -707,14 +709,15 @@
    kase      :- [:enum :lower :upper]
    columns   :- [:sequential [:enum :name :display_name]]]
   (when (seq field-ids)
-    (t2/with-transaction [_conn]
-      (let [stored (fields-by-ids field-ids)]
-        (run! #(warehouse-schema.db/change-fields-case! (vec %) kase columns)
-              (partition-all mdb/update-partition-size field-ids))
-        (events/publish-event! :event/field-update
-                               (events/update-event stored
-                                                    (mapv #(hash-map :id %) (keys stored))
-                                                    {:objects (fields-by-ids (keys stored))}))))))
+    (mdb/with-worktree-scope {:type :main}
+      (t2/with-transaction [_conn]
+        (let [stored (fields-by-ids field-ids)]
+          (run! #(warehouse-schema.db/change-fields-case! (vec %) kase columns)
+                (partition-all mdb/update-partition-size field-ids))
+          (events/publish-event! :event/field-update
+                                 (events/update-event stored
+                                                      (mapv #(hash-map :id %) (keys stored))
+                                                      {:objects (fields-by-ids (keys stored))})))))))
 
 (mu/defn ids-of-database :- [:set ::lib.schema.id/field]
   "The ids of the Fields of the Tables of the Database with `database-id`."
@@ -742,10 +745,11 @@
   [[mdb/update-partition-size]] Fields, and publish one event for all of them."
   [column field-id->position]
   (when (seq field-id->position)
-    (t2/with-transaction [_conn]
-      (let [stored (vals (fields-by-ids (keys field-id->position)))]
-        (run! #(write-positions! column (into {} %)) (partition-all mdb/update-partition-size field-id->position))
-        (publish-field-updates! (position-changes column stored field-id->position))))))
+    (mdb/with-worktree-scope {:type :main}
+      (t2/with-transaction [_conn]
+        (let [stored (vals (fields-by-ids (keys field-id->position)))]
+          (run! #(write-positions! column (into {} %)) (partition-all mdb/update-partition-size field-id->position))
+          (publish-field-updates! (position-changes column stored field-id->position)))))))
 
 (mu/defn set-positions!
   "Set the `position` of each Field in `field-id->position`, in one statement."
@@ -791,11 +795,12 @@
   "Delete the Fields with `ids` and the Fields nested under them, which a foreign key cannot cascade to, in one
   transaction, publishing their delete event before the statements, which delete the most nested Fields first."
   [ids :- [:sequential ::lib.schema.id/field]]
-  (t2/with-transaction [_conn]
-    (let [fields (vec (vals (fields-by-ids (field-ids-and-descendants ids))))]
-      (when (seq fields)
-        (events/publish-event! :event/field-delete (events/delete-event fields))
-        (run! delete-level! (deepest-first fields)))))
+  (mdb/with-worktree-scope {:type :main}
+    (t2/with-transaction [_conn]
+      (let [fields (vec (vals (fields-by-ids (field-ids-and-descendants ids))))]
+        (when (seq fields)
+          (events/publish-event! :event/field-delete (events/delete-event fields))
+          (run! delete-level! (deepest-first fields))))))
   nil)
 
 (mu/defn delete-fields-for-databases! :- :nil
@@ -803,10 +808,11 @@
   them or publishing events: the childless ones first, one statement per level of nesting, and none at all when the
   Databases have no Fields, checked without a lock that would recreate the contention on MySQL."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (when (warehouse-schema.db/fields-exist-for-databases? database-ids)
-    (loop []
-      (when (pos? (warehouse-schema.db/delete-childless-fields-for-databases! database-ids))
-        (recur))))
+  (mdb/with-worktree-scope {:type :main}
+    (when (warehouse-schema.db/fields-exist-for-databases? database-ids)
+      (loop []
+        (when (pos? (warehouse-schema.db/delete-childless-fields-for-databases! database-ids))
+          (recur)))))
   nil)
 
 (defmethod database/delete-for-databases! :model/Field

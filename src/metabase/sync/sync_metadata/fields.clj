@@ -39,6 +39,7 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.sync.db :as sync.db]
@@ -276,11 +277,12 @@
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
-   (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
-     (let [db-metadata (fetch-metadata/table-fields-metadata database table)
-           ;; TODO: decouple nested field columns sync from field sync. This will allow
-           ;; describe-fields to be used for field sync for databases with nested field columns
-           ;; Also this should be a driver method, not a sql-jdbc.sync method
-           db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
-       {:total-fields   (count db-metadata)
-        :updated-fields (sync-and-update! database table db-metadata)}))))
+   (mdb/with-worktree-scope {:type :main}
+     (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
+       (let [db-metadata (fetch-metadata/table-fields-metadata database table)
+             ;; TODO: decouple nested field columns sync from field sync. This will allow
+             ;; describe-fields to be used for field sync for databases with nested field columns
+             ;; Also this should be a driver method, not a sql-jdbc.sync method
+             db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
+         {:total-fields   (count db-metadata)
+          :updated-fields (sync-and-update! database table db-metadata)})))))
