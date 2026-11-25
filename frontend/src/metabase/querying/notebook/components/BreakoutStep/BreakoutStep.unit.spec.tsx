@@ -560,9 +560,10 @@ describe("BreakoutStep", () => {
       const createdAtOption = await screen.findByRole("option", {
         name: "Created At",
       });
-      await userEvent.click(
-        within(createdAtOption).getByLabelText("Temporal bucket"),
-      );
+      const temporalBucketButton =
+        within(createdAtOption).getByLabelText("Temporal bucket");
+      expect(temporalBucketButton).toHaveTextContent("by month");
+      await userEvent.click(temporalBucketButton);
 
       let menu = await screen.findByRole("menu");
       expect(
@@ -577,9 +578,10 @@ describe("BreakoutStep", () => {
       ).toBeInTheDocument();
 
       const priceOption = screen.getByRole("option", { name: "Price" });
-      await userEvent.click(
-        within(priceOption).getByLabelText("Binning strategy"),
-      );
+      const binningButton =
+        within(priceOption).getByLabelText("Binning strategy");
+      expect(binningButton).toHaveTextContent("Auto bin");
+      await userEvent.click(binningButton);
 
       await waitFor(() =>
         expect(
