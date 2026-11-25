@@ -38,6 +38,7 @@
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -1119,7 +1120,7 @@
                  (let [db-def      {:database-name "field-test-db"}
                        data-source (load-from-h2-test/get-data-source original-app-db-type db-def)]
                    (load-from-h2-test/create-current-database! original-app-db-type db-def data-source)
-                   (binding [mdb.connection/*application-db* (mdb.connection/application-db original-app-db-type data-source)]
+                   (mdb/with-application-db (mdb.connection/application-db original-app-db-type data-source)
                      (load-from-h2/load-from-h2! h2-filename)
                      (testing "The defective field should still exist after loading from H2"
                        (is (= #{defective-field-id}
@@ -2355,7 +2356,7 @@
                                                    :created_at #t "2020"
                                                    :updated_at #t "2020"})
           group-id     (t2/insert-returning-pk! :permissions_group {:name "Test Group"})]
-      (perms/add-user-to-group! user-id group-id)
+      (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}])
       (migrate!)
       (clear-permissions!)
       ;; set one table to be unrestricted
@@ -2889,6 +2890,90 @@
           (migrate!)
           (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
 
+(deftest collapse-blocked-view-data-permissions-test
+  (testing "table-level view-data rows that are all blocked, or repeat their db-level row, collapse into it"
+    (impl/test-migrations ["v58.2026-11-12T00:00:00"] [migrate!]
+      (let [group-id          (t2/insert-returning-pk! :permissions_group {:name      "collapse-test-group"
+                                                                           :entity_id (u/generate-nano-id)})
+            db!               (fn [db-name]
+                                (t2/insert-returning-pk! :metabase_database
+                                                         {:details    "{}"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :engine     "h2"
+                                                          :is_sample  false
+                                                          :name       db-name}))
+            table!            (fn [db-id active?]
+                                (t2/insert-returning-pk! :metabase_table
+                                                         {:db_id      db-id
+                                                          :name       (mt/random-name)
+                                                          :schema     "PUBLIC"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :active     active?}))
+            perm!             (fn [db-id table-id perm-type perm-value]
+                                (t2/insert! :data_permissions
+                                            {:group_id    group-id
+                                             :db_id       db-id
+                                             :table_id    table-id
+                                             :schema_name (when table-id "PUBLIC")
+                                             :perm_type   perm-type
+                                             :perm_value  perm-value}))
+            rows              (fn [db-id perm-type]
+                                (t2/select-fn-set (juxt :table_id :perm_value) :data_permissions
+                                                  :group_id group-id :db_id db-id :perm_type perm-type))
+            blocked-db        (db! "collapse-blocked")
+            blocked-a         (table! blocked-db true)
+            blocked-b         (table! blocked-db true)
+            blocked-inactive  (table! blocked-db false)
+            partial-db        (db! "collapse-partial")
+            partial-a         (table! partial-db true)
+            _                 (table! partial-db true)
+            mixed-db          (db! "collapse-mixed")
+            mixed-a           (table! mixed-db true)
+            mixed-b           (table! mixed-db true)
+            unrestricted-db   (db! "collapse-unrestricted")
+            unrestricted-a    (table! unrestricted-db true)
+            other-type-db     (db! "collapse-other-type")
+            other-type-a      (table! other-type-db true)
+            inactive-db       (db! "collapse-inactive-differs")
+            inactive-a        (table! inactive-db true)
+            inactive-inactive (table! inactive-db false)
+            duplicate-db      (db! "collapse-duplicate")
+            duplicate-a       (table! duplicate-db true)
+            duplicate-b       (table! duplicate-db true)]
+        (perm! blocked-db blocked-a "perms/view-data" "blocked")
+        (perm! blocked-db blocked-b "perms/view-data" "blocked")
+        (perm! blocked-db blocked-inactive "perms/view-data" "blocked")
+        (perm! blocked-db blocked-a "perms/create-queries" "no")
+        (perm! partial-db partial-a "perms/view-data" "blocked")
+        (perm! mixed-db mixed-a "perms/view-data" "blocked")
+        (perm! mixed-db mixed-b "perms/view-data" "unrestricted")
+        (perm! unrestricted-db unrestricted-a "perms/view-data" "unrestricted")
+        (perm! other-type-db other-type-a "perms/create-queries" "no")
+        (perm! inactive-db inactive-a "perms/view-data" "blocked")
+        (perm! inactive-db inactive-inactive "perms/view-data" "unrestricted")
+        (perm! duplicate-db nil "perms/view-data" "unrestricted")
+        (perm! duplicate-db duplicate-a "perms/view-data" "unrestricted")
+        (perm! duplicate-db duplicate-b "perms/view-data" "blocked")
+        (migrate!)
+        (testing "blocked rows covering every active table become one db-level row"
+          (is (= #{[nil "blocked"]} (rows blocked-db "perms/view-data"))))
+        (testing "other permission types of collapsed database are kept"
+          (is (= #{[blocked-a "no"]} (rows blocked-db "perms/create-queries"))))
+        (testing "partial coverage is kept"
+          (is (= #{[partial-a "blocked"]} (rows partial-db "perms/view-data"))))
+        (testing "mixed values are kept"
+          (is (= #{[mixed-a "blocked"] [mixed-b "unrestricted"]} (rows mixed-db "perms/view-data"))))
+        (testing "unrestricted rows are kept"
+          (is (= #{[unrestricted-a "unrestricted"]} (rows unrestricted-db "perms/view-data"))))
+        (testing "rows of other permission types are kept"
+          (is (= #{[other-type-a "no"]} (rows other-type-db "perms/create-queries"))))
+        (testing "differing value on inactive table prevents collapse"
+          (is (= #{[inactive-a "blocked"] [inactive-inactive "unrestricted"]} (rows inactive-db "perms/view-data"))))
+        (testing "only table rows equal to existing db-level row are deleted"
+          (is (= #{[nil "unrestricted"] [duplicate-b "blocked"]} (rows duplicate-db "perms/view-data"))))))))
+
 (deftest retire-confirmed-at-v59-ids-test
   (testing "v59.2026-07-10T22:29:18 deletes the changelog rows of the confirmed_at changesets that moved to v63 ids"
     (impl/test-migrations "v59.2026-07-10T22:29:18" [migrate!]
@@ -2982,7 +3067,9 @@
                   "v60.2026-04-02T00:00:23"]] ; ALTER TABLE segment DROP COLUMN
         (testing (str id " is recorded as MARK_RAN")
           (is (= "MARK_RAN"
-                 (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* id)))))))))
+                 (:exectype (liquibase/changelog-by-id
+                             (mdb.connection/current-application-db)
+                             id)))))))))
 
 ;;;
 ;;; 62 tests
@@ -4485,6 +4572,94 @@
       (migrate!)
       (is (thrown? Exception (t2/select :data_app_group_assignment))))))
 
+(deftest db-router-anonymous-access-granted-backfill-test
+  (testing "migration 6m7im9: routers with published guest embeds are granted anonymous access"
+    (impl/test-migrations ["3i2jpz" "6m7im9"] [migrate!]
+      (let [user-id  (t2/insert-returning-pk! :core_user {:first_name  "Router"
+                                                          :last_name   "Owner"
+                                                          :email       "router-owner@metabase.com"
+                                                          :password    "superstrong"
+                                                          :entity_id   (u/generate-nano-id)
+                                                          :date_joined :%now})
+            db!      (fn [db-name]
+                       (t2/insert-returning-pk! :metabase_database {:details    "{}"
+                                                                    :created_at :%now
+                                                                    :updated_at :%now
+                                                                    :engine     "h2"
+                                                                    :is_sample  false
+                                                                    :name       db-name}))
+            router!  (fn [db-id]
+                       (t2/insert-returning-pk! :db_router {:database_id    db-id
+                                                            :user_attribute "tenant"}))
+            card!    (fn [db-id & {:keys [enable-embedding public-uuid]}]
+                       (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                              :entity_id              (u/generate-nano-id)
+                                                              :type                   "question"
+                                                              :display                "table"
+                                                              :dataset_query          "{}"
+                                                              :visualization_settings "{}"
+                                                              :creator_id             user-id
+                                                              :database_id            db-id
+                                                              :enable_embedding       (boolean enable-embedding)
+                                                              :public_uuid            public-uuid
+                                                              :archived               false
+                                                              :created_at             :%now
+                                                              :updated_at             :%now}))
+            dash!    (fn [& {:keys [enable-embedding]}]
+                       (t2/insert-returning-pk! :report_dashboard {:name             "Dash"
+                                                                   :creator_id       user-id
+                                                                   :parameters       "[]"
+                                                                   :entity_id        (u/generate-nano-id)
+                                                                   :enable_embedding (boolean enable-embedding)
+                                                                   :created_at       :%now
+                                                                   :updated_at       :%now}))
+            dashcard! (fn [dash-id card-id]
+                        (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
+                                                                        :card_id                card-id
+                                                                        :parameter_mappings     "[]"
+                                                                        :visualization_settings "{}"
+                                                                        :entity_id              (u/generate-nano-id)
+                                                                        :size_x                 4
+                                                                        :size_y                 4
+                                                                        :row                    0
+                                                                        :col                    0
+                                                                        :created_at             :%now
+                                                                        :updated_at             :%now}))
+            series!  (fn [dashcard-id card-id]
+                       (t2/insert! :dashboardcard_series {:dashboardcard_id dashcard-id
+                                                          :card_id          card-id
+                                                          :position         0}))
+            granted? (fn [router-id]
+                       (boolean (t2/select-one-fn :anonymous_access_granted :db_router :id router-id)))
+            embedded-card-db     (db! "embedded-card-router")
+            embedded-card-router (router! embedded-card-db)
+            _                    (card! embedded-card-db :enable-embedding true)
+            dashcard-db     (db! "dashcard-router")
+            dashcard-router (router! dashcard-db)
+            _               (dashcard! (dash! :enable-embedding true) (card! dashcard-db))
+            series-db       (db! "series-router")
+            series-router   (router! series-db)
+            series-dashcard (dashcard! (dash! :enable-embedding true) (card! (db! "series-unrelated")))
+            _               (series! series-dashcard (card! series-db))
+            public-db       (db! "public-link-router")
+            public-router   (router! public-db)
+            _               (card! public-db :public-uuid (str (random-uuid)))
+            elsewhere-db     (db! "elsewhere-router")
+            elsewhere-router (router! elsewhere-db)
+            _                (dashcard! (dash! :enable-embedding true) (card! (db! "elsewhere-other")))
+            plain-db        (db! "plain-db")
+            _               (card! plain-db :enable-embedding true)]
+        (migrate!)
+        (testing "granted"
+          (is (true? (granted? embedded-card-router)))
+          (is (true? (granted? dashcard-router)))
+          (is (true? (granted? series-router))))
+        (testing "left ungranted"
+          (is (false? (granted? public-router)))
+          (is (false? (granted? elsewhere-router))))
+        (testing "a non-routed database gets no router"
+          (is (not (t2/exists? :db_router :database_id plain-db))))))))
+
 (deftest deactivate-unused-builtin-transform-jobs-test
   (testing "pyz33j deactivates the built-in jobs that no transform uses"
     (impl/test-migrations ["pyz33j"] [migrate!]
@@ -4555,6 +4730,42 @@
                 "Monthly job" false
                 "Custom job"  true}
                (job-active)))))))
+
+(deftest unarchive-transforms-folders-test
+  (testing "b20m1q unarchives every archived transforms folder and leaves every other collection as it is"
+    (impl/test-migrations ["b20m1q"] [migrate!]
+      (let [op-id         (str (random-uuid))
+            collection!   (fn [{:keys [name namespace location archived? archived-directly?]}]
+                            (t2/insert-returning-pk! :collection
+                                                     (cond-> {:name       name
+                                                              :slug       name
+                                                              :location   location
+                                                              :namespace  namespace
+                                                              :entity_id  (u/generate-nano-id)
+                                                              :created_at :%now
+                                                              :archived   archived?}
+                                                       archived? (assoc :archived_directly    archived-directly?
+                                                                        :archive_operation_id op-id))))
+            folder-id     (collection! {:name "folder" :namespace "transforms" :location "/"
+                                        :archived? true :archived-directly? true})
+            subfolder-id  (collection! {:name "subfolder" :namespace "transforms" :location (format "/%d/" folder-id)
+                                        :archived? true :archived-directly? false})
+            live-id       (collection! {:name "live" :namespace "transforms" :location "/" :archived? false})
+            trashed-id    (collection! {:name "trashed" :namespace nil :location "/"
+                                        :archived? true :archived-directly? true})
+            archive-state (fn [id]
+                            (t2/select-one [:collection :archived :archived_directly :archive_operation_id] :id id))
+            unarchived    {:archived false :archived_directly nil :archive_operation_id nil}]
+        (migrate!)
+        (testing "the archived transforms folder and its subfolder show again, in their old place"
+          (is (= unarchived (archive-state folder-id)))
+          (is (= unarchived (archive-state subfolder-id)))
+          (is (= (format "/%d/" folder-id) (t2/select-one-fn :location :collection :id subfolder-id))))
+        (testing "a transforms folder that is not archived is unchanged"
+          (is (= unarchived (archive-state live-id))))
+        (testing "an archived collection outside the transforms namespace stays in the Trash"
+          (is (= {:archived true :archived_directly true :archive_operation_id op-id}
+                 (archive-state trashed-id))))))))
 
 (deftest transform-source-database-delete-cascade-test
   (testing "pz7hdr..kq4w2m delete orphan query transforms, then transforms with their source database"
@@ -4667,7 +4878,7 @@
         (is (not (contains? (t2/select-one :metabase_database :id db-id) :admin_details))
             "065 dropped the column")
         (migrate!)
-        (is (= "EXECUTED" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4"))))
+        (is (= "EXECUTED" (:exectype (liquibase/changelog-by-id (mdb.connection/current-application-db) "h8xlm4"))))
         (is (=? {:admin_details nil} (t2/select-one :metabase_database :id db-id))
             "existing rows get a null admin_details")
         (t2/update! :metabase_database :id db-id {:admin_details "{\"user\":\"admin\"}"})
@@ -4676,7 +4887,7 @@
     (impl/test-migrations ["h8xlm4"] [migrate!]
       (t2/query "ALTER TABLE metabase_database ADD COLUMN admin_details TEXT")
       (migrate!)
-      (is (= "MARK_RAN" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4")))))))
+      (is (= "MARK_RAN" (:exectype (liquibase/changelog-by-id (mdb.connection/current-application-db) "h8xlm4")))))))
 
 (deftest drop-report-card-collection-preview-test
   (testing "j38192: report_card.collection_preview is dropped, and a rollback restores it with previews enabled"
@@ -4711,3 +4922,735 @@
         (testing "rolling back restores the column with previews enabled"
           (migrate! :down 64)
           (is (true? (:collection_preview (card)))))))))
+
+(deftest data-test-run-test
+  (testing "pwaj0l..k4zf7x: transform_test_run becomes data_test_run, and the rollback restores it"
+    (impl/test-migrations ["pwaj0l" "k4zf7x"] [migrate!]
+      (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "Test"
+                                                              :last_name     "Owner"
+                                                              :email         "data-test-owner@test.com"
+                                                              :entity_id     (u/generate-nano-id)
+                                                              :date_joined   :%now
+                                                              :password      "password"
+                                                              :password_salt "salt"})
+            transform-id (t2/insert-returning-pk! :transform {:name        (mt/random-name)
+                                                              :source      "{}"
+                                                              :target      "{}"
+                                                              :source_type "native"
+                                                              :creator_id  user-id
+                                                              :entity_id   (u/generate-nano-id)
+                                                              :created_at  :%now
+                                                              :updated_at  :%now})
+            insert-test  (fn []
+                           (t2/insert-returning-pk! :transform_test {:entity_id    (u/generate-nano-id)
+                                                                     :transform_id transform-id
+                                                                     :creator_id   user-id
+                                                                     :name         (mt/random-name)
+                                                                     :inputs       "[]"
+                                                                     :expectations "[]"
+                                                                     :created_at   :%now
+                                                                     :updated_at   :%now}))
+            test-id      (insert-test)
+            deleted-id   (insert-test)
+            run-row      (fn [id] {:transform_test_id id, :initiated_by user-id, :status "passed"})
+            kept-run     (t2/insert-returning-pk! :transform_test_run (run-row test-id))
+            deleted-run  (t2/insert-returning-pk! :transform_test_run (run-row deleted-id))
+            ;; Read the boundary before the changesets run: on MySQL the marker row that a run writes can share a
+            ;; changeset's position, so a deployment id read after the run can be the changeset's own.
+            boundary     (with-open [conn (.getConnection (mdb/data-source))]
+                           (liquibase/with-liquibase [liquibase conn]
+                             (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+        (t2/delete! :transform_test :id deleted-id)
+        (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id deleted-run))
+            "before the migration, deleting a test nulls the test id of its runs")
+        (is (thrown? Exception (t2/insert! :transform_test_run (run-row Integer/MAX_VALUE)))
+            "before the migration a run must name a test that exists")
+        (migrate!)
+        (let [dangling-run (t2/insert-returning-pk! :data_test_run {:test_type "transform", :test_id deleted-id, :status "passed"})]
+          (testing "the runs keep their test, and are transform runs"
+            (is (=? {:test_id test-id, :test_type "transform", :status "passed", :initiated_by user-id}
+                    (t2/select-one :data_test_run :id kept-run)))
+            (is (=? {:test_id nil, :test_type "transform"}
+                    (t2/select-one :data_test_run :id deleted-run))))
+          (testing "the old table is gone"
+            (is (thrown? Exception (t2/select :transform_test_run))))
+          (testing "test_id has no foreign key any more"
+            (is (some? (t2/insert-returning-pk! :data_test_run {:test_type "card", :test_id Integer/MAX_VALUE, :status "passed"})))
+            (let [other-test (insert-test)
+                  run        (t2/insert-returning-pk! :data_test_run {:test_type "transform", :test_id other-test, :status "passed"})]
+              (t2/delete! :transform_test :id other-test)
+              (is (= other-test (t2/select-one-fn :test_id :data_test_run :id run)))
+              (t2/delete! :data_test_run :id run)))
+          (testing "a new run must name its test type"
+            (is (thrown? Exception (t2/insert! :data_test_run {:test_id test-id, :status "started"}))))
+          (when (= :postgres (mdb/db-type))
+            (testing "the id sequence follows the table name"
+              (is (= "data_test_run_id_seq"
+                     (:seq (t2/query-one ["SELECT to_regclass('data_test_run_id_seq')::text AS seq"]))))))
+          (let [card-run (t2/select-one-pk :data_test_run :test_type "card")]
+            (is (some? card-run))
+            (with-open [conn (.getConnection (mdb/data-source))]
+              (liquibase/with-liquibase [liquibase conn]
+                (rollback/rollback-to-deployment! conn liquibase boundary)))
+            (testing "rollback restores transform_test_run"
+              (is (thrown? Exception (t2/select :data_test_run)))
+              (is (=? {:transform_test_id test-id, :status "passed", :initiated_by user-id}
+                      (t2/select-one :transform_test_run :id kept-run)))
+              (is (not (contains? (t2/select-one :transform_test_run :id kept-run) :test_type)))
+              (is (=? {:transform_test_id nil} (t2/select-one :transform_test_run :id deleted-run)))
+              (when (= :postgres (mdb/db-type))
+                (is (= "transform_test_run_id_seq"
+                       (:seq (t2/query-one ["SELECT to_regclass('transform_test_run_id_seq')::text AS seq"]))))))
+            (testing "rollback deletes the runs of other test types, and nulls an id that names no transform test"
+              (is (= 3 (t2/count :transform_test_run)) "the card run is gone")
+              (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id dangling-run))))
+            (testing "rollback restores the foreign key"
+              (is (thrown? Exception (t2/insert! :transform_test_run (run-row Integer/MAX_VALUE))))
+              (t2/delete! :transform_test :id test-id)
+              (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id kept-run))))
+            (is (nil? (t2/select-one :transform_test_run :id card-run)))))))))
+
+(deftest sync-library-collection-test
+  (doseq [[label settings synced?] [["read-write instance syncing a repository syncs the Library"
+                                     {"remote-sync-url" "https://example.com/repo.git" "remote-sync-type" "read-write"}
+                                     true]
+                                    ["read-only instance leaves the Library"
+                                     {"remote-sync-url" "https://example.com/repo.git" "remote-sync-type" "read-only"}
+                                     false]
+                                    ["instance without remote sync leaves the Library"
+                                     {"remote-sync-type" "read-write"}
+                                     false]]]
+    (testing (str "tlmp7c: " label)
+      (impl/test-migrations ["tlmp7c"] [migrate!]
+        (doseq [[k v] settings]
+          (t2/insert! :setting {:key k :value v}))
+        (let [insert!    (fn [location entity-id]
+                           (t2/insert-returning-pk! :collection {:name       (mt/random-name)
+                                                                 :slug       "c"
+                                                                 :location   location
+                                                                 :entity_id  entity-id
+                                                                 :created_at :%now}))
+              library-id (or (t2/select-one-pk :collection :entity_id "librarylibrarylibrary")
+                             (insert! "/" "librarylibrarylibrary"))
+              child-id   (insert! (format "/%d/" library-id) (u/generate-nano-id))
+              other-id   (insert! "/" (u/generate-nano-id))
+              synced?*   #(t2/select-one-fn :is_remote_synced :collection :id %)]
+          (migrate!)
+          (is (= synced? (synced?* library-id)))
+          (is (= synced? (synced?* child-id)))
+          (is (false? (synced?* other-id))))))))
+
+(deftest card-test-table-test
+  (testing "t1jz0k..c65vs3: card_test holds the tests of a card, and the rollback drops it"
+    (impl/test-migrations ["t1jz0k" "c65vs3"] [migrate!]
+      (let [user-id   (t2/insert-returning-pk! :core_user {:first_name    "Test"
+                                                           :last_name     "Owner"
+                                                           :email         "card-test-owner@test.com"
+                                                           :entity_id     (u/generate-nano-id)
+                                                           :date_joined   :%now
+                                                           :password      "password"
+                                                           :password_salt "salt"})
+            db-id     (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+            card-id   (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                             :entity_id              (u/generate-nano-id)
+                                                             :display                "table"
+                                                             :dataset_query          "{}"
+                                                             :visualization_settings "{}"
+                                                             :creator_id             user-id
+                                                             :database_id            db-id
+                                                             :created_at             :%now
+                                                             :updated_at             :%now})
+            boundary  (with-open [conn (.getConnection (mdb/data-source))]
+                        (liquibase/with-liquibase [liquibase conn]
+                          (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))
+            card-test (fn [entity-id]
+                        {:entity_id    entity-id
+                         :card_id      card-id
+                         :creator_id   user-id
+                         :name         "Revenue ignores refunds"
+                         :inputs       "[]"
+                         :expectations "[]"})]
+        (migrate!)
+        (let [entity-id (u/generate-nano-id)
+              test-id   (t2/insert-returning-pk! :card_test (card-test entity-id))]
+          (testing "a card test is stored with its timestamps"
+            (is (=? {:card_id card-id :creator_id user-id :entity_id entity-id :created_at some? :updated_at some?}
+                    (t2/select-one :card_test :id test-id))))
+          (testing "entity_id is unique"
+            (is (thrown? Exception (t2/insert! :card_test (card-test entity-id)))))
+          (testing "a card test must name a card that exists"
+            (is (thrown? Exception (t2/insert! :card_test (assoc (card-test (u/generate-nano-id)) :card_id Integer/MAX_VALUE)))))
+          (when (= :postgres (mdb/db-type))
+            (testing "entity_id compares byte by byte"
+              (is (= "C" (:collation_name (t2/query-one ["SELECT collation_name FROM information_schema.columns
+                                                          WHERE table_name = 'card_test' AND column_name = 'entity_id'"]))))))
+          (testing "deleting the card deletes its tests"
+            (t2/delete! :report_card :id card-id)
+            (is (nil? (t2/select-one :card_test :id test-id)))))
+        (with-open [conn (.getConnection (mdb/data-source))]
+          (liquibase/with-liquibase [liquibase conn]
+            (rollback/rollback-to-deployment! conn liquibase boundary)))
+        (testing "rollback drops card_test"
+          (is (thrown? Exception (t2/select :card_test))))))))
+
+(deftest workspace-idempotency-key-test
+  (testing "wk6itt..kbq7xz: workspace.idempotency_key is unique per creator, and the rollback drops it"
+    ;; No end id: kbq7xz is in the changelog on MySQL and MariaDB only, so it cannot end the range on every app DB.
+    (impl/test-migrations ["wk6itt"] [migrate!]
+      (let [new-user! (fn [email]
+                        (t2/insert-returning-pk! :core_user {:first_name    "Workspace"
+                                                             :last_name     "Creator"
+                                                             :email         email
+                                                             :entity_id     (u/generate-nano-id)
+                                                             :date_joined   :%now
+                                                             :password      "password"
+                                                             :password_salt "salt"}))
+            alice     (new-user! "ws-idempotency-alice@test.com")
+            bob       (new-user! "ws-idempotency-bob@test.com")
+            ws!       (fn [creator-id idempotency-key]
+                        (t2/insert-returning-pk! :workspace {:name            "WS"
+                                                             :creator_id      creator-id
+                                                             :idempotency_key idempotency-key}))
+            existing  (t2/insert-returning-pk! :workspace {:name "Before" :creator_id alice})
+            boundary  (with-open [conn (.getConnection (mdb/data-source))]
+                        (liquibase/with-liquibase [liquibase conn]
+                          (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+        (migrate!)
+        (testing "existing workspaces get no key"
+          (is (=? {:idempotency_key nil} (t2/select-one :workspace :id existing))))
+        (testing "a key is unique per creator"
+          (ws! alice "k1")
+          (is (thrown? Exception (ws! alice "k1")))
+          (is (pos-int? (ws! bob "k1")) "another creator may use the same key")
+          (is (pos-int? (ws! alice "K1")) "keys that differ only in letter case are two keys, on every app DB"))
+        (testing "workspaces without a key never conflict"
+          (is (pos-int? (ws! alice nil)))
+          (is (pos-int? (ws! alice nil))))
+        (with-open [conn (.getConnection (mdb/data-source))]
+          (liquibase/with-liquibase [liquibase conn]
+            (rollback/rollback-to-deployment! conn liquibase boundary)))
+        (testing "rollback drops the column and keeps the workspaces"
+          (is (not (contains? (t2/select-one :workspace :id existing) :idempotency_key)))
+          (is (= 6 (t2/count :workspace))))))))
+
+(deftest data-app-slug-and-name-columns-migration-test
+  (impl/test-migrations ["rwnbah"] [migrate!]
+    (let [app-id (t2/insert-returning-pk! :data_app
+                                          {:entity_id    "migration-birds-appxx"
+                                           :name         "birds"
+                                           :display_name "Birds"
+                                           :bundle_path  "birds.js"
+                                           :created_at   :%now
+                                           :updated_at   :%now})
+          app    #(t2/select-one :data_app :id app-id)]
+      (testing "the slug moves to slug and the display name to name"
+        (migrate!)
+        (is (=? {:slug "birds" :name "Birds"} (app)))
+        (is (not (contains? (app) :display_name))))
+      (testing "both columns stay required"
+        (is (thrown? Exception (t2/insert! :data_app {:entity_id    "migration-bees-appxxx"
+                                                      :name         "Bees"
+                                                      :bundle_path  "bees.js"
+                                                      :created_at   :%now
+                                                      :updated_at   :%now})))
+        (is (thrown? Exception (t2/insert! :data_app {:entity_id    "migration-bees-appxxx"
+                                                      :slug         "bees"
+                                                      :bundle_path  "bees.js"
+                                                      :created_at   :%now
+                                                      :updated_at   :%now}))))
+      (testing "rollback restores the old columns"
+        (migrate! :down 64)
+        (is (=? {:name "birds" :display_name "Birds"} (app)))
+        (is (not (contains? (app) :slug)))))))
+
+(deftest segment-test-table-test
+  (testing "lcbmfh..nxuoll: segment_test holds the tests of a segment, and the rollback drops it"
+    (impl/test-migrations ["lcbmfh" "nxuoll"] [migrate!]
+      (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "Test"
+                                                              :last_name     "Owner"
+                                                              :email         "segment-test-owner@test.com"
+                                                              :entity_id     (u/generate-nano-id)
+                                                              :date_joined   :%now
+                                                              :password      "password"
+                                                              :password_salt "salt"})
+            db-id        (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                      :engine     "h2"
+                                                                      :created_at :%now
+                                                                      :updated_at :%now
+                                                                      :details    "{}"})
+            table-id     (t2/insert-returning-pk! :metabase_table {:name       "customers"
+                                                                   :db_id      db-id
+                                                                   :active     true
+                                                                   :created_at :%now
+                                                                   :updated_at :%now})
+            segment-id   (t2/insert-returning-pk! :segment {:name       "Active customers"
+                                                            :entity_id  (u/generate-nano-id)
+                                                            :table_id   table-id
+                                                            :creator_id user-id
+                                                            :definition "{}"
+                                                            :created_at :%now
+                                                            :updated_at :%now})
+            boundary     (with-open [conn (.getConnection (mdb/data-source))]
+                           (liquibase/with-liquibase [liquibase conn]
+                             (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))
+            segment-test (fn [entity-id]
+                           {:entity_id    entity-id
+                            :segment_id   segment-id
+                            :creator_id   user-id
+                            :name         "Churned customers are excluded"
+                            :inputs       "[]"
+                            :expectations "[]"})]
+        (migrate!)
+        (let [entity-id (u/generate-nano-id)
+              test-id   (t2/insert-returning-pk! :segment_test (segment-test entity-id))]
+          (testing "a segment test is stored with its timestamps"
+            (is (=? {:segment_id segment-id :creator_id user-id :entity_id entity-id :created_at some? :updated_at some?}
+                    (t2/select-one :segment_test :id test-id))))
+          (testing "entity_id is unique"
+            (is (thrown? Exception (t2/insert! :segment_test (segment-test entity-id)))))
+          (testing "a segment test must name a segment that exists"
+            (is (thrown? Exception (t2/insert! :segment_test (assoc (segment-test (u/generate-nano-id))
+                                                                    :segment_id Integer/MAX_VALUE)))))
+          (when (= :postgres (mdb/db-type))
+            (testing "entity_id compares byte by byte"
+              (is (= "C" (:collation_name (t2/query-one ["SELECT collation_name FROM information_schema.columns
+                                                          WHERE table_name = 'segment_test' AND column_name = 'entity_id'"]))))))
+          (testing "deleting the segment deletes its tests"
+            (t2/delete! :segment :id segment-id)
+            (is (nil? (t2/select-one :segment_test :id test-id)))))
+        (with-open [conn (.getConnection (mdb/data-source))]
+          (liquibase/with-liquibase [liquibase conn]
+            (rollback/rollback-to-deployment! conn liquibase boundary)))
+        (testing "rollback drops segment_test"
+          (is (thrown? Exception (t2/select :segment_test))))))))
+
+(deftest backfill-collection-permission-columns-test
+  (impl/test-migrations ["fonded" "fonder"] [migrate!]
+    (let [group-id      (t2/select-one-fn :id :permissions_group {:order-by [[:id :asc]]})
+          collection-id (t2/insert-returning-pk! :collection {:name      "Backfill collection"
+                                                              :slug      "backfill_collection"
+                                                              :entity_id "backfillcollectionxxx"})
+          write-id      (t2/insert-returning-pk! :permissions {:group_id group-id
+                                                               :object   (format "/collection/%d/" collection-id)})
+          read-id       (t2/insert-returning-pk! :permissions {:group_id group-id
+                                                               :object   (format "/collection/%d/read/" collection-id)})
+          root-id       (t2/insert-returning-pk! :permissions {:group_id group-id
+                                                               :object   "/collection/namespace/backfill/root/"})
+          row           #(t2/select-one [:permissions :collection_id :perm_type :perm_value] :id %)]
+      (migrate!)
+      (testing "write row"
+        (is (= {:collection_id collection-id :perm_type "perms/collection-access" :perm_value "read-and-write"}
+               (row write-id))))
+      (testing "read row"
+        (is (= {:collection_id collection-id :perm_type "perms/collection-access" :perm_value "read"}
+               (row read-id))))
+      (testing "row of no Collection"
+        (is (= {:collection_id nil :perm_type nil :perm_value nil}
+               (row root-id))))
+      (testing "Trash rows"
+        (let [trash-id (t2/select-one-fn :id :collection :type "trash")]
+          (is (pos? (t2/count :permissions :collection_id trash-id :perm_value "read-and-write")))
+          (is (zero? (t2/count :permissions :collection_id nil :object (format "/collection/%d/" trash-id)))))))))
+
+(deftest user-settings-id-primary-key-test
+  (impl/test-migrations ["zr3x3c" "mjumxg"] [migrate!]
+    (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "User Settings Id Test DB"
+                                                                     :engine     "h2"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+          insert-table! (fn [table-name]
+                          (t2/insert-returning-pk! :metabase_table {:active       true
+                                                                    :db_id        db-id
+                                                                    :name         table-name
+                                                                    :display_name table-name
+                                                                    :created_at   :%now
+                                                                    :updated_at   :%now}))
+          insert-field! (fn [table-id field-name]
+                          (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                                    :name          field-name
+                                                                    :display_name  field-name
+                                                                    :active        true
+                                                                    :base_type     "type/Text"
+                                                                    :database_type "TEXT"
+                                                                    :created_at    :%now
+                                                                    :updated_at    :%now}))
+          table-1       (insert-table! "one")
+          table-2       (insert-table! "two")
+          field-1       (insert-field! table-1 "one")
+          field-2       (insert-field! table-2 "two")]
+      (t2/insert! :metabase_table_user_settings [{:table_id table-1 :display_name "Table One"}
+                                                 {:table_id table-2 :display_name "Table Two"}])
+      (t2/insert! :metabase_field_user_settings [{:field_id field-1 :display_name "Field One"}
+                                                 {:field_id field-2 :display_name "Field Two"}])
+      (migrate!)
+      (testing "existing rows get distinct ids and keep their values"
+        (let [table-rows (t2/select :metabase_table_user_settings :table_id [:in [table-1 table-2]])
+              field-rows (t2/select :metabase_field_user_settings :field_id [:in [field-1 field-2]])]
+          (is (= {table-1 "Table One" table-2 "Table Two"}
+                 (into {} (map (juxt :table_id :display_name)) table-rows)))
+          (is (= {field-1 "Field One" field-2 "Field Two"}
+                 (into {} (map (juxt :field_id :display_name)) field-rows)))
+          (is (= 2 (count (into #{} (map :id) table-rows))))
+          (is (= 2 (count (into #{} (map :id) field-rows))))
+          (is (every? pos-int? (map :id (concat table-rows field-rows))))))
+      (testing "new rows get generated ids"
+        (let [table-3 (insert-table! "three")
+              field-3 (insert-field! table-3 "three")]
+          (is (pos-int? (t2/insert-returning-pk! :metabase_table_user_settings {:table_id table-3})))
+          (is (pos-int? (t2/insert-returning-pk! :metabase_field_user_settings {:field_id field-3})))))
+      (testing "one settings row per Table and per Field"
+        (is (thrown? Exception (t2/insert! :metabase_table_user_settings {:table_id table-1})))
+        (is (thrown? Exception (t2/insert! :metabase_field_user_settings {:field_id field-1}))))
+      (testing "settings are deleted with their Table and Field"
+        (t2/delete! :metabase_field :id field-2)
+        (is (not (t2/exists? :metabase_field_user_settings :field_id field-2)))
+        (t2/delete! :metabase_table :id table-2)
+        (is (not (t2/exists? :metabase_table_user_settings :table_id table-2))))
+      (testing "rollback"
+        (migrate! :down 64)
+        (is (= {:table_id table-1 :display_name "Table One"}
+               (t2/select-one [:metabase_table_user_settings :table_id :display_name] :table_id table-1)))
+        (is (not (contains? (t2/select-one :metabase_table_user_settings :table_id table-1) :id)))
+        (is (not (contains? (t2/select-one :metabase_field_user_settings :field_id field-1) :id)))
+        (is (thrown? Exception (t2/insert! :metabase_table_user_settings {:table_id table-1})))
+        (t2/delete! :metabase_field :id field-1)
+        (is (not (t2/exists? :metabase_field_user_settings :field_id field-1)))))))
+
+(deftest osi-ai-context-id-primary-key-test
+  (impl/test-migrations ["xdt6kw" "rcp0pz"] [migrate!]
+    (let [row (fn [entity-type local-id]
+                {:entity_type     entity-type
+                 :entity_local_id local-id
+                 :entity_id       (format "osiaicontext%s%07d" (first entity-type) local-id)
+                 :ai_context      "{}"
+                 :created_at      :%now
+                 :updated_at      :%now})]
+      (t2/insert! :osi_ai_context [(row "table" 1) (row "table" 2) (row "card" 1)])
+      (migrate!)
+      (testing "existing rows get distinct ids and keep their keys"
+        (let [rows (t2/select :osi_ai_context)]
+          (is (= #{["table" 1] ["table" 2] ["card" 1]}
+                 (into #{} (map (juxt :entity_type :entity_local_id)) rows)))
+          (is (= 3 (count (into #{} (map :id) rows))))
+          (is (every? pos-int? (map :id rows)))))
+      (testing "new rows get generated ids"
+        (is (pos-int? (t2/insert-returning-pk! :osi_ai_context (row "card" 2)))))
+      (testing "one row per entity"
+        (is (thrown? Exception (t2/insert! :osi_ai_context (row "table" 1)))))
+      (testing "rollback"
+        (migrate! :down 64)
+        (is (not (contains? (t2/select-one :osi_ai_context :entity_type "table" :entity_local_id 1) :id)))
+        (is (thrown? Exception (t2/insert! :osi_ai_context (dissoc (row "table" 1) :entity_id))))))))
+
+(deftest upgrade-segment-definition-fragments-test
+  (impl/test-migrations ["m8mp4e"] [migrate!]
+    (let [user-id     (t2/insert-returning-pk! :core_user {:first_name  "Test"
+                                                           :last_name   "User"
+                                                           :email       "user@example.com"
+                                                           :entity_id   (u/generate-nano-id)
+                                                           :password    "superstrong"
+                                                           :date_joined :%now})
+          db-id       (t2/insert-returning-pk! :metabase_database {:name       "Segment Definitions DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+          table-id    (t2/insert-returning-pk! :metabase_table {:active       true
+                                                                :db_id        db-id
+                                                                :name         "orders"
+                                                                :display_name "Orders"
+                                                                :created_at   :%now
+                                                                :updated_at   :%now})
+          segment!    (fn [definition]
+                        (t2/insert-returning-pk! :segment {:name       "Segment"
+                                                           :table_id   table-id
+                                                           :creator_id user-id
+                                                           :entity_id  (u/generate-nano-id)
+                                                           :definition (json/encode definition)
+                                                           :created_at :%now
+                                                           :updated_at :%now}))
+          definition  (fn [segment-id]
+                        (json/decode (t2/select-one-fn :definition :segment :id segment-id)))
+          filter-form ["=" ["field" 1 nil] 2]
+          full-query  {"database" db-id, "type" "query", "query" {"source-table" table-id, "filter" filter-form}}
+          mbql5-query {"lib/type" "mbql/query", "database" db-id, "stages" [{"lib/type" "mbql.stage/mbql"}]}
+          fragment    (segment! {"filter" filter-form})
+          aggregated  (segment! {"filter" filter-form, "aggregation" [["count"]]})
+          other-table (segment! {"source-table" 99, "filter" filter-form})
+          full        (segment! full-query)
+          mbql5       (segment! mbql5-query)
+          empty-one   (segment! {})]
+      (migrate!)
+      (testing "fragment becomes full query on its table"
+        (is (= full-query (definition fragment))))
+      (testing "aggregation of fragment is dropped"
+        (is (= full-query (definition aggregated))))
+      (testing "source table named by fragment is kept"
+        (is (= (assoc-in full-query ["query" "source-table"] 99) (definition other-table))))
+      (testing "full queries and empty definitions stay as they are"
+        (is (= full-query (definition full)))
+        (is (= mbql5-query (definition mbql5)))
+        (is (= {} (definition empty-one)))))))
+
+(deftest transform-tag-name-unique-test
+  (testing "tgn4u7 renames duplicate transform tag names and tgx7k2 makes the names unique"
+    (impl/test-migrations ["tgn4u7" "tgx7k2"] [migrate!]
+      (let [counter (atom 0)
+            insert! (fn [tag-name]
+                      (t2/insert-returning-pk! :transform_tag {:name      tag-name
+                                                               :entity_id (format "transformtagentity%03d" (swap! counter inc))}))
+            first-id  (insert! "etl")
+            second-id (insert! "etl")
+            third-id  (insert! "etl")
+            taken-id  (insert! "etl (2)")
+            other-id  (insert! "other")]
+        (migrate!)
+        (is (= "etl" (t2/select-one-fn :name :transform_tag :id first-id)))
+        (is (= "etl (3)" (t2/select-one-fn :name :transform_tag :id second-id)))
+        (is (= "etl (4)" (t2/select-one-fn :name :transform_tag :id third-id)))
+        (is (= "etl (2)" (t2/select-one-fn :name :transform_tag :id taken-id)))
+        (is (= "other" (t2/select-one-fn :name :transform_tag :id other-id)))
+        (is (thrown? Exception (insert! "other")))))))
+
+(deftest revoke-transforms-without-native-test
+  (testing "ii2ymb revokes transforms where the group has no database-level native create-queries"
+    (impl/test-migrations ["ii2ymb"] [migrate!]
+      (let [group!      (fn [group-name] (t2/insert-returning-pk! :permissions_group {:name      group-name
+                                                                                      :entity_id (u/generate-nano-id)}))
+            native-gid  (group! "Transforms Native Group")
+            table-gid   (group! "Transforms Table Group")
+            builder-gid (group! "Transforms Builder Group")
+            db-id       (t2/insert-returning-pk! :metabase_database {:name       "Transforms Test DB"
+                                                                     :engine     "postgres"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+            table-id    (t2/insert-returning-pk! :metabase_table {:active     true
+                                                                  :db_id      db-id
+                                                                  :name       "a_table"
+                                                                  :created_at :%now
+                                                                  :updated_at :%now})
+            perm!       (fn [m] (t2/insert-returning-pk! :data_permissions (merge {:db_id db-id} m)))
+            transforms! (fn [group-id] (perm! {:group_id group-id :perm_type "perms/transforms" :perm_value "yes"}))
+            transforms  (fn [id] (t2/select-one-fn :perm_value :data_permissions :id id))]
+        (perm! {:group_id native-gid :perm_type "perms/create-queries" :perm_value "query-builder-and-native"})
+        (perm! {:group_id table-gid :perm_type "perms/create-queries" :perm_value "query-builder"
+                :table_id table-id :schema_name "public"})
+        (perm! {:group_id builder-gid :perm_type "perms/create-queries" :perm_value "query-builder"})
+        (let [native-id   (transforms! native-gid)
+              granular-id (transforms! table-gid)
+              builder-id  (transforms! builder-gid)]
+          (migrate!)
+          (is (= "yes" (transforms native-id)))
+          (is (= "no" (transforms granular-id)))
+          (is (= "no" (transforms builder-id))))))))
+
+(deftest dashboardcard-series-position-unique-test
+  (testing "dcs8w3 renumbers the series of a dashcard that share a position and dcs5n7 makes the positions unique"
+    (impl/test-migrations ["dcs8w3" "dcs5n7"] [migrate!]
+      (let [user-id     (t2/insert-returning-pk! :core_user {:first_name  "Test"
+                                                             :last_name   "User"
+                                                             :email       "user@example.com"
+                                                             :password    "superstrong"
+                                                             :entity_id   (u/generate-nano-id)
+                                                             :date_joined :%now})
+            db-id       (t2/insert-returning-pk! :metabase_database {:name       "db"
+                                                                     :engine     "postgres"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+            dash-id     (t2/insert-returning-pk! :report_dashboard {:name       "Series"
+                                                                    :creator_id user-id
+                                                                    :parameters "[]"
+                                                                    :entity_id  (u/generate-nano-id)
+                                                                    :created_at :%now
+                                                                    :updated_at :%now})
+            insert-card!    (fn []
+                              (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                                     :entity_id              (u/generate-nano-id)
+                                                                     :display                "table"
+                                                                     :dataset_query          "{}"
+                                                                     :visualization_settings "{}"
+                                                                     :creator_id             user-id
+                                                                     :database_id            db-id
+                                                                     :created_at             :%now
+                                                                     :updated_at             :%now}))
+            insert-dashcard! (fn []
+                               (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
+                                                                               :parameter_mappings     "[]"
+                                                                               :visualization_settings "{}"
+                                                                               :entity_id              (u/generate-nano-id)
+                                                                               :size_x                 4
+                                                                               :size_y                 4
+                                                                               :row                    0
+                                                                               :col                    0
+                                                                               :created_at             :%now
+                                                                               :updated_at             :%now}))
+            insert-series!  (fn [dashcard-id position]
+                              (t2/insert-returning-pk! :dashboardcard_series {:dashboardcard_id dashcard-id
+                                                                              :card_id          (insert-card!)
+                                                                              :position         position}))
+            dashcard-id     (insert-dashcard!)
+            other-dashcard  (insert-dashcard!)
+            first-id        (insert-series! dashcard-id 0)
+            second-id       (insert-series! dashcard-id 0)
+            third-id        (insert-series! dashcard-id 1)
+            other-id        (insert-series! other-dashcard 0)]
+        (migrate!)
+        (is (= [first-id second-id third-id]
+               (t2/select-pks-vec :dashboardcard_series :dashboardcard_id dashcard-id {:order-by [[:position :asc]]})))
+        (is (= [0 1 2] (t2/select-fn-vec :position :dashboardcard_series :dashboardcard_id dashcard-id {:order-by [[:position :asc]]})))
+        (is (= 0 (t2/select-one-fn :position :dashboardcard_series :id other-id)))
+        (is (thrown? Exception (insert-series! dashcard-id 2)))))))
+
+(deftest archived-directly-columns-test
+  (testing "pu1a7q, nq3c9x and tl5e3m add archived_directly, and pu2b8r, nq4d1y and tl6f4n mark archived rows whose collection is live"
+    (impl/test-migrations ["pu1a7q" "tl6f4n"] [migrate!]
+      (let [user-id       (t2/insert-returning-pk! :core_user {:first_name  "Test"
+                                                               :last_name   "User"
+                                                               :email       "user@example.com"
+                                                               :password    "superstrong"
+                                                               :entity_id   (u/generate-nano-id)
+                                                               :date_joined :%now})
+            insert-collection! (fn [archived?]
+                                 (t2/insert-returning-pk! :collection {:name      "Collection"
+                                                                       :slug      "collection"
+                                                                       :entity_id (u/generate-nano-id)
+                                                                       :archived  archived?
+                                                                       :location  "/"}))
+            live-id       (insert-collection! false)
+            archived-id   (insert-collection! true)
+            insert-pulse! (fn [collection-id archived?]
+                            (t2/insert-returning-pk! :pulse {:name          "Pulse"
+                                                             :creator_id    user-id
+                                                             :collection_id collection-id
+                                                             :archived      archived?
+                                                             :parameters    "[]"
+                                                             :entity_id     (u/generate-nano-id)
+                                                             :created_at    :%now
+                                                             :updated_at    :%now}))
+            insert-snippet! (fn [collection-id archived?]
+                              (t2/insert-returning-pk! :native_query_snippet {:name          (str (random-uuid))
+                                                                              :content       "1 = 1"
+                                                                              :creator_id    user-id
+                                                                              :collection_id collection-id
+                                                                              :archived      archived?
+                                                                              :entity_id     (u/generate-nano-id)
+                                                                              :created_at    :%now
+                                                                              :updated_at    :%now}))
+            insert-timeline! (fn [collection-id archived?]
+                               (t2/insert-returning-pk! :timeline {:name          "Timeline"
+                                                                   :creator_id    user-id
+                                                                   :collection_id collection-id
+                                                                   :archived      archived?
+                                                                   :icon          "star"
+                                                                   :entity_id     (u/generate-nano-id)
+                                                                   :created_at    :%now
+                                                                   :updated_at    :%now}))
+            rows          {:pulse    [(insert-pulse! live-id true) (insert-pulse! archived-id true) (insert-pulse! live-id false)]
+                           :snippet  [(insert-snippet! live-id true) (insert-snippet! archived-id true) (insert-snippet! live-id false)]
+                           :timeline [(insert-timeline! live-id true) (insert-timeline! archived-id true) (insert-timeline! live-id false)]}]
+        (migrate!)
+        (doseq [[table ids] [[:pulse (:pulse rows)] [:native_query_snippet (:snippet rows)] [:timeline (:timeline rows)]]]
+          (testing (name table)
+            (is (= [true false false]
+                   (mapv #(t2/select-one-fn :archived_directly table :id %) ids)))))))))
+
+(deftest drop-table-transform-id-test
+  (impl/test-migrations ["nqeyec" "p7c3vn"] [migrate!]
+    (let [user-id    (t2/insert-returning-pk! :core_user {:first_name  "Test"
+                                                          :last_name   "User"
+                                                          :email       "user@example.com"
+                                                          :entity_id   (u/generate-nano-id)
+                                                          :password    "superstrong"
+                                                          :date_joined :%now})
+          db-id      (t2/insert-returning-pk! :metabase_database {:name       "Transform Targets DB"
+                                                                  :engine     "h2"
+                                                                  :created_at :%now
+                                                                  :updated_at :%now
+                                                                  :details    "{}"})
+          transform! (fn []
+                       (t2/insert-returning-pk! :transform {:name        (mt/random-name)
+                                                            :source      "{}"
+                                                            :target      "{}"
+                                                            :source_type "native"
+                                                            :creator_id  user-id
+                                                            :entity_id   (u/generate-nano-id)
+                                                            :created_at  :%now
+                                                            :updated_at  :%now}))
+          table!     (fn [transform-id]
+                       (t2/insert-returning-pk! :metabase_table {:active       true
+                                                                 :db_id        db-id
+                                                                 :name         (mt/random-name)
+                                                                 :transform_id transform-id
+                                                                 :created_at   :%now
+                                                                 :updated_at   :%now}))
+          target     (fn [transform-id]
+                       (t2/select-one-fn :target_table_id :transform :id transform-id))
+          unlinked   (transform!)
+          linked     (transform!)
+          no-table   (transform!)
+          old-table  (table! linked)
+          new-table  (table! linked)
+          only-table (table! unlinked)
+          plain      (table! nil)]
+      (t2/update! :transform :id linked {:target_table_id new-table})
+      (migrate!)
+      (testing "transform without target table takes the table that named it"
+        (is (= only-table (target unlinked))))
+      (testing "transform with target table keeps it"
+        (is (= new-table (target linked))))
+      (testing "transform named by no table stays without target table"
+        (is (nil? (target no-table))))
+      (testing "column is gone"
+        (is (not (contains? (t2/select-one :metabase_table :id only-table) :transform_id))))
+      (testing "rollback restores column from target tables"
+        (migrate! :down 64)
+        (is (= {only-table unlinked, new-table linked, old-table nil, plain nil}
+               (t2/select-pk->fn :transform_id :metabase_table :id [:in [only-table new-table old-table plain]])))))))
+
+(deftest drop-table-collection-id-and-is-published-test
+  (impl/test-migrations ["t5r8wm" "m6d9fx"] [migrate!]
+    (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "Published Tables DB"
+                                                                     :engine     "h2"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+          collection-id (t2/insert-returning-pk! :collection {:name      "Data"
+                                                              :slug      "data"
+                                                              :location  "/"
+                                                              :entity_id (u/generate-nano-id)})
+          table!        (fn [values]
+                          (t2/insert-returning-pk! :metabase_table (merge {:active     true
+                                                                           :db_id      db-id
+                                                                           :name       (mt/random-name)
+                                                                           :created_at :%now
+                                                                           :updated_at :%now}
+                                                                          values)))
+          settings!     (fn [table-id values]
+                          (t2/insert! :metabase_table_user_settings (merge {:table_id   table-id
+                                                                            :created_at :%now
+                                                                            :updated_at :%now}
+                                                                           values)))
+          published     (table! {:is_published true, :collection_id collection-id})
+          unpublished   (table! {})
+          plain         (table! {})]
+      (settings! published {:is_published true, :collection_id collection-id})
+      (settings! unpublished {:is_published false})
+      (migrate!)
+      (testing "columns are gone"
+        (is (not-any? #{:is_published :collection_id} (keys (t2/select-one :metabase_table :id published)))))
+      (testing "settings keep publication"
+        (is (= {published [true collection-id], unpublished [false nil]}
+               (t2/select-fn->fn :table_id (juxt :is_published :collection_id) :metabase_table_user_settings
+                                 :table_id [:in [published unpublished plain]]))))
+      (testing "rollback restores columns from settings"
+        (migrate! :down 64)
+        (is (= {published [true collection-id], unpublished [false nil], plain [false nil]}
+               (t2/select-pk->fn (juxt :is_published :collection_id) :metabase_table
+                                 :id [:in [published unpublished plain]])))))))

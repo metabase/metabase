@@ -1,3 +1,4 @@
+import type { CollectionRowModalState } from "metabase/common/collections/components/CollectionRowModal";
 import type {
   Collection,
   IconName,
@@ -24,9 +25,10 @@ export type TreeNode = {
   warningTooltip?: string;
 };
 
-export function isCollectionNode(
-  node: TreeNode,
-): node is TreeNode & { collection: Collection } {
+/** A folder row of the tree, with the collection it stands for. */
+export type CollectionNode = TreeNode & { collection: Collection };
+
+export function isCollectionNode(node: TreeNode): node is CollectionNode {
   return node.nodeType === "folder" && typeof node.collection?.id === "number";
 }
 
@@ -37,3 +39,12 @@ export function getCollectionNodeId(collectionId: number): string {
 export function getTransformNodeId(transformId: number): string {
   return `transform-${transformId}`;
 }
+
+export type DeleteTransformsFolderModalState = {
+  type: "delete";
+  folder: CollectionNode;
+};
+
+export type TransformsFolderModalState =
+  | CollectionRowModalState
+  | DeleteTransformsFolderModalState;

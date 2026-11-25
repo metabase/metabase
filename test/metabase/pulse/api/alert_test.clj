@@ -2,8 +2,8 @@
   "Tests for `/api/alert` endpoints."
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.events.test-util :as events.tu]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -11,6 +11,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :notifications))
@@ -43,18 +44,15 @@
 
 (defn- sanitize-alert
   [data]
-  (as-> data result
-    (walk/postwalk
-     (fn [x]
-       (if (map? x)
-         (-> x
-             (dissoc :id :created_at :updated_at :entity_id :pulse_id)
-             (update-vals (fn [v] (if (keyword? v)
-                                    (u/qualified-name v)
-                                    v))))
-         x))
-     result)
-    (update result :channels #(sort-by :channel_type %))))
+  (-> data
+      (match/replace-all
+        #'map? (-> &match
+                   (dissoc :id :created_at :updated_at :entity_id :pulse_id)
+                   (cond-> (nil? (:parameters &match)) (assoc :parameters []))
+                   (update-vals (fn [v] (if (keyword? v)
+                                          (u/qualified-name v)
+                                          v)))))
+      (update :channels #(sort-by :channel_type %))))
 
 (deftest wrapper-get-alert-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel]
@@ -196,3 +194,29 @@
                  {:type    :notification-recipient/user
                   :user_id (mt/user->id :lucky)}]
                 (email-recipients noti)))))))))
+
+(deftest list-alerts-statement-count-test
+  (testing "GET /api/alert runs as many statements for 10 alerts as for 40"
+    (mt/with-model-cleanup [:model/Notification :model/NotificationCard]
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (doseq [user [:crowberto :rasta]]
+          (let [list-ids #(set (map :id (mt/user-http-request user :get 200 "alert")))
+                count-of (fn [n]
+                           (let [created (mt/with-test-user :rasta
+                                           (models.notification/create-notifications!
+                                            (vec (for [_ (range n)]
+                                                   {:payload_type  :notification/card
+                                                    :active        true
+                                                    :creator_id    (mt/user->id :rasta)
+                                                    :payload       {:card_id card-id :send_condition :has_result}
+                                                    :handlers      [{:channel_type :channel/email
+                                                                     :recipients   [{:type    :notification-recipient/user
+                                                                                     :user_id (mt/user->id :rasta)}]}]}))))]
+                             (list-ids)
+                             {:ids   (map :id created)
+                              :count (events.tu/real-statement-count! list-ids)}))
+                small    (count-of 10)
+                large    (count-of 40)]
+            (testing user
+              (is (= (:count small) (:count large)))
+              (is (every? (list-ids) (concat (:ids small) (:ids large)))))))))))

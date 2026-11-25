@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
@@ -19,7 +20,8 @@
   `table-ids`."
   [table-ids f]
   (data-apps.tu/with-published-tables! [(mt/id :venues)]
-    (mt/with-temp [:model/DataApp app {}
+    (mt/with-temp [:model/Collection {app-coll-id :id} {:namespace :data-apps}
+                   :model/DataApp app {:resource_collection_id app-coll-id}
                    :model/Card card {:collection_id (:resource_collection_id app) :dataset_query (data-apps.tu/venues-query)}]
       (mt/with-model-cleanup [:model/Dependency]
         (when (seq table-ids)
@@ -59,8 +61,9 @@
                                                                               ;; CATEGORIES is reached only through this metric
                                                                               (lib/aggregate venues (lib/distinct (some #(when (= (mt/id :categories :name) (:id %)) %)
                                                                                                                         (lib/visible-columns venues)))))}
+                                :model/Collection {app-coll-id :id} {:namespace :data-apps}
                                 :model/DataApp {collection-id :resource_collection_id :as app}
-                                {}
+                                {:resource_collection_id app-coll-id}
                                 :model/Card _ {:collection_id collection-id
                                                :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
                                 :model/PermissionsGroup group {}]
@@ -196,8 +199,8 @@
           (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
           (perms/set-database-permission! (:id other-group) (mt/id) :perms/view-data :unrestricted)
           (group-access/add-groups! app [(:id group)])
-          (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
-          (perms/add-user-to-group! (mt/user->id :rasta) (:id other-group))
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group (:id group)}])
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group (:id other-group)}])
           (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :venues)}]}]
                   (group-access/permission-warnings app))))))))
 
@@ -291,3 +294,19 @@
                                     {:id (:id albatrosses) :name "Albatrosses" :schema nil
                                      :database_id (:id zoo) :database_name "Zoo"}]}]
                  (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings")))))))))
+
+(deftest tenant-group-warnings-do-not-inherit-internal-access-test
+  (mt/with-premium-features #{:data-apps :tenants :advanced-permissions}
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-perm-for-group-and-table! (perms/all-external-users-group) (mt/id :venues) :perms/view-data :blocked
+        (with-app-reading! [app [(mt/id :venues)]]
+          (mt/with-temp [:model/PermissionsGroup group {:is_tenant_group true}]
+            (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+            (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+            (group-access/add-groups! app [(:id group)])
+            (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :venues)}]}]
+                    (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings"))))
+            (mt/with-perm-for-group-and-table! (perms/all-external-users-group) (mt/id :venues) :perms/view-data :unrestricted
+              (is (= [] (group-access/permission-warnings app))))
+            (perms/set-table-permission! group (mt/id :venues) :perms/view-data :unrestricted)
+            (is (= [] (group-access/permission-warnings app)))))))))

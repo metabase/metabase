@@ -104,6 +104,8 @@ podman run -d -p 3000:3000 \
 
 Keep in mind that Metabase will be connecting from _within_ your Podman container, so make sure that either: a) you're using a fully qualified hostname, or b) that you've set a proper entry in your container's `/etc/hosts file`.
 
+For details on each `MB_DB_*` variable, see [Environment variables](../configuring-metabase/environment-variables.md#mb_db_automigrate).
+
 ## Migrating to a production installation
 
 If you've already been running Metabase with the default application database (H2), and want to use a production-ready application database without losing your app data (your questions, dashboards, etc), see [Migrating from H2 to a production database](migrating-from-h2.md).
@@ -158,4 +160,4 @@ See Running Metabase in the [Troubleshooting guide](../troubleshooting-guide/run
 
 ## Continue to setup
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../getting-started/setting-up-metabase.md).

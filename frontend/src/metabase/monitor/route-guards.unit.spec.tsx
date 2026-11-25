@@ -15,6 +15,7 @@ import {
   CanAccessContentDiagnostics,
   CanAccessDependencyDiagnostics,
   CanAccessMonitor,
+  CanAccessSessionManagement,
 } from "./route-guards";
 
 describe("monitor route-guards", () => {
@@ -298,6 +299,83 @@ describe("monitor route-guards", () => {
       expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
     });
   });
+  describe("CanAccessSessionManagement", () => {
+    interface SetupOpts {
+      currentUser?: ReturnType<typeof createMockUser>;
+    }
+
+    const setup = ({ currentUser }: SetupOpts = {}) => {
+      return renderWithProviders(
+        <>
+          <Route element={<CanAccessSessionManagement />}>
+            <Route
+              path="/monitor/sessions"
+              element={<div>sessions page</div>}
+            />
+          </Route>
+          <Route path="/unauthorized" element={<div>unauthorized</div>} />
+        </>,
+        {
+          storeInitialState: createMockState({
+            currentUser,
+            settings: createMockSettingsState({
+              "has-user-setup": true,
+              // like the e2e token: an analyst is entitled, so only admin rights can tell them apart
+              "token-features": createMockTokenFeatures({
+                advanced_permissions: true,
+              }),
+            }),
+          }),
+          withRouter: true,
+          initialRoute: "/monitor/sessions",
+        },
+      );
+    };
+
+    it("renders the page for superusers", async () => {
+      setup({ currentUser: createMockUser({ is_superuser: true }) });
+
+      expect(await screen.findByText("sessions page")).toBeInTheDocument();
+    });
+
+    it.each([
+      {
+        description: "a user without any monitoring access",
+        currentUser: createMockUser({
+          is_superuser: false,
+          is_data_analyst: false,
+        }),
+      },
+      {
+        description: "a non-admin with monitoring permission",
+        currentUser: createMockUser({
+          is_superuser: false,
+          is_data_analyst: false,
+          permissions: { can_access_monitoring: true },
+        }),
+      },
+      {
+        description: "an analyst",
+        currentUser: createMockUser({
+          is_superuser: false,
+          is_data_analyst: true,
+        }),
+      },
+    ])(
+      "redirects $description to unauthorized without redirect-back",
+      async ({ currentUser }) => {
+        const { router } = setup({ currentUser });
+
+        await waitFor(() => {
+          expect(router?.location.pathname).toBe("/unauthorized");
+        });
+
+        expect(router?.location.search).toBe("");
+        expect(screen.queryByText("sessions page")).not.toBeInTheDocument();
+      },
+    );
+  });
+
   describe("CanAccessAiAuditing", () => {
     interface SetupOpts {
       currentUser?: ReturnType<typeof createMockUser>;

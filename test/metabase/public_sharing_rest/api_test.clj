@@ -8,11 +8,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
    [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
@@ -34,6 +37,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [throttle.core :as throttle]
@@ -339,7 +343,7 @@
                                          :name         "price"
                                          :display-name "Price"
                                          :type         :dimension
-                                         :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                                         :field-id     (mt/id :venues :price)
                                          :widget-type  :category}
                     "snippet: greeting" {:type         :snippet
                                          :name         "snippet: greeting"
@@ -365,6 +369,57 @@
                                :source-table (mt/id :venues)
                                :aggregation  [["count" {:lib/uuid string?}]]}]}
                   (-> response :dashcards first :card :dataset_query))))))))
+
+(defn- count-query-on
+  "A query that counts the rows of `table-kw`."
+  [table-kw]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+        (lib/aggregate (lib/count)))))
+
+(defn- fetch-public-dashboard-on-tables!
+  "The response of `GET /api/public/dashboard/:uuid` and its statement count, for a dashboard with one Card on each of
+  `table-kws`, fetched with no user."
+  [table-kws]
+  (mt/with-model-cleanup [:model/Card]
+    (with-temp-public-dashboard [dash]
+      (doseq [table-kw table-kws]
+        (add-card-to-dashboard! (t2/insert-returning-instance! :model/Card
+                                                               {:name                   "Count"
+                                                                :type                   :question
+                                                                :creator_id             (mt/user->id :crowberto)
+                                                                :database_id            (mt/id)
+                                                                :dataset_query          (count-query-on table-kw)
+                                                                :display                "table"
+                                                                :visualization_settings {}})
+                                dash))
+      (let [url      (str "public/dashboard/" (:public_uuid dash))
+            response (atom nil)
+            n        (events.tu/real-statement-count! #(reset! response (client/client :get 200 url)))]
+        {:response @response :statements n}))))
+
+(deftest fetch-dashboard-statement-count-test
+  (testing "GET /api/public/dashboard/:uuid costs the same number of statements for cards on more tables"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (fetch-public-dashboard-on-tables! [:venues :users])
+      (is (= 4 (count (:dashcards (:response (fetch-public-dashboard-on-tables! [:venues :users :checkins :categories]))))))
+      (is (= (:statements (fetch-public-dashboard-on-tables! [:venues]))
+             (:statements (fetch-public-dashboard-on-tables! [:venues :users :checkins :categories])))))))
+
+(deftest fetch-dashboard-blank-queries-on-several-tables-test
+  (testing "GET /api/public/dashboard/:uuid blanks each Card's query to its own source table and keeps the same keys"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [table-kws [:venues :users :checkins]
+            {:keys [response]} (fetch-public-dashboard-on-tables! table-kws)
+            stage-of  #(:source-table (first (get-in % [:card :dataset_query :stages])))
+            dashcards (sort-by stage-of (:dashcards response))]
+        (is (= (sort (map #(mt/id %) table-kws))
+               (map stage-of dashcards)))
+        (doseq [dashcard dashcards]
+          (is (= #{:id :name :description :display :visualization_settings :parameters :entity_id :dataset_query}
+                 (set (keys (:card dashcard)))))
+          (is (=? [["count" {:lib/uuid string?}]]
+                  (:aggregation (first (get-in dashcard [:card :dataset_query :stages]))))))))))
 
 (deftest public-queries-are-counted-test
   (testing "GET /api/public/card/:uuid/query counts as a public query"
@@ -580,7 +635,7 @@
                        :name         "price"
                        :display-name "Price"
                        :type         :dimension
-                       :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                       :field-id     (mt/id :venues :price)
                        :widget-type  :category}})
            :parameters [{:id "_PRICE_" :type :category :target [:dimension [:template-tag "price"]]}]})]
         (is (=? {:status     "completed"
@@ -706,7 +761,7 @@
                                   {:database (mt/id)
                                    :type     :native
                                    :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
-                                              :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
+                                              :template-tags {"venue_id" {:field-id (mt/id :venues :id),
                                                                           :display-name "Venue ID",
                                                                           :id           "_VENUE_ID_",
                                                                           :name         "venue_id",
@@ -807,7 +862,7 @@
                                                            :display-name "Date"
                                                            :id           "_DATE_"
                                                            :type         "dimension"
-                                                           :dimension    [:field (mt/id :checkins :date) nil]
+                                                           :field-id     (mt/id :checkins :date)
                                                            :widget-type  "date/quarter-year"}}}}))
 
 (deftest make-sure-csv--etc---downloads-take-editable-params-into-account---6407----
@@ -1149,7 +1204,7 @@
                                     {:database (mt/id)
                                      :type     :native
                                      :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
-                                                :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil]
+                                                :template-tags {"venue_id" {:field-id (mt/id :venues :id)
                                                                             :display-name "Venue ID"
                                                                             :id           "_VENUE_ID_"
                                                                             :name         "venue_id"
@@ -1625,7 +1680,7 @@
                                                                   :name         "category"
                                                                   :display-name "Category"
                                                                   :type         :dimension
-                                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                  :field-id     (mt/id :venues :category_id)
                                                                   :widget-type  :id}})))]
           (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
                                 :table_id           (mt/id :venues)
@@ -1740,13 +1795,13 @@
                                                                             :name         "id"
                                                                             :display-name "ID"
                                                                             :type         :dimension
-                                                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                                                            :field-id     (mt/id :venues :id)
                                                                             :widget-type  :id}
                                                                 "category" {:id           "_CATEGORY_"
                                                                             :name         "category"
                                                                             :display-name "Category"
                                                                             :type         :dimension
-                                                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                            :field-id     (mt/id :venues :category_id)
                                                                             :widget-type  :id}})))]
           (testing ":name_field of a PK, the :dimensions :human_readable_field, and no FK :target without a session"
             (is (= {:_ID_       [(assoc venues-id :name_field venues-name, :dimensions [])]
@@ -1772,7 +1827,7 @@
                                                                                     :name         "category"
                                                                                     :display-name "Category"
                                                                                     :type         :dimension
-                                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                                    :field-id     (mt/id :venues :category_id)
                                                                                     :widget-type  :id}}))}
                        :model/DashboardCard _    {:dashboard_id       (:id dash)
                                                   :card_id            (:id card)
@@ -1916,7 +1971,7 @@
                                                                           :name         "NAME"
                                                                           :display_name "Name"
                                                                           :type         :dimension
-                                                                          :dimension    [:field (mt/id :venues :name) nil]
+                                                                          :field-id     (mt/id :venues :name)
                                                                           :required     true}}}}
                                       :name       "native card with field filter"
                                       :parameters [{:id     param-field-values
@@ -1933,7 +1988,7 @@
                                                                         :name         "ID"
                                                                         :display_name "Id"
                                                                         :type         :dimension
-                                                                        :dimension    [:field (mt/id :people :id) nil]
+                                                                        :field-id     (mt/id :people :id)
                                                                         :required     true}}}}
                                       :name       "native card with named field filter"
                                       :parameters [{:id     param-labeled-field-values
@@ -2099,7 +2154,7 @@
                                                    :display-name "D"
                                                    :type         :dimension
                                                    :widget-type  :date/all-options
-                                                   :dimension    [:field (mt/id :orders :created_at) nil]}}}}
+                                                   :field-id     (mt/id :orders :created_at)}}}}
    :parameters    [{:id     "d"
                     :type   :date/all-options
                     :name   "D"
@@ -2152,6 +2207,40 @@
             (assert-generic-query-error
              (client/client-full-response :get (format "public/card/%s/query" uuid)
                                           :parameters unparseable-date-param))))))))
+
+(defn- matches?
+  "Whether `body`, a response as the test client parsed its JSON, matches `schema` once decoded the way a JSON client
+  would read that schema."
+  [schema body]
+  ;; The test client reads a JSON array as a list, and `:tuple` only accepts a vector.
+  (let [transformer (mtx/transformer
+                     (mtx/json-transformer)
+                     {:name :tuples, :decoders {:tuple #(cond-> % (sequential? %) vec)}})]
+    (mr/validate schema (mc/decode schema body transformer))))
+
+(deftest public-query-result-schema-test
+  (testing "GET /api/public/card/:uuid/query returns the bodies its schemas document"
+    (mt/dataset test-data
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :table)]
+          (let [url (format "public/card/%s/query" uuid)]
+            (testing "a completed query"
+              (let [body (client/client :get 202 url)]
+                (is (= "completed" (:status body)))
+                (is (matches? ::api.public/query-result body))))
+            (testing "a failed query"
+              (let [{:keys [status body]} (client/client-full-response :get url :parameters unparseable-date-param)]
+                (is (contains? #{400 500} status))
+                (is (= "failed" (:status body)))
+                (is (matches? ::api.public/query-error body))))))
+        (testing "a completed query with a trend line"
+          (with-temp-public-card [{uuid :public_uuid} {:display       :line
+                                                       :dataset_query (mt/mbql-query orders
+                                                                        {:aggregation [[:count] [:sum $total]]
+                                                                         :breakout    [!month.created_at]})}]
+            (let [body (client/client :get 202 (format "public/card/%s/query" uuid))]
+              (is (seq (get-in body [:data :insights])))
+              (is (matches? ::api.public/query-result body)))))))))
 
 (deftest public-pivot-dashcard-error-does-not-leak-query-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
@@ -2567,7 +2656,7 @@
                      :model/TimelineEvent _archived    {:timeline_id (:id first-timeline) :archived true}
                      :model/TimelineEvent second-event {:timeline_id (:id second-timeline)}
                      :model/TimelineEvent _unrelated   {:timeline_id (:id unrelated)}
-                     :model/TimelineEvent _on-archived {:timeline_id (:id archived)}
+                     :model/TimelineEvent _on-archived {:timeline_id (:id archived) :archived true}
                      :model/Dashboard dashboard (public-dashboard-properties)
                      :model/Card first-card
                      {:display "line"

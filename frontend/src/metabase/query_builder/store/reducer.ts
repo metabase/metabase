@@ -1,5 +1,5 @@
 import { type Reducer, combineReducers, createReducer } from "@reduxjs/toolkit";
-import { assoc, merge } from "icepick";
+import _ from "underscore";
 
 import {
   createCardPublicLink,
@@ -9,15 +9,19 @@ import {
 } from "metabase/api";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
+  ADD_METABOT_CARD_BASELINE,
   API_UPDATE_QUESTION,
   EDIT_SUMMARY,
   INITIALIZE_QB,
   RESET_QB,
+  SET_PENDING_METABOT_CARD,
   SET_UI_CONTROLS,
 } from "metabase/redux/query-builder";
 import type {
   ForeignKeyReference,
   InitialChartSettingState,
+  MetabotCardBaseline,
+  PendingMetabotCard,
   QueryBuilderLoadingControls,
   QueryBuilderParentEntityState,
   QueryBuilderQueryStatus,
@@ -26,6 +30,7 @@ import type {
   Range,
 } from "metabase/redux/store";
 import { clone } from "metabase/utils/clone";
+import { deepMerge } from "metabase/utils/deep-merge";
 import type {
   Card,
   CollectionItemModel,
@@ -481,6 +486,30 @@ const queryResults = createReducer<Dataset[] | null>(null, (builder) => {
     .addCase(CLEAR_QUERY_RESULT, () => null);
 });
 
+const pendingMetabotCard = createReducer<PendingMetabotCard | null>(
+  null,
+  (builder) => {
+    builder.addCase<
+      string,
+      { type: string; payload: PendingMetabotCard | null }
+    >(SET_PENDING_METABOT_CARD, (_state, action) => action.payload);
+  },
+);
+
+// Never cleared, so Back and Forward return to questions that still match.
+const metabotCardBaselines = createReducer<MetabotCardBaseline[]>(
+  [],
+  (builder) => {
+    builder.addCase<string, { type: string; payload: MetabotCardBaseline }>(
+      ADD_METABOT_CARD_BASELINE,
+      (state, action) =>
+        state.some((baseline) => _.isEqual(baseline, action.payload))
+          ? state
+          : [...state, action.payload],
+    );
+  },
+);
+
 const metadataDiff = createReducer<Record<string, Partial<Field>>>(
   {},
   (builder) => {
@@ -495,7 +524,9 @@ const metadataDiff = createReducer<Record<string, Partial<Field>>>(
         const { name, changes } = action.payload;
         return {
           ...state,
-          [name]: state[name] ? merge(state[name], changes) : changes,
+          [name]: Object.hasOwn(state, name)
+            ? deepMerge(state[name], changes)
+            : changes,
         };
       })
       .addCase(CANCEL_QUESTION_CHANGES, () => ({}));
@@ -531,10 +562,17 @@ const parameterValues = createReducer<ParameterValuesMap>({}, (builder) => {
       string,
       { type: string; payload: { parameterValues: ParameterValuesMap } }
     >(INITIALIZE_QB, (_state, action) => action.payload.parameterValues)
-    .addCase<string, { type: string; payload: { id: string; value: unknown } }>(
-      SET_PARAMETER_VALUE,
-      (state, action) => assoc(state, action.payload.id, action.payload.value),
-    );
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: { id: string; value: ParameterValuesMap[string] };
+      }
+    >(SET_PARAMETER_VALUE, (state, action) => {
+      const { id, value } = action.payload;
+      // Keep the same state object when nothing changed.
+      return state[id] === value ? state : { ...state, [id]: value };
+    });
 });
 
 const currentState = createReducer<{
@@ -726,6 +764,8 @@ const card = createReducer<Card | null>(null, (builder) => {
 
 export const queryBuilderReducer: Reducer<QueryBuilderState> = combineReducers({
   uiControls,
+  pendingMetabotCard,
+  metabotCardBaselines,
   loadingControls,
   queryStatus,
   zoomedRowObjectId,

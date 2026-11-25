@@ -114,6 +114,42 @@ export function getPendingNavigationPath(): string | null {
   return currentRouter?.state.navigation.location?.pathname ?? null;
 }
 
+/**
+ * The URL of the navigation the router has accepted but not committed yet, or
+ * `null` when none is in flight.
+ *
+ * A `route.lazy` destination is only committed once its module resolves, so
+ * while one is loading `window.location` still holds the URL the user is
+ * leaving. Anything recovering from a module that never arrives has to read the
+ * destination here, or it sends the user back where they came from.
+ *
+ * Built by the router so the basename is applied the same way a `<Link>` would.
+ */
+export function getPendingNavigationHref(): string | null {
+  const navigation = currentRouter?.state.navigation;
+  if (!currentRouter || !navigation || navigation.state === "idle") {
+    return null;
+  }
+  return navigation.location
+    ? currentRouter.createHref(navigation.location)
+    : null;
+}
+
+/**
+ * Whether there is an entry in this tab's history to go back to.
+ *
+ * react-router numbers the entries it owns and keeps that index in
+ * `history.state`. Index zero means this page is the first the tab saw, so
+ * going back from it leaves Metabase.
+ */
+export function getCanGoBack(): boolean {
+  const state: unknown = window.history.state;
+  if (state == null || typeof state !== "object" || !("idx" in state)) {
+    return false;
+  }
+  return typeof state.idx === "number" && state.idx > 0;
+}
+
 export function setRouterNavigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;
   if (!navigate) {

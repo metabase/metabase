@@ -1,6 +1,7 @@
 import * as formik from "formik";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   defaultAuditInfo,
   setupAuditInfoEndpoint,
@@ -67,6 +68,7 @@ const setup = ({
       collection: undefined,
       dashboard_id: undefined,
     }),
+    createMockMetadata(),
   ),
   originalQuestion = null,
   initialCollectionId,
@@ -124,6 +126,25 @@ describe("SaveQuestionContext", () => {
         expect(await screen.findByTestId("dashboardId")).toHaveTextContent(
           "10",
         );
+      });
+
+      it("should not suggest a recently selected dashboard the user cannot write to", async () => {
+        setupRecentViewsAndSelectionsEndpoints(
+          [
+            createMockRecentCollectionItem({
+              model: "dashboard",
+              id: 10,
+              can_write: false,
+            }),
+          ],
+          ["selections"],
+        );
+
+        setup();
+
+        await screen.findByTestId("recentsLoaded");
+        await screen.findByTestId("collectionId");
+        expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
 
       it("should suggest a collection if one has been recently selected", async () => {
@@ -188,14 +209,17 @@ describe("SaveQuestionContext", () => {
         );
 
         setup({
-          question: new Question({
-            ...createMockCard({
-              collection_id: 7,
-              collection: undefined,
-              dashboard_id: undefined,
-            }),
-            creationType: "custom_question",
-          }),
+          question: new Question(
+            {
+              ...createMockCard({
+                collection_id: 7,
+                collection: undefined,
+                dashboard_id: undefined,
+              }),
+              creationType: "custom_question",
+            },
+            createMockMetadata(),
+          ),
         });
 
         await screen.findByTestId("recentsLoaded");
@@ -253,14 +277,17 @@ describe("SaveQuestionContext", () => {
         );
 
         setup({
-          question: new Question({
-            ...createMockCard({
-              collection_id: 11,
-              collection: createMockCollection({ id: 11 }),
-              dashboard_id: 20,
-            }),
-            creationType: "custom_question",
-          }),
+          question: new Question(
+            {
+              ...createMockCard({
+                collection_id: 11,
+                collection: createMockCollection({ id: 11 }),
+                dashboard_id: 20,
+              }),
+              creationType: "custom_question",
+            },
+            createMockMetadata(),
+          ),
         });
 
         expect(screen.getByTestId("saveToDashboard")).toBeInTheDocument();
@@ -282,6 +309,7 @@ describe("SaveQuestionContext", () => {
               collection: createMockCollection({ id: 11 }),
               dashboard_id: 20,
             }),
+            createMockMetadata(),
           ),
         });
 
@@ -303,6 +331,7 @@ describe("SaveQuestionContext", () => {
               collection: createMockCollection({ id: 20 }),
               dashboard_id: undefined,
             }),
+            createMockMetadata(),
           ),
         });
 
@@ -325,6 +354,7 @@ describe("SaveQuestionContext", () => {
               collection: createMockCollection({ id: 11 }),
               type: "model",
             }),
+            createMockMetadata(),
           ),
         });
 
@@ -365,6 +395,7 @@ describe("SaveQuestionContext", () => {
               collection: IACollection,
               dashboard_id: undefined,
             }),
+            createMockMetadata(),
           ),
           originalQuestion: new Question(
             createMockCard({
@@ -373,6 +404,7 @@ describe("SaveQuestionContext", () => {
               dashboard_id: undefined,
               can_write: false,
             }),
+            createMockMetadata(),
           ),
         });
 
@@ -390,6 +422,7 @@ describe("SaveQuestionContext", () => {
 
         const originalQuestion = new Question(
           createMockCard({ collection, collection_id: 11, dashboard_id: 20 }),
+          createMockMetadata(),
         );
         setup({
           originalQuestion,
@@ -408,9 +441,13 @@ describe("SaveQuestionContext", () => {
           ...opts,
         };
 
-        const question = new Question(createMockCard(card));
+        const question = new Question(
+          createMockCard(card),
+          createMockMetadata(),
+        );
         const originalQuestion = new Question(
           createMockCard({ ...card, can_write: false }),
+          createMockMetadata(),
         );
 
         return { question, originalQuestion };

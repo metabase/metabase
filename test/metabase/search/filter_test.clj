@@ -4,6 +4,9 @@
    [clojure.test :refer :all]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.resolution]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
@@ -189,7 +192,7 @@
   (testing "the in-place curated filter for measures and segments follows the parent table's published state"
     (mt/with-premium-features #{:library}
       (doseq [model ["measure" "segment"]]
-        (is (= [:= :table.is_published true]
+        (is (= [:= :table_settings.is_published true]
                (:where (#'search.in-place.filter/build-optional-filter-query :curated model {} true))))))
     (testing "and matches nothing without the :library feature"
       (mt/with-premium-features #{}
@@ -203,17 +206,32 @@
     (let [where (:where (#'search.in-place.filter/build-optional-filter-query :curated "table" {} true))]
       (is (some #{"authoritative"} (tree-seq coll? seq where))))))
 
+(defn- table-measure-definition
+  "A full query on `table-id` with a count aggregation."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
+
+(defn- table-definition
+  "A full query on `table-id` with an always-true filter."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/= 1 1)))))
+
 (deftest in-place-curated-measure-segment-search-test
   (testing "the in-place curated search keeps only measures and segments whose parent table is in the Library"
     (search.tu/with-legacy-search
       (mt/with-premium-features #{:library}
         (collections.tu/with-library [{data :data}]
-          (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
+          (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl"}
+                         :model/TableUserSettings _ {:table_id (:id lib-tbl) :is_published true :collection_id (:id data)}
                          :model/Table   plain-tbl {:name "plain_tbl"}
-                         :model/Measure _ {:name "inplace measure lib"   :table_id (:id lib-tbl)}
-                         :model/Measure _ {:name "inplace measure plain" :table_id (:id plain-tbl)}
-                         :model/Segment _ {:name "inplace segment lib"   :table_id (:id lib-tbl)}
-                         :model/Segment _ {:name "inplace segment plain" :table_id (:id plain-tbl)}]
+                         :model/Measure _ {:name "inplace measure lib"   :definition (table-measure-definition (:id lib-tbl))}
+                         :model/Measure _ {:name "inplace measure plain" :definition (table-measure-definition (:id plain-tbl))}
+                         :model/Segment _ {:name "inplace segment lib"   :definition (table-definition (:id lib-tbl))}
+                         :model/Segment _ {:name "inplace segment plain" :definition (table-definition (:id plain-tbl))}]
             (is (= #{"inplace measure lib" "inplace segment lib"}
                    (into #{} (map :name)
                          (search.tu/search-results "inplace" {:search-engine "in-place"

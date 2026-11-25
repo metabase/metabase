@@ -311,7 +311,7 @@
       - db-name
       - host
 
-  See the [plugin manifest reference](https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference)
+  See the [plugin manifest reference](https://www.metabase.com/docs/latest/developers-guide/drivers/plugins#the-metabase-plugin-manifest-reference)
   for more details."
   {:dbname                   default-dbname-details
    :host                     default-host-details
@@ -323,6 +323,7 @@
    :multi-level-schema       multi-level-schema
    :additional-options       additional-options
    :advanced-options-start   advanced-options-start
+   :json-unfolding           json-unfolding
    :default-advanced-options default-advanced-options})
 
 (def cloud-ip-address-info

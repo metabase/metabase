@@ -1,11 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import * as ML from "cljs/metabase.lib.js";
-import { type Metadata, metadataProvider } from "metabase-lib";
+import { type JsMetadata, metadataProvider } from "metabase-lib";
 import type {
   CardId,
   CardType,
   DatasetQuery,
   FieldId,
-  LegacyDatasetQuery,
   OpaqueDatasetQuery,
   TableId,
   TestNativeQuerySpec,
@@ -35,10 +35,6 @@ export function queryFromTableOrCardMetadata(
   tableOrCardMetadata: TableMetadata | CardMetadata,
 ): Query {
   return ML.query(queryOrMetadataProvider, tableOrCardMetadata);
-}
-
-export function toLegacyQuery(query: Query): LegacyDatasetQuery {
-  return ML.legacy_query(query);
 }
 
 export function xrayCellQuery(query: Query): unknown {
@@ -177,7 +173,7 @@ export function fromJsQuery(
 }
 
 export function fromJsQueryAndMetadata(
-  metadata: Metadata,
+  metadata: JsMetadata,
   jsQuery: OpaqueDatasetQuery | DatasetQuery,
 ): Query {
   return fromJsQuery(metadataProvider(jsQuery.database, metadata), jsQuery);
@@ -185,6 +181,17 @@ export function fromJsQueryAndMetadata(
 
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
   return ML.to_js_query(query);
+}
+
+/**
+ * A copy of RTK Query args with every Lib clause UUID replaced by its position,
+ * for use as an endpoint's `serializeQueryArgs`. The same args object returns
+ * the same copy.
+ */
+export function canonicalizeLibUuids(
+  queryArgs: object,
+): Record<string, unknown> {
+  return ML.canonicalize_lib_uuids(queryArgs);
 }
 
 export function createTestQuery(

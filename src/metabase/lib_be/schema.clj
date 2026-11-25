@@ -6,6 +6,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -56,7 +57,7 @@
    [:offset     {:optional true} [:maybe :int]]
    [:middleware {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]
    [:info       {:optional true} [:maybe [:ref ::lib.schema.info/info]]]
-   [:viz-settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:viz-settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
    [:action     {:optional true} [:or :string :keyword]]
    [:database   {:optional true} [:maybe pos-int?]]
    [:scope      {:optional true} ::internal-query.scope]
@@ -74,7 +75,19 @@
    [true  ::empty-query]
    [false ::maybe-legacy-query]])
 
+(defn- legacy-query?
+  "Whether `query` is a legacy MBQL query map, normalized or not."
+  [query]
+  (and (map? query) (contains? #{:query :native} (lib/normalized-query-type query))))
+
+(mr/def ::external-legacy-query
+  "A legacy MBQL query as exports before MBQL 5 wrote it, which import converts to MBQL 5 once its references resolve."
+  [:map [:type [:enum {:decode/normalize keyword} :query :native]]])
+
 (def external-registry
   "[[lib.schema/external-registry]] for a stored query as serialization writes it, which has portable references the
-  app DB normalization of [[::maybe-legacy-query]] cannot resolve, so it is normalized as a plain query."
-  (assoc lib.schema/external-registry ::maybe-legacy-query [:ref ::lib.schema/query]))
+  app DB normalization of [[::maybe-legacy-query]] cannot resolve, so it is normalized as a plain query, or as the
+  legacy query of an older export."
+  (assoc lib.schema/external-registry ::maybe-legacy-query [:multi {:dispatch legacy-query?}
+                                                            [true [:ref ::external-legacy-query]]
+                                                            [false [:ref ::lib.schema/query]]]))

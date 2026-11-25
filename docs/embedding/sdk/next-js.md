@@ -9,7 +9,7 @@ summary: Set up the Modular embedding SDK with Next.js using App Router or Pages
 
 {% include youtube.html id='UfL8okz36d0' %}
 
-Some notes on using the modular embedding SDK with [Next.js](https://nextjs.org/). The SDK is tested to work with Next.js 14, although it may work with other versions.
+The SDK is tested to work with [Next.js](https://nextjs.org/) 15, although it may work with other versions.
 
 See a [sample Next.js app that uses the SDK](https://github.com/metabase/metabase-nextjs-sdk-embedding-sample).
 

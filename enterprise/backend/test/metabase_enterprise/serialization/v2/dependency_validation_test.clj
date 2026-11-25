@@ -5,6 +5,9 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.test-util :as search.tu]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
@@ -177,7 +180,10 @@
                     :msg-re       #"Field .* is missing from the source database"}]]
             (testing label
               (ts/with-temp-dpc [:model/Field   {field-id :id}   {:table_id table-id :name "F" :base_type :type/Integer}
-                                 :model/Segment {segment-id :id} {:table_id table-id :name "Seg" :definition {}}
+                                 :model/Segment {segment-id :id} {:name       "Seg"
+                                                                  :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                                (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                                    (lib/filter (lib/= 1 1))))}
                                  :model/Card    _ {:name          "Card"
                                                    :collection_id coll-id
                                                    :database_id   db-id
@@ -206,8 +212,6 @@
     (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
                          :model/Database   {db-id :id}         {:engine :postgres}
-                         :model/Table      {table-id :id}      {:db_id db-id :name "T"}
-                         :model/Field      {field-id :id}      {:table_id table-id :name "F" :base_type :type/Integer}
                          :model/Collection {parent-id :id}     {:name "Parent"}
                          :model/Collection {child-id :id}      {:name "Child" :location (str "/" parent-id "/")}
                          :model/Collection {snip-coll-id :id}   {:name "Snips" :namespace "snippets"}
@@ -227,18 +231,15 @@
                                                    {:name "snip" :content "1=1" :collection_id snip-coll-id
                                                     :creator_id (mt/user->id :rasta)})]
               (is (= #{[:model/Collection snip-coll-id]} (deps "NativeQuerySnippet" snip-id)))))
-          (testing "Action (query) references its model Card, Database, and the tables/fields in its query"
+          (testing "Action (query) references its model Card and Database"
             (let [action-id (t2/insert-returning-pk! :model/Action {:name "A" :type :query :model_id model-card-id})]
               (t2/insert! :model/QueryAction {:action_id     action-id
                                               :database_id   db-id
                                               :dataset_query {:database db-id
-                                                              :type     :query
-                                                              :query    {:source-table table-id
-                                                                         :filter       [:> [:field field-id nil] 1]}}})
+                                                              :type     :native
+                                                              :native   {:query "DELETE FROM t WHERE x > 1"}}})
               (is (= #{[:model/Card model-card-id]
-                       [:model/Database db-id]
-                       [:model/Table table-id]
-                       [:model/Field field-id]}
+                       [:model/Database db-id]}
                      (deps "Action" action-id)))))
           (testing "Document references its embedded cards and its containing collection"
             (let [doc-id (t2/insert-returning-pk! :model/Document

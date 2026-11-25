@@ -51,3 +51,10 @@
             skipped    (api-keys.db/update-api-keys-last-used-at! {available ts, deleted-id ts})]
         (is (= {} skipped) "the deleted id is dropped, not carried forward for another retry")
         (is (= ts (last-used-at available)))))))
+
+(deftest user-types-partitions-test
+  (let [user-ids (mapv mt/user->id [:rasta :lucky :crowberto :trashbird])
+        single   (api-keys.db/user-types user-ids)]
+    (is (= (set user-ids) (set (keys single))))
+    (is (= single (mt/with-partition-size 2
+                    (api-keys.db/user-types user-ids))))))

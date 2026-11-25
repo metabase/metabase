@@ -264,10 +264,11 @@
   (testing "construct_notebook_query refuses a chart type that Metabot can't create before it runs the query"
     (let [ran? (atom false)]
       (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [& _] (reset! ran? true))]
-        (is (= {:output (str "Invalid tool arguments: `visualization` should be either \"table\", \"bar\", \"line\", "
-                             "\"pie\", \"sunburst\", \"treemap\", \"boxplot\", \"area\", \"combo\", \"row\", \"pivot\", "
-                             "\"scatter\", \"waterfall\", \"sankey\", \"scalar\", \"smartscalar\", \"gauge\", \"progress\", "
-                             "\"funnel\", \"object\" or \"map\".")
+        (is (= {:output (str "Invalid tool arguments: `visualization.chart_type` should be either "
+                             "\"table\", \"bar\", \"line\", \"pie\", \"sunburst\", \"treemap\", \"boxplot\", "
+                             "\"area\", \"combo\", \"row\", \"pivot\", \"scatter\", \"waterfall\", \"sankey\", "
+                             "\"scalar\", \"smartscalar\", \"gauge\", \"progress\", \"funnel\", \"object\" or "
+                             "\"map\"; received a string.")
                 :error  {:class :validation :code :invalid-arguments}}
                (invoke "construct_notebook_query"
                        (assoc chart-args

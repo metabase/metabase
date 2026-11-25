@@ -592,6 +592,21 @@
         (mt/with-temporary-setting-values [llm-mini-model nil]
           (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))))))
 
+(deftest llm-mini-model-configured-follows-the-metabot-connection-test
+  (testing "a derived mini model is configured when Metabot's connection is"
+    (with-connections [configured-anthropic]
+      (with-selected-model "anthropic/claude-sonnet-4-6"
+        (mt/with-temporary-setting-values [llm-mini-model nil]
+          (is (true? (metabot.settings/llm-mini-model-configured?))))))))
+
+(deftest llm-mini-model-configured-checks-its-own-connection-test
+  (testing "a mini model on a connection without credentials is unconfigured, even when Metabot is configured"
+    (with-connections [configured-anthropic (connection "openai" "openai")]
+      (with-selected-model "anthropic/claude-sonnet-4-6"
+        (mt/with-temporary-setting-values [llm-mini-model "openai/gpt-5.4-mini"]
+          (is (true? (metabot.settings/llm-metabot-configured?)))
+          (is (false? (metabot.settings/llm-mini-model-configured?))))))))
+
 (deftest retired-model-reads-as-its-successor-test
   (testing "a saved retired OpenRouter id reads as the model now serving it, so the admin picker shows it selected"
     (with-connections [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-test"})]

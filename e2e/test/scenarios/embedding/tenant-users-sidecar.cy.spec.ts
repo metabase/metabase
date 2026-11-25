@@ -61,7 +61,7 @@ describe("scenarios > sidecar > tenant users", () => {
       "jwt-attribute-firstname": "first_name",
       "jwt-attribute-lastname": "last_name",
       "jwt-enabled": true,
-      "jwt-identity-provider-uri": "localhost:4000",
+      "jwt-identity-provider-uri": H.AUTH_PROVIDER_URL,
       "jwt-shared-secret": JWT_SHARED_SECRET,
       "jwt-user-provisioning-enabled?": true,
       "use-tenants": true,

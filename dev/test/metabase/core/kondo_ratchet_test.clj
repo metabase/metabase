@@ -627,6 +627,64 @@
         (is (= {:a/x 2} (:discouraged-var-counts (kondo-ratchet/read-ratchets)))
             "seeding the alias raises its source's budget, and the alias's own budget is dropped")))))
 
+(deftest ^:synchronized fix-names-aliases-when-an-alias-seed-has-nothing-to-seed-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts          {}
+                                                    :discouraged-var-counts {:a/x 1, :b/y 1}
+                                                    :config-counts          {}
+                                                    :comment-exempt         #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (empty-test-ratchets-file! dir)]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{:discouraged-var})
+                                  kondo-ratchet/discouraged-symbols   (constantly '#{a/x b/y})
+                                  kondo-ratchet/scan                  (constantly [])
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
+        (is (= ["WARNING: :a/x (also counts :b/y) has no inline ignores -- dropping its policy"
+                "dropped :b/y (no ignores left)"
+                "WARNING: :a/x (also counts :b/y) has no inline ignores -- nothing to seed"
+                (str "wrote " (.getPath budgets))]
+               (str/split-lines (with-out-str (kondo-ratchet/fix! {:seed    ":discouraged-var/b/y"
+                                                                   :aliases (constantly {:b/y :a/x})}))))
+            "a seed that follows an alias names the alias on its warning, in both files")))))
+
+(deftest ^:synchronized fix-names-aliases-in-the-test-ratchets-file-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (doto (io/file dir "ratchets-test.edn")
+                       (spit (kondo-ratchet/render-test {:ignore-counts          {}
+                                                         :discouraged-var-counts {:a/x 1}
+                                                         :comment-exempt         #{}})))
+        occurrences  [{:file "test/g.clj", :line 1, :linters [:discouraged-var]}
+                      {:file "test/g.clj", :line 2, :linters [:discouraged-var]}]
+        attribution  (assoc no-findings :actual {:discouraged-var {:a/x 2}})]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{:discouraged-var})
+                                  kondo-ratchet/discouraged-symbols   (constantly '#{a/x b/y})
+                                  kondo-ratchet/scan                  (constantly occurrences)
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
+        (is (= [(str "WARNING: :a/x (also counts :b/y) is over budget (1 recorded, 2 actual) -- remove ignores,"
+                     " or accept them all with `--seed :discouraged-var/a/x`")
+                "unchanged"]
+               (str/split-lines (with-out-str (kondo-ratchet/fix! {:attribute (constantly [no-findings attribution])
+                                                                   :aliases   (constantly {:b/y :a/x})}))))
+            "fix!'s pass over the test ratchets file names the keys that count under an over-budget key")))))
+
 (deftest ^:synchronized fix-refuses-colliding-symbols-test
   (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
                                "kondo-ratchet-test"
@@ -1241,7 +1299,8 @@
                                         attribution
                                         {:cfg-lower 2, :cfg-over 3, :cfg-same 6}
                                         {:api-any 1, :uses-any 2}
-                                        {:ignore-counts [:new :void]}))
+                                        {:ignore-counts [:new :void]}
+                                        {}))
         "untouched budgets (:same, :cfg-same, :dv-same), a used unlimited policy (:free), and a still-needed
          exemption (:lower) earn no line; a hand-written 0 (:zero) is dropped like any bounded budget with no
          ignores left; the empty unlimited policy (:empty) is kept and warned about; per-symbol fields report
@@ -1254,7 +1313,29 @@
                                         {:actual {:discouraged-var {:dv-new 1}}}
                                         {}
                                         {}
-                                        {:discouraged-var-counts [:dv-new]})))))
+                                        {:discouraged-var-counts [:dv-new]}
+                                        {}))))
+  (testing "the seeded, over-budget and missing-budget lines for a key other keys count under name them"
+    (is (= ["seeded :dv-s (also counts :dv-t) at 2"
+            "dropped :dv-gone (no ignores left)"
+            "lowered :dv-low 3 -> 1"
+            "WARNING: :dv-x (also counts :dv-y) is over budget (1 recorded, 2 actual) -- remove ignores, or accept them all with `--seed :discouraged-var/dv-x`"
+            "WARNING: :dv-new (also counts :dv-n) has 1 ignores but no budget entry -- seed one with `./bin/mage kondo-ratchets-shrink --seed :discouraged-var/dv-new`"]
+           (kondo-ratchet/change-report {:ignore-counts          {}
+                                         :discouraged-var-counts {:dv-gone 2, :dv-low 3, :dv-x 1}
+                                         :config-counts          {}
+                                         :comment-exempt         #{}}
+                                        {}
+                                        []
+                                        {:actual {:discouraged-var {:dv-low 1, :dv-new 1, :dv-s 2, :dv-x 2}}}
+                                        {}
+                                        {}
+                                        {:discouraged-var-counts [:dv-s]}
+                                        {:dv-g :dv-gone
+                                         :dv-l :dv-low
+                                         :dv-n :dv-new
+                                         :dv-t :dv-s
+                                         :dv-y :dv-x})))))
 
 (deftest ^:parallel shrink-summary-test
   (is (= (str "{:a                      2 => 1\n"

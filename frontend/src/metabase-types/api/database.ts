@@ -1,3 +1,4 @@
+import type { CollectionItemModel } from "./collection";
 import type { ScheduleSettings } from "./settings";
 import type { SchemaName, Table } from "./table";
 
@@ -59,14 +60,15 @@ export type DatabaseFeature =
   | "transforms/python"
   | "transforms/table";
 
+export type DatabaseNativePermissions = "write" | "none";
+
 export interface Database extends DatabaseData {
   id: DatabaseId;
-  is_saved_questions: boolean;
   features?: DatabaseFeature[];
   creator_id?: number;
   timezone?: string;
   default_schema?: string | null;
-  native_permissions: "write" | "none";
+  native_permissions: DatabaseNativePermissions;
   transforms_permissions?: "write" | "none";
   initial_sync_status: InitialSyncStatus;
   initial_sync_error?: string | null;
@@ -84,6 +86,8 @@ export interface Database extends DatabaseData {
   is_stub?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
+  /** Whether an admin has granted anonymous traffic permission to query this router database. */
+  router_anonymous_access_granted?: boolean | null;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
@@ -127,6 +131,32 @@ export interface DatabaseUsageInfo {
   transform: number;
 }
 
+/** One of the two anonymous surfaces: a public link, or a published guest embed. */
+export type AnonymousSurface = "public-link" | "guest-embed";
+
+export type AnonymouslyReachableModel = Extract<
+  CollectionItemModel,
+  "card" | "dataset" | "metric" | "dashboard" | "document"
+>;
+
+/**
+ * An anonymously reachable question, dashboard or document that can get data from a
+ * database.
+ */
+export interface AnonymouslyReachableEntity {
+  id: number;
+  model: AnonymouslyReachableModel;
+  name: string;
+  surfaces: AnonymousSurface[];
+  reaches_indirectly: boolean;
+}
+
+/** The server caps `data`; `total` says how many there are in all. */
+export interface DatabaseAnonymousReach {
+  total: number;
+  data: AnonymouslyReachableEntity[];
+}
+
 export interface GetDatabaseRequest {
   id: DatabaseId;
   include?: "tables" | "tables.fields";
@@ -160,7 +190,6 @@ export type GetDatabaseHealthResponse =
 
 export type ListDatabasesRequest = {
   include?: "tables" | "schemas";
-  saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
@@ -261,12 +290,6 @@ export interface DatabaseIdFieldListQuery {
   include_editable_data_model?: boolean;
 }
 
-export interface SavedQuestionDatabase {
-  id: -1337;
-  name: "Saved Questions";
-  is_saved_questions: true;
-}
-
 export interface CreateDestinationDatabaseRequest {
   router_database_id: DatabaseId;
   destination_database: { name: string; details?: Record<string, unknown> };
@@ -275,4 +298,5 @@ export interface CreateDestinationDatabaseRequest {
 export interface UpdateDatabaseRouterRequest {
   id: DatabaseId;
   user_attribute: string | null;
+  anonymous_access_granted?: boolean;
 }

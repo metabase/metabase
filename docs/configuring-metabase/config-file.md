@@ -1,6 +1,6 @@
 ---
 title: "Configuration file"
-summary: Set up people, databases, API keys, and settings from a config.yml file when Metabase launches, on self-hosted Pro and Enterprise plans.
+summary: On self-hosted Pro and Enterprise plans, set up people, databases, API keys, and settings from a config.yml file when Metabase starts.
 ---
 
 # Configuration file
@@ -259,7 +259,7 @@ Whereas in the config file, you'd translate that to:
 name-of-variable
 ```
 
-So for example, if you wanted to specify the `MB_EMAIL_FROM_NAME` in the `config.yml` file:
+So for example, if you wanted to specify the [`MB_EMAIL_FROM_NAME`](./environment-variables.md#mb_email_from_name) in the `config.yml` file:
 
 ```yml
 version: 1
@@ -280,7 +280,7 @@ But you can set any of the Admin settings with the config file (for a list of se
 Since loading from a config file is a Pro/Enterprise feature: for new installations, you'll need to supply Metabase with a token using the [`MB_PREMIUM_EMBEDDING_TOKEN`](./environment-variables.md#mb_premium_embedding_token) environment variable.
 
 ```sh
-MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java -jar metabase.jar
 ```
 
 ## Further reading

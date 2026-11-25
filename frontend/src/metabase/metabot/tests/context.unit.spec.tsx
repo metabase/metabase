@@ -75,7 +75,6 @@ describe("metabot > context", () => {
     fetchMock.removeRoutes({ names: ["database-list"] });
     setupDatabaseListEndpoint([
       createMockDatabase({
-        is_saved_questions: false,
         native_permissions: "none",
       }),
     ]);
@@ -132,11 +131,9 @@ describe("metabot > context", () => {
   });
 
   it("should send SQL profile and SQL error context for SQL fixes", async () => {
-    const rawQuery = Lib.toLegacyQuery(
-      Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
-        query: "SELECT * FROM bad_table",
-      }),
-    );
+    const rawQuery = Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT * FROM bad_table",
+    });
     const queryError = "bad_table";
     // Unjustified type cast. FIXME
     const editorOpen = { resolve: undefined as (() => void) | undefined };

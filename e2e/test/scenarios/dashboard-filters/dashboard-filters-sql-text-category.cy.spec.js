@@ -52,7 +52,7 @@ GROUP BY PRODUCTS.CATEGORY`;
                 "display-name": "Field",
                 id: "3db026c4-5ec6-4568-9a40-eb704bac2bde",
                 type: "dimension",
-                dimension: ["field", fieldId, null], // fieldId - Products.Category in Postgres DB
+                "field-id": fieldId, // fieldId - Products.Category in Postgres DB
               },
             },
           },
@@ -73,7 +73,7 @@ GROUP BY PRODUCTS.CATEGORY`;
               "display-name": "Field",
               id: "c9c52a9c-ae2b-40d6-a8ee-581a529685ce",
               type: "dimension",
-              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "field-id": PRODUCTS.CATEGORY,
             },
           },
         },

@@ -11,8 +11,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -66,7 +66,7 @@
   (comp json/decode codecs/bytes->str codec/base64-decode))
 
 (mr/def ::cell-query
-  "A base64-encoded JSON cell query (a filter clause) taken on the query string. The `:decode/api` step
+  "A base64-encoded JSON cell query (an MBQL 5 filter clause) taken on the query string. The `:decode/api` step
   base64-decodes and JSON-parses it, then it is validated against [[::ads/root.cell-query]] -- so a handler
   receives the ready-to-use filter clause and doesn't decode it a second time. Bad base64/JSON is left as-is
   and fails validation, surfacing as a clean 400."
@@ -76,20 +76,6 @@
                     (try (decode-base64-json s) (catch Exception _ s))
                     s))}
    [:ref ::ads/root.cell-query]])
-
-(mr/def ::base-64-encoded-json
-  "form-encoded base-64-encoded JSON"
-  [:fn
-   ;; TODO (Cam 10/7/25) -- you would expect `=` to get form-encoded here but apparently the FE is having trouble
-   ;; doing it... allow it for now I guess.
-   ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759892123044939?thread_ts=1759289751.539169&cid=C0645JP1W81
-   ;;
-   ;; TODO (Cam 10/7/25) -- not clear whether we expect `-` and `_` as per RFC 4648 here or if we expect form-encoded
-   ;; `+` and `/`... accept either for now I guess
-   {:api/regex #"(?:[A-Za-z0-9\-_]|(?:%2B)|(?:%2F))+(?:(?:%3D)|=){0,2}"
-    :error/fn    (fn [_ _] (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))
-    :json-schema {:type "string"}}
-   decode-base64-json])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -235,9 +221,10 @@
 
 (defn- dashboard-metadata [dashboard]
   (letfn [(normalize-card [card]
-            (-> card
-                (m/update-existing :dataset_query lib-be/normalize-query)
-                (dissoc :id)))
+            (->> (-> card
+                     (m/update-existing :dataset_query lib-be/normalize-query)
+                     (dissoc :id))
+                 (lib/normalize ::queries.schema/card)))
           (normalize-series [series]
             (map normalize-card series))
           (normalize-dashcard [{:keys [card], :as dashcard}]
@@ -268,8 +255,7 @@
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
-    (let [fields (t2/hydrate (xrays.db/fields-targeting field-id) :table)]
-      (perms/prime-table-perms-cache {:table-ids (into #{} (map :table_id) fields)})
+    (let [fields (t2/hydrate (xrays.db/fields-targeting field-id) :table :can_read)]
       (for [{:keys [table_id id] :as field} fields
             :when (mi/can-read? field)]
         {:linked-table-id table_id
@@ -509,7 +495,7 @@
            comparison-entity-id-or-query]} :- [:map {:closed true}
                                                [:entity                        Entity]
                                                [:entity-id-or-query            ::entity-id-or-query]
-                                               [:cell-query                    ::base-64-encoded-json]
+                                               [:cell-query                    ::cell-query]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
    {:keys [show]} :- [:map {:closed true}
@@ -540,7 +526,7 @@
                                                [:entity-id-or-query            ::entity-id-or-query]
                                                [:prefix                        Prefix]
                                                [:dashboard-template            DashboardTemplate]
-                                               [:cell-query                    ::base-64-encoded-json]
+                                               [:cell-query                    ::cell-query]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
    {:keys [show]} :- [:map {:closed true}

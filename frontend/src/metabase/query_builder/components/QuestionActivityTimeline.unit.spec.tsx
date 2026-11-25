@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupRevisionsEndpoints,
   setupUsersEndpoints,
@@ -21,7 +22,10 @@ interface SetupOpts {
 }
 
 async function setup({ canWrite }: SetupOpts) {
-  const question = new Question(createMockCard({ can_write: canWrite }));
+  const question = new Question(
+    createMockCard({ can_write: canWrite }),
+    createMockMetadata(),
+  );
 
   setupRevisionsEndpoints([
     createMockRevision(),

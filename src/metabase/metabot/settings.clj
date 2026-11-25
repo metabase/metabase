@@ -278,6 +278,15 @@
   :getter     #(llm-model-configured? (llm-metabot-provider))
   :doc        false)
 
+(defsetting llm-mini-model-configured?
+  "Whether the connection selected for the mini model has the credentials it needs."
+  :type       :boolean
+  :visibility :authenticated
+  :setter     :none
+  :export?    false
+  :getter     #(llm-model-configured? (llm-mini-model))
+  :doc        false)
+
 (defsetting llm-metabot-supports-reasoning?
   "Whether the selected Metabot model streams its reasoning."
   :type       :boolean

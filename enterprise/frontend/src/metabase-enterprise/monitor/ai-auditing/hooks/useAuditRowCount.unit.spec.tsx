@@ -132,9 +132,6 @@ function requestStage(call: CallLog | undefined): unknown {
   if (body === null || typeof body !== "object") {
     return null;
   }
-  if ("query" in body) {
-    return body.query;
-  }
   if (!("stages" in body) || !Array.isArray(body.stages)) {
     return null;
   }
@@ -142,9 +139,20 @@ function requestStage(call: CallLog | undefined): unknown {
   return stages[0];
 }
 
+// The counter is the only request that counts rows under the date filter alone.
 function isCounterQuery(call: CallLog): boolean {
-  const body = requestBody(call);
-  return body !== null && typeof body === "object" && "query" in body;
+  const stage = requestStage(call);
+  return (
+    stage !== null &&
+    typeof stage === "object" &&
+    "aggregation" in stage &&
+    "filters" in stage &&
+    Array.isArray(stage.filters) &&
+    stage.filters.length === 1 &&
+    !("page" in stage) &&
+    !("breakout" in stage) &&
+    !("joins" in stage)
+  );
 }
 
 function countCalls() {
@@ -158,7 +166,7 @@ function findEventRow() {
 }
 
 function getTab(section: Section) {
-  return screen.getByRole("link", { name: section.label });
+  return screen.getByRole("tab", { name: section.label });
 }
 
 function createAuditDatabase(section: Section, missingView: boolean) {
@@ -251,6 +259,7 @@ function setup({
     databases: [database],
     tables: database.tables ?? [],
     fields: database.tables?.flatMap((table) => table.fields ?? []) ?? [],
+    cards: [],
   });
   setupUsersEndpoints([createMockUser({ id: 1 })]);
   setupGroupsEndpoint([createMockGroup({ id: 1 }), createMockGroup({ id: 2 })]);
@@ -308,7 +317,7 @@ describe.each(SECTIONS)("$label tab count", (section) => {
 
     expect(await within(getTab(section)).findByText("137")).toBeVisible();
     expect(
-      within(screen.getByRole("link", { name: "Usage" })).queryByText("137"),
+      within(screen.getByRole("tab", { name: "Usage" })).queryByText("137"),
     ).not.toBeInTheDocument();
     expect(await findEventRow()).toBeVisible();
     expect(countCalls()).toHaveLength(1);
@@ -331,25 +340,15 @@ describe.each(SECTIONS)("$label tab count", (section) => {
     expect(Lib.currentLimit(query, -1)).toBeNull();
   });
 
-  it("matches the unfiltered table's date window and total", async () => {
-    setup({ section, initialRoute: section.eventsPath, tableTotal: 137 });
+  it("shares one count request with the unfiltered table's total", async () => {
+    setup({ section, initialRoute: section.eventsPath });
 
     expect(await within(getTab(section)).findByText("137")).toBeVisible();
     expect(await screen.findByTestId("pagination-total")).toHaveTextContent(
       "137",
     );
-    const totalCall = fetchMock.callHistory
-      .calls("filtered-dataset")
-      .find((call) => {
-        const stage = requestStage(call);
-        return (
-          stage !== null &&
-          typeof stage === "object" &&
-          "aggregation" in stage &&
-          !("page" in stage)
-        );
-      });
-    const query = parseRequestQuery(totalCall, section);
+    expect(countCalls()).toHaveLength(1);
+    const query = parseRequestQuery(countCalls()[0], section);
     expect(Lib.primarySourceTableId(query)).toBe(EVENTS_TABLE_ID);
     const filters = Lib.filters(query, -1);
     expect(filters).toHaveLength(1);
@@ -388,10 +387,10 @@ describe("audit tab count freshness and failures", () => {
     const pending = defer<Dataset>();
     setup({ getCountResponse: () => pending.promise });
     expect(await findEventRow()).toBeVisible();
-    await userEvent.click(screen.getByRole("link", { name: "Usage" }));
-    expect(screen.getByRole("link", { name: "Usage" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    await userEvent.click(screen.getByRole("tab", { name: "Usage" }));
+    expect(screen.getByRole("tab", { name: "Usage" })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
     await act(async () => pending.resolve(countDataset(137)));
     expect(await within(getTab(CLI_SECTION)).findByText("137")).toBeVisible();
@@ -512,7 +511,7 @@ describe("CLI Calls grid loading", () => {
     let requests = 0;
     setup({
       initialRoute: CLI_SECTION.eventsPath,
-      tableTotal: 26,
+      getCountResponse: () => countDataset(26),
       getEventsResponse: () =>
         ++requests === 1 ? initial.promise : pending.promise,
     });

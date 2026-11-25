@@ -2,10 +2,16 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.events.test-util :as events.tu]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.task-history.models.task-history :as task-history]
+   [metabase.task-history.schema :as task-history.schema]
+   [metabase.task-history.task.task-history-cleanup :as task-history-cleanup]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.time Clock Instant ZoneId)))
@@ -51,7 +57,7 @@
         ;; temp ones created, so delete any stale ones from previous tests
         (t2/delete! :model/TaskHistory :id [:not-in (map u/the-id [t1 t2 t3 t4 t5])])
         ;; Delete all but 2 task history rows
-        (task-history/cleanup-task-history! 2)
+        (#'task-history-cleanup/delete-old-task-history! 2)
         (is (= #{task-4 task-5}
                (set (map :task (t2/select :model/TaskHistory)))))))))
 
@@ -70,7 +76,7 @@
         ;; We're keeping 100 rows, but there are only 2 present, so there should be no affect on running this
         (is (= #{task-1 task-2}
                (set (map :task (t2/select :model/TaskHistory)))))
-        (task-history/cleanup-task-history! 100)
+        (#'task-history-cleanup/delete-old-task-history! 100)
         (is (= #{task-1 task-2}
                (set (map :task (t2/select :model/TaskHistory)))))))))
 
@@ -238,3 +244,43 @@
                        {:level "info" :msg "message 9" :timestamp "1970-01-01T00:00:01.009Z" :fqns string?}
                        {:level "warn" :msg "warning 9" :timestamp "1970-01-01T00:00:01.009Z" :fqns string?}]
                       remaining-logs)))))))))
+
+(deftest status-must-be-known-test
+  (testing "the schema refuses an unknown status and takes a known one, as a keyword or a string"
+    (is (not (mr/validate ::task-history.schema/task-history.update {:status :bogus})))
+    (is (mr/validate ::task-history.schema/task-history.update {:status :unknown}))
+    (is (= {:status :unknown} (lib/normalize ::task-history.schema/task-history.update {:status "unknown"})))))
+
+(deftest mark-started-tasks-unknown-statement-count-does-not-grow-with-rows-test
+  (let [counted (fn [run-ids] (events.tu/statement-count! #(task-history/mark-task-history-unknown-for-task-runs! (set run-ids))))]
+    (counted [Integer/MAX_VALUE])
+    (is (= (counted (range 1000001 1000003)) (counted (range 1000003 1000009))))))
+
+(deftest with-task-history-measures-task-with-database-clock-test
+  (mt/with-model-cleanup [:model/TaskHistory]
+    (let [task-name (mt/random-name)]
+      (task-history/with-task-history {:task task-name}
+        (Thread/sleep 300))
+      (let [{:keys [started_at ended_at duration]} (t2/select-one :model/TaskHistory :task task-name)]
+        (testing "the duration is the slept interval in whole milliseconds"
+          (is (int? duration))
+          (is (<= 250 duration 10000)))
+        (testing "the end is the start plus the duration"
+          (is (<= (Math/abs (- (.between java.time.temporal.ChronoUnit/MILLIS (t/instant started_at) (t/instant ended_at))
+                               duration))
+                  1)))))))
+
+(deftest permission-hydration-statements-do-not-grow-with-rows-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [hydrate (fn [n]
+                      (t2/with-call-count [call-count]
+                        (let [rows (doall (t2/hydrate (mapv #(t2/instance :model/TaskHistory {:id %}) (range 1 (inc n)))
+                                                      :can_read :can_write))]
+                          {:statements (call-count)
+                           :values     (mapv (juxt mi/can-read? :can_write) rows)})))]
+        (hydrate 1)
+        (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+        (testing "each row gets the answer the per-row check gave"
+          (let [answer (boolean (#'task-history/can-access?))]
+            (is (= (repeat 6 [answer answer]) (:values (hydrate 6))))))))))

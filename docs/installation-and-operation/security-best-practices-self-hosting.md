@@ -5,8 +5,6 @@ summary: Harden a self-hosted Metabase by keeping it patched, protecting secrets
 
 # Security best practices for a self-hosted Metabase
 
-This guide covers the Metabase-specific controls for hardening a self-hosted Metabase.
-
 ## Keep Metabase patched
 
 Run a [supported version](https://www.metabase.com/version-support) and [upgrade](./upgrading-metabase.md) promptly when security fixes are released.

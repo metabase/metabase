@@ -78,9 +78,7 @@
   false)
 
 (mu/defn- template-tag-name->field-id :- [:maybe ::lib.schema.id/field]
-  "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
-
-    (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
+  "Fetch the Field ID of the template tag named `template-tag-name` in `card`."
   [template-tag-name :- :string
    card              :- :metabase.queries.schema/card]
   (or (some-> card
@@ -89,8 +87,7 @@
               lib-be/normalize-query
               lib/all-template-tags-map
               (get template-tag-name)
-              :dimension
-              lib/field-ref-id)
+              :field-id)
       (do
         (log/trace "Could not find matching Field ID for target template tag")
         nil)))
@@ -205,19 +202,27 @@
     (for [field fields]
       (assoc field :target (some-> (:fk_target_field_id field) id->target)))))
 
+(defn- param-fields-by-id
+  "The Fields with `field-ids` as hydrated `:param_fields` return them, by id, with only the information needed to power
+  public or embedded parameter widgets."
+  [field-ids]
+  (when (seq field-ids)
+    (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns field-ids)
+                        (t2/hydrate :has_field_values :name_field [:dimensions [:human_readable_field :has_field_values]])
+                        hydrate-param-field-targets
+                        remove-dimensions-nonpublic-columns))))
+
+(defn- param-id->fields
+  "The map of parameter id -> Fields of `param-id->field-ids`, the Fields taken from `field-id->field`."
+  [param-id->field-ids field-id->field]
+  (m/map-vals #(into [] (keep field-id->field) %) param-id->field-ids))
+
 (mu/defn- param-field-ids->fields
   "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card
   or Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
   [param-id->field-ids :- [:maybe [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]]]
-  (let [field-ids       (into #{} cat (vals param-id->field-ids))
-        field-id->field (when (seq field-ids)
-                          (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns field-ids)
-                                              (t2/hydrate :has_field_values :name_field [:dimensions [:human_readable_field :has_field_values]])
-                                              hydrate-param-field-targets
-                                              remove-dimensions-nonpublic-columns)))]
-    (->> param-id->field-ids
-         (m/map-vals #(into [] (keep field-id->field) %)))))
+  (param-id->fields param-id->field-ids (param-fields-by-id (into #{} cat (vals param-id->field-ids)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
@@ -447,13 +452,13 @@
   "Add a `:param_fields` map (parameter or template-tag ID -> vector of Fields) for all of the Fields referenced by
   the parameters of a Dashboard."
   [_model k dashboards]
-  (mapv (fn [dashboard]
-          (let [param-fields (-> dashboard
-                                 :dashcards
-                                 dashcards->param-id->field-ids
-                                 param-field-ids->fields)]
-            (assoc dashboard k param-fields)))
-        (t2/hydrate dashboards [:dashcards :card :series])))
+  (let [dashboards          (t2/hydrate dashboards [:dashcards :card :series])
+        param-id->field-ids (mapv (comp dashcards->param-id->field-ids :dashcards) dashboards)
+        field-id->field     (param-fields-by-id (into #{} (comp (mapcat vals) cat) param-id->field-ids))]
+    (mapv (fn [dashboard ids]
+            (assoc dashboard k (param-id->fields ids field-id->field)))
+          dashboards
+          param-id->field-ids)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |

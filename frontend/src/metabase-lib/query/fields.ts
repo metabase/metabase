@@ -1,13 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import * as ML from "cljs/metabase.lib.js";
 import type { FieldReference } from "metabase-types/api";
 
 import type {
   Clause,
   ColumnMetadata,
-  FieldValuesSearchInfo,
-  MetricMetadata,
+  FieldSearchInfo,
+  ParameterFieldInfo,
   Query,
-  SegmentMetadata,
 } from "./types";
 
 export function fields(query: Query, stageIndex: number): Clause[] {
@@ -45,17 +45,24 @@ export function fieldableColumns(
   return ML.fieldable_columns(query, stageIndex);
 }
 
-export function fieldValuesSearchInfo(
+export function fieldSearchInfo(
   query: Query,
   column: ColumnMetadata,
-): FieldValuesSearchInfo {
-  return ML.field_values_search_info(query, column);
+): FieldSearchInfo {
+  return ML.field_search_info(query, column);
+}
+
+export function parameterFieldInfo(
+  query: Query,
+  column: ColumnMetadata,
+): ParameterFieldInfo | null {
+  return ML.parameter_field_info(query, column);
 }
 
 export function legacyRef(
   query: Query,
   stageIndex: number,
-  column: ColumnMetadata | MetricMetadata | SegmentMetadata,
+  column: ColumnMetadata,
 ): FieldReference {
   return ML.legacy_ref(query, stageIndex, column);
 }

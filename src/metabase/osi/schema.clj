@@ -1,6 +1,7 @@
 (ns metabase.osi.schema
   "Malli schemas for the osi module."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
@@ -16,23 +17,33 @@
   "Cap on the synonyms/examples list length — a curated entity needs a handful, not hundreds."
   50)
 
+(defn normalize-ai-context
+  "The OSI `ai_context` oneOf in the object form stored: the string shorthand becomes its `:instructions`."
+  [ai-context]
+  (if (string? ai-context) {:instructions ai-context} ai-context))
+
 (mr/def ::osi-ai-context.ai-context
   "The `:ai_context` column of a OsiAiContext, decoded."
-  [:map {:closed true}
+  [:map {:closed true :decode/normalize normalize-ai-context}
    [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
    [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
    [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])
+
+(mr/def ::osi-ai-context.entity-type
+  [:enum {:decode/normalize (comp entity-retrieval/normalize-entity-type lib.schema.common/normalize-string-key)}
+   "card" "table" "measure" "segment"])
 
 (mr/def ::osi-ai-context
   "A OsiAiContext as selected from the app DB: every column of `:osi_ai_context`."
   [:merge
    ::osi-ai-context.update
-   [:map {:closed true}]])
+   [:map {:closed true}
+    [:id {:optional true} pos-int?]]])
 
 (mr/def ::osi-ai-context.update
   "What an update (or insert) of a OsiAiContext accepts: every column of `:osi_ai_context` except `id`, all optional."
   [:map {:closed true}
-   [:entity_type     {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_type     {:optional true} ::osi-ai-context.entity-type]
    [:entity_local_id {:optional true} [:maybe ms/PositiveInt]]
    [:entity_id       {:optional true} [:maybe :string]]
    [:ai_context      {:optional true} [:maybe ::osi-ai-context.ai-context]]

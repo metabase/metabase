@@ -6,15 +6,15 @@ import { useGetTablePublishingInfoQuery } from "metabase-enterprise/api";
 import type { Table, TablePublishingInfo } from "metabase-types/api";
 
 type PublishingInfoProps = {
-  table: Pick<Table, "id" | "is_published">;
+  table: Pick<Table, "id" | "collection">;
 };
 
 export function PublishingInfo({ table }: PublishingInfoProps) {
   const { data: publishingInfo } = useGetTablePublishingInfoQuery(table.id, {
-    skip: !table.is_published,
+    skip: table.collection == null,
   });
 
-  if (!table.is_published || publishingInfo == null) {
+  if (table.collection == null || publishingInfo == null) {
     return null;
   }
 

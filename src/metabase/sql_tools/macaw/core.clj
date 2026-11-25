@@ -177,10 +177,24 @@
       (log/debugf "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
+(defn- into-select
+  "The SELECT of `select` that takes an INTO clause: `select` itself, or the first SELECT of a set operation. Nil for
+  anything else, such as a parenthesized first query."
+  ^net.sf.jsqlparser.statement.select.PlainSelect [select]
+  (cond
+    (instance? net.sf.jsqlparser.statement.select.PlainSelect select)
+    select
+
+    (instance? net.sf.jsqlparser.statement.select.SetOperationList select)
+    (into-select (first (.getSelects ^net.sf.jsqlparser.statement.select.SetOperationList select)))))
+
 (defmethod sql-tools/add-into-clause-impl :macaw
   [_parser driver sql table-name]
-  (let [^net.sf.jsqlparser.statement.select.Select parsed-query (parsed-query sql driver)
-        ^net.sf.jsqlparser.statement.select.PlainSelect select-body (.getPlainSelect parsed-query)]
+  (let [parsed-query (parsed-query sql driver)
+        ^net.sf.jsqlparser.statement.select.PlainSelect
+        select-body  (or (into-select parsed-query)
+                         (throw (ex-info "SQL must be a SELECT statement, or a set operation whose first query is one"
+                                         {:sql sql})))]
     (.setIntoTables select-body [(net.sf.jsqlparser.schema.Table. ^String table-name)])
     (str parsed-query)))
 

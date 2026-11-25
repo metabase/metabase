@@ -1,12 +1,13 @@
-.options {
-  padding: 0.5rem;
-}
+.input {
+  background-color: var(--mb-color-background_surface-primary);
+  background-image: linear-gradient(
+    var(--mb-color-input-background),
+    var(--mb-color-input-background)
+  );
 
-.listItem {
-  height: 2.25rem;
-  min-height: 2.25rem;
-  padding: 0.5rem;
-  border-radius: var(--default-border-radius);
+  &:focus-within {
+    background-image: none;
+  }
 }
 
 .label {
@@ -20,4 +21,11 @@
 
 .fieldCount {
   flex-shrink: 0;
+  color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-xs);
+
+  [data-combobox-option]:hover &,
+  [data-combobox-selected] & {
+    color: var(--mb-color-text-secondary-inverse);
+  }
 }

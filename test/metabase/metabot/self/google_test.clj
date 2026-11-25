@@ -13,10 +13,11 @@
    [metabase.test :as mt]
    [metabase.util.json :as json])
   (:import
+   (com.google.api.client.http HttpHeaders HttpResponseException$Builder)
    (com.google.auth.oauth2 GoogleCredentials ServiceAccountCredentials)
    (java.io IOException)
    (java.net SocketTimeoutException)
-   (java.security KeyPairGenerator)
+   (java.security GeneralSecurityException KeyPairGenerator)
    (java.util Base64)))
 
 (set! *warn-on-reflection* true)
@@ -665,6 +666,24 @@
                :error-code  :google-token-refresh-failed}
               (ex-data e))
           "the 400 status makes a connect attempt surface this as a credentials error, not a 500"))))
+
+(deftest fresh-bearer-headers-unanswered-token-request-test
+  (testing "a token request that got no response is a failed request, not a refused credential"
+    (let [error-code (fn [^IOException e]
+                       (let [creds (proxy [GoogleCredentials] []
+                                     (refreshIfExpired [] (throw e)))]
+                         (try (#'google/fresh-bearer-headers creds)
+                              nil
+                              (catch Exception e (:error-code (ex-data e))))))
+          answered   (.build (HttpResponseException$Builder. 400 "Bad Request" (HttpHeaders.)))]
+      (are [code e] (= code (error-code e))
+        :google-token-request-failed (IOException. "Error getting access token" (SocketTimeoutException. "timed out"))
+        :google-token-refresh-failed (IOException. "Error getting access token" answered)
+        :google-token-refresh-failed (IOException. "Error signing the request" (GeneralSecurityException. "bad key"))
+        :google-token-refresh-failed (IOException. "invalid_grant: account disabled"))
+      (testing "and the agent loop reports it as such"
+        (is (= :request-failed
+               (self/call-failure (ex-info "boom" {:api-error true :error-code :google-token-request-failed}))))))))
 
 (deftest google-raw-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"

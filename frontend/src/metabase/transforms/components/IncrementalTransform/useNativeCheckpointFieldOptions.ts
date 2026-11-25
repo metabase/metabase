@@ -17,7 +17,7 @@ export function useNativeCheckpointFieldOptions(query: Lib.Query | null) {
     }
     try {
       const templateTags = Lib.templateTags(query);
-      const tableTags = Object.values(templateTags).filter(
+      const tableTags = templateTags.filter(
         (tag) => tag.type === "table" && tag["table-id"] != null,
       );
       return tableTags.map((tag) => tag["table-id"]).filter(isNotNull);

@@ -5,14 +5,18 @@
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase-enterprise.serialization.core :as ee.serialization]
-   [metabase.actions.core :as actions]
+   [metabase.actions.models :as actions.models]
    [metabase.collections.core :as collections]
+   [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)
@@ -22,8 +26,8 @@
 
 (defn app-url
   "The API URL of the data `app`, followed by `parts`."
-  [{app-name :name} & parts]
-  (str/join "/" (list* "ee/apps" app-name parts)))
+  [{slug :slug} & parts]
+  (str/join "/" (list* "ee/apps" slug parts)))
 
 (defn collection-entity-id
   "A stable resource collection entity ID for the app in `data_apps/<slug>`."
@@ -152,10 +156,11 @@
 
 (defn do-with-app-collection
   "Call `f` with the id of the resource collection of a data app named `birds`, with the data-apps feature on; deleting
-  the app afterwards deletes what it holds."
+  its collection afterwards deletes what it holds."
   [f]
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:name "birds"}]
+    (mt/with-temp [:model/Collection {own-id :id} {:name "Data App: birds" :namespace :data-apps}
+                   :model/DataApp {collection-id :resource_collection_id} {:slug "birds" :resource_collection_id own-id}]
       (f collection-id))))
 
 (defn do-with-library!
@@ -171,7 +176,7 @@
           :metrics-id (id-of collections/library-metrics-collection-type)})
       (finally
         (when-not existing
-          (t2/delete! :model/Collection :id [:in (cons (:id library) (map :id children))]))))))
+          (collection/delete-collections! (vec (cons (:id library) (map :id children)))))))))
 
 (defn do-with-sources!
   "Call `f` with what a data app uses from outside its collection, a venues metric in the Library and an implicit action
@@ -200,8 +205,8 @@
                                                                    :table_id  (mt/id :venues)})
                                 action-id)
              :model-id        model-id
-             :model-action-id (actions/insert! {:name "Create venue" :type :implicit :kind :row/create
-                                                :model_id model-id})}))))))
+             :model-action-id (:id (first (actions.models/create-actions! [{:name "Create venue" :type :implicit :kind :row/create
+                                                                            :model_id model-id}])))}))))))
 
 (defn venues-query
   "A query of the VENUES table, which a card in a data app's collection may read once it is published."
@@ -228,9 +233,21 @@
        (try
          (f)
          (finally
-           (doseq [table-id to-publish]
-             (t2/update! :model/TableUserSettings :table_id table-id
-                         (get previous table-id {:collection_id nil, :is_published nil})))))))))
+           (let [stored (into {} (map (juxt :table_id identity))
+                              (when (seq to-publish)
+                                (t2/select :model/TableUserSettings :table_id [:in (set to-publish)])))
+                 rows   (vec (for [table-id to-publish
+                                   :when (stored table-id)
+                                   :let [changes (get previous table-id {:collection_id nil, :is_published nil})]]
+                               (do (t2/update! :model/TableUserSettings :table_id table-id changes)
+                                   (assoc changes :id (:id (stored table-id))))))
+                 empty  (when (seq to-publish)
+                          (warehouse-schema.db/empty-table-user-settings (vec to-publish)))]
+             (events/publish-event! :event/table-user-settings-update
+                                    (events/update-event (u/index-by :id (vals stored)) rows))
+             (when (seq to-publish)
+               (events/publish-event! :event/table-user-settings-delete (events/delete-event (vec empty)))
+               (warehouse-schema.db/delete-empty-table-user-settings! (vec to-publish))))))))))
 
 (defmacro with-published-tables!
   "Run `body` with the Tables with `table-ids` published to the Library."

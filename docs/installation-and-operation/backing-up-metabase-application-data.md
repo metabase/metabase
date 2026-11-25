@@ -7,8 +7,6 @@ redirect_from:
 
 # Backing up Metabase
 
-Avoid losing your application data (all of your questions, dashboards, collections and so on) by backing up your data.
-
 Metabase uses a single SQL database for all of its runtime application data, so all you need to do is back up that database and you're good to go. You can use that backup to restore your Metabase installation if anything goes wrong (like during an upgrade).
 
 ## Backing up the default H2 database
@@ -36,7 +34,7 @@ The above command would copy the database file to the directory you ran the comm
 1. Navigate to your Metabase directory.
 2. If your Metabase is running, stop the Metabase process. You can either close the terminal or kill the process with CTRL-C. If you are running the process as a service, then stop the service.
 3. Copy the application database file (called `metabase.db.mv.db`) and keep that copy somewhere safe. That's it.
-4. Restart Metabase: `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar` or start the service again.
+4. Restart Metabase: `java -jar metabase.jar` or start the service again.
 
 ## Amazon RDS for the application database
 

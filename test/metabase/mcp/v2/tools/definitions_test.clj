@@ -21,9 +21,11 @@
    [metabase.mcp.v2.tools.definitions :as tools.definitions]
    [metabase.measures.api :as measures.api]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.segments.rest.api :as segments.api]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -199,25 +201,22 @@
                                         :table_id (mt/id :venues)}))))))))
 
 (deftest ^:parallel blank-name-test
-  (testing "GHY-4153/GHY-4154: a whitespace-only `name` is refused. The REST endpoints these tools
-            delegate to take `ms/NonBlankString`, and a tool that inherits their checks must not be
-            laxer than they are — `[:string {:min 1}]` alone lets \" \" through."
+  (testing "a whitespace-only `name` is refused by the argument schema, built from the entity schema"
     (doseq [[tool definition] {"segment_write" mbql4-fragment
                                "measure_write" (count-definition (mt/id :venues))}]
       (testing tool
         (testing "create"
-          (is (= (format "\"name\" cannot be blank — pass a short descriptive name for the %s."
-                         (if (= "segment_write" tool) "segment" "measure"))
-                 (tool-error (call-tool! :crowberto v2.tu/all-scopes tool
-                                         {:method     "create" :table_id (mt/id :venues)
-                                          :name       "   "
-                                          :definition definition})))))
-        (testing "update — refused before the id lookup, so it reads as an argument error"
-          (is (re-find #"\"name\" cannot be blank"
-                       (tool-error (call-tool! :crowberto v2.tu/all-scopes tool
-                                               {:method           "update" :id 13371337
-                                                :name             "   "
-                                                :revision_message "x"})))))))))
+          (is (str/starts-with? (tool-error (call-tool! :crowberto v2.tu/all-scopes tool
+                                                        {:method     "create" :table_id (mt/id :venues)
+                                                         :name       "   "
+                                                         :definition definition}))
+                                "Invalid arguments")))
+        (testing "update"
+          (is (str/starts-with? (tool-error (call-tool! :crowberto v2.tu/all-scopes tool
+                                                        {:method           "update" :id 13371337
+                                                         :name             "   "
+                                                         :revision_message "x"}))
+                                "Invalid arguments")))))))
 
 (deftest ^:parallel invalid-id-shape-test
   (testing "GHY-4137: an id that is neither numeric nor a 21-char entity_id teaches the two accepted shapes"
@@ -344,7 +343,6 @@
       (testing "GHY-4137: create with a single-aggregation MBQL 5 definition succeeds"
         (is (=? {:id        pos-int?
                  :entity_id string?
-                 :table_id  (mt/id :venues)
                  :name      "definitions-test measure A"
                  :archived  false}
                 created))
@@ -392,9 +390,7 @@
                                                                       :aggregation [["count"]]}}})))))
       (testing "the update path enforces the same rule"
         (mt/with-temp [:model/Measure {measure-id :id} {:name       "definitions-test mbql4 update"
-                                                        :table_id   (mt/id :venues)
-                                                        :creator_id (mt/user->id :crowberto)
-                                                        :definition {}}]
+                                                        :creator_id (mt/user->id :crowberto)}]
           (is (re-find shape-sentence
                        (tool-error (call-tool! :crowberto v2.tu/all-scopes "measure_write"
                                                {:method "update" :id measure-id :revision_message "x"
@@ -674,48 +670,48 @@
 ;; created through the tool under with-model-cleanup
 (deftest permission-tiers-test
   (mt/with-no-data-perms-for-all-users!
-    (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision]
-      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                     :model/User {analyst-id :id} {:is_data_analyst true}
-                     :model/User {plain-id :id} {}
-                     :model/User {blind-analyst-id :id} {:is_data_analyst true}]
-        (doseq [user-id [analyst-id plain-id]]
-          (perms/add-user-to-group! user-id group-id))
-        (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
-        (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
-        (let [segment-args {:method "create" :table_id (mt/id :venues)
-                            :name "definitions-test perms segment" :definition mbql4-fragment}
-              measure-args {:method "create" :table_id (mt/id :venues)
-                            :name "definitions-test perms measure"
-                            :definition (count-definition (mt/id :venues))}]
-          ;; a data analyst's write capabilities key off `advanced-permissions`, which no OSS build can have
-          (mt/when-ee-evailable
-           (mt/with-premium-features #{:advanced-permissions}
-             (testing "GHY-4137: not admin-only — a data analyst with unrestricted view-data creates both"
-               (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id v2.tu/all-scopes "segment_write" segment-args))))
-               (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id v2.tu/all-scopes "measure_write" measure-args)))))))
-          (mt/with-premium-features #{}
-            (testing "without advanced-permissions the same data analyst is refused"
-              (is (= "\"You don't have permissions to do that.\""
-                     (tool-error (call-tool! analyst-id v2.tu/all-scopes "segment_write"
-                                             (assoc segment-args :name "definitions-test gated segment")))))
-              (is (= "\"You don't have permissions to do that.\""
-                     (tool-error (call-tool! analyst-id v2.tu/all-scopes "measure_write"
-                                             (assoc measure-args :name "definitions-test gated measure")))))))
-          (mt/with-premium-features #{:advanced-permissions}
-            (testing "GHY-4137: the same table grants without the data-analyst role are a permission denial, not a
+    (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision :model/User]
+      (let [[{analyst-id :id}] (user/create-users! [{:email (mt/random-email) :is_data_analyst true}])
+            [{plain-id :id}] (user/create-users! [{:email (mt/random-email)}])
+            [{blind-analyst-id :id}] (user/create-users! [{:email (mt/random-email) :is_data_analyst true}])]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+          (doseq [user-id [analyst-id plain-id]]
+            (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}]))
+          (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
+          (let [segment-args {:method "create" :table_id (mt/id :venues)
+                              :name "definitions-test perms segment" :definition mbql4-fragment}
+                measure-args {:method "create" :table_id (mt/id :venues)
+                              :name "definitions-test perms measure"
+                              :definition (count-definition (mt/id :venues))}]
+            ;; a data analyst's write capabilities key off `advanced-permissions`, which no OSS build can have
+            (mt/when-ee-evailable
+             (mt/with-premium-features #{:advanced-permissions}
+               (testing "GHY-4137: not admin-only — a data analyst with unrestricted view-data creates both"
+                 (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id v2.tu/all-scopes "segment_write" segment-args))))
+                 (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id v2.tu/all-scopes "measure_write" measure-args)))))))
+            (mt/with-premium-features #{}
+              (testing "without advanced-permissions the same data analyst is refused"
+                (is (= "\"You don't have permissions to do that.\""
+                       (tool-error (call-tool! analyst-id v2.tu/all-scopes "segment_write"
+                                               (assoc segment-args :name "definitions-test gated segment")))))
+                (is (= "\"You don't have permissions to do that.\""
+                       (tool-error (call-tool! analyst-id v2.tu/all-scopes "measure_write"
+                                               (assoc measure-args :name "definitions-test gated measure")))))))
+            (mt/with-premium-features #{:advanced-permissions}
+              (testing "GHY-4137: the same table grants without the data-analyst role are a permission denial, not a
                       not-found"
-              (is (= "\"You don't have permissions to do that.\""
-                     (tool-error (call-tool! plain-id v2.tu/all-scopes "segment_write"
-                                             (assoc segment-args :name "definitions-test denied segment")))))
-              (is (= "\"You don't have permissions to do that.\""
-                     (tool-error (call-tool! plain-id v2.tu/all-scopes "measure_write"
-                                             (assoc measure-args :name "definitions-test denied measure"))))))
-            (testing "GHY-4137: a data analyst without unrestricted view-data is denied — data analysts always read
+                (is (= "\"You don't have permissions to do that.\""
+                       (tool-error (call-tool! plain-id v2.tu/all-scopes "segment_write"
+                                               (assoc segment-args :name "definitions-test denied segment")))))
+                (is (= "\"You don't have permissions to do that.\""
+                       (tool-error (call-tool! plain-id v2.tu/all-scopes "measure_write"
+                                               (assoc measure-args :name "definitions-test denied measure"))))))
+              (testing "GHY-4137: a data analyst without unrestricted view-data is denied — data analysts always read
                       table metadata, so the table resolves and the domain permission check refuses the write"
-              (is (= "\"You don't have permissions to do that.\""
-                     (tool-error (call-tool! blind-analyst-id v2.tu/all-scopes "segment_write"
-                                             (assoc segment-args :name "definitions-test blind segment"))))))))))))
+                (is (= "\"You don't have permissions to do that.\""
+                       (tool-error (call-tool! blind-analyst-id v2.tu/all-scopes "segment_write"
+                                               (assoc segment-args :name "definitions-test blind segment")))))))))))))
 
 ;; not ^:parallel: with-no-data-perms-for-all-users! rewrites global data perms, and rows are
 ;; created through the tool under with-model-cleanup. EE-only: the analyst who authors the rows
@@ -727,57 +723,55 @@
              the old table, and only the domain create-check covers the new one"
      (mt/with-premium-features #{:advanced-permissions}
        (mt/with-no-data-perms-for-all-users!
-         (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision]
-           (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                          :model/User {analyst-id :id} {:is_data_analyst true}]
-             (perms/add-user-to-group! analyst-id group-id)
-             ;; Block the database for this group first, then grant venues back. `with-no-data-perms-for-all-users!`
-             ;; only resets the All Users group, so a freshly created group's default on `checkins` is ambient
-             ;; state — and this test is only meaningful while the analyst cannot author there.
-             (perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
-             (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
-             (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
-             (testing "precondition: venues is authorable and checkins is not"
-               (is (true? (perms/user-has-permission-for-table?
-                           analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :venues))))
-               (is (false? (perms/user-has-permission-for-table?
-                            analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :checkins)))))
-             (let [segment (tool-result (call-tool! analyst-id v2.tu/all-scopes "segment_write"
-                                                    {:method     "create" :table_id (mt/id :venues)
-                                                     :name       "definitions-test move segment"
-                                                     :definition mbql4-fragment}))
-                   measure (tool-result (call-tool! analyst-id v2.tu/all-scopes "measure_write"
-                                                    {:method     "create" :table_id (mt/id :venues)
-                                                     :name       "definitions-test move measure"
-                                                     :definition (count-definition (mt/id :venues))}))]
-               (testing "segment"
-                 (is (= "\"You don't have permissions to do that.\""
-                        (tool-error (call-tool! analyst-id v2.tu/all-scopes "segment_write"
-                                                {:method           "update" :id (:id segment)
-                                                 :definition       (filter-definition :checkins :venue_id)
-                                                 :revision_message "move to checkins"}))))
-                 (testing "and the denial actually prevented the move"
-                   (is (= (mt/id :venues)
-                          (t2/select-one-fn :table_id :model/Segment :id (:id segment))))))
-               (testing "measure"
-                 (is (= "\"You don't have permissions to do that.\""
-                        (tool-error (call-tool! analyst-id v2.tu/all-scopes "measure_write"
-                                                {:method           "update" :id (:id measure)
-                                                 :definition       (count-definition (mt/id :checkins))
-                                                 :revision_message "move to checkins"}))))
-                 (testing "and the denial actually prevented the move"
-                   (is (= (mt/id :venues)
-                          (t2/select-one-fn :table_id :model/Measure :id (:id measure))))))))))))))
+         (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision :model/User]
+           (let [[{analyst-id :id}] (user/create-users! [{:email (mt/random-email) :is_data_analyst true}])]
+             (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+               (perms-group-membership/add-users-to-groups! [{:user analyst-id :group group-id}])
+               (perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+               (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+               (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
+               (testing "precondition: venues is authorable and checkins is not"
+                 (is (true? (perms/user-has-permission-for-tables? (perms/user-info analyst-id) :perms/view-data :unrestricted {(mt/id :venues) (mt/id)})))
+                 (is (false? (perms/user-has-permission-for-tables? (perms/user-info analyst-id) :perms/view-data :unrestricted {(mt/id :checkins) (mt/id)}))))
+               (let [segment (tool-result (call-tool! analyst-id v2.tu/all-scopes "segment_write"
+                                                      {:method     "create" :table_id (mt/id :venues)
+                                                       :name       "definitions-test move segment"
+                                                       :definition mbql4-fragment}))
+                     measure (tool-result (call-tool! analyst-id v2.tu/all-scopes "measure_write"
+                                                      {:method     "create" :table_id (mt/id :venues)
+                                                       :name       "definitions-test move measure"
+                                                       :definition (count-definition (mt/id :venues))}))]
+                 (testing "segment"
+                   (is (= "\"You don't have permissions to do that.\""
+                          (tool-error (call-tool! analyst-id v2.tu/all-scopes "segment_write"
+                                                  {:method           "update" :id (:id segment)
+                                                   :definition       (filter-definition :checkins :venue_id)
+                                                   :revision_message "move to checkins"}))))
+                   (testing "and the denial actually prevented the move"
+                     (is (= (mt/id :venues)
+                            (t2/select-one-fn :table_id :model/Segment :id (:id segment))))))
+                 (testing "measure"
+                   (is (= "\"You don't have permissions to do that.\""
+                          (tool-error (call-tool! analyst-id v2.tu/all-scopes "measure_write"
+                                                  {:method           "update" :id (:id measure)
+                                                   :definition       (count-definition (mt/id :checkins))
+                                                   :revision_message "move to checkins"}))))
+                   (testing "and the denial actually prevented the move"
+                     (is (= (mt/id :venues)
+                            (t2/select-one-fn :table_id :model/Measure :id (:id measure)))))))))))))))
 
 ;; not ^:parallel: narrows the all-users group's view-data on the temp database
 (deftest existence-oracle-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table {table-id :id} {:db_id db-id}
-                 :model/Segment {segment-id :id} {:table_id table-id}
+                 :model/Segment {segment-id :id} {:definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                    (lib/filter (lib/= 1 1))))}
                  :model/Measure {measure-id :id} {:name       "definitions-test oracle measure"
-                                                  :table_id   table-id
                                                   :creator_id (mt/user->id :crowberto)
-                                                  :definition {}}]
+                                                  :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                    (lib/aggregate (lib/count))))}]
     (perms/set-database-permission! (perms/all-users-group) db-id :perms/view-data :blocked)
     (let [norm (fn [msg] (str/replace msg #"\d+" "N"))]
       (testing "GHY-4137: an unreadable id and a nonexistent id must be indistinguishable — no existence oracle"

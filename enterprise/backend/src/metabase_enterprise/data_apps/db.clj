@@ -3,17 +3,19 @@
   model definitions and hydration methods."
   (:require
    [clojure.set :as set]
-   [metabase.collections.models.collection :as collection]
+   [metabase.app-db.core :as mdb]
+   [metabase.data-apps.core :as data-apps]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.core :as queries]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.queries.card-schema :as queries.card-schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def non-blob-columns
   "Every DataApp column except the raw bundle blob."
-  [:id :entity_id :name :display_name :description :version :bundle_path :enabled :allowed_hosts
+  [:id :entity_id :slug :name :description :version :bundle_path :enabled :allowed_hosts
    :resource_collection_id :bundle_hash :created_at :updated_at])
 
 (def ^:private non-blob-model
@@ -27,7 +29,7 @@
 (mu/defn data-app-by-slug
   "The DataApp named `slug` without its bundle, or nil."
   [slug :- :string]
-  (t2/select-one non-blob-model :name slug))
+  (t2/select-one non-blob-model :slug slug))
 
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
@@ -45,21 +47,10 @@
                          filter-column       (assoc :where [:in filter-column filter-ids])
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
-(mu/defn data-app-exists?
-  "Whether a DataApp named `slug` exists."
-  [slug :- :string]
-  (t2/exists? :model/DataApp :name slug))
-
-(mu/defn resource-collection?
+(mu/defn collection-owned-by-data-app?
   "Whether the Collection with `collection-id` is the resource collection of a DataApp."
   [collection-id :- pos-int?]
   (t2/exists? :model/DataApp :resource_collection_id collection-id))
-
-(mu/defn other-app-has-collection?
-  "Whether a DataApp other than the one with `app-id`, or any when it is nil, has the Collection with `collection-id`."
-  [collection-id :- pos-int?
-   app-id        :- [:maybe pos-int?]]
-  (t2/exists? :model/DataApp :resource_collection_id collection-id :id [:not= (or app-id -1)]))
 
 (mu/defn data-apps-namespace-collection?
   "Whether the Collection with `collection-id` is in the data-apps namespace."
@@ -71,17 +62,21 @@
   [slug :- :string]
   (format "Data App: %s" slug))
 
-(mu/defn insert-resource-collection! :- ms/PositiveInt
-  "Insert the resource collection of the data app named `slug`, a top-level collection of data apps, returning its ID."
-  [slug :- :string]
-  (t2/insert-returning-pk! :model/Collection {:name      (resource-collection-name slug)
-                                              :namespace "data-apps"}))
+(mu/defn data-app-ids-by-collection-ids :- [:map-of ms/PositiveInt [:set ms/PositiveInt]]
+  "The ids of the DataApps whose resource collection is one of `collection-ids`, by that collection's id."
+  [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (reduce (fn [collection-id->ids {:keys [id resource_collection_id]}]
+            (update collection-id->ids resource_collection_id (fnil conj #{}) id))
+          {}
+          (mdb/select-batched #(t2/select [:model/DataApp :id :resource_collection_id]
+                                          :resource_collection_id [:in [:auto/param %]])
+                              collection-ids)))
 
-(mu/defn update-data-app!
-  "Apply `changes` to the DataApp with `data-app-id`."
-  [data-app-id :- ms/PositiveInt
-   changes     :- ::data-apps.schema/data-app.update]
-  (t2/update! :model/DataApp :id data-app-id changes))
+(mu/defn resource-collections-by-ids :- [:map-of ms/PositiveInt :map]
+  "The Collections with `collection-ids`, by id."
+  [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in [:auto/param %]])
+                          collection-ids))
 
 (defn resource-collection-ids
   "The IDs of the resource collections owned by data apps."
@@ -103,49 +98,69 @@
   [collection-id]
   (t2/select-pks-vec :model/Action :collection_id collection-id))
 
+(mu/defn cards-in-collections :- [:sequential [:map [:id ms/PositiveInt] [:collection_id ms/PositiveInt]]]
+  "The `:id` and `:collection_id` of the Cards in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (mdb/select-batched #(t2/select [:model/Card :id :collection_id] :collection_id [:in %]) collection-ids))
+
+(mu/defn actions-in-collections :- [:sequential [:map [:id ms/PositiveInt] [:collection_id ms/PositiveInt]]]
+  "The `:id` and `:collection_id` of the Actions in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (mdb/select-batched #(t2/select [:model/Action :id :collection_id] :collection_id [:in %]) collection-ids))
+
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."
   [collection-id]
   (t2/select-one :model/Collection :id collection-id))
 
-(defn delete-resource-collection!
-  "Delete the resource collection with `collection-id`."
-  [collection-id]
-  (t2/delete! :model/Collection :id collection-id))
-
 (mu/defn readable-data-app-ids-select
-  "A HoneySQL query of the ids of the DataApps that the User with `user-id` can read: every app for a superuser, else
-  the enabled apps whose resource collection they can read."
+  "A HoneySQL query of readable DataApp ids. Non-superusers need a resource-collection grant from a matching-tenancy group."
   [user-id    :- ms/PositiveInt
    superuser? :- :boolean]
   (if superuser?
     ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)]}
-    ^:allow-subquery {:select [:id]
-                      :from   [(t2/table-name :model/DataApp)]
+    ^:allow-subquery {:select [:app.id]
+                      :from   [[(t2/table-name :model/DataApp) :app]]
+                      :join   [[(t2/table-name :model/Permissions) :grant]
+                               [:= :grant.collection_id :app.resource_collection_id]
+                               [(t2/table-name :model/PermissionsGroupMembership) :membership]
+                               [:= :membership.group_id :grant.group_id]
+                               [(t2/table-name :model/User) :member]
+                               [:= :member.id :membership.user_id]
+                               [(t2/table-name :model/PermissionsGroup) :assigned_group]
+                               [:= :assigned_group.id :grant.group_id]]
                       :where  [:and
-                               [:= :enabled true]
-                               [:in :resource_collection_id
-                                (collection/visible-collection-query
-                                 {:permission-level :read :include-archived-items :all}
-                                 {:current-user-id user-id :is-superuser? false})]]}))
+                               [:= :app.enabled true]
+                               [:= :membership.user_id user-id]
+                               [:= :grant.perm_type "perms/collection-access"]
+                               [:in :grant.perm_value ["read" "read-and-write"]]
+                               [:= :assigned_group.is_tenant_group [:not= :member.tenant_id nil]]
+                               (when-not (premium-features/has-feature? :tenants)
+                                 [:= :member.tenant_id nil])]}))
 
 (mu/defn readable-data-apps
-  "The DataApps that the User with `user-id` can read, without their bundles, ordered by display name."
+  "The DataApps that the User with `user-id` can read, without their bundles, ordered by name."
   [user-id    :- ms/PositiveInt
    superuser? :- :boolean]
   (t2/select non-blob-model
              {:where    [:in :id (readable-data-app-ids-select user-id superuser?)]
-              :order-by [[:display_name :asc]]}))
+              :order-by [[:name :asc]]}))
 
 (defn permissions-for-warnings
   "View-data permission rows for the warning tables and their databases."
   [group-ids database-ids table-ids]
   (if (and (seq group-ids) (seq database-ids) (seq table-ids))
-    (t2/select [:model/DataPermissions :group_id :db_id :perm_type :table_id :perm_value]
-               :group_id [:in group-ids]
-               :db_id [:in database-ids]
-               :perm_type :perms/view-data
-               {:where [:or [:in :table_id table-ids] [:= :table_id nil]]})
+    (into []
+          (comp (map-indexed (fn [i rows]
+                               (cond->> rows
+                                 (pos? i) (remove (comp nil? :table_id)))))
+                cat)
+          (map #(t2/select [:model/DataPermissions :group_id :db_id :perm_type :table_id :perm_value]
+                           :group_id [:in group-ids]
+                           :db_id [:in database-ids]
+                           :perm_type :perms/view-data
+                           {:where [:or [:in :table_id %] [:= :table_id nil]]})
+               (mdb/select-partitions table-ids)))
     []))
 
 (mu/defn active-tables
@@ -179,51 +194,48 @@
   [collection-id :- [:maybe ::lib.schema.id/collection]
    card-ids      :- [:set {:min 1} ::lib.schema.id/card]]
   (set/difference card-ids (when collection-id
-                             (t2/select-pks-set :model/Card :id [:in card-ids] :collection_id collection-id))))
-
-(mu/defn external-metric-ids :- [:set ::lib.schema.id/card]
-  "Among `card-ids`, those of no metric in the Library's Metrics collection or one of its subcollections."
-  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
-  (set/difference card-ids (t2/select-fn-set :id [:model/Card :report_card.id]
-                                             {:join  [:collection [:= :collection.id :report_card.collection_id]]
-                                              :where [:and
-                                                      [:in :report_card.id card-ids]
-                                                      [:= :report_card.type "metric"]
-                                                      [:= :collection.type collection/library-metrics-collection-type]]})))
+                             (mdb/select-batched-set #(t2/select-pks-set :model/Card
+                                                                         :id [:in %]
+                                                                         :collection_id collection-id) card-ids))))
 
 (defn destination-database-ids
   "The IDs among `database-ids` of the databases that are routing destinations."
   [database-ids]
   (if (seq database-ids)
-    (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil])
+    (mdb/select-batched-set #(t2/select-fn-set :id :model/Database :id [:in %] :router_database_id [:not= nil])
+                            database-ids)
     #{}))
 
 (mu/defn metric-cards-in-collections
-  "The non-archived metric Cards in `collection-ids`, in name then id order."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
+  "The non-archived metric Cards in `collection-ids`, only those with `card-ids` when it has any, in name then id
+  order."
+  [collection-ids :- [:set ::lib.schema.id/collection]
+   card-ids       :- [:maybe [:set ::lib.schema.id/card]]]
   (if (seq collection-ids)
-    (t2/select :model/Card {:where    [:and
-                                       [:= :type "metric"]
-                                       [:= :archived false]
-                                       [:in :collection_id collection-ids]]
+    (t2/select :model/Card {:where    (cond-> [:and
+                                               [:= :type "metric"]
+                                               [:= :archived false]
+                                               [:in :collection_id collection-ids]]
+                                        (seq card-ids) (conj [:in :id card-ids]))
                             :order-by [[:name :asc] [:id :asc]]})
     []))
 
 (mu/defn field-ids-and-table-ids
   "The id and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
+  (mdb/select-batched #(t2/select [:model/Field :id :table_id] :id [:in %]) field-ids))
 
-(mu/defn card-dimensions
-  "The query-relevant columns (`:dimensions` and `:dimension_mappings` among them) of the Card with `card-id`,
-  or nil."
-  [card-id :- ::lib.schema.id/card]
-  (queries/card-query-info card-id))
+(mu/defn cards-dimensions
+  "The query-relevant columns (`:dimensions` and `:dimension_mappings` among them) of the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (mdb/select-batched #(t2/select (queries.card-schema/selection) :id [:in [:auto/param %]]) card-ids)
+    []))
 
 (mu/defn table-names
   "The id, database id, name, and display name of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids]))
+  (mdb/select-batched #(t2/select [:model/Table :id :db_id :name :display_name] :id [:in %]) table-ids))
 
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
@@ -231,15 +243,21 @@
   (t2/select-one-fn :table_id :model/Field :id field-id))
 
 (mu/defn published-tables-in-collections
-  "The active, published Tables in `collection-ids`, in name then id order."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
+  "The active, published Tables in `collection-ids`, only those with `table-ids` when it has any, in name then id
+  order."
+  [collection-ids :- [:set ::lib.schema.id/collection]
+   table-ids      :- [:maybe [:set ::lib.schema.id/table]]]
   (if (seq collection-ids)
     (t2/select :model/Table
-               {:where    [:and
-                           [:= :active true]
-                           [:= :is_published true]
-                           [:in :collection_id collection-ids]]
-                :order-by [[:name :asc] [:id :asc]]})
+               {:select    [:t.*]
+                :from      [[(t2/table-name :model/Table) :t]]
+                :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
+                :where     (cond-> [:and
+                                    [:= :t.active true]
+                                    [:= :s.is_published true]
+                                    [:in :s.collection_id collection-ids]]
+                             (seq table-ids) (conj [:in :t.id table-ids]))
+                :order-by  [[:t.name :asc] [:t.id :asc]]})
     []))
 
 (mu/defn measure-definition
@@ -250,13 +268,30 @@
 (mu/defn measure-definitions
   "The id and definition of the Measures with `measure-ids`."
   [measure-ids :- [:sequential ::lib.schema.id/measure]]
-  (t2/select [:model/Measure :id :definition] :id [:in measure-ids]))
+  (mdb/select-batched #(t2/select [:model/Measure :id :definition] :id [:in %]) measure-ids))
 
 (mu/defn unarchived-collections
   "The unarchived Collections among `collection-ids`, with their Library types."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (if (seq collection-ids)
-    (t2/select [:model/Collection :id :type]
-               :id [:in collection-ids]
-               :archived false)
+    (mdb/select-batched #(t2/select [:model/Collection :id :type]
+                                    :id [:in %]
+                                    :archived false)
+                        collection-ids)
     []))
+
+(mu/defn synced-data-app-items :- [:sequential ::data-apps.schema/data-app]
+  "The DataApps with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (mdb/select-batched #(t2/select [:model/DataApp :id :slug :name] :id [:in %]) ids))
+
+(mu/defn dependency-data-app-items :- [:maybe :map]
+  "The query of the DataApps the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`, which is
+  none: those the user reads, none without the data apps feature."
+  [{:keys [user-id is-superuser?]} :- :metabase.dependencies.items/items-opts]
+  (when-let [visible-ids (data-apps/visible-data-app-filter-select {:user-id user-id :is-superuser? is-superuser?})]
+    {:select [[:data_app.id :entity_id] [:data_app.name :name] [nil :location]]
+     :from   [:data_app]
+     :where  (into [:and]
+                   (remove nil?)
+                   [[:in :data_app.id visible-ids]])}))

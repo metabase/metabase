@@ -5,4 +5,9 @@ export type {
   NamedExpression,
   StageExpression,
 } from "./types";
-export { editExpression, findExpression, isDefaultFormulaName } from "./utils";
+export {
+  editExpression,
+  findExpression,
+  getFormulaColumns,
+  isDefaultFormulaName,
+} from "./utils";

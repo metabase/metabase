@@ -247,7 +247,6 @@
       :is-sandboxed-user?    false
       :is-routed-user?       false
       :models                #{model}
-      :current-user-perms    #{"/"}
       :search-string         search-string}))))
 
 (deftest export-happy-path-test
@@ -612,6 +611,14 @@
       (let [db-name (str "h2-" (u.random/random-name))
             log     (import-archive! (database-archive! db-name :h2 {"details" {"db" "mem:imported"}}))]
         (is (re-find #"h2 is not supported for serialization import" log))
+        (is (nil? (t2/select-one :model/Database :name db-name)))))))
+
+(deftest import-refuses-database-settings-driver-cannot-enable-test
+  (testing "an archive naming a database with a setting its driver cannot enable is refused and no database is created"
+    (mt/with-premium-features #{:serialization}
+      (let [db-name (str "sqlite-" (u.random/random-name))
+            log     (import-archive! (database-archive! db-name :sqlite {"settings" {"database-enable-actions" true}}))]
+        (is (re-find #"Setting database-enable-actions requires driver feature :actions" log))
         (is (nil? (t2/select-one :model/Database :name db-name)))))))
 
 (deftest import-drops-low-level-connection-keys-test

@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { createMockMetadata } from "__support__/metadata";
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders } from "__support__/ui";
@@ -114,7 +115,9 @@ describe("registerQueryBuilderMetabotContextFn", () => {
 
   it("should handle saved questions", async () => {
     const card = createCard();
-    const data = createMockData({ question: new Question(card) });
+    const data = createMockData({
+      question: new Question(card, createMockMetadata()),
+    });
     const result = await registerQueryBuilderMetabotContextFn(data);
 
     const viewing = getUserIsViewing(result);
@@ -124,7 +127,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
   });
 
   it("should handle adhoc questions", async () => {
-    const question = new Question(createAdHocCard());
+    const question = new Question(createAdHocCard(), createMockMetadata());
     expect(question.isSaved()).toBe(false);
 
     const data = createMockData({ question });
@@ -136,7 +139,10 @@ describe("registerQueryBuilderMetabotContextFn", () => {
   });
 
   it("should register no context for adhoc questions without a data source", async () => {
-    const question = new Question(createMockUnsavedCard());
+    const question = new Question(
+      createMockUnsavedCard(),
+      createMockMetadata(),
+    );
 
     const data = createMockData({ question });
     const result = await registerQueryBuilderMetabotContextFn(data);
@@ -154,7 +160,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
       }),
     });
     const data = createMockData({
-      question: new Question(card),
+      question: new Question(card, createMockMetadata()),
       timelineEvents: [
         createMockTimelineEvent({
           name: "Third Event",
@@ -234,7 +240,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
       }),
     ];
     const data = createMockData({
-      question: new Question(card),
+      question: new Question(card, createMockMetadata()),
       series: rawRowSeries,
       visualizationSettings: createMockVisualizationSettings({
         "graph.dimensions": ["cat", "series"],
@@ -279,7 +285,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
       }),
     });
     const data = createMockData({
-      question: new Question(card),
+      question: new Question(card, createMockMetadata()),
       visualizationSettings: createMockVisualizationSettings({
         "graph.dimensions": ["name"],
         "graph.metrics": ["count"],
@@ -309,7 +315,9 @@ describe("registerQueryBuilderMetabotContextFn", () => {
         "pie.metric": "count",
       }),
     });
-    const data = createMockData({ question: new Question(card) });
+    const data = createMockData({
+      question: new Question(card, createMockMetadata()),
+    });
     const result = await registerQueryBuilderMetabotContextFn(data);
 
     const chartConfig = getChartConfig(result)!;
@@ -335,7 +343,9 @@ describe("registerQueryBuilderMetabotContextFn", () => {
         "funnel.metric": "count",
       }),
     });
-    const data = createMockData({ question: new Question(card) });
+    const data = createMockData({
+      question: new Question(card, createMockMetadata()),
+    });
     const result = await registerQueryBuilderMetabotContextFn(data);
 
     const chartConfig = getChartConfig(result)!;
@@ -363,7 +373,7 @@ it("should return empty result when metabot is disabled", async () => {
     }),
   });
   const data = createMockData({
-    question: new Question(card),
+    question: new Question(card, createMockMetadata()),
     isMetabotEnabled: false,
   });
   const result = await registerQueryBuilderMetabotContextFn(data);
@@ -381,7 +391,7 @@ it("should return populated context when metabot is enabled", async () => {
     }),
   });
   const data = createMockData({
-    question: new Question(card),
+    question: new Question(card, createMockMetadata()),
     isMetabotEnabled: true,
   });
   const result = await registerQueryBuilderMetabotContextFn(data);

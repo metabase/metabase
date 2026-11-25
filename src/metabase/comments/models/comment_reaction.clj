@@ -1,8 +1,12 @@
 (ns metabase.comments.models.comment-reaction
   "Model for comment reactions (emoji reactions on comments)"
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.comments.db :as comments.db]
+   [metabase.comments.schema :as comments.schema]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -20,32 +24,6 @@
    :user_id {:default {}}))
 
 ;;; Helpers
-
-(defn reaction-exists?
-  "Check if a reaction already exists for a given comment, user, and emoji"
-  [comment-id user-id emoji]
-  (comments.db/reaction-exists? comment-id user-id emoji))
-
-(defn create-reaction!
-  "Create a new reaction"
-  [comment-id user-id emoji]
-  (comments.db/insert-reaction! comment-id user-id emoji))
-
-(defn delete-reaction!
-  "Delete a specific reaction"
-  [comment-id user-id emoji]
-  (comments.db/delete-reaction! comment-id user-id emoji))
-
-(defn toggle-reaction
-  "Toggle a reaction - add it if it doesn't exist, remove it if it does"
-  [comment-id user-id emoji]
-  (if (reaction-exists? comment-id user-id emoji)
-    (do
-      (delete-reaction! comment-id user-id emoji)
-      {:reacted false})
-    (do
-      (create-reaction! comment-id user-id emoji)
-      {:reacted true})))
 
 (defn- format-user [{:keys [id first_name last_name]}]
   {:id   id
@@ -71,3 +49,33 @@
                 (let [user (format-user (:user reaction))]
                   (update-in acc [(:comment_id reaction) (:emoji reaction)] first-or-last user)))
               {} reactions))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-reactions! :- [:sequential (ms/InstanceOf :model/CommentReaction)]
+  "Insert the CommentReaction `rows` and return the inserted instances, in the order of `rows`."
+  [rows :- [:sequential ::comments.schema/comment-reaction.create]]
+  (comments.db/insert-reactions! rows))
+
+(mu/defn delete-reactions! :- :nil
+  "Delete the CommentReactions with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (comments.db/delete-reactions! ids))
+  nil)
+
+(defn toggle-reaction
+  "Toggle a reaction - add it if it doesn't exist, remove it if it does"
+  [comment-id user-id emoji]
+  (if-let [id (comments.db/reaction-id comment-id user-id emoji)]
+    (do
+      (delete-reactions! [id])
+      {:reacted false})
+    (do
+      (create-reactions! [{:comment_id comment-id :user_id user-id :emoji emoji}])
+      {:reacted true})))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/CommentReaction [_model]
+  {:skip? false})

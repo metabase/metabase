@@ -1,36 +1,35 @@
 (ns metabase.driver.events.driver-notifications
-  "Driver notifications are used to let drivers know database details or other relevant information has
-  changed (`:database-update`) or that a Database has been deleted (`:database-delete`). Drivers can choose to be
-  notified of these events by implementing the `metabase.driver/notify-database-updated` multimethod. At the time of
-  this writing, the SQL JDBC driver 'superclass' is the only thing that implements this method, and does so to close
-  connection pools when database details change or when they are deleted."
+  "Notifies drivers, through `metabase.driver/notify-database-updated`, that the details of a Database changed or that
+  it was deleted, which the SQL JDBC driver uses to close connection pools."
   (:require
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.driver-api.core :as driver-api]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
+   [metabase.util.performance :as perf]
    [methodical.core :as methodical]))
 
 (events/derive! ::event :metabase/event)
 (events/derive! :event/database-update ::event)
 (events/derive! :event/database-delete ::event)
 
-(methodical/defmethod driver-api/publish-event! ::event
-  [topic {database :object, previous-database :previous-object, details-changed? :details-changed? :as _event}]
-  ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
-  (try
-    ;; notify the appropriate driver about the updated database to release any related resources, such as connections.
-    ;; avoid notifying if the changes shouldn't impact the observable behaviour of any resource, otherwise drivers might
-    ;; close connections or other resources unnecessarily (metabase#27877).
-    (let [;; remove data that should not impact the observable state of any resource before comparing
-          remove-irrelevant-data (fn [db]
-                                   (reduce m/dissoc-in db [[:updated_at]
-                                                           [:settings :database-enable-actions]]))]
-      (when (or details-changed?
-                (not= (remove-irrelevant-data database)
-                      (remove-irrelevant-data previous-database)))
-        (driver/notify-database-updated (:engine database) (driver.u/ensure-lib-database database))))
-    (catch Throwable e
-      (log/warnf "Failed to process driver notifications event %s: %s" topic (ex-message e)))))
+(defn- connection-state
+  "What of `database` the resources of its driver depend on, which leaves out the settings that do not change what
+  they serve (metabase#27877), the schema a workspace writes to being read at the use of the Database."
+  [database]
+  (-> (perf/select-keys database [:engine :details :settings])
+      (cond-> (map? (:settings database)) (-> (m/dissoc-in [:settings :database-enable-actions])
+                                              (m/dissoc-in [:settings :database-workspace-schema])))
+      (update :settings perf/not-empty)))
+
+(methodical/defmethod events/publish-event! ::event
+  [topic {:keys [changes]}]
+  (doseq [{:keys [object previous-object]} changes]
+    (try
+      (when (or (= topic :event/database-delete)
+                (not= (connection-state object) (connection-state previous-object)))
+        (let [database (or object previous-object)]
+          (driver/notify-database-updated (:engine database) (driver.u/ensure-lib-database database))))
+      (catch Throwable e
+        (log/warnf "Failed to process driver notifications event %s: %s" topic (ex-message e))))))

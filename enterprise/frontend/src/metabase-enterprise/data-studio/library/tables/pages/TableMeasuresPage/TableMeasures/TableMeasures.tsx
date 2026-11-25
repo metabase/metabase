@@ -17,7 +17,7 @@ type TableMeasuresProps = {
 
 export function TableMeasures({ table }: TableMeasuresProps) {
   const canWriteMeasures = useSelector((state) =>
-    getUserCanWriteMeasures(state, table.is_published),
+    getUserCanWriteMeasures(state, table.collection != null),
   );
   const measures = table.measures ?? [];
 

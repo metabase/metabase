@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 // This is conditionally aliased in the webpack config.
@@ -24,6 +25,7 @@ import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
+import { ChunkLoadFailed } from "metabase/common/components/ErrorPages";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import { getUserId } from "metabase/current-user";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
@@ -41,7 +43,6 @@ import {
 import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
-import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
 import { applyDocumentLocales } from "metabase/utils/boot-locale";
@@ -130,23 +131,22 @@ async function _init(
   root.render(
     <MetabaseReduxProvider store={store}>
       <AppMountedMark />
-      <EmotionCacheProvider>
-        <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
-          <OverlayStackProvider>
-            <AppThemeProvider>
-              <GlobalStyles />
-              {createPortal(<PortalContainer />, document.body)}
-              <MetabotProvider>
-                <RouterProvider
-                  routes={routes}
-                  onLocationChange={mirrorLocation}
-                  loadingFallback={<DelayedLoadingSpinner />}
-                />
-              </MetabotProvider>
-            </AppThemeProvider>
-          </OverlayStackProvider>
-        </DragDropContextProvider>
-      </EmotionCacheProvider>
+      <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
+        <OverlayStackProvider>
+          <AppThemeProvider>
+            <GlobalStyles />
+            {createPortal(<PortalContainer />, document.body)}
+            <MetabotProvider>
+              <RouterProvider
+                routes={routes}
+                onLocationChange={mirrorLocation}
+                loadingFallback={<DelayedLoadingSpinner />}
+                chunkErrorFallback={ChunkLoadFailed}
+              />
+            </MetabotProvider>
+          </AppThemeProvider>
+        </OverlayStackProvider>
+      </DragDropContextProvider>
     </MetabaseReduxProvider>,
   );
 

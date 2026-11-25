@@ -19,6 +19,7 @@ import {
   useRequestedFormulaEdit,
   useSummaryFormulaBar,
 } from "./SummaryFormulaBar";
+import { useSummaryFormulaGenerator } from "./SummaryFormulaGenerator";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
 import type {
@@ -148,6 +149,14 @@ export function SummarySidebar({
     });
   useRequestedFormulaEdit(query, stageIndex, formulaInputs.columns);
 
+  const formulaGenerator = useSummaryFormulaGenerator({
+    query,
+    stageIndex,
+    isEnabled: Object.values(formulaInputs).some(Boolean),
+    onAdd: (nextQuery, wellId) =>
+      handleWellAdd(nextQuery, wellId, wellId !== "values"),
+  });
+
   const handleAdd = (wellId: SummaryWellId, field: SummaryField) =>
     handleWellAdd(addField(query, stageIndex, wellId, field), wellId);
 
@@ -189,6 +198,7 @@ export function SummarySidebar({
             sections={sections}
             draggedItem={draggedItem}
             formulaInputs={formulaInputs}
+            formulaGenerator={formulaGenerator}
             draftFormula={draftFormula}
             editingFormulaClause={editingFormulaClause}
             canPivot={canPivot}

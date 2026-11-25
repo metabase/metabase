@@ -11,13 +11,13 @@
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase-enterprise.audit-app.audit :as audit-ee]
    [metabase-enterprise.audit-app.db :as audit-app.db]
    [metabase-enterprise.audit-app.permissions :as audit-ee.permissions]
    [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.plugins.core :as plugins]
    [metabase.serialization.core :as serialization]
    [metabase.setup.core :as setup]
@@ -25,7 +25,9 @@
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.match :as match]
+   [metabase.warehouses.models.database :as database])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -75,16 +77,15 @@
       (do
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
-      (let [db (audit-app.db/insert-returning-database!
-                {:name canonical-db-name
-                 :description "Development database for analytics views and content"
-                 :engine (name db-type)
-                 :details {:is-audit-dev true}
-                 :is_audit false ; Important: not an audit DB
-                 :is_full_sync true
-                 :is_on_demand false
-                 :creator_id user-id
-                 :auto_run_queries true})]
+      (let [db (first (database/create-databases! [{:name canonical-db-name
+                                                    :description "Development database for analytics views and content"
+                                                    :engine (keyword db-type)
+                                                    :details {:is-audit-dev true}
+                                                    :is_audit false ; Important: not an audit DB
+                                                    :is_full_sync true
+                                                    :is_on_demand false
+                                                    :creator_id user-id
+                                                    :auto_run_queries true}]))]
         (log/info "Created analytics dev database:" (:id db))
         (sync/sync-database! (u/the-id db) {:scan :schema})
         db))))
@@ -93,7 +94,7 @@
   "Deletes the analytics dev database and all related metadata."
   [db-id]
   (log/info "Deleting analytics dev database:" db-id)
-  (audit-app.db/delete-database! db-id)
+  (database/delete-databases! [db-id])
   (log/info "Deleted analytics dev database"))
 
 ;;; ============================================================================
@@ -105,12 +106,8 @@
 
   Replaces canonical creator_id with actual user email."
   [yaml-data user-email]
-  (walk/postwalk
-   (fn [node]
-     (if (= node canonical-creator-id)
-       user-email
-       node))
-   yaml-data))
+  (match/replace-all yaml-data
+    #{canonical-creator-id} user-email))
 
 (defn- yaml->canonical
   "Transform YAML from dev format to canonical format.
@@ -118,14 +115,9 @@
   Replaces user email with canonical creator_id.
   For the Database entity, strips down to minimal required fields and sets is_audit to true."
   [file-name yaml-data user-email]
-  (let [transformed (walk/postwalk
-                     (fn [node]
-                       (if (map? node)
-                         (dissoc node :metabase_version :is_writable)
-                         (if (= node user-email)
-                           canonical-creator-id
-                           node)))
-                     yaml-data)
+  (let [transformed (match/replace-all yaml-data
+                      #'map? (dissoc &match :metabase_version :is_writable)
+                      #{user-email} canonical-creator-id)
         is-database? (or (= file-name (str canonical-db-filename ".yaml"))
                          (= file-name (str legacy-canonical-db-filename ".yaml")))]
     (if is-database?
@@ -295,8 +287,8 @@
        (find-analytics-collection)))
 
 (defn- cleanup-real-analytics []
-  (audit-app.db/delete-audit-databases!)
-  (audit-app.db/delete-analytics-collections!))
+  (database/delete-databases! (audit-app.db/audit-database-ids))
+  (collection/delete-collections! (audit-app.db/analytics-collection-ids)))
 
 (defn- analytics-dev-mode-setup []
   (when (audit/analytics-dev-mode)

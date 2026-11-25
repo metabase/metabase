@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.api.custom-expression :as custom-expression]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -16,6 +17,7 @@
    [metabase.metabot.usage :as usage]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -280,15 +282,17 @@
                                                                         {:type :usage :id "msg-1"
                                                                          :usage {:promptTokens     700
                                                                                  :completionTokens 20}}]))]
-          (mt/with-temp [:model/User {user-id :id} {}]
-            (is (= {:expression "Average([Total])" :name "Average total"}
-                   (mt/with-current-user user-id
-                     (#'custom-expression/generate {:mode        "aggregation"
-                                                    :prompt      "average total"
-                                                    :columns     [{:name "[Total]" :type "number"}]
-                                                    :database_id (mt/id)}))))
-            (is (= ["custom_expression_generate"]
-                   (t2/select-fn-vec :source :model/AiUsageLog :user_id user-id)))))))))
+          (mt/with-model-cleanup [:model/AiUsageLog :model/User]
+            (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
+              (is (= {:expression "Average([Total])" :name "Average total"}
+                     (mt/with-current-user user-id
+                       (#'custom-expression/generate {:mode        "aggregation"
+                                                      :prompt      "average total"
+                                                      :columns     [{:name "[Total]" :type "number"}]
+                                                      :database_id (mt/id)
+                                                      :metabot_id  metabot.config/internal-metabot-id}))))
+              (is (= ["custom_expression_generate"]
+                     (t2/select-fn-vec :source :model/AiUsageLog :user_id user-id))))))))))
 
 ;;; ------------------------------------------ check-usage-limits! ------------------------------------------
 

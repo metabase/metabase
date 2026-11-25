@@ -25,6 +25,7 @@ export type FormulaEditorProps = {
   /** Position of the edited clause, so the formula cannot refer to itself. */
   expressionIndex?: number;
   initialSource?: string;
+  initialName?: string;
   /** Represents the formula loading status in the editor */
   sourceStatus?: FormulaSourceStatus;
   submitLabel: string;
