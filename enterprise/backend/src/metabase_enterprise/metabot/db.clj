@@ -141,13 +141,12 @@
 
 (mu/defn usage-token-sum
   "The `:sum` row of tokens logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`.
-
-  Tokens read from the provider prompt cache do not count. `total_tokens` includes them, and an agent loop reads
-  the same conversation prefix from the cache again on every call, so with them the sum grows with the number of
-  calls and not with the work done. Tokens written to the cache are new input and do count."
+  Tokens read from the provider prompt cache do not count, and tokens written to it do."
   [period-start :- ms/TemporalInstant
    user-id      :- [:maybe ::lib.schema.id/user]
    tenant-id    :- [:maybe ms/PositiveInt]]
+  ;; An agent loop reads the same conversation prefix from the cache on every call, so counting cache reads would
+  ;; make the sum grow with the number of calls rather than with the work done.
   (t2/query-one {:select [[[:sum [:- :total_tokens [:coalesce :cache_read_tokens 0]]] :sum]]
                  :from   [:ai_usage_log]
                  :where  (usage-window-expr period-start user-id tenant-id)}))
