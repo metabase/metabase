@@ -115,8 +115,10 @@
                                                                                            :sync/field-count (count fields)}
                                          (let [how (sample/sample table fields rff opts)]
                                            ;; A better sample with no rows, for example of a table whose row count
-                                           ;; estimate is old, gives no fingerprints; the first rows may have some.
-                                           (if (and (not= :unspecified (:method how)) (no-data? (:result how)))
+                                           ;; estimate is old, gives no fingerprints; the first rows may have some. A sample that
+                                           ;; is already the first rows is not read again.
+                                           (if (and (not (#{:unspecified :first-rows} (:method how)))
+                                                    (no-data? (:result how)))
                                              (sample/first-rows-sample table fields rff opts)
                                              how)))]
     {:rows  (into [] (keep identity) (map (partial fingerprint-row (sample-origin table how)) fields fingerprints))
