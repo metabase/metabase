@@ -66,6 +66,27 @@ describe("ExpressionWidget > completion", () => {
     );
   });
 
+  it("should show the column info hovercard for a suggested column in a filter", async () => {
+    await setup({ query: createOrdersQuery(), expressionMode: "filter" });
+
+    await typeText("[Cre");
+    expect(await waitForCompletions()).toContain("Created At");
+
+    const option = within(
+      screen.getByTestId("custom-expression-editor-suggestions"),
+    )
+      .getAllByRole("option")
+      .find((element) => element.textContent === "Created At");
+    await userEvent.hover(
+      within(checkNotNull(option)).getByLabelText("More info"),
+    );
+
+    expect(
+      await screen.findByText("The timestamp the order was created"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Creation timestamp")).toBeInTheDocument();
+  });
+
   it("should insert a function template when accepting a function suggestion", async () => {
     await setup();
 
