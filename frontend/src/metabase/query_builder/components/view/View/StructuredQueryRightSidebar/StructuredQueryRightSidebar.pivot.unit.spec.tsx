@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -41,6 +42,7 @@ const PIVOT_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
 });
 
 const setup = () => {
+  setupUserMetabotPermissionsEndpoint();
   const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
   const pivotQuestion = new Question(
     createMockCard({

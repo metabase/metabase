@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
@@ -42,6 +43,7 @@ const setup = ({
   querySpec = DEFAULT_TEST_QUERY,
   sourceCards = [],
 }: SetupOpts = {}) => {
+  setupUserMetabotPermissionsEndpoint();
   const metadata = createMockMetadata({
     databases: [createSampleDatabase()],
     questions: sourceCards,

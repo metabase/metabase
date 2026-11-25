@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabaseEndpoints,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -44,6 +47,7 @@ const ORDERS_BY_MONTH_STAGE: TestQuerySpec["stages"][number] = {
 
 const setup = ({ querySpec = DEFAULT_TEST_QUERY, view }: SetupOpts) => {
   setupDatabaseEndpoints(createSampleDatabase());
+  setupUserMetabotPermissionsEndpoint();
   mockGetBoundingClientRect();
   const initialQuestion = new Question(
     createMockUnsavedCard({
