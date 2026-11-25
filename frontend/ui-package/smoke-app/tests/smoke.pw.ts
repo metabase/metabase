@@ -267,7 +267,18 @@ test("@release a Drawer opened from a custom-layer Modal can be used", async ({
   await expect.poll(() => isOnTop(drawer)).toBe(true);
   await drawer.getByRole("button", { name: "Close nested drawer" }).click();
   await expect(drawer).toBeHidden();
-  await expect(page.getByRole("dialog", { name: "Modal title" })).toBeVisible();
+  const modal = page.getByRole("dialog", { name: "Modal title" });
+  await expect(modal).toBeVisible();
+
+  const trigger = page.getByRole("button", { name: "Open drawer" });
+  await trigger.click();
+  await expect(drawer).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+  await expect(modal).toBeVisible();
+  await expect(trigger).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(modal).toBeHidden();
 });
 
 test("a portalled Select can be used inside a custom modal layer", async ({

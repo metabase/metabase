@@ -1,5 +1,5 @@
 /* eslint-disable i18next/no-literal-string -- type tests, not rendered */
-import { Box } from "@mantine/core";
+import { Box, DEFAULT_THEME } from "@mantine/core";
 import {
   Button,
   type ColorName,
@@ -62,6 +62,15 @@ export const bad = (
 
 // @ts-expect-error not a ColorName
 export const badColorName: ColorName = "grape";
+
+export function checkNativeTheme() {
+  DEFAULT_THEME.fn?.themeColor("core-brand");
+  // @ts-expect-error native Mantine does not supply Metabase's helpers
+  DEFAULT_THEME.fn.themeColor("core-brand");
+  // @ts-expect-error native Mantine does not supply the Metabase color scheme
+  const colorScheme: "light" | "dark" = DEFAULT_THEME.other.colorScheme;
+  return colorScheme;
+}
 
 export function checkColorSettingsCallback(theme: MantineTheme) {
   theme.other.updateColorSettings?.({});

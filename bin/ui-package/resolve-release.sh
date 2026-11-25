@@ -27,9 +27,11 @@ fi
 # Validate before Bash command substitution can discard newlines or NULs.
 NUM='(0|[1-9][0-9]*)'
 PATTERN="\A(?<major>$NUM)\.(?<minor>$NUM)\.(?<patch>$NUM)(-canary\.$NUM)?\z"
-if ! VERSION=$(jq -ers --arg pattern "$PATTERN" '
+# A loose Git tag lock file adds nine bytes: ui-v<version>.lock.
+MAX_VERSION_LENGTH=$((255 - 9))
+if ! VERSION=$(jq -ers --arg pattern "$PATTERN" --argjson max_length "$MAX_VERSION_LENGTH" '
   select(length == 1) | .[0].version
-  | select(type == "string" and length <= 256)
+  | select(type == "string" and length <= $max_length)
   | select(capture($pattern) | [.major, .minor, .patch] | all(tonumber < 9007199254740992))
 ' "$PKG"); then
   echo "version in $PKG must be an npm-compatible X.Y.Z or X.Y.Z-canary.N" >&2

@@ -12,7 +12,6 @@ import {
 
 const packageDir = resolve(import.meta.dirname, "..");
 const repoRoot = resolve(packageDir, "../..");
-const uiDir = resolve(repoRoot, "frontend/src/metabase/ui");
 const distDir = resolve(packageDir, "dist");
 
 const configPath = resolve(packageDir, "tsconfig.lib.json");
@@ -199,43 +198,47 @@ if (diagnostics.length > 0) {
   process.exit(1);
 }
 
-// tsc does not emit .d.ts inputs, so copy the Mantine augmentation next to the
-// declarations that its imports point to, rewriting its module specifiers.
-const augmentation = "types/src/metabase/ui/mantine";
-const augmentationPath = resolve(distDir, `${augmentation}.d.ts`);
-mkdirSync(dirname(augmentationPath), { recursive: true });
-const augmentationSource = resolve(uiDir, "mantine.d.ts");
-const augmentationFile = ts.createSourceFile(
-  augmentationSource,
-  readFileSync(augmentationSource, "utf-8"),
-  ts.ScriptTarget.Latest,
-);
-const specifierLiterals: ts.StringLiteral[] = [];
-const collectSpecifiers = (node: ts.Node) => {
-  const literal =
-    ts.isImportDeclaration(node) || ts.isExportDeclaration(node)
-      ? node.moduleSpecifier
-      : ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)
-        ? node.argument.literal
-        : undefined;
-  if (literal && ts.isStringLiteral(literal) && isRewritten(literal.text)) {
-    specifierLiterals.push(literal);
+// tsc does not emit .d.ts inputs; ship the consumer augmentation, not the app's.
+function copyDeclaration(path: string) {
+  const source = resolve(repoRoot, "frontend", `${path}.d.ts`);
+  const target = resolve(distDir, "types", `${path}.d.ts`);
+  const file = ts.createSourceFile(
+    source,
+    readFileSync(source, "utf-8"),
+    ts.ScriptTarget.Latest,
+  );
+  const specifierLiterals: ts.StringLiteral[] = [];
+  const collectSpecifiers = (node: ts.Node) => {
+    const literal =
+      ts.isImportDeclaration(node) || ts.isExportDeclaration(node)
+        ? node.moduleSpecifier
+        : ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)
+          ? node.argument.literal
+          : undefined;
+    if (literal && ts.isStringLiteral(literal) && isRewritten(literal.text)) {
+      specifierLiterals.push(literal);
+    }
+    ts.forEachChild(node, collectSpecifiers);
+  };
+  collectSpecifiers(file);
+  let text = file.text;
+  for (const literal of specifierLiterals.reverse()) {
+    text =
+      text.slice(0, literal.getStart(file) + 1) +
+      rewriteSpecifier(source, literal.text) +
+      text.slice(literal.getEnd() - 1);
   }
-  ts.forEachChild(node, collectSpecifiers);
-};
-collectSpecifiers(augmentationFile);
-let augmentationText = augmentationFile.text;
-for (const literal of specifierLiterals.reverse()) {
-  augmentationText =
-    augmentationText.slice(0, literal.getStart(augmentationFile) + 1) +
-    rewriteSpecifier(augmentationSource, literal.text) +
-    augmentationText.slice(literal.getEnd() - 1);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, text);
 }
-writeFileSync(augmentationPath, augmentationText);
+
+const augmentation = "ui-package/src/mantine-consumer";
+copyDeclaration("src/metabase/ui/mantine-shared");
+copyDeclaration(augmentation);
 
 writeFileSync(
   resolve(distDir, "index.d.ts"),
-  `import "./${augmentation}.js";\nexport * from "./types/ui-package/src/index.js";\n`,
+  `import "./types/${augmentation}.js";\nexport * from "./types/ui-package/src/index.js";\n`,
 );
 writeFileSync(resolve(distDir, "css.d.ts"), "export {};\n");
 console.log("Wrote declarations to dist/");

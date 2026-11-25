@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from "child_process";
 import {
+  copyFileSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -41,6 +42,7 @@ function resolveRelease({ version }: ResolveSetupOpts) {
 it.each([
   { version: "0.1.0", tag: "latest" },
   { version: "0.1.0-canary.5", tag: "canary" },
+  { version: `0.1.0-canary.${"1".repeat(233)}`, tag: "canary" },
   { version: "9007199254740991.0.0", tag: "latest" },
 ])("resolves release outputs for $version", ({ version, tag }) => {
   const result = resolveRelease({ version });
@@ -60,13 +62,45 @@ it.each([
   { name: "an oversized minor", version: "0.9007199254740992.0" },
   { name: "an oversized patch", version: "0.1.9007199254740992" },
   {
-    name: "an oversized version string",
-    version: `0.1.0-canary.${"1".repeat(250)}`,
+    name: "a version too long for the Git tag lock file",
+    version: `0.1.0-canary.${"1".repeat(234)}`,
   },
 ])("does not emit release outputs for $name", ({ version }) => {
   const result = resolveRelease({ version });
   expect(result.status).toBe(1);
   expect(result.stdout).toBe("");
+});
+
+it("packs a long canary version under a fixed filename", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "pack-ui-release-"));
+  try {
+    const manifest = {
+      name: "@metabase/ui",
+      version: `0.1.0-canary.${"1".repeat(233)}`,
+    };
+    mkdirSync(join(cwd, "scripts"));
+    const packScript = join(cwd, "scripts/pack.ts");
+    copyFileSync(
+      join(__dirname, "../../frontend/ui-package/scripts/pack.ts"),
+      packScript,
+    );
+    writeFileSync(join(cwd, "package.json"), JSON.stringify(manifest));
+    execFileSync("bun", ["run", packScript], { cwd });
+
+    const packedManifest: unknown = JSON.parse(
+      execFileSync(
+        "tar",
+        ["-xzOf", ".pack/metabase-ui.tgz", "package/package.json"],
+        {
+          cwd,
+          encoding: "utf8",
+        },
+      ),
+    );
+    expect(packedManifest).toEqual(manifest);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });
 
 interface SetupOpts {
