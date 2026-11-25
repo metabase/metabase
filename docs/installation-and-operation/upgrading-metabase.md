@@ -55,13 +55,13 @@ Steps differ depending on whether you're running the container image or the JAR.
    Metabase Open Source:
 
    ```
-   docker pull metabase/metabase:v0.65.6
+   docker pull metabase/metabase:v0.65.7
    ```
 
    Metabase Pro or Enterprise:
 
    ```
-   docker pull metabase/metabase-enterprise:v1.65.6
+   docker pull metabase/metabase-enterprise:v1.65.7
    ```
 
 3. Start the new container image. Depending on the ports and container name, the command will look something like:
@@ -69,13 +69,13 @@ Steps differ depending on whether you're running the container image or the JAR.
    Metabase Open Source:
 
    ```
-   docker run -d -p 3000:3000 -e MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>" --name metabase metabase/metabase:v0.65.6
+   docker run -d -p 3000:3000 -e MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>" --name metabase metabase/metabase:v0.65.7
    ```
 
    Metabase Pro or Enterprise:
 
    ```
-   docker run -d -p 3000:3000 -e MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>" --name metabase metabase/metabase-enterprise:v1.65.6
+   docker run -d -p 3000:3000 -e MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>" --name metabase metabase/metabase-enterprise:v1.65.7
    ```
 
 On startup, Metabase will perform the upgrade automatically. Once Metabase has completed the upgrade, you'll be running the new version.
