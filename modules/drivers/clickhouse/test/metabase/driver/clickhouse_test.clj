@@ -24,6 +24,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.test :as qp]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
@@ -1748,41 +1749,66 @@
                    (:query (qp.compile/compile (-> (lib/query mp venues)
                                                    (assoc-in [:stages 0 :table-sample] {:percent 5.0E-5})))))))))
 
+(defn- do-with-clickhouse-table!
+  "Create the table `table-name` in the schema of the test data with `ddl` (with `%s` for its qualified name) and
+  `insert`, and call `f` with its Table and Fields `id` and `cat`."
+  [table-name ddl insert f]
+  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+        schema (:schema (t2/select-one :model/Table :id (mt/id :venues)))
+        qname  (format "`%s`.`%s`" schema table-name)]
+    (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " qname)])
+    (jdbc/execute! spec [(format ddl qname)])
+    (try
+      (jdbc/execute! spec [(format insert qname)])
+      (mt/with-temp [:model/Table table {:db_id (mt/id) :name table-name :schema schema}
+                     :model/Field id    {:table_id (:id table) :name "id" :base_type :type/BigInteger}
+                     :model/Field cat   {:table_id (:id table) :name "cat" :base_type :type/Integer}]
+        (f table [id cat]))
+      (finally
+        (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " qname)])))))
+
 (deftest table-random-sample-test
   (mt/test-driver :clickhouse
     (mt/with-test-user :crowberto
-      (let [spec  (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
-            venues (t2/select-one :model/Table :id (mt/id :venues))
-            fields (fn [table] (t2/select :model/Field :table_id (:id table) {:order-by [:id]}))]
-        (is (driver.u/supports? :clickhouse :table-random-sample (mt/db)))
-        (testing "a table with no sampling key: declines, so that sync reads the first rows"
-          (is (= {:method :first-rows}
-                 (driver/table-random-sample :clickhouse venues (fields venues) (constantly conj)
-                                             {:rows 20 :row-count 100}))))
-        (testing "a table with a sampling key: the native SAMPLE"
-          (jdbc/execute! spec [(format "DROP TABLE IF EXISTS `%s`.`kb_sampled`" (:schema venues))])
-          (jdbc/execute! spec [(format (str "CREATE TABLE `%s`.`kb_sampled` (id UInt64, cat UInt32) ENGINE = MergeTree"
-                                            " ORDER BY (cat, intHash32(id)) SAMPLE BY intHash32(id)")
-                                       (:schema venues))])
-          (try
-            (jdbc/execute! spec [(format "INSERT INTO `%s`.`kb_sampled` SELECT number, number %% 20 FROM numbers(100000)"
-                                         (:schema venues))])
-            (mt/with-temp [:model/Table table {:db_id (mt/id) :name "kb_sampled" :schema (:schema venues)}
-                           :model/Field id    {:table_id (:id table) :name "id" :base_type :type/BigInteger}
-                           :model/Field cat   {:table_id (:id table) :name "cat" :base_type :type/Integer}]
-              (let [{:keys [method fraction result]} (driver/table-random-sample :clickhouse table [id cat] (constantly conj)
-                                                                                 {:rows 1000 :row-count 100000})]
-                (is (= :block method))
-                (is (= 0.01 fraction))
-                (testing "with rows from all over the table, not only the first ones"
-                  (is (< 500 (count result) 2000))
-                  (is (= 20 (count (distinct (map second result))))))))
-            (finally
-              (jdbc/execute! spec [(format "DROP TABLE IF EXISTS `%s`.`kb_sampled`" (:schema venues))]))))
-        (testing "no estimate: declines"
-          (is (= {:method :first-rows}
-                 (driver/table-random-sample :clickhouse venues (fields venues) (constantly conj)
-                                             {:rows 20 :row-count nil}))))))))
+      (is (driver.u/supports? :clickhouse :table-random-sample (mt/db)))
+      (testing "a MergeTree table with no sampling key: rows at positions inside its parts"
+        (let [venues (t2/select-one :model/Table :id (mt/id :venues))]
+          (is (=? {:method :block :result #(= 20 (count %))}
+                  (driver/table-random-sample :clickhouse venues (t2/select :model/Field :table_id (:id venues))
+                                              (constantly conj) {:rows 20 :row-count 100})))))
+      (testing "a table with a sampling key after a column of few values: the native SAMPLE"
+        (do-with-clickhouse-table!
+         "kb_sampled"
+         "CREATE TABLE %s (id UInt64, cat UInt32) ENGINE = MergeTree ORDER BY (cat, intHash32(id)) SAMPLE BY intHash32(id)"
+         "INSERT INTO %s SELECT number, number %% 20 FROM numbers(5000000)"
+         (fn [table fields]
+           (let [{:keys [method fraction result]} (driver/table-random-sample :clickhouse table fields (constantly conj)
+                                                                              {:rows 10000 :row-count 5000000})]
+             (is (= :block method))
+             (is (= 0.002 fraction))
+             (testing "with rows from all over the table, not only the first ones"
+               (is (< 5000 (count result) 20001))
+               (is (= 20 (count (distinct (map second result)))))))
+           (testing "no row count: declines"
+             (is (= {:method :first-rows}
+                    (driver/table-random-sample :clickhouse table fields (constantly conj)
+                                                {:rows 10000 :row-count nil})))))))
+      (testing "a sampling key after a column of many values, where SAMPLE reads the whole table: positions instead"
+        (do-with-clickhouse-table!
+         "kb_sampled_wide"
+         "CREATE TABLE %s (id UInt64, cat UInt32) ENGINE = MergeTree ORDER BY (cat, intHash32(id)) SAMPLE BY intHash32(id)"
+         "INSERT INTO %s SELECT number, number %% 100000 FROM numbers(5000000)"
+         (fn [table fields]
+           (let [sqls    (atom [])
+                 execute qp.pipeline/*execute*
+                 {:keys [method]} (binding [qp.pipeline/*execute* (fn [driver query respond]
+                                                                    (swap! sqls conj (get-in query [:stages 0 :native]))
+                                                                    (execute driver query respond))]
+                                    (driver/table-random-sample :clickhouse table fields (constantly conj)
+                                                                {:rows 10000 :row-count 5000000}))]
+             (is (= :block method))
+             (is (some #(str/includes? % "PREWHERE") @sqls))
+             (is (not-any? #(str/includes? % " SAMPLE ") @sqls)))))))))
 
 (deftest table-sample-positions-compile-test
   (mt/initialize-if-needed! :db)
