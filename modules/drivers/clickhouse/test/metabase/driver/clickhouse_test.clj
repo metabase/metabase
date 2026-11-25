@@ -485,6 +485,24 @@
       (let [value (com.clickhouse.data.value.UnsignedLong/valueOf "84467440737095")]
         (is (= value (nippy/thaw (nippy/freeze value))))))))
 
+(deftest ^:parallel clickhouse-map-values-serialization-test
+  (mt/test-driver :clickhouse
+    (testing "the results cache can serialize Map, JSON and Variant values"
+      (let [row (->> (mt/native-query
+                      {:query (str "SELECT map('a', 1, 'b', 2) AS m,"
+                                   " map('k', map('z', 1)) AS nested,"
+                                   " CAST('{\"a\": {\"b\": [1, 2]}, \"c\": \"x\"}', 'JSON') AS j,"
+                                   " CAST(map('x', [1]), 'Variant(Map(String, Array(UInt8)), String)') AS v")})
+                     qp/process-query
+                     mt/rows
+                     first)]
+        (is (= [{"a" 1, "b" 2}
+                {"k" {"z" 1}}
+                {"a.b" [1 2], "c" "x"}
+                {"x" [1]}]
+               row
+               (nippy/thaw (nippy/freeze row))))))))
+
 (deftest ^:parallel clickhouse-query-formatting
   (mt/test-driver :clickhouse
     (let [query             (mt/mbql-query venues {:fields [$id] :order-by [[:asc $id]] :limit 5})

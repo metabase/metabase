@@ -578,14 +578,12 @@
               [int str str]
               (mt/with-db (mt/db) (mt/run-mbql-query ipaddress_test {}))))))))
 
-(defn- map-as-string [^java.util.LinkedHashMap m] (.toString m))
-
 (deftest clickhouse-simple-map-test
   (mt/test-driver :clickhouse
     (mt/dataset metabase_test
-      (is (= [[1 "{key1=1, key2=10}"] [2 "{key1=2, key2=20}"] [3 "{key1=3, key2=30}"]]
+      (is (= [[1 {"key1" 1, "key2" 10}] [2 {"key1" 2, "key2" 20}] [3 {"key1" 3, "key2" 30}]]
              (mt/formatted-rows
-              [int map-as-string]
+              [int identity]
               :format-nil-values
               (mt/with-db (mt/db)
                 (mt/run-mbql-query

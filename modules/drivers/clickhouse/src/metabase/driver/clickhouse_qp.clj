@@ -1,6 +1,6 @@
 (ns metabase.driver.clickhouse-qp
   "CLickHouse driver: QueryProcessor-related definition"
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -18,7 +18,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [some]])
+   [metabase.util.performance :refer [mapv some]])
   (:import
    [java.net Inet4Address Inet6Address]
    [java.sql ResultSet ResultSetMetaData Types]
@@ -29,7 +29,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime]
-   [java.util Arrays UUID]))
+   [java.util Arrays List Map UUID]))
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
 (sql/register-dialect!
@@ -704,6 +704,19 @@
   (when-let [^Inet6Address inet-address (.getObject rs i Inet6Address)]
     (.getHostAddress inet-address)))
 
+(defn- value->clojure
+  "Convert a Java map or list, and the values in it, to Clojure data. The results cache cannot read Java maps and lists."
+  [value]
+  (cond
+    (instance? Map value)
+    (into {} (map (fn [[k v]] [k (some-> v value->clojure)])) value)
+
+    (instance? List value)
+    (mapv #(some-> % value->clojure) value)
+
+    :else
+    value))
+
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/OTHER]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
@@ -714,8 +727,8 @@
         (ipv4-column->string rs i)
         (= normalized-db-type "ipv6")
         (ipv6-column->string rs i)
-        ;; _
-        :else (.getObject rs i)))))
+        ;; e.g. Map, JSON and Variant values
+        :else (some-> (.getObject rs i) value->clojure)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/VARCHAR]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
