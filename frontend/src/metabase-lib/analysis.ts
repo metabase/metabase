@@ -1,6 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import type {
   DateTimeAbsoluteUnit,
+  DimensionReference,
   ProductAnalyticsKind,
 } from "metabase-types/api";
 
@@ -31,8 +32,10 @@ export type AnalysisDrill = {
 };
 
 export type AnalysisDrillDimension = {
-  /** The name of one of the analysis's result columns. */
-  column: string;
+  /**
+   * The clicked column's `field_ref` from the result dataset.
+   */
+  column_ref: DimensionReference;
   value: AnalysisDrillValue;
 };
 

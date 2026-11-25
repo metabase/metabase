@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import type { ClickObject } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
-import type { RowValue } from "metabase-types/api";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import type { CommonSettings } from "../analyses/types";
@@ -16,9 +16,7 @@ const isDrillValue = (value: unknown): value is Lib.AnalysisDrillValue =>
 const isDrillDimension = (
   value: unknown,
 ): value is Lib.AnalysisDrillDimension =>
-  isObject(value) &&
-  typeof value.column === "string" &&
-  isDrillValue(value.value);
+  isObject(value) && value.column_ref != null && isDrillValue(value.value);
 
 /** Whether a stored value is a drill the planner can read. */
 export const isAnalysisDrill = (value: unknown): value is Lib.AnalysisDrill =>
@@ -29,10 +27,12 @@ export const isAnalysisDrill = (value: unknown): value is Lib.AnalysisDrill =>
   value.dimensions.every(isDrillDimension);
 
 const toDrillDimension = (
-  columnName: string,
+  column: DatasetColumn,
   value: RowValue,
 ): Lib.AnalysisDrillDimension | null =>
-  isDrillValue(value) ? { column: columnName, value } : null;
+  isDrillValue(value) && column.field_ref != null
+    ? { column_ref: column.field_ref, value }
+    : null;
 
 /**
  * A drill to the actors in the clicked cell of an analysis's chart. `null`
@@ -42,7 +42,7 @@ export const getClickedDrill = (
   clicked: ClickObject,
 ): Lib.AnalysisDrill | null => {
   const dimensions = (clicked.dimensions ?? []).map(({ column, value }) =>
-    toDrillDimension(column.name, value),
+    toDrillDimension(column, value),
   );
   const areDimensionsValid =
     dimensions.length > 0 &&

@@ -82,7 +82,8 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
   },
   describeDrill: ({ granularity }, { dimensions }) => {
     const periods = dimensions.find(
-      ({ column }) => column === PERIODS_COLUMN,
+      ({ column_ref }) =>
+        Array.isArray(column_ref) && column_ref[1] === PERIODS_COLUMN,
     )?.value;
     if (typeof periods !== "number") {
       return null;

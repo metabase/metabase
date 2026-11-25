@@ -604,7 +604,12 @@ describe("NewAnalysisPage", () => {
   describe("drill", () => {
     const DRILL: Lib.AnalysisDrill = {
       type: "actors",
-      dimensions: [{ column: "periods", value: 6 }],
+      dimensions: [
+        {
+          column_ref: ["field", "periods", { "base-type": "type/Integer" }],
+          value: 6,
+        },
+      ],
     };
     const DRILL_LABEL = "People active on 6 days";
     const DRILLED_ROUTE = `${SET_UP_TABLE_ROUTE}#${encodeSettings({ drill: DRILL })}`;

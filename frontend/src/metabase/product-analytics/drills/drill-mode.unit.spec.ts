@@ -10,7 +10,15 @@ import type { Grain } from "../analyses/types";
 
 import { getDrillMode } from "./drill-mode";
 
-const PERIODS_COLUMN = createMockColumn({ name: "periods" });
+const PERIODS_REF: ["field", string, { "base-type": string }] = [
+  "field",
+  "periods",
+  { "base-type": "type/Integer" },
+];
+const PERIODS_COLUMN = createMockColumn({
+  name: "periods",
+  field_ref: PERIODS_REF,
+});
 const PEOPLE_COLUMN = createMockColumn({ name: "people" });
 
 const BAR_CLICK: ClickObject = {
@@ -21,7 +29,7 @@ const BAR_CLICK: ClickObject = {
 
 const BAR_DRILL: Lib.AnalysisDrill = {
   type: "actors",
-  dimensions: [{ column: "periods", value: 6 }],
+  dimensions: [{ column_ref: PERIODS_REF, value: 6 }],
 };
 
 type SetupOpts = {

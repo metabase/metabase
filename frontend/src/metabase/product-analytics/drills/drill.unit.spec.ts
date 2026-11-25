@@ -8,9 +8,15 @@ import { getTableQuery } from "../base-query";
 
 import { getClickedDrill, getSettingsChanges, isAnalysisDrill } from "./drill";
 
+/** Shape the FE sends for an aggregation column; analysis normalizes to MBQL 5. */
+const PERIODS_REF = ["field", "periods", { "base-type": "type/Integer" }];
+const COHORT_REF = ["field", "cohort", { "base-type": "type/Date" }];
+const BROWSER_REF = ["field", "browser", { "base-type": "type/Text" }];
+const CONVERTED_REF = ["field", "converted", { "base-type": "type/Boolean" }];
+
 const DRILL: Lib.AnalysisDrill = {
   type: "actors",
-  dimensions: [{ column: "periods", value: 6 }],
+  dimensions: [{ column_ref: PERIODS_REF, value: 6 }],
 };
 
 const SETTINGS: HabitSettings = {
@@ -31,9 +37,9 @@ describe("isAnalysisDrill", () => {
     {
       type: "actors",
       dimensions: [
-        { column: "cohort", value: "2026-10-05" },
-        { column: "browser", value: null },
-        { column: "converted", value: true },
+        { column_ref: COHORT_REF, value: "2026-10-05" },
+        { column_ref: BROWSER_REF, value: null },
+        { column_ref: CONVERTED_REF, value: true },
       ],
     },
   ])("accepts a drill the planner can read", (value) => {
@@ -45,22 +51,31 @@ describe("isAnalysisDrill", () => {
     "actors",
     { ...DRILL, type: "unknown" },
     { ...DRILL, dimensions: [] },
-    { ...DRILL, dimensions: [{ column: 1, value: 6 }] },
-    { ...DRILL, dimensions: [{ column: "periods", value: { count: 6 } }] },
-    { ...DRILL, dimensions: [{ column: "periods" }] },
+    { ...DRILL, dimensions: [{ column_ref: null, value: 6 }] },
+    {
+      ...DRILL,
+      dimensions: [{ column_ref: PERIODS_REF, value: { count: 6 } }],
+    },
+    { ...DRILL, dimensions: [{ column_ref: PERIODS_REF }] },
   ])("rejects %j", (value) => {
     expect(isAnalysisDrill(value)).toBe(false);
   });
 });
 
 describe("getClickedDrill", () => {
-  it("drills to the clicked cell's values, by column name", () => {
+  it("drills to the clicked cell's values, by column ref", () => {
     expect(
       getClickedDrill({
         column: createMockColumn({ name: "people" }),
         value: 120,
         dimensions: [
-          { column: createMockColumn({ name: "periods" }), value: 6 },
+          {
+            column: createMockColumn({
+              name: "periods",
+              field_ref: PERIODS_REF,
+            }),
+            value: 6,
+          },
         ],
       }),
     ).toEqual(DRILL);
@@ -80,7 +95,23 @@ describe("getClickedDrill", () => {
     expect(
       getClickedDrill({
         dimensions: [
-          { column: createMockColumn({ name: "periods" }), value: { n: 6 } },
+          {
+            column: createMockColumn({
+              name: "periods",
+              field_ref: PERIODS_REF,
+            }),
+            value: { n: 6 },
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("doesn't drill from a click whose column has no field_ref", () => {
+    expect(
+      getClickedDrill({
+        dimensions: [
+          { column: createMockColumn({ name: "periods" }), value: 6 },
         ],
       }),
     ).toBeNull();

@@ -54,7 +54,12 @@ const HABIT_DEFAULTS = {
 
 const DRILL: Lib.AnalysisDrill = {
   type: "actors",
-  dimensions: [{ column: "periods", value: 6 }],
+  dimensions: [
+    {
+      column_ref: ["field", "periods", { "base-type": "type/Integer" }],
+      value: 6,
+    },
+  ],
 };
 
 describe("computeAnalysisSettings", () => {

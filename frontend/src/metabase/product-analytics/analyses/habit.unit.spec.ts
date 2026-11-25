@@ -44,7 +44,12 @@ describe("HABIT_CONFIG.getVizSettings", () => {
 describe("HABIT_CONFIG.describeDrill", () => {
   const getDrill = (value: Lib.AnalysisDrillValue): Lib.AnalysisDrill => ({
     type: "actors",
-    dimensions: [{ column: "periods", value }],
+    dimensions: [
+      {
+        column_ref: ["field", "periods", { "base-type": "type/Integer" }],
+        value,
+      },
+    ],
   });
 
   it.each([
@@ -69,7 +74,12 @@ describe("HABIT_CONFIG.describeDrill", () => {
     expect(
       HABIT_CONFIG.describeDrill(SETTINGS, {
         type: "actors",
-        dimensions: [{ column: "people", value: 6 }],
+        dimensions: [
+          {
+            column_ref: ["field", "people", { "base-type": "type/Integer" }],
+            value: 6,
+          },
+        ],
       }),
     ).toBeNull();
   });

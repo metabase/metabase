@@ -1,19 +1,21 @@
 (ns metabase.lib.analysis
   (:require
-   [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.column :as column]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.util :as lib.util]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::drill.dimension
-  "A clicked cell's value in one of the analysis's result columns. Column names are values, not keys, so they keep
-  their spelling through normalization."
+  "A clicked cell's value in one of the analysis's result columns. `:column-ref` is the clicked column's reference.
+  The FE sends `DatasetColumn.field_ref` (legacy MBQL); the drill handler converts it at use-site."
   [:map {:decode/normalize lib.schema.common/normalize-map}
-   [:column :string]
-   [:value  :any]])
+   [:column-ref :any]
+   [:value      :any]])
 
 (mr/def ::drill
   "A clicked cell of an analysis's result, and what to show for it instead of the result. `:actors` lists the actors
@@ -69,25 +71,37 @@
                     (lib/window (lib/sum (lib/count))
                                 {:partition-by []}))))
 
+(defn- resolve-dimension-column
+  "Convert `a-ref` to MBQL 5, then find the matching column in `columns`.
+
+  Skips the conversion for already-MBQL-5 refs used in tests."
+  [actors-query a-ref columns]
+  (let [mbql5 (cond->> a-ref
+                (not (lib.util/ref-clause? a-ref)) (lib.convert/legacy-ref->mbql5 actors-query -1))]
+    (or (lib.equality/find-matching-column mbql5 columns)
+        (throw (ex-info "A drill names a column the analysis doesn't have" {:column-ref a-ref})))))
+
 (defn- filter-to-cell
   "Filters the last stage of `actors-query`, which has a row per actor, to the actors in the clicked cell. Throws when
-  a dimension names a column the stage doesn't have."
+  a dimension's `:column-ref` doesn't resolve to a column in the stage."
   [actors-query dimensions]
   (let [columns (lib/filterable-columns actors-query)]
-    (reduce (fn [query {column-name :column, value :value}]
-              (let [column (m/find-first #(= column-name (:lib/original-name %)) columns)]
-                (when-not column
-                  (throw (ex-info "A drill names a column the analysis doesn't have" {:column column-name})))
-                (lib/filter query (lib/= column value))))
+    (reduce (fn [query {:keys [column-ref value]}]
+              (lib/filter query (lib/= (resolve-dimension-column actors-query column-ref columns) value)))
             actors-query
             dimensions)))
+
+(defn- project-visible-columns
+  "Return all visible columns (implicitly joinable ones included)."
+  [query]
+  (lib/with-fields query -1 (lib/visible-columns query -1)))
 
 (defn- drill->mbql
   "The query `drill` asks for, from `actors-query`, whose last stage has a row per actor and the columns the drill's
   dimensions name."
   [actors-query {drill-type :type, :keys [dimensions]}]
   (case drill-type
-    :actors (filter-to-cell actors-query dimensions)
+    :actors (-> (filter-to-cell actors-query dimensions) project-visible-columns)
     (throw (ex-info "unsupported drill type" {:type drill-type}))))
 
 (defmethod ->mbql :habit
