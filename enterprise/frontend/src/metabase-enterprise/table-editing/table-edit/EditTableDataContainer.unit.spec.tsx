@@ -584,7 +584,7 @@ describe("EditTableDataContainer", () => {
     });
 
     it("keeps text typed into a cell while another cell's save lands", async () => {
-      await setupGrid();
+      const { store } = await setupGrid();
       const saveResponse = defer<void>();
       fetchMock.modifyRoute("execute-bulk", {
         response: async (callLog: CallLog) => {
@@ -593,24 +593,27 @@ describe("EditTableDataContainer", () => {
         },
       });
 
-      await userEvent.click(getCell(1, "score"));
-      const scoreInput = within(getCell(1, "score")).getByRole("textbox");
-      await userEvent.clear(scoreInput);
-      await userEvent.type(scoreInput, "25{Enter}");
-      await waitFor(() =>
-        expect(fetchMock.callHistory.calls("execute-bulk")).toHaveLength(1),
-      );
-      await userEvent.click(getCell(2, "name"));
-      await userEvent.type(
-        within(getCell(2, "name")).getByRole("textbox"),
-        " Delta",
-      );
-      expect(screen.queryByTestId("toast-undo")).not.toBeInTheDocument();
-      saveResponse.resolve();
+      try {
+        await userEvent.click(getCell(1, "score"));
+        const scoreInput = within(getCell(1, "score")).getByRole("textbox");
+        await userEvent.clear(scoreInput);
+        await userEvent.type(scoreInput, "25{Enter}");
+        await waitFor(() =>
+          expect(fetchMock.callHistory.calls("execute-bulk")).toHaveLength(1),
+        );
+        await userEvent.click(getCell(2, "name"));
+        await userEvent.type(
+          within(getCell(2, "name")).getByRole("textbox"),
+          " Delta",
+        );
+        expect(screen.queryByTestId("toast-undo")).not.toBeInTheDocument();
+      } finally {
+        // A pending save would keep the shared afterEach waiting
+        saveResponse.resolve();
+      }
+      await waitForGridToSettle(store, { datasetRequests: 1 });
 
-      expect(
-        await screen.findByText("Successfully updated"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Successfully updated")).toBeInTheDocument();
       expect(getCell(1, "score")).toHaveTextContent("25");
       expect(within(getCell(2, "name")).getByRole("textbox")).toHaveValue(
         "Charlie Delta",
