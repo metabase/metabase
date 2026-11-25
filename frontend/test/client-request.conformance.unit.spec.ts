@@ -193,7 +193,7 @@ function valuesProjection(checker: ts.TypeChecker, values: Shape[]): string[] {
         return valuesProjection(checker, value.members);
       }
       if (value.kind === "items") {
-        return valuesProjection(checker, [value.item]).map(
+        return valuesProjection(checker, value.elements).map(
           (text) => `each ${text}`,
         );
       }
@@ -331,12 +331,48 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
+  it("should fold runtime keys from a GET body typed any into the query", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (body: any) => ({ method: "GET", url: "/api/x", body }) }',
+      },
+      projected({ query: "unverified" }),
+      [
+        {
+          argument: "{ q: 7 }",
+          expected: sentRequest({ query: [["q", "7"]] }),
+        },
+      ],
+    );
+  });
+
+  it("should omit an undefined POST body and send an object passed to the same endpoint", async () => {
+    await expectConformance(
+      {
+        endpoint:
+          '{ query: (body: unknown) => ({ method: "POST", url: "/api/x", body }) }',
+      },
+      projected({ method: "POST", body: "unverified" }),
+      [
+        { argument: "undefined", expected: sentRequest({ method: "POST" }) },
+        {
+          argument: "{ q: 7 }",
+          expected: sentRequest({
+            method: "POST",
+            body: { kind: "json", value: { q: 7 } },
+          }),
+        },
+      ],
+    );
+  });
+
   it("should leave out an empty array and repeat the key for each array item", async () => {
     const endpoint =
       '{ query: (params: { ids: number[] }) => ({ url: "/api/x", params }) }';
     await expectConformance(
       { endpoint },
-      projected({ query: [{ "ids?": ["number[]"] }] }),
+      projected({ query: [{ "ids?": ["each number"] }] }),
       [
         { argument: "{ ids: [] }", expected: sentRequest({}) },
         {

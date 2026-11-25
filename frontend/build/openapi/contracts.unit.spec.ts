@@ -36,11 +36,13 @@ function check({
   backend,
   endpoint,
   options = {},
+  walkOptions,
 }: {
   frontend: string;
   backend: string;
   endpoint: string;
   options?: ts.CompilerOptions;
+  walkOptions?: Parameters<typeof checkContracts>[4];
 }) {
   // The builder shares the template's first line, so the line numbers the specs quote stay put.
   const { root, files, program } = programFrom(
@@ -58,6 +60,7 @@ function check({
     [files["endpoint.ts"] ?? ""],
     files["types.gen.d.ts"] ?? "",
     root,
+    walkOptions,
   );
 }
 
@@ -194,7 +197,7 @@ describe("API contract checks", () => {
       endpoint: replaceOnce(
         endpoint,
         "url: `",
-        "params: { schema: 123 }, url: `",
+        "params: { unknownKey: 123 }, url: `",
       ),
     });
     expect(resultFor(results, "request.query")?.status).toBe("mismatch");
@@ -578,25 +581,29 @@ describe("walks that do not finish", () => {
       );
   }
 
-  it("should stop the run with the check, type and path when a walk goes past its step budget", () => {
+  it("should report the check, type and path when a walk goes past its step budget", () => {
     const run = checkWith(
       "type ErdResponse = { first: { value: unknown }; second: { value: unknown } };",
       withResponse("{ first: { value: string }; second: { value: string } }"),
       { walkStepBudget: 3 },
     );
-    expect(run).toThrow(TypeWalkError);
-    expect(run).toThrow(
+    const results = run();
+    expect(resultFor(results, "request.path.0")?.status).toBe("compatible");
+    expect(baselineProblems(results, [ENDPOINT_ID])).toEqual([]);
+    expect(baselineProblems(results, [])).not.toEqual([]);
+    expect(resultFor(results, "response.2XX")?.status).toBe("unverified");
+    expect(resultFor(results, "response.2XX")?.message).toContain(
       "API contract check endpoints:example:response.2XX stopped: the field walk went past its budget of 3 steps at $.second in type { value: string; } (ErdResponse.second (endpoint.ts:10))",
     );
   });
 
-  it("should stop the run on a type that grows each time it recurs", () => {
+  it("should bound the check on a type that grows each time it recurs", () => {
     const run = checkWith(
       `${growing} type ErdResponse = Grow<string>;`,
       withResponse("Grow<number>", growing),
       { walkDepthBudget: 50 },
     );
-    expect(run).toThrow(
+    expect(resultFor(run(), "response.2XX")?.message).toMatch(
       /^API contract check endpoints:example:response\.2XX stopped: the field walk went past its depth budget of 50 at \$\.next×\d+/,
     );
   });
@@ -613,16 +620,25 @@ describe("walks that do not finish", () => {
           .spyOn(checker, "isTypeAssignableTo")
           .mockImplementation((from, to) => {
             calls += 1;
-            if (calls > 1) {
+            if (calls === 2) {
               throw new RangeError("Maximum call stack size exceeded");
             }
             return assignable(from, to);
           });
       },
     );
-    expect(run).toThrow(
+    expect(resultFor(run(), "response.2XX")?.message).toMatch(
       /^API contract check endpoints:example:response\.2XX stopped: the field walk overflowed the call stack at \$/,
     );
+  });
+
+  it("should propagate unexpected checker errors", () => {
+    const run = checkWith(frontend, backend, {}, (checker) => {
+      jest.spyOn(checker, "isTypeAssignableTo").mockImplementation(() => {
+        throw new Error("unexpected checker error");
+      });
+    });
+    expect(run).toThrow("unexpected checker error");
   });
 
   it("should report a stack overflow outside a walk with the check", () => {
@@ -642,7 +658,7 @@ describe("walks that do not finish", () => {
           });
       },
     );
-    expect(run).toThrow(
+    expect(resultFor(run(), "response.2XX")?.message).toContain(
       "API contract check endpoints:example:response.2XX stopped: the call stack overflowed outside a type walk",
     );
   });
@@ -931,6 +947,127 @@ describe("request comparison rules", () => {
   function request(argument: string, query: string) {
     return `builder.query<ErdResponse, ${argument}>({ query: ${query} })`;
   }
+
+  it.each(["any", "unknown"])(
+    "should leave a %s POST body that may be absent unverified",
+    (argument) => {
+      const results = check({
+        frontend,
+        backend: operation({ method: "Post" }),
+        endpoint: request(
+          argument,
+          '(body) => ({ method: "POST", url: "/api/user", body })',
+        ),
+      });
+      expect(resultFor(results, "request.body")).toMatchObject({
+        status: "unverified",
+        message: expect.stringContaining("own keys are known only at runtime"),
+      });
+    },
+  );
+
+  it("should leave query keys copied from a GET body typed any unverified", () => {
+    const results = check({
+      frontend,
+      backend: operation(),
+      endpoint: request(
+        "any",
+        '(body) => ({ method: "GET", url: "/api/user", body })',
+      ),
+    });
+    expect(resultFor(results, "request.query")).toMatchObject({
+      status: "unverified",
+      message: expect.stringContaining("own keys are known only at runtime"),
+    });
+    expect(resultFor(results, "request.body")?.status).toBe("compatible");
+  });
+
+  it.each([
+    ["number", "string", "compatible"],
+    ["bigint", "string", "compatible"],
+    ["number", "number", "compatible"],
+    ["number", '"5"', "mismatch"],
+    ["number", "boolean", "mismatch"],
+    ["5", '"5"', "compatible"],
+  ])(
+    "should compare %s sent in the URL with backend %s",
+    (argument, target, status) => {
+      const results = check({
+        frontend,
+        backend: operation({
+          url: "/api/user/{id}",
+          path: `path: {id: ${target}}`,
+          query: `query: {q: ${target}}`,
+        }),
+        endpoint: request(
+          argument,
+          "(id) => ({ url: `/api/user/${id}`, params: { q: id } })",
+        ),
+      });
+      expect(resultFor(results, "request.path.0")?.status).toBe(status);
+      expect(resultFor(results, "request.query")?.status).toBe(status);
+    },
+  );
+
+  it.each([
+    ["number[]", "string[]", "compatible"],
+    ["[number, bigint]", "[string, string]", "compatible"],
+    ["[number, number]", "[number, number]", "compatible"],
+    ["[number, number]", "[number]", "mismatch"],
+    ["[number, number]", "[number, boolean]", "mismatch"],
+  ])(
+    "should compare repeated query values %s with %s",
+    (source, target, status) => {
+      const results = check({
+        frontend,
+        backend: operation({ query: `query?: { ids?: ${target} }` }),
+        endpoint: request(
+          `{ids: ${source}}`,
+          '(params) => ({ url: "/api/user", params })',
+        ),
+      });
+      expect(resultFor(results, "request.query")?.status).toBe(status);
+    },
+  );
+
+  it("should convert fields alongside a recursive JSON subtree", () => {
+    const tree = "type Tree = { name: string; children: Tree[] };";
+    const results = check({
+      frontend: frontend + tree,
+      backend:
+        tree +
+        operation({
+          method: "Post",
+          body: "body: { inner: { tree: Tree; note?: string; date: string } }",
+        }),
+      endpoint: request(
+        "{ inner: {tree: Tree; note: string | undefined; date: Date} }",
+        '(body) => ({ method: "POST", url: "/api/user", body })',
+      ),
+    });
+    expect(resultFor(results, "request.body")?.status).toBe("compatible");
+  });
+
+  it.each([{ walkStepBudget: 2 }, { walkDepthBudget: 1 }])(
+    "should bound JSON conversion with %o and preserve other results",
+    (walkOptions) => {
+      const body = "{ a: { b: { c: { d: string } } } }";
+      const results = check({
+        frontend,
+        backend: operation({ method: "Post", body: "body: object" }),
+        endpoint: request(
+          body,
+          '(body) => ({ method: "POST", url: "/api/user", body })',
+        ),
+        walkOptions,
+      });
+      expect(resultFor(results, "request.body")).toMatchObject({
+        status: "unverified",
+        message: expect.stringContaining("JSON modelling exceeded"),
+      });
+      expect(resultFor(results, "request.query")?.status).toBe("compatible");
+    },
+  );
 
   it("should inspect nested cache keys after removing the top-level key", () => {
     const results = check({

@@ -326,14 +326,6 @@
    :requires [[mage.openapi-diff]]
    :task (task! (mage.openapi-diff/cli-diff parsed))}
 
-  openapi-staleness
-  {:group "Tests & checks"
-   :doc "Is the committed OpenAPI spec current relative to the API source? (a stale spec under-reports)"
-   :examples [["./bin/mage openapi-staleness"]]
-   :arg-schema [:tuple]
-   :requires [[mage.openapi-diff]]
-   :task (task! (mage.openapi-diff/cli-staleness parsed))}
-
   affected-modules
   {:group "Modules"
    :doc "Which backend modules have changes?"

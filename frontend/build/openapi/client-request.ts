@@ -9,6 +9,11 @@ import {
   unionShape,
 } from "./shape";
 import {
+  TypeWalkError,
+  type WalkOptions,
+  isStackOverflow,
+} from "./type-comparison";
+import {
   elementTypes,
   isObjectLike,
   properties,
@@ -18,6 +23,8 @@ import {
   unwrap,
 } from "./typescript-utils";
 import {
+  type JsonWalk,
+  createJsonWalk,
   isAugmentedLibType,
   isLibDeclaration,
   isLibType,
@@ -73,6 +80,7 @@ export function modelClientRequest(
   checker: ts.TypeChecker,
   rtk: RtkRequest,
   at: ts.Node,
+  options: WalkOptions = {},
 ): ModelResult {
   const context: ModelContext = { checker, at };
   const { method } = rtk;
@@ -149,9 +157,21 @@ export function modelClientRequest(
       "a GET body is sent as query parameters, so no request body is sent (ApiClient._prepareRequest)",
     );
   } else {
-    sentBody = bodyVariants.map((payload) =>
-      sendAsJson(checker, payload, bodyNotes),
-    );
+    const walk = createJsonWalk(options);
+    try {
+      sentBody = bodyVariants.map((payload) =>
+        sendAsJson(checker, payload, bodyNotes, walk),
+      );
+    } catch (error) {
+      if (!(error instanceof TypeWalkError) && !isStackOverflow(error)) {
+        throw error;
+      }
+      body.unverified =
+        error instanceof TypeWalkError
+          ? error.message
+          : "JSON modelling overflowed the call stack";
+      sentBody = [];
+    }
   }
   const queryVariants = queryPayloads(sources, onUnverified);
 
@@ -369,8 +389,6 @@ function bodyPayloads(
   const notes: string[] = [];
   let unverified: string | undefined;
   let failure: string | undefined;
-  // A non-GET body that is not undefined is always sent, as JSON or as-is (ApiClient._prepareRequest).
-  let alwaysSent = method !== "GET";
   if (!expression) {
     return {
       payloads: [typeShape(checker.getUndefinedType())],
@@ -381,17 +399,25 @@ function bodyPayloads(
     };
   }
   const type = checker.getTypeAtLocation(expression);
+  // A non-GET body is absent when the argument can be undefined.
+  const constraint =
+    checker.getBaseConstraintOfType(type) ??
+    (type.flags & ts.TypeFlags.TypeParameter ? checker.getUnknownType() : type);
+  const alwaysSent =
+    method !== "GET" &&
+    !checker.isTypeAssignableTo(checker.getUndefinedType(), constraint);
   const rawBodyTypes = ["FormData", "URLSearchParams"].flatMap((name) => {
     const rawType = globalInterface(context, name);
     return rawType ? [{ name, type: rawType }] : [];
   });
   for (const member of unionMembers(checker, type)) {
-    const raw = rawBodyTypes.find((candidate) =>
-      checker.isTypeAssignableTo(member, candidate.type),
-    );
+    const raw =
+      !(member.flags & ts.TypeFlags.Any) &&
+      rawBodyTypes.find((candidate) =>
+        checker.isTypeAssignableTo(member, candidate.type),
+      );
     if (member.flags & UNDEFINED) {
       payloads.push(typeShape(checker.getUndefinedType()));
-      alwaysSent = false;
     } else if (member.flags & ts.TypeFlags.Null) {
       if (method === "GET") {
         payloads.push(typeShape(checker.getUndefinedType()));
@@ -521,13 +547,15 @@ function stringifiedValues(
     const parts = unionMembers(checker, type);
     const results = parts.map((part): Shape => {
       if (items && (checker.isArrayType(part) || checker.isTupleType(part))) {
-        const itemParts = elementTypes(checker, part).flatMap(convert);
-        return itemParts.every((shape) => shape.kind === "type")
+        const elements = elementTypes(checker, part).map((element) =>
+          unionShape(convert(element)),
+        );
+        return elements.every((shape) => shape.kind === "type")
           ? typeShape(part)
           : {
               kind: "items",
               from: part,
-              item: unionShape(itemParts),
+              elements,
             };
       }
       return unionShape(convert(part));
@@ -646,12 +674,13 @@ function jsonValue(
   checker: ts.TypeChecker,
   value: Shape,
   notes: string[],
+  walk: JsonWalk,
 ): Shape {
   const type = plainType(value);
   if (!type) {
     return value;
   }
-  const view = jsonView(checker, type);
+  const view = jsonView(checker, type, walk);
   if (view.kind !== "type" || view.type !== type) {
     notes.push(
       "body fields are compared after JSON.stringify conversion (JSON.stringify)",
@@ -665,12 +694,13 @@ function sendAsJson(
   checker: ts.TypeChecker,
   payload: Payload,
   notes: string[],
+  walk: JsonWalk,
 ): Payload {
   return mapFields(
     payload,
     (field) => {
       const described = `${field.name} (${describeShape(checker, field.shape)})`;
-      const result = jsonField(checker, field);
+      const result = jsonField(checker, field, walk);
       if (!result) {
         notes.push(
           `${described} has no JSON value, so JSON.stringify leaves it out of the body (JSON.stringify)`,
@@ -689,7 +719,7 @@ function sendAsJson(
       }
       return result.field;
     },
-    (value) => jsonValue(checker, value, notes),
+    (value) => jsonValue(checker, value, notes, walk),
   );
 }
 

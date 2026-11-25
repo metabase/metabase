@@ -2,6 +2,12 @@ import ts from "typescript";
 
 import { type Shape, type ShapeField, unionShape } from "./shape";
 import {
+  TypeWalkError,
+  WALK_DEPTH_BUDGET,
+  WALK_STEP_BUDGET,
+  type WalkOptions,
+} from "./type-comparison";
+import {
   elementTypes,
   properties,
   typeText,
@@ -100,10 +106,7 @@ function isTextLike(type: ts.Type): boolean {
     : (type.flags & TEXT_TYPE_FLAGS) !== 0;
 }
 
-/**
- * What each part of `type` becomes after a string conversion.
- * String literals, `string`, `number` and `bigint` keep their type, because the backend reads back the same text.
- */
+/** The text sent on the wire and the primitive types the backend can read it as. */
 export function stringShapes(checker: ts.TypeChecker, type: ts.Type): Shape[] {
   return unionMembers(checker, type).map((part): Shape => {
     if (part.isStringLiteral()) {
@@ -112,6 +115,14 @@ export function stringShapes(checker: ts.TypeChecker, type: ts.Type): Shape[] {
     const text = singleText(checker, part);
     if (text !== undefined) {
       return { kind: "text", text };
+    }
+    const primitives = part.isIntersection() ? part.types : [part];
+    if (
+      primitives.some(
+        (member) => member.flags & (ts.TypeFlags.Number | ts.TypeFlags.BigInt),
+      )
+    ) {
+      return { kind: "numeric-text", from: part };
     }
     return isTextLike(part)
       ? { kind: "type", type: part }
@@ -136,6 +147,7 @@ function omittedByJson(type: ts.Type): boolean {
 export function jsonField(
   checker: ts.TypeChecker,
   field: ShapeField,
+  walk: JsonWalk,
 ):
   | {
       field: ShapeField;
@@ -166,7 +178,7 @@ export function jsonField(
   }
   const omitsValues = kept.length < parts.length;
   const values = omitsValues ? kept : [type];
-  const views = values.map((value) => jsonView(checker, value));
+  const views = values.map((value) => jsonView(checker, value, walk));
   const convertsValues = views.some(
     (view, index) => view.kind !== "type" || view.type !== values[index],
   );
@@ -191,61 +203,80 @@ export function jsonField(
   };
 }
 
-const jsonViews = new WeakMap<ts.Type, Shape>();
-const building = new Set<ts.Type>();
-let recursions = 0;
-let buildSteps = 0;
+export function createJsonWalk(options: WalkOptions) {
+  return {
+    stepLimit: options.walkStepBudget ?? WALK_STEP_BUDGET,
+    depthLimit: options.walkDepthBudget ?? WALK_DEPTH_BUDGET,
+    steps: 0,
+    // Position of each active frame, and the frames on a path back to themselves.
+    active: new Map<ts.Type, number>(),
+    recursive: new Set<ts.Type>(),
+    backEdges: 0,
+    complete: new WeakMap<ts.Type, Shape>(),
+  };
+}
 
-/**
- * How one value's type is serialised, following `JSON.stringify`'s rules.
- * Recursive types stand in for themselves only when their fields survive JSON unchanged.
- */
-export function jsonView(checker: ts.TypeChecker, type: ts.Type): Shape {
-  if (!building.size) {
-    buildSteps = 0;
+export type JsonWalk = ReturnType<typeof createJsonWalk>;
+
+/** Model JSON.stringify. A recursive reference can stand in for itself only when its cycle preserves the type. */
+export function jsonView(
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  walk: JsonWalk,
+): Shape {
+  if (++walk.steps > walk.stepLimit || walk.active.size > walk.depthLimit) {
+    throw new TypeWalkError(
+      `JSON modelling exceeded its type walk budget at ${typeText(checker, type)}`,
+    );
   }
-  buildSteps += 1;
-  if (buildSteps > 20_000_000 || building.size > 1_000) {
-    return {
-      kind: "unverified",
-      from: type,
-      reason: "JSON modelling exceeded its type walk budget",
-    };
-  }
-  const cached = jsonViews.get(type);
+  const cached = walk.complete.get(type);
   if (cached) {
     return cached;
   }
-  if (building.has(type)) {
-    recursions += 1;
+  const cycleStart = walk.active.get(type);
+  if (cycleStart !== undefined) {
+    for (const [member, depth] of walk.active) {
+      if (depth >= cycleStart) {
+        walk.recursive.add(member);
+      }
+    }
+    walk.backEdges++;
     return { kind: "type", type };
   }
-  building.add(type);
-  const before = recursions;
-  let view: Shape;
+  walk.active.set(type, walk.active.size);
+  const before = walk.backEdges;
   try {
-    view = buildShape(checker, type);
-  } finally {
-    building.delete(type);
-  }
-  // A view that met a type still being built depends on where the walk started, so only a complete one is kept.
-  if (recursions === before) {
-    jsonViews.set(type, view);
-  }
-  return recursions !== before && (view.kind !== "type" || view.type !== type)
-    ? {
+    const view = buildShape(checker, type, walk);
+    if (
+      walk.recursive.has(type) &&
+      (view.kind !== "type" || view.type !== type)
+    ) {
+      return {
         kind: "unverified",
         from: type,
         reason:
           "the checker does not model JSON conversions inside a recursive type",
-      }
-    : view;
+      };
+    }
+    // A provisional reference depends on the active frames at its first visit.
+    if (before === walk.backEdges) {
+      walk.complete.set(type, view);
+    }
+    return view;
+  } finally {
+    walk.active.delete(type);
+    walk.recursive.delete(type);
+  }
 }
 
-function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
+function buildShape(
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  walk: JsonWalk,
+): Shape {
   const members = unionMembers(checker, type);
   if (members.length > 1) {
-    const views = members.map((member) => jsonView(checker, member));
+    const views = members.map((member) => jsonView(checker, member, walk));
     return views.every(
       (view, index) => view.kind === "type" && view.type === members[index],
     )
@@ -272,7 +303,7 @@ function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
           ts.TypeFlags.BigIntLike),
     );
     if (primitive) {
-      return jsonView(checker, primitive);
+      return jsonView(checker, primitive, walk);
     }
   }
   const toJson = checker.getPropertyOfType(type, "toJSON");
@@ -290,7 +321,7 @@ function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
         reason: "the checker does not model a custom toJSON method",
       };
     }
-    return jsonView(checker, checker.getReturnTypeOfSignature(signature));
+    return jsonView(checker, checker.getReturnTypeOfSignature(signature), walk);
   }
   if (omittedByJson(type)) {
     return { kind: "type", type };
@@ -303,7 +334,7 @@ function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
       (part): Shape =>
         omittedByJson(part)
           ? { kind: "null", from: part }
-          : jsonView(checker, part),
+          : jsonView(checker, part, walk),
     );
     return views.every(
       (view, index) => view.kind === "type" && view.type === parts[index],
@@ -328,7 +359,7 @@ function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
   const indexes = checker.getIndexInfosOfType(type);
   if (
     indexes.some((index) => {
-      const view = jsonView(checker, index.type);
+      const view = jsonView(checker, index.type, walk);
       return view.kind !== "type" || view.type !== index.type;
     })
   ) {
@@ -345,12 +376,16 @@ function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
       return [];
     }
     return (
-      jsonField(checker, {
-        name: property.name,
-        shape: { kind: "type", type: checker.getTypeOfSymbol(property) },
-        optional: (property.flags & ts.SymbolFlags.Optional) !== 0,
-        declaration: property.declarations?.[0],
-      }) ?? []
+      jsonField(
+        checker,
+        {
+          name: property.name,
+          shape: { kind: "type", type: checker.getTypeOfSymbol(property) },
+          optional: (property.flags & ts.SymbolFlags.Optional) !== 0,
+          declaration: property.declarations?.[0],
+        },
+        walk,
+      ) ?? []
     );
   });
   const unchanged =

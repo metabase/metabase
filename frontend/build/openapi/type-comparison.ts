@@ -6,6 +6,7 @@ import {
   type ShapeIndex,
   describeShape,
   typeShape,
+  unionShape,
 } from "./shape";
 import {
   elementTypes,
@@ -46,6 +47,11 @@ export interface Verdict {
   notes?: string[];
 }
 
+export type WalkOptions = Pick<
+  CompareContext,
+  "walkStepBudget" | "walkDepthBudget"
+>;
+
 export interface CompareContext {
   checker: ts.TypeChecker;
   root: string;
@@ -54,8 +60,8 @@ export interface CompareContext {
   walkDepthBudget?: number;
 }
 
-const WALK_STEP_BUDGET = 20_000_000;
-const WALK_DEPTH_BUDGET = 1_000;
+export const WALK_STEP_BUDGET = 20_000_000;
+export const WALK_DEPTH_BUDGET = 1_000;
 
 export class TypeWalkError extends Error {
   override name = "TypeWalkError";
@@ -316,6 +322,14 @@ function shapeFields(
   };
 }
 
+// TypeScript's isTupleType returns boolean; it identifies references whose target carries the tuple layout.
+function isTupleReference(
+  checker: ts.TypeChecker,
+  type: ts.Type,
+): type is ts.TupleTypeReference {
+  return checker.isTupleType(type);
+}
+
 function shapeElement(checker: ts.TypeChecker, sent: Shape): Shape | undefined {
   if (sent.kind === "array") {
     return sent.element;
@@ -536,6 +550,11 @@ function shapeProblems(
         return [
           mismatch(position, `${sent.reason}, so the request is never sent`),
         ];
+      case "numeric-text":
+        return checker.isTypeAssignableTo(sent.from, target) ||
+          checker.isTypeAssignableTo(checker.getStringType(), target)
+          ? []
+          : [notAssignable(position, sent, target)];
       case "text":
         if (
           !textReadings(checker, sent.text).some((reading) =>
@@ -577,35 +596,69 @@ function shapeProblems(
         }
         return [];
       case "items": {
-        // Each item is compared with the array element the backend declares.
-        // A backend type without an array still gets the whole array compared, as it would receive repeated keys.
-        const elements = objectTargets.flatMap((member) => {
-          const element =
-            checker.isArrayType(member) &&
-            checker.getIndexTypeOfType(member, ts.IndexKind.Number);
-          return element ? [element] : [];
-        });
-        if (!elements.length) {
-          const problems: ShapeIssue[] = [];
-          if (!checker.isTypeAssignableTo(sent.from, target)) {
-            problems.push(
-              notAssignable(position, typeShape(sent.from), target),
-            );
-          }
-          problems.push(
-            ...visit(sent.item, target, {
-              path: `${path}[]`,
-              declaration,
-              depth: depth + 1,
-            }),
-          );
-          return problems;
+        const arrays = objectTargets.filter(
+          (member) =>
+            checker.isArrayType(member) || checker.isTupleType(member),
+        );
+        if (arrays.length > 1) {
+          return visitAgainstAny(sent, arrays, target, position);
         }
-        return visitAgainstAny(sent.item, elements, target, {
+        const [array] = arrays;
+        const item = unionShape(sent.elements);
+        if (array && isTupleReference(checker, array)) {
+          if (!isTupleReference(checker, sent.from)) {
+            return [notAssignable(position, sent, target)];
+          }
+          const sourceTuple = sent.from.target;
+          const targetTuple = array.target;
+          if (
+            (sourceTuple.combinedFlags | targetTuple.combinedFlags) &
+            ts.ElementFlags.Variable
+          ) {
+            if (
+              sourceTuple.elementFlags.join() !==
+              targetTuple.elementFlags.join()
+            ) {
+              return [
+                {
+                  status: "unverified",
+                  position,
+                  detail:
+                    "cannot align repeated query parameters with different variadic tuple layouts",
+                },
+              ];
+            }
+          } else if (
+            sourceTuple.minLength < targetTuple.minLength ||
+            sourceTuple.fixedLength > targetTuple.fixedLength
+          ) {
+            return [notAssignable(position, sent, target)];
+          }
+          const targets = elementTypes(checker, array);
+          return sent.elements.flatMap((element, i) => {
+            const expected = targets[i];
+            return expected
+              ? visit(element, expected, {
+                  path: `${path}[${i}]`,
+                  declaration,
+                  depth: depth + 1,
+                })
+              : [notAssignable(position, sent, target)];
+          });
+        }
+        const expected =
+          array && checker.getIndexTypeOfType(array, ts.IndexKind.Number);
+        const problems = visit(item, expected ?? target, {
           path: `${path}[]`,
           declaration,
           depth: depth + 1,
         });
+        if (!expected && !checker.isTypeAssignableTo(sent.from, target)) {
+          problems.unshift(
+            notAssignable(position, typeShape(sent.from), target),
+          );
+        }
+        return problems;
       }
       case "type":
         if (!isObjectLike(sent.type)) {
@@ -1045,6 +1098,7 @@ function unconstrainedPositions(
         );
         return;
       case "text":
+      case "numeric-text":
       case "null":
       case "empty":
       case "throws":
@@ -1118,7 +1172,11 @@ function unconstrainedPositions(
         );
         return;
       case "items":
-        reach(shape.item, { path: `${path}[]`, declaration: undefined }, next);
+        reach(
+          unionShape(shape.elements),
+          { path: `${path}[]`, declaration: undefined },
+          next,
+        );
         return;
       case "type": {
         const { type } = shape;

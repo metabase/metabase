@@ -6,7 +6,6 @@
   [[metabase.api.util.handlers]], and nothing here does."
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [metabase.api.open-api :as open-api]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -25,51 +24,22 @@
     #'map? (into (sorted-map) &match)
     #'set? (into (sorted-set) &match)))
 
-(def ^:private non-public-path-prefixes
-  ["/api/testing" "/api/dev"])
-
-(defn- public-path?
-  [path]
-  (not-any? #(or (= path %) (str/starts-with? path (str % "/"))) non-public-path-prefixes))
-
-(defn- schema-refs
-  [x]
-  (into #{}
-        (keep #(let [ref (when (map? %) (:$ref %))]
-                 (when (string? ref)
-                   (second (re-matches #"#/components/schemas/(.+)" ref)))))
-        (tree-seq coll? seq x)))
-
-(defn- reachable-schemas
-  [schemas roots]
-  (loop [seen #{}, stack (vec roots)]
-    (if-let [schema-name (peek stack)]
-      (if (or (contains? seen schema-name) (not (contains? schemas schema-name)))
-        (recur seen (pop stack))
-        (recur (conj seen schema-name)
-               (into (pop stack) (schema-refs (get schemas schema-name)))))
-      seen)))
-
 (defn open-api-object
-  "The public API document for `root-handler`, excluding development routes and unreachable schemas."
+  "The complete API document for the routes mounted on `root-handler`."
   [root-handler]
-  (let [spec    (open-api/root-open-api-object root-handler)
-        paths   (into {} (filter (comp public-path? key)) (:paths spec))
-        schemas (get-in spec [:components :schemas])]
-    (-> spec
-        (assoc :paths   paths
-               :servers [{:url "" :description "Metabase API"}])
-        (assoc-in [:components :schemas]
-                  (select-keys schemas (reachable-schemas schemas (schema-refs paths)))))))
+  (assoc (open-api/root-open-api-object root-handler) :servers [{:url "" :description "Metabase API"}]))
 
 (defn write-openapi-spec-to-file!
-  "Write the [[open-api-object]] for `root-handler` to [[openapi-file-path]]. Throws if the file can't be written."
-  [root-handler]
-  (let [file (io/file openapi-file-path)]
-    (io/make-parents file)
-    (with-open [writer (io/writer file)]
-      (json/encode-to (sort-keys (open-api-object root-handler)) writer {:pretty true}))
-    (log/info "OpenAPI specification written to" openapi-file-path)))
+  "Write the complete spec to `output-path`, defaulting to [[openapi-file-path]] for local regeneration."
+  ([root-handler]
+   (write-openapi-spec-to-file! root-handler openapi-file-path))
+  ([root-handler output-path]
+   (let [file (io/file output-path)]
+     (when (.getParentFile file)
+       (io/make-parents file))
+     (with-open [writer (io/writer file)]
+       (json/encode-to (sort-keys (open-api-object root-handler)) writer {:pretty true}))
+     (log/info "OpenAPI specification written to" output-path))))
 
 (defonce ^:private openapi-regen-state
   (atom {:executing? false

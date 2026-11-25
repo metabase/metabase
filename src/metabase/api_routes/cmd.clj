@@ -6,5 +6,5 @@
 ;; used for `bun run generate-openapi` command
 (defn generate-openapi-spec!
   "Command to generate openapi spec for api routes."
-  []
-  (api.docs/write-openapi-spec-to-file! routes/routes))
+  [output-path]
+  (api.docs/write-openapi-spec-to-file! routes/routes output-path))

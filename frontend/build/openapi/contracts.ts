@@ -309,22 +309,27 @@ function checkId(
   return `${endpointId}:${part ? `${kind}.${part}` : kind}`;
 }
 
-function stoppedCheck(id: string, error: unknown): unknown {
-  if (error instanceof TypeWalkError) {
-    return new TypeWalkError(
-      `API contract check ${id} stopped: ${error.message}`,
-    );
+function stoppedCheck(
+  endpointId: string,
+  check: Pick<Check, "kind" | "part">,
+  error: unknown,
+): Check {
+  if (!(error instanceof TypeWalkError) && !isStackOverflow(error)) {
+    throw error;
   }
-  if (isStackOverflow(error)) {
-    return new TypeWalkError(
-      `API contract check ${id} stopped: the call stack overflowed outside a type walk`,
-      { cause: error },
-    );
-  }
-  return error;
+  const reason =
+    error instanceof TypeWalkError
+      ? error.message
+      : "the call stack overflowed outside a type walk";
+  return {
+    ...check,
+    status: "unverified",
+    diagnostics: [
+      `API contract check ${checkId(endpointId, check)} stopped: ${reason}`,
+    ],
+  };
 }
 
-// A walk that does not finish stops the whole run rather than reporting a partial result.
 function guardedCheck(
   endpointId: string,
   check: Pick<Check, "kind" | "part">,
@@ -333,32 +338,40 @@ function guardedCheck(
   try {
     return { ...check, ...compare() };
   } catch (error) {
-    throw stoppedCheck(checkId(endpointId, check), error);
+    return stoppedCheck(endpointId, check, error);
   }
 }
 
 function checkEndpoint(context: CheckContext, endpoint: Endpoint): Check[] {
+  let resolved: ReturnType<typeof resolveEndpoint>;
   try {
-    const resolved = resolveEndpoint(context, endpoint);
-    if ("unverified" in resolved) {
-      return [
-        {
-          kind: "endpoint",
-          status: "unverified",
-          diagnostics: [resolved.unverified],
-        },
-      ];
-    }
-    return [
-      ...checkResponse(context, resolved),
-      ...checkRequest(context, resolved),
-    ];
+    resolved = resolveEndpoint(context, endpoint);
   } catch (error) {
-    throw error instanceof TypeWalkError &&
-      error.message.startsWith("API contract check ")
-      ? error
-      : stoppedCheck(endpoint.id, error);
+    return [stoppedCheck(endpoint.id, { kind: "endpoint" }, error)];
   }
+  if ("unverified" in resolved) {
+    return [
+      {
+        kind: "endpoint",
+        status: "unverified",
+        diagnostics: [resolved.unverified],
+      },
+    ];
+  }
+  const checks: Check[] = [];
+  for (const kind of ["response", "request"] as const) {
+    try {
+      checks.push(
+        ...(kind === "response" ? checkResponse : checkRequest)(
+          context,
+          resolved,
+        ),
+      );
+    } catch (error) {
+      checks.push(stoppedCheck(endpoint.id, { kind }, error));
+    }
+  }
+  return checks;
 }
 
 function resolveEndpoint(
@@ -494,7 +507,7 @@ function checkRequest(
 ): Check[] {
   const { checker, generated } = context;
   const { endpointId, node, request, operation, route } = resolved;
-  const client = modelClientRequest(checker, request, node);
+  const client = modelClientRequest(checker, request, node, context);
   if (client.kind !== "modelled") {
     return [
       {

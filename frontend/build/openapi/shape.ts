@@ -5,6 +5,7 @@ import { typeText } from "./typescript-utils";
 /** What one side of a comparison holds at a position: a type, or what the client sends there. */
 export type Shape =
   | { kind: "type"; type: ts.Type }
+  | { kind: "numeric-text"; from: ts.Type }
   | { kind: "text"; text: string }
   | { kind: "null"; from: ts.Type }
   | { kind: "empty"; from: ts.Type }
@@ -18,7 +19,7 @@ export type Shape =
     }
   | { kind: "array"; from: ts.Type; element: Shape }
   /** A query array, sent as one value per item. */
-  | { kind: "items"; from: ts.Type; item: Shape }
+  | { kind: "items"; from: ts.Type; elements: Shape[] }
   | { kind: "union"; members: Shape[] };
 
 export interface ShapeField {
@@ -53,13 +54,14 @@ export function describeShape(checker: ts.TypeChecker, view: Shape): string {
       case "text":
         return JSON.stringify(view.text);
       case "items":
-        return `(${describe(view.item)})[]`;
+        return `(${describe(unionShape(view.elements))})[]`;
       case "type":
         return typeText(checker, view.type);
       case "null":
         return "null";
       case "empty":
         return "{}";
+      case "numeric-text":
       case "throws":
       case "unverified":
         return typeText(checker, view.from);
