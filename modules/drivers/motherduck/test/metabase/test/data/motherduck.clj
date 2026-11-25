@@ -360,7 +360,11 @@
                     (assoc :database-name staging)
                     (update :options dissoc :static))
                 options)
-      (execute-on-server! (format "CREATE DATABASE IF NOT EXISTS \"%s\" FROM \"%s\";" shared staging))
+      ;; A shared database that exists here has no tables (see dataset-already-loaded?), so replace it.
+      (execute-on-server! (format (if (database-exists? shared)
+                                    "CREATE OR REPLACE DATABASE \"%s\" FROM \"%s\";"
+                                    "CREATE DATABASE IF NOT EXISTS \"%s\" FROM \"%s\";")
+                                  shared staging))
       (finally
         (try
           (execute-on-server! (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" staging))
@@ -385,33 +389,39 @@
     (log/warnf "Not dropping %s: other test runs share it" (qualified-db-name dbdef))
     ((get-method tx/destroy-db! :postgres) driver dbdef)))
 
+(defn- first-table-exists?
+  "Does the database of `dbdef` have the first table of its dataset? An existing database may have no tables, so a
+  successful connection is not proof that data was loaded."
+  [driver dbdef]
+  (try
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     (spec/dbdef->spec driver :db dbdef)
+     {:write? false}
+     (fn [^java.sql.Connection conn]
+       (with-open [stmt (.prepareStatement conn (str "SELECT 1 FROM duckdb_tables() "
+                                                     "WHERE database_name = current_database() AND table_name = ? "
+                                                     "LIMIT 1"))]
+         (.setString stmt 1 (:table-name (first (:table-definitions dbdef))))
+         (with-open [rset (.executeQuery stmt)]
+           (.next rset)))))
+    (catch Throwable _
+      ;; A missing database fails at connection time.
+      false)))
+
 (defmethod tx/dataset-already-loaded? :motherduck
   [driver dbdef]
   ;; The test harness calls this method before the first sync of every dataset.
   (remember-shared-dataset-tables! dbdef)
   (if (static? dbdef)
-    ;; A shared database exists only once its load has finished; see create-shared-db!.
-    (database-exists? (qualified-db-name dbdef))
+    ;; A shared database exists only once its load has finished; see create-shared-db!. A shared database can still
+    ;; have no tables, and then every job that uses it fails for the rest of the day. So check for a table too.
+    (and (database-exists? (qualified-db-name dbdef))
+         (first-table-exists? driver dbdef))
     (do
       ;; Include reused datasets in cleanup, even when create-db! does not run.
       (swap! created-databases conj (qualified-db-name dbdef))
-      (try
-        (sql-jdbc.execute/do-with-connection-with-options
-         driver
-         (spec/dbdef->spec driver :db dbdef)
-         {:write? false}
-         (fn [^java.sql.Connection conn]
-           ;; An existing database may be left empty by an interrupted load. Check for the first
-           ;; dataset table rather than treating a successful connection as proof that data was loaded.
-           (with-open [stmt (.prepareStatement conn (str "SELECT 1 FROM duckdb_tables() "
-                                                         "WHERE database_name = current_database() AND table_name = ? "
-                                                         "LIMIT 1"))]
-             (.setString stmt 1 (:table-name (first (:table-definitions dbdef))))
-             (with-open [rset (.executeQuery stmt)]
-               (.next rset)))))
-        (catch Throwable _
-          ;; A missing database fails at connection time.
-          false)))))
+      (first-table-exists? driver dbdef))))
 
 (defmethod tx/before-run :motherduck
   [_driver]
