@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type CallLog } from "fetch-mock";
 
+import { createMockMetadata } from "__support__/metadata";
+import { setupCardEndpoints } from "__support__/server-mocks";
 import {
   act,
   mockGetBoundingClientRect,
@@ -10,17 +12,25 @@ import {
 } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import type { Dataset, DatasetColumn, RowValue } from "metabase-types/api";
 import {
+  createMockCard,
+  createMockCardQueryMetadata,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
+  ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
+  createOrdersCreatedAtDatasetColumn,
   createProductsCategoryDatasetColumn,
   createProductsCreatedAtDatasetColumn,
   createProductsTableDatasetColumns,
@@ -282,5 +292,346 @@ describe("QueryBuilder > summarize sidebar > chart", () => {
       expect(screen.queryByText("Summarize by")).not.toBeInTheDocument(),
     );
     await assertChartByCreatedAtAndCategory();
+  });
+});
+
+function toArray(value: unknown): unknown[] | null {
+  return Array.isArray(value) ? value : null;
+}
+
+function getFirstStage(body: unknown): Record<string, unknown> | undefined {
+  if (typeof body !== "object" || body == null || !("stages" in body)) {
+    return undefined;
+  }
+  const [stage] = toArray(body.stages) ?? [];
+  return typeof stage === "object" && stage != null
+    ? Object.fromEntries(Object.entries(stage))
+    : undefined;
+}
+
+/** The aggregations of the submitted stage, as `[operator, columnId?]` */
+function getStageAggregations(body: unknown): unknown[] {
+  const aggregations = toArray(getFirstStage(body)?.aggregation) ?? [];
+  return aggregations.map((clause) => {
+    const [operator, , argument] = toArray(clause) ?? [];
+    const column = toArray(argument);
+    return column ? [operator, column[2]] : [operator];
+  });
+}
+
+/** `["field", opts, nameOrId]` → `nameOrId` of each breakout */
+function getStageBreakoutColumns(body: unknown): unknown[] {
+  const breakouts = toArray(getFirstStage(body)?.breakout) ?? [];
+  return breakouts.map((clause) => toArray(clause)?.[2]);
+}
+
+function getSidebar() {
+  return screen.getByTestId("sidebar-right");
+}
+
+async function openSummarizeSidebar() {
+  await userEvent.click(
+    await screen.findByRole("button", { name: /Summarize/ }),
+  );
+  return await screen.findByTestId("sidebar-right");
+}
+
+describe("QueryBuilder > summarize sidebar > aggregations", () => {
+  beforeEach(() => {
+    mockGetBoundingClientRect();
+  });
+
+  it("should remove the sort of a removed aggregation and keep the other aggregations unsorted (metabase#12625)", async () => {
+    const yearColumn = createOrdersCreatedAtDatasetColumn({
+      display_name: "Created At: Year",
+      source: "breakout",
+      unit: "year",
+      field_ref: ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+    });
+    const countColumn = COUNT_COLUMN;
+    const sumOfSubtotalColumn = createMockColumn({
+      name: "sum",
+      display_name: "Sum of Subtotal",
+      base_type: "type/Float",
+      effective_type: "type/Float",
+      source: "aggregation",
+      field_ref: ["aggregation", 1],
+    });
+    const sumOfTotalColumn = createMockColumn({
+      name: "sum_2",
+      display_name: "Sum of Total",
+      base_type: "type/Float",
+      effective_type: "type/Float",
+      source: "aggregation",
+      field_ref: ["aggregation", 2],
+    });
+    const card = createMockCard({
+      id: 12625,
+      name: "12625",
+      display: "table",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                { type: "operator", operator: "count" },
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [{ type: "column", name: "SUBTOTAL" }],
+                },
+                {
+                  type: "operator",
+                  operator: "sum",
+                  name: "sum_2",
+                  args: [{ type: "column", name: "TOTAL" }],
+                },
+              ],
+              breakouts: [{ type: "column", name: "CREATED_AT", unit: "year" }],
+              orderBys: [{ direction: "desc", type: "column", name: "sum" }],
+            },
+          ],
+        }),
+      ),
+    });
+
+    await setup({
+      card,
+      database: createSampleDatabase({ auto_run_queries: true }),
+      dataset: createDataset(
+        [yearColumn, countColumn, sumOfSubtotalColumn, sumOfTotalColumn],
+        [["2025-01-01T00:00:00Z", 744, 30000, 40000]],
+      ),
+    });
+    // Rows come back only for the expected aggregations, and only when the
+    // query has no sort left
+    fetchMock.modifyRoute("dataset-post", {
+      response: (call: CallLog) => {
+        const body = getRequestBody(call);
+        if (getFirstStage(body)?.["order-by"] != null) {
+          return EMPTY_DATASET;
+        }
+        const aggregations = JSON.stringify(getStageAggregations(body));
+        if (
+          aggregations === JSON.stringify([["count"], ["sum", ORDERS.TOTAL]])
+        ) {
+          return createDataset(
+            [
+              yearColumn,
+              countColumn,
+              { ...sumOfTotalColumn, field_ref: ["aggregation", 1] },
+            ],
+            [["2025-01-01T00:00:00Z", 744, 40000]],
+          );
+        }
+        if (aggregations === JSON.stringify([["count"]])) {
+          return createDataset(
+            [yearColumn, countColumn],
+            [["2025-01-01T00:00:00Z", 744]],
+          );
+        }
+        return EMPTY_DATASET;
+      },
+    });
+
+    expect(await screen.findAllByTestId("header-cell")).toHaveLength(4);
+    const sortedHeader = screen.getByRole("columnheader", {
+      name: /Sum of Subtotal/,
+    });
+    expect(
+      within(sortedHeader).getByLabelText("chevrondown icon"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByTestId("header-sort-indicator")).toHaveLength(1);
+
+    const sidebar = await openSummarizeSidebar();
+    let previousCount = getDatasetCalls().length;
+    await userEvent.click(
+      within(within(sidebar).getByLabelText("Sum of Subtotal")).getByLabelText(
+        "close icon",
+      ),
+    );
+    let body = await waitForDatasetRequest(previousCount);
+    expect(getStageAggregations(body)).toEqual([
+      ["count"],
+      ["sum", ORDERS.TOTAL],
+    ]);
+    expect(getFirstStage(body)?.["order-by"]).toBeUndefined();
+    expect(
+      within(getSidebar()).queryByLabelText("Sum of Subtotal"),
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getAllByTestId("header-cell")).toHaveLength(3),
+    );
+    expect(
+      screen.queryByRole("columnheader", { name: /Sum of Subtotal/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("header-sort-indicator"),
+    ).not.toBeInTheDocument();
+
+    previousCount = getDatasetCalls().length;
+    await userEvent.click(
+      within(
+        within(getSidebar()).getByLabelText("Sum of Total"),
+      ).getByLabelText("close icon"),
+    );
+    body = await waitForDatasetRequest(previousCount);
+    expect(getStageAggregations(body)).toEqual([["count"]]);
+    expect(
+      within(getSidebar()).queryByLabelText("Sum of Total"),
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getAllByTestId("header-cell")).toHaveLength(2),
+    );
+    expect(
+      screen.getAllByRole("gridcell").map((cell) => cell.textContent),
+    ).toContain("744");
+  });
+
+  it("should keep the aggregation of a question based on a native question when adding another one from the sidebar (metabase#15725)", async () => {
+    const catColumn = createMockColumn({
+      name: "CAT",
+      display_name: "CAT",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      field_ref: ["field", "CAT", { "base-type": "type/Text" }],
+    });
+    const valColumn = createMockColumn({
+      name: "VAL",
+      display_name: "VAL",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+      field_ref: ["field", "VAL", { "base-type": "type/Integer" }],
+    });
+    const nativeCard = createMockCard({
+      id: 15725,
+      name: "15725",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+          query: "select 'A' as cat, 5 as val",
+        }),
+      ),
+      result_metadata: [catColumn, valColumn],
+    });
+    const database = createSampleDatabase({ auto_run_queries: true });
+    const provider = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [database],
+        questions: [nativeCard],
+      }),
+    });
+    const card = createMockUnsavedCard({
+      display: "table",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(provider, {
+          stages: [
+            {
+              source: { type: "card", id: nativeCard.id },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [{ type: "column", name: "CAT" }],
+            },
+          ],
+        }),
+      ),
+    });
+    const catBreakoutColumn = { ...catColumn, source: "breakout" };
+    const sumOfValColumn = createMockColumn({
+      name: "sum",
+      display_name: "Sum of VAL",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+      source: "aggregation",
+      field_ref: ["aggregation", 1],
+    });
+
+    setupCardEndpoints(nativeCard);
+    await setup({
+      card,
+      database,
+      metadata: createMockCardQueryMetadata({
+        databases: [database],
+        cards: [nativeCard],
+      }),
+      dataset: createDataset([catBreakoutColumn, COUNT_COLUMN], [["A", 1]]),
+    });
+    // The row comes back only when both aggregations are grouped by CAT
+    fetchMock.modifyRoute("dataset-post", {
+      response: (call: CallLog) => {
+        const body = getRequestBody(call);
+        const hasBothAggregations =
+          JSON.stringify(getStageAggregations(body)) ===
+          JSON.stringify([["count"], ["sum", "VAL"]]);
+        const isGroupedByCat =
+          JSON.stringify(getStageBreakoutColumns(body)) ===
+          JSON.stringify(["CAT"]);
+        return hasBothAggregations && isGroupedByCat
+          ? createDataset(
+              [catBreakoutColumn, COUNT_COLUMN, sumOfValColumn],
+              [["A", 1, 5]],
+            )
+          : EMPTY_DATASET;
+      },
+    });
+
+    const sidebar = await openSummarizeSidebar();
+    await userEvent.click(
+      within(sidebar).getByTestId("add-aggregation-button"),
+    );
+    await userEvent.click(await screen.findByText(/^Sum of/));
+    const previousCount = getDatasetCalls().length;
+    await userEvent.click(
+      await within(
+        await screen.findByTestId("aggregation-column-picker"),
+      ).findByText("VAL"),
+    );
+    const body = await waitForDatasetRequest(previousCount);
+    expect(getStageAggregations(body)).toEqual([["count"], ["sum", "VAL"]]);
+    expect(getStageBreakoutColumns(body)).toEqual(["CAT"]);
+
+    await userEvent.click(
+      within(getSidebar()).getByRole("button", { name: "Done" }),
+    );
+    await userEvent.click(await screen.findByLabelText("Switch to data"));
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("columnheader")
+          .map((header) => header.textContent)
+          .filter((text) => text !== ""),
+      ).toEqual(["CAT", "Count", "Sum of VAL"]),
+    );
+    expect(
+      screen.getAllByRole("gridcell").map((cell) => cell.textContent),
+    ).toEqual(expect.arrayContaining(["A", "1", "5"]));
+  });
+
+  it("should show the server error without the run button overlay when the query fails (metabase#12586)", async () => {
+    await setup({
+      card: PRODUCTS_CARD,
+      dataset: PRODUCTS_DATASET,
+      database: createSampleDatabase({ auto_run_queries: true }),
+    });
+    fetchMock.modifyRoute("dataset-post", {
+      response: { throws: new TypeError("Failed to fetch") },
+    });
+
+    const sidebar = await openSummarizeSidebar();
+    const previousCount = getDatasetCalls().length;
+    await userEvent.click(
+      within(sidebar).getByRole("button", { name: "Done" }),
+    );
+    await waitFor(() =>
+      expect(getDatasetCalls().length).toBeGreaterThan(previousCount),
+    );
+
+    expect(
+      await screen.findByText("We're experiencing server issues"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("run-button-overlay")).getByTestId(
+        "run-button",
+      ),
+    ).toHaveAttribute("aria-hidden", "true");
   });
 });

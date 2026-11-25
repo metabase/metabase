@@ -25,17 +25,21 @@ import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { Field, WritebackAction } from "metabase-types/api";
+import type { DatasetData, Field, WritebackAction } from "metabase-types/api";
 import {
   createMockActionParameter,
   createMockCard,
   createMockDatabase,
   createMockDataset,
+  createMockDatasetData,
   createMockImplicitQueryAction,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
+  createOrdersDiscountDatasetColumn,
+  createOrdersIdDatasetColumn,
   createOrdersTable,
   createProductsTable,
   createReviewsTable,
@@ -93,12 +97,14 @@ interface SetupOpts {
   hideOrdersTable?: boolean;
   isModel?: boolean;
   actions?: WritebackAction[];
+  ordersData?: DatasetData;
 }
 
 function setup({
   hideOrdersTable = false,
   isModel = false,
   actions = [],
+  ordersData,
 }: SetupOpts = {}) {
   mockIsModel = isModel;
   setupDatabasesEndpoints(
@@ -121,6 +127,7 @@ function setup({
     ...checkNotNull(findField(REVIEWS_TABLE.fields, "PRODUCT_ID")),
     table: REVIEWS_TABLE,
   };
+  setupTableEndpoints(ORDERS_TABLE, []);
   setupTableEndpoints(PRODUCTS_TABLE, [
     {
       origin: ordersProductId,
@@ -143,7 +150,7 @@ function setup({
   ]);
   setupForeignKeyCountQueryEndpoints();
 
-  const ROW_ID_INDEX = 0;
+  const data = ordersData ?? testDataset;
   const state = createMockState({
     entities: createMockEntitiesState({
       tables: [
@@ -157,17 +164,19 @@ function setup({
         ...(isModel && { id: MODEL_ID, type: "model", can_write: true }),
         dataset_query: Lib.toJsQuery(
           Lib.createTestQuery(SAMPLE_PROVIDER, {
-            stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+            stages: [
+              {
+                source: {
+                  type: "table",
+                  id: ordersData ? ORDERS_ID : PRODUCTS_ID,
+                },
+              },
+            ],
           }),
         ),
       }),
-      // Unjustified type cast. FIXME
-      zoomedRowObjectId: testDataset.rows[0][ROW_ID_INDEX] as string,
-      queryResults: [
-        createMockDataset({
-          data: testDataset,
-        }),
-      ],
+      zoomedRowObjectId: getRowId(data),
+      queryResults: [createMockDataset({ data })],
     }),
   });
   renderWithProviders(<ObjectDetailSidesheet />, {
@@ -186,6 +195,12 @@ function setupForeignKeyCountQueryEndpoints() {
       },
     }),
   });
+}
+
+function getRowId(data: DatasetData) {
+  const ROW_ID_INDEX = 0;
+  const rowId = data.rows[0][ROW_ID_INDEX];
+  return typeof rowId === "number" || typeof rowId === "string" ? rowId : null;
 }
 
 function findField(fields: Field[] | undefined, name: string) {
@@ -229,6 +244,23 @@ describe("ObjectDetailSidesheet", () => {
     expect(
       screen.queryByText([FK_RECORDS_COUNT, "Orders"].join("")),
     ).not.toBeInTheDocument();
+  });
+
+  it("should show a null value of a row as empty (metabase#13571)", async () => {
+    setup({
+      ordersData: createMockDatasetData({
+        cols: [
+          createOrdersIdDatasetColumn(),
+          createOrdersDiscountDatasetColumn(),
+        ],
+        rows: [[1, null]],
+      }),
+    });
+
+    const objectDetail = await screen.findByTestId("object-detail");
+    await waitForLoaderToBeRemoved();
+    expect(within(objectDetail).getByText(/Discount/i)).toBeInTheDocument();
+    expect(within(objectDetail).getByText("empty")).toBeInTheDocument();
   });
 
   it("moves focus into the object detail sidesheet when opened", async () => {

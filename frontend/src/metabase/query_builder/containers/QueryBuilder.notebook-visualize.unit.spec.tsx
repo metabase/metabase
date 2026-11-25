@@ -1,20 +1,29 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type CallLog } from "fetch-mock";
 
-import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  setupCardEndpoints,
+  setupLastDownloadFormatEndpoints,
+} from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import type {
   RowValue,
   TestStageWithSourceSpec,
   VisualizationDisplay,
 } from "metabase-types/api";
 import {
+  createMockCard,
+  createMockCardQueryMetadata,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
@@ -26,6 +35,7 @@ import {
   ORDERS_ID,
   PEOPLE,
   PRODUCTS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { setup } from "./test-utils";
@@ -353,6 +363,126 @@ describe("QueryBuilder > visualizing a notebook query", () => {
   });
 });
 
+describe("QueryBuilder > visualizing a notebook query based on a native question", () => {
+  mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+  beforeEach(() => {
+    setupLastDownloadFormatEndpoints();
+  });
+
+  it("runs a query with two aggregations grouped by a column of the native question (metabase#15725)", async () => {
+    const catColumn = createMockColumn({
+      name: "CAT",
+      display_name: "CAT",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      field_ref: ["field", "CAT", { "base-type": "type/Text" }],
+    });
+    const valColumn = createMockNumericColumn({
+      name: "VAL",
+      display_name: "VAL",
+      field_ref: ["field", "VAL", { "base-type": "type/Integer" }],
+    });
+    const nativeCard = createMockCard({
+      id: 15725,
+      name: "15725",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+          query: "select 'A' as cat, 5 as val",
+        }),
+      ),
+      result_metadata: [catColumn, valColumn],
+    });
+    const database = createSampleDatabase();
+    const provider = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [database],
+        questions: [nativeCard],
+      }),
+    });
+    const card = createMockUnsavedCard({
+      display: "table",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(provider, {
+          stages: [{ source: { type: "card", id: nativeCard.id } }],
+        }),
+      ),
+    });
+    const countColumn = createMockNumericColumn({
+      name: "count",
+      display_name: "Count",
+      source: "aggregation",
+      field_ref: ["aggregation", 0],
+    });
+    const sumColumn = createMockNumericColumn({
+      name: "sum",
+      display_name: "Sum of VAL",
+      source: "aggregation",
+      field_ref: ["aggregation", 1],
+    });
+
+    setupCardEndpoints(nativeCard);
+    await setup({
+      card,
+      database,
+      metadata: createMockCardQueryMetadata({
+        databases: [database],
+        cards: [nativeCard],
+      }),
+      initialRoute: `/question/notebook#${serializeCardForUrl(card)}`,
+    });
+    fetchMock.modifyRoute("dataset-post", {
+      response: (call: CallLog) =>
+        isCountAndSumOfValByCat(parseQuery(call))
+          ? createDataset(
+              [{ ...catColumn, source: "breakout" }, countColumn, sumColumn],
+              [["A", 1, 5]],
+            )
+          : EMPTY_DATASET,
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Summarize" }),
+    );
+    await userEvent.click(
+      await within(await screen.findByTestId("clause-popover")).findByText(
+        "Count of rows",
+      ),
+    );
+    const summarizeStep = screen.getByTestId("step-summarize-0-0");
+    await userEvent.click(
+      within(
+        within(summarizeStep).getByTestId("aggregate-step"),
+      ).getByLabelText("add icon"),
+    );
+    let popover = await screen.findByTestId("clause-popover");
+    await userEvent.click(await within(popover).findByText(/^Sum of/));
+    await userEvent.click(await within(popover).findByText("VAL"));
+    expect(
+      await within(summarizeStep).findByText("Sum of VAL"),
+    ).toBeInTheDocument();
+    expect(within(summarizeStep).getByText("Count")).toBeInTheDocument();
+    await userEvent.click(
+      within(summarizeStep).getByText("Pick a column to group by"),
+    );
+    popover = await screen.findByTestId("clause-popover");
+    await userEvent.click(await within(popover).findByText("CAT"));
+    await visualize();
+
+    expect(isCountAndSumOfValByCat(getLastSubmittedQuery())).toBe(true);
+    await showResultsTable();
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("columnheader")
+          .map((header) => header.textContent)
+          .filter((text) => text !== ""),
+      ).toEqual(["CAT", "Count", "Sum of VAL"]),
+    );
+    expect(getRowValues()).toEqual([["A", "1", "5"]]);
+  });
+});
+
 /** The direction of the order-by on the aggregation named CE, if any */
 function getCeOrderDirection(stage: SubmittedStage) {
   const ceAggregation = stage.aggregation?.find(
@@ -394,4 +524,20 @@ function isSumOfCount({ stages }: SubmittedQuery) {
   }
   const [[operator, , column]] = aggregations;
   return operator === "sum" && isPreviousStageColumn(column, "count");
+}
+
+function isCountAndSumOfValByCat({ stages }: SubmittedQuery) {
+  if (stages.length !== 1) {
+    return false;
+  }
+  const [{ aggregation = [], breakout = [] }] = stages;
+  const [count, sum] = aggregation;
+  return (
+    aggregation.length === 2 &&
+    count[0] === "count" &&
+    sum[0] === "sum" &&
+    isPreviousStageColumn(sum[2], "VAL") &&
+    breakout.length === 1 &&
+    isPreviousStageColumn(breakout[0], "CAT")
+  );
 }
