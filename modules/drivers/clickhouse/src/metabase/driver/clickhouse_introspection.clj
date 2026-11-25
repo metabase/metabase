@@ -176,6 +176,38 @@
                  (get-tables-in-db driver db))]
     {:tables tables}))
 
+(def ^:private type-token
+  "A token of a ClickHouse type. The possessive `++` and `*+` stop a stack overflow on a long string."
+  #"(?x)
+    '(?:[^'\\]++|\\.)*+'   # a string, e.g. 'a, b'
+  | `(?:[^`\\]++|\\.)*+`   # a quoted name, e.g. `my key`
+  | [(),]                  # a delimiter
+  | [^'`(),]+              # anything else")
+
+(defn type-arguments
+  "The arguments of `database-type` if it is a `type-name` type, or else nil. For example, the arguments of the `Map`
+  type `Map(String, Tuple(a Int32, b Int32))` are `[\"String\" \"Tuple(a Int32, b Int32)\"]`."
+  [type-name database-type]
+  (let [prefix (str type-name "(")]
+    (when (and (some-> database-type (str/starts-with? prefix))
+               (str/ends-with? database-type ")"))
+      (loop [[token & tokens] (re-seq type-token (subs database-type (count prefix) (dec (count database-type))))
+             depth            0
+             argument         []
+             arguments        []]
+        (cond
+          (nil? token)
+          (conj arguments (str/trim (str/join argument)))
+
+          (and (= token ",") (zero? depth))
+          (recur tokens depth [] (conj arguments (str/trim (str/join argument))))
+
+          :else
+          (recur tokens
+                 (case token "(" (inc depth) ")" (dec depth) depth)
+                 (conj argument token)
+                 arguments))))))
+
 (defn- ^:private is-db-required?
   [field]
   (not (str/starts-with? (get field :database-type) "Nullable")))
