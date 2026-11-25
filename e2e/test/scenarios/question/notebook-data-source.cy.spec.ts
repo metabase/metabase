@@ -10,9 +10,30 @@ import {
 import { METAKEY } from "metabase/utils/browser";
 import { DataPermissionValue } from "metabase-types/api/permissions";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > notebook > data source", () => {
+  describe("library table as a source", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+      H.createLibrary();
+    });
+
+    it("should query a join of published tables picked from the mini picker", () => {
+      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
+      H.startNewQuestion();
+
+      H.popover().findByText("Orders").click();
+      H.join();
+      H.popover().findByText("Products").click();
+      H.visualize();
+      H.tableHeaderColumn("User ID").should("be.visible");
+      H.tableHeaderColumn("Products → ID").should("be.visible");
+    });
+  });
+
   describe("saved entity as a source (aka the virtual table)", () => {
     beforeEach(() => {
       H.restore();
