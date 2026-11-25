@@ -4,18 +4,25 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { MetricDimensionGrid } from "metabase/metrics/components/MetricDimensionGrid";
 import { MetricDimensions } from "metabase/metrics/components/MetricDimensions";
 import { MetricPageCard } from "metabase/metrics/components/MetricPageCard";
+import { MetricAbout } from "metabase/metrics/pages/MetricAboutPage/MetricAbout";
+import { metricUrls } from "metabase/metrics/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useLocation } from "metabase/router";
 import { Box, Card, Center, Text } from "metabase/ui";
 import type { CardId } from "metabase-types/api";
 
-export const REAL_TABS = ["Overview", "Dimensions", "Dependencies"] as const;
+export const REAL_TABS = [
+  "About",
+  "Overview",
+  "Dimensions",
+  "Dependencies",
+] as const;
 export type RealTab = (typeof REAL_TABS)[number];
 
 export const isRealTab = (tab: string): tab is RealTab =>
   REAL_TABS.some((realTab) => realTab === tab);
 
-/** A metric's Overview, Dimensions or Dependencies tab, same as the baseline. */
+/** A metric's About, Overview, Dimensions or Dependencies tab, same as the baseline. */
 export function MetricTabContent({
   tab,
   cardId,
@@ -34,6 +41,8 @@ export function MetricTabContent({
     <MetricPageCard cardId={String(cardId)}>
       {(card, metadata) => {
         switch (tab) {
+          case "About":
+            return <MetricAbout card={card} urls={metricUrls} />;
           case "Overview":
             return <Overview cardId={card.id} />;
           case "Dimensions":
