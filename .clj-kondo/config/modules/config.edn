@@ -382,6 +382,8 @@
                     :model/Database
                     :model/Field
                     :model/Table
+                    :model/Transform
+                    :model/TransformJob
                     :model/User}}
 
   app-db

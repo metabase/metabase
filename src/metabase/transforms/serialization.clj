@@ -106,6 +106,27 @@
   {:export export-targets
    :import import-targets})
 
+(defn- walk-export-table-dependencies
+  "The `table_dependencies` of a Transform with the Table, Transform or Database of each entry replaced by the ref
+  `visit` gives for it. Serialization skips the column, as it is computed from the source."
+  [visit dependencies]
+  (some->> dependencies
+           (mapv (fn [dependency]
+                   (-> dependency
+                       (m/update-existing :table #(cond->> % (pos-int? %) (visit :model/Table)))
+                       (m/update-existing :transform #(cond->> % (pos-int? %) (visit :model/Transform)))
+                       (m/update-existing-in [:table-ref :database_id]
+                                             #(cond->> % (pos-int? %) (visit :model/Database))))))))
+
+(defn- export-api-table-dependencies
+  "Exports the `table_dependencies` values `xs` of Transforms with refs in place of ids."
+  [store _transforms xs _opts]
+  (serialization/export-in-bulk store xs walk-export-table-dependencies))
+
+(def api-table-dependencies-transform
+  "The export of the `table_dependencies` of Transforms as the API gives them."
+  {:export export-api-table-dependencies})
+
 (defn transform-storage-paths
   "The storage path of each of the Transform `entities`, in the `transforms` folder by its collection."
   [entities ctx]

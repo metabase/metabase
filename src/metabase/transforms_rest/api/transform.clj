@@ -425,8 +425,9 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    {:keys [direction]} :- [:map {:closed true} [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
   (api/read-check :model/Transform id)
+  ;; Transform instances, so that a response with entity ids names them by entity id
   (mapv (fn [{xform-id :id, xform-name :name}]
-          {:id xform-id, :name xform-name})
+          (t2/instance :model/Transform {:id xform-id, :name xform-name}))
         (transforms.core/dag-run-transforms id direction)))
 
 (def ^{:arglists '([request respond raise])} routes

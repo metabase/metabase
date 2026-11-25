@@ -788,5 +788,9 @@
 
 (defmethod eid-translation/spec :model/Transform [_model]
   {:names      [:transform]
-   :references {:target_db_id :model/Database :target_table_id :model/Table}
-   :structures [:source :target]})
+   :references {:target_db_id      :model/Database
+                :target_table_id   :model/Table
+                :tag_ids           :model/TransformTag
+                :transform_tag_ids :model/TransformTag}
+   :structures [:source :target]
+   :transforms {:table_dependencies transforms.serialization/api-table-dependencies-transform}})

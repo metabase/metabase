@@ -7,6 +7,7 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
@@ -376,6 +377,9 @@
 
 (defmethod app-db-copy/spec :model/TransformJob [_model]
   {:skip? false})
+
+(defmethod eid-translation/spec :model/TransformJob [_model]
+  {:references {:tag_ids :model/TransformTag}})
 
 (defmethod serialization/spec :model/TransformJob [_]
   {:schema              ::transforms.schema/external-transform-job
