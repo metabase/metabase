@@ -3,10 +3,15 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver.clickhouse-introspection :as clickhouse-introspection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.clickhouse]
    [metabase.util.json :as json]
-   [taoensso.nippy :as nippy]))
+   [taoensso.nippy :as nippy]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -100,3 +105,76 @@
         (is (= ["j" "i" "h" "g" "f" "e" "d" "c" "b" "a"]
                (keys value)
                (keys (nippy/thaw (nippy/freeze value)))))))))
+
+(mt/defdataset tuple_test
+  [["placeholder"
+    [{:field-name "i", :base-type {:native "Int32"}}]
+    []]])
+
+(defn- do-with-tuple-table!
+  "Create a table `places` with named `Tuple` columns in the `tuple_test` dataset, sync it, and call `f` with the
+  synced table."
+  [f]
+  (mt/dataset tuple_test
+    (let [db      (mt/db)
+          details (mt/dbdef->connection-details :clickhouse :db {:database-name "tuple_test"})
+          exec!   #(metabase.test.data.clickhouse/exec-statements % details)]
+      (exec! ["DROP TABLE IF EXISTS tuple_test.places"
+              (str "CREATE TABLE tuple_test.places (id UInt32, loc Tuple(lat Float64, lon Float64), "
+                   "info Tuple(name String, addr Tuple(city String, zip Nullable(String))), pair Tuple(String, Int32)) "
+                   "ENGINE = MergeTree ORDER BY id")
+              (str "INSERT INTO tuple_test.places VALUES "
+                   "(1, (43.6, -79.4), ('cafe', ('Toronto', 'M5V')), ('a', 1)), "
+                   "(2, (45.5, -73.6), ('bar', ('Montreal', NULL)), ('b', 2)), "
+                   "(3, (43.7, -79.3), ('deli', ('Toronto', NULL)), ('c', 3))")])
+      (try
+        (sync/sync-database! (:id db))
+        (f (t2/select-one :model/Table :db_id (:id db) :name "places"))
+        (finally
+          (exec! ["DROP TABLE IF EXISTS tuple_test.places"]))))))
+
+(defn- field-paths
+  "Map of each field's path of names (e.g. `[\"info\" \"addr\" \"city\"]`) to its base type."
+  [table]
+  (let [fields (t2/select :model/Field :table_id (:id table) :active true)
+        by-id  (into {} (map (juxt :id identity)) fields)
+        path   (fn path [{:keys [parent_id] field-name :name}]
+                 (conj (if parent_id (path (by-id parent_id)) []) field-name))]
+    (into {} (map (juxt path :base_type)) fields)))
+
+(deftest ^:synchronized named-tuple-nested-fields-test
+  (mt/test-driver :clickhouse
+    (do-with-tuple-table!
+     (fn [table]
+       (testing "sync makes a nested field for each element of a named tuple"
+         (is (= {["id"]                   :type/Integer
+                 ["loc"]                  :type/Dictionary
+                 ["loc" "lat"]            :type/Float
+                 ["loc" "lon"]            :type/Float
+                 ["info"]                 :type/Dictionary
+                 ["info" "name"]          :type/Text
+                 ["info" "addr"]          :type/Dictionary
+                 ["info" "addr" "city"]   :type/Text
+                 ["info" "addr" "zip"]    :type/Text
+                 ["pair"]                 :type/*}
+                (field-paths table))))
+       (testing "only the elements show in the table"
+         (is (= {"loc" :details-only, "info" :details-only, "addr" :details-only
+                 "lat" :normal, "city" :normal, "pair" :normal}
+                (select-keys (t2/select-fn->fn :name :visibility_type :model/Field :table_id (:id table) :active true)
+                             ["loc" "info" "addr" "lat" "city" "pair"]))))
+       (let [mp    (mt/metadata-provider)
+             field (fn [field-name parent-name]
+                     (let [parent-id (t2/select-one-pk :model/Field :table_id (:id table) :name parent-name)]
+                       (lib.metadata/field mp (t2/select-one-pk :model/Field :table_id (:id table)
+                                                                :name field-name :parent_id parent-id))))
+             query (lib/query mp (lib.metadata/table mp (:id table)))]
+         (testing "group by, filter and aggregate on tuple elements"
+           (is (= [["Toronto" 2 43.7]]
+                  (mt/rows
+                   (qp/process-query
+                    (-> query
+                        (lib/filter (lib/< (field "lon" "loc") -75))
+                        (lib/breakout (field "city" "addr"))
+                        (lib/aggregate (lib/count))
+                        (lib/aggregate (lib/max (field "lat" "loc"))))))))))))))

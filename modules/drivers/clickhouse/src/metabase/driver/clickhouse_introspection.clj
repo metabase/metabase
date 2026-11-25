@@ -245,6 +245,25 @@
       (when (every? some? elements)
         elements))))
 
+(defn- with-tuple-nested-fields
+  "Add a nested field for each element of `field` if it is a named `Tuple`, so each element is a field of its own. An
+  element that is a named tuple gets nested fields too."
+  [{:keys [database-type database-position] :as field}]
+  (if-let [elements (tuple-elements database-type)]
+    (assoc field
+           :base-type     :type/Dictionary
+           :nested-fields (into #{}
+                                (map (fn [[element-name element-type]]
+                                       (with-tuple-nested-fields
+                                         {:name              element-name
+                                          :database-type     element-type
+                                          :base-type         (sql-jdbc.sync/database-type->base-type :clickhouse element-type)
+                                          :database-position database-position})))
+                                elements)
+           ;; the elements show all of its values
+           :visibility-type :details-only)
+    field))
+
 (defn- ^:private is-db-required?
   [field]
   (not (str/starts-with? (get field :database-type) "Nullable")))
@@ -253,8 +272,9 @@
   [_driver database table]
   (let [table-metadata (sql-jdbc.sync/describe-table :clickhouse database table)
         filtered-fields (for [field (:fields table-metadata)
-                              :let [updated-field (update field :database-required
-                                                          (fn [_] (is-db-required? field)))]
+                              :let [updated-field (-> field
+                                                      (assoc :database-required (is-db-required? field))
+                                                      with-tuple-nested-fields)]
                               ;; Skip all AggregateFunction (but keeping SimpleAggregateFunction) columns
                               ;; JDBC does not support that and it crashes the data browser
                               :when (not (re-matches #"^AggregateFunction\(.+$"
