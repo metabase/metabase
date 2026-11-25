@@ -7,6 +7,14 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- New driver feature flags `:field-values/distinct-stops-at-limit` and `:field-values/group-by-plain-column`, both false
+  by default, choose the form of the query that scans value lists (`metabase.warehouse-schema.field-values.distinct-batch`).
+  With `:field-values/distinct-stops-at-limit`, each field is read with `SELECT DISTINCT ... LIMIT n` instead of
+  `GROUP BY ... LIMIT n`: support it when the engine stops reading once it has `n` distinct values. With
+  `:field-values/group-by-plain-column`, the inner query reads the plain column and the cast to text is in the outer
+  query: support it when the engine can use an index on the column that way, and its text cast is right for each type
+  the scan reads.
+
 - While a data test pins the clock (`metabase.query-processor.timezone/with-pinned-now`),
   `metabase.driver.sql.query-processor/current-datetime-honeysql-form` dispatches to one method for every driver. It
   calls the driver's own method to learn the type of its current-time form, and returns a literal of the pinned moment

@@ -986,3 +986,52 @@
               (is (< raw-count field-values/*distinct-limit*)
                   "source has few enough distinct values to not hit the LIMIT")
               (is (every? string? values)))))))))
+
+(deftest ^:parallel build-union-query-forms-test
+  (let [fields [{:name "state" :base_type :type/Text}]
+        sql    (fn [form]
+                 (first (sql.qp/format-honeysql :mysql (#'distinct-batch/build-union :mysql {:name "t"} fields form))))]
+    (testing "with no flag, today's form: GROUP BY the cast column"
+      (is (= (str "SELECT * FROM (SELECT 0 AS `field_idx`, CAST(`state` AS char) AS `value_out` FROM `t` "
+                  "GROUP BY CAST(`state` AS char) LIMIT 1000) AS `_arm`")
+             (sql {}))))
+    (testing "`:field-values/distinct-stops-at-limit`: SELECT DISTINCT, which an engine can stop at the limit"
+      (is (= (str "SELECT 0 AS `field_idx`, `value_raw` AS `value_out` FROM ("
+                  "SELECT DISTINCT CAST(`state` AS char) AS `value_raw` FROM `t` LIMIT 1000) AS `_arm`")
+             (sql {:distinct? true}))))
+    (testing "`:field-values/group-by-plain-column`: the plain column inside, the cast outside"
+      (is (= (str "SELECT 0 AS `field_idx`, CAST(`value_raw` AS char) AS `value_out` FROM ("
+                  "SELECT `state` AS `value_raw` FROM `t` GROUP BY `state` LIMIT 1000) AS `_arm`")
+             (sql {:plain-column? true}))))
+    (testing "both flags"
+      (is (= (str "SELECT 0 AS `field_idx`, CAST(`value_raw` AS char) AS `value_out` FROM ("
+                  "SELECT DISTINCT `state` AS `value_raw` FROM `t` LIMIT 1000) AS `_arm`")
+             (sql {:distinct? true :plain-column? true}))))))
+
+(deftest run-distinct-batch-query-forms-give-the-same-values-test
+  (testing "each form of the query returns the values of today's form"
+    (mt/test-driver :h2
+      (mt/dataset test-data
+        (let [table    (t2/select-one :model/Table :id (mt/id :people))
+              fields   [(t2/select-one :model/Field :id (mt/id :people :state))
+                        (t2/select-one :model/Field :id (mt/id :people :source))
+                        (t2/select-one :model/Field :id (mt/id :people :latitude))]
+              database (mt/db)
+              values   (fn [flags]
+                         (mt/with-dynamic-fn-redefs [distinct-batch/query-form (fn [_driver _db]
+                                                                                 {:distinct?     (contains? flags :field-values/distinct-stops-at-limit)
+                                                                                  :plain-column? (contains? flags :field-values/group-by-plain-column)})]
+                           ;; `latitude` has more values than a list holds, so which of them come back is arbitrary:
+                           ;; only their number is compared
+                           (update-vals (distinct-batch/run-distinct-batch :h2 table fields database)
+                                        (fn [{:keys [values raw-count]}]
+                                          (if (>= raw-count field-values/*distinct-limit*)
+                                            {:raw-count raw-count}
+                                            {:values (sort values)})))))
+              today    (values #{})]
+          (is (= 3 (count today)))
+          (doseq [flags [#{:field-values/distinct-stops-at-limit}
+                         #{:field-values/group-by-plain-column}
+                         #{:field-values/distinct-stops-at-limit :field-values/group-by-plain-column}]]
+            (testing (pr-str flags)
+              (is (= today (values flags))))))))))
