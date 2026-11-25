@@ -283,7 +283,8 @@
                                                                     {:perms/view-data :legacy-no-self-service})
           kept-from (into (set (map :table_id blocked))
                           (map :table_id)
-                          (permission-debug.db/sandboxes group-ids (permission-debug.db/table-ids-of-database database-id)))]
+                          (permission-debug.db/sandboxes
+                           group-ids (permission-debug.db/table-ids-of-database database-id)))]
       (cond-> kept-from
         sql? (into (permission-debug.db/active-table-ids-of-database database-id))))
     table-ids))
