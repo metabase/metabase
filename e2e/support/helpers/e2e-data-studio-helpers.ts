@@ -65,8 +65,6 @@ export const DataStudio = {
     visitInspect: (transformId: TransformId) => {
       cy.visit(`/data-studio/transforms/${transformId}/inspect`);
     },
-    visitSettingsTab: (transformId: TransformId) =>
-      cy.visit(`/data-studio/transforms/${transformId}/settings`),
     visitIndexes: (transformId: TransformId) =>
       cy.visit(`/data-studio/transforms/${transformId}/indexes`),
     runButton: () => cy.findAllByTestId("run-button").eq(0),
@@ -74,7 +72,6 @@ export const DataStudio = {
     enableTransformPage: () => cy.findByTestId("enable-transform-page"),
   },
   Jobs: {
-    header: () => cy.findByTestId("jobs-header"),
     list: () => cy.findByTestId("transforms-job-list"),
     editor: () => cy.findByTestId("transforms-job-editor"),
   },

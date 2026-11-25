@@ -698,10 +698,6 @@ export function waitForLoaderToBeRemoved() {
   cy.findByTestId("loading-indicator").should("not.exist");
 }
 
-export function leaveConfirmationModal() {
-  return cy.findByTestId("leave-confirmation");
-}
-
 export function getUniqueTableColumnValues(columnName) {
   const values = [];
 

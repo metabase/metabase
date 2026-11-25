@@ -1695,6 +1695,42 @@ describe("scenarios > admin > transforms > jobs", () => {
     cy.intercept("DELETE", "/api/transform-job/*").as("deleteJob");
   });
 
+  describe("creation", () => {
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should create a job from the jobs list and persist it", () => {
+      cy.visit("/data-studio/transforms/jobs");
+      H.DataStudio.Jobs.list().findByRole("link", { name: /New/ }).click();
+      cy.location("pathname").should("eq", "/data-studio/transforms/jobs/new");
+
+      H.DataStudio.Jobs.editor()
+        .findByPlaceholderText("Name")
+        .clear()
+        .type("Nightly job");
+      getTagsInput().click();
+      H.popover().findByText("daily").click();
+      H.DataStudio.Jobs.editor().button("Save").click();
+      cy.wait("@createJob").then(({ request, response }) => {
+        expect(response?.statusCode).to.eq(200);
+        expect(request.body.name).to.eq("Nightly job");
+      });
+      H.undoToast().findByText("New job created").should("be.visible");
+      cy.location("pathname").should(
+        "match",
+        /^\/data-studio\/transforms\/jobs\/\d+$/,
+      );
+
+      cy.log("the job is read back from the server after a reload");
+      cy.reload();
+      H.DataStudio.Jobs.editor()
+        .findByPlaceholderText("Name")
+        .should("have.value", "Nightly job");
+      assertOptionSelected("daily");
+    });
+  });
+
   describe("schedule", () => {
     afterEach(() => {
       H.expectNoBadSnowplowEvents();
@@ -2182,7 +2218,10 @@ describe(
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
-      // See the note in the `oss` describe above.
+      // Clear the setting explicitly: the snapshot restore does not always win
+      // the race against the backend's settings cache. It must be unset, not
+      // false: the getter falls back to the token feature only when the setting
+      // has no value, and an explicit false hides the transforms UI outright.
       H.updateSetting("transforms-enabled", null);
     });
 
