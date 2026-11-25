@@ -113,7 +113,13 @@ describe("scenarios > data studio > data model > measures", () => {
         .should("be.visible");
     });
 
+    cy.log("verify the renamed measure in the query builder");
+    verifyMeasureInQueryBuilder("Test Measure Updated");
+
     cy.log("remove the measure");
+    cy.get<number>("@measureId").then((measureId) => {
+      visitDataModelMeasure(ORDERS_ID, measureId);
+    });
     MeasureEditor.getActionsButton().click();
     H.popover().findByText("Remove measure").click();
     H.modal().button("Remove").click();
