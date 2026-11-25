@@ -347,6 +347,7 @@
     :model/CacheConfig
     :model/CardBookmark
     :model/CardTest
+    :model/ChangeLog
     :model/Channel
     :model/ChannelTemplate
     :model/CloudMigration
@@ -427,6 +428,7 @@
     :model/QueryTable
     :model/RecentViews
     :model/RemoteSyncTask
+    :model/RemoteSyncWorktree
     :model/ReplacementRun
     :model/ResultMetadataStatus
     :model/Revision

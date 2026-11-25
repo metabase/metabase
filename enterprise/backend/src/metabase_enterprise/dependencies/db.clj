@@ -846,7 +846,7 @@
       :postgres
       (into [(str "INSERT INTO analysis_finding (entity_type, entity_id, result, analyzed_at) VALUES "
                   (placeholders "(?, ?, ?, now())")
-                  " ON CONFLICT (entity_type, entity_id) DO UPDATE SET "
+                  " ON CONFLICT (entity_type, entity_id, worktree_id) DO UPDATE SET "
                   "analyzed_at = CASE WHEN analysis_finding.result <> EXCLUDED.result THEN now() "
                   "ELSE analysis_finding.analyzed_at END, result = EXCLUDED.result")]
             params)

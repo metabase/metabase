@@ -29,6 +29,7 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 ### Models
 
 - **[backend-model-rules](.claude/skills/backend-model-rules/SKILL.md)** - Where a rule about a model lives: hooks for what the row alone answers (no statements), bulk write functions in the model file for the rest, `mi/can-*?` for per-user rules
+- **[backend-worktree-rules](.claude/skills/backend-worktree-rules/SKILL.md)** - Remote sync worktrees: which app DB tables get `worktree_id`, the composite foreign keys, per-worktree unique keys and worktree schema views on PostgreSQL, and which worktree a Quartz job, a background thread, or a Table or Field write runs in
 
 ### Application database
 

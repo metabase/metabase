@@ -90,6 +90,7 @@
    :model/BookmarkOrdering
    :model/CacheConfig
    :model/CardBookmark
+   :model/ChangeLog
    :model/ChannelTemplate
    :model/CloudMigration
    :model/CollectionBookmark
@@ -163,6 +164,7 @@
    :model/RecentViews
    :model/ReplacementRun
    :model/RemoteSyncTask
+   :model/RemoteSyncWorktree
    :model/ResultMetadataStatus
    :model/Revision
    :model/Sandbox

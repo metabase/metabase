@@ -246,11 +246,23 @@
                (select-fragment)))
       {:quoted false}))))
 
+(def ^:private main-app-worktree-id
+  "The `worktree_id` of the main app's rows, the only ones the copy takes."
+  1)
+
+(defn- main-app-row
+  "`row` without its `worktree_id`, which only a Postgres app DB has, or nil when it belongs to a remote sync worktree."
+  [row]
+  (when (contains? #{nil main-app-worktree-id} (:worktree_id row))
+    (dissoc row :worktree_id)))
+
 (defn- model-results-xform [model]
-  (if-let [transform (:transform (entity-spec model))]
-    (let [opts {:copy-h2-database-details? *copy-h2-database-details*}]
-      (keep #(transform % opts)))
-    identity))
+  (comp
+   (keep main-app-row)
+   (if-let [transform (:transform (entity-spec model))]
+     (let [opts {:copy-h2-database-details? *copy-h2-database-details*}]
+       (keep #(transform % opts)))
+     identity)))
 
 (defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type target-db-conn-spec]
   (with-open [source-conn (.getConnection source-data-source)]
@@ -319,8 +331,13 @@
   (doseq [{constraint :constraint_name, table :table_name} (jdbc/query
                                                             conn
                                                             [(str "SELECT * "
-                                                                  "FROM information_schema.table_constraints "
-                                                                  "WHERE constraint_type = 'FOREIGN KEY'")])]
+                                                                  "FROM information_schema.table_constraints tc "
+                                                                  "WHERE constraint_type = 'FOREIGN KEY' "
+                                                                  "AND NOT EXISTS (SELECT 1 FROM pg_constraint c "
+                                                                  "JOIN pg_class r ON r.oid = c.conrelid "
+                                                                  "WHERE c.conname = tc.constraint_name "
+                                                                  "AND r.relname = tc.table_name "
+                                                                  "AND c.conparentid <> 0)")])]
     (jdbc/execute! conn [(format "ALTER TABLE \"%s\" ALTER CONSTRAINT \"%s\" DEFERRABLE" table constraint)]))
   ;; now enable constraint deferring for the duration of the transaction
   (jdbc/execute! conn ["SET CONSTRAINTS ALL DEFERRED"]))
