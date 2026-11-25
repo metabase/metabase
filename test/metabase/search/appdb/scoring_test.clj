@@ -127,6 +127,19 @@
       ;; TODO text ranking (probably in-memory
       nil)))
 
+(deftest connection-collation-test
+  (when (= :mysql (mdb/db-type))
+    (testing "Search works when the connection's collation differs from the index columns'"
+      (with-index-contents
+        [{:model "card", :id 1, :name "orders"}]
+        (t2/with-connection [_conn]
+          (let [{:keys [collation]} (t2/query-one ["SELECT @@collation_connection AS collation"])]
+            (t2/query ["SET SESSION collation_connection = 'utf8mb4_general_ci'"])
+            (try
+              (is (= [["card" 1 "orders"]] (search-results* "orders")))
+              (finally
+                (t2/query [(str "SET SESSION collation_connection = '" collation "'")])))))))))
+
 (deftest ^:parallel exact-test
   (with-index-contents
     [{:model "card" :id 1 :name "the any most of stop words very"}
