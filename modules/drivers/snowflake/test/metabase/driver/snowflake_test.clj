@@ -895,8 +895,14 @@
     (is (= "SHOW TABLES IN DATABASE \"my \"\"db\"\"\" LIMIT 10000"
            (#'driver.snowflake/row-count-estimates-sql "my \"db\"")))))
 
-(deftest with-row-count-estimates-failure-test
-  (testing "A failure to read the estimates gives the tables without them"
+(deftest with-row-count-estimates-test
+  (testing "Each table gets its estimate by schema and name, and nil when it has none, so that sync clears a stored one"
+    (mt/with-dynamic-fn-redefs [driver.snowflake/query-row-count-estimates (constantly {["PUBLIC" "a"] 5})]
+      (is (= [{:schema "PUBLIC", :name "a", :estimated_row_count 5}
+              {:schema "OTHER", :name "a", :estimated_row_count nil}]
+             (into [] (#'driver.snowflake/with-row-count-estimates nil "db" [{:schema "PUBLIC", :name "a"}
+                                                                             {:schema "OTHER", :name "a"}]))))))
+  (testing "A failure to read the estimates gives the tables without the key, so that sync keeps the stored ones"
     (mt/with-dynamic-fn-redefs [driver.snowflake/query-row-count-estimates (fn [& _] (throw (ex-info "no" {})))]
       (is (= [{:schema "PUBLIC", :name "a"}]
              (into [] (#'driver.snowflake/with-row-count-estimates nil "db" [{:schema "PUBLIC", :name "a"}])))))))
@@ -931,8 +937,9 @@
         ;; fetch metadata
         (mt/with-model-cleanup [:model/Database :model/Secret]
           (let [[database] (database/create-databases! [{:name db-name, :engine :snowflake, :details details}])]
-            (is (=? {:tables #{{:name table-name, :schema schema-name, :description nil}}}
-                    (driver/describe-database :snowflake (driver.u/ensure-lib-database database))))))))))
+            (is (= #{{:name table-name, :schema schema-name, :description nil}}
+                   (into #{} (map #(dissoc % :estimated_row_count))
+                         (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database database))))))))))))
 
 (deftest describe-database-views-test
   (mt/test-driver :snowflake

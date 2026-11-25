@@ -1015,14 +1015,15 @@
       (sql-jdbc/query driver database query))))
 
 (defn- row-count-estimates
-  "A map of `[schema name]` to row count, from the `schema_name`, `name` and `rows` of `rows` of `SHOW TABLES`. A table
-  with no count, such as an external table, or a count of 0 is left out, as on Postgres and MySQL."
-  [rows]
+  "A map of `[schema name]` to row count, from the `schema_name`, `name` and `rows` of `show-tables-rows`, the result
+  of `SHOW TABLES`. A table with no count, such as an external table, or a count of 0 is left out, as on Postgres and
+  MySQL."
+  [show-tables-rows]
   (into {}
         (keep (fn [{:keys [schema_name name] row-count :rows}]
                 (when (some-> row-count pos?)
                   [[schema_name name] (long row-count)])))
-        rows))
+        show-tables-rows))
 
 (def ^:private show-tables-max-rows
   "The most rows `SHOW TABLES` returns. Without a `LIMIT`, it fails when there are more."
@@ -1039,24 +1040,31 @@
   15)
 
 (defn- query-row-count-estimates
-  "The row count estimates of the tables of the database `db`, with the connection `conn`."
+  "The row count estimates of the tables of the database `db`, with the connection `conn`. `SHOW TABLES` sorts by
+  schema and name, so when the database has more tables than it returns, the tables of the last schemas get none."
   [^Connection conn db]
-  (row-count-estimates
-   (jdbc/query {:connection conn} [(row-count-estimates-sql db)] {:timeout row-count-estimates-timeout-seconds})))
+  (let [rows (jdbc/query {:connection conn}
+                         [(row-count-estimates-sql db)]
+                         {:timeout row-count-estimates-timeout-seconds
+                          :row-fn  #(select-keys % [:schema_name :name :rows])})]
+    (when (>= (count rows) show-tables-max-rows)
+      (log/infof "Database %s has more tables than SHOW TABLES returns (%d); tables after the first ones get no row count estimate."
+                 db show-tables-max-rows))
+    (row-count-estimates rows)))
 
 (defn- with-row-count-estimates
-  "`tables` with the `:estimated_row_count` of each table. The estimate is extra information, so a failure to read it
-  is logged and the tables are returned without it. A table past the first [[show-tables-max-rows]] tables of the
-  database gets none."
+  "`tables` with the `:estimated_row_count` of each table, nil for a table with none. The estimate is extra
+  information, so a failure to read it is logged and the tables are returned without the key."
   [conn db tables]
-  (let [estimates (try
-                    (query-row-count-estimates conn db)
-                    (catch Exception e
-                      (log/warn e "Could not read the row count estimates of the tables")
-                      {}))]
+  (if-let [estimates (try
+                       (query-row-count-estimates conn db)
+                       (catch Exception e
+                         (log/warn e "Could not read the row count estimates of the tables")
+                         nil))]
     (eduction (map (fn [{:keys [schema name] :as table}]
-                     (m/assoc-some table :estimated_row_count (get estimates [schema name]))))
-              tables)))
+                     (assoc table :estimated_row_count (get estimates [schema name]))))
+              tables)
+    tables))
 
 (defmethod driver/describe-database* :snowflake
   [driver database]
@@ -1094,7 +1102,8 @@
                  tables    (into []
                                  (comp (filter readable?)
                                        (map #(dissoc % :type)))
-                                 (sql-jdbc.sync.interface/db-tables driver (.getMetaData conn) "%" db-name))]
+                                 ;; read all of it first: the privilege checks run more statements on `conn`
+                                 (vec (sql-jdbc.sync.interface/db-tables driver (.getMetaData conn) "%" db-name)))]
              {:tables (into #{} (with-row-count-estimates conn db-name tables))})))))))
 
 (defn- fallback-fields-metadata
