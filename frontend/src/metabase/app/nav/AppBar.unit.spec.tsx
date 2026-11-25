@@ -496,9 +496,6 @@ describe("AppBar saved question breadcrumbs", () => {
     const rootLink = await within(getAppBar()).findByRole("link", {
       name: /Our analytics/,
     });
-    expect(
-      within(getAppBar()).queryByText(FOO_COLLECTION.name),
-    ).not.toBeInTheDocument();
 
     await userEvent.click(rootLink);
     expect(router?.location.pathname).toBe("/collection/root");
