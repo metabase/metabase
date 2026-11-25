@@ -114,12 +114,18 @@ type SetupOpts = {
   initialRoute: string;
   collection?: Collection;
   cacheConfigs?: CacheConfig[];
+  /** Delays the database and table detail responses that the Source rows read */
+  detailsResponseDelayMs?: number;
+  /** Serves dependency graphs with dependencies and dependents */
+  hasRelationships?: boolean;
 };
 
 function setup({
   initialRoute,
   collection = createMockCollection(),
   cacheConfigs = [],
+  detailsResponseDelayMs = 0,
+  hasRelationships = false,
 }: SetupOpts) {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(ALL_TOKEN_FEATURES),
@@ -143,6 +149,16 @@ function setup({
   const queryMetadata = createMockCardQueryMetadata({ databases: [SAMPLE_DB] });
   const collections = [collection, FIRST_COLLECTION];
 
+  if (detailsResponseDelayMs > 0) {
+    // Registered first, so they answer before the routes of the helpers below
+    const ordersTable = SAMPLE_DB.tables?.find(({ id }) => id === ORDERS_ID);
+    fetchMock.get(`path:/api/database/${SAMPLE_DB_ID}`, SAMPLE_DB, {
+      delay: detailsResponseDelayMs,
+    });
+    fetchMock.get(`path:/api/table/${ORDERS_ID}`, ordersTable ?? {}, {
+      delay: detailsResponseDelayMs,
+    });
+  }
   setupDatabasesEndpoints([SAMPLE_DB]);
   setupCardStore(card, collections);
   setupAdhocQueryMetadataEndpoint(queryMetadata);
@@ -163,7 +179,7 @@ function setup({
     auditInfo: { question_overview: QUESTION_OVERVIEW_DASHBOARD_ID },
   });
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
-  setupGraphEndpoint();
+  setupGraphEndpoint({ hasRelationships });
   setupCustomVizPluginListEndpoint([]);
 
   return renderRoutes(
@@ -258,24 +274,64 @@ const METRIC_NODE = createMockCardDependencyNode({
   dependents_count: {},
 });
 
-function setupGraphEndpoint() {
-  fetchMock.get("path:/api/ee/dependencies/graph", (call) => {
-    const params = new URL(call.url).searchParams;
-    const isMetric =
-      params.get("id") === String(CARD_ID) && params.get("type") === "card";
-    return isMetric
-      ? createMockDependencyGraph({
-          nodes: [METRIC_NODE, ORDERS_TABLE_NODE],
-          edges: [
-            {
-              from_entity_id: CARD_ID,
-              from_entity_type: "card",
-              to_entity_id: ORDERS_ID,
-              to_entity_type: "table",
-            },
-          ],
-        })
-      : { status: 404 };
+const DEPENDENCY_CARD_ID = 7;
+
+type SetupGraphEndpointOpts = {
+  hasRelationships: boolean;
+};
+
+// Serves the graphs of the stored metric and of the metric that a create or
+// duplicate request returns, and 404 for any other entity
+function setupGraphEndpoint({ hasRelationships }: SetupGraphEndpointOpts) {
+  fetchMock.get(
+    "path:/api/ee/dependencies/graph",
+    (call) => {
+      const params = new URL(call.url).searchParams;
+      const id = Number(params.get("id"));
+      const isMetric =
+        params.get("type") === "card" && [CARD_ID, NEW_CARD_ID].includes(id);
+      if (!isMetric) {
+        return { status: 404 };
+      }
+      const metricNode = createMockCardDependencyNode({
+        ...METRIC_NODE,
+        id,
+        dependents_count: hasRelationships ? { question: 2 } : {},
+      });
+      return createMockDependencyGraph({
+        nodes: [metricNode, ORDERS_TABLE_NODE],
+        edges: [
+          {
+            from_entity_id: id,
+            from_entity_type: "card",
+            to_entity_id: ORDERS_ID,
+            to_entity_type: "table",
+          },
+          ...(hasRelationships
+            ? [
+                {
+                  from_entity_id: DEPENDENCY_CARD_ID,
+                  from_entity_type: "card" as const,
+                  to_entity_id: id,
+                  to_entity_type: "card" as const,
+                },
+              ]
+            : []),
+        ],
+      });
+    },
+    { name: "dependency-graph" },
+  );
+}
+
+async function waitForGraphResponse(cardId: number) {
+  await waitFor(() => {
+    const graphCall = fetchMock.callHistory
+      .calls("dependency-graph")
+      .find(
+        (call) => new URL(call.url).searchParams.get("id") === String(cardId),
+      );
+    expect(graphCall?.response?.status).toBe(200);
   });
 }
 
@@ -435,6 +491,7 @@ describe("metric pages (EE)", () => {
       const { router } = setup({
         initialRoute: `/data-studio/library/metrics/new?collectionId=${LIBRARY_METRICS_COLLECTION.id}`,
         collection: LIBRARY_METRICS_COLLECTION,
+        detailsResponseDelayMs: 600,
       });
 
       const editor = within(await screen.findByTestId("metric-query-editor"));
@@ -508,15 +565,14 @@ describe("metric pages (EE)", () => {
       const sidebar = within(
         aboutPage.getByTestId("metric-description-sidebar"),
       );
-      expect(sidebar.getByText(/^Last updated/)).toBeInTheDocument();
-      expect(sidebar.getByText("Source")).toBeInTheDocument();
-      expect(await sidebar.findByText("Sample Database")).toBeInTheDocument();
-      expect(await sidebar.findByText("Orders")).toBeInTheDocument();
-      expect(sidebar.getByText("Relationships")).toBeInTheDocument();
-      expect(await sidebar.findByText("No dependencies")).toBeInTheDocument();
-      expect(
-        sidebar.getByText("No charts use this metric"),
-      ).toBeInTheDocument();
+      expect(await sidebar.findByText(/^Last updated/)).toBeVisible();
+      expect(await sidebar.findByText("Source")).toBeVisible();
+      expect(await sidebar.findByText("Sample Database")).toBeVisible();
+      expect(await sidebar.findByText("Orders")).toBeVisible();
+      expect(await sidebar.findByText("Relationships")).toBeVisible();
+      await waitForGraphResponse(NEW_CARD_ID);
+      expect(sidebar.getByText("No dependencies")).toBeVisible();
+      expect(sidebar.getByText("No charts use this metric")).toBeVisible();
 
       await userEvent.click(
         within(screen.getByTestId("metric-header")).getByRole("tab", {
@@ -542,6 +598,24 @@ describe("metric pages (EE)", () => {
       expect(await screen.findByTestId("scalar-value")).toHaveTextContent(
         "18,760",
       );
+    });
+
+    it("shows the relationship counts from the dependency graph of the metric", async () => {
+      setup({
+        initialRoute: `/data-studio/library/metrics/${CARD_ID}`,
+        collection: LIBRARY_METRICS_COLLECTION,
+        hasRelationships: true,
+      });
+
+      const sidebar = within(
+        await screen.findByTestId("metric-description-sidebar"),
+      );
+      expect(await sidebar.findByText("1 dependency")).toBeVisible();
+      expect(sidebar.getByText("2 charts")).toBeVisible();
+      expect(sidebar.queryByText("No dependencies")).not.toBeInTheDocument();
+      expect(
+        sidebar.queryByText("No charts use this metric"),
+      ).not.toBeInTheDocument();
     });
 
     it("keeps unsaved definition changes when leaving is cancelled, and reverts them on Cancel", async () => {
