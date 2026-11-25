@@ -777,3 +777,16 @@
                                                                              {})]
                                     (sync.field-values/update-field-values-for-table! table))))
         (is (= [] @asked))))))
+
+(deftest ^:synchronized tokens-get-the-lib-metadata-of-the-database-test
+  (testing "the driver gets the Lib metadata of the Database, which its connection code takes"
+    (mt/dataset test-data
+      (let [databases (atom [])]
+        (do-with-change-tokens! (constantly "t")
+                                (fn []
+                                  (with-redefs [driver/table-change-tokens (fn [_driver database _tables]
+                                                                             (swap! databases conj database)
+                                                                             {})]
+                                    (sync.field-values/update-field-values-for-table!
+                                     (t2/select-one :model/Table :id (mt/id :venues))))))
+        (is (=? [{:lib/type :metadata/database :id (mt/id)}] @databases))))))
