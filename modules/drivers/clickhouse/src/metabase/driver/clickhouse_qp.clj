@@ -1,11 +1,12 @@
 (ns metabase.driver.clickhouse-qp
   "CLickHouse driver: QueryProcessor-related definition"
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.clickhouse-introspection :as clickhouse-introspection]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -18,9 +19,9 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [some]])
+   [metabase.util.performance :refer [mapv some]])
   (:import
-   [java.net Inet4Address Inet6Address]
+   [java.net Inet4Address Inet6Address InetAddress]
    [java.sql ResultSet ResultSetMetaData Types]
    [java.time
     LocalDate
@@ -29,7 +30,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime]
-   [java.util Arrays UUID]))
+   [java.util Arrays List Map UUID]))
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
 (sql/register-dialect!
@@ -704,15 +705,77 @@
   (when-let [^Inet6Address inet-address (.getObject rs i Inet6Address)]
     (.getHostAddress inet-address)))
 
+(defn- value->clojure
+  "Convert a non-nil value inside a tuple, of any type that has no tuples in it."
+  [value]
+  (cond
+    (instance? Map value)
+    (into {} (map (fn [[k v]] [k (some-> v value->clojure)])) value)
+
+    (or (instance? List value) (.isArray (class value)))
+    (mapv #(some-> % value->clojure) value)
+
+    (instance? InetAddress value)
+    (.getHostAddress ^InetAddress value)
+
+    :else
+    value))
+
+(defn- value-converter
+  "Return a function that converts a non-nil value of `database-type`, which is a `Tuple` or a type inside one. A tuple
+  with named elements becomes a map, and a tuple with elements that have no names becomes a vector."
+  [database-type]
+  (let [arguments      #(clickhouse-introspection/type-arguments % database-type)
+        nullable-type  (first (arguments "Nullable"))
+        array-type     (first (arguments "Array"))
+        map-value-type (second (arguments "Map"))
+        named-elements (clickhouse-introspection/tuple-elements database-type)
+        element-types  (if named-elements (map second named-elements) (arguments "Tuple"))]
+    (cond
+      nullable-type
+      (value-converter nullable-type)
+
+      array-type
+      (let [convert (value-converter array-type)]
+        (fn [value]
+          (mapv #(some-> % convert) value)))
+
+      map-value-type
+      (let [convert (value-converter map-value-type)]
+        (fn [value]
+          (into {} (map (fn [[k v]] [k (some-> v convert)])) value)))
+
+      element-types
+      (let [converters (mapv value-converter element-types)
+            convert    (fn [value]
+                         (map (fn [convert v] (some-> v convert)) converters value))]
+        (if named-elements
+          (fn [value]
+            ;; an array map keeps the order of the elements
+            (apply array-map (interleave (map first named-elements) (convert value))))
+          (comp vec convert)))
+
+      ;; JDBC reads these as an internal class, which the results cache cannot read
+      (str/starts-with? database-type "Enum")
+      str
+
+      :else
+      value->clojure)))
+
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/OTHER]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [normalized-db-type (remove-low-cardinality-and-nullable (.getColumnTypeName rsmeta i))]
+  (let [db-type            (.getColumnTypeName rsmeta i)
+        normalized-db-type (remove-low-cardinality-and-nullable db-type)]
     (cond
       (= normalized-db-type "ipv4")
       (fn [] (ipv4-column->string rs i))
 
       (= normalized-db-type "ipv6")
       (fn [] (ipv6-column->string rs i))
+
+      (str/starts-with? normalized-db-type "tuple")
+      (let [convert (value-converter db-type)]
+        (fn [] (some-> (.getObject rs i) convert)))
 
       :else
       (fn [] (.getObject rs i)))))
