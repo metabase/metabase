@@ -8,6 +8,13 @@ import { getName } from "metabase/utils/name";
 
 import type { ContextToken } from "./tokens";
 
+// PROTOTYPE: mocked — shown when there's no token and the API has no prompts
+export const getGeneralSuggestions = () => [
+  t`What metrics can I explore here?`,
+  t`Which dashboards are most popular this month?`,
+  t`Show me something interesting in our data`,
+];
+
 // PROTOTYPE: mocked — the suggested-prompts API doesn't take an entity yet
 const getSuggestions = (model: SuggestionModel, name: string): string[] =>
   match(model)

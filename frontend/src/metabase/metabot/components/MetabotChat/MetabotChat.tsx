@@ -25,7 +25,10 @@ import { Messages } from "./MetabotChatMessage";
 import type { ContextComposerController } from "./MetabotContextTokensPrototype/ContextComposerParts";
 import { MetabotContextComposerPrototype } from "./MetabotContextTokensPrototype/MetabotContextComposerPrototype";
 import type { ContextToken } from "./MetabotContextTokensPrototype/tokens";
-import { useContextualSuggestions } from "./MetabotContextTokensPrototype/use-contextual-suggestions";
+import {
+  getGeneralSuggestions,
+  useContextualSuggestions,
+} from "./MetabotContextTokensPrototype/use-contextual-suggestions";
 import { MetabotContextUsageRing } from "./MetabotContextUsageRing";
 import { useScrollManager } from "./hooks";
 
@@ -98,7 +101,13 @@ export const MetabotChat = ({
   const [primaryToken, setPrimaryToken] = useState<ContextToken | null>(null);
   const composerControllerRef = useRef<ContextComposerController>(null);
   const contextualSuggestions = useContextualSuggestions(primaryToken);
-  const suggestedPrompts = contextualSuggestions ?? apiSuggestedPrompts;
+  const isApiPromptsSettled =
+    suggestedPromptsReq.isSuccess || suggestedPromptsReq.isError;
+  const suggestedPrompts =
+    contextualSuggestions ??
+    (isApiPromptsSettled && apiSuggestedPrompts.length === 0
+      ? getGeneralSuggestions()
+      : apiSuggestedPrompts);
 
   const handleSuggestionClick = (prompt: string) => {
     if (composerControllerRef.current) {
