@@ -17,6 +17,7 @@ const SAVED_ENTITY_ROUTES: { pattern: RegExp; model: SuggestionModel }[] = [
   { pattern: /^\/metric\/(\d+)/, model: "metric" },
   { pattern: /^\/dashboard\/(\d+)/, model: "dashboard" },
   { pattern: /^\/document\/(\d+)/, model: "document" },
+  { pattern: /^\/table\/(\d+)/, model: "table" },
 ];
 
 const UNSAVED_QUESTION_ROUTE = /^\/question(\/notebook)?\/?$/;
