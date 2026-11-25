@@ -1732,3 +1732,54 @@
                (is (some? e))
                (is (false? (:workspace/cleanup? (ex-data e)))
                    (ex-message e))))))))))
+
+(deftest table-sample-compile-test
+  ;; no ClickHouse needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (let [mp     (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :clickhouse}})
+        venues (lib.metadata/table mp (meta/id :venues))]
+    (testing "a stage with :table-sample reads the source table with SAMPLE, as a fraction of the table"
+      (is (re-find #"FROM `PUBLIC`\.`VENUES` SAMPLE 0\.025 LIMIT 10"
+                   (:query (qp.compile/compile (-> (lib/query mp venues)
+                                                   (lib/limit 10)
+                                                   (assoc-in [:stages 0 :table-sample] {:percent 2.5})))))))
+    (testing "a very small percent is a plain decimal"
+      (is (re-find #"SAMPLE 0\.0000005"
+                   (:query (qp.compile/compile (-> (lib/query mp venues)
+                                                   (assoc-in [:stages 0 :table-sample] {:percent 5.0E-5})))))))))
+
+(deftest table-random-sample-test
+  (mt/test-driver :clickhouse
+    (mt/with-test-user :crowberto
+      (let [spec  (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+            venues (t2/select-one :model/Table :id (mt/id :venues))
+            fields (fn [table] (t2/select :model/Field :table_id (:id table) {:order-by [:id]}))]
+        (is (driver.u/supports? :clickhouse :table-random-sample (mt/db)))
+        (testing "a table with no sampling key: declines, so that sync reads the first rows"
+          (is (= {:method :first-rows}
+                 (driver/table-random-sample :clickhouse venues (fields venues) (constantly conj)
+                                             {:rows 20 :row-count 100}))))
+        (testing "a table with a sampling key: the native SAMPLE"
+          (jdbc/execute! spec [(format "DROP TABLE IF EXISTS `%s`.`kb_sampled`" (:schema venues))])
+          (jdbc/execute! spec [(format (str "CREATE TABLE `%s`.`kb_sampled` (id UInt64, cat UInt32) ENGINE = MergeTree"
+                                            " ORDER BY (cat, intHash32(id)) SAMPLE BY intHash32(id)")
+                                       (:schema venues))])
+          (try
+            (jdbc/execute! spec [(format "INSERT INTO `%s`.`kb_sampled` SELECT number, number %% 20 FROM numbers(100000)"
+                                         (:schema venues))])
+            (mt/with-temp [:model/Table table {:db_id (mt/id) :name "kb_sampled" :schema (:schema venues)}
+                           :model/Field id    {:table_id (:id table) :name "id" :base_type :type/BigInteger}
+                           :model/Field cat   {:table_id (:id table) :name "cat" :base_type :type/Integer}]
+              (let [{:keys [method fraction result]} (driver/table-random-sample :clickhouse table [id cat] (constantly conj)
+                                                                                 {:rows 1000 :row-count 100000})]
+                (is (= :block method))
+                (is (= 0.01 fraction))
+                (testing "with rows from all over the table, not only the first ones"
+                  (is (< 500 (count result) 2000))
+                  (is (= 20 (count (distinct (map second result))))))))
+            (finally
+              (jdbc/execute! spec [(format "DROP TABLE IF EXISTS `%s`.`kb_sampled`" (:schema venues))]))))
+        (testing "no estimate: declines"
+          (is (= {:method :first-rows}
+                 (driver/table-random-sample :clickhouse venues (fields venues) (constantly conj)
+                                             {:rows 20 :row-count nil}))))))))

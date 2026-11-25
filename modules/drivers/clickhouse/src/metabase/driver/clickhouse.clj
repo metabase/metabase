@@ -11,6 +11,7 @@
    [metabase.driver.clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql :as driver.sql]
@@ -991,3 +992,41 @@
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
   "metabot/prompts/dialects/clickhouse.md")
+
+;;; ------------------------------------------------ Table samples -------------------------------------------------
+
+;; `SAMPLE k` reads the rows whose sampling key falls in a fraction `k` of its range, from an index on it, so the rows
+;; come from all over the table. A table can be sampled only when it declares a sampling key (`SAMPLE BY`).
+(defmethod sql.qp/table-sample->honeysql :clickhouse
+  [driver table-expr {:keys [percent] :as table-sample}]
+  (if percent
+    ;; a plain decimal fraction, since Java prints a double below 0.001 as 1.0E-4
+    [:raw [table-expr " SAMPLE " (.toPlainString (.stripTrailingZeros ^BigDecimal (/ (bigdec percent) 100M)))]]
+    ((get-method sql.qp/table-sample->honeysql :sql) driver table-expr table-sample)))
+
+;; Only for `:clickhouse` itself, so that a child driver keeps its own `table-rows-sample`.
+(defmethod driver/database-supports? [:clickhouse :table-random-sample]
+  [driver _feature _db]
+  (= driver :clickhouse))
+
+(def ^:private sampling-key-timeout-seconds
+  "The time limit of the catalog query for the sampling key of a table."
+  15)
+
+(defn- sampling-key?
+  "Whether `table` declares a sampling key, which `SAMPLE` needs."
+  [table]
+  (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table)))
+                  ["SELECT sampling_key FROM system.tables WHERE database = ? AND name = ?" (:schema table) (:name table)]
+                  {:timeout sampling-key-timeout-seconds})
+      first
+      :sampling_key
+      perf/not-empty
+      boolean))
+
+;; The native SAMPLE for a table with a sampling key. Other tables keep the first rows.
+(defmethod driver/table-random-sample :clickhouse
+  [_driver table fields rff opts]
+  (if (and (:row-count opts) (sampling-key? table))
+    (table-rows-sample/block-sample table fields rff opts)
+    {:method :first-rows}))
