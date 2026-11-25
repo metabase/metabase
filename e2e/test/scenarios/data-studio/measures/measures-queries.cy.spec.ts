@@ -22,7 +22,17 @@ describe("scenarios > data studio > measures > queries", () => {
       MeasureEditor.getAggregationPlaceholder().click();
       H.popover().findByText("Count of rows").click();
 
-      saveMeasure();
+      saveMeasure().then((measure) => {
+        cy.log("the page opens the created measure, which survives a reload");
+        cy.location("pathname").should(
+          "eq",
+          `/data-studio/library/tables/${ORDERS_ID}/measures/${measure.id}`,
+        );
+        cy.reload();
+        MeasureEditor.getNameInput().should("have.value", MEASURE_NAME);
+        MeasureEditor.get().findByText("Count").should("be.visible");
+      });
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("18,760");
     });

@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { act, renderWithProviders, screen, within } from "__support__/ui";
 import { Outlet, Route } from "metabase/router";
+import type { Measure } from "metabase-types/api";
 
 import {
   NESTED_SEGMENT_ID,
@@ -12,11 +13,13 @@ import {
   SAMPLE_DB_ID,
   TOTAL_MEASURE_ID,
   TOTAL_SEGMENT_ID,
+  createOrdersMeasure,
   enterCustomExpression,
   getAggregationFromBody,
   setupEnterpriseMeasureState,
   setupMeasureMetadata,
 } from "../../test-utils";
+import { PublishedTableMeasureDetailPage } from "../PublishedTableMeasureDetailPage";
 
 import { PublishedTableNewMeasurePage } from "./PublishedTableNewMeasurePage";
 
@@ -58,10 +61,18 @@ function named(name: string) {
 
 function setup() {
   setupMeasureMetadata();
+  let createdMeasure: Measure | undefined;
   fetchMock.post("path:/api/measure", ({ options }) => {
     const body: unknown = JSON.parse(String(options.body));
-    return { ...Object(body), id: CREATED_MEASURE_ID, table_id: ORDERS_ID };
+    createdMeasure = createOrdersMeasure({
+      ...Object(body),
+      id: CREATED_MEASURE_ID,
+    });
+    return createdMeasure;
   });
+  fetchMock.get(`path:/api/measure/${CREATED_MEASURE_ID}`, () =>
+    createdMeasure == null ? { status: 404 } : createdMeasure,
+  );
 
   renderWithProviders(
     <Route element={<Outlet />}>
@@ -71,7 +82,7 @@ function setup() {
       />
       <Route
         path="/data-studio/library/tables/:tableId/measures/:measureId"
-        element={<div>Measure detail page</div>}
+        element={<PublishedTableMeasureDetailPage />}
       />
     </Route>,
     {
@@ -92,14 +103,24 @@ async function startNewMeasure() {
   await userEvent.click(screen.getByText("Pick an aggregation function"));
 }
 
-async function saveMeasure() {
+type SaveMeasureOpts = {
+  aggregationName: string;
+};
+
+async function saveMeasure({ aggregationName }: SaveMeasureOpts) {
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(
     await within(await screen.findByTestId("undo-list")).findByText(
       "Measure created",
     ),
   ).toBeInTheDocument();
-  expect(await screen.findByText("Measure detail page")).toBeInTheDocument();
+
+  // The page opens the created measure, by the id that POST returned.
+  const detailPage = within(await screen.findByTestId("measure-detail-page"));
+  expect(detailPage.getByPlaceholderText("New measure")).toHaveValue(
+    MEASURE_NAME,
+  );
+  expect(detailPage.getByText(aggregationName)).toBeInTheDocument();
 
   const calls = fetchMock.callHistory.calls("path:/api/measure", {
     method: "POST",
@@ -122,7 +143,9 @@ describe("PublishedTableNewMeasurePage", () => {
     await startNewMeasure();
     await userEvent.click(await screen.findByText("Count of rows"));
 
-    expect(await saveMeasure()).toEqual([["count", {}]]);
+    expect(await saveMeasure({ aggregationName: "Count" })).toEqual([
+      ["count", {}],
+    ]);
   });
 
   it("should create a measure with a column from the main data source", async () => {
@@ -131,7 +154,9 @@ describe("PublishedTableNewMeasurePage", () => {
     await userEvent.click(await screen.findByText("Sum of ..."));
     await userEvent.click(await screen.findByText("Total"));
 
-    expect(await saveMeasure()).toEqual([["sum", {}, TOTAL]]);
+    expect(await saveMeasure({ aggregationName: "Sum of Total" })).toEqual([
+      ["sum", {}, TOTAL],
+    ]);
   });
 
   it("should create a measure with a column from an implicit join", async () => {
@@ -141,7 +166,9 @@ describe("PublishedTableNewMeasurePage", () => {
     await userEvent.click(await screen.findByText("Product"));
     await userEvent.click(await screen.findByText("Price"));
 
-    expect(await saveMeasure()).toEqual([["avg", {}, PRODUCT_PRICE_FIELD]]);
+    expect(
+      await saveMeasure({ aggregationName: "Average of Product → Price" }),
+    ).toEqual([["avg", {}, PRODUCT_PRICE_FIELD]]);
   });
 
   it.each([
@@ -225,7 +252,7 @@ describe("PublishedTableNewMeasurePage", () => {
       await userEvent.click(await screen.findByText("Custom Expression"));
       await enterCustomExpression({ formula, name, button: "Done" });
 
-      expect(await saveMeasure()).toEqual([expected]);
+      expect(await saveMeasure({ aggregationName: name })).toEqual([expected]);
     },
   );
 
