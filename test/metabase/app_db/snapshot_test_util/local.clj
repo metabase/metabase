@@ -39,12 +39,23 @@
                    (dump/dump-statements dumper server conn))
          ";\n")))
 
+(defn- compatible-postgres-client? [executable ^java.sql.Connection conn]
+  (try
+    (let [{:keys [exit out]} (shell/sh (str executable) "--version")
+          major (some-> (re-find #"^pg_dump \(PostgreSQL\) (\d+)" out) second parse-long)]
+      (boolean (and (zero? exit) major
+                    (>= major (.getDatabaseMajorVersion (.getMetaData conn))))))
+    (catch java.io.IOException _
+      false)))
+
 (defn dump-options
-  "Return local dump options, or nil if the required dump client is unavailable."
-  [flavor details]
+  "Return local dump options, or nil if the client is unavailable or cannot dump the server version."
+  [flavor details conn]
   (let [executable (when (and (not= flavor :h2) details)
                      (fs/which (client flavor)))]
-    (when (or (= flavor :h2) executable)
+    (when (or (= flavor :h2)
+              (and executable
+                   (or (not= flavor :postgres) (compatible-postgres-client? executable conn))))
       (let [dumper (case flavor
                      :h2 snapshot.h2/dumper
                      :postgres snapshot.postgres/dumper

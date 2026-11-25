@@ -228,7 +228,7 @@
   (let [boundary (previous-changeset-id conn start-id)
         flavor (snapshot/flavor conn driver)
         dump-options (when (and boundary (snapshot/matches-environment?))
-                       (snapshot.local/dump-options flavor *snapshot-connection-details*))]
+                       (snapshot.local/dump-options flavor *snapshot-connection-details* conn))]
     (if dump-options
       (let [file (snapshot.cache/ensure-snapshot!
                   flavor boundary #(setup-snapshot! driver start-id flavor dump-options))]
