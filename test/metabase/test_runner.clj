@@ -8,6 +8,8 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.tools.namespace.file :as ns.file]
+   [clojure.tools.namespace.find :as ns.find]
    [hooks.common.modules :as hooks.modules]
    [humane-are.core :as humane-are]
    [mb.hawk.core :as hawk]
@@ -80,6 +82,36 @@
                                                            (not (exclude-directory? file)))]
                                file)]
     (hawk/find-tests directories options)))
+
+;;; Hawk loads every namespace it finds before it checks `:only-tags`, so a shard that runs one tag would load the
+;;; whole test tree. A file whose source never names a tag cannot carry it, so skip loading the namespaces in it.
+
+(defonce ^:private hawk-find-tests-in-file (get-method hawk/find-tests java.io.File))
+
+(defonce ^:private hawk-find-tests-for-symbol (get-method hawk/find-tests clojure.lang.Symbol))
+
+(defn- namespaces-missing-tags
+  [dir only-tags]
+  (let [tags (map str only-tags)]
+    (into #{}
+          (keep (fn [^java.io.File file]
+                  (let [source (slurp file)]
+                    (when-not (every? #(str/includes? source %) tags)
+                      (second (ns.file/read-file-ns-decl file))))))
+          (ns.find/find-sources-in-dir dir))))
+
+(defmethod hawk/find-tests java.io.File
+  [^java.io.File file {:keys [only-tags], :as options}]
+  (hawk-find-tests-in-file file (cond-> options
+                                  (and (seq only-tags) (.isDirectory file))
+                                  (update ::namespaces-missing-tags
+                                          (fnil into #{})
+                                          (namespaces-missing-tags file only-tags)))))
+
+(defmethod hawk/find-tests clojure.lang.Symbol
+  [symb options]
+  (when-not (contains? (::namespaces-missing-tags options) symb)
+    (hawk-find-tests-for-symbol symb options)))
 
 (def ^:private excluded-directories
   [".clj-kondo/src"
