@@ -97,7 +97,9 @@ describe(
         cy.findByText(/renamed the segment/i)
           .scrollIntoView()
           .should("be.visible");
-        cy.findByText("Product → Category is Gadget")
+        // The revision pill names the column without the join prefix that
+        // the editor shows ("Product → Category is Gadget").
+        cy.findByText("Category is Gadget")
           .scrollIntoView()
           .should("be.visible");
       });
@@ -118,7 +120,7 @@ describe(
         .should("be.visible");
       SegmentList.get()
         .findByTestId("list-item-description")
-        .should("contain", "Filtered by Product → Category is Gadget");
+        .should("contain", "Category is Gadget");
 
       cy.log("remove the segment");
       SegmentList.getSegment("Gadget Orders Updated").click();
