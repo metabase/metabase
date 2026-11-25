@@ -163,6 +163,54 @@ describe(
       verifySegmentInQueryBuilder("High Value Recent Orders");
     });
 
+    it("should create and remove a segment on a published table", () => {
+      H.createLibrary();
+      H.publishTables({ table_ids: [ORDERS_ID] });
+
+      H.DataStudio.Tables.visitSegmentsPage(ORDERS_ID);
+      SegmentList.getEmptyState().scrollIntoView().should("be.visible");
+      SegmentList.getNewSegmentLink().scrollIntoView().click();
+
+      SegmentEditor.getNameInput().type("Premium Orders");
+      SegmentEditor.getFilterPlaceholder().click();
+      H.popover().findByText("Total").click();
+      H.selectFilterOperator("Greater than");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("100");
+        cy.button("Add filter").click();
+      });
+      SegmentEditor.getSaveButton().click();
+      cy.wait("@createSegment");
+
+      H.undoToast().should("contain.text", "Segment created");
+      cy.url().should(
+        "match",
+        new RegExp(`/data-studio/library/tables/${ORDERS_ID}/segments/\\d+$`),
+      );
+
+      cy.log("the stored segment is in its published table's collection");
+      cy.reload();
+      SegmentEditor.get()
+        .findByDisplayValue("Premium Orders")
+        .should("be.visible");
+      SegmentEditor.get().findByText("Data").should("be.visible");
+      SegmentEditor.get()
+        .findByText(/Total is greater than 100/i)
+        .should("be.visible");
+
+      SegmentEditor.getActionsButton().click();
+      H.popover().findByText("Remove segment").click();
+      H.modal().button("Remove").click();
+      cy.wait("@updateSegment");
+
+      H.undoToast().should("contain.text", "Segment removed");
+      cy.url().should(
+        "match",
+        new RegExp(`/data-studio/library/tables/${ORDERS_ID}/segments$`),
+      );
+      SegmentList.getEmptyState().scrollIntoView().should("be.visible");
+    });
+
     it("should show segments read-only to a data analyst", () => {
       createTestSegment({ name: "Readonly Detail Segment" });
 
