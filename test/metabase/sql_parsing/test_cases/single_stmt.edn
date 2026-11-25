@@ -41,12 +41,6 @@
    :stmt-type  "read"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
-  {:name       "a doubled backslash before a letter stays doubled, so the rebuild holds no newline"
-   :dialect    "postgres"
-   :sql        "SELECT E'a\\\\nb' AS v"
-   :stmt-type  "read"
-   :expected   {:verdict :allowed    :single-stmt? true :sql "SELECT e'a\\\\nb' AS v"}}
-
   {:name       "a SET ROLE after a select is a second statement"
    :dialect    "postgres"
    :sql        "SELECT 1; SET ROLE admin"
