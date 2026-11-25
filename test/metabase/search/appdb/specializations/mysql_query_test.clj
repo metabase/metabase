@@ -90,3 +90,16 @@
     (is (= ["revenue"] (#'mysql/words "revenue 📈\uFE0F")))
     (is (= "nrevenue srevenue qrevenue"
            (:prefix_terms (#'mysql/entry-fields {:name "revenue 📈\uFE0F"} 84))))))
+
+(deftest ^:parallel byte-batches-test
+  (testing "batches keep entry order, stay within the budget, and give an oversized entry a batch of its own"
+    (is (= [[{:t "aaaa"} {:t "aaa"}]
+            [{:t "aaaaaaaaaaa"}]
+            [{:t "a"}]]
+           (#'mysql/byte-batches 8 [{:t "aaaa"} {:t "aaa"} {:t "aaaaaaaaaaa"} {:t "a"}])))
+    (is (= [] (#'mysql/byte-batches 8 [])))))
+
+(deftest ^:parallel bounded-text-test
+  (testing "indexed text is cut to the byte limit PostgreSQL applies"
+    (is (= 500000
+           (count (:search_terms (#'mysql/entry-fields {:name (apply str (repeat 600000 "a"))} 84)))))))

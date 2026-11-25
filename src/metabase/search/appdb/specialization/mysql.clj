@@ -5,9 +5,13 @@
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.db :as search.db]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.util :as search.util]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.string :as u.str])
+  (:import
+   (com.google.common.base Utf8)))
 
 (set! *warn-on-reflection* true)
 
@@ -52,8 +56,30 @@
          "CREATE INDEX %s_model_archived_idx ON %s (model, archived)"
          "CREATE INDEX %s_archived_idx ON %s (archived)"]))
 
+(def ^:private max-allowed-packet
+  (mdb/memoize-for-application-db #(search.db/mysql-max-allowed-packet)))
+
+(defn- entry-bytes [entry]
+  (transduce (map (fn [v] (if (string? v) (Utf8/encodedLength ^String v) 16))) + (vals entry)))
+
+(defn- byte-batches
+  "The `entries` in order, split into batches whose strings add up to at most `budget` bytes.
+  An entry larger than `budget` gets a batch of its own."
+  [budget entries]
+  (let [[batches batch] (reduce (fn [[batches batch size] entry]
+                                  (let [n (entry-bytes entry)]
+                                    (if (and (seq batch) (> (+ size n) budget))
+                                      [(conj batches batch) [entry] n]
+                                      [batches (conj batch entry) (+ size n)])))
+                                [[] [] 0]
+                                entries)]
+    (cond-> batches (seq batch) (conj batch))))
+
 (defmethod specialization/batch-upsert! :mysql [table entries]
-  (search.db/mysql-batch-upsert! table entries))
+  ;; The server rejects a statement larger than `max_allowed_packet`, 16 MiB by default on MariaDB, and the whole
+  ;; batch fails with it. A quarter of the limit leaves room for escaping and the rest of the statement.
+  (doseq [batch (byte-batches (quot (max-allowed-packet) 4) entries)]
+    (search.db/mysql-batch-upsert! table batch)))
 
 (defn- normalize-text [text]
   (-> text u/lower-case-en (str/replace #"[_']" " ")))
@@ -82,14 +108,19 @@
 (def ^:private index-word-pattern
   (re-pattern word-regex))
 
+(defn- bounded-text
+  "The normalized `text`, cut to the byte limit PostgreSQL also applies to searchable text."
+  [text]
+  (u.str/limit-bytes (normalize-text text) search.ingestion.query/max-searchable-value-length))
+
 (defn- entry-fields [entity max-size]
-  (let [name-terms   (normalize-text (or (:name entity) ""))
-        search-terms (normalize-text (str/join " " (keep entity [:name :searchable_text])))
+  (let [name-terms   (bounded-text (or (:name entity) ""))
+        search-terms (bounded-text (str/join " " (keep entity [:name :searchable_text])))
         fields       {:name_terms          name-terms
                       :search_terms        search-terms
                       :native_search_terms (str search-terms
                                                 (when-some [native (:native_query entity)]
-                                                  (str " " (normalize-text native))))}]
+                                                  (str " " (bounded-text native))))}]
     ;; A field marker keeps title, body, and native matches separate in one prefix index.
     ;; Truncate before indexing so prefixes can find words beyond InnoDB's maximum token size.
     (assoc fields :prefix_terms

@@ -242,6 +242,12 @@
   (t2/query-one [(str "SELECT @@innodb_ft_enable_stopword AS stopwords, "
                       "@@innodb_ft_min_token_size AS min_size, @@innodb_ft_max_token_size AS max_size")]))
 
+(mu/defn mysql-max-allowed-packet :- pos-int?
+  "The largest statement, in bytes, the MySQL server accepts."
+  []
+  ;; MariaDB returns the variable as an unsigned BIGINT, which reads as a BigInteger.
+  (long (:max_allowed_packet (t2/query-one ["SELECT @@max_allowed_packet AS max_allowed_packet"]))))
+
 (mu/defn set-mysql-fulltext-stopwords!
   "Enable or disable stopwords for full-text indexes created on the current connection."
   [enabled? :- :boolean]

@@ -1,6 +1,7 @@
 (ns metabase.search.appdb.index-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.search.appdb.index-test]}}}}}}
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
@@ -11,7 +12,9 @@
    [metabase.queries.models.card :as card]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.appdb.specialization.mysql :as search.mysql]
    [metabase.search.core :as search]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
@@ -886,3 +889,24 @@
                (into {}
                      (for [column [:last_viewed_at :last_edited_at]]
                        [column (t2/select-fn-set :model_id (search.index/active-table) column nil)]))))))))
+
+(deftest mysql-upsert-splits-large-batches-test
+  (when (= :mysql (mdb/db-type))
+    (testing "A batch larger than the server's packet budget is sent as several statements, and every entry lands"
+      (search.tu/with-temp-index-table
+        (let [statements (atom 0)
+              upsert!    (mt/original-fn #'search.db/mysql-batch-upsert!)]
+          (mt/with-dynamic-fn-redefs [search.db/mysql-max-allowed-packet (constantly 8000)
+                                      search.db/mysql-batch-upsert!      (fn [table entries]
+                                                                           (swap! statements inc)
+                                                                           (upsert! table entries))]
+            (memoize/memo-clear! @#'search.mysql/max-allowed-packet)
+            (try
+              (#'specialization/batch-upsert! (search.index/active-table)
+                                              (map (comp #'search.index/document->entry #'search.ingestion/->document)
+                                                   (for [id (range 1 6)]
+                                                     {:model "card", :id id, :name (apply str "card" (repeat 1000 "x"))})))
+              (finally
+                (memoize/memo-clear! @#'search.mysql/max-allowed-packet))))
+          (is (< 1 @statements))
+          (is (= 5 (t2/count (search.index/active-table)))))))))
