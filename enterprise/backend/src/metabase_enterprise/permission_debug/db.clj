@@ -152,6 +152,11 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-pks-set :model/Table :db_id database-id))
 
+(mu/defn active-table-ids-of-database
+  "The ids of the active Tables of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-pks-set :model/Table :db_id database-id :active true))
+
 (mu/defn sandboxes
   "The Sandboxes of the groups with `group-ids` on the Tables with `table-ids`, with their `:id`, `:group_id`,
   `:table_id`, `:card_id` and `:attribute_remappings`."

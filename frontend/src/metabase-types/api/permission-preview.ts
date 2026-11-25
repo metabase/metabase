@@ -1,3 +1,4 @@
+import type { CardId } from "./card";
 import type { CollectionNamespace } from "./collection";
 import type { GroupId } from "./group";
 import type { UserAttributeMap, UserId } from "./user";
@@ -133,8 +134,17 @@ export type PermissionDebugProblem =
   | { type: "routing-missing-value"; attribute: string; "db-id": number }
   | { type: "routing-no-destination"; attribute: string; "db-id": number };
 
+/** A card of the item whose query uses SQL */
+export type PermissionDebugSqlCard = {
+  "card-id": CardId;
+  name: string;
+  "db-id": number;
+};
+
 export type PermissionDebugReasons = {
   collection?: PermissionDebugCollection;
+  /** A query check of a question or dashboard only */
+  "sql-cards"?: PermissionDebugSqlCard[];
   tables?: PermissionDebugTable[];
   impersonations?: PermissionDebugImpersonation[];
   routes?: PermissionDebugRoute[];

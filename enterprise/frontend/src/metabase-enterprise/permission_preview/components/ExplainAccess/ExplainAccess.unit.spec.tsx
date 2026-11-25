@@ -32,6 +32,7 @@ import {
   createCollection,
   createGroupValue,
   createSandbox,
+  createSqlCard,
   createTable,
 } from "./fixtures";
 
@@ -954,6 +955,189 @@ describe("ExplainAccess", () => {
     });
   });
 
+  describe("SQL questions and cards", () => {
+    const WARNING = "Row and column security never applies to SQL questions.";
+    const orders = createTable({ "table-id": 1, name: "Orders" });
+    const people = createTable({
+      "table-id": 2,
+      name: "People",
+      sandboxes: [createSandbox({ "table-id": 2 })],
+    });
+
+    function isBefore(first: HTMLElement, second: HTMLElement) {
+      return Boolean(
+        first.compareDocumentPosition(second) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    }
+
+    function setupDashboard(
+      reasons: PermissionDebugAnswer["reasons"],
+    ): ReturnType<typeof setup> {
+      return setup({
+        item: "dashboard/3",
+        answers: {
+          "dashboard/query": createAnswer({
+            "model-type": "dashboard",
+            reasons: { collection: createCollection(), ...reasons },
+          }),
+        },
+      });
+    }
+
+    it("says at the bottom of a SQL question's Data card that row and column security never applies", async () => {
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: {
+              collection: createCollection(),
+              tables: [orders, people],
+              "sql-cards": [createSqlCard()],
+            },
+          }),
+        },
+      });
+
+      const warning = await screen.findByText(WARNING);
+
+      expect(isBefore(screen.getByText("Rules set by Sales"), warning)).toBe(
+        true,
+      );
+      expect(
+        isBefore(
+          screen.getByRole("button", { name: "Orders, Full access" }),
+          warning,
+        ),
+      ).toBe(true);
+      expect(
+        isBefore(warning, screen.getByText("Exploring this question")),
+      ).toBe(true);
+      expect(screen.queryByText("Not filtered")).not.toBeInTheDocument();
+    });
+
+    it("warns about a rule that another group's full access overrides", async () => {
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: {
+              collection: createCollection(),
+              tables: [
+                {
+                  ...people,
+                  sandboxes: [
+                    createSandbox({ "table-id": 2, "enforced?": false }),
+                  ],
+                },
+              ],
+              "sql-cards": [createSqlCard()],
+            },
+          }),
+        },
+      });
+
+      expect(await screen.findByText(WARNING)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "People, Full access" }),
+      ).toBeInTheDocument();
+    });
+
+    it.each([
+      {
+        when: "the person has no row and column security rule",
+        tables: [orders],
+        sqlCards: [createSqlCard()],
+      },
+      {
+        when: "the person's rule is in another database",
+        tables: [orders, { ...people, "db-id": 2 }],
+        sqlCards: [createSqlCard()],
+      },
+      {
+        when: "the question is a query builder one",
+        tables: [orders, people],
+        sqlCards: [],
+      },
+    ])("has no SQL warning when $when", async ({ tables, sqlCards }) => {
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: {
+              collection: createCollection(),
+              tables,
+              "sql-cards": sqlCards,
+            },
+          }),
+        },
+      });
+
+      expect(
+        await screen.findByText("Data in this question"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(WARNING)).not.toBeInTheDocument();
+    });
+
+    it("folds the SQL cards of a database where the person has a rule into one row above the warning", async () => {
+      setupDashboard({
+        tables: [
+          orders,
+          people,
+          createTable({ "table-id": 3, "db-id": 2, name: "Invoices" }),
+        ],
+        "sql-cards": [
+          createSqlCard({ "card-id": 1, name: "Revenue by state" }),
+          createSqlCard({ "card-id": 2, name: "Monthly signups" }),
+          createSqlCard({ "card-id": 3, name: "Open invoices", "db-id": 2 }),
+        ],
+      });
+
+      const fold = await screen.findByRole("button", { name: /2 SQL cards/ });
+
+      expect(fold).toHaveAttribute("aria-expanded", "false");
+      expect(screen.getByText("Not filtered")).toBeInTheDocument();
+      expect(screen.queryByText("Revenue by state")).not.toBeInTheDocument();
+      expect(
+        isBefore(screen.getByRole("button", { name: /2 tables/ }), fold),
+      ).toBe(true);
+      expect(isBefore(fold, screen.getByText(WARNING))).toBe(true);
+
+      await userEvent.click(fold);
+
+      const first = screen.getByText("Revenue by state");
+      const second = screen.getByText("Monthly signups");
+      expect(isBefore(first, second)).toBe(true);
+      expect(isBefore(second, screen.getByText(WARNING))).toBe(true);
+      expect(screen.queryByText("Open invoices")).not.toBeInTheDocument();
+    });
+
+    it("gives a dashboard's only SQL card its own row by name, with no fold", async () => {
+      setupDashboard({
+        tables: [orders, people],
+        "sql-cards": [createSqlCard({ name: "Revenue by state" })],
+      });
+
+      const name = await screen.findByText("Revenue by state");
+
+      expect(screen.getByText("Not filtered")).toBeInTheDocument();
+      expect(isBefore(name, screen.getByText(WARNING))).toBe(true);
+      expect(
+        screen.queryByRole("button", { name: /SQL card/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("lists no SQL card on a dashboard when the person has no rule in their databases", async () => {
+      setupDashboard({
+        tables: [orders],
+        "sql-cards": [createSqlCard({ name: "Revenue by state" })],
+      });
+
+      expect(
+        await screen.findByText("Data in this dashboard"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Revenue by state")).not.toBeInTheDocument();
+      expect(screen.queryByText(WARNING)).not.toBeInTheDocument();
+    });
+  });
+
   describe("a name that is cut off", () => {
     const tables = [
       createTable({ "table-id": 1, name: "Orders" }),
@@ -1030,6 +1214,28 @@ describe("ExplainAccess", () => {
 
         expect(await screen.findByRole("tooltip")).toHaveTextContent(
           "Orders · Sample Database, Products · Sample Database",
+        );
+      });
+
+      it("shows a SQL card's name in full", async () => {
+        setup({
+          item: "dashboard/3",
+          answers: {
+            "dashboard/query": createAnswer({
+              "model-type": "dashboard",
+              reasons: {
+                collection: createCollection(),
+                tables,
+                "sql-cards": [createSqlCard({ name: "Revenue by state" })],
+              },
+            }),
+          },
+        });
+
+        await userEvent.hover(await screen.findByText("Revenue by state"));
+
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          "Revenue by state",
         );
       });
 

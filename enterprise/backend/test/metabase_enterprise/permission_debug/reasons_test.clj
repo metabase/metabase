@@ -209,6 +209,74 @@
                  (-> result :data :blocked-tables)))
           (is (some? (table-entry result "Categories"))))))))
 
+(defn- sql-query []
+  (mt/native-query {:query "SELECT * FROM VENUES"}))
+
+(defn- active-test-data-table-ids []
+  (t2/select-pks-set :model/Table :db_id (mt/id) :active true))
+
+(defn- reason-table-ids
+  [result]
+  (into #{} (map :table-id) (-> result :reasons :tables)))
+
+(deftest sql-question-lists-every-table-of-its-database-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/PermissionsGroupMembership _ {:user_id user-id :group_id (:id (perms/all-users-group))}
+                   :model/Table {inactive-id :id} {:db_id (mt/id) :name "DROPPED" :active false}
+                   :model/Card {card-id :id} {:name "Venues in SQL" :dataset_query (sql-query)}]
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (let [result (debug :card/query user-id card-id)]
+        (testing "every active table of the database is listed, though the SQL reads one"
+          (is (= (active-test-data-table-ids) (reason-table-ids result))))
+        (testing "the card is named as SQL, with its database"
+          (is (= [{:card-id card-id :name "Venues in SQL" :db-id (mt/id)}]
+                 (-> result :reasons :sql-cards)))))
+      (testing "an inactive table that blocks the question is listed too"
+        (perms/set-table-permission! (perms/all-users-group) inactive-id :perms/view-data :blocked)
+        (is (contains? (reason-table-ids (debug :card/query user-id card-id)) inactive-id))))))
+
+(deftest query-builder-question-with-a-sql-security-rule-is-not-a-sql-question-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-temp [:model/PermissionsGroup {group-id :id :as group} {}
+                   :model/User {user-id :id} {}
+                   :model/PermissionsGroupMembership _ {:user_id user-id :group_id (:id (perms/all-users-group))}
+                   :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
+                   :model/Card {sandbox-card-id :id} {:dataset_query (sql-query)}
+                   :model/Sandbox _ {:group_id             group-id
+                                     :table_id             (mt/id :venues)
+                                     :card_id              sandbox-card-id
+                                     :attribute_remappings {}}
+                   :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (grant-venues! group)
+      (let [result (debug :card/query user-id card-id)]
+        (testing "the SQL of the person's rule doesn't make the question a SQL one"
+          (is (= [] (-> result :reasons :sql-cards))))
+        (testing "so the other tables of the database stay out"
+          (is (= #{(mt/id :venues)} (reason-table-ids result))))))))
+
+(deftest dashboard-names-its-sql-cards-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/PermissionsGroupMembership _ {:user_id user-id :group_id (:id (perms/all-users-group))}
+                   :model/Dashboard {dashboard-id :id} {}
+                   :model/Card {sql-id :id} {:name "SQL" :dataset_query (sql-query)}
+                   :model/Card {on-sql-id :id} {:name          "Built on SQL"
+                                                :dataset_query (mt/mbql-query nil
+                                                                 {:source-table (str "card__" sql-id)})}
+                   :model/Card {builder-id :id} {:name "Query builder" :dataset_query (mt/mbql-query checkins)}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id sql-id}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id on-sql-id}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id builder-id}]
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (let [result (debug :dashboard/query user-id dashboard-id)]
+        (testing "the SQL card and the card built on it are named, the query builder card isn't"
+          (is (= [{:card-id sql-id :name "SQL" :db-id (mt/id)}
+                  {:card-id on-sql-id :name "Built on SQL" :db-id (mt/id)}]
+                 (-> result :reasons :sql-cards))))
+        (testing "every active table of the SQL cards' database is listed"
+          (is (= (active-test-data-table-ids) (reason-table-ids result))))))))
+
 (deftest impersonation-reasons-test
   (mt/with-no-data-perms-for-all-users!
     (mt/with-temp [:model/PermissionsGroup {group-id :id :as group} {:name "Analysts"}

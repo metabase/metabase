@@ -37,6 +37,7 @@
             {::group-id :int
              ::reasons [:map {:closed true}
                         [:collection     {:optional true} :map]
+                        [:sql-cards      {:optional true} [:sequential :map]]
                         [:tables         {:optional true} [:sequential :map]]
                         [:impersonations {:optional true} [:sequential :map]]
                         [:routes         {:optional true} [:sequential :map]]
@@ -216,13 +217,30 @@
     (catch clojure.lang.ExceptionInfo _
       (qp.preprocess/preprocess (:dataset_query card)))))
 
+(defn- native-query?
+  [query]
+  (boolean (match/match-one query {:native &truthy} true)))
+
 (defn- card-tables
-  "The Tables the query of `card` reads for the User with `user-id`: `{:native? :database-id :table-ids}`."
+  "The Tables the query of `card` reads for the User with `user-id`: `{:card :native? :sql? :database-id :table-ids}`.
+  `:native?` is true when the query runs SQL for them, the SQL of their policies included, and `:sql?` only when the
+  card's own query does."
   [user-id card]
-  (let [query (expanded-query user-id card)]
-    {:native?     (boolean (match/match-one query {:native &truthy} true))
+  (let [query   (expanded-query user-id card)
+        native? (native-query? query)]
+    {:card        card
+     :native?     native?
+     ;; preprocessed as the admin who asks, so none of the person's policies is part of it
+     :sql?        (and native? (native-query? (qp.preprocess/preprocess (:dataset_query card))))
      :database-id (:database_id card)
      :table-ids   (lib/all-source-table-ids query)}))
+
+(defn- sql-cards
+  "The `{:card-id :name :db-id}` of the cards of `cards-tables`, as [[card-tables]] returns them, that are SQL ones."
+  [cards-tables]
+  (vec (for [{:keys [card sql? database-id]} cards-tables
+             :when sql?]
+         {:card-id (:id card) :name (:name card) :db-id database-id})))
 
 (defn- check-table-permissions
   "Check table-level permissions for the Tables of a card's query.
@@ -254,17 +272,20 @@
    (reduce #(update %1 (first %2) set/union (set [(second %2)])) {})))
 
 (defn- reason-table-ids
-  "The Tables worth explaining for `card-tables`: the ones its query reads, and for a native query, whose Tables are
-  the whole Database's, those a policy or a block keeps the User from using as they are."
-  [user-id {:keys [native? database-id table-ids]}]
+  "The Tables worth explaining for `card-tables`: the ones its query reads. For a native query, whose Tables are the
+  whole Database's, those a policy or a block keeps the User from using as they are, and for a SQL card every active
+  Table of the Database as well."
+  [user-id {:keys [native? sql? database-id table-ids]}]
   (if native?
     (let [group-ids (set (map :id (permission-debug.db/user-groups user-id)))
           blocked   (permission-debug.db/blocked-tables-in-database user-id database-id
                                                                     {:perms/view-data :blocked}
-                                                                    {:perms/view-data :legacy-no-self-service})]
-      (into (set (map :table_id blocked))
-            (map :table_id)
-            (permission-debug.db/sandboxes group-ids (permission-debug.db/table-ids-of-database database-id))))
+                                                                    {:perms/view-data :legacy-no-self-service})
+          kept-from (into (set (map :table_id blocked))
+                          (map :table_id)
+                          (permission-debug.db/sandboxes group-ids (permission-debug.db/table-ids-of-database database-id)))]
+      (cond-> kept-from
+        sql? (into (permission-debug.db/active-table-ids-of-database database-id))))
     table-ids))
 
 (defn- table-segments
@@ -284,7 +305,8 @@
          blocked-by-group (check-table-permissions user-id tables
                                                    {:perms/view-data :blocked}
                                                    {:perms/view-data :legacy-no-self-service})
-         reasons          (permission-debug.reasons/table-reasons user-id (reason-table-ids user-id tables))]
+         reasons          (assoc (permission-debug.reasons/table-reasons user-id (reason-table-ids user-id tables))
+                                 :sql-cards (sql-cards [tables]))]
      (with-outcome
        {:decision    (if (seq blocked-by-group) "denied" "allow")
         :segment     (table-segments reasons)
@@ -356,8 +378,9 @@
                                cards-tables)
          blocked-by-group (apply merge-with set/union {} blocked-per-card)
          blocked-cards    (count (filter seq blocked-per-card))
-         reasons          (permission-debug.reasons/table-reasons
-                           user-id (into #{} (mapcat #(reason-table-ids user-id %)) cards-tables))
+         reasons          (assoc (permission-debug.reasons/table-reasons
+                                  user-id (into #{} (mapcat #(reason-table-ids user-id %)) cards-tables))
+                                 :sql-cards (sql-cards cards-tables))
          decision         (cond
                             (zero? blocked-cards)                    "allow"
                             (= blocked-cards (count cards))          "denied"

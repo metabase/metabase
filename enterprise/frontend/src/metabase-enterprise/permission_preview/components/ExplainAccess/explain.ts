@@ -267,6 +267,22 @@ export function sortTablesByStatus(
 }
 
 /**
+ * The SQL cards the SQL warning is about: those in a database where one of the
+ * person's groups has a row and column security rule, enforced or not.
+ */
+export function getSqlCardsToWarnAbout({
+  tables = [],
+  "sql-cards": sqlCards = [],
+}: PermissionDebugReasons) {
+  const databaseIdsWithRules = new Set(
+    tables
+      .filter((table) => table.sandboxes.length > 0)
+      .map((table) => table["db-id"]),
+  );
+  return sqlCards.filter((card) => databaseIdsWithRules.has(card["db-id"]));
+}
+
+/**
  * What keeps a table from loading, in the paragraphs the reason view and the
  * rule lists show: each with its fix. Empty when nothing is wrong with it.
  */

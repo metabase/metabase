@@ -4,6 +4,7 @@ import type {
   PermissionDebugCollection,
   PermissionDebugGroupValue,
   PermissionDebugSandbox,
+  PermissionDebugSqlCard,
   PermissionDebugTable,
   PermissionDebugTablePermission,
 } from "metabase-types/api";
@@ -80,6 +81,12 @@ export function createTable(
     sandboxes: [],
     ...opts,
   };
+}
+
+export function createSqlCard(
+  opts: Partial<PermissionDebugSqlCard> = {},
+): PermissionDebugSqlCard {
+  return { "card-id": 12, name: "Orders in SQL", "db-id": 1, ...opts };
 }
 
 export function createCollection(

@@ -7,6 +7,7 @@ import type {
   PermissionDebugDecision,
   PermissionDebugImpersonation,
   PermissionDebugReasons,
+  PermissionDebugSqlCard,
   PermissionDebugTable,
 } from "metabase-types/api";
 
@@ -34,6 +35,7 @@ import {
   getItemNoun,
   getRouteSentence,
   getSourceText,
+  getSqlCardsToWarnAbout,
   getSubject,
   getTableProblemNotes,
   getTableStatusDisplay,
@@ -87,6 +89,7 @@ export function ExplainAccessBody({
       {query && reasons && tables.length > 0 && (
         <DataCard
           item={item}
+          isDashboard={itemType === "dashboard"}
           tables={tables}
           reasons={reasons}
           target={target}
@@ -179,21 +182,33 @@ function capitalizePlural(item: string) {
 
 interface DataCardProps {
   item: string;
+  isDashboard: boolean;
   tables: PermissionDebugTable[];
   reasons: PermissionDebugReasons;
   target: PreviewTarget;
   onOpen: (tableId: number) => void;
 }
 
-function DataCard({ item, tables, reasons, target, onOpen }: DataCardProps) {
+function DataCard({
+  item,
+  isDashboard,
+  tables,
+  reasons,
+  target,
+  onOpen,
+}: DataCardProps) {
   const rows = sortTablesByStatus(tables, reasons);
   const ofStatus = (...statuses: TableStatus[]) =>
     rows.filter(({ status }) => statuses.includes(status));
   const blocked = ofStatus("blocked");
   const opening = ofStatus("cant-load", "filtered");
   const viewable = ofStatus("can-view");
+  const sqlCards = getSqlCardsToWarnAbout(reasons);
   const hasToggleRow =
-    opening.length > 0 || blocked.length > 1 || viewable.length > 1;
+    opening.length > 0 ||
+    blocked.length > 1 ||
+    viewable.length > 1 ||
+    (isDashboard && sqlCards.length > 1);
 
   return (
     <SheetCard
@@ -234,6 +249,16 @@ function DataCard({ item, tables, reasons, target, onOpen }: DataCardProps) {
         reasons={reasons}
         target={target}
       />
+      {sqlCards.length > 0 && (
+        <>
+          {isDashboard && (
+            <SqlCardRows cards={sqlCards} hasChevronSlot={hasToggleRow} />
+          )}
+          <BodyText c="text-secondary" py="sm">
+            {t`Row and column security never applies to SQL questions.`}
+          </BodyText>
+        </>
+      )}
     </SheetCard>
   );
 }
@@ -276,6 +301,30 @@ function TableRows({ rows, hasChevronSlot, onOpen }: TableRowsProps) {
       status={<FoldStatus label={label} />}
     >
       {items}
+    </ToggleRow>
+  );
+}
+
+interface SqlCardRowsProps {
+  cards: PermissionDebugSqlCard[];
+  hasChevronSlot: boolean;
+}
+
+/** A dashboard's SQL cards: two or more fold into a row; one stays its own row. */
+function SqlCardRows({ cards, hasChevronSlot }: SqlCardRowsProps) {
+  const status = <FoldStatus label={t`Not filtered`} />;
+  if (cards.length === 1) {
+    return (
+      <Row name={cards[0].name} hasChevronSlot={hasChevronSlot}>
+        {status}
+      </Row>
+    );
+  }
+  return (
+    <ToggleRow name={t`${cards.length} SQL cards`} status={status}>
+      {cards.map((card) => (
+        <Row key={card["card-id"]} name={card.name} />
+      ))}
     </ToggleRow>
   );
 }
