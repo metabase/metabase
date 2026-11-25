@@ -2,6 +2,7 @@
   "Code for creating the connection pool for the application DB and setting it as the default Toucan connection."
   (:require
    [java-time.api :as t]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.util.connection :as u.connection]
@@ -49,8 +50,14 @@
     (with-open [stmt (.createStatement connection)]
       (.execute stmt "DISCARD ALL;"))))
 
-(defn- on-check-out [_connection]
-  (reset! latest-activity (t/offset-date-time)))
+(defn- on-check-out
+  "Points a Postgres `connection`, which check-in leaves seeing every row of `public`, at the worktree schema and the
+  worktree of the thread checking it out."
+  [^java.sql.Connection connection]
+  (reset! latest-activity (t/offset-date-time))
+  (when-let [sql (and (postgres-connection? connection) (mdb.worktree/checkout-sql))]
+    (with-open [stmt (.createStatement connection)]
+      (.execute stmt sql))))
 
 (defn- on-destroy [_connection]
   ;; no-op

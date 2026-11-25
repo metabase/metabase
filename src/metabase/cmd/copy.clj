@@ -246,14 +246,10 @@
                (select-fragment)))
       {:quoted false}))))
 
-(def ^:private main-app-worktree-id
-  "The `worktree_id` of the main app's rows, the only ones the copy takes."
-  1)
-
 (defn- main-app-row
   "`row` without its `worktree_id`, which only a Postgres app DB has, or nil when it belongs to a remote sync worktree."
   [row]
-  (when (contains? #{nil main-app-worktree-id} (:worktree_id row))
+  (when (contains? #{nil mdb/default-worktree-id} (:worktree_id row))
     (dissoc row :worktree_id)))
 
 (defn- model-results-xform [model]
@@ -480,7 +476,8 @@
      )")
 
 (mu/defn copy!
-  "Copy data from a source application database into an empty destination application database."
+  "Copy the rows of the main app from a source application database into an empty destination application database,
+  leaving out the remote sync worktrees and the rows that belong to them."
   [source-db-type     :- [:enum :h2 :postgres :mysql]
    source-data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    target-db-type     :- [:enum :h2 :postgres :mysql]

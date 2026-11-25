@@ -37,11 +37,11 @@
    :last-update-check (AtomicLong. 0)
    :restore-lock      (ReentrantLock.)})
 
-;; Each application DB has its own cache, with its own update-check clock and restore lock, so a test that binds
-;; another app DB gets fresh state, and so does a bump from [[mdb/increment-app-db-unique-indentifier!]].
-;; Keyed on the app DB's id, like every other per-app-DB cache, and never evicted.
 (def ^:private ^{:arglists '([])} per-app-db
-  (mdb/memoize-for-application-db new-state))
+  "The settings cache state of the application DB this thread sees: its own cache, update-check clock and restore lock,
+  fresh for a test that binds another app DB and after [[mdb/increment-app-db-unique-indentifier!]], shared by every
+  remote sync worktree, which share the settings, and never evicted."
+  (mdb/memoize-across-worktrees new-state))
 
 (defn current-state
   "The settings cache state for the application DB this thread sees.

@@ -341,7 +341,8 @@
    (u/profile (trs "Database setup")
      (u/with-us-locale
        (binding [config/*disable-setting-cache* true
-                 custom-migrations/*create-sample-content* create-sample-content?]
+                 custom-migrations/*create-sample-content* create-sample-content?
+                 mdb.worktree/*scope* {:type :all}]
          (mdb.connection/with-application-db
            (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
            ;; Migrations ask whether this is MariaDB while Liquibase holds a connection. Answering now spares them a

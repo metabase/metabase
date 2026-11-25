@@ -111,8 +111,9 @@
   [_]
   (when (= :postgres (mdb/db-type)) ; mysql/h2 don't have partitions
     (let [retention-days (settings/audit-max-retention-days)]
-      (with-open [conn (.getConnection (mdb/data-source))]
-        (manage-partitions conn (t/local-date) retention-days)))))
+      (mdb/with-worktree-scope {:type :all}
+        (with-open [conn (.getConnection (mdb/data-source))]
+          (manage-partitions conn (t/local-date) retention-days))))))
 
 (defmethod task/init! ::ManagePartitions [_]
   (let [job-key (jobs/key "metabase.app-db.partitions.job")

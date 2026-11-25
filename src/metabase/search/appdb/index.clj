@@ -156,7 +156,8 @@
 (defn- drop-table! [table]
   (boolean
    (when table
-     (search.db/drop-search-index-table-if-exists! (keyword (table-name table))))))
+     (mdb/with-worktree-scope {:type :all}
+       (search.db/drop-search-index-table-if-exists! (keyword (table-name table)))))))
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
@@ -214,8 +215,9 @@
   [table-name]
   ;; Create with a separate transaction so that postgresql will complete the index creations before returning,
   ;; even when already running in a transaction
-  (t2/with-transaction [_ (mdb/app-db)]
-    (search.db/create-search-index-table! table-name)))
+  (mdb/with-worktree-scope {:type :all}
+    (t2/with-transaction [_ (mdb/app-db)]
+      (search.db/create-search-index-table! table-name))))
 
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."

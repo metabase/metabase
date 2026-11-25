@@ -52,6 +52,7 @@
   mariadb?
   quartz-data-source
   quoting-style
+  application-db-identifier
   unique-identifier
   transaction-state
   with-unshared-connection]
@@ -61,6 +62,18 @@
   broken-out-details->DataSource]
  [mdb.env
   db-file]
+ [mdb.worktree
+  create-worktree-schema!
+  current-worktree-scope
+  default-worktree-id
+  do-in-each-worktree
+  do-with-worktree-scope
+  drop-worktree-schema!
+  recreate-worktree-views!
+  with-worktree-scope
+  worktree-id
+  worktree-schema-exists?
+  worktree-scope]
  [mdb.jdbc-protocols
   clob->str]
  [mdb.encryption
@@ -111,12 +124,7 @@
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
  [liquibase
-  changelog-by-id]
- [mdb.worktree
-  create-worktree-schema!
-  drop-worktree-schema!
-  recreate-worktree-views!
-  worktree-schema-exists?])
+  changelog-by-id])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
 ;; the application DB (or its data source)
@@ -198,16 +206,27 @@
     :done
     (mdb.setup/release-migration-locks! (data-source) timeout-seconds)))
 
+(defn- memoize-keyed-by
+  "[[clojure.core.memoize/memo]] of `f`, keyed by its arguments and the value of `key-fn` when called."
+  [key-fn f]
+  (memoize/memo
+   (vary-meta
+    (fn [& args] (apply f args))
+    assoc ::memoize/args-fn (fn [args] (cons (key-fn) args)))))
+
 (defn memoize-for-application-db
   "Like [[clojure.core/memoize]], but only memoizes for the current application database; memoized values will be
   ignored if the app DB is dynamically rebound. For TTL memoization with [[clojure.core.memoize]], set
   `:clojure.core.memoize/args-fn` instead; see [[metabase.driver.util/database->driver*]] for an example of how to do
   this."
   [f]
-  (memoize/memo
-   (vary-meta
-    (fn [& args] (apply f args))
-    assoc ::memoize/args-fn (fn [args] (cons (unique-identifier) args)))))
+  (memoize-keyed-by unique-identifier f))
+
+(defn memoize-across-worktrees
+  "Like [[memoize-for-application-db]], but one memoized value for every remote sync worktree, for what they share,
+  such as settings."
+  [f]
+  (memoize-keyed-by application-db-identifier f))
 
 (defn increment-app-db-unique-indentifier!
   "Increment the [[unique-identifier]] of the application DB this thread sees.
