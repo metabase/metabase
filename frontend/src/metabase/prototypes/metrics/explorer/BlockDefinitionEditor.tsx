@@ -8,7 +8,6 @@ import {
   Group,
   Menu,
   Popover,
-  ScrollArea,
   Stack,
   Text,
   TextInput,
@@ -20,7 +19,14 @@ import { MEASURES, formatNumber } from "../data";
 import { METRICS, seriesOf } from "../tree/MetricTreePrototype";
 
 import S from "./BlockDefinitionEditor.module.css";
-import type { BarItem } from "./TokenBar";
+import ES from "./Explorer.module.css";
+import {
+  type BarItem,
+  DRAFT_PREFIX,
+  DROPDOWN_WIDTH,
+  SuggestionList,
+  useSuggestionList,
+} from "./TokenBar";
 import {
   type FormulaToken,
   type MetricDraft,
@@ -189,6 +195,7 @@ function Block({
     <Stack gap={0} className={cx(S.block, { [S.error]: isError })}>
       <Group gap={2} wrap="nowrap" className={S.blockActions}>
         <ItemPicker
+          title="Filter by"
           items={(query) => getFilterItems(query, filters)}
           onPick={(item) => onFiltersChange([...filters, item.id])}
         >
@@ -256,6 +263,8 @@ function Block({
           <FixedSizeIcon name="filter" size={14} c="text-filter" />
           <ItemPicker
             grow
+            title="Filter by"
+            initialQuery={filter}
             items={(query) =>
               getFilterItems(
                 query,
@@ -326,39 +335,55 @@ function OperatorButton({
   );
 }
 
-/** A searchable list in a popover, grouped by each item's section. */
+/**
+ * A search box over the expression bar's suggestion list, in a popover. Like
+ * the bar, a filter's column or operator fills the search instead of picking,
+ * so the next step (operator, then value) shows up in the same list.
+ */
 function ItemPicker({
   items,
   onPick,
   children,
   grow = false,
   className,
+  initialQuery = "",
+  title,
 }: {
   grow?: boolean;
   className?: string;
+  initialQuery?: string;
+  title?: string;
   items: (query: string) => BarItem[];
   onPick: (item: BarItem) => void;
   children: ReactNode;
 }) {
   const [opened, setOpened] = useState(false);
-  const [query, setQuery] = useState("");
-  const list = opened ? items(query).filter((item) => !item.disabled) : [];
+  const [query, setQuery] = useState(initialQuery);
+  const list = opened ? items(query) : [];
+  const nav = useSuggestionList(list, query);
+  const toggle = (next: boolean) => {
+    setOpened(next);
+    setQuery(initialQuery);
+  };
   const pick = (item: BarItem) => {
+    if (item.id.startsWith(DRAFT_PREFIX)) {
+      setQuery(item.id.slice(DRAFT_PREFIX.length));
+      return;
+    }
     onPick(item);
-    setOpened(false);
-    setQuery("");
+    toggle(false);
   };
 
   return (
     <Popover
       opened={opened}
-      onChange={setOpened}
+      onChange={toggle}
       position="bottom-start"
       shadow="md"
     >
       <Popover.Target>
         <Box
-          onClick={() => setOpened((o) => !o)}
+          onClick={() => toggle(!opened)}
           className={className}
           display="flex"
           miw={0}
@@ -367,47 +392,28 @@ function ItemPicker({
           {children}
         </Box>
       </Popover.Target>
-      <Popover.Dropdown p="xs" w="18rem">
-        <TextInput
-          autoFocus
-          placeholder="Search"
-          value={query}
-          onChange={(event) => setQuery(event.currentTarget.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && list[0]) {
-              pick(list[0]);
-            }
-          }}
-          mb="xs"
+      <Popover.Dropdown p={0} w={DROPDOWN_WIDTH} className={ES.dropdown}>
+        <Box p="xs" pb={0}>
+          <TextInput
+            autoFocus
+            placeholder="Search"
+            value={query}
+            onChange={(event) => setQuery(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (!nav.handleKeyDown(event, pick) && event.key === "Escape") {
+                toggle(false);
+              }
+            }}
+          />
+        </Box>
+        <SuggestionList
+          items={list}
+          highlight={nav.highlight}
+          isSearching={query.trim() !== ""}
+          onHover={nav.setHighlight}
+          onPick={pick}
+          title={title}
         />
-        <ScrollArea.Autosize mah="18rem">
-          {list.length === 0 && (
-            <Text fz="sm" c="text-secondary" p="sm">
-              Nothing found
-            </Text>
-          )}
-          {list.map((item, i) => (
-            <Box key={item.id}>
-              {item.section && item.section !== list[i - 1]?.section && (
-                <Text fz="xs" fw={700} c="text-secondary" px="sm" pt="sm">
-                  {item.section}
-                </Text>
-              )}
-              <UnstyledButton className={S.option} onClick={() => pick(item)}>
-                {item.icon && (
-                  <FixedSizeIcon
-                    name={item.icon}
-                    size={14}
-                    c="text-secondary"
-                  />
-                )}
-                <Text fz="sm" c="inherit" truncate>
-                  {item.label}
-                </Text>
-              </UnstyledButton>
-            </Box>
-          ))}
-        </ScrollArea.Autosize>
       </Popover.Dropdown>
     </Popover>
   );

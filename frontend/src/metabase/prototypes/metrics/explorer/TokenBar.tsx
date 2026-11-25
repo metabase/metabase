@@ -15,7 +15,7 @@ import type { IconName } from "metabase-types/api";
 
 import S from "./Explorer.module.css";
 
-const DROPDOWN_WIDTH = 360;
+export const DROPDOWN_WIDTH = 360;
 
 /**
  * How far right of the popover's target its anchor starts, so the popover
@@ -449,7 +449,7 @@ function Gap({ order, onClick }: { order: number; onClick: () => void }) {
  * The highlighted option: the first one while the user types, none before,
  * so Enter and Tab pick what was typed and arrows pick from the full list.
  */
-function useSuggestionList(items: BarItem[], query: string) {
+export function useSuggestionList(items: BarItem[], query: string) {
   const isSearching = query.trim() !== "";
   const firstEnabled = items.findIndex((item) => !item.disabled);
   const [state, setState] = useState({ query, highlight: -1 });
@@ -486,7 +486,7 @@ function useSuggestionList(items: BarItem[], query: string) {
   return { highlight, setHighlight, handleKeyDown };
 }
 
-function SuggestionList({
+export function SuggestionList({
   items,
   highlight,
   isSearching,
