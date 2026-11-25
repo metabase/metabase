@@ -892,6 +892,66 @@
   page, then adaptive sizing) by default, but override for testing."
   nil)
 
+;;; ------------------------------------------------ Random sample -----------------------------------------------
+
+(def ^:private sample-run-count
+  "How many runs of rows a random sample reads, each from a random row of its own part of the table."
+  20)
+
+(defn- run-starts
+  "The first row of each of `run-count` runs of `run-rows` rows in a table of `row-count` rows: one random row in each
+  of `run-count` equal parts, so that the runs do not overlap."
+  [row-count run-count run-rows rand-long]
+  (let [part (quot row-count run-count)]
+    (perf/mapv (fn [i]
+                 (+ (* i part) (rand-long (max 1 (- part run-rows)))))
+               (range run-count))))
+
+(defn- list-run
+  "The rows of one `tabledata.list` read of `run-rows` rows from row `start`."
+  [^Table bq-table ^long start ^long run-rows]
+  (let [opts [(BigQuery$TableDataListOption/startIndex start)
+              (BigQuery$TableDataListOption/pageSize run-rows)]]
+    (take run-rows (.getValues ^TableResult (.list bq-table (u/varargs BigQuery$TableDataListOption opts))))))
+
+(defn- random-runs-sample
+  "Reduce with `rff` about `rows` rows of `fields` of `bq-table`, which has `row-count` rows, read in
+  [[sample-run-count]] runs at random rows with the free `tabledata.list` API, and return the sample map of
+  [[driver/table-random-sample]]."
+  [^Table bq-table fields rff rows row-count]
+  (let [^Schema schema (.. bq-table getDefinition getSchema)
+        field-idxs     (perf/mapv :database_position fields)
+        parsers        (perf/mapv (get-field-parsers schema) field-idxs)
+        run-rows       (max 1 (quot rows sample-run-count))
+        starts         (run-starts row-count sample-run-count run-rows #(long (rand %)))]
+    {:method   :block
+     :runs     sample-run-count
+     :fraction (double (/ (* sample-run-count run-rows) row-count))
+     :result   (transduce (comp (mapcat #(list-run bq-table % run-rows))
+                                (map (partial extract-fingerprint field-idxs parsers)))
+                          (rff {:cols fields})
+                          starts)}))
+
+;; Only BigQuery itself reads a sample this way; a driver that derives from it keeps its own `table-rows-sample`.
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :table-random-sample]
+  [driver _feature _database]
+  (= driver :bigquery-cloud-sdk))
+
+(defmethod driver/table-random-sample :bigquery-cloud-sdk
+  [driver {table-name :name, dataset-id :schema :as table} fields rff {:keys [rows] :as opts}]
+  (let [database  (driver.u/lib-database (:db_id table))
+        bq-table  (get-table database dataset-id table-name)
+        ;; rows in the streaming buffer are not in this count, and are not read by the runs
+        row-count (some-> (.getNumRows bq-table) long)]
+    (if (and (= TableDefinition$Type/TABLE (.. bq-table getDefinition getType))
+             (not (ingestion-time-partitioned-table? (:id table)))
+             row-count
+             (> row-count (* 2 rows)))
+      (random-runs-sample bq-table fields rff rows row-count)
+      ;; views, tables partitioned by ingestion time, and small tables keep today's sample
+      {:method :first-rows
+       :result (driver/table-rows-sample driver table fields rff (perf/select-keys opts [:truncation-size]))})))
+
 (def ^:private max-sql-query-length-chars
   "BigQuery's maximum standard SQL query length, in characters — counting comments and whitespace exactly as
   BigQuery does. BigQuery rejects jobs above this with a raw 400 `INVALID_ARGUMENT` ('The query is too large ...').

@@ -1925,3 +1925,26 @@
   (testing "a SQL-injection payload in a clustering column is backtick-escaped, so it can only ever be an identifier"
     (is (= "CLUSTER BY `c\\`; DROP TABLE x; --`"
            (#'bigquery/clustering-clause [{:kind :clustering :columns [{:name "c`; DROP TABLE x; --"}]}])))))
+
+(deftest ^:parallel run-starts-test
+  (testing "one run starts in each equal part of the table, and the runs do not overlap"
+    (is (= [0 100 200 300] (#'bigquery/run-starts 400 4 10 (constantly 0))))
+    (is (= [89 189 289 389] (#'bigquery/run-starts 400 4 10 dec)))))
+
+(deftest ^:synchronized table-random-sample-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "the driver supports the better sample for itself"
+      (is (true? (driver/database-supports? :bigquery-cloud-sdk :table-random-sample (mt/db)))))
+    (let [table  (t2/select-one :model/Table :id (mt/id :checkins))
+          fields (t2/select :model/Field :table_id (:id table) :active true {:order-by [[:database_position :asc]]})
+          sample #(driver/table-random-sample :bigquery-cloud-sdk table fields (constantly conj)
+                                              {:rows % :truncation-size 1234})]
+      (testing "a table with many more rows than the sample is read in runs at random rows"
+        (let [{:keys [method runs fraction result]} (sample 40)]
+          (is (= :block method))
+          (is (= 20 runs))
+          (is (< 0 fraction 1))
+          (is (= 40 (count result)))
+          (is (every? #(= (count fields) (count %)) result))))
+      (testing "a table with not many more rows than the sample reads its first rows"
+        (is (= :first-rows (:method (sample 10000))))))))
