@@ -151,24 +151,23 @@
                                                        :table_role         nil
                                                        :history_definition nil}}}
           parsed-fragment   (update-vals (lib.js.metadata/parse-objects :table metadata-fragment) deref)]
-      (is (=? {:table-role         :role/HistoryDimension
-               :grain              "user version"
-               :grain-description  "One row for each version of a user"
-               :period-granularity :day
-               :mutability         :versioned
-               :load-strategy      :merge
-               :scd-type           2
-               :history-definition {:durable-key 12, :valid-from 15, :version nil}
-               :eav-definition     {:entity-key 31, :definition-table 9}}
-              (get parsed-fragment 1)))
-      (is (=? {:table-role nil, :history-definition nil}
-              (get parsed-fragment 2))))))
+      (is (=? {1 {:table-role         :role/HistoryDimension
+                  :grain              "user version"
+                  :grain-description  "One row for each version of a user"
+                  :period-granularity :day
+                  :mutability         :versioned
+                  :load-strategy      :merge
+                  :scd-type           2
+                  :history-definition {:durable-key 12, :valid-from 15, :version nil}
+                  :eav-definition     {:entity-key 31, :definition-table 9}}
+               2 {:table-role nil, :history-definition nil}}
+              parsed-fragment)))))
 
 (deftest ^:parallel parse-field-facets-test
   (testing "a field's facets are keywordized"
     (let [metadata-fragment #js {:fields #js {"1" #js {:id 1, :facets #js ["type/SurrogateKey" "type/SoftDeleteFlag"]}
                                               "2" #js {:id 2, :facets nil}}}
           parsed-fragment   (update-vals (lib.js.metadata/parse-objects :field metadata-fragment) deref)]
-      (is (= [:type/SurrogateKey :type/SoftDeleteFlag]
-             (:facets (get parsed-fragment 1))))
-      (is (nil? (:facets (get parsed-fragment 2)))))))
+      (is (=? {1 {:facets [:type/SurrogateKey :type/SoftDeleteFlag]}
+               2 {:facets nil}}
+              parsed-fragment)))))

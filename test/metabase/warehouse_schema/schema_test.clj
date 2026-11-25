@@ -1,10 +1,10 @@
 (ns metabase.warehouse-schema.schema-test
   (:require
    [clojure.test :refer :all]
-   [malli.core :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
 
@@ -90,16 +90,14 @@
     (is (not (mr/validate ::warehouse-schema.schema/eav-definition {:entity_key 31, :value 32})))
     (is (not (mr/validate ::warehouse-schema.schema/eav-definition {:definition_table -9})))))
 
-(defn- map-schema-keys [schema]
-  (into #{} (map first) (mc/children (mc/deref-all (mr/resolve-schema schema)))))
-
 (deftest ^:parallel definition-keys-match-lib-metadata-test
   (testing "each definition has the keys of its Lib metadata counterpart, which are kebab-case"
-    (doseq [[schema lib-schema] {::warehouse-schema.schema/history-definition ::lib.schema.metadata/table.history-definition
-                                 ::warehouse-schema.schema/eav-definition     ::lib.schema.metadata/table.eav-definition}]
+    (doseq [[schema lib-schema]
+            {::warehouse-schema.schema/history-definition ::lib.schema.metadata/table.history-definition
+             ::warehouse-schema.schema/eav-definition     ::lib.schema.metadata/table.eav-definition}]
       (testing schema
-        (is (= (map-schema-keys lib-schema)
-               (into #{} (map lib.schema.common/memoized-kebab-key) (map-schema-keys schema))))))))
+        (is (= (mu/map-schema-keys lib-schema)
+               (into #{} (map lib.schema.common/memoized-kebab-key) (mu/map-schema-keys schema))))))))
 
 (deftest ^:parallel facets-schema-test
   (is (mr/validate ::warehouse-schema.schema/facets

@@ -234,9 +234,8 @@
   (is (mr/validate ::lib.schema.metadata/table table-with-structural-metadata))
   (is (mr/validate ::lib.schema.metadata/table
                    (merge table-with-structural-metadata
-                          (zipmap [:table-role :grain :grain-description :period-granularity :mutability :load-strategy
-                                   :scd-type :history-definition :eav-definition]
-                                  (repeat nil)))))
+                          (update-vals (dissoc table-with-structural-metadata :lib/type :id :name)
+                                       (constantly nil)))))
   (doseq [[k bad] [[:table-role :role/NotARole]
                    [:table-role :entity/UserTable]
                    [:period-granularity :fortnight]

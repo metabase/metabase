@@ -323,7 +323,8 @@
           (is (= expected (select-keys table table-structural-metadata-keys)))
           (is (not (me/humanize (mr/explain ::lib.schema.metadata/table table))))))
       (testing "instance->metadata converts a Table instance the same way"
-        (let [table (lib.metadata.jvm/instance->metadata (t2/select-one :model/Table :id (:id history)) :metadata/table)]
+        (let [instance (t2/select-one :model/Table :id (:id history))
+              table    (lib.metadata.jvm/instance->metadata instance :metadata/table)]
           (is (= expected (select-keys table table-structural-metadata-keys)))
           (is (not (me/humanize (mr/explain ::lib.schema.metadata/table table))))))
       (testing "a Table without structural metadata carries nil"

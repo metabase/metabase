@@ -140,7 +140,8 @@
 
 (deftest structural-metadata-in-result-metadata-test
   (testing "a Field's structural metadata reaches query results through the Lib column metadata"
-    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:is_grain true :attribute_scd_type 1 :facets [:type/NaturalKey]}
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name)
+                             {:is_grain true :attribute_scd_type 1 :facets [:type/NaturalKey]}
       (let [query (mt/mbql-query venues {:fields [$id $name]})]
         (mt/with-temp [:model/Card card {:dataset_query query}]
           (let [result (qp/process-query
