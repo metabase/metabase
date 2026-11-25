@@ -357,11 +357,10 @@
         {:status   "ok"
          :from     from
          :base_sql (ast/sql (count-select from-node []) dialect)
-         :steps    (into []
-                         (map-indexed
-                          (fn [i source]
-                            (assoc source :sql (ast/sql (step-query from-node joins i (:strategy source) dialect)
-                                                        dialect))))
+         :steps    (mapv (fn [i source]
+                           (assoc source :sql (-> (step-query from-node joins i (:strategy source) dialect)
+                                                  (ast/sql dialect))))
+                         (range)
                          sources)}))))
 
 (defn join-steps

@@ -4,6 +4,7 @@
   [[metabase.sql-parsing.core/parser]], and the shared pipeline in [[metabase.sql-tools.common]] dispatches its
   nested calls with that same backend."
   (:require
+   [medley.core :as m]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -100,15 +101,16 @@
                         (sql-parsing/join-steps parser nil sql)
                         (throw e))))
         normalize #(sql-tools.common/normalize-name driver %)
-        describe  (fn [{:keys [source table alias sql]}]
-                    (cond-> {:source (keyword source)
-                             :table  (some-> (last table) normalize)
-                             :alias  (normalize alias)}
-                      sql (assoc :sql sql)))
+        describe  (fn [{:keys [source table alias]}]
+                    {:source (keyword source)
+                     :table  (some-> (last table) normalize)
+                     :alias  (normalize alias)})
+        ;; A refusal describes its sources without SQL, so `:sql` is set only when there is some.
         sources   (when (:from result)
-                    {:from  (cond-> (describe (:from result))
-                              (:base_sql result) (assoc :sql (:base_sql result)))
-                     :steps (mapv #(assoc (describe %) :strategy (join-strategies (:strategy %)))
+                    {:from  (m/assoc-some (describe (:from result)) :sql (:base_sql result))
+                     :steps (mapv (fn [step]
+                                    (m/assoc-some (assoc (describe step) :strategy (join-strategies (:strategy step)))
+                                                  :sql (:sql step)))
                                   (:steps result))})]
     (cond-> sources
       (not= "ok" (:status result)) (assoc :unsupported (keyword (:reason result))))))

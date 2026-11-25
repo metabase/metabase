@@ -699,8 +699,8 @@ def join_steps(sql: str, dialect: str = None) -> str:
     Otherwise it is `{"status": "unsupported", "reason": ...}`, with one of these reasons: `unparseable`,
     `set-operation`, `not-a-select`, `no-from`, `comma-join`, `unsupported-join`, `unsupported-source`, `nested-join`,
     `parameters` and `non-table-source`.
-    A query refused as `non-table-source`, because a source is a CTE or a derived table, or for a reason found after
-    its sources were read, still has its `from` and `steps`, without SQL.
+    A query refused after its sources are read still has its `from` and `steps`, without SQL.
+    One such reason is `non-table-source`, for a source that is a CTE or a derived table.
     Of several statements, only the first is read.
 
     Examples:

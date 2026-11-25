@@ -642,8 +642,8 @@
    For an outer join the step query returns a second count in the same row, of the rows where that join found a match.
 
    Anything else is `{:status \"unsupported\", :reason <reason>}`, with a reason from `join_steps` in `sql_tools.py`.
-   A query refused once its sources are read, as `\"non-table-source\"` when a source is a CTE or a derived table, still
-   has its `:from` and `:steps`, without SQL.
+   A query refused after its sources are read still has its `:from` and `:steps`, without SQL.
+   One such reason is `\"non-table-source\"`, for a source that is a CTE or a derived table.
    A generated query that is not read-only is refused as `\"not-read-only\"`.
    SQL with a literal list too large to parse safely is read without it, and refused as `\"large-literal-list\"` if
    the list is in a clause the queries keep."

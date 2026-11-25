@@ -91,7 +91,7 @@
 
 (deftest analyze-native-query-mixed-simple-and-cte-joins-test
   (mt/test-drivers (join-steps-drivers)
-    (testing "mix of simple table join and CTE join: only simple table has source-table, and neither a step query"
+    (testing "a table join and a CTE join: only the table join has a source-table, and neither has a step query"
       (let [query     (lib/native-query
                        (mt/metadata-provider)
                        (str "WITH cte AS (SELECT * FROM " (qt :reviews) ") "
