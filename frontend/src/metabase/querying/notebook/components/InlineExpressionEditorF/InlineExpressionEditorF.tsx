@@ -137,6 +137,8 @@ export function InlineExpressionEditorF({
   const [prompt, setPrompt] = useState("");
   const [lastRunPrompt, setLastRunPrompt] = useState<string>();
   const [isGenerating, setIsGenerating] = useState(false);
+  // "Fix with AI" in the code's error is working: the same loader and Stop.
+  const [isFixing, setIsFixing] = useState(false);
   const [aiError, setAiError] = useState<string>();
 
   const [error, setError] = useState<ExpressionError | null>(null);
@@ -267,7 +269,7 @@ export function InlineExpressionEditorF({
     // Chinese, Korean…) while they're composed.
     const isComposing =
       event.nativeEvent.isComposing || isComposingInCode(event.target);
-    if (!isSaveKey || isComposing || readOnly) {
+    if (!isSaveKey || isComposing || readOnly || isFixing) {
       return;
     }
     event.preventDefault();
@@ -348,7 +350,7 @@ export function InlineExpressionEditorF({
     mode,
     prompt,
     lastRunPrompt,
-    isGenerating,
+    isGenerating: isGenerating || isFixing,
     hasCode,
     hasCodeToRun,
   });
@@ -393,6 +395,7 @@ export function InlineExpressionEditorF({
             }
             aiError={mode === "ai" && !isGenerating ? aiError : undefined}
             onExitCode={canUseAi ? enterAi : undefined}
+            onFixingChange={setIsFixing}
             expressionMode={expressionMode}
             clause={clause}
             initialClause={clause}
@@ -420,7 +423,7 @@ export function InlineExpressionEditorF({
               canUseAi ? (
                 <ModeSwitch
                   mode={mode}
-                  disabled={isGenerating}
+                  disabled={isGenerating || isFixing}
                   onChange={(next) =>
                     next === "code" ? enterCode() : enterAi()
                   }

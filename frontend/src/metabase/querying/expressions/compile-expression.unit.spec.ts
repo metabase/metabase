@@ -454,13 +454,13 @@ describe("Specific expressions", () => {
 
   it("should render a custom error message for unresolved fields that used to resolver to a function invocation", () => {
     expect(() => expr("now")).toThrow(
-      `"now" needs parentheses to work. Write now() instead.`,
+      `"now" needs parentheses to work. Write \`now()\` instead.`,
     );
     expect(() => expr("Count")).toThrow(
-      `"Count" needs parentheses to work. Write Count() instead.`,
+      `"Count" needs parentheses to work. Write \`Count()\` instead.`,
     );
     expect(() => expr("CumulativeCount")).toThrow(
-      `"CumulativeCount" needs parentheses to work. Write CumulativeCount() instead.`,
+      `"CumulativeCount" needs parentheses to work. Write \`CumulativeCount()\` instead.`,
     );
   });
 });

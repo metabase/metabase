@@ -14,7 +14,7 @@ export function checkStringQuotes({ tokens }: { tokens: Token[] }) {
     if (typeof value !== "string") {
       error(
         token,
-        t`This text is empty or incomplete. Put the text between double quotes, like "Done".`,
+        t`This text is empty or incomplete. Put the text between double quotes, like \`"Done"\`.`,
       );
     }
 
@@ -23,13 +23,13 @@ export function checkStringQuotes({ tokens }: { tokens: Token[] }) {
       if (quoteString(value, openQuote) !== text) {
         error(
           token,
-          t`This text is missing its closing quote. Add a " at the end, like "Done".`,
+          t`This text is missing its closing quote. Add a \`"\` at the end, like \`"Done"\`.`,
         );
       }
     } else {
       error(
         { pos: token.start, len: 1 },
-        t`This kind of quote can't be used here. Use straight double quotes, like "Done".`,
+        t`This kind of quote can't be used here. Use straight double quotes, like \`"Done"\`.`,
       );
     }
   }

@@ -24,7 +24,7 @@ export function checkExpressionModeSupportsClause(
   const clause = getClauseDefinition(operator);
   if (clause.type === "aggregation" && expressionMode !== "aggregation") {
     return new DiagnosticError(
-      t`${clause.displayName}() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.`,
+      t`\`${clause.displayName}()\` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.`,
       { kind: "unsupported" },
     );
   }

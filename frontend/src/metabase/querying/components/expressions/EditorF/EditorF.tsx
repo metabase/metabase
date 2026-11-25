@@ -43,7 +43,7 @@ import { LayoutMain, LayoutSidebar } from "../Layout";
 
 import { DocsButton } from "./DocsButton";
 import S from "./EditorF.module.css";
-import { Errors } from "./Errors";
+import { ErrorText, Errors } from "./Errors";
 import { ExpressionDiffControls } from "./ExpressionDiffControls";
 import { useSqlHint } from "./SqlHint";
 import { Tooltip } from "./Tooltip";
@@ -137,6 +137,8 @@ export type EditorFProps = {
   aiError?: string;
   /** Called on Backspace in empty code, to go back to the AI prompt. */
   onExitCode?: () => void;
+  /** Called when "Fix with AI" in the error starts and stops working. */
+  onFixingChange?: (isFixing: boolean) => void;
 };
 
 export type GenerateResult =
@@ -217,6 +219,7 @@ export function EditorF(props: EditorFProps) {
     aiInput,
     aiError,
     onExitCode,
+    onFixingChange,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -605,7 +608,7 @@ export function EditorF(props: EditorFProps) {
   const canAssist = !readOnly;
 
   // A hint on SQL in the expression replaces the error.
-  const sqlHint = useSqlHint({
+  const { hint: sqlHint, isFixing } = useSqlHint({
     hasError: showErrors && error != null,
     source,
     query,
@@ -614,8 +617,8 @@ export function EditorF(props: EditorFProps) {
     isEnabled: canAssist,
     generate,
     proposeSource,
-    applySource,
   });
+  useEffect(() => onFixingChange?.(isFixing), [isFixing, onFixingChange]);
 
   // A new list of extensions reconfigures the editor, which drops the fields
   // of an active snippet (CodeMirror adds their state with appendConfig). So
@@ -698,6 +701,7 @@ export function EditorF(props: EditorFProps) {
       <LayoutMain
         className={cx(S.wrapper, {
           [S.formatting]: isFormatting,
+          [S.isFixing]: isFixing,
           [S.withStart]: toolbarStart != null,
         })}
       >
@@ -714,7 +718,7 @@ export function EditorF(props: EditorFProps) {
               data-testid="custom-expression-query-editor"
               className={S.editor}
               extensions={extensions}
-              readOnly={readOnly || isFormatting}
+              readOnly={readOnly || isFormatting || isFixing}
               value={proposedSource ?? source}
               onChange={handleSourceChange}
               onBlur={isProposing ? undefined : onBlur}
@@ -743,7 +747,7 @@ export function EditorF(props: EditorFProps) {
             />
           </div>
           <div className={S.inlineToolbar}>
-            {!isAiMode && !readOnly && (
+            {!isAiMode && !readOnly && !isFixing && (
               <DocsButton
                 isOpen={openSidebar === "functions"}
                 onToggle={() =>
@@ -1050,7 +1054,7 @@ function getTooltipPosition(state: EditorState) {
 function AiErrorBar({ error }: { error?: string }) {
   return error != null ? (
     <div className={S.aiError} role="alert">
-      {error}
+      <ErrorText text={error} />
     </div>
   ) : null;
 }

@@ -37,32 +37,32 @@ describe("diagnostics", () => {
 
     it("should catch mismatched parentheses after function", () => {
       expect(err("FLOOR [Price]/2)")).toBe(
-        "FLOOR is a function, so it needs parentheses after its name, like FLOOR().",
+        "`FLOOR` is a function, so it needs parentheses after its name, like `FLOOR()`.",
       );
       expect(err("LOWER [Vendor]")).toBe(
-        "LOWER is a function, so it needs parentheses after its name, like LOWER().",
+        "`LOWER` is a function, so it needs parentheses after its name, like `LOWER()`.",
       );
     });
 
     it("should catch missing parentheses", () => {
       expect(err("(")).toBe(
-        "A parenthesis was opened but never closed. Add a ) where it should end.",
+        "A parenthesis was opened but never closed. Add a `)` where it should end.",
       );
       expect(err("(()")).toBe(
-        "A parenthesis was opened but never closed. Add a ) where it should end.",
+        "A parenthesis was opened but never closed. Add a `)` where it should end.",
       );
       expect(err("((()")).toBe(
-        "A parenthesis was opened but never closed. Add a ) where it should end.",
+        "A parenthesis was opened but never closed. Add a `)` where it should end.",
       );
 
       expect(err(")")).toBe(
-        "There's a closing parenthesis without a matching opening one. Remove it, or add a ( earlier in the expression.",
+        "There's a closing parenthesis without a matching opening one. Remove it, or add a `(` earlier in the expression.",
       );
       expect(err("())")).toBe(
-        "There's a closing parenthesis without a matching opening one. Remove it, or add a ( earlier in the expression.",
+        "There's a closing parenthesis without a matching opening one. Remove it, or add a `(` earlier in the expression.",
       );
       expect(err("()))")).toBe(
-        "There's a closing parenthesis without a matching opening one. Remove it, or add a ( earlier in the expression.",
+        "There's a closing parenthesis without a matching opening one. Remove it, or add a `(` earlier in the expression.",
       );
     });
 
@@ -74,19 +74,19 @@ describe("diagnostics", () => {
 
     it("should catch unterminated string literals", () => {
       expect(err('[Category] = "widget')).toBe(
-        `This text is missing its closing quote. Add a " at the end, like "Done".`,
+        `This text is missing its closing quote. Add a \`"\` at the end, like \`"Done"\`.`,
       );
     });
 
     it("should catch unterminated field reference", () => {
       expect(err("[Price / 2")).toBe(
-        "This column name is missing its closing bracket. Add a ] at the end, like [Total].",
+        "This column name is missing its closing bracket. Add a `]` at the end, like `[Total]`.",
       );
     });
 
     it("should show the correct number of CASE arguments in a custom expression", () => {
       expect(err("CASE([Total] > 0)")).toBe(
-        `case() needs at least a condition and a result, like case([Total] > 100, "Large").`,
+        `\`case()\` needs at least a condition and a result, like \`case([Total] > 100, "Large")\`.`,
       );
     });
 
@@ -111,19 +111,19 @@ describe("diagnostics", () => {
         for (const [rightToken, errToken] of right) {
           it(`should catch mismatched adjacent tokens in: ${leftToken} ${rightToken}`, () => {
             expect(err(`${leftToken} ${rightToken}`)).toBe(
-              `Something's missing before ${errToken}. Add a comma between values, or a symbol like + or = to connect them.`,
+              `Something's missing before \`${errToken}\`. Add a comma between values, or a symbol like \`+\` or \`=\` to connect them.`,
             );
           });
 
           it(`should catch mismatched adjacent tokens in: concat(${leftToken} ${rightToken})`, () => {
             expect(err(`concat(${leftToken} ${rightToken})`)).toBe(
-              `Something's missing before ${errToken}. Add a comma between values, or a symbol like + or = to connect them.`,
+              `Something's missing before \`${errToken}\`. Add a comma between values, or a symbol like \`+\` or \`=\` to connect them.`,
             );
           });
 
           it(`should catch mismatched adjacent tokens in: 2 * (${leftToken} ${rightToken})`, () => {
             expect(err(`2 * (${leftToken} ${rightToken})`)).toBe(
-              `Something's missing before ${errToken}. Add a comma between values, or a symbol like + or = to connect them.`,
+              `Something's missing before \`${errToken}\`. Add a comma between values, or a symbol like \`+\` or \`=\` to connect them.`,
             );
           });
         }
@@ -132,7 +132,7 @@ describe("diagnostics", () => {
 
     it("should catch unknown functions", () => {
       expect(err("unknown()")).toBe(
-        "There's no function called unknown(). Check the spelling, or start typing to see matching functions.",
+        "There's no function called `unknown()`. Check the spelling, or start typing to see matching functions.",
       );
     });
 
@@ -326,7 +326,7 @@ describe("diagnostics", () => {
       const database = createSampleDatabase({ features: ["left-join"] });
 
       expect(err(`percentile(1, 2)`, "expression", database)).toBe(
-        "This database doesn't support Percentile(). Try a different function.",
+        "This database doesn't support `Percentile()`. Try a different function.",
       );
     });
 
@@ -345,22 +345,22 @@ describe("diagnostics", () => {
 
     it("should reject comparison operator with non-field operand", () => {
       expect(err("1 < 2")).toBe(
-        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like `[Total] > 1`.",
       );
       expect(err("1 <= 2")).toBe(
-        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like `[Total] > 1`.",
       );
       expect(err("1 > 2")).toBe(
-        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like `[Total] > 1`.",
       );
       expect(err("1 >= 2")).toBe(
-        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like `[Total] > 1`.",
       );
       expect(err("1 = 2")).toBe(
-        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like `[Total] > 1`.",
       );
       expect(err("1 != 2")).toBe(
-        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like `[Total] > 1`.",
       );
 
       expect(err("[Tax] < 2")).toBeUndefined();
@@ -379,7 +379,7 @@ describe("diagnostics", () => {
 
     it("should reject a CASE expression with only one argument", () => {
       expect(err("case([Total] > 0)")).toBe(
-        `case() needs at least a condition and a result, like case([Total] > 100, "Large").`,
+        `\`case()\` needs at least a condition and a result, like \`case([Total] > 100, "Large")\`.`,
       );
     });
 
@@ -417,7 +417,7 @@ describe("diagnostics", () => {
         "4E-",
       ])("handles missing exponents for %s", (expression) => {
         expect(err(expression)).toBe(
-          `This number has an "e" with nothing after it. Add a number, like 1e3, or remove the "e".`,
+          `This number has an "e" with nothing after it. Add a number, like \`1e3\`, or remove the "e".`,
         );
       });
     });
@@ -427,7 +427,7 @@ describe("diagnostics", () => {
         "reject missing string quotes for %s",
         (expression) => {
           expect(err(expression)).toBe(
-            `This text is missing its closing quote. Add a " at the end, like "Done".`,
+            `This text is missing its closing quote. Add a \`"\` at the end, like \`"Done"\`.`,
           );
         },
       );
@@ -443,7 +443,7 @@ describe("diagnostics", () => {
         `[foo \\[ bar \\]`,
       ])("reject missing closing field quotes for %s", (expression) => {
         expect(err(expression)).toBe(
-          "This column name is missing its closing bracket. Add a ] at the end, like [Total].",
+          "This column name is missing its closing bracket. Add a `]` at the end, like `[Total]`.",
         );
       });
 
@@ -453,7 +453,7 @@ describe("diagnostics", () => {
 
       it.each([`[`, `[]`])("reject missing field name for %s", (expression) => {
         expect(err(expression)).toBe(
-          "This column name is empty. Put a column name between the brackets, like [Total].",
+          "This column name is empty. Put a column name between the brackets, like `[Total]`.",
         );
       });
 
@@ -498,98 +498,98 @@ describe("diagnostics", () => {
     it("should reject aggregations functions in expression mode", () => {
       const mode = "expression";
       expect(err("CumulativeCount([Total])", mode)).toBe(
-        "CumulativeCount() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`CumulativeCount()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("CumulativeSum([Total])", mode)).toBe(
-        "CumulativeSum() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`CumulativeSum()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Count([Total])", mode)).toBe(
-        "Count() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Count()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Sum([Total])", mode)).toBe(
-        "Sum() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Sum()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Distinct([Total])", mode)).toBe(
-        "Distinct() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Distinct()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Average([Total])", mode)).toBe(
-        "Average() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Average()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Median([Total])", mode)).toBe(
-        "Median() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Median()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Min([Total])", mode)).toBe(
-        "Min() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Min()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Max([Total])", mode)).toBe(
-        "Max() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Max()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Share([Total] = 10)", mode)).toBe(
-        "Share() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Share()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("CountIf([Total] = 10)", mode)).toBe(
-        "CountIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`CountIf()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("DistinctIf([Total], [Tax] = 10)", mode)).toBe(
-        "DistinctIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`DistinctIf()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("SumIf([Total], [Tax] = 10)", mode)).toBe(
-        "SumIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`SumIf()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Variance([Total])", mode)).toBe(
-        "Variance() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Variance()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Percentile([Total], 0.9)", mode)).toBe(
-        "Percentile() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Percentile()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
     });
 
     it("should reject aggregations functions in filter mode", () => {
       const mode = "filter";
       expect(err("CumulativeCount([Total] > 1)", mode)).toBe(
-        "CumulativeCount() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`CumulativeCount()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("CumulativeSum([Total] > 1)", mode)).toBe(
-        "CumulativeSum() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`CumulativeSum()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Count([Total] > 1)", mode)).toBe(
-        "Count() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Count()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Sum([Total])", mode)).toBe(
-        "Sum() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Sum()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Distinct([Total])", mode)).toBe(
-        "Distinct() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Distinct()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Average([Total])", mode)).toBe(
-        "Average() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Average()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Median([Total])", mode)).toBe(
-        "Median() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Median()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Min([Total])", mode)).toBe(
-        "Min() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Min()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Max([Total])", mode)).toBe(
-        "Max() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Max()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Share([Total] = 10)", mode)).toBe(
-        "Share() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Share()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("CountIf([Total] = 10)", mode)).toBe(
-        "CountIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`CountIf()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("DistinctIf([Total], [Tax] = 10)", mode)).toBe(
-        "DistinctIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`DistinctIf()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("SumIf([Total], [Tax] = 10)", mode)).toBe(
-        "SumIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`SumIf()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Variance([Total])", mode)).toBe(
-        "Variance() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Variance()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Percentile([Total], 0.9)", mode)).toBe(
-        "Percentile() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
+        "`Percentile()` combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
     });
     it.each([

@@ -51,7 +51,7 @@ export function resolver(options: Options): Resolver {
 
       if (!dimension) {
         throw new CompileError(
-          t`There's no metric or measure called "${name}". Check the spelling, or use a function like Sum([Total]).`,
+          t`There's no metric or measure called "${name}". Check the spelling, or use a function like \`Sum([Total])\`.`,
           node,
           "column",
         );
@@ -65,7 +65,7 @@ export function resolver(options: Options): Resolver {
           c(
             "{0} is an identifier of the field provided by user in a custom expression",
           )
-            .t`"${name}" is a column, so it can't be used as a summary on its own. Wrap it in a function like Sum([${name}]) or Average([${name}]).`,
+            .t`"${name}" is a column, so it can't be used as a summary on its own. Wrap it in a function like \`Sum([${name}])\` or \`Average([${name}])\`.`,
           node,
           "type",
         );
@@ -81,7 +81,7 @@ export function resolver(options: Options): Resolver {
       ]);
       if (!dimension) {
         throw new CompileError(
-          t`There's no true-or-false column or segment called "${name}". Replace it with a check that's true or false, like [Total] > 100.`,
+          t`There's no true-or-false column or segment called "${name}". Replace it with a check that's true or false, like \`[Total] > 100\`.`,
           node,
           "column",
         );
@@ -99,13 +99,13 @@ export function resolver(options: Options): Resolver {
     if (!dimension) {
       if (expressionMode === "aggregation") {
         throw new CompileError(
-          t`There's no column, metric or measure called "${name}". Check the spelling, or press [ to see the list.`,
+          t`There's no column, metric or measure called "${name}". Check the spelling, or press \`[\` to see the list.`,
           node,
           "column",
         );
       }
       throw new CompileError(
-        t`There's no column called "${name}". Check the spelling, or press [ to see the list of columns.`,
+        t`There's no column called "${name}". Check the spelling, or press \`[\` to see the list of columns.`,
         node,
         "column",
       );

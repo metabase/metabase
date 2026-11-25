@@ -17,6 +17,6 @@ export function checkBadTokens({ tokens }: { tokens: Token[] }) {
       );
     }
 
-    error(token, t`This part can't be read: ${text}. Check it for typos.`);
+    error(token, t`This part can't be read: \`${text}\`. Check it for typos.`);
   }
 }

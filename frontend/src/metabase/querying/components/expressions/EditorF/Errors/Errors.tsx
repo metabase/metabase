@@ -9,7 +9,10 @@ import {
 
 import S from "./Errors.module.css";
 
-/** The error of the code, in a bar below it: its kind and its message. */
+/**
+ * The error of the code, in a bar below it: one line of plain text, its kind
+ * and its message.
+ */
 export function Errors({
   error,
   content,
@@ -28,13 +31,28 @@ export function Errors({
       </div>
     );
   }
+  const title = getTitle(isExpressionError(error) ? error.kind : "syntax");
   return (
     <div className={S.errors} role="alert">
-      <span className={S.title}>
-        {getTitle(isExpressionError(error) ? error.kind : "syntax")}
-      </span>
-      <span className={S.message}>{error.message}</span>
+      {t`${title}.`} <ErrorText text={error.message} />
     </div>
+  );
+}
+
+/** Text with the parts in backticks shown as code, like `[Total]`. */
+export function ErrorText({ text }: { text: string }) {
+  return (
+    <>
+      {text.split("`").map((part, index) =>
+        index % 2 === 1 ? (
+          <code key={index} className={S.code}>
+            {part}
+          </code>
+        ) : (
+          part
+        ),
+      )}
+    </>
   );
 }
 

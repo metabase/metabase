@@ -793,7 +793,7 @@ describe("pratt/compiler", () => {
 
     it("should throw error on unknown function", () => {
       expect(() => expr(`unknown_fn(1)`)).toThrow(
-        "There's no function called unknown_fn(). Check the spelling, or start typing to see matching functions.",
+        "There's no function called `unknown_fn()`. Check the spelling, or start typing to see matching functions.",
       );
     });
   });

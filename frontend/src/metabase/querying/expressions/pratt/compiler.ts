@@ -163,7 +163,7 @@ function compileDimension(
       // Add custom error message for zero-arg functions to help users
       // that might be used to the no-parenthesis syntax which is no longer valid.
       throw new CompileError(
-        t`"${name}" needs parentheses to work. Write ${name}() instead.`,
+        t`"${name}" needs parentheses to work. Write \`${name}()\` instead.`,
         node,
       );
     }
@@ -244,7 +244,7 @@ function compileFunctionCall(node: Node, ctx: Context): Lib.ExpressionParts {
 
   check(
     isDefinedClause(operator),
-    t`There's no function called ${operator}(). Check the spelling, or start typing to see matching functions.`,
+    t`There's no function called \`${operator}()\`. Check the spelling, or start typing to see matching functions.`,
     node,
     "function",
   );
@@ -299,7 +299,7 @@ function compileDatetimeMode(
 
   check(
     isStringLiteral(mode),
-    t`The format for datetime() has to be text in quotes, like "iso".`,
+    t`The format for \`datetime()\` has to be text in quotes, like \`"iso"\`.`,
     node,
     "arguments",
   );
@@ -335,7 +335,7 @@ function compileNumber(node: Node): NumberValue | Lib.ExpressionParts {
   const number = parseNumber(node.token.text);
   check(
     number != null,
-    t`This number isn't written correctly. Use digits with an optional decimal point, like 1234.5.`,
+    t`This number isn't written correctly. Use digits with an optional decimal point, like \`1234.5\`.`,
     node,
   );
 
@@ -432,7 +432,7 @@ function compileUnaryOp(
   );
   check(
     node.children.length < 2,
-    t`There's an extra value here. Remove it, or add a symbol like + or = to connect it.`,
+    t`There's an extra value here. Remove it, or add a symbol like \`+\` or \`=\` to connect it.`,
     node.children[1],
   );
 
@@ -461,7 +461,7 @@ function compileInfixOp(
   );
   check(
     node.children.length < 3,
-    t`There's an extra value here. Remove it, or add a symbol like + or = to connect it.`,
+    t`There's an extra value here. Remove it, or add a symbol like \`+\` or \`=\` to connect it.`,
     node.children[2],
   );
 

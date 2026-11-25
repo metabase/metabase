@@ -28,7 +28,8 @@ export function Errors({
   return (
     <Flex p="sm" className={S.errors} gap="sm" align="flex-start" wrap="wrap">
       <Icon name="warning" className={S.icon} />
-      {error.message}
+      {/* Backticks mark code, which editor F shows as code. */}
+      {error.message.replaceAll("`", "")}
       {position && (
         <Text component="span" className={S.position}>
           {t`Line ${position.line}, Column ${position.column}`}

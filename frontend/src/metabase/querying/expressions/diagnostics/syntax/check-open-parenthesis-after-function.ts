@@ -22,7 +22,7 @@ export function checkOpenParenthesisAfterFunction({
         if (next.type !== GROUP) {
           error(
             token,
-            t`${functionName} is a function, so it needs parentheses after its name, like ${functionName}().`,
+            t`\`${functionName}\` is a function, so it needs parentheses after its name, like \`${functionName}()\`.`,
           );
         }
       }

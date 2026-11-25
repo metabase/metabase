@@ -1,30 +1,22 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useDocsUrl } from "metabase/common/hooks";
-import { Icon, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { ErrorText } from "./Errors";
 import S from "./SqlHint.module.css";
-import {
-  type SqlFix,
-  applyAllSqlFixes,
-  applySqlFixes,
-  getSqlFixes,
-  looksLikeSql,
-} from "./sql-hints";
+import { getSqlFixes, looksLikeSql } from "./sql-hints";
 import type { GenerateExpressionResult } from "./use-generate-expression";
 
-const MAX_SHOWN_FIXES = 3;
-
 const CONVERT_PROMPT =
-  "The current expression is SQL, or uses SQL syntax. Convert it to a custom expression with the same result. " +
+  "The current expression is SQL, or uses syntax from SQL or another language. Convert it to a custom expression with the same result. " +
   "Use the columns from the column list. When a part cannot be converted, return a message that says which part and why.";
 
 /**
- * A note for the error bar when the expression looks like SQL: what language
- * custom expressions use, fixes for SQL constructions, and a conversion with
- * the AI.
+ * A note for the error bar, instead of the error, when the expression uses
+ * syntax from SQL or another language: one line on the syntax of custom
+ * expressions, and "Fix with AI", which proposes a conversion as a diff.
+ * `isFixing` is true while the AI works on it.
  */
 export function useSqlHint({
   hasError,
@@ -35,7 +27,6 @@ export function useSqlHint({
   isEnabled,
   generate,
   proposeSource,
-  applySource,
 }: {
   hasError: boolean;
   source: string;
@@ -48,12 +39,7 @@ export function useSqlHint({
     source: string;
   }) => Promise<GenerateExpressionResult | null>;
   proposeSource: (source: string, name?: string) => void;
-  /** Writes the text at once, without a diff. */
-  applySource: (source: string) => void;
 }) {
-  const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    "questions/query-builder/expressions",
-  );
   const [isConverting, setIsConverting] = useState(false);
   const [refusal, setRefusal] = useState<{ source: string; message: string }>();
 
@@ -70,18 +56,11 @@ export function useSqlHint({
     () => isActive && looksLikeSql(source),
     [isActive, source],
   );
-  const fixes = useMemo(
-    () => (isActive ? getSqlFixes(source, columnNames) : []),
+  // Syntax from another language that we know how to fix, like `==`.
+  const hasForeignSyntax = useMemo(
+    () => isActive && getSqlFixes(source, columnNames).length > 0,
     [isActive, source, columnNames],
   );
-  // All fixes, round after round: a fix of a CASE leaves fixes in its parts
-  // for the next round.
-  const allFixed = useMemo(
-    () => (fixes.length > 0 ? applyAllSqlFixes(source, columnNames) : source),
-    [fixes, source, columnNames],
-  );
-  const hasMoreFixes =
-    fixes.length > 1 || allFixed !== applySqlFixes(source, fixes);
 
   const handleConvert = useCallback(async () => {
     setIsConverting(true);
@@ -97,78 +76,33 @@ export function useSqlHint({
     }
   }, [generate, source, proposeSource]);
 
-  if (!isActive || (!isSql && fixes.length === 0)) {
-    return null;
+  if (!isActive || (!isSql && !hasForeignSyntax)) {
+    return { hint: null, isFixing: false };
   }
 
-  return (
+  // The AI couldn't convert this text: its reason replaces "Fix with AI".
+  const refusalMessage =
+    refusal?.source === source ? refusal.message : undefined;
+
+  const hint = (
     <>
-      <span className={S.title}>
-        {isSql ? t`Looks like SQL` : t`Check the syntax`}
-      </span>
-      <div className={S.body}>
-        <span>
-          {isSql
-            ? t`Custom expressions use their own syntax: [Column] for columns, and functions like isNull([Column]).`
-            : t`Some parts use syntax from other languages, which custom expressions do not support.`}
-          {showMetabaseLinks && (
-            <>
-              {" "}
-              <a
-                href={docsUrl}
-                target="_blank"
-                rel="noreferrer"
-                className={S.link}
-              >{t`Learn the syntax`}</a>
-            </>
-          )}
-        </span>
-        {fixes.slice(0, MAX_SHOWN_FIXES).map((fix, index) => (
-          <FixRow
-            key={index}
-            fix={fix}
-            onApply={() => applySource(applySqlFixes(source, [fix]))}
-          />
-        ))}
-        <div className={S.actions}>
-          {hasMoreFixes && (
-            <button
-              type="button"
-              className={S.action}
-              onClick={() => applySource(allFixed)}
-            >{t`Apply all fixes`}</button>
-          )}
-          <button
-            type="button"
-            className={S.action}
-            disabled={isConverting}
-            onClick={handleConvert}
-          >
-            {isConverting ? (
-              <Loader size={12} />
-            ) : (
-              <Icon name="metabot" size={12} />
-            )}
-            {t`Convert with AI`}
-          </button>
-        </div>
-        {refusal?.source === source && (
-          <span className={S.refusal}>{refusal.message}</span>
-        )}
-      </div>
+      <ErrorText
+        text={
+          isSql
+            ? t`Custom expressions use their own syntax: \`[Column]\` for columns, and functions like \`isNull([Column])\`.`
+            : t`Some parts use syntax from other languages, which custom expressions don't support.`
+        }
+      />{" "}
+      {isConverting ? (
+        <span className={S.fixing}>{t`Fixing with AI…`}</span>
+      ) : refusalMessage != null ? (
+        <ErrorText text={refusalMessage} />
+      ) : (
+        <button type="button" className={S.fixWithAi} onClick={handleConvert}>
+          {t`Fix with AI`}
+        </button>
+      )}
     </>
   );
-}
-
-function FixRow({ fix, onApply }: { fix: SqlFix; onApply: () => void }) {
-  return (
-    <div className={S.fix}>
-      <code className={S.code}>{fix.original}</code>
-      <Icon name="arrow_right" size={12} className={S.arrow} />
-      <code className={S.code}>{fix.replacement}</code>
-      <button type="button" className={S.action} onClick={onApply}>
-        {t`Apply`}
-      </button>
-    </div>
-  );
+  return { hint, isFixing: isConverting };
 }

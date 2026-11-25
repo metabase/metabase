@@ -25,7 +25,7 @@ export function checkKnownFunctions({
     if (!clause) {
       error(
         node,
-        t`There's no function called ${operator}(). Check the spelling, or start typing to see matching functions.`,
+        t`There's no function called \`${operator}()\`. Check the spelling, or start typing to see matching functions.`,
         "function",
       );
     }

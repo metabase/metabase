@@ -118,6 +118,13 @@
   }
 }
 
+/* The code while "Fix with AI" works on it (Figma 417:18260): read-only, all
+   in the disabled text color, the "=" and the column names too. */
+.isFixing .editor,
+.isFixing .editor :global(.cm-content *) {
+  color: var(--mb-color-text-disabled);
+}
+
 .tooltips {
   :global(.cm-tooltip) {
     border: none !important;

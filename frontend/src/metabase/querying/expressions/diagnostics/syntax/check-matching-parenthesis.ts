@@ -18,7 +18,7 @@ export function checkMatchingParentheses({ tokens }: { tokens: Token[] }) {
       if (count === 0) {
         error(
           token,
-          t`There's a closing parenthesis without a matching opening one. Remove it, or add a ( earlier in the expression.`,
+          t`There's a closing parenthesis without a matching opening one. Remove it, or add a \`(\` earlier in the expression.`,
         );
       }
       count -= 1;
@@ -28,7 +28,7 @@ export function checkMatchingParentheses({ tokens }: { tokens: Token[] }) {
   if (count !== 0) {
     error(
       lastOpen,
-      t`A parenthesis was opened but never closed. Add a ) where it should end.`,
+      t`A parenthesis was opened but never closed. Add a \`)\` where it should end.`,
     );
   }
 }

@@ -1,77 +1,19 @@
-.title,
-.body {
-  color: var(--mb-color-feedback-warning-strong);
-}
-
-.title {
-  flex-shrink: 0;
-  font-weight: bold;
-}
-
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.link {
-  color: inherit;
-  text-decoration: underline;
-}
-
-.fix {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.code {
-  padding: 2px 4px;
-  border-radius: 4px;
-  background-color: var(--mb-color-background_surface-primary);
-  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.15);
-  color: var(--mb-color-text-primary);
-  font-family: var(--mb-default-monospace-font-family), monospace;
-  font-size: 11px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.arrow {
-  flex-shrink: 0;
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+/* "Fix with AI" at the end of the error text (Figma 417:18190): bold and
+   underlined, in the error's warning color. */
+.fixWithAi {
+  display: inline;
   padding: 0;
   border: none;
   background: none;
-  color: var(--mb-color-text-brand);
+  color: inherit;
   font: inherit;
   font-weight: bold;
+  text-decoration: underline;
   cursor: pointer;
-
-  &:hover {
-    text-decoration: underline;
-  }
-
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-    text-decoration: none;
-  }
 }
 
-.refusal {
-  color: var(--mb-color-text-secondary);
+/* "Fixing with AI…" in its place while the AI works (Figma 417:18260): bold,
+   not underlined. */
+.fixing {
+  font-weight: bold;
 }

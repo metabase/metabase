@@ -34,7 +34,7 @@ export function checkSupportedFunctions({
     ) {
       error(
         node,
-        t`This database doesn't support ${clause.displayName}(). Try a different function.`,
+        t`This database doesn't support \`${clause.displayName}()\`. Try a different function.`,
         "unsupported",
       );
     }
