@@ -4,11 +4,15 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
-import { createMockState } from "__support__/state";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import { AggregateStep } from "metabase/querying/notebook/components/AggregateStep";
 import { ExpressionStep } from "metabase/querying/notebook/components/ExpressionStep/ExpressionStep";
 import { createMockNotebookStep } from "metabase/querying/notebook/test-utils";
 import * as Lib from "metabase-lib";
@@ -17,7 +21,10 @@ import {
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import type { Database } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import {
+  COMMON_DATABASE_FEATURES,
+  createMockCard,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   createOrdersTable,
@@ -102,6 +109,31 @@ function setupAggregationPicker({
   );
 }
 
+function setupAggregateStep({
+  query = createOrdersQuery(),
+  database = createSampleDatabase(),
+}: SetupOpts = {}) {
+  const step = createMockNotebookStep({ type: "summarize", query });
+  setupDatabaseEndpoints(database);
+  renderWithProviders(
+    <AggregateStep
+      step={step}
+      color="core-summarize"
+      stageIndex={step.stageIndex}
+      query={step.query}
+      updateQuery={jest.fn()}
+      isLastOpened={false}
+      reportTimezone="UTC"
+    />,
+    {
+      storeInitialState: createMockState({
+        entities: createMockEntitiesState({ databases: [database] }),
+        qb: createMockQueryBuilderState({ card: createMockCard() }),
+      }),
+    },
+  );
+}
+
 /** Resolves with the editor content once it has the focus. */
 async function findFocusedEditor() {
   await screen.findByTestId("custom-expression-query-editor");
@@ -133,6 +165,38 @@ describe("ExpressionWidget > entry points > focus (metabase#54722)", () => {
     await userEvent.click(await screen.findByText("Custom Expression"));
 
     expect(await findFocusedEditor()).toHaveAttribute("role", "textbox");
+  });
+});
+
+describe("ExpressionWidget > entry points > aggregation picker search", () => {
+  it("should insert the template of a function picked from the search, go back on Cancel and close on Escape", async () => {
+    setupAggregateStep({
+      database: createSampleDatabase({
+        features: [...COMMON_DATABASE_FEATURES, "distinct-where"],
+      }),
+    });
+
+    await userEvent.click(screen.getByText("Pick a function or metric"));
+    await userEvent.type(screen.getByPlaceholderText("Find..."), "Distinc");
+    expect(
+      screen.getByRole("option", { name: "Number of distinct values of ..." }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByText("DistinctIf"));
+
+    await findFocusedEditor();
+    expect(getEditorValue()).toBe("DistinctIf(column, condition)");
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(await screen.findByPlaceholderText("Find...")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("custom-expression-query-editor"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByPlaceholderText("Find...")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Pick a function or metric")).toBeInTheDocument();
   });
 });
 
